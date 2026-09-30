@@ -55,7 +55,10 @@
 		"VERCEL_URL",
 		"_VARLOCK_ENV_KEY",
 		"CRON_SECRET",
-		"CLUB_TIMEZONE"
+		"CLUB_TIMEZONE",
+		"NTFY_BASE_URL",
+		"NTFY_TOKEN",
+		"NTFY_TOPIC_PREFIX"
 	],
 	"globalDependencies": [".env*", "apps/*/.env*", "packages/*/.env*"]
 }
