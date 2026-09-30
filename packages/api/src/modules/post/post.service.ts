@@ -4,6 +4,7 @@ import { LikeSourceSchema } from "@bbrc/schemas";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
+import { notifyMemberPosted } from "../notification/notification-triggers";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardPostXp } from "../xp/xp.service";
 import {
@@ -348,7 +349,7 @@ export async function createPost(
 		? await resolveAttachedBookId(input.attachedBookSlug, db)
 		: null;
 
-	return db.$transaction(async (tx) => {
+	const result = await db.$transaction(async (tx) => {
 		const slug = await generatePostSlug(input.content, tx);
 
 		const post = await tx.post.create({
@@ -367,6 +368,10 @@ export async function createPost(
 
 		return { slug: post.slug, xpAwarded };
 	});
+
+	void notifyMemberPosted(db, userId, result.slug);
+
+	return result;
 }
 
 export async function updatePost(

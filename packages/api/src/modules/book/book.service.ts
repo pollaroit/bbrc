@@ -2,6 +2,7 @@ import type { Database, Prisma } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
+import { notifyBookAddedToLibrary } from "../notification/notification-triggers";
 import {
 	bookListRanging,
 	bookListSearching,
@@ -99,10 +100,10 @@ export async function getBookBySlug(
 }
 
 export async function addBook(input: TAddBookInputSchema, db: Database) {
-	return await db.$transaction(async (tx) => {
+	const book = await db.$transaction(async (tx) => {
 		const slug = await generateBookSlug(input.title, tx);
 
-		const book = await tx.book.create({
+		return tx.book.create({
 			data: {
 				...input,
 				slug,
@@ -111,9 +112,11 @@ export async function addBook(input: TAddBookInputSchema, db: Database) {
 				slug: true,
 			},
 		});
-
-		return book;
 	});
+
+	void notifyBookAddedToLibrary(db, book.slug);
+
+	return book;
 }
 
 export async function updateBook(

@@ -1,5 +1,6 @@
 import type { Database, DatabaseTransaction } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
+import { notifyMemberFeedbackOnBook } from "../notification/notification-triggers";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardFeedbackXp } from "../xp/xp.service";
 import type {
@@ -204,25 +205,30 @@ export async function createFeedback(
 		});
 	}
 
-	return db.$transaction(async (tx) => {
-		const feedback = await tx.feedback.create({
-			data: {
-				authorId: userId,
-				bookId: book.id,
-				rating: input.rating,
-				review: input.review.trim(),
-			},
+	return db
+		.$transaction(async (tx) => {
+			const feedback = await tx.feedback.create({
+				data: {
+					authorId: userId,
+					bookId: book.id,
+					rating: input.rating,
+					review: input.review.trim(),
+				},
+			});
+
+			await recalculateBookAverageRating(book.id, tx);
+
+			const xpAwarded = (await awardFeedbackXp(
+				{ userId, feedbackId: feedback.id },
+				tx,
+			))
+				? XP_AWARD.feedback
+				: 0;
+
+			return { id: feedback.id, xpAwarded };
+		})
+		.then(async (result) => {
+			void notifyMemberFeedbackOnBook(db, input.bookSlug, userId);
+			return result;
 		});
-
-		await recalculateBookAverageRating(book.id, tx);
-
-		const xpAwarded = (await awardFeedbackXp(
-			{ userId, feedbackId: feedback.id },
-			tx,
-		))
-			? XP_AWARD.feedback
-			: 0;
-
-		return { id: feedback.id, xpAwarded };
-	});
 }
