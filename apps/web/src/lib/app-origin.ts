@@ -3,8 +3,15 @@ import { ENV } from "@/env";
 const DEV_ORIGIN = "http://localhost:3001";
 
 function originFromEnv(): string | undefined {
+	const production = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+	if (production) {
+		return production.startsWith("http")
+			? production.replace(/\/$/, "")
+			: `https://${production.replace(/\/$/, "")}`;
+	}
+
 	if (process.env.VERCEL_URL) {
-		return `https://${process.env.VERCEL_URL}`;
+		return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;
 	}
 
 	const authUrl = ENV.BETTER_AUTH_URL?.trim();

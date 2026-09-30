@@ -8,15 +8,41 @@ export const DEFAULT_DESCRIPTION =
 
 const DEV_ORIGIN = "http://localhost:3001";
 
-/** Base URL for canonical links, Open Graph, and JSON-LD. */
-export function getMetadataBase(): URL {
-	const authUrl = ENV.BETTER_AUTH_URL?.trim();
-	if (authUrl) {
-		return new URL(authUrl.endsWith("/") ? authUrl : `${authUrl}/`);
+function normalizeOrigin(url: string): URL {
+	const trimmed = url.trim();
+	const withProtocol = trimmed.startsWith("http")
+		? trimmed
+		: `https://${trimmed}`;
+	return new URL(
+		withProtocol.endsWith("/") ? withProtocol : `${withProtocol}/`,
+	);
+}
+
+/** Prefer Vercel-provided URLs so production builds avoid inlining other env in static HTML. */
+function vercelDeploymentOrigin(): URL | undefined {
+	const production = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+	if (production) {
+		return normalizeOrigin(production);
 	}
 
-	if (process.env.VERCEL_URL) {
-		return new URL(`https://${process.env.VERCEL_URL}/`);
+	const deployment = process.env.VERCEL_URL?.trim();
+	if (deployment) {
+		return normalizeOrigin(deployment);
+	}
+
+	return undefined;
+}
+
+/** Base URL for canonical links, Open Graph, and JSON-LD. */
+export function getMetadataBase(): URL {
+	const vercelOrigin = vercelDeploymentOrigin();
+	if (vercelOrigin) {
+		return vercelOrigin;
+	}
+
+	const authUrl = ENV.BETTER_AUTH_URL?.trim();
+	if (authUrl) {
+		return normalizeOrigin(authUrl);
 	}
 
 	return new URL(`${DEV_ORIGIN}/`);
