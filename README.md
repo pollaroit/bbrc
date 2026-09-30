@@ -30,8 +30,10 @@ Commit messages follow `@commitlint/config-conventional` (`feat:`, `fix:`, optio
 
 ## Deploying to Vercel
 
-- Root directory: **`apps/web`**
-- Set env vars from `apps/web/.env.schema` (`DATABASE_URL`, `BETTER_AUTH_*`, `CRON_SECRET`, optional `CLUB_TIMEZONE=Asia/Baku`).
+- Root directory: **`apps/web`**, with **include files outside root** enabled (monorepo).
+- Install (override if needed): `cd ../.. && bun install --frozen-lockfile`
+- Build: default **`bun run build`** in `apps/web` — runs `db:generate`, **`db:migrate:deploy`** (`prisma migrate deploy`), then Next.js. Migrations use **`DATABASE_URL` from Vercel env vars only** (never committed; same keys as `apps/web/.env.schema`).
+- Set env vars in **Vercel → Settings → Environment Variables**: `DATABASE_URL`, `BETTER_AUTH_*`, `CRON_SECRET`, optional `CLUB_TIMEZONE=Asia/Baku`.
 - **Cron:** `apps/web/vercel.json` hits `/api/cron/sittings` at **08:00, 12:00, 16:00, and 20:00 UTC** (poll close slots **12:00, 16:00, 20:00, 00:00** and sitting finish **20:00** in `Asia/Baku`).
 - That route closes due polls (winner = most votes, random tie-break) and finishes due reading sittings.
 

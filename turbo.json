@@ -30,6 +30,10 @@
 			"cache": false,
 			"interactive": true
 		},
+		"db:migrate:deploy": {
+			"cache": false,
+			"interactive": false
+		},
 		"db:studio": {
 			"cache": false,
 			"persistent": true

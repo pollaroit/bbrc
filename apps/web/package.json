@@ -4,7 +4,7 @@
 	"private": true,
 	"scripts": {
 		"dev": "next dev --port 3001",
-		"build": "tsc -b ../../packages/api && next build",
+		"build": "bun run --cwd ../.. db:generate && bun run --cwd ../.. db:migrate:deploy && tsc -b ../../packages/api && next build",
 		"check-types": "tsc -b ../../packages/api && tsc --noEmit",
 		"start": "next start",
 		"env:generate": "varlock codegen",

@@ -39,6 +39,7 @@
 		"db:studio": "turbo run db:studio -F @bbrc/db --",
 		"db:generate": "turbo run db:generate -F @bbrc/db --",
 		"db:migrate": "turbo run db:migrate -F @bbrc/db --",
+		"db:migrate:deploy": "turbo run db:migrate:deploy -F @bbrc/db --",
 		"db:seed": "turbo run db:seed -F @bbrc/db --",
 		"env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./packages/db/",
 		"postinstall": "varlock codegen --path ./apps/web/ && varlock codegen --path ./packages/db/",
