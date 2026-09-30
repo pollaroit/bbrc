@@ -4,6 +4,7 @@ import { RPCLink } from "@orpc/client/fetch";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { RPC_PATH, resolveAppOrigin } from "@/lib/app-origin";
 
 export function createQueryClient() {
 	return new QueryClient({
@@ -25,10 +26,24 @@ export function createQueryClient() {
 export const queryClient = createQueryClient();
 
 export const link = new RPCLink({
-	url: `${typeof window !== "undefined" ? window.location.origin : "http://localhost:3001"}/api/rpc`,
-	fetch(url, options) {
-		return fetch(url, {
-			...options,
+	url:
+		typeof window !== "undefined"
+			? `${window.location.origin}${RPC_PATH}`
+			: `http://127.0.0.1:0${RPC_PATH}`,
+	fetch: async (request, init) => {
+		let finalRequest = request;
+
+		if (typeof window === "undefined" && request instanceof Request) {
+			const origin = await resolveAppOrigin();
+			const incoming = new URL(request.url);
+			finalRequest = new Request(
+				`${origin}${incoming.pathname}${incoming.search}`,
+				request,
+			);
+		}
+
+		return fetch(finalRequest, {
+			...(init ?? {}),
 			credentials: "include",
 		});
 	},
