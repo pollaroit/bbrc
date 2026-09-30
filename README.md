@@ -34,7 +34,7 @@ Commit messages follow `@commitlint/config-conventional` (`feat:`, `fix:`, optio
 - Install (override if needed): `cd ../.. && bun install --frozen-lockfile`
 - Build: default **`bun run build`** in `apps/web` — runs `db:generate`, **`db:migrate:deploy`** (`prisma migrate deploy`), then Next.js. Migrations use **`DATABASE_URL` from Vercel env vars only** (never committed; same keys as `apps/web/.env.schema`).
 - Set env vars in **Vercel → Settings → Environment Variables**: `DATABASE_URL`, `BETTER_AUTH_*`, `CRON_SECRET`, optional `CLUB_TIMEZONE=Asia/Baku`.
-- **Cron:** `apps/web/vercel.json` hits `/api/cron/sittings` at **08:00, 12:00, 16:00, and 20:00 UTC** (poll close slots **12:00, 16:00, 20:00, 00:00** and sitting finish **20:00** in `Asia/Baku`).
+- **Cron:** `apps/web/vercel.json` hits `/api/cron/sittings` once daily at **16:00 UTC** (**20:00** club local in `Asia/Baku`) — closes due polls and finishes due sittings.
 - That route closes due polls (winner = most votes, random tie-break) and finishes due reading sittings.
 
 The app is simple. There are a list of books which can be added by admin (`user.isAdmin=true`), on each Sitting one book is selected on Poll, then participants read the book.
