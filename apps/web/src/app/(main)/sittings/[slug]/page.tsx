@@ -1,7 +1,21 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { SittingDetail } from "@/components/blocks/sitting-detail";
+import {
+	buildNotFoundMetadata,
+	buildPageMetadata,
+	DETAIL_PAGE_REVALIDATE_SECONDS,
+	sittingSlugStaticParams,
+} from "@/lib/seo";
+import { db } from "@/services";
 import { orpc } from "@/utils/orpc";
+
+export const revalidate = DETAIL_PAGE_REVALIDATE_SECONDS;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+	return sittingSlugStaticParams(db);
+}
 
 const loadSittingBySlug = cache((slug: string) =>
 	orpc.sitting.getSittingBySlug.call(slug),
@@ -15,15 +29,13 @@ export async function generateMetadata({
 	try {
 		const sitting = await loadSittingBySlug(slug);
 
-		return {
-			title: sitting.slug,
-			description: `BBRC sitting · ${sitting.participants.length} participants.`,
-		};
+		return buildPageMetadata({
+			title: `Sitting ${sitting.slug}`,
+			description: `BBRC reading sitting · ${sitting.participants.length} participants · status ${sitting.status}.`,
+			path: `/sittings/${sitting.slug}`,
+		});
 	} catch {
-		return {
-			title: "Sitting not found",
-			description: "This sitting could not be found.",
-		};
+		return buildNotFoundMetadata("Sitting");
 	}
 }
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { UserXpHistory } from "@/components/blocks/user-xp-history";
+import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { orpc } from "@/utils/orpc";
 
 const loadUser = cache((username: string) =>
@@ -24,12 +25,13 @@ export async function generateMetadata({
 	try {
 		const user = await loadUser(username);
 
-		return {
+		return buildPageMetadata({
 			title: `${user.name} · XP history`,
 			description: `Experience points history for ${user.name}.`,
-		};
+			path: `/users/${user.username}/xp`,
+		});
 	} catch {
-		return { title: "XP history not found" };
+		return buildNotFoundMetadata("XP history");
 	}
 }
 

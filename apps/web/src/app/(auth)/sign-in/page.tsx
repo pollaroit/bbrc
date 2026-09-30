@@ -10,11 +10,15 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 import SignInForm from "@/components/blocks/sign-in-form";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
 	title: "Sign in",
-	description: "Sign in to your BBRC account",
-};
+	description: "Sign in to your BBRC account.",
+	path: "/sign-in",
+});
+
+export const dynamic = "force-static";
 
 export default function SignInPage() {
 	return (

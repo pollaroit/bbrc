@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { EditBookForm } from "@/components/blocks/edit-book-form";
 import { EditBookPageHeader } from "@/components/blocks/edit-book-page-header";
+import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { auth } from "@/services";
 import { orpc } from "@/utils/orpc";
 
@@ -19,15 +20,13 @@ export async function generateMetadata({
 	try {
 		const book = await loadBookBySlug(slug);
 
-		return {
+		return buildPageMetadata({
 			title: `Edit ${book.title}`,
-			description: `Edit ${book.title} in the BBRC library.`,
-		};
+			description: `Edit library metadata for ${book.title}.`,
+			path: `/books/${book.slug}/edit`,
+		});
 	} catch {
-		return {
-			title: "Edit book",
-			description: "Edit a book in the BBRC library.",
-		};
+		return buildNotFoundMetadata("Book");
 	}
 }
 

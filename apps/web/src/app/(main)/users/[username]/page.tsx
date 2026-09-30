@@ -1,7 +1,23 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { UserProfile } from "@/components/blocks/user-profile";
+import {
+	buildNotFoundMetadata,
+	buildPageMetadata,
+	DETAIL_PAGE_REVALIDATE_SECONDS,
+	JsonLd,
+	personJsonLd,
+	usernameStaticParams,
+} from "@/lib/seo";
+import { db } from "@/services";
 import { orpc } from "@/utils/orpc";
+
+export const revalidate = DETAIL_PAGE_REVALIDATE_SECONDS;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+	return usernameStaticParams(db);
+}
 
 const loadUserByUsername = cache((username: string) =>
 	orpc.user.getUserByUsername.call({ username }),
@@ -15,15 +31,14 @@ export async function generateMetadata({
 	try {
 		const user = await loadUserByUsername(username);
 
-		return {
+		return buildPageMetadata({
 			title: `${user.name} (@${user.username})`,
-			description: `View ${user.name}'s profile on the BBRC.`,
-		};
+			description: `${user.name}'s profile, readings, XP, and RP on BBRC.`,
+			path: `/users/${user.username}`,
+			openGraph: { type: "profile" },
+		});
 	} catch {
-		return {
-			title: "User not found",
-			description: "This member profile could not be found.",
-		};
+		return buildNotFoundMetadata("Member");
 	}
 }
 
@@ -33,5 +48,12 @@ export default async function UserPage({
 	const { username } = await params;
 	const user = await loadUserByUsername(username);
 
-	return <UserProfile user={user} />;
+	return (
+		<>
+			<JsonLd
+				data={personJsonLd({ name: user.name, username: user.username })}
+			/>
+			<UserProfile user={user} />
+		</>
+	);
 }

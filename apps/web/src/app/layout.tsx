@@ -3,6 +3,8 @@ import { Geist_Mono } from "next/font/google";
 
 import "../index.css";
 import Providers from "@/components/providers";
+import { DefaultSiteJsonLd } from "@/components/seo/default-site-json-ld";
+import { DEFAULT_DESCRIPTION, getMetadataBase, SITE_NAME } from "@/lib/seo";
 
 const geistMono = Geist_Mono({
 	variable: "--font-geist-mono",
@@ -10,12 +12,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+	metadataBase: getMetadataBase(),
 	title: {
-		template: "%s | Brigada Book Reading Club",
-		default: "Brigada Book Reading Club",
+		template: `%s | ${SITE_NAME}`,
+		default: SITE_NAME,
 	},
-	description:
-		"Brigada Book Reading Club (a.k.a. BBRC) is a parallel book reading club for members of Brigada.",
+	description: DEFAULT_DESCRIPTION,
 };
 
 export default function RootLayout({
@@ -32,6 +34,7 @@ export default function RootLayout({
 			<body
 				className={`${geistMono.variable} min-h-full bg-background font-sans text-foreground antialiased`}
 			>
+				<DefaultSiteJsonLd />
 				<Providers>{children}</Providers>
 			</body>
 		</html>

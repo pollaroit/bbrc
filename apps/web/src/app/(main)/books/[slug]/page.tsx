@@ -1,8 +1,24 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { BookDetail } from "@/components/blocks/book-detail";
-import { formatBookAuthors } from "@/lib/book-cover";
+import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import {
+	bookJsonLd,
+	bookSlugStaticParams,
+	buildNotFoundMetadata,
+	buildPageMetadata,
+	DETAIL_PAGE_REVALIDATE_SECONDS,
+	JsonLd,
+} from "@/lib/seo";
+import { db } from "@/services";
 import { orpc } from "@/utils/orpc";
+
+export const revalidate = DETAIL_PAGE_REVALIDATE_SECONDS;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+	return bookSlugStaticParams(db);
+}
 
 const loadBookBySlug = cache((slug: string) =>
 	orpc.book.getBookBySlug.call(slug),
@@ -19,18 +35,21 @@ export async function generateMetadata({
 
 	try {
 		const book = await loadBookBySlug(slug);
+		const cover = bookCoverUrl(book.coverId, "L");
 
-		return {
+		return buildPageMetadata({
 			title: book.title,
 			description:
-				book.excerpt?.slice(0, 160) ??
+				book.excerpt?.trim() ||
 				`${book.title} by ${formatBookAuthors(book.authors)} in the BBRC library.`,
-		};
+			path: `/books/${book.slug}`,
+			openGraph: {
+				type: "website",
+				...(cover ? { images: [{ url: cover, alt: book.title }] } : {}),
+			},
+		});
 	} catch {
-		return {
-			title: "Book not found",
-			description: "This book could not be found in the library.",
-		};
+		return buildNotFoundMetadata("Book");
 	}
 }
 
@@ -41,5 +60,10 @@ export default async function BookPage({ params }: PageProps<"/books/[slug]">) {
 		loadBookFeedbackList(slug),
 	]);
 
-	return <BookDetail book={book} initialReviews={initialReviews} />;
+	return (
+		<>
+			<JsonLd data={bookJsonLd(book)} />
+			<BookDetail book={book} initialReviews={initialReviews} />
+		</>
+	);
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { UserRpHistory } from "@/components/blocks/user-rp-history";
+import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { orpc } from "@/utils/orpc";
 
 const loadUser = cache((username: string) =>
@@ -24,12 +25,13 @@ export async function generateMetadata({
 	try {
 		const user = await loadUser(username);
 
-		return {
+		return buildPageMetadata({
 			title: `${user.name} · RP history`,
 			description: `Reading points history for ${user.name}.`,
-		};
+			path: `/users/${user.username}/rp`,
+		});
 	} catch {
-		return { title: "RP history not found" };
+		return buildNotFoundMetadata("RP history");
 	}
 }
 

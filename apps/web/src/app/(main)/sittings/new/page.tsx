@@ -2,12 +2,14 @@ import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { CreateSittingForm } from "@/components/blocks/create-sitting-form";
+import { buildPageMetadata } from "@/lib/seo";
 import { auth } from "@/services";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
 	title: "Start sitting",
 	description: "Start a new club reading sitting and book poll.",
-};
+	path: "/sittings/new",
+});
 
 export default async function NewSittingPage() {
 	const session = await auth.api.getSession({
