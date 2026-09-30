@@ -6,5 +6,5 @@ export const STATIC_APP_ROUTES = [
 	{ path: "/users", changeFrequency: "weekly" as const, priority: 0.8 },
 ] as const;
 
-/** Default ISR revalidation for DB-backed detail pages (seconds). */
+/** Default ISR revalidation for DB-backed detail pages (seconds). Use literal `3600` in `export const revalidate`. */
 export const DETAIL_PAGE_REVALIDATE_SECONDS = 3600;

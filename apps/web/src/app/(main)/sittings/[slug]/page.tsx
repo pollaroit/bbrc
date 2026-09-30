@@ -4,13 +4,13 @@ import { SittingDetail } from "@/components/blocks/sitting-detail";
 import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
-	DETAIL_PAGE_REVALIDATE_SECONDS,
 	sittingSlugStaticParams,
 } from "@/lib/seo";
 import { db } from "@/services";
 import { orpc } from "@/utils/orpc";
 
-export const revalidate = DETAIL_PAGE_REVALIDATE_SECONDS;
+/** ISR: keep in sync with `DETAIL_PAGE_REVALIDATE_SECONDS` in `@/lib/seo`. */
+export const revalidate = 3600;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
