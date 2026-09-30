@@ -56,3 +56,5 @@ coverage
 tmp
 temp
 lefthook-local.yml
+
+.ignored/
