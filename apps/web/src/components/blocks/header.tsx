@@ -14,6 +14,7 @@ import { ArrowRight, Menu } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
+import { NotificationBell } from "@/components/blocks/notification-bell";
 import { UserMenu } from "@/components/blocks/user-menu";
 import { authClient } from "@/lib/auth-client";
 
@@ -49,7 +50,10 @@ export default function Header() {
 
 				<div className="ml-auto hidden items-center gap-2 md:flex">
 					{isPending ? null : session ? (
-						<UserMenu user={session.user} />
+						<>
+							<NotificationBell />
+							<UserMenu user={session.user} />
+						</>
 					) : (
 						<>
 							<Button
@@ -68,79 +72,77 @@ export default function Header() {
 					)}
 				</div>
 
-				<Sheet open={open} onOpenChange={setOpen}>
-					<SheetTrigger
-						render={
-							<Button
-								variant="outline"
-								size="icon"
-								aria-label="Open menu"
-								className="ml-auto md:hidden"
-							/>
-						}
-					>
-						<Menu aria-hidden="true" />
-					</SheetTrigger>
-					<SheetContent side="right" className="w-3/4 max-w-xs">
-						<SheetHeader>
-							<SheetTitle className="flex items-center gap-2.5">
-								BBRC
-							</SheetTitle>
-						</SheetHeader>
+				<div className="ml-auto flex items-center gap-1 md:hidden">
+					{!isPending && session ? <NotificationBell /> : null}
+					<Sheet open={open} onOpenChange={setOpen}>
+						<SheetTrigger
+							render={
+								<Button variant="outline" size="icon" aria-label="Open menu" />
+							}
+						>
+							<Menu aria-hidden="true" />
+						</SheetTrigger>
+						<SheetContent side="right" className="w-3/4 max-w-xs">
+							<SheetHeader>
+								<SheetTitle className="flex items-center gap-2.5">
+									BBRC
+								</SheetTitle>
+							</SheetHeader>
 
-						<nav className="flex flex-col px-4">
-							{navLinks.map((link) => (
-								<SheetClose
-									key={link.label}
-									nativeButton={false}
-									render={
-										<Link
-											href={link.href as Route}
-											className="border-border border-b py-3 font-medium text-muted-foreground text-sm transition-colors last:border-b-0 hover:text-foreground"
-										/>
-									}
-								>
-									{link.label}
-								</SheetClose>
-							))}
-						</nav>
-
-						<SheetFooter>
-							{isPending ? null : session ? (
-								<UserMenu user={session.user} />
-							) : (
-								<>
+							<nav className="flex flex-col px-4">
+								{navLinks.map((link) => (
 									<SheetClose
+										key={link.label}
 										nativeButton={false}
 										render={
-											<Button
-												render={<Link href="/sign-in" />}
-												nativeButton={false}
-												variant="outline"
-												className="w-full"
+											<Link
+												href={link.href as Route}
+												className="border-border border-b py-3 font-medium text-muted-foreground text-sm transition-colors last:border-b-0 hover:text-foreground"
 											/>
 										}
 									>
-										Sign in
+										{link.label}
 									</SheetClose>
-									<SheetClose
-										nativeButton={false}
-										render={
-											<Button
-												render={<Link href="/sign-up" />}
-												nativeButton={false}
-												className="w-full"
-											/>
-										}
-									>
-										Get Started
-										<ArrowRight data-icon="inline-end" aria-hidden="true" />
-									</SheetClose>
-								</>
-							)}
-						</SheetFooter>
-					</SheetContent>
-				</Sheet>
+								))}
+							</nav>
+
+							<SheetFooter>
+								{isPending ? null : session ? (
+									<UserMenu user={session.user} />
+								) : (
+									<>
+										<SheetClose
+											nativeButton={false}
+											render={
+												<Button
+													render={<Link href="/sign-in" />}
+													nativeButton={false}
+													variant="outline"
+													className="w-full"
+												/>
+											}
+										>
+											Sign in
+										</SheetClose>
+										<SheetClose
+											nativeButton={false}
+											render={
+												<Button
+													render={<Link href="/sign-up" />}
+													nativeButton={false}
+													className="w-full"
+												/>
+											}
+										>
+											Get Started
+											<ArrowRight data-icon="inline-end" aria-hidden="true" />
+										</SheetClose>
+									</>
+								)}
+							</SheetFooter>
+						</SheetContent>
+					</Sheet>
+				</div>
 			</div>
 		</header>
 	);

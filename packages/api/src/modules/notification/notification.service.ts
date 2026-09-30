@@ -1,5 +1,6 @@
 import type { Database } from "@bbrc/db";
 import {
+	defaultPushEnabledForKind,
 	NOTIFICATION_KIND_GROUPS,
 	NOTIFICATION_KIND_LABELS,
 	NOTIFICATION_KINDS,
@@ -61,7 +62,7 @@ export async function ensureNotificationPreferences(
 			userId,
 			kind: kindToDb(kind),
 			inAppEnabled: true,
-			pushEnabled: false,
+			pushEnabled: defaultPushEnabledForKind(kind),
 		})),
 	});
 }

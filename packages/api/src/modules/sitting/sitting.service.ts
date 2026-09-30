@@ -15,6 +15,12 @@ import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
 import { getBookListFields } from "../book/book.schema";
+import {
+	notifyParticipantFinishedBook,
+	notifySittingFinished,
+	notifySittingPollClosed,
+	notifySittingPollStarted,
+} from "../notification/notification-triggers";
 import { calculateRpPointsDelta } from "../rp/rp.service";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardParticipationXp, awardPollVoteXp } from "../xp/xp.service";
@@ -454,7 +460,7 @@ export async function createSitting(
 		: defaultPollDeadline(new Date(), clubTimeZone);
 	const sittingDeadline = sittingReadingDeadlinePlaceholder();
 
-	return await db.$transaction(async (tx) => {
+	const created = await db.$transaction(async (tx) => {
 		const sittingSlug = await generateSittingSlug(tx);
 		const pollSlug = buildSittingPollSlug(sittingSlug);
 		await assertPollSlugAvailable(pollSlug, tx);
@@ -500,6 +506,10 @@ export async function createSitting(
 			pollSlug,
 		};
 	});
+
+	void notifySittingPollStarted(db, created.slug);
+
+	return created;
 }
 
 export async function submitPollVotes(
@@ -717,6 +727,12 @@ export async function transitionSitting(
 			return sittingUpdate;
 		});
 
+		void notifySittingPollClosed(
+			db,
+			updated.slug,
+			updated.selectedBook?.title ?? "the selected book",
+		);
+
 		return updated;
 	}
 
@@ -807,6 +823,8 @@ export async function transitionSitting(
 			data: { slug: input.slug },
 		});
 	}
+
+	void notifySittingFinished(db, updated.slug);
 
 	return updated;
 }
@@ -925,6 +943,8 @@ export async function updateMyParticipationProgress(
 
 	assertMemberCanSetProgress(participation.progress, input.progress);
 
+	const previousProgress = participation.progress;
+
 	const updated = await db.participation.update({
 		where: {
 			userId_sittingId: {
@@ -940,6 +960,10 @@ export async function updateMyParticipationProgress(
 			progress: true,
 		},
 	});
+
+	if (input.progress === "completed" && previousProgress !== "completed") {
+		void notifyParticipantFinishedBook(db, input.slug, userId);
+	}
 
 	return updated;
 }
@@ -985,6 +1009,8 @@ export async function updateParticipation(
 			message: "Participant not found on this sitting",
 		});
 	}
+
+	const previousProgress = participation.progress;
 
 	const updated = await db.$transaction(async (tx) => {
 		const row = await tx.participation.update({
@@ -1038,6 +1064,14 @@ export async function updateParticipation(
 
 		return row;
 	});
+
+	if (
+		sitting.status === "reading" &&
+		input.progress === "completed" &&
+		previousProgress !== "completed"
+	) {
+		void notifyParticipantFinishedBook(db, input.slug, input.userId);
+	}
 
 	return {
 		userId: updated.userId,

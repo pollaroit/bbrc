@@ -7,7 +7,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@bbrc/ui/components/dropdown-menu";
-import { LogOut, User } from "lucide-react";
+import { LogOut, Settings, User } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -52,6 +52,9 @@ export function UserMenu({ ...props }: Props) {
 					render={<Link href={`/users/${props.user.username}` as Route} />}
 				>
 					<User /> Profile
+				</DropdownMenuItem>
+				<DropdownMenuItem render={<Link href={"/settings" as Route} />}>
+					<Settings /> Settings
 				</DropdownMenuItem>
 				<DropdownMenuItem
 					closeOnClick={false}

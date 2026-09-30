@@ -3,6 +3,7 @@ import { LikeSourceSchema } from "@bbrc/schemas";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
+import { notifyReactionOnYourPost } from "../notification/notification-triggers";
 import {
 	likeListRanging,
 	likeListSearching,
@@ -197,7 +198,7 @@ export async function toggleLike(
 ): Promise<ToggleLikeOutput> {
 	const target = await resolveLikeTarget(input, db);
 
-	return db.$transaction(async (tx) => {
+	const result = await db.$transaction(async (tx) => {
 		const existing = await tx.like.findFirst({
 			where: existingLikeWhere(target, userId),
 			select: { id: true },
@@ -230,4 +231,14 @@ export async function toggleLike(
 			likeCount: await countLikesForTarget(target, tx),
 		};
 	});
+
+	if (
+		result.liked &&
+		result.source === LikeSourceSchema.enum.post &&
+		input.postSlug
+	) {
+		void notifyReactionOnYourPost(db, input.postSlug, userId);
+	}
+
+	return result;
 }

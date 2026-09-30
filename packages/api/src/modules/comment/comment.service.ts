@@ -4,6 +4,7 @@ import { LikeSourceSchema } from "@bbrc/schemas";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
+import { notifyCommentOnYourPost } from "../notification/notification-triggers";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardCommentXp } from "../xp/xp.service";
 import {
@@ -228,28 +229,33 @@ export async function createComment(
 ): Promise<CreateCommentOutput> {
 	const postId = await loadPostIdBySlug(input.postSlug, db);
 
-	return db.$transaction(async (tx) => {
-		const slug = await generateCommentSlug(input.content, tx);
+	return db
+		.$transaction(async (tx) => {
+			const slug = await generateCommentSlug(input.content, tx);
 
-		const comment = await tx.comment.create({
-			data: {
-				content: input.content.trim(),
-				slug,
-				authorId: userId,
-				postId,
-			},
-			select: { id: true, slug: true },
+			const comment = await tx.comment.create({
+				data: {
+					content: input.content.trim(),
+					slug,
+					authorId: userId,
+					postId,
+				},
+				select: { id: true, slug: true },
+			});
+
+			const xpAwarded = (await awardCommentXp(
+				{ userId, commentId: comment.id },
+				tx,
+			))
+				? XP_AWARD.comment
+				: 0;
+
+			return { slug: comment.slug, xpAwarded };
+		})
+		.then(async (result) => {
+			void notifyCommentOnYourPost(db, input.postSlug, userId);
+			return result;
 		});
-
-		const xpAwarded = (await awardCommentXp(
-			{ userId, commentId: comment.id },
-			tx,
-		))
-			? XP_AWARD.comment
-			: 0;
-
-		return { slug: comment.slug, xpAwarded };
-	});
 }
 
 export async function updateComment(

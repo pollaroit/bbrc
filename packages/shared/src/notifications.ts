@@ -46,6 +46,24 @@ export const NOTIFICATION_KIND_GROUPS = {
 	admin: ["book_requested"] as const satisfies readonly NotificationKind[],
 };
 
+/** Push (ntfy) on by default for these kinds when preferences are first created. */
+export const NOTIFICATION_KINDS_PUSH_ENABLED_BY_DEFAULT = [
+	"book_added_to_library",
+	"comment_on_your_post",
+	"sitting_poll_started",
+	"sitting_poll_closed",
+	"sitting_finished",
+	"book_requested",
+] as const satisfies readonly NotificationKind[];
+
+const pushEnabledByDefaultSet = new Set<string>(
+	NOTIFICATION_KINDS_PUSH_ENABLED_BY_DEFAULT,
+);
+
+export function defaultPushEnabledForKind(kind: NotificationKind): boolean {
+	return pushEnabledByDefaultSet.has(kind);
+}
+
 export function isNotificationKind(value: string): value is NotificationKind {
 	return (NOTIFICATION_KINDS as readonly string[]).includes(value);
 }
