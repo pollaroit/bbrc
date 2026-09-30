@@ -56,7 +56,7 @@ function CopyTopicButton({ url, label }: { url: string; label: string }) {
 				}
 			}}
 		>
-			Copy link
+			Copy topic
 		</Button>
 	);
 }
@@ -71,7 +71,7 @@ function TopicRow({
 	url: string;
 }) {
 	return (
-		<div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-4">
+		<div className="flex flex-col gap-2 border bg-muted/30 p-4">
 			<div className="min-w-0">
 				<p className="font-medium text-sm">{label}</p>
 				<p className="mt-1 text-muted-foreground text-sm">{description}</p>
@@ -212,7 +212,7 @@ export function NotificationPreferencesForm() {
 							Copy{" "}
 							<strong className="text-foreground">Your personal topic</strong>{" "}
 							and subscribe in ntfy: open the app → add subscription → paste the
-							URL or open the copied link on your phone.
+							topic on your phone.
 						</li>
 						{hasAdminTopic ? (
 							<li>
@@ -226,14 +226,14 @@ export function NotificationPreferencesForm() {
 					<TopicRow
 						label="Your personal topic"
 						description="All phone pushes for your account (including sitting polls and finishes) are delivered here. Subscribe once."
-						url={userTopicUrl}
+						url={ntfy.userTopic}
 					/>
 
 					{hasAdminTopic ? (
 						<TopicRow
 							label="Admin alerts"
 							description="Book requests and other admin-only pushes. Subscribe in addition to your personal topic."
-							url={ntfyTopicUrl(ntfy.baseUrl, ntfy.adminTopic!)}
+							url={ntfy.adminTopic ?? ""}
 						/>
 					) : null}
 				</CardContent>
