@@ -163,7 +163,6 @@ export function NotificationPreferencesForm() {
 	}
 
 	const { ntfy } = preferencesQuery.data;
-	const userTopicUrl = ntfyTopicUrl(ntfy.baseUrl, ntfy.userTopic);
 	const hasAdminTopic = ntfy.adminTopic != null;
 
 	return (
