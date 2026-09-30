@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SittingsList } from "@/components/blocks/sittings-list";
 import { SittingsListingToolbar } from "@/components/blocks/sittings-listing-toolbar";
 import { SittingsPageActions } from "@/components/blocks/sittings-page-actions";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 
 export const metadata: Metadata = {
 	title: "Sittings",
@@ -15,8 +16,10 @@ export default function SittingsPage() {
 				<h1 className="font-bold text-2xl">Sittings</h1>
 				<SittingsPageActions />
 			</div>
-			<SittingsListingToolbar />
-			<SittingsList />
+			<ListingSearchParamsBoundary>
+				<SittingsListingToolbar />
+				<SittingsList />
+			</ListingSearchParamsBoundary>
 		</div>
 	);
 }
