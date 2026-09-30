@@ -5,6 +5,7 @@ import { commentRouter } from "./modules/comment/comment.router";
 import { feedbackRouter } from "./modules/feedback/feedback.router";
 import { healthRouter } from "./modules/health/health.router";
 import { likeRouter } from "./modules/like/like.router";
+import { notificationRouter } from "./modules/notification/notification.router";
 import { postRouter } from "./modules/post/post.router";
 import { rpRouter } from "./modules/rp/rp.router";
 import { sittingRouter } from "./modules/sitting/sitting.router";
@@ -17,6 +18,7 @@ export const appRouter = {
 	comment: commentRouter,
 	feedback: feedbackRouter,
 	like: likeRouter,
+	notification: notificationRouter,
 	post: postRouter,
 	sitting: sittingRouter,
 	user: userRouter,
