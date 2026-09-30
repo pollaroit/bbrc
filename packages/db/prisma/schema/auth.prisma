@@ -1,0 +1,98 @@
+enum UserStatus {
+  active
+  warned
+  banned
+}
+
+model User {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.min(3, "Name must be at least 3 characters long").max(30, "Name must be at most 30 characters long")
+  name          String
+  /// @zod.import(["import { isUsername } from '@bbrc/shared'"])
+  /// @zod.min(3, "Username must be at least 3 characters long").max(20, "Username must be at most 20 characters long").refine((v) => isUsername(v), { message: "Invalid username" })
+  username      String     @unique
+  /// @zod.email("Invalid email address")
+  email         String     @unique
+  emailVerified Boolean    @default(false) @map("email_verified")
+  image         String?
+  isAdmin       Boolean    @default(false) @map("is_admin")
+  status        UserStatus @default(active)
+
+  /// @zod.min(0, "XP must be a non-negative number")
+  xp Int @default(0)
+  /// @zod.min(0, "RP must be a non-negative number")
+  rp Int @default(0)
+
+  sessions       Session[]
+  accounts       Account[]
+  participations Participation[]
+  feedbacks      Feedback[]
+  votes          PollVote[]
+
+  xpEvents     XPEvent[]
+  rpEvents     RPEvent[]
+  likes        Like[]
+  comments     Comment[]
+  posts        Post[]
+  bookRequests BookRequest[]
+  favorites    Favorite[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  expiresAt DateTime @map("expires_at")
+
+  token     String  @unique
+  ipAddress String? @map("ip_address")
+  userAgent String? @map("user_agent")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  /// @zod.min(7, "Password must be at least 7 characters long")
+  password              String?
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  expiresAt DateTime @map("expires_at")
+
+  identifier String
+  value      String
+
+  @@index([identifier])
+  @@map("verification")
+}

@@ -1,0 +1,89 @@
+"use client";
+
+import {
+	Field,
+	FieldGroup,
+	FieldLegend,
+	FieldSet,
+} from "@bbrc/ui/components/field";
+import { Input } from "@bbrc/ui/components/input";
+import { Label } from "@bbrc/ui/components/label";
+
+type ListingRatingRangeFieldsProps = {
+	min: number | null;
+	max: number | null;
+	onMinChange: (value: number | null) => void;
+	onMaxChange: (value: number | null) => void;
+	minId?: string;
+	maxId?: string;
+	legend?: string;
+	minLabel?: string;
+	maxLabel?: string;
+	step?: number;
+};
+
+function parseRatingInput(raw: string): number | null {
+	if (raw.trim() === "") {
+		return null;
+	}
+
+	const value = Number.parseFloat(raw);
+	if (Number.isNaN(value)) {
+		return null;
+	}
+
+	return value;
+}
+
+export function ListingRatingRangeFields({
+	min,
+	max,
+	onMinChange,
+	onMaxChange,
+	minId = "listing-rating-min",
+	maxId = "listing-rating-max",
+	legend = "Open Library rating",
+	minLabel = "Minimum",
+	maxLabel = "Maximum",
+	step = 0.1,
+}: ListingRatingRangeFieldsProps) {
+	return (
+		<FieldSet className="gap-3">
+			<FieldLegend>{legend}</FieldLegend>
+			<FieldGroup className="grid grid-cols-2 gap-3">
+				<Field>
+					<Label htmlFor={minId}>{minLabel}</Label>
+					<Input
+						id={minId}
+						type="number"
+						min={0}
+						max={5}
+						step={step}
+						inputMode="decimal"
+						placeholder="0"
+						value={min ?? ""}
+						onChange={(event) => {
+							onMinChange(parseRatingInput(event.target.value));
+						}}
+					/>
+				</Field>
+				<Field>
+					<Label htmlFor={maxId}>{maxLabel}</Label>
+					<Input
+						id={maxId}
+						type="number"
+						min={0}
+						max={5}
+						step={step}
+						inputMode="decimal"
+						placeholder="5"
+						value={max ?? ""}
+						onChange={(event) => {
+							onMaxChange(parseRatingInput(event.target.value));
+						}}
+					/>
+				</Field>
+			</FieldGroup>
+		</FieldSet>
+	);
+}

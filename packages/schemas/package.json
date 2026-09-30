@@ -1,0 +1,24 @@
+{
+	"name": "@bbrc/schemas",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./models": "./src/generated/schemas/models/index.ts",
+		"./models/*": "./src/generated/schemas/models/*.schema.ts",
+		"./enums": "./src/generated/schemas/enums/index.ts",
+		"./enums/*": "./src/generated/schemas/enums/*.schema.ts",
+		"./listing/*": "./src/listing/*.ts"
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"prune-enums": "bun scripts/prune-referenced-enums.ts"
+	},
+	"dependencies": {
+		"@bbrc/shared": "workspace:*",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@bbrc/config": "workspace:*",
+		"typescript": "catalog:"
+	}
+}

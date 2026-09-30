@@ -1,0 +1,21 @@
+# https://lefthook.dev/configuration/
+# Uses bunx (see packageManager in package.json). Turbo task: check-types.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: biome
+      glob: "*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc,css}"
+      run: bunx biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
+
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: bunx commitlint --edit {1}
+
+pre-push:
+  piped: true
+  jobs:
+    - name: typecheck
+      run: bunx turbo run check-types

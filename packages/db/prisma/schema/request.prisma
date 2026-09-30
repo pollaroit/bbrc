@@ -1,0 +1,32 @@
+enum BookRequestStatus {
+  pending
+  accepted
+  rejected
+}
+
+model BookRequest {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// @zod.min(2, "Title must be at least 2 characters long").max(255, "Title must be at most 255 characters long")
+  title       String
+  /// @zod.max(500, "Description must be at most 500 characters long")
+  description String?
+  /// @zod.url("Invalid URL")
+  url         String?
+
+  status          BookRequestStatus @default(pending)
+  /// @zod.max(200, "Rejection reason must be at most 200 characters long")
+  rejectionReason String?
+  /// @zod.max(200, "Acceptance notes must be at most 200 characters long")
+  acceptanceNotes String?
+
+  @@index([userId])
+  @@map("book_request")
+}

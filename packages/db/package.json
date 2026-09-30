@@ -1,0 +1,33 @@
+{
+	"name": "@bbrc/db",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./*": "./src/*.ts"
+	},
+	"scripts": {
+		"build": "tsc -b",
+		"check-types": "tsc -b",
+		"db:push": "prisma db push",
+		"db:generate": "prisma generate && bun run --cwd ../schemas prune-enums",
+		"db:migrate": "prisma migrate dev",
+		"db:migrate:deploy": "prisma migrate deploy",
+		"db:studio": "prisma studio",
+		"db:seed": "varlock run -- bun run src/seed/index.ts"
+	},
+	"dependencies": {
+		"@neondatabase/serverless": "^1.1.0",
+		"@prisma/adapter-neon": "^7.10.0",
+		"@prisma/client": "catalog:",
+		"@bbrc/shared": "workspace:*"
+	},
+	"devDependencies": {
+		"@bbrc/config": "workspace:*",
+		"@faker-js/faker": "^10.3.0",
+		"better-auth": "catalog:",
+		"prisma": "^7.10.0",
+		"prisma-zod-generator": "^3.3.1",
+		"typescript": "catalog:",
+		"varlock": "catalog:"
+	}
+}

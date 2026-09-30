@@ -1,0 +1,386 @@
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: click handlers are handled by the parent element */
+"use client";
+
+import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
+import { Badge } from "@bbrc/ui/components/badge";
+import { Button } from "@bbrc/ui/components/button";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@bbrc/ui/components/card";
+import { Checkbox } from "@bbrc/ui/components/checkbox";
+import { LoadingButton } from "@bbrc/ui/components/loading-button";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import type { Route } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { BookStatusBadge } from "@/components/blocks/book-status-badge";
+import { authClient } from "@/lib/auth-client";
+import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { formatDateTime } from "@/lib/format-datetime";
+import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
+import { cn } from "@/lib/utils";
+import { orpc, queryClient } from "@/utils/orpc";
+
+type SittingPoll = NonNullable<GetSittingBySlugOutput["poll"]>;
+
+type SittingPollSectionProps = {
+	sittingSlug: string;
+	sittingStatus: GetSittingBySlugOutput["status"];
+	initialPoll: SittingPoll;
+	participantUserIds: string[];
+	mode?: "vote" | "readonly";
+	selectedBookSlug?: string | null;
+	showCard?: boolean;
+};
+
+export function SittingPollSection({
+	sittingSlug,
+	sittingStatus,
+	initialPoll,
+	participantUserIds,
+	mode = "vote",
+	selectedBookSlug = null,
+	showCard = true,
+}: SittingPollSectionProps) {
+	const readonly = mode === "readonly";
+	const router = useRouter();
+	const { data: session, isPending: isSessionPending } =
+		authClient.useSession();
+
+	const { data: sittingData } = useQuery({
+		...orpc.sitting.getSittingBySlug.queryOptions({ input: sittingSlug }),
+		enabled: !readonly,
+	});
+
+	const poll = sittingData?.poll ?? initialPoll;
+	const maxChoices = poll.maxChoices ?? poll.take;
+	const sortedOptions = useMemo(() => {
+		if (!readonly) {
+			return poll.options;
+		}
+
+		return [...poll.options].sort((a, b) => b.voteCount - a.voteCount);
+	}, [poll.options, readonly]);
+
+	const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>(
+		() => poll.myVoteOptionIds,
+	);
+	const [isEditingVotes, setIsEditingVotes] = useState(
+		() => poll.myVoteOptionIds.length === 0,
+	);
+
+	useEffect(() => {
+		setSelectedOptionIds(poll.myVoteOptionIds);
+		if (poll.myVoteOptionIds.length > 0) {
+			setIsEditingVotes(false);
+		}
+	}, [poll.myVoteOptionIds]);
+
+	const isParticipant = useMemo(() => {
+		const userId = session?.user.id;
+		if (!userId) {
+			return false;
+		}
+
+		return participantUserIds.includes(userId);
+	}, [participantUserIds, session?.user.id]);
+
+	const canVoteBase =
+		!readonly &&
+		sittingStatus === "voting" &&
+		isParticipant &&
+		!isSessionPending;
+	const hasSavedVotes = poll.myVoteOptionIds.length > 0;
+	const canEditSelection = canVoteBase && isEditingVotes;
+
+	const submitVotesMutation = useMutation(
+		orpc.sitting.submitPollVotes.mutationOptions({
+			onSuccess: async (result) => {
+				setSelectedOptionIds(result.myVoteOptionIds);
+				setIsEditingVotes(false);
+				await queryClient.invalidateQueries({
+					queryKey: orpc.sitting.getSittingBySlug.key(),
+				});
+				await invalidateUserPointQueries();
+				router.refresh();
+				if (result.xpAwarded != null && result.xpAwarded > 0) {
+					toast.success(`Votes saved — +${result.xpAwarded} XP`);
+				} else {
+					toast.success("Votes saved.");
+				}
+			},
+			onError: (error) => {
+				toast.error(error.message ?? "Could not save votes.");
+			},
+		}),
+	);
+
+	function toggleOption(optionId: string, checked: boolean) {
+		if (!canEditSelection) {
+			return;
+		}
+
+		setSelectedOptionIds((current) => {
+			if (checked) {
+				if (current.includes(optionId)) {
+					return current;
+				}
+
+				if (current.length >= maxChoices) {
+					toast.error(`You can select at most ${maxChoices} books.`);
+					return current;
+				}
+
+				return [...current, optionId];
+			}
+
+			return current.filter((id) => id !== optionId);
+		});
+	}
+
+	const header = (
+		<div className="flex flex-row flex-wrap items-center justify-between gap-2">
+			<CardTitle className="text-base">Book poll</CardTitle>
+			{readonly ? (
+				<Badge variant="outline">Archived</Badge>
+			) : hasSavedVotes && canVoteBase && !isEditingVotes ? (
+				<Badge variant="outline">You voted</Badge>
+			) : null}
+		</div>
+	);
+
+	const body = (
+		<>
+			<dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+				<div>
+					<dt className="text-muted-foreground text-xs">Poll deadline</dt>
+					<dd className="font-medium text-sm">
+						{formatDateTime(poll.deadline)}
+					</dd>
+				</div>
+				<div>
+					<dt className="text-muted-foreground text-xs">
+						{readonly ? "Choices allowed" : "Your choices"}
+					</dt>
+					<dd className="font-medium text-sm tabular-nums">
+						{poll.minChoices}–{maxChoices}
+					</dd>
+				</div>
+				<div>
+					<dt className="text-muted-foreground text-xs">Page range</dt>
+					<dd className="font-medium text-sm tabular-nums">
+						{poll.minPages ?? "—"} – {poll.maxPages ?? "—"}
+					</dd>
+				</div>
+			</dl>
+
+			{readonly ? (
+				<p className="text-muted-foreground text-sm">
+					Vote totals from when this poll was open. Your picks are highlighted
+					if you participated.
+				</p>
+			) : canEditSelection ? (
+				<p className="text-muted-foreground text-sm">
+					Select between {poll.minChoices} and {maxChoices} wishlist books, then
+					save your votes.
+				</p>
+			) : hasSavedVotes && canVoteBase ? (
+				<p className="text-muted-foreground text-sm">
+					Your votes are saved. Use Edit votes to change them before voting
+					ends.
+				</p>
+			) : sittingStatus === "voting" && !session?.user ? (
+				<p className="text-muted-foreground text-sm">
+					Sign in as a participant to vote in this poll.
+				</p>
+			) : sittingStatus === "voting" && session?.user && !isParticipant ? (
+				<p className="text-muted-foreground text-sm">
+					Only sitting participants can vote in this poll.
+				</p>
+			) : null}
+
+			<ul className="flex flex-col gap-2">
+				{sortedOptions.map((option) => {
+					const coverSrc = bookCoverUrl(option.book.coverId);
+					const checked = selectedOptionIds.includes(option.id);
+					const href = `/books/${option.book.slug}` as Route;
+					const showAsVoted =
+						poll.myVoteOptionIds.includes(option.id) &&
+						(readonly || hasSavedVotes);
+					const isClubPick =
+						readonly &&
+						selectedBookSlug != null &&
+						option.book.slug === selectedBookSlug;
+
+					return (
+						<li key={option.id}>
+							<div
+								role={canEditSelection ? "button" : undefined}
+								tabIndex={canEditSelection ? 0 : undefined}
+								onClick={() => {
+									if (!canEditSelection) {
+										return;
+									}
+
+									toggleOption(option.id, !checked);
+								}}
+								onKeyDown={(event) => {
+									if (!canEditSelection) {
+										return;
+									}
+
+									if (event.key === "Enter" || event.key === " ") {
+										event.preventDefault();
+										toggleOption(option.id, !checked);
+									}
+								}}
+								className={cn(
+									"flex items-stretch gap-3 border border-border p-3 transition-colors",
+									canEditSelection && "cursor-pointer hover:bg-muted/40",
+									(checked || showAsVoted || isClubPick) &&
+										"border-primary/40 bg-muted/30",
+								)}
+							>
+								{canEditSelection ? (
+									<div className="flex shrink-0 items-start pt-0.5">
+										<Checkbox
+											checked={checked}
+											className="pointer-events-none"
+											tabIndex={-1}
+											aria-hidden
+										/>
+									</div>
+								) : null}
+
+								<Link
+									href={href}
+									className="relative aspect-2/3 w-14 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10"
+									onClick={(event) => {
+										event.stopPropagation();
+									}}
+								>
+									{coverSrc ? (
+										<Image
+											src={coverSrc}
+											alt=""
+											fill
+											className="object-cover"
+											sizes="56px"
+										/>
+									) : (
+										<div className="flex size-full items-center justify-center text-[10px] text-muted-foreground">
+											No cover
+										</div>
+									)}
+								</Link>
+
+								<div className="flex min-w-0 flex-1 flex-col gap-2">
+									<div className="min-w-0">
+										<div className="flex flex-wrap items-center gap-2">
+											<Link
+												href={href}
+												className="line-clamp-2 font-medium text-sm leading-snug hover:underline"
+												onClick={(event) => {
+													event.stopPropagation();
+												}}
+											>
+												{option.book.title}
+											</Link>
+											{isClubPick ? (
+												<Badge variant="secondary">Club pick</Badge>
+											) : null}
+											{showAsVoted ? (
+												<Badge variant="outline">Your vote</Badge>
+											) : null}
+										</div>
+										<p className="truncate text-muted-foreground text-xs">
+											{formatBookAuthors(option.book.authors)}
+										</p>
+									</div>
+									<div className="mt-auto flex flex-wrap items-end justify-between gap-2">
+										<BookStatusBadge status={option.book.status} />
+										<dl className="flex shrink-0 flex-col items-end gap-0.5 text-muted-foreground text-xs tabular-nums">
+											<div>
+												<dt className="sr-only">Open Library rating</dt>
+												<dd>
+													{option.book.openLibraryRating != null
+														? `${option.book.openLibraryRating.toFixed(1)} OL`
+														: "— OL"}
+												</dd>
+											</div>
+											<div>
+												<dt className="sr-only">Votes and pages</dt>
+												<dd>
+													{option.voteCount}{" "}
+													{option.voteCount === 1 ? "vote" : "votes"} ·{" "}
+													{option.book.pages} pp
+												</dd>
+											</div>
+										</dl>
+									</div>
+								</div>
+							</div>
+						</li>
+					);
+				})}
+			</ul>
+
+			{canEditSelection ? (
+				<div className="flex flex-wrap gap-2">
+					<LoadingButton
+						type="button"
+						loading={submitVotesMutation.isPending}
+						disabled={selectedOptionIds.length < poll.minChoices}
+						onClick={() => {
+							submitVotesMutation.mutate({
+								sittingSlug,
+								optionIds: selectedOptionIds,
+							});
+						}}
+					>
+						Save votes
+					</LoadingButton>
+					{selectedOptionIds.length > 0 ? (
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => {
+								setSelectedOptionIds([]);
+							}}
+						>
+							Clear selection
+						</Button>
+					) : null}
+				</div>
+			) : hasSavedVotes && canVoteBase ? (
+				<Button
+					type="button"
+					variant="outline"
+					onClick={() => {
+						setIsEditingVotes(true);
+						setSelectedOptionIds(poll.myVoteOptionIds);
+					}}
+				>
+					Edit votes
+				</Button>
+			) : null}
+		</>
+	);
+
+	if (readonly && !showCard) {
+		return <div className="flex flex-col gap-4">{body}</div>;
+	}
+
+	return (
+		<Card>
+			<CardHeader>{header}</CardHeader>
+			<CardContent className="flex flex-col gap-4">{body}</CardContent>
+		</Card>
+	);
+}

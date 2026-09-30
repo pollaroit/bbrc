@@ -1,0 +1,21 @@
+{
+	"name": "@bbrc/auth",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./*": "./src/*.ts"
+	},
+	"scripts": {
+		"build": "tsc -b",
+		"check-types": "tsc -b"
+	},
+	"dependencies": {
+		"@bbrc/db": "workspace:*",
+		"better-auth": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@bbrc/config": "workspace:*",
+		"typescript": "catalog:"
+	}
+}

@@ -1,0 +1,19 @@
+// each user can have 4 favorite books
+model Favorite {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  /// @zod.uuid("Invalid book id")
+  bookId String @map("book_id")
+  book   Book   @relation(fields: [bookId], references: [id])
+
+  @@unique([bookId, userId])
+  @@index([bookId])
+  @@index([userId])
+  @@map("favorite")
+}

@@ -1,0 +1,88 @@
+model Post {
+  /// @zod.uuid("Invalid UUID")
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  editedAt  DateTime? @map("edited_at")
+
+  /// @zod.min(1, "Content must be at least 1 character long").max(5000, "Content must be at most 5000 characters long")
+  content String
+  /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
+  /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
+  slug    String @unique
+
+  /// @zod.uuid("Invalid user id")
+  authorId String @map("author_id")
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid book id")
+  attachedBookId String? @map("attached_book_id")
+  attachedBook   Book?   @relation(fields: [attachedBookId], references: [id], onDelete: SetNull)
+
+  likes    Like[]
+  comments Comment[]
+
+  @@index([authorId])
+  @@index([slug])
+  @@map("post")
+}
+
+enum LikeSource {
+  post
+  comment
+}
+
+model Like {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  source LikeSource
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid post id")
+  postId String? @map("post_id")
+  post   Post?   @relation(fields: [postId], references: [id])
+
+  /// @zod.uuid("Invalid comment id")
+  commentId String?  @map("comment_id")
+  comment   Comment? @relation(fields: [commentId], references: [id])
+
+  @@index([userId])
+  @@index([postId])
+  @@index([commentId])
+  @@map("like")
+}
+
+model Comment {
+  /// @zod.uuid("Invalid UUID")
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  editedAt  DateTime? @map("edited_at")
+
+  /// @zod.min(1, "Content must be at least 1 character long").max(5000, "Content must be at most 5000 characters long")
+  content String
+  /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
+  /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
+  slug    String @unique
+
+  /// @zod.uuid("Invalid user id")
+  authorId String @map("author_id")
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid post id")
+  postId String @map("post_id")
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  likes Like[]
+
+  @@index([authorId])
+  @@index([postId])
+  @@index([slug])
+  @@map("comment")
+}

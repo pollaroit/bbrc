@@ -1,0 +1,47 @@
+enum BookStatus {
+  completed
+  reading
+  wishlist
+}
+
+model Book {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.min(2, "Title must be at least 2 characters long").max(255, "Title must be at most 255 characters long")
+  title String
+
+  /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
+  /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
+  slug String @unique
+
+  /// @zod.min(1, "At least one author is required")
+  authors         String[]
+  /// @zod.min(1, "At least one page is required")
+  pages           Int
+  status          BookStatus @default(wishlist)
+  /// @zod.min(0, "Open Library rating must be a non-negative number").max(5, "Open Library rating must be at most 5").nullish()
+  openLibraryRating Float?     @map("open_library_rating")
+  /// @zod.min(0, "Published in must be a non-negative number").refine((v) => v <= new Date().getFullYear(), { message: "Published in must be in the past" })
+  publishedIn     Int        @map("published_in")
+  /// @zod.min(0, "Average rating must be a non-negative number").max(5, "Average rating must be at most 5")
+  averageRating   Float?     @map("average_rating")
+  coverId         Int?       @map("cover_id")
+  /// @zod.max(4000, "Excerpt must be at most 4000 characters long").nullish()
+  excerpt         String?    @db.Text
+
+  feedbacks Feedback[]
+  polls     PollOption[]
+  posts     Post[]
+  favorites Favorite[]
+  sittingsSelectedFor Sitting[] @relation("SittingSelectedBook")
+
+  @@index([slug])
+  @@index([title])
+  @@index([pages])
+  @@index([status])
+  @@index([authors])
+  @@map("book")
+}

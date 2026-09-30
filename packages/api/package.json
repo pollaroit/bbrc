@@ -1,0 +1,27 @@
+{
+	"name": "@bbrc/api",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./*": "./src/*.ts"
+	},
+	"scripts": {
+		"build": "tsc -b",
+		"check-types": "tsc -b"
+	},
+	"dependencies": {
+		"@bbrc/auth": "workspace:*",
+		"@bbrc/shared": "workspace:*",
+		"@bbrc/db": "workspace:*",
+		"@bbrc/schemas": "workspace:*",
+		"@orpc/client": "catalog:",
+		"@orpc/openapi": "catalog:",
+		"@orpc/server": "catalog:",
+		"@orpc/zod": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@bbrc/config": "workspace:*",
+		"typescript": "catalog:"
+	}
+}

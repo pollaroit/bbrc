@@ -1,0 +1,22 @@
+{
+	"$schema": "../db/node_modules/prisma-zod-generator/lib/config/schema.json",
+	"mode": "custom",
+	"pureModels": true,
+	"pureModelsLean": true,
+	"exportTypedSchemas": false,
+	"zodImportTarget": "v4",
+	"dateTimeStrategy": "coerce",
+	"variants": {
+		"pure": { "enabled": true },
+		"input": { "enabled": false },
+		"result": { "enabled": false }
+	},
+	"emit": {
+		"enums": true,
+		"pureModels": true,
+		"crud": false,
+		"objects": false,
+		"results": false,
+		"variants": false
+	}
+}
