@@ -40,6 +40,8 @@ model User {
   posts        Post[]
   bookRequests BookRequest[]
   favorites    Favorite[]
+  notifications            Notification[]
+  notificationPreferences NotificationPreference[]
 
   @@map("user")
 }
