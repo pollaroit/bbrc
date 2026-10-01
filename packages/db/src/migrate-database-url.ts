@@ -4,6 +4,18 @@ const DEFAULT_CONNECT_TIMEOUT_SECONDS = 30;
  * URL for Prisma CLI migrations. Prefer an unpooled/direct Neon URL; fall back to
  * stripping `-pooler` from DATABASE_URL when only the pooled string is configured.
  */
+/** Host + database name, ignoring Neon pooler hostname suffix (for comparing URLs). */
+export function neonDatabaseTarget(connectionString: string): string {
+	try {
+		const url = new URL(connectionString);
+		const host = url.hostname.replace("-pooler.", ".").replace(/-pooler$/, "");
+		const database = url.pathname.replace(/^\//, "") || "postgres";
+		return `${host}/${database}`;
+	} catch {
+		return "unknown";
+	}
+}
+
 export function resolveMigrateDatabaseUrl(): string {
 	const raw =
 		process.env.DATABASE_URL_UNPOOLED?.trim() ||

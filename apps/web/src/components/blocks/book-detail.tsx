@@ -11,6 +11,7 @@ import { ArrowLeft } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { BookDeleteButton } from "@/components/blocks/book-delete-button";
 import { BookEditLink } from "@/components/blocks/book-edit-link";
 import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
 import { BookFeedbackSection } from "@/components/blocks/book-feedback-section";
@@ -71,6 +72,7 @@ export function BookDetail({ book, initialReviews }: BookDetailProps) {
 							/>
 							<BookStatusBadge status={book.status} />
 							<BookEditLink slug={book.slug} />
+							<BookDeleteButton slug={book.slug} title={book.title} />
 						</div>
 					</div>
 

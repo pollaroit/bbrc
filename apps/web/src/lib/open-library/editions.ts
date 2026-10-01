@@ -58,22 +58,24 @@ function median(values: number[]): number | null {
 	return sorted[mid] ?? null;
 }
 
-function uniquePageCounts(pages: number[], limit: number): number[] {
-	const seen = new Set<number>();
-	const result: number[] = [];
+function uniqueSortedPageCounts(pages: number[]): number[] {
+	return [...new Set(pages)].sort((a, b) => a - b);
+}
 
-	for (const pageCount of pages) {
-		if (seen.has(pageCount)) {
-			continue;
-		}
-		seen.add(pageCount);
-		result.push(pageCount);
-		if (result.length >= limit) {
-			break;
-		}
+/** Sample up to `limit` distinct counts (evenly spaced) for display. */
+function pageCountHintsForDisplay(
+	sortedUnique: number[],
+	limit: number,
+): number[] {
+	if (sortedUnique.length <= limit) {
+		return sortedUnique;
 	}
 
-	return result;
+	const step = (sortedUnique.length - 1) / (limit - 1);
+	return Array.from({ length: limit }, (_, index) => {
+		const value = sortedUnique[Math.round(index * step)];
+		return value!;
+	});
 }
 
 export function buildEditionHints(
@@ -99,8 +101,9 @@ export function buildEditionHints(
 	}
 
 	const preferredPages = turkishPages.length > 0 ? turkishPages : otherPages;
-	const pageCountHints = uniquePageCounts(preferredPages, 5);
-	const suggestedPages = median(preferredPages);
+	const uniqueSorted = uniqueSortedPageCounts(preferredPages);
+	const pageCountHints = pageCountHintsForDisplay(uniqueSorted, 5);
+	const suggestedPages = median(uniqueSorted);
 
 	return {
 		pageCountHints,

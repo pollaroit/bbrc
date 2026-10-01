@@ -19,6 +19,7 @@ import { Search } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { parseAsBoolean, useQueryState } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { OpenLibraryWorkResults } from "@/components/blocks/open-library-work-results";
@@ -62,15 +63,18 @@ type AddBookDetailsFormProps = {
 	work: OpenLibrarySearchWork;
 	onCancel: () => void;
 	onAddAnother: () => void;
+	addMore: boolean;
+	onAddMoreChange: (checked: boolean) => void;
 };
 
 function AddBookDetailsForm({
 	work,
 	onCancel,
 	onAddAnother,
+	addMore,
+	onAddMoreChange,
 }: AddBookDetailsFormProps) {
 	const router = useRouter();
-	const [addMore, setAddMore] = useState(false);
 	const addMoreRef = useRef(addMore);
 	addMoreRef.current = addMore;
 	const initialValues = useMemo(() => workToFormValues(work), [work]);
@@ -381,7 +385,7 @@ function AddBookDetailsForm({
 				<label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
 					<Checkbox
 						checked={addMore}
-						onCheckedChange={(checked) => setAddMore(checked === true)}
+						onCheckedChange={(checked) => onAddMoreChange(checked === true)}
 					/>
 					Add more
 				</label>
@@ -404,6 +408,10 @@ function AddBookDetailsForm({
 
 export function AddNewBookForm() {
 	const searchInputRef = useRef<HTMLInputElement>(null);
+	const [addMore, setAddMore] = useQueryState(
+		"add_more",
+		parseAsBoolean.withDefault(false),
+	);
 	const [searchQuery, setSearchQuery] = useState("");
 	const debouncedQuery = useDebouncedValue(searchQuery, 500);
 	const [selectedWork, setSelectedWork] =
@@ -429,6 +437,10 @@ export function AddNewBookForm() {
 		requestAnimationFrame(() => {
 			searchInputRef.current?.focus();
 		});
+	};
+
+	const handleAddMoreChange = (checked: boolean) => {
+		void setAddMore(checked ? true : null);
 	};
 
 	return (
@@ -491,6 +503,8 @@ export function AddNewBookForm() {
 						work={selectedWork}
 						onCancel={handleChangeWork}
 						onAddAnother={handleAddAnother}
+						addMore={addMore}
+						onAddMoreChange={handleAddMoreChange}
 					/>
 				</>
 			) : null}
