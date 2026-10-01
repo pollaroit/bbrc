@@ -48,6 +48,7 @@
 		"prepare": "lefthook install"
 	},
 	"dependencies": {
+		"@vercel/analytics": "^2.0.1",
 		"zod": "catalog:"
 	},
 	"devDependencies": {

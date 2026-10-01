@@ -5,6 +5,7 @@
     "": {
       "name": "bbrc",
       "dependencies": {
+        "@vercel/analytics": "^2.0.1",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -870,6 +871,8 @@
     "@varlock/native-helper-win32-x64": ["@varlock/native-helper-win32-x64@1.18.0", "", { "os": [ "linux", "win32", ] }, "sha512-L95F5rrZtA6Fn1zjR2iIGBCHg+mA8tIylQOSo5TBZfAx0FlWd38jgwewm6b/nfYKeGrx/R6pSlSMDDuj1WsUMg=="],
 
     "@varlock/nextjs-integration": ["@varlock/nextjs-integration@1.2.2", "", { "peerDependencies": { "next": ">=14", "varlock": "^1.18.0" } }, "sha512-livl9GPwLT/bz3FiYDbXjdgOkQAjwlUN8f/PBaik5BjBUtCZ+xpjFpuVDfO/aFNqqQsVaaoDJQxy/dzVMAFJOw=="],
+
+    "@vercel/analytics": ["@vercel/analytics@2.0.1", "", { "peerDependencies": { "@remix-run/react": "^2", "@sveltejs/kit": "^1 || ^2", "next": ">= 13", "nuxt": ">= 3", "react": "^18 || ^19 || ^19.0.0-rc", "svelte": ">= 4", "vue": "^3", "vue-router": "^4" }, "optionalPeers": ["@remix-run/react", "@sveltejs/kit", "next", "nuxt", "react", "svelte", "vue", "vue-router"] }, "sha512-MTQG6V9qQrt1tsDeF+2Uoo5aPjqbVPys1xvnIftXSJYG2SrwXRHnqEvVoYID7BTruDz4lCd2Z7rM1BdkUehk2g=="],
 
     "@visx/curve": ["@visx/curve@4.0.1-alpha.0", "", { "dependencies": { "@visx/vendor": "4.0.0-alpha.0" } }, "sha512-jRu61Uz274pV1zyioXmboyrLutYbnKsgjj4njSGCnhdXj5GkZvZbg+ThDb6oOzoAnJOBRLz4rzPlWvNJOzuVMg=="],
 

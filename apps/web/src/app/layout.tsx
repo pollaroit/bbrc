@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 
 import "../index.css";
+
+import { Analytics } from "@vercel/analytics/next";
 import Providers from "@/components/providers";
 import { DefaultSiteJsonLd } from "@/components/seo/default-site-json-ld";
 import { DEFAULT_DESCRIPTION, getMetadataBase, SITE_NAME } from "@/lib/seo";
@@ -36,6 +38,7 @@ export default function RootLayout({
 			>
 				<DefaultSiteJsonLd />
 				<Providers>{children}</Providers>
+				<Analytics />
 			</body>
 		</html>
 	);
