@@ -12,7 +12,7 @@ function PostFeedSkeleton() {
 	return (
 		<div className="flex flex-col gap-4" aria-hidden>
 			{Array.from({ length: 3 }, (_, index) => (
-				<Skeleton key={index} className="h-48 w-full rounded-xl" />
+				<Skeleton key={index} className="h-48 w-full" />
 			))}
 		</div>
 	);

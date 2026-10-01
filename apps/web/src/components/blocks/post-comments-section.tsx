@@ -18,7 +18,7 @@ function CommentsListSkeleton() {
 	return (
 		<div className="flex flex-col gap-3" aria-hidden>
 			{Array.from({ length: 3 }, (_, index) => (
-				<Skeleton key={index} className="h-28 w-full rounded-xl" />
+				<Skeleton key={index} className="h-28 w-full" />
 			))}
 		</div>
 	);

@@ -12,7 +12,7 @@ function UserReadingsFeedSkeleton() {
 	return (
 		<div className="flex flex-col gap-4" aria-hidden>
 			{Array.from({ length: 3 }, (_, index) => (
-				<Skeleton key={index} className="h-40 w-full rounded-xl" />
+				<Skeleton key={index} className="h-40 w-full" />
 			))}
 		</div>
 	);
