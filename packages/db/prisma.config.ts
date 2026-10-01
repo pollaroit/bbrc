@@ -1,7 +1,9 @@
 import path from "node:path";
 
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 import "varlock/auto-load";
+
+import { resolveMigrateDatabaseUrl } from "./src/migrate-database-url";
 
 export default defineConfig({
 	schema: path.join("prisma", "schema"),
@@ -10,6 +12,6 @@ export default defineConfig({
 		seed: "bun run src/seed/index.ts",
 	},
 	datasource: {
-		url: env("DATABASE_URL"),
+		url: resolveMigrateDatabaseUrl(),
 	},
 });

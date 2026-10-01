@@ -11,7 +11,7 @@
 		"db:push": "prisma db push",
 		"db:generate": "prisma generate && bun run --cwd ../schemas prune-enums",
 		"db:migrate": "prisma migrate dev",
-		"db:migrate:deploy": "prisma migrate deploy",
+		"db:migrate:deploy": "bun run scripts/migrate-deploy.ts",
 		"db:studio": "prisma studio",
 		"db:seed": "varlock run -- bun run src/seed/index.ts"
 	},
