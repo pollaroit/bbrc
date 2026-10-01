@@ -6,6 +6,8 @@ import {
 import {
 	CreateFeedbackInputSchema,
 	CreateFeedbackOutputSchema,
+	DeleteFeedbackInputSchema,
+	DeleteFeedbackOutputSchema,
 	GetBookFeedbackListInputSchema,
 	GetBookFeedbackListOutputSchema,
 	GetBookFeedbackStateInputSchema,
@@ -15,6 +17,7 @@ import {
 } from "./feedback.schema";
 import {
 	createFeedback,
+	deleteFeedback,
 	getBookFeedbackList,
 	getBookFeedbackState,
 	getUserFeedbackList,
@@ -44,5 +47,11 @@ export const feedbackRouter = {
 		.output(CreateFeedbackOutputSchema)
 		.handler(async ({ input, context }) =>
 			createFeedback(input, context.session.user.id, context.db),
+		),
+	delete: notBannedProcedure
+		.input(DeleteFeedbackInputSchema)
+		.output(DeleteFeedbackOutputSchema)
+		.handler(async ({ input, context }) =>
+			deleteFeedback(input, context.session.user.id, context.db),
 		),
 };

@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
+import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -25,6 +26,7 @@ export function EditPostForm({ post }: EditPostFormProps) {
 	const router = useRouter();
 	const [content, setContent] = useState(post.content);
 	const [detachBook, setDetachBook] = useState(false);
+	const [deleteOpen, setDeleteOpen] = useState(false);
 	const attachedCoverSrc = post.attachedBook
 		? bookCoverUrl(post.attachedBook.coverId)
 		: null;
@@ -49,6 +51,7 @@ export function EditPostForm({ post }: EditPostFormProps) {
 	const deleteMutation = useMutation(
 		orpc.post.delete.mutationOptions({
 			onSuccess: async () => {
+				setDeleteOpen(false);
 				toast.success("Post deleted.");
 				await queryClient.invalidateQueries({
 					queryKey: orpc.post.getPostList.key(),
@@ -159,21 +162,21 @@ export function EditPostForm({ post }: EditPostFormProps) {
 					className="ms-auto"
 					loading={deleteMutation.isPending}
 					disabled={updateMutation.isPending}
-					onClick={() => {
-						if (
-							!window.confirm(
-								"Delete this post? Comments and likes will be removed.",
-							)
-						) {
-							return;
-						}
-
-						deleteMutation.mutate({ slug: post.slug });
-					}}
+					onClick={() => setDeleteOpen(true)}
 				>
 					Delete post
 				</LoadingButton>
 			</div>
+
+			<DestructiveConfirmDialog
+				open={deleteOpen}
+				onOpenChange={setDeleteOpen}
+				title="Delete post?"
+				description="Comments and likes on this post will be removed. This cannot be undone."
+				confirmLabel="Delete post"
+				loading={deleteMutation.isPending}
+				onConfirm={() => deleteMutation.mutate({ slug: post.slug })}
+			/>
 		</form>
 	);
 }

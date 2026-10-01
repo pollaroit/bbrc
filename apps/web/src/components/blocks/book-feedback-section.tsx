@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
 import { formatDateTime } from "@/lib/format-datetime";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
@@ -37,6 +38,7 @@ export function BookFeedbackSection({
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [rating, setRating] = useState("4");
 	const [review, setReview] = useState("");
+	const [deleteOpen, setDeleteOpen] = useState(false);
 
 	const listQuery = useQuery({
 		...orpc.feedback.getBookFeedbackList.queryOptions({
@@ -51,6 +53,32 @@ export function BookFeedbackSection({
 		}),
 		enabled: Boolean(session?.user),
 	});
+
+	const deleteMutation = useMutation(
+		orpc.feedback.delete.mutationOptions({
+			onSuccess: async () => {
+				setDeleteOpen(false);
+				toast.success("Feedback deleted.");
+				await queryClient.invalidateQueries({
+					queryKey: orpc.feedback.getBookFeedbackState.key(),
+				});
+				await queryClient.invalidateQueries({
+					queryKey: orpc.feedback.getBookFeedbackList.key(),
+				});
+				await queryClient.invalidateQueries({
+					queryKey: orpc.book.getBookBySlug.key(),
+				});
+				await queryClient.invalidateQueries({
+					queryKey: orpc.feedback.getUserFeedbackList.key(),
+				});
+				if (session?.user.username) {
+					await invalidateUserPointQueries();
+				}
+				router.refresh();
+			},
+			onError: (error) => toast.error(error.message),
+		}),
+	);
 
 	const createMutation = useMutation(
 		orpc.feedback.create.mutationOptions({
@@ -94,6 +122,8 @@ export function BookFeedbackSection({
 		!state.canSubmit &&
 		!state.myFeedback &&
 		state.hint;
+	const myFeedback =
+		state?.myFeedback && session?.user ? state.myFeedback : null;
 
 	return (
 		<section
@@ -153,6 +183,44 @@ export function BookFeedbackSection({
 						{state.hint}
 					</CardContent>
 				</Card>
+			) : null}
+
+			{myFeedback ? (
+				<div className="flex flex-col gap-3">
+					<h3 className="font-medium text-base">Your review</h3>
+					<Card size="sm">
+						<CardContent className="flex flex-col gap-3 pt-4">
+							<div className="flex flex-wrap items-start justify-between gap-3">
+								<Badge variant="outline" className="tabular-nums">
+									{myFeedback.rating.toFixed(1)} / 5
+								</Badge>
+								<p className="text-muted-foreground text-xs">
+									{formatDateTime(myFeedback.createdAt)}
+								</p>
+							</div>
+							<p className="text-sm leading-relaxed">{myFeedback.review}</p>
+							<LoadingButton
+								type="button"
+								variant="destructive"
+								size="sm"
+								className="w-fit"
+								loading={deleteMutation.isPending}
+								onClick={() => setDeleteOpen(true)}
+							>
+								Delete feedback
+							</LoadingButton>
+						</CardContent>
+					</Card>
+					<DestructiveConfirmDialog
+						open={deleteOpen}
+						onOpenChange={setDeleteOpen}
+						title="Delete feedback?"
+						description="Your review will be removed from this book’s club reviews. This cannot be undone."
+						confirmLabel="Delete feedback"
+						loading={deleteMutation.isPending}
+						onConfirm={() => deleteMutation.mutate(bookSlug)}
+					/>
+				</div>
 			) : null}
 
 			{sessionPending || (session?.user && stateQuery.isPending) ? (

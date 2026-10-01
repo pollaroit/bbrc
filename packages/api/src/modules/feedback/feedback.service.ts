@@ -7,6 +7,8 @@ import { awardFeedbackXp } from "../xp/xp.service";
 import type {
 	CreateFeedbackInput,
 	CreateFeedbackOutput,
+	DeleteFeedbackInput,
+	DeleteFeedbackOutput,
 	GetBookFeedbackListOutput,
 	GetBookFeedbackStateOutput,
 	GetUserFeedbackListInput,
@@ -279,4 +281,38 @@ export async function createFeedback(
 			void notifyMemberFeedbackOnBook(db, input.bookSlug, userId);
 			return result;
 		});
+}
+
+export async function deleteFeedback(
+	input: DeleteFeedbackInput,
+	userId: string,
+	db: Database,
+): Promise<DeleteFeedbackOutput> {
+	const book = await loadBookBySlug(input, db);
+
+	const feedback = await db.feedback.findUnique({
+		where: {
+			authorId_bookId: {
+				authorId: userId,
+				bookId: book.id,
+			},
+		},
+		select: { id: true },
+	});
+
+	if (!feedback) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "You have not left feedback for this book",
+			data: { bookSlug: input },
+		});
+	}
+
+	await db.$transaction(async (tx) => {
+		await tx.feedback.delete({
+			where: { id: feedback.id },
+		});
+		await recalculateBookAverageRating(book.id, tx);
+	});
+
+	return { deleted: true };
 }

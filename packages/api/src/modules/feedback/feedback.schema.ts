@@ -60,6 +60,15 @@ export const CreateFeedbackOutputSchema = zod.object({
 export type CreateFeedbackInput = z.infer<typeof CreateFeedbackInputSchema>;
 export type CreateFeedbackOutput = z.infer<typeof CreateFeedbackOutputSchema>;
 
+export const DeleteFeedbackInputSchema = BookSchema.shape.slug;
+
+export const DeleteFeedbackOutputSchema = zod.object({
+	deleted: zod.literal(true),
+});
+
+export type DeleteFeedbackInput = z.infer<typeof DeleteFeedbackInputSchema>;
+export type DeleteFeedbackOutput = z.infer<typeof DeleteFeedbackOutputSchema>;
+
 export const UserFeedbackBookSchema = BookSchema.pick({
 	slug: true,
 	title: true,

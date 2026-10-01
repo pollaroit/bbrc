@@ -1,15 +1,17 @@
 "use client";
 
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
-import { Button } from "@bbrc/ui/components/button";
 import {
-	Sheet,
-	SheetContent,
-	SheetDescription,
-	SheetFooter,
-	SheetHeader,
-	SheetTitle,
-} from "@bbrc/ui/components/sheet";
+	AlertDialog,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@bbrc/ui/components/alert-dialog";
+import { Button } from "@bbrc/ui/components/button";
+import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import { BookOpenIcon, FlagIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -80,6 +82,8 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 		}),
 	);
 
+	const transitionPending = startReading.isPending || finishSitting.isPending;
+
 	if (isPending || !session?.user.isAdmin) {
 		return null;
 	}
@@ -103,54 +107,55 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 						<BookOpenIcon data-icon="inline-start" />
 						Close poll & start reading
 					</Button>
-					<Sheet open={startOpen} onOpenChange={setStartOpen}>
-						<SheetContent side="right" className="flex flex-col gap-0">
-							<SheetHeader>
-								<SheetTitle>Start reading phase</SheetTitle>
-								<SheetDescription>
+					<AlertDialog
+						open={startOpen}
+						onOpenChange={(next) => {
+							if (transitionPending) return;
+							setStartOpen(next);
+						}}
+					>
+						<AlertDialogContent className="sm:max-w-md">
+							<AlertDialogHeader className="text-left sm:place-items-start sm:text-left">
+								<AlertDialogTitle>Start reading phase</AlertDialogTitle>
+								<AlertDialogDescription>
 									Choose the book the club will read. This closes voting and
-									locks the poll.
-								</SheetDescription>
-							</SheetHeader>
-							<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
-								<fieldset className="flex flex-col gap-2">
-									<legend className="sr-only">Winning poll option</legend>
-									{pollOptions.map((option) => (
-										<label
-											key={option.id}
-											className="flex cursor-pointer items-start gap-3 border border-border p-3 has-checked:border-primary has-checked:bg-primary/5"
-										>
-											<input
-												type="radio"
-												name="selectedPollOption"
-												className="mt-1"
-												checked={selectedOptionId === option.id}
-												onChange={() => setSelectedOptionId(option.id)}
-											/>
-											<span className="flex min-w-0 flex-1 flex-col gap-0.5">
-												<span className="font-medium text-sm">
-													{option.book.title}
-												</span>
-												<span className="text-muted-foreground text-xs">
-													{option.voteCount} vote
-													{option.voteCount === 1 ? "" : "s"}
-												</span>
+									locks the poll. You cannot reopen the poll afterward.
+								</AlertDialogDescription>
+							</AlertDialogHeader>
+							<fieldset className="flex flex-col gap-2">
+								<legend className="sr-only">Winning poll option</legend>
+								{pollOptions.map((option) => (
+									<label
+										key={option.id}
+										className="flex cursor-pointer items-start gap-3 border border-border p-3 has-checked:border-primary has-checked:bg-primary/5"
+									>
+										<input
+											type="radio"
+											name="selectedPollOption"
+											className="mt-1"
+											checked={selectedOptionId === option.id}
+											onChange={() => setSelectedOptionId(option.id)}
+										/>
+										<span className="flex min-w-0 flex-1 flex-col gap-0.5">
+											<span className="font-medium text-sm">
+												{option.book.title}
 											</span>
-										</label>
-									))}
-								</fieldset>
-							</div>
-							<SheetFooter className="border-border border-t">
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => setStartOpen(false)}
-								>
+											<span className="text-muted-foreground text-xs">
+												{option.voteCount} vote
+												{option.voteCount === 1 ? "" : "s"}
+											</span>
+										</span>
+									</label>
+								))}
+							</fieldset>
+							<AlertDialogFooter>
+								<AlertDialogCancel disabled={startReading.isPending}>
 									Cancel
-								</Button>
-								<Button
+								</AlertDialogCancel>
+								<LoadingButton
 									type="button"
-									disabled={!selectedOptionId || startReading.isPending}
+									disabled={!selectedOptionId}
+									loading={startReading.isPending}
 									onClick={() => {
 										if (!selectedOptionId) return;
 										startReading.mutate({
@@ -161,10 +166,10 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 									}}
 								>
 									Start reading
-								</Button>
-							</SheetFooter>
-						</SheetContent>
-					</Sheet>
+								</LoadingButton>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
 				</>
 			) : null}
 
@@ -179,27 +184,31 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 						<FlagIcon data-icon="inline-start" />
 						Mark sitting finished
 					</Button>
-					<Sheet open={finishOpen} onOpenChange={setFinishOpen}>
-						<SheetContent side="right">
-							<SheetHeader>
-								<SheetTitle>Finish sitting</SheetTitle>
-								<SheetDescription>
-									Move this sitting to finished. Anyone still reading or not
-									started will be marked DNF. Reading points are applied now
-									(completed: pages ÷ 10, DNF: −1000 ÷ pages, rounded).
-								</SheetDescription>
-							</SheetHeader>
-							<SheetFooter className="mt-auto">
-								<Button
-									type="button"
-									variant="outline"
-									onClick={() => setFinishOpen(false)}
-								>
+					<AlertDialog
+						open={finishOpen}
+						onOpenChange={(next) => {
+							if (finishSitting.isPending) return;
+							setFinishOpen(next);
+						}}
+					>
+						<AlertDialogContent>
+							<AlertDialogHeader className="text-left sm:place-items-start sm:text-left">
+								<AlertDialogTitle>Finish sitting?</AlertDialogTitle>
+								<AlertDialogDescription>
+									This moves the sitting to finished. Anyone still reading or
+									not started will be marked DNF. Reading points are applied now
+									(completed: pages ÷ 10, DNF: −1000 ÷ pages, rounded). This
+									cannot be undone.
+								</AlertDialogDescription>
+							</AlertDialogHeader>
+							<AlertDialogFooter>
+								<AlertDialogCancel disabled={finishSitting.isPending}>
 									Cancel
-								</Button>
-								<Button
+								</AlertDialogCancel>
+								<LoadingButton
 									type="button"
-									disabled={finishSitting.isPending}
+									variant="destructive"
+									loading={finishSitting.isPending}
 									onClick={() =>
 										finishSitting.mutate({
 											slug: sitting.slug,
@@ -208,10 +217,10 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 									}
 								>
 									Finish sitting
-								</Button>
-							</SheetFooter>
-						</SheetContent>
-					</Sheet>
+								</LoadingButton>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
 				</>
 			) : null}
 		</div>

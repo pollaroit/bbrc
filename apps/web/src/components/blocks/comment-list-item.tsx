@@ -16,6 +16,7 @@ import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
 import { CommentLikeEngagement } from "@/components/blocks/comment-like-engagement";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -54,10 +55,12 @@ function CommentAuthorActions({
 	onEditingChange: (editing: boolean) => void;
 }) {
 	const { data: session, isPending } = authClient.useSession();
+	const [deleteOpen, setDeleteOpen] = useState(false);
 
 	const deleteMutation = useMutation(
 		orpc.comment.delete.mutationOptions({
 			onSuccess: async () => {
+				setDeleteOpen(false);
 				toast.success("Comment deleted.");
 				await invalidateCommentQueries();
 			},
@@ -93,18 +96,19 @@ function CommentAuthorActions({
 				className="text-muted-foreground hover:text-destructive"
 				aria-label="Delete comment"
 				loading={deleteMutation.isPending}
-				onClick={() => {
-					if (
-						!window.confirm("Delete this comment? Likes on it will be removed.")
-					) {
-						return;
-					}
-
-					deleteMutation.mutate({ slug: comment.slug });
-				}}
+				onClick={() => setDeleteOpen(true)}
 			>
 				<Trash2 className="size-3.5" />
 			</LoadingButton>
+			<DestructiveConfirmDialog
+				open={deleteOpen}
+				onOpenChange={setDeleteOpen}
+				title="Delete comment?"
+				description="Likes on this comment will be removed. This cannot be undone."
+				confirmLabel="Delete comment"
+				loading={deleteMutation.isPending}
+				onConfirm={() => deleteMutation.mutate({ slug: comment.slug })}
+			/>
 		</div>
 	);
 }
