@@ -10,11 +10,14 @@ import {
 	GetBookFeedbackListOutputSchema,
 	GetBookFeedbackStateInputSchema,
 	GetBookFeedbackStateOutputSchema,
+	GetUserFeedbackListInputSchema,
+	GetUserFeedbackListOutputSchema,
 } from "./feedback.schema";
 import {
 	createFeedback,
 	getBookFeedbackList,
 	getBookFeedbackState,
+	getUserFeedbackList,
 } from "./feedback.service";
 
 export const feedbackRouter = {
@@ -23,6 +26,12 @@ export const feedbackRouter = {
 		.output(GetBookFeedbackListOutputSchema)
 		.handler(async ({ input, context }) =>
 			getBookFeedbackList(input, context.db),
+		),
+	getUserFeedbackList: publicProcedure
+		.input(GetUserFeedbackListInputSchema)
+		.output(GetUserFeedbackListOutputSchema)
+		.handler(async ({ input, context }) =>
+			getUserFeedbackList(input, context.db),
 		),
 	getBookFeedbackState: protectedProcedure
 		.input(GetBookFeedbackStateInputSchema)

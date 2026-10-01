@@ -269,6 +269,53 @@ export async function resolveOgImageContent(
 	}
 
 	if (section === "users") {
+		if (rest[0] === "posts") {
+			try {
+				const user = await getUserByUsername({ username: slug }, db);
+				const postCount = await db.post.count({
+					where: { author: { username: slug } },
+				});
+
+				return {
+					kind: "Feed",
+					title: user.name,
+					description: `${formatCount("post", postCount)} on BBRC`,
+					highlights: [
+						`@${user.username}`,
+						`${user.xp.toLocaleString("en-US")} XP`,
+					],
+				};
+			} catch {
+				return {
+					kind: "Feed",
+					title: "Member not found",
+					description: DEFAULT_DESCRIPTION,
+				};
+			}
+		}
+
+		if (rest[0] === "feedbacks") {
+			try {
+				const user = await getUserByUsername({ username: slug }, db);
+				const reviewCount = await db.feedback.count({
+					where: { author: { username: slug } },
+				});
+
+				return {
+					kind: "Feedbacks",
+					title: user.name,
+					description: `${formatCount("book review", reviewCount)}`,
+					highlights: [`@${user.username}`],
+				};
+			} catch {
+				return {
+					kind: "Feedbacks",
+					title: "Member not found",
+					description: DEFAULT_DESCRIPTION,
+				};
+			}
+		}
+
 		if (rest[0] === "xp") {
 			try {
 				const user = await getUserByUsername({ username: slug }, db);

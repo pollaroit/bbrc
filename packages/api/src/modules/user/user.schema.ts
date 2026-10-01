@@ -1,6 +1,10 @@
 import {
+	BookSchema,
 	CursorPaginationInputSchema,
 	CursorPaginationOutputSchema,
+	ProgressSchema,
+	SittingSchema,
+	SittingStatusSchema,
 	UserSchema,
 } from "@bbrc/schemas";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
@@ -86,3 +90,61 @@ export type UpdateUserStatusInput = z.infer<typeof UpdateUserStatusInputSchema>;
 export type UpdateUserStatusOutput = z.infer<
 	typeof UpdateUserStatusOutputSchema
 >;
+
+/** Participations for a member profile (readings tab). */
+export const UserParticipationBookSchema = BookSchema.pick({
+	slug: true,
+	title: true,
+	authors: true,
+	coverId: true,
+});
+
+export const UserParticipationListItemSchema = zod.object({
+	id: zod.uuid(),
+	progress: ProgressSchema,
+	updatedAt: zod.coerce.date(),
+	sitting: zod.object({
+		slug: SittingSchema.shape.slug,
+		status: SittingStatusSchema,
+		deadline: zod.coerce.date().nullable(),
+		createdAt: zod.coerce.date(),
+		selectedBook: UserParticipationBookSchema.nullable(),
+	}),
+});
+
+export const GetUserParticipationListInputSchema =
+	CursorPaginationInputSchema.extend({
+		username: UserSchema.shape.username,
+	});
+
+export const GetUserParticipationListOutputSchema =
+	CursorPaginationOutputSchema(UserParticipationListItemSchema);
+
+export type GetUserParticipationListInput = z.infer<
+	typeof GetUserParticipationListInputSchema
+>;
+export type GetUserParticipationListOutput = z.infer<
+	typeof GetUserParticipationListOutputSchema
+>;
+
+export const getUserParticipationListFields = {
+	id: true,
+	progress: true,
+	updatedAt: true,
+	sitting: {
+		select: {
+			slug: true,
+			status: true,
+			deadline: true,
+			createdAt: true,
+			selectedBook: {
+				select: {
+					slug: true,
+					title: true,
+					authors: true,
+					coverId: true,
+				},
+			},
+		},
+	},
+} as const;

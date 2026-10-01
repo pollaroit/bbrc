@@ -1,5 +1,6 @@
-import type { Database, DatabaseTransaction } from "@bbrc/db";
+import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
+import { definePagination } from "../../utils/pagination";
 import { notifyMemberFeedbackOnBook } from "../notification/notification-triggers";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardFeedbackXp } from "../xp/xp.service";
@@ -8,7 +9,10 @@ import type {
 	CreateFeedbackOutput,
 	GetBookFeedbackListOutput,
 	GetBookFeedbackStateOutput,
+	GetUserFeedbackListInput,
+	GetUserFeedbackListOutput,
 } from "./feedback.schema";
+import { getUserFeedbackListFields } from "./feedback.schema";
 
 async function loadBookBySlug(slug: string, db: Database) {
 	const book = await db.book.findUnique({
@@ -109,6 +113,50 @@ export async function getBookFeedbackList(
 		review: feedback.review,
 		createdAt: feedback.createdAt,
 	}));
+}
+
+type UserFeedbackListRow = Prisma.FeedbackGetPayload<{
+	select: typeof getUserFeedbackListFields;
+}>;
+
+const userFeedbackListCursorCodec = {
+	decode(cursor: string): { id: string } {
+		return { id: cursor };
+	},
+	encode(item: UserFeedbackListRow): string {
+		return item.id;
+	},
+};
+
+export async function getUserFeedbackList(
+	input: GetUserFeedbackListInput,
+	db: Database,
+): Promise<GetUserFeedbackListOutput> {
+	const user = await db.user.findUnique({
+		where: { username: input.username },
+		select: { id: true },
+	});
+
+	if (!user) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "User not found",
+			data: { username: input.username },
+		});
+	}
+
+	const pagination = definePagination.cursor(
+		input,
+		userFeedbackListCursorCodec,
+	);
+
+	const rows = await db.feedback.findMany({
+		...pagination.use(),
+		where: { authorId: user.id },
+		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		select: getUserFeedbackListFields,
+	});
+
+	return pagination.paginate(rows);
 }
 
 export async function getBookFeedbackState(

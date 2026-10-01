@@ -12,8 +12,11 @@ import {
 	type GetUserByUsernameOutput,
 	type GetUserListInput,
 	type GetUserListOutput,
+	type GetUserParticipationListInput,
+	type GetUserParticipationListOutput,
 	getUserByUsernameFields,
 	getUserListFields,
+	getUserParticipationListFields,
 	type UpdateUserStatusInput,
 	type UpdateUserStatusOutput,
 } from "./user.schema";
@@ -26,6 +29,19 @@ const userListCursorCodec = {
 	},
 	encode(item: UserListRow): string {
 		return item.username;
+	},
+};
+
+type UserParticipationListRow = Prisma.ParticipationGetPayload<{
+	select: typeof getUserParticipationListFields;
+}>;
+
+const userParticipationListCursorCodec = {
+	decode(cursor: string): { id: string } {
+		return { id: cursor };
+	},
+	encode(item: UserParticipationListRow): string {
+		return item.id;
 	},
 };
 
@@ -79,6 +95,37 @@ export async function getUserList(
 		where,
 		orderBy: withStableUsernameOrderBy(sorting.use(), sorting.sortDirection),
 		select: getUserListFields,
+	});
+
+	return pagination.paginate(rows);
+}
+
+export async function getUserParticipationList(
+	input: GetUserParticipationListInput,
+	db: Database,
+): Promise<GetUserParticipationListOutput> {
+	const user = await db.user.findUnique({
+		where: { username: input.username },
+		select: { id: true },
+	});
+
+	if (!user) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "User not found",
+			data: { username: input.username },
+		});
+	}
+
+	const pagination = definePagination.cursor(
+		input,
+		userParticipationListCursorCodec,
+	);
+
+	const rows = await db.participation.findMany({
+		...pagination.use(),
+		where: { userId: user.id },
+		orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+		select: getUserParticipationListFields,
 	});
 
 	return pagination.paginate(rows);

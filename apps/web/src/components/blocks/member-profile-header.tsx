@@ -15,11 +15,11 @@ import { UserAdminStatus } from "@/components/blocks/user-admin-status";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
 
-type UserProfileProps = {
+type MemberProfileHeaderProps = {
 	user: GetUserByUsernameOutput;
 };
 
-export function UserProfile({ user }: UserProfileProps) {
+export function MemberProfileHeader({ user }: MemberProfileHeaderProps) {
 	return (
 		<div className="flex flex-col gap-8">
 			<Link

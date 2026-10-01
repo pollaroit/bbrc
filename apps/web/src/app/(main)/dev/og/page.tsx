@@ -37,6 +37,18 @@ export default async function OgDevPage() {
 		{ label: "Settings", path: "/settings" },
 		{ label: "Notifications", path: "/settings/notifications" },
 		{ label: "Sign in", path: "/sign-in" },
+		...(user?.username
+			? [
+					{
+						label: "Member posts",
+						path: `/users/${user.username}/posts`,
+					},
+					{
+						label: "Member feedbacks",
+						path: `/users/${user.username}/feedbacks`,
+					},
+				]
+			: []),
 	];
 
 	return (

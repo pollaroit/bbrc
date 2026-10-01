@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import { UserProfile } from "@/components/blocks/user-profile";
+import { UserReadingsFeed } from "@/components/blocks/user-readings-feed";
 import { loadUserByUsernameForIsr } from "@/lib/isr-data";
 import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
-	JsonLd,
-	personJsonLd,
 	usernameStaticParams,
 } from "@/lib/seo";
 import { db } from "@/services";
@@ -28,7 +26,7 @@ export async function generateMetadata({
 
 		return buildPageMetadata({
 			title: `${user.name} (@${user.username})`,
-			description: `${user.name}'s profile, readings, XP, and RP on BBRC.`,
+			description: `${user.name}'s readings, posts, and book feedback on BBRC.`,
 			path: `/users/${user.username}`,
 			openGraph: { type: "profile" },
 		});
@@ -37,18 +35,10 @@ export async function generateMetadata({
 	}
 }
 
-export default async function UserPage({
+export default async function UserReadingsPage({
 	params,
 }: PageProps<"/users/[username]">) {
 	const { username } = await params;
-	const user = await loadUserByUsernameForIsr(username);
 
-	return (
-		<>
-			<JsonLd
-				data={personJsonLd({ name: user.name, username: user.username })}
-			/>
-			<UserProfile user={user} />
-		</>
-	);
+	return <UserReadingsFeed username={username} />;
 }

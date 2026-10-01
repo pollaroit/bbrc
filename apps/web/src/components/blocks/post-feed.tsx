@@ -18,7 +18,20 @@ function PostFeedSkeleton() {
 	);
 }
 
-export function PostFeed() {
+type PostFeedProps = {
+	/** When set, only posts by this member are shown. */
+	authorUsername?: string;
+	emptyTitle?: string;
+	emptyDescription?: string;
+	endMessage?: string;
+};
+
+export function PostFeed({
+	authorUsername,
+	emptyTitle = "No posts yet",
+	emptyDescription = "When members share updates, they will appear here.",
+	endMessage = "You have reached the end of the feed.",
+}: PostFeedProps = {}) {
 	const {
 		data,
 		error,
@@ -36,6 +49,7 @@ export function PostFeed() {
 				limit: POST_FEED_LIMIT,
 				sortBy: "createdAt",
 				sortDirection: "desc",
+				...(authorUsername ? { authorUsername } : {}),
 				...(pageCursor != null ? { cursor: pageCursor } : {}),
 			}),
 		}),
@@ -58,10 +72,10 @@ export function PostFeed() {
 				void refetch();
 			}}
 			isEmpty={posts.length === 0}
-			emptyTitle="No posts yet"
-			emptyDescription="When members share updates, they will appear here."
+			emptyTitle={emptyTitle}
+			emptyDescription={emptyDescription}
 			loadingContent={<PostFeedSkeleton />}
-			endMessage="You have reached the end of the feed."
+			endMessage={endMessage}
 		>
 			<ul className="flex flex-col gap-4">
 				{posts.map((post) => (
