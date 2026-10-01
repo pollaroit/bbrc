@@ -1,8 +1,4 @@
-import {
-	notBannedProcedure,
-	protectedProcedure,
-	publicProcedure,
-} from "../../procedures";
+import { protectedProcedure, publicProcedure } from "../../procedures";
 import {
 	AddFavoriteInputSchema,
 	AddFavoriteOutputSchema,
@@ -10,6 +6,7 @@ import {
 	GetBookFavoriteStateOutputSchema,
 	GetUserFavoritesInputSchema,
 	GetUserFavoritesOutputSchema,
+	GetViewerLibraryEngagementOutputSchema,
 	ListMyFavoritesOutputSchema,
 	RemoveFavoriteInputSchema,
 	RemoveFavoriteOutputSchema,
@@ -18,6 +15,7 @@ import {
 	addFavorite,
 	getBookFavoriteState,
 	getUserFavorites,
+	getViewerLibraryEngagement,
 	listMyFavorites,
 	removeFavorite,
 } from "./favorite.service";
@@ -34,19 +32,24 @@ export const favoriteRouter = {
 		.handler(async ({ context }) =>
 			listMyFavorites(context.session.user.id, context.db),
 		),
+	getViewerLibraryEngagement: protectedProcedure
+		.output(GetViewerLibraryEngagementOutputSchema)
+		.handler(async ({ context }) =>
+			getViewerLibraryEngagement(context.session.user.id, context.db),
+		),
 	getBookFavoriteState: protectedProcedure
 		.input(GetBookFavoriteStateInputSchema)
 		.output(GetBookFavoriteStateOutputSchema)
 		.handler(async ({ input, context }) =>
 			getBookFavoriteState(input, context.session.user.id, context.db),
 		),
-	add: notBannedProcedure
+	add: protectedProcedure
 		.input(AddFavoriteInputSchema)
 		.output(AddFavoriteOutputSchema)
 		.handler(async ({ input, context }) =>
 			addFavorite(input, context.session.user.id, context.db),
 		),
-	remove: notBannedProcedure
+	remove: protectedProcedure
 		.input(RemoveFavoriteInputSchema)
 		.output(RemoveFavoriteOutputSchema)
 		.handler(async ({ input, context }) =>

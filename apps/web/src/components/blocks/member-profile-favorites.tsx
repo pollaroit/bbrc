@@ -1,5 +1,11 @@
 "use client";
 
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@bbrc/ui/components/card";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import {
 	Tooltip,
@@ -28,16 +34,23 @@ export function MemberProfileFavorites({
 
 	if (isPending) {
 		return (
-			<section aria-labelledby="member-favorites-heading">
-				<h2 id="member-favorites-heading" className="mb-3 font-medium text-sm">
-					Favorite books
-				</h2>
-				<div className="flex gap-2">
-					{Array.from({ length: 4 }, (_, i) => (
-						<Skeleton key={i} className="size-16 shrink-0" />
-					))}
-				</div>
-			</section>
+			<div className="mx-auto w-full max-w-lg">
+				<Card size="sm">
+					<CardHeader>
+						<CardTitle>Favorite books</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div className="flex justify-center gap-3">
+							{Array.from({ length: 4 }, (_, i) => (
+								<Skeleton
+									key={i}
+									className="aspect-2/3 w-[4.75rem] shrink-0 sm:w-[5.5rem]"
+								/>
+							))}
+						</div>
+					</CardContent>
+				</Card>
+			</div>
 		);
 	}
 
@@ -46,50 +59,54 @@ export function MemberProfileFavorites({
 	}
 
 	return (
-		<section aria-labelledby="member-favorites-heading">
-			<h2 id="member-favorites-heading" className="mb-3 font-medium text-sm">
-				Favorite books
-			</h2>
-			<ul className="flex flex-wrap gap-2">
-				{data.map((item) => {
-					const href = `/books/${item.book.slug}` as Route;
-					const coverSrc = bookCoverUrl(item.book.coverId);
+		<div className="mx-auto w-full max-w-lg">
+			<Card size="sm">
+				<CardHeader className="text-center">
+					<CardTitle>Favorite books</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<ul className="flex flex-wrap items-end justify-center gap-3 sm:gap-4">
+						{data.map((item) => {
+							const href = `/books/${item.book.slug}` as Route;
+							const coverSrc = bookCoverUrl(item.book.coverId);
 
-					return (
-						<li key={item.id}>
-							<Tooltip>
-								<TooltipTrigger
-									render={
-										<Link
-											href={href}
-											className="relative block size-16 overflow-hidden bg-muted ring-1 ring-foreground/10 transition-opacity hover:opacity-90"
-										>
-											{coverSrc ? (
-												<Image
-													src={coverSrc}
-													alt=""
-													fill
-													className="object-cover"
-													sizes="64px"
-												/>
-											) : (
-												<span className="flex size-full items-center justify-center text-[10px] text-muted-foreground">
-													No cover
-												</span>
-											)}
-										</Link>
-									}
-								/>
-								<TooltipContent side="bottom">
-									<p className="max-w-[14rem] font-medium text-sm">
-										{item.book.title}
-									</p>
-								</TooltipContent>
-							</Tooltip>
-						</li>
-					);
-				})}
-			</ul>
-		</section>
+							return (
+								<li key={item.id}>
+									<Tooltip>
+										<TooltipTrigger
+											render={
+												<Link
+													href={href}
+													className="relative block aspect-2/3 w-[4.75rem] overflow-hidden bg-muted ring-1 ring-foreground/10 transition-opacity hover:opacity-90 sm:w-[5.5rem]"
+												>
+													{coverSrc ? (
+														<Image
+															src={coverSrc}
+															alt=""
+															fill
+															className="object-cover"
+															sizes="(max-width: 640px) 76px, 88px"
+														/>
+													) : (
+														<span className="flex size-full items-center justify-center px-1 text-center text-[10px] text-muted-foreground">
+															No cover
+														</span>
+													)}
+												</Link>
+											}
+										/>
+										<TooltipContent side="bottom">
+											<p className="max-w-[14rem] font-medium text-sm">
+												{item.book.title}
+											</p>
+										</TooltipContent>
+									</Tooltip>
+								</li>
+							);
+						})}
+					</ul>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }

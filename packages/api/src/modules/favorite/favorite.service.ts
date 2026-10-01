@@ -5,11 +5,13 @@ import {
 	clubReadEligibilityHint,
 	userCompletedClubRead,
 } from "../book/book-read-eligibility";
+import { activeParticipationWhere } from "../sitting/participation-active";
 import type {
 	AddFavoriteInput,
 	AddFavoriteOutput,
 	GetBookFavoriteStateOutput,
 	GetUserFavoritesOutput,
+	GetViewerLibraryEngagementOutput,
 	ListMyFavoritesOutput,
 	RemoveFavoriteInput,
 } from "./favorite.schema";
@@ -58,6 +60,53 @@ export async function getUserFavorites(
 		orderBy: { createdAt: "asc" },
 		select: favoriteItemSelect,
 	});
+}
+
+export async function getViewerLibraryEngagement(
+	userId: string,
+	db: Database,
+): Promise<GetViewerLibraryEngagementOutput> {
+	const [completedParticipations, favorites] = await Promise.all([
+		db.participation.findMany({
+			where: {
+				userId,
+				...activeParticipationWhere,
+				progress: "completed",
+				sitting: {
+					status: { in: ["reading", "finished"] },
+					selectedBookId: { not: null },
+				},
+			},
+			select: {
+				sitting: {
+					select: {
+						selectedBook: { select: { slug: true } },
+					},
+				},
+			},
+		}),
+		db.favorite.findMany({
+			where: { userId },
+			select: { book: { select: { slug: true } } },
+		}),
+	]);
+
+	const completedSlugs = [
+		...new Set(
+			completedParticipations
+				.map((row) => row.sitting.selectedBook?.slug)
+				.filter((slug): slug is string => Boolean(slug)),
+		),
+	];
+
+	const favoriteSlugs = favorites.map((row) => row.book.slug);
+
+	return {
+		completedSlugs,
+		favoriteSlugs,
+		slotsUsed: favorites.length,
+		maxSlots: MAX_FAVORITES_PER_USER,
+	};
 }
 
 export async function listMyFavorites(

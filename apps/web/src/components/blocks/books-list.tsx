@@ -1,9 +1,12 @@
 "use client";
 
+import { MAX_FAVORITES_PER_USER } from "@bbrc/shared";
 import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { BookCard } from "@/components/blocks/book-card";
+import { authClient } from "@/lib/auth-client";
 import {
 	toBookListCallInput,
 	useBookListingSearchParams,
@@ -26,6 +29,25 @@ function BooksListSkeleton() {
 export function BooksList() {
 	const [params] = useBookListingSearchParams();
 	const listInput = toBookListCallInput(params);
+	const { data: session } = authClient.useSession();
+
+	const engagementQuery = useQuery({
+		...orpc.favorite.getViewerLibraryEngagement.queryOptions(),
+		enabled: Boolean(session?.user),
+	});
+
+	const completedSlugSet = useMemo(
+		() => new Set(engagementQuery.data?.completedSlugs ?? []),
+		[engagementQuery.data?.completedSlugs],
+	);
+
+	const favoriteSlugSet = useMemo(
+		() => new Set(engagementQuery.data?.favoriteSlugs ?? []),
+		[engagementQuery.data?.favoriteSlugs],
+	);
+
+	const slotsUsed = engagementQuery.data?.slotsUsed ?? 0;
+	const maxSlots = engagementQuery.data?.maxSlots ?? MAX_FAVORITES_PER_USER;
 
 	const {
 		data,
@@ -49,6 +71,8 @@ export function BooksList() {
 
 	const books = data?.pages.flatMap((page) => page.items) ?? [];
 
+	const engagementLoading = Boolean(session?.user) && engagementQuery.isPending;
+
 	return (
 		<InfiniteScroll
 			className="flex flex-col gap-3"
@@ -70,11 +94,34 @@ export function BooksList() {
 			endMessage="You have reached the end of the list."
 		>
 			<ul className={booksGridClassName}>
-				{books.map((book) => (
-					<li key={book.slug} className="min-h-0">
-						<BookCard book={book} />
-					</li>
-				))}
+				{books.map((book) => {
+					const listEngagement = !session?.user
+						? undefined
+						: engagementLoading
+							? null
+							: {
+									slotsUsed,
+									maxSlots,
+									canFavorite: completedSlugSet.has(book.slug),
+									isFavorite: favoriteSlugSet.has(book.slug),
+								};
+
+					const viewerCompletedRead = !session?.user
+						? undefined
+						: engagementLoading
+							? null
+							: completedSlugSet.has(book.slug);
+
+					return (
+						<li key={book.slug} className="min-h-0">
+							<BookCard
+								book={book}
+								listEngagement={listEngagement}
+								viewerCompletedRead={viewerCompletedRead}
+							/>
+						</li>
+					);
+				})}
 			</ul>
 		</InfiniteScroll>
 	);

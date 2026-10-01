@@ -10,10 +10,17 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { FavoriteReplaceDialog } from "@/components/blocks/favorite-replace-dialog";
+import { FavoriteReplaceSheet } from "@/components/blocks/favorite-replace-sheet";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
+
+export type BookListFavoriteEngagement = {
+	isFavorite: boolean;
+	canFavorite: boolean;
+	slotsUsed: number;
+	maxSlots: number;
+};
 
 type BookFavoriteButtonProps = {
 	bookSlug: string;
@@ -21,12 +28,20 @@ type BookFavoriteButtonProps = {
 	/** Overlay on book cards; inline on detail header. */
 	variant?: "overlay" | "inline";
 	className?: string;
+	/**
+	 * Library grid: pass engagement from `getViewerLibraryEngagement`.
+	 * `null` while loading (render nothing). Omit on book detail (per-book fetch).
+	 */
+	listEngagement?: BookListFavoriteEngagement | null;
 };
 
-function invalidateFavoriteQueries(bookSlug: string) {
+function invalidateFavoriteQueries() {
 	return Promise.all([
 		queryClient.invalidateQueries({
 			queryKey: orpc.favorite.getBookFavoriteState.key(),
+		}),
+		queryClient.invalidateQueries({
+			queryKey: orpc.favorite.getViewerLibraryEngagement.key(),
 		}),
 		queryClient.invalidateQueries({
 			queryKey: orpc.favorite.listMine.key(),
@@ -46,15 +61,18 @@ export function BookFavoriteButton({
 	bookTitle,
 	variant = "inline",
 	className,
+	listEngagement,
 }: BookFavoriteButtonProps) {
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [replaceOpen, setReplaceOpen] = useState(false);
+
+	const useListMode = listEngagement !== undefined;
 
 	const stateQuery = useQuery({
 		...orpc.favorite.getBookFavoriteState.queryOptions({
 			input: bookSlug,
 		}),
-		enabled: Boolean(session?.user),
+		enabled: Boolean(session?.user) && !useListMode,
 	});
 
 	const mineQuery = useQuery({
@@ -67,7 +85,7 @@ export function BookFavoriteButton({
 			onSuccess: async () => {
 				setReplaceOpen(false);
 				toast.success("Added to favorites.");
-				await invalidateFavoriteQueries(bookSlug);
+				await invalidateFavoriteQueries();
 			},
 			onError: (error) => toast.error(error.message),
 		}),
@@ -77,7 +95,7 @@ export function BookFavoriteButton({
 		orpc.favorite.remove.mutationOptions({
 			onSuccess: async () => {
 				toast.success("Removed from favorites.");
-				await invalidateFavoriteQueries(bookSlug);
+				await invalidateFavoriteQueries();
 			},
 			onError: (error) => toast.error(error.message),
 		}),
@@ -87,21 +105,56 @@ export function BookFavoriteButton({
 		return null;
 	}
 
-	const state = stateQuery.data;
-	const loading =
-		stateQuery.isPending || addMutation.isPending || removeMutation.isPending;
+	if (useListMode) {
+		if (listEngagement === null) {
+			return null;
+		}
+	}
 
-	const showHeart = state && (state.isFavorite || state.canFavorite);
+	const state = useListMode
+		? listEngagement
+			? {
+					isFavorite: listEngagement.isFavorite,
+					canFavorite: listEngagement.canFavorite,
+					slotsUsed: listEngagement.slotsUsed,
+					maxSlots: listEngagement.maxSlots,
+					hint: null as string | null,
+				}
+			: null
+		: stateQuery.data
+			? {
+					isFavorite: stateQuery.data.isFavorite,
+					canFavorite: stateQuery.data.canFavorite,
+					slotsUsed: stateQuery.data.slotsUsed,
+					maxSlots: stateQuery.data.maxSlots,
+					hint: stateQuery.data.hint,
+				}
+			: null;
 
-	if (!showHeart && !stateQuery.isPending) {
+	if (!useListMode && (stateQuery.isPending || stateQuery.isFetching)) {
 		return null;
 	}
 
-	const isFavorite = state?.isFavorite ?? false;
-	const hint = state?.hint;
+	if (!state) {
+		return null;
+	}
+
+	const loading =
+		(!useListMode && stateQuery.isFetching) ||
+		addMutation.isPending ||
+		removeMutation.isPending;
+
+	const showHeart = state.isFavorite || state.canFavorite;
+
+	if (!showHeart) {
+		return null;
+	}
+
+	const isFavorite = state.isFavorite;
+	const hint = state.hint;
 
 	const handleToggle = () => {
-		if (!state || loading) {
+		if (loading) {
 			return;
 		}
 
@@ -128,12 +181,13 @@ export function BookFavoriteButton({
 		<Button
 			type="button"
 			variant={variant === "overlay" ? "secondary" : "ghost"}
-			size={variant === "overlay" ? "icon-sm" : "icon"}
+			size="icon"
 			className={cn(
-				variant === "overlay" && "bg-background/90 shadow-sm backdrop-blur-sm",
+				variant === "overlay" &&
+					"size-8 bg-background/95 shadow-sm backdrop-blur-sm",
 				className,
 			)}
-			disabled={loading || (!isFavorite && !state?.canFavorite)}
+			disabled={loading || (!isFavorite && !state.canFavorite)}
 			onClick={(event) => {
 				event.preventDefault();
 				event.stopPropagation();
@@ -144,7 +198,7 @@ export function BookFavoriteButton({
 		>
 			<Heart
 				className={cn(
-					"size-4 transition-transform active:scale-95",
+					"size-[1.125rem] transition-transform active:scale-95",
 					isFavorite && "fill-current text-rose-600 dark:text-rose-400",
 				)}
 			/>
@@ -153,7 +207,7 @@ export function BookFavoriteButton({
 
 	return (
 		<>
-			{hint && !isFavorite && !state?.canFavorite ? (
+			{hint && !isFavorite && !state.canFavorite ? (
 				<Tooltip>
 					<TooltipTrigger render={button} />
 					<TooltipContent side="top" className="max-w-xs">
@@ -164,7 +218,7 @@ export function BookFavoriteButton({
 				button
 			)}
 
-			<FavoriteReplaceDialog
+			<FavoriteReplaceSheet
 				open={replaceOpen}
 				onOpenChange={setReplaceOpen}
 				favorites={mineQuery.data ?? []}
