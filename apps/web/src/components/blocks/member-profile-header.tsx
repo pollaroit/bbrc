@@ -11,7 +11,6 @@ import { Separator } from "@bbrc/ui/components/separator";
 import { ArrowLeft, Crown } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { UserAdminStatus } from "@/components/blocks/user-admin-status";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
 
@@ -51,8 +50,6 @@ export function MemberProfileHeader({ user }: MemberProfileHeaderProps) {
 				/>
 				<UserStatusBadge status={user.status} />
 			</div>
-
-			<UserAdminStatus user={user} />
 
 			<Separator />
 

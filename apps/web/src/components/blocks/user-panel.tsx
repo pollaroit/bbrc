@@ -10,6 +10,7 @@ type User = {
 	name: string;
 	username: string;
 	image?: string | null;
+	isAdmin?: boolean;
 };
 
 interface Props {

@@ -93,6 +93,7 @@
         "@orpc/openapi": "catalog:",
         "@orpc/server": "catalog:",
         "@orpc/zod": "catalog:",
+        "better-auth": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {

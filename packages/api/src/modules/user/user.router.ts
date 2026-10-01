@@ -1,4 +1,4 @@
-import { adminProcedure, publicProcedure } from "../../procedures";
+import { publicProcedure } from "../../procedures";
 import {
 	GetUserByUsernameInputSchema,
 	GetUserByUsernameOutputSchema,
@@ -6,14 +6,11 @@ import {
 	GetUserListOutputSchema,
 	GetUserParticipationListInputSchema,
 	GetUserParticipationListOutputSchema,
-	UpdateUserStatusInputSchema,
-	UpdateUserStatusOutputSchema,
 } from "./user.schema";
 import {
 	getUserByUsername,
 	getUserList,
 	getUserParticipationList,
-	updateUserStatus,
 } from "./user.service";
 
 export const userRouter = {
@@ -35,11 +32,5 @@ export const userRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await getUserParticipationList(input, context.db),
-		),
-	updateUserStatus: adminProcedure
-		.input(UpdateUserStatusInputSchema)
-		.output(UpdateUserStatusOutputSchema)
-		.handler(
-			async ({ input, context }) => await updateUserStatus(input, context.db),
 		),
 };

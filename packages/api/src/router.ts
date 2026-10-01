@@ -1,5 +1,6 @@
 import type { RouterClient } from "@orpc/server";
 
+import { adminRouter } from "./modules/admin/admin.router";
 import { bookRouter } from "./modules/book/book.router";
 import { commentRouter } from "./modules/comment/comment.router";
 import { favoriteRouter } from "./modules/favorite/favorite.router";
@@ -14,6 +15,7 @@ import { userRouter } from "./modules/user/user.router";
 import { xpRouter } from "./modules/xp/xp.router";
 
 export const appRouter = {
+	admin: adminRouter,
 	health: healthRouter,
 	book: bookRouter,
 	comment: commentRouter,

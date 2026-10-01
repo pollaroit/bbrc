@@ -7,7 +7,14 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@bbrc/ui/components/dropdown-menu";
-import { BookOpen, LogOut, MessageSquare, Settings, User } from "lucide-react";
+import {
+	BookOpen,
+	LogOut,
+	MessageSquare,
+	Settings,
+	Shield,
+	User,
+} from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -49,11 +56,13 @@ export function UserMenu({ ...props }: Props) {
 
 			<DropdownMenuContent align="end">
 				<DropdownMenuItem
+					className="cursor-pointer"
 					render={<Link href={`/users/${props.user.username}` as Route} />}
 				>
 					<User /> Profile
 				</DropdownMenuItem>
 				<DropdownMenuItem
+					className="cursor-pointer"
 					render={
 						<Link href={`/users/${props.user.username}/posts` as Route} />
 					}
@@ -61,19 +70,32 @@ export function UserMenu({ ...props }: Props) {
 					<MessageSquare /> My posts
 				</DropdownMenuItem>
 				<DropdownMenuItem
+					className="cursor-pointer"
 					render={
 						<Link href={`/users/${props.user.username}/feedbacks` as Route} />
 					}
 				>
 					<BookOpen /> My feedbacks
 				</DropdownMenuItem>
-				<DropdownMenuItem render={<Link href={"/settings" as Route} />}>
+				<DropdownMenuItem
+					className="cursor-pointer"
+					render={<Link href={"/settings" as Route} />}
+				>
 					<Settings /> Settings
 				</DropdownMenuItem>
+				{props.user.isAdmin ? (
+					<DropdownMenuItem
+						className="cursor-pointer"
+						render={<Link href={"/admin/users" as Route} />}
+					>
+						<Shield /> Users
+					</DropdownMenuItem>
+				) : null}
 				<DropdownMenuItem
 					closeOnClick={false}
 					variant="destructive"
 					disabled={loading}
+					className="cursor-pointer"
 					onClick={handleSignOut}
 				>
 					<LogOut /> Sign out
