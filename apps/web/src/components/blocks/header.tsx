@@ -14,6 +14,7 @@ import { ArrowRight, Menu } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
+import { AdminCreateMenu } from "@/components/blocks/admin-create-menu";
 import { NotificationBell } from "@/components/blocks/notification-bell";
 import { UserMenu } from "@/components/blocks/user-menu";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -50,6 +51,7 @@ export default function Header() {
 				</nav>
 
 				<div className="ml-auto hidden items-center gap-2 md:flex">
+					<AdminCreateMenu />
 					<ModeToggle />
 					{isPending ? null : session ? (
 						<>
@@ -75,6 +77,7 @@ export default function Header() {
 				</div>
 
 				<div className="ml-auto flex items-center gap-1 md:hidden">
+					<AdminCreateMenu />
 					<ModeToggle />
 					{!isPending && session ? <NotificationBell /> : null}
 					<Sheet open={open} onOpenChange={setOpen}>

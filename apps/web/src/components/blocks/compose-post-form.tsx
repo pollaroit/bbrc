@@ -35,10 +35,16 @@ function resetComposeForm(
 	setAttachedBook(null);
 }
 
-export function ComposePostFab({ className }: { className?: string }) {
+type ComposePostDialogProps = {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+};
+
+export function ComposePostDialog({
+	open,
+	onOpenChange,
+}: ComposePostDialogProps) {
 	const router = useRouter();
-	const { data: session, isPending: sessionPending } = authClient.useSession();
-	const [open, setOpen] = useState(false);
 	const [content, setContent] = useState("");
 	const [attachedBook, setAttachedBook] = useState<ClubBookPickerValue>(null);
 
@@ -49,7 +55,7 @@ export function ComposePostFab({ className }: { className?: string }) {
 					xpAwarded > 0 ? `Post shared (+${xpAwarded} XP)` : "Post shared.",
 				);
 				resetComposeForm(setContent, setAttachedBook);
-				setOpen(false);
+				onOpenChange(false);
 				await queryClient.invalidateQueries({
 					queryKey: orpc.post.getPostList.key(),
 				});
@@ -59,6 +65,83 @@ export function ComposePostFab({ className }: { className?: string }) {
 			onError: (error) => toast.error(error.message),
 		}),
 	);
+
+	return (
+		<Dialog
+			open={open}
+			onOpenChange={(nextOpen) => {
+				onOpenChange(nextOpen);
+				if (!nextOpen) {
+					resetComposeForm(setContent, setAttachedBook);
+				}
+			}}
+		>
+			<DialogContent className="flex max-h-[min(90vh,720px)] max-w-xl flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+				<DialogHeader className="border-border border-b p-6">
+					<DialogTitle>Share an update</DialogTitle>
+					<DialogDescription>
+						Post to the club feed. You can optionally attach a book from the
+						library.
+					</DialogDescription>
+				</DialogHeader>
+
+				<form
+					className="flex flex-col gap-4 overflow-y-auto p-6"
+					onSubmit={(event) => {
+						event.preventDefault();
+
+						const parsed = PostSchema.shape.content.safeParse(content.trim());
+
+						if (!parsed.success) {
+							toast.error(
+								parsed.error.issues[0]?.message ??
+									"Content must be between 1 and 5000 characters",
+							);
+							return;
+						}
+
+						createMutation.mutate({
+							content: parsed.data,
+							...(attachedBook ? { attachedBookSlug: attachedBook.slug } : {}),
+						});
+					}}
+				>
+					<Field>
+						<FieldLabel htmlFor="compose-post-content">Post</FieldLabel>
+						<AutoGrowTextarea
+							id="compose-post-content"
+							value={content}
+							onChange={(event) => setContent(event.target.value)}
+							maxLength={5000}
+							placeholder="What are you reading or thinking about?"
+						/>
+					</Field>
+
+					<Field>
+						<FieldLabel htmlFor="club-book-picker-search">
+							Attached book
+						</FieldLabel>
+						<ClubBookPicker value={attachedBook} onChange={setAttachedBook} />
+					</Field>
+
+					<DialogFooter className="border-border border-t p-6 pt-4">
+						<LoadingButton
+							type="submit"
+							loading={createMutation.isPending}
+							disabled={content.trim().length < 1}
+						>
+							Post
+						</LoadingButton>
+					</DialogFooter>
+				</form>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+export function ComposePostFab({ className }: { className?: string }) {
+	const { data: session, isPending: sessionPending } = authClient.useSession();
+	const [open, setOpen] = useState(false);
 
 	if (sessionPending || !session?.user) {
 		return null;
@@ -79,77 +162,7 @@ export function ComposePostFab({ className }: { className?: string }) {
 				<Plus className="size-6" aria-hidden />
 			</Button>
 
-			<Dialog
-				open={open}
-				onOpenChange={(nextOpen) => {
-					setOpen(nextOpen);
-					if (!nextOpen) {
-						resetComposeForm(setContent, setAttachedBook);
-					}
-				}}
-			>
-				<DialogContent className="flex max-h-[min(90vh,720px)] max-w-xl flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
-					<DialogHeader className="border-border border-b p-6">
-						<DialogTitle>Share an update</DialogTitle>
-						<DialogDescription>
-							Post to the club feed. You can optionally attach a book from the
-							library.
-						</DialogDescription>
-					</DialogHeader>
-
-					<form
-						className="flex flex-col gap-4 overflow-y-auto p-6"
-						onSubmit={(event) => {
-							event.preventDefault();
-
-							const parsed = PostSchema.shape.content.safeParse(content.trim());
-
-							if (!parsed.success) {
-								toast.error(
-									parsed.error.issues[0]?.message ??
-										"Content must be between 1 and 5000 characters",
-								);
-								return;
-							}
-
-							createMutation.mutate({
-								content: parsed.data,
-								...(attachedBook
-									? { attachedBookSlug: attachedBook.slug }
-									: {}),
-							});
-						}}
-					>
-						<Field>
-							<FieldLabel htmlFor="compose-post-content">Post</FieldLabel>
-							<AutoGrowTextarea
-								id="compose-post-content"
-								value={content}
-								onChange={(event) => setContent(event.target.value)}
-								maxLength={5000}
-								placeholder="What are you reading or thinking about?"
-							/>
-						</Field>
-
-						<Field>
-							<FieldLabel htmlFor="club-book-picker-search">
-								Attached book
-							</FieldLabel>
-							<ClubBookPicker value={attachedBook} onChange={setAttachedBook} />
-						</Field>
-
-						<DialogFooter className="border-border border-t p-6 pt-4">
-							<LoadingButton
-								type="submit"
-								loading={createMutation.isPending}
-								disabled={content.trim().length < 1}
-							>
-								Post
-							</LoadingButton>
-						</DialogFooter>
-					</form>
-				</DialogContent>
-			</Dialog>
+			<ComposePostDialog open={open} onOpenChange={setOpen} />
 		</>
 	);
 }

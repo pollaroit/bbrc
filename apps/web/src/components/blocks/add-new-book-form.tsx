@@ -3,6 +3,7 @@
 import { AddBookInputSchema } from "@bbrc/api/modules/book/book.schema";
 import { generateSlug } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
+import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
 	Field,
 	FieldDescription,
@@ -18,7 +19,7 @@ import { Search } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { OpenLibraryWorkResults } from "@/components/blocks/open-library-work-results";
 import { useAppForm } from "@/hooks/use-app-form";
@@ -60,10 +61,18 @@ function coverUrl(coverId: number | null) {
 type AddBookDetailsFormProps = {
 	work: OpenLibrarySearchWork;
 	onCancel: () => void;
+	onAddAnother: () => void;
 };
 
-function AddBookDetailsForm({ work, onCancel }: AddBookDetailsFormProps) {
+function AddBookDetailsForm({
+	work,
+	onCancel,
+	onAddAnother,
+}: AddBookDetailsFormProps) {
 	const router = useRouter();
+	const [addMore, setAddMore] = useState(false);
+	const addMoreRef = useRef(addMore);
+	addMoreRef.current = addMore;
 	const initialValues = useMemo(() => workToFormValues(work), [work]);
 
 	const form = useAppForm(AddNewBookFormSchema, initialValues);
@@ -160,6 +169,10 @@ function AddBookDetailsForm({ work, onCancel }: AddBookDetailsFormProps) {
 					queryKey: orpc.book.getBookList.key(),
 				});
 				toast.success("Book added to the library.");
+				if (addMoreRef.current) {
+					onAddAnother();
+					return;
+				}
 				router.push(`/books/${result.slug}` as Route);
 			},
 			onError: (error) => {
@@ -363,23 +376,34 @@ function AddBookDetailsForm({ work, onCancel }: AddBookDetailsFormProps) {
 				</FieldGroup>
 			</FieldSet>
 
-			<div className="flex flex-wrap gap-2">
-				<form.Submit
-					className={cn("min-w-32")}
-					loading={addBookMutation.isPending}
-					loadingText="Adding…"
-				>
-					Add book
-				</form.Submit>
-				<Button type="button" variant="outline" onClick={onCancel}>
-					Cancel
-				</Button>
+			<div className="flex flex-col gap-4">
+				{/** biome-ignore lint/a11y/noLabelWithoutControl: checkbox is the control */}
+				<label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
+					<Checkbox
+						checked={addMore}
+						onCheckedChange={(checked) => setAddMore(checked === true)}
+					/>
+					Add more
+				</label>
+				<div className="flex flex-wrap gap-2">
+					<form.Submit
+						className={cn("min-w-32")}
+						loading={addBookMutation.isPending}
+						loadingText="Adding…"
+					>
+						Add book
+					</form.Submit>
+					<Button type="button" variant="outline" onClick={onCancel}>
+						Cancel
+					</Button>
+				</div>
 			</div>
 		</form>
 	);
 }
 
 export function AddNewBookForm() {
+	const searchInputRef = useRef<HTMLInputElement>(null);
 	const [searchQuery, setSearchQuery] = useState("");
 	const debouncedQuery = useDebouncedValue(searchQuery, 500);
 	const [selectedWork, setSelectedWork] =
@@ -399,6 +423,14 @@ export function AddNewBookForm() {
 		setSelectedWork(null);
 	};
 
+	const handleAddAnother = () => {
+		setSelectedWork(null);
+		setSearchQuery("");
+		requestAnimationFrame(() => {
+			searchInputRef.current?.focus();
+		});
+	};
+
 	return (
 		<div className="flex flex-col gap-8">
 			<div className="space-y-3">
@@ -411,6 +443,7 @@ export function AddNewBookForm() {
 					<div className="relative">
 						<Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
 						<Input
+							ref={searchInputRef}
 							type="search"
 							value={searchQuery}
 							placeholder="Search Open Library…"
@@ -457,6 +490,7 @@ export function AddNewBookForm() {
 						key={selectedWork.workKey}
 						work={selectedWork}
 						onCancel={handleChangeWork}
+						onAddAnother={handleAddAnother}
 					/>
 				</>
 			) : null}
