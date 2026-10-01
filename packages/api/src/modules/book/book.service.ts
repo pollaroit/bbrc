@@ -143,7 +143,6 @@ export async function updateBook(
 		await tx.book.update({
 			where: { id: book.id },
 			data,
-			select: {},
 		});
 
 		return { slug };
