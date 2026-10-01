@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { openGraphImageForPath } from "./og/url";
 import { DEFAULT_DESCRIPTION, SITE_NAME } from "./site";
 
 const MAX_DESCRIPTION_LENGTH = 160;
@@ -32,6 +33,14 @@ export function buildPageMetadata(input: BuildPageMetadataInput): Metadata {
 		input.description?.trim() || DEFAULT_DESCRIPTION,
 	);
 	const title = input.title.trim();
+	const ogImages =
+		input.openGraph?.images ??
+		(input.path ? [openGraphImageForPath(input.path, title)] : undefined);
+	const ogImageUrl = ogImages
+		? Array.isArray(ogImages)
+			? ogImages[0]?.url
+			: ogImages.url
+		: undefined;
 
 	return {
 		title,
@@ -43,12 +52,13 @@ export function buildPageMetadata(input: BuildPageMetadataInput): Metadata {
 			siteName: SITE_NAME,
 			type: input.openGraph?.type ?? "website",
 			...(input.path ? { url: input.path } : {}),
-			...(input.openGraph?.images ? { images: input.openGraph.images } : {}),
+			...(ogImages ? { images: ogImages } : {}),
 		},
 		twitter: {
-			card: input.openGraph?.images ? "summary_large_image" : "summary",
+			card: ogImages ? "summary_large_image" : "summary",
 			title,
 			description,
+			...(ogImageUrl ? { images: [ogImageUrl] } : {}),
 		},
 		robots: input.robots ?? { index: false, follow: false },
 	};

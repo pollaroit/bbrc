@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { BookDetail } from "@/components/blocks/book-detail";
-import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { formatBookAuthors } from "@/lib/book-cover";
 import {
 	loadBookBySlugForIsr,
 	loadBookFeedbackListForIsr,
@@ -29,7 +29,6 @@ export async function generateMetadata({
 
 	try {
 		const book = await loadBookBySlugForIsr(slug);
-		const cover = bookCoverUrl(book.coverId, "L");
 
 		return buildPageMetadata({
 			title: book.title,
@@ -39,7 +38,6 @@ export async function generateMetadata({
 			path: `/books/${book.slug}`,
 			openGraph: {
 				type: "website",
-				...(cover ? { images: [{ url: cover, alt: book.title }] } : {}),
 			},
 		});
 	} catch {

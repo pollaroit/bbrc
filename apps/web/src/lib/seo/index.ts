@@ -4,6 +4,8 @@ export {
 	buildPageMetadata,
 	truncateDescription,
 } from "./metadata";
+export { ogPathFromPagePath } from "./og/paths";
+export { openGraphImageForPath } from "./og/url";
 export {
 	absoluteUrl,
 	DEFAULT_DESCRIPTION,

@@ -1,0 +1,211 @@
+/** biome-ignore-all lint/performance/noImgElement: dev-only OG preview */
+"use client";
+
+import { useMemo, useState } from "react";
+import { ogPathFromPagePath } from "@/lib/seo/og/paths";
+
+type OgDevPreviewProps = {
+	staticPaths: { label: string; path: string }[];
+	samples: {
+		bookSlug?: string;
+		postSlug?: string;
+		sittingSlug?: string;
+		username?: string;
+	};
+};
+
+function SocialCardPreview({
+	pagePath,
+	pageUrl,
+	ogSrc,
+	title,
+	description,
+}: {
+	pagePath: string;
+	pageUrl: string;
+	ogSrc: string;
+	title: string;
+	description: string;
+}) {
+	return (
+		<article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+			<div className="flex flex-wrap items-baseline justify-between gap-2">
+				<h2 className="font-semibold text-lg">{title}</h2>
+				<code className="text-muted-foreground text-xs">{pagePath}</code>
+			</div>
+			<p className="text-muted-foreground text-sm">{description}</p>
+			<div className="overflow-hidden rounded-md border border-border bg-muted/30">
+				{/* eslint-disable-next-line @next/next/no-img-element -- dev-only OG preview */}
+				<img
+					src={ogSrc}
+					alt=""
+					width={1200}
+					height={630}
+					className="h-auto w-full"
+				/>
+			</div>
+			<div className="rounded-md border border-border bg-background p-3 text-sm">
+				<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+					Link preview (approx.)
+				</p>
+				<p className="mt-1 truncate text-muted-foreground text-xs">{pageUrl}</p>
+				<p className="mt-2 font-semibold">{title}</p>
+				<p className="line-clamp-2 text-muted-foreground">{description}</p>
+			</div>
+			<div className="flex flex-wrap gap-2 text-sm">
+				<a
+					className="text-primary underline-offset-4 hover:underline"
+					href={ogSrc}
+					target="_blank"
+					rel="noreferrer"
+				>
+					Open OG image
+				</a>
+				<a
+					className="text-primary underline-offset-4 hover:underline"
+					href={pageUrl}
+					target="_blank"
+					rel="noreferrer"
+				>
+					Open page
+				</a>
+			</div>
+		</article>
+	);
+}
+
+export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
+	const [bookSlug, setBookSlug] = useState(samples.bookSlug ?? "");
+	const [postSlug, setPostSlug] = useState(samples.postSlug ?? "");
+	const [sittingSlug, setSittingSlug] = useState(samples.sittingSlug ?? "");
+	const [username, setUsername] = useState(samples.username ?? "");
+
+	const dynamicEntries = useMemo(() => {
+		const entries: { label: string; path: string; description: string }[] = [];
+		if (bookSlug.trim()) {
+			entries.push({
+				label: "Book",
+				path: `/books/${bookSlug.trim()}`,
+				description: "Library detail page OG.",
+			});
+		}
+		if (postSlug.trim()) {
+			entries.push({
+				label: "Post",
+				path: `/posts/${postSlug.trim()}`,
+				description: "Club post OG.",
+			});
+		}
+		if (sittingSlug.trim()) {
+			entries.push({
+				label: "Sitting",
+				path: `/sittings/${sittingSlug.trim()}`,
+				description: "Reading sitting OG.",
+			});
+		}
+		if (username.trim()) {
+			const u = username.trim();
+			entries.push(
+				{
+					label: "Member",
+					path: `/users/${u}`,
+					description: "Member profile OG.",
+				},
+				{
+					label: "XP",
+					path: `/users/${u}/xp`,
+					description: "XP history OG.",
+				},
+				{
+					label: "RP",
+					path: `/users/${u}/rp`,
+					description: "RP history OG.",
+				},
+			);
+		}
+		return entries;
+	}, [bookSlug, postSlug, sittingSlug, username]);
+
+	const cacheBust = Date.now();
+
+	return (
+		<div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-6 py-10">
+			<header className="flex flex-col gap-2">
+				<h1 className="font-semibold text-2xl">Open Graph preview</h1>
+				<p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
+					Images are generated at{" "}
+					<code className="rounded bg-muted px-1">/og/…</code> (mirrors page
+					paths). Metadata on each route points crawlers to the same URL, so you
+					can iterate locally without deploying or pasting links into WhatsApp.
+				</p>
+			</header>
+
+			<section className="grid gap-4 rounded-lg border border-border p-4 md:grid-cols-2">
+				<label className="flex flex-col gap-1 text-sm">
+					<span className="font-medium">Book slug</span>
+					<input
+						className="rounded-md border border-input bg-background px-3 py-2"
+						value={bookSlug}
+						onChange={(e) => setBookSlug(e.target.value)}
+						placeholder="e.g. dune"
+					/>
+				</label>
+				<label className="flex flex-col gap-1 text-sm">
+					<span className="font-medium">Post slug</span>
+					<input
+						className="rounded-md border border-input bg-background px-3 py-2"
+						value={postSlug}
+						onChange={(e) => setPostSlug(e.target.value)}
+					/>
+				</label>
+				<label className="flex flex-col gap-1 text-sm">
+					<span className="font-medium">Sitting slug</span>
+					<input
+						className="rounded-md border border-input bg-background px-3 py-2"
+						value={sittingSlug}
+						onChange={(e) => setSittingSlug(e.target.value)}
+					/>
+				</label>
+				<label className="flex flex-col gap-1 text-sm">
+					<span className="font-medium">Username</span>
+					<input
+						className="rounded-md border border-input bg-background px-3 py-2"
+						value={username}
+						onChange={(e) => setUsername(e.target.value)}
+					/>
+				</label>
+			</section>
+
+			<section className="grid gap-6 lg:grid-cols-2">
+				{staticPaths.map(({ label, path }) => {
+					const ogPath = ogPathFromPagePath(path);
+					const ogSrc = `${ogPath}?v=${cacheBust}`;
+					return (
+						<SocialCardPreview
+							key={path}
+							pagePath={path}
+							pageUrl={path}
+							ogSrc={ogSrc}
+							title={label}
+							description="Static route"
+						/>
+					);
+				})}
+				{dynamicEntries.map(({ label, path, description }) => {
+					const ogPath = ogPathFromPagePath(path);
+					const ogSrc = `${ogPath}?v=${cacheBust}`;
+					return (
+						<SocialCardPreview
+							key={path}
+							pagePath={path}
+							pageUrl={path}
+							ogSrc={ogSrc}
+							title={label}
+							description={description}
+						/>
+					);
+				})}
+			</section>
+		</div>
+	);
+}
