@@ -24,7 +24,10 @@ import {
 import { calculateRpPointsDelta } from "../rp/rp.service";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardParticipationXp, awardPollVoteXp } from "../xp/xp.service";
-import { activeParticipationWhere } from "./participation-active";
+import {
+	activeParticipationWhere,
+	countActiveParticipantsForSitting,
+} from "./participation-active";
 import {
 	assertMemberCanSetProgress,
 	progressAffectsUserStatus,
@@ -420,6 +423,7 @@ export async function getOngoingSitting(
 		where: sittingOngoingWhere(),
 		orderBy: { createdAt: "desc" },
 		select: {
+			id: true,
 			slug: true,
 			status: true,
 			deadline: true,
@@ -430,9 +434,6 @@ export async function getOngoingSitting(
 			poll: {
 				select: { deadline: true },
 			},
-			_count: {
-				select: { participants: { where: activeParticipationWhere } },
-			},
 		},
 	});
 
@@ -440,12 +441,17 @@ export async function getOngoingSitting(
 		return null;
 	}
 
+	const participantCount = await countActiveParticipantsForSitting(
+		db,
+		sitting.id,
+	);
+
 	return {
 		slug: sitting.slug,
 		status: sitting.status,
 		deadline: sitting.deadline,
 		createdAt: sitting.createdAt,
-		participantCount: sitting._count.participants,
+		participantCount,
 		pollDeadline: sitting.poll?.deadline ?? null,
 		selectedBookTitle: sitting.selectedBook?.title ?? null,
 	};

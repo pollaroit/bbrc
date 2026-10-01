@@ -7,6 +7,16 @@
 			"inputs": ["$TURBO_DEFAULT$", ".env*"],
 			"outputs": ["dist/**", ".next/**", "!.next/cache/**"]
 		},
+		"web#build": {
+			"dependsOn": ["^build", "@bbrc/db#db:migrate:deploy"],
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				".env*",
+				"../../packages/db/prisma/migrations/**",
+				"../../packages/db/prisma/schema/**"
+			],
+			"outputs": [".next/**", "!.next/cache/**"]
+		},
 		"lint": {
 			"dependsOn": ["^lint"]
 		},
@@ -62,5 +72,11 @@
 		"NTFY_TOKEN",
 		"NTFY_TOPIC_PREFIX"
 	],
-	"globalDependencies": [".env*", "apps/*/.env*", "packages/*/.env*"]
+	"globalDependencies": [
+		".env*",
+		"apps/*/.env*",
+		"packages/*/.env*",
+		"packages/db/prisma/migrations/**",
+		"packages/db/prisma/schema/**"
+	]
 }

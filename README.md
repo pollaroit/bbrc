@@ -32,7 +32,7 @@ Commit messages follow `@commitlint/config-conventional` (`feat:`, `fix:`, optio
 
 - Root directory: **`apps/web`**, with **include files outside root** enabled (monorepo).
 - Install (override if needed): `cd ../.. && bun install --frozen-lockfile`
-- Build: default **`bun run build`** in `apps/web` — runs `db:generate`, **`db:migrate:deploy`** (`prisma migrate deploy`), then Next.js. Migrations use env from Vercel only (never committed; same keys as `apps/web/.env.schema`).
+- Build: default **`bun run build`** in `apps/web` — runs `db:generate`, **`db:migrate:deploy`** (`prisma migrate deploy`), then Next.js. Monorepo **`turbo run build`** also runs `@bbrc/db#db:migrate:deploy` before `web#build` (uncached) so schema changes like `participation.removed_at` apply before static generation. Migrations use env from Vercel only (never committed; same keys as `apps/web/.env.schema`).
 - Set env vars in **Vercel → Settings → Environment Variables**: `DATABASE_URL` (pooled Neon URL for the app), **`DATABASE_URL_UNPOOLED`** (Neon direct URL for migrate deploy; strongly recommended), `BETTER_AUTH_*`, `CRON_SECRET`, optional `CLUB_TIMEZONE=Asia/Baku`. If `DATABASE_URL_UNPOOLED` is missing, deploy retries migrate and strips `-pooler` from the host automatically.
 - **Cron:** `apps/web/vercel.json` hits `/api/cron/sittings` once daily at **16:00 UTC** (**20:00** club local in `Asia/Baku`) — closes due polls and finishes due sittings.
 - That route closes due polls (winner = most votes, random tie-break) and finishes due reading sittings.
