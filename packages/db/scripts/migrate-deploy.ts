@@ -52,28 +52,9 @@ async function assertParticipationSoftRemoveColumn(): Promise<void> {
 	}
 }
 
-function assertRuntimeAndMigrateSameDatabase(): void {
-	const migrateUrl = resolveMigrateDatabaseUrl();
-	const migrateTarget = neonDatabaseTarget(migrateUrl);
-	console.info(`[db:migrate:deploy] target ${migrateTarget}`);
-
-	const runtimeUrl = process.env.DATABASE_URL?.trim();
-	if (!runtimeUrl) {
-		return;
-	}
-
-	const runtimeTarget = neonDatabaseTarget(runtimeUrl);
-	if (runtimeTarget !== migrateTarget) {
-		console.error(
-			`[db:migrate:deploy] DATABASE_URL (${runtimeTarget}) and the migrate URL (${migrateTarget}) point at different databases. ` +
-				"Deploy may apply migrations to an empty Neon branch while the app serves another (P2022 / empty Tables UI). Align Vercel Production and Build env vars.",
-		);
-		process.exit(1);
-	}
-}
-
 async function main() {
-	assertRuntimeAndMigrateSameDatabase();
+	const migrateTarget = neonDatabaseTarget(resolveMigrateDatabaseUrl());
+	console.info(`[db:migrate:deploy] target ${migrateTarget}`);
 
 	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
 		const exitCode = runMigrateDeploy();

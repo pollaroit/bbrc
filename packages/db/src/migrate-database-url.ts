@@ -17,10 +17,23 @@ export function neonDatabaseTarget(connectionString: string): string {
 }
 
 export function resolveMigrateDatabaseUrl(): string {
-	const raw =
-		process.env.DATABASE_URL_UNPOOLED?.trim() ||
-		process.env.DIRECT_URL?.trim() ||
-		process.env.DATABASE_URL?.trim();
+	const runtime = process.env.DATABASE_URL?.trim();
+	const unpooled =
+		process.env.DATABASE_URL_UNPOOLED?.trim() || process.env.DIRECT_URL?.trim();
+
+	if (runtime && unpooled) {
+		const runtimeTarget = neonDatabaseTarget(ensureDirectNeonHost(runtime));
+		const unpooledTarget = neonDatabaseTarget(unpooled);
+		if (runtimeTarget !== unpooledTarget) {
+			console.warn(
+				`[db:migrate:deploy] DATABASE_URL_UNPOOLED (${unpooledTarget}) does not match DATABASE_URL (${runtimeTarget}). ` +
+					"Migrating via direct DATABASE_URL so schema matches what the app uses. Update or remove the wrong UNPOOLED value in Vercel.",
+			);
+			return ensureConnectTimeout(ensureDirectNeonHost(runtime));
+		}
+	}
+
+	const raw = unpooled || runtime;
 
 	if (!raw) {
 		throw new Error(
