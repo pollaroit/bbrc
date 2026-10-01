@@ -1,5 +1,10 @@
 "use client";
 
+import {
+	CLUB_DEADLINE_HOUR,
+	clampSittingDeadlineToClubEnd,
+	snapPollDeadlineOnOrAfter,
+} from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Calendar } from "@bbrc/ui/components/calendar";
 import {
@@ -13,20 +18,11 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@bbrc/ui/components/popover";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@bbrc/ui/components/select";
 import { CalendarIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { clubTimeZone } from "@/lib/club-timezone";
 import { formatDateTime } from "@/lib/format-datetime";
 import { cn } from "@/lib/utils";
-
-const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
-const MINUTES = Array.from({ length: 12 }, (_, index) => index * 5);
 
 type SittingDeadlinePickerProps = {
 	id?: string;
@@ -36,12 +32,6 @@ type SittingDeadlinePickerProps = {
 	invalid?: boolean;
 	errorMessage?: string;
 };
-
-function withTime(base: Date, hour: number, minute: number): Date {
-	const next = new Date(base);
-	next.setHours(hour, minute, 0, 0);
-	return next;
-}
 
 export function SittingDeadlinePicker({
 	id,
@@ -54,13 +44,13 @@ export function SittingDeadlinePicker({
 	const [open, setOpen] = useState(false);
 	const [calendarMonth, setCalendarMonth] = useState(() => value);
 
-	const hour = value.getHours();
-	const minute = value.getMinutes();
-	const snappedMinute = MINUTES.includes(minute)
-		? minute
-		: (Math.round(minute / 5) * 5) % 60;
-
 	const displayLabel = useMemo(() => formatDateTime(value), [value]);
+
+	const minSelectable = useMemo(() => {
+		const startOfToday = new Date();
+		startOfToday.setHours(0, 0, 0, 0);
+		return snapPollDeadlineOnOrAfter(startOfToday, clubTimeZone);
+	}, []);
 
 	return (
 		<Field data-invalid={invalid || undefined}>
@@ -95,59 +85,24 @@ export function SittingDeadlinePicker({
 									return;
 								}
 
-								onChange(withTime(day, hour, snappedMinute));
+								const snapped = clampSittingDeadlineToClubEnd(
+									day,
+									clubTimeZone,
+								);
+								onChange(
+									snapped.getTime() < minSelectable.getTime()
+										? minSelectable
+										: snapped,
+								);
 							}}
-							disabled={(day) =>
-								day < new Date(new Date().setHours(0, 0, 0, 0))
-							}
+							disabled={(day) => {
+								const snapped = clampSittingDeadlineToClubEnd(
+									day,
+									clubTimeZone,
+								);
+								return snapped.getTime() < minSelectable.getTime();
+							}}
 						/>
-						<div className="flex flex-wrap gap-2 border-border border-t pt-3">
-							<Select
-								value={String(hour)}
-								onValueChange={(next) => {
-									if (next == null) {
-										return;
-									}
-
-									onChange(
-										withTime(value, Number.parseInt(next, 10), snappedMinute),
-									);
-								}}
-							>
-								<SelectTrigger className="w-22" aria-label="Hour">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{HOURS.map((h) => (
-										<SelectItem key={h} value={String(h)}>
-											{String(h).padStart(2, "0")}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<span className="self-center text-muted-foreground">:</span>
-							<Select
-								value={String(snappedMinute)}
-								onValueChange={(next) => {
-									if (next == null) {
-										return;
-									}
-
-									onChange(withTime(value, hour, Number.parseInt(next, 10)));
-								}}
-							>
-								<SelectTrigger className="w-22" aria-label="Minute">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{MINUTES.map((m) => (
-										<SelectItem key={m} value={String(m)}>
-											{String(m).padStart(2, "0")}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
 						<Button
 							type="button"
 							size="sm"
@@ -162,7 +117,8 @@ export function SittingDeadlinePicker({
 				</PopoverContent>
 			</Popover>
 			<FieldDescription>
-				Voting and reading end on this date (local time).
+				Deadlines are always {String(CLUB_DEADLINE_HOUR).padStart(2, "0")}:00
+				club time ({clubTimeZone}).
 			</FieldDescription>
 			{errorMessage ? <FieldError>{errorMessage}</FieldError> : null}
 		</Field>

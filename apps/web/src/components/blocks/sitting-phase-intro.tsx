@@ -8,7 +8,7 @@ const copy: Record<
 	voting: {
 		title: "Voting phase",
 		description:
-			"Members rank poll options below. When voting ends, an admin picks the club read and the sitting moves to reading.",
+			"Members rank wishlist books on the poll page. When voting ends, an admin confirms the club read and the sitting moves to reading.",
 		accent: "border-l-primary",
 	},
 	reading: {

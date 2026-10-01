@@ -12,7 +12,10 @@ type OngoingSittingBannerProps = {
 };
 
 export function OngoingSittingBanner({ sitting }: OngoingSittingBannerProps) {
-	const href = `/sittings/${sitting.slug}` as Route;
+	const href =
+		sitting.status === "voting"
+			? (`/sittings/${sitting.slug}/vote` as Route)
+			: (`/sittings/${sitting.slug}` as Route);
 	const phaseDeadline =
 		sitting.status === "voting" && sitting.pollDeadline
 			? sitting.pollDeadline
@@ -53,7 +56,7 @@ export function OngoingSittingBanner({ sitting }: OngoingSittingBannerProps) {
 					</dl>
 				</div>
 				<Button render={<Link href={href} />} nativeButton={false} size="sm">
-					Open sitting
+					{sitting.status === "voting" ? "Vote in poll" : "Open sitting"}
 					<ArrowRight data-icon="inline-end" />
 				</Button>
 			</CardContent>

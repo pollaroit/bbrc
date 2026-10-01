@@ -37,6 +37,8 @@ type SittingPollSectionProps = {
 	mode?: "vote" | "readonly";
 	selectedBookSlug?: string | null;
 	showCard?: boolean;
+	layout?: "embedded" | "page";
+	showVoteShare?: boolean;
 };
 
 export function SittingPollSection({
@@ -47,6 +49,8 @@ export function SittingPollSection({
 	mode = "vote",
 	selectedBookSlug = null,
 	showCard = true,
+	layout = "embedded",
+	showVoteShare = false,
 }: SittingPollSectionProps) {
 	const readonly = mode === "readonly";
 	const router = useRouter();
@@ -61,12 +65,17 @@ export function SittingPollSection({
 	const poll = sittingData?.poll ?? initialPoll;
 	const maxChoices = poll.maxChoices ?? poll.take;
 	const sortedOptions = useMemo(() => {
-		if (!readonly) {
+		if (!readonly && !showVoteShare) {
 			return poll.options;
 		}
 
 		return [...poll.options].sort((a, b) => b.voteCount - a.voteCount);
-	}, [poll.options, readonly]);
+	}, [poll.options, readonly, showVoteShare]);
+
+	const maxVoteCount = useMemo(
+		() => Math.max(1, ...poll.options.map((option) => option.voteCount)),
+		[poll.options],
+	);
 
 	const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>(
 		() => poll.myVoteOptionIds,
@@ -144,41 +153,49 @@ export function SittingPollSection({
 		});
 	}
 
-	const header = (
-		<div className="flex flex-row flex-wrap items-center justify-between gap-2">
-			<CardTitle className="text-base">Book poll</CardTitle>
-			{readonly ? (
-				<Badge variant="outline">Archived</Badge>
-			) : hasSavedVotes && canVoteBase && !isEditingVotes ? (
-				<Badge variant="outline">You voted</Badge>
-			) : null}
-		</div>
-	);
+	const showVoteBars =
+		showVoteShare ||
+		readonly ||
+		(sittingStatus !== "voting" && !canEditSelection);
+
+	const header =
+		layout === "page" ? null : (
+			<div className="flex flex-row flex-wrap items-center justify-between gap-2">
+				<CardTitle className="text-base">Book poll</CardTitle>
+				{readonly ? (
+					<Badge variant="outline">Archived</Badge>
+				) : hasSavedVotes && canVoteBase && !isEditingVotes ? (
+					<Badge variant="outline">You voted</Badge>
+				) : null}
+			</div>
+		);
 
 	const body = (
 		<>
-			<dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-				<div>
-					<dt className="text-muted-foreground text-xs">Poll deadline</dt>
-					<dd className="font-medium text-sm">
-						{formatDateTime(poll.deadline)}
-					</dd>
-				</div>
-				<div>
-					<dt className="text-muted-foreground text-xs">
-						{readonly ? "Choices allowed" : "Your choices"}
-					</dt>
-					<dd className="font-medium text-sm tabular-nums">
-						{poll.minChoices}–{maxChoices}
-					</dd>
-				</div>
-				<div>
-					<dt className="text-muted-foreground text-xs">Page range</dt>
-					<dd className="font-medium text-sm tabular-nums">
-						{poll.minPages ?? "—"} – {poll.maxPages ?? "—"}
-					</dd>
-				</div>
-			</dl>
+			{layout === "embedded" ? (
+				<dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+					<div>
+						<dt className="text-muted-foreground text-xs">Poll deadline</dt>
+						<dd className="font-medium text-sm">
+							{formatDateTime(poll.deadline)}
+						</dd>
+					</div>
+					<div>
+						<dt className="text-muted-foreground text-xs">
+							{readonly ? "Choices allowed" : "Your choices"}
+						</dt>
+						<dd className="font-medium text-sm tabular-nums">
+							{poll.minChoices}–{maxChoices}
+						</dd>
+					</div>
+					<div>
+						<dt className="text-muted-foreground text-xs">Page range</dt>
+						<dd className="font-medium text-sm tabular-nums">
+							{poll.minPages ?? "—"} – {poll.maxPages ?? "—"}
+						</dd>
+					</div>
+				</dl>
+			) : null}
 
 			{readonly ? (
 				<p className="text-muted-foreground text-sm">
@@ -205,7 +222,12 @@ export function SittingPollSection({
 				</p>
 			) : null}
 
-			<ul className="flex flex-col gap-2">
+			<ul
+				className={cn(
+					"flex flex-col gap-2",
+					layout === "page" && "gap-3 sm:grid sm:grid-cols-1",
+				)}
+			>
 				{sortedOptions.map((option) => {
 					const coverSrc = bookCoverUrl(option.book.coverId);
 					const checked = selectedOptionIds.includes(option.id);
@@ -217,6 +239,10 @@ export function SittingPollSection({
 						readonly &&
 						selectedBookSlug != null &&
 						option.book.slug === selectedBookSlug;
+					const voteShare =
+						showVoteBars && option.voteCount > 0
+							? option.voteCount / maxVoteCount
+							: 0;
 
 					return (
 						<li key={option.id}>
@@ -241,12 +267,20 @@ export function SittingPollSection({
 									}
 								}}
 								className={cn(
-									"flex items-stretch gap-3 border border-border p-3 transition-colors",
+									"relative flex items-stretch gap-3 overflow-hidden border border-border p-3 transition-colors",
+									layout === "page" && "p-4 sm:gap-4",
 									canEditSelection && "cursor-pointer hover:bg-muted/40",
 									(checked || showAsVoted || isClubPick) &&
 										"border-primary/40 bg-muted/30",
 								)}
 							>
+								{voteShare > 0 ? (
+									<div
+										className="pointer-events-none absolute inset-y-0 left-0 bg-primary/10"
+										style={{ width: `${voteShare * 100}%` }}
+										aria-hidden
+									/>
+								) : null}
 								{canEditSelection ? (
 									<div className="flex shrink-0 items-start pt-0.5">
 										<Checkbox
@@ -260,7 +294,10 @@ export function SittingPollSection({
 
 								<Link
 									href={href}
-									className="relative aspect-2/3 w-14 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10"
+									className={cn(
+										"relative aspect-2/3 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10",
+										layout === "page" ? "w-16 sm:w-20" : "w-14",
+									)}
 									onClick={(event) => {
 										event.stopPropagation();
 									}}
@@ -280,7 +317,7 @@ export function SittingPollSection({
 									)}
 								</Link>
 
-								<div className="flex min-w-0 flex-1 flex-col gap-2">
+								<div className="relative flex min-w-0 flex-1 flex-col gap-2">
 									<div className="min-w-0">
 										<div className="flex flex-wrap items-center gap-2">
 											<Link
@@ -332,7 +369,19 @@ export function SittingPollSection({
 			</ul>
 
 			{canEditSelection ? (
-				<div className="flex flex-wrap gap-2">
+				<div
+					className={cn(
+						"flex flex-wrap gap-2",
+						layout === "page" &&
+							"sticky bottom-4 border border-border bg-background/95 p-3 shadow-sm backdrop-blur-sm supports-backdrop-filter:bg-background/80",
+					)}
+				>
+					<p className="w-full text-muted-foreground text-xs sm:w-auto sm:flex-1">
+						{selectedOptionIds.length} of {maxChoices} selected
+						{selectedOptionIds.length < poll.minChoices
+							? ` · pick at least ${poll.minChoices}`
+							: null}
+					</p>
 					<LoadingButton
 						type="button"
 						loading={submitVotesMutation.isPending}
@@ -373,13 +422,13 @@ export function SittingPollSection({
 		</>
 	);
 
-	if (readonly && !showCard) {
+	if ((readonly || layout === "page") && !showCard) {
 		return <div className="flex flex-col gap-4">{body}</div>;
 	}
 
 	return (
 		<Card>
-			<CardHeader>{header}</CardHeader>
+			{header ? <CardHeader>{header}</CardHeader> : null}
 			<CardContent className="flex flex-col gap-4">{body}</CardContent>
 		</Card>
 	);

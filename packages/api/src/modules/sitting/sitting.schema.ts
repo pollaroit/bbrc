@@ -218,6 +218,7 @@ export const SittingPollOptionSchema = zod.object({
 export const SittingPollDetailSchema = SittingPollSummarySchema.extend({
 	options: zod.array(SittingPollOptionSchema),
 	myVoteOptionIds: zod.array(zod.uuid()),
+	voterCount: zod.number().int().min(0),
 });
 
 export const SittingParticipantSummarySchema = zod.object({

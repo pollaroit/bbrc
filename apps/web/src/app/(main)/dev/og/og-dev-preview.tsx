@@ -97,11 +97,19 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 			});
 		}
 		if (sittingSlug.trim()) {
-			entries.push({
-				label: "Sitting",
-				path: `/sittings/${sittingSlug.trim()}`,
-				description: "Reading sitting OG.",
-			});
+			const slug = sittingSlug.trim();
+			entries.push(
+				{
+					label: "Sitting",
+					path: `/sittings/${slug}`,
+					description: "Reading sitting OG.",
+				},
+				{
+					label: "Sitting vote",
+					path: `/sittings/${slug}/vote`,
+					description: "Sitting voting / results OG.",
+				},
+			);
 		}
 		if (username.trim()) {
 			const u = username.trim();

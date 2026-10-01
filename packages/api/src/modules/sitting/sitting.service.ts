@@ -178,6 +178,7 @@ function mapSittingDetail(
 	row: SittingDetailRow,
 	myVoteOptionIds: string[],
 	reviews: GetSittingBySlugOutput["reviews"],
+	pollVoterCount: number,
 ): GetSittingBySlugOutput {
 	const bookPages = row.selectedBook?.pages ?? null;
 
@@ -202,6 +203,7 @@ function mapSittingDetail(
 						book: option.book,
 					})),
 					myVoteOptionIds,
+					voterCount: pollVoterCount,
 				}
 			: null,
 		reviews,
@@ -354,7 +356,17 @@ export async function getSittingBySlug(
 			? await loadSittingReviews(sitting.selectedBookId, participantUserIds, db)
 			: [];
 
-	return mapSittingDetail(sitting, myVoteOptionIds, reviews);
+	const pollVoterCount =
+		sitting.poll != null
+			? (
+					await db.pollVote.groupBy({
+						by: ["userId"],
+						where: { option: { pollId: sitting.poll.id } },
+					})
+				).length
+			: 0;
+
+	return mapSittingDetail(sitting, myVoteOptionIds, reviews, pollVoterCount);
 }
 
 export async function getOngoingSitting(

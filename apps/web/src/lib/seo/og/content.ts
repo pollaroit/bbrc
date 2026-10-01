@@ -396,6 +396,45 @@ export async function resolveOgImageContent(
 	}
 
 	if (section === "sittings") {
+		if (rest[0] === "vote") {
+			try {
+				const sitting = await getSittingBySlug(slug, db, anonymousSession);
+				if (!sitting.poll) {
+					return {
+						kind: "Poll",
+						title: "Poll not found",
+						description: DEFAULT_DESCRIPTION,
+					};
+				}
+
+				const pollOptions = sitting.poll.options.length;
+				const pollVotes = sitting.poll.options.reduce(
+					(sum, option) => sum + option.voteCount,
+					0,
+				);
+				const isOpen = sitting.status === "voting";
+
+				return {
+					kind: "Poll",
+					title: isOpen ? "Book poll" : "Voting results",
+					description: isOpen
+						? `Rank wishlist books · ${formatCount("participant", sitting.participants.length)}`
+						: `Final totals · ${sitting.selectedBook?.title ?? sitting.slug.replaceAll("_", " ")}`,
+					highlights: [
+						isOpen ? "Voting open" : sittingStatusFilterLabels[sitting.status],
+						`${pollOptions} options · ${pollVotes} votes · ${sitting.poll.voterCount} voters`,
+						formatCount("participant", sitting.participants.length),
+					],
+				};
+			} catch {
+				return {
+					kind: "Poll",
+					title: "Poll not found",
+					description: DEFAULT_DESCRIPTION,
+				};
+			}
+		}
+
 		try {
 			const sitting = await getSittingBySlug(slug, db, anonymousSession);
 			const statusLabel = sittingStatusFilterLabels[sitting.status];
