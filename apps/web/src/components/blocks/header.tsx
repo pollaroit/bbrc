@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { NotificationBell } from "@/components/blocks/notification-bell";
 import { UserMenu } from "@/components/blocks/user-menu";
+import { ModeToggle } from "@/components/mode-toggle";
 import { authClient } from "@/lib/auth-client";
 
 const navLinks = [
@@ -49,6 +50,7 @@ export default function Header() {
 				</nav>
 
 				<div className="ml-auto hidden items-center gap-2 md:flex">
+					<ModeToggle />
 					{isPending ? null : session ? (
 						<>
 							<NotificationBell />
@@ -73,6 +75,7 @@ export default function Header() {
 				</div>
 
 				<div className="ml-auto flex items-center gap-1 md:hidden">
+					<ModeToggle />
 					{!isPending && session ? <NotificationBell /> : null}
 					<Sheet open={open} onOpenChange={setOpen}>
 						<SheetTrigger

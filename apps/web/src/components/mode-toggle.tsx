@@ -2,35 +2,55 @@
 
 import { Button } from "@bbrc/ui/components/button";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@bbrc/ui/components/dropdown-menu";
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@bbrc/ui/components/tooltip";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
+import { nextThemeAfterToggle } from "@/lib/theme-toggle";
 
 export function ModeToggle() {
-	const { setTheme } = useTheme();
+	const { resolvedTheme, setTheme } = useTheme();
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
+	const toggle = () => {
+		setTheme(nextThemeAfterToggle(resolvedTheme));
+	};
 
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger render={<Button variant="outline" size="icon" />}>
-				<Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-				<Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-				<span className="sr-only">Toggle theme</span>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end">
-				<DropdownMenuItem onClick={() => setTheme("light")}>
-					Light
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={() => setTheme("dark")}>
-					Dark
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={() => setTheme("system")}>
-					System
-				</DropdownMenuItem>
-			</DropdownMenuContent>
-		</DropdownMenu>
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<Button
+						variant="ghost"
+						size="icon"
+						type="button"
+						className="relative"
+						onClick={toggle}
+						aria-label="Toggle light and dark theme"
+					/>
+				}
+			>
+				{mounted ? (
+					<>
+						<Sun className="size-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+						<Moon className="absolute size-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+					</>
+				) : (
+					<span className="size-5" aria-hidden />
+				)}
+			</TooltipTrigger>
+			<TooltipContent side="bottom">
+				Toggle theme
+				<span className="text-muted-foreground"> · </span>
+				<kbd className="font-mono text-xs">d</kbd>
+			</TooltipContent>
+		</Tooltip>
 	);
 }

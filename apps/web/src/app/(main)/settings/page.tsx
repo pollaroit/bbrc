@@ -38,6 +38,23 @@ export default async function SettingsPage() {
 				</p>
 			</div>
 
+			<section
+				className="border border-border bg-muted/20 px-4 py-3 text-sm"
+				aria-labelledby="appearance-heading"
+			>
+				<h2 id="appearance-heading" className="font-medium">
+					Appearance
+				</h2>
+				<p className="mt-1 text-muted-foreground leading-relaxed">
+					Use the sun/moon button in the header to switch light and dark mode,
+					or press{" "}
+					<kbd className="border border-border bg-background px-1.5 py-0.5 font-mono text-xs">
+						d
+					</kbd>{" "}
+					when you are not typing in a form field.
+				</p>
+			</section>
+
 			<ul className="divide-y rounded-lg border">
 				{settingsLinks.map((link) => (
 					<li key={link.href}>
