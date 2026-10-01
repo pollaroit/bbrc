@@ -12,6 +12,7 @@ import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { BookEditLink } from "@/components/blocks/book-edit-link";
+import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
 import { BookFeedbackSection } from "@/components/blocks/book-feedback-section";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
@@ -63,6 +64,11 @@ export function BookDetail({ book, initialReviews }: BookDetailProps) {
 							</p>
 						</div>
 						<div className="flex shrink-0 items-center gap-1">
+							<BookFavoriteButton
+								bookSlug={book.slug}
+								bookTitle={book.title}
+								variant="inline"
+							/>
 							<BookStatusBadge status={book.status} />
 							<BookEditLink slug={book.slug} />
 						</div>

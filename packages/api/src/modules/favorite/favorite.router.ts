@@ -1,0 +1,55 @@
+import {
+	notBannedProcedure,
+	protectedProcedure,
+	publicProcedure,
+} from "../../procedures";
+import {
+	AddFavoriteInputSchema,
+	AddFavoriteOutputSchema,
+	GetBookFavoriteStateInputSchema,
+	GetBookFavoriteStateOutputSchema,
+	GetUserFavoritesInputSchema,
+	GetUserFavoritesOutputSchema,
+	ListMyFavoritesOutputSchema,
+	RemoveFavoriteInputSchema,
+	RemoveFavoriteOutputSchema,
+} from "./favorite.schema";
+import {
+	addFavorite,
+	getBookFavoriteState,
+	getUserFavorites,
+	listMyFavorites,
+	removeFavorite,
+} from "./favorite.service";
+
+export const favoriteRouter = {
+	getUserFavorites: publicProcedure
+		.input(GetUserFavoritesInputSchema)
+		.output(GetUserFavoritesOutputSchema)
+		.handler(async ({ input, context }) =>
+			getUserFavorites(input.username, context.db),
+		),
+	listMine: protectedProcedure
+		.output(ListMyFavoritesOutputSchema)
+		.handler(async ({ context }) =>
+			listMyFavorites(context.session.user.id, context.db),
+		),
+	getBookFavoriteState: protectedProcedure
+		.input(GetBookFavoriteStateInputSchema)
+		.output(GetBookFavoriteStateOutputSchema)
+		.handler(async ({ input, context }) =>
+			getBookFavoriteState(input, context.session.user.id, context.db),
+		),
+	add: notBannedProcedure
+		.input(AddFavoriteInputSchema)
+		.output(AddFavoriteOutputSchema)
+		.handler(async ({ input, context }) =>
+			addFavorite(input, context.session.user.id, context.db),
+		),
+	remove: notBannedProcedure
+		.input(RemoveFavoriteInputSchema)
+		.output(RemoveFavoriteOutputSchema)
+		.handler(async ({ input, context }) =>
+			removeFavorite(input, context.session.user.id, context.db),
+		),
+};

@@ -4,6 +4,7 @@ import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { BookEditLink } from "@/components/blocks/book-edit-link";
+import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,13 @@ export function BookCard({ book, className }: BookCardProps) {
 
 	return (
 		<div className={cn("relative h-full", className)}>
+			<div className="absolute top-1.5 left-1.5 z-10">
+				<BookFavoriteButton
+					bookSlug={book.slug}
+					bookTitle={book.title}
+					variant="overlay"
+				/>
+			</div>
 			<BookEditLink
 				slug={book.slug}
 				className="absolute top-1.5 right-1.5 z-10"

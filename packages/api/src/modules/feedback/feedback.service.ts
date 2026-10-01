@@ -1,8 +1,11 @@
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
+import {
+	clubReadEligibilityHint,
+	userCompletedClubRead,
+} from "../book/book-read-eligibility";
 import { notifyMemberFeedbackOnBook } from "../notification/notification-triggers";
-import { activeParticipationWhere } from "../sitting/participation-active";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardFeedbackXp } from "../xp/xp.service";
 import type {
@@ -33,26 +36,12 @@ async function loadBookBySlug(slug: string, db: Database) {
 	return book;
 }
 
-/** Completed this book as the club read (reading or finished sitting). */
 async function canUserSubmitFeedback(
 	userId: string,
 	bookId: string,
 	db: Database,
 ): Promise<boolean> {
-	const participation = await db.participation.findFirst({
-		where: {
-			userId,
-			...activeParticipationWhere,
-			progress: "completed",
-			sitting: {
-				selectedBookId: bookId,
-				status: { in: ["reading", "finished"] },
-			},
-		},
-		select: { id: true },
-	});
-
-	return participation != null;
+	return userCompletedClubRead(userId, bookId, db);
 }
 
 function feedbackEligibilityHint(
@@ -60,29 +49,15 @@ function feedbackEligibilityHint(
 	bookId: string,
 	db: Database,
 ): Promise<string> {
-	return db.participation
-		.findFirst({
-			where: {
-				userId,
-				...activeParticipationWhere,
-				sitting: {
-					selectedBookId: bookId,
-					status: { in: ["reading", "finished"] },
-				},
-			},
-			select: { progress: true },
-		})
-		.then((participation) => {
-			if (!participation) {
-				return "Only participants of a sitting that chose this book can leave feedback.";
-			}
-
-			if (participation.progress !== "completed") {
-				return "Mark yourself as completed on that sitting’s page, then you can submit feedback here.";
-			}
-
-			return "You cannot submit feedback for this book right now.";
-		});
+	return clubReadEligibilityHint(userId, bookId, db).then((hint) => {
+		if (hint.startsWith("Only participants")) {
+			return "Only participants of a sitting that chose this book can leave feedback.";
+		}
+		if (hint.startsWith("Mark yourself")) {
+			return "Mark yourself as completed on that sitting's page, then you can submit feedback here.";
+		}
+		return "You cannot submit feedback for this book right now.";
+	});
 }
 
 export async function getBookFeedbackList(
