@@ -24,6 +24,7 @@ import {
 import { calculateRpPointsDelta } from "../rp/rp.service";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardParticipationXp, awardPollVoteXp } from "../xp/xp.service";
+import { activeParticipationWhere } from "./participation-active";
 import {
 	assertMemberCanSetProgress,
 	progressAffectsUserStatus,
@@ -44,6 +45,9 @@ import {
 	type GetSittingListOutput,
 	getSittingBySlugFields,
 	getSittingListFields,
+	getSittingRemovedParticipantFields,
+	type SittingParticipantMutationInput,
+	type SittingParticipantMutationOutput,
 	type SubmitPollVotesInput,
 	type SubmitPollVotesOutput,
 	type TransitionSittingInput,
@@ -179,6 +183,7 @@ function mapSittingDetail(
 	myVoteOptionIds: string[],
 	reviews: GetSittingBySlugOutput["reviews"],
 	pollVoterCount: number,
+	removedParticipants: GetSittingBySlugOutput["removedParticipants"],
 ): GetSittingBySlugOutput {
 	const bookPages = row.selectedBook?.pages ?? null;
 
@@ -228,6 +233,7 @@ function mapSittingDetail(
 				rpChange,
 			};
 		}),
+		removedParticipants,
 	};
 }
 
@@ -366,7 +372,45 @@ export async function getSittingBySlug(
 				).length
 			: 0;
 
-	return mapSittingDetail(sitting, myVoteOptionIds, reviews, pollVoterCount);
+	let removedParticipants: GetSittingBySlugOutput["removedParticipants"] = [];
+
+	if (session?.user.isAdmin) {
+		const removedRows = await db.participation.findMany({
+			where: {
+				sittingId: sitting.id,
+				removedAt: { not: null },
+			},
+			orderBy: { removedAt: "desc" },
+			select: getSittingRemovedParticipantFields,
+		});
+
+		removedParticipants = removedRows.flatMap((row) => {
+			if (row.removedAt == null) {
+				return [];
+			}
+
+			return [
+				{
+					userId: row.userId,
+					username: row.user.username,
+					name: row.user.name,
+					image: row.user.image,
+					status: row.user.status,
+					progress: row.progress,
+					rpChange: null,
+					removedAt: row.removedAt,
+				},
+			];
+		});
+	}
+
+	return mapSittingDetail(
+		sitting,
+		myVoteOptionIds,
+		reviews,
+		pollVoterCount,
+		removedParticipants,
+	);
 }
 
 export async function getOngoingSitting(
@@ -387,7 +431,7 @@ export async function getOngoingSitting(
 				select: { deadline: true },
 			},
 			_count: {
-				select: { participants: true },
+				select: { participants: { where: activeParticipationWhere } },
 			},
 		},
 	});
@@ -546,7 +590,7 @@ export async function submitPollVotes(
 				},
 			},
 			participants: {
-				where: { userId },
+				where: { userId, ...activeParticipationWhere },
 				select: { userId: true },
 			},
 		},
@@ -801,13 +845,14 @@ export async function transitionSitting(
 		await tx.participation.updateMany({
 			where: {
 				sittingId: sitting.id,
+				...activeParticipationWhere,
 				progress: { in: ["not_started", "in_progress"] },
 			},
 			data: { progress: "dnf" },
 		});
 
 		const participants = await tx.participation.findMany({
-			where: { sittingId: sitting.id },
+			where: { sittingId: sitting.id, ...activeParticipationWhere },
 			select: { userId: true, progress: true },
 		});
 
@@ -922,7 +967,7 @@ export async function updateMyParticipationProgress(
 			id: true,
 			status: true,
 			participants: {
-				where: { userId },
+				where: { userId, ...activeParticipationWhere },
 				select: {
 					userId: true,
 					progress: true,
@@ -1094,4 +1139,180 @@ export async function updateParticipation(
 		progress: updated.progress,
 		rpChange: null,
 	};
+}
+
+function assertSittingAcceptsParticipantChanges(status: string) {
+	if (status !== "voting" && status !== "reading") {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Participants can only be changed while voting or reading",
+			data: { status },
+		});
+	}
+}
+
+export async function addSittingParticipant(
+	input: SittingParticipantMutationInput,
+	db: Database,
+): Promise<SittingParticipantMutationOutput> {
+	const sitting = await db.sitting.findUnique({
+		where: { slug: input.slug },
+		select: {
+			id: true,
+			status: true,
+			poll: { select: { id: true } },
+		},
+	});
+
+	if (!sitting) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Sitting not found",
+			data: { slug: input.slug },
+		});
+	}
+
+	assertSittingAcceptsParticipantChanges(sitting.status);
+
+	const user = await db.user.findUnique({
+		where: { id: input.userId },
+		select: { id: true, status: true },
+	});
+
+	if (!user) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "User not found",
+		});
+	}
+
+	if (user.status === "banned") {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Banned members cannot join a sitting",
+		});
+	}
+
+	const existing = await db.participation.findUnique({
+		where: {
+			userId_sittingId: {
+				userId: input.userId,
+				sittingId: sitting.id,
+			},
+		},
+		select: { removedAt: true },
+	});
+
+	if (existing && existing.removedAt == null) {
+		throw new ORPCError("CONFLICT", {
+			message: "Member is already on this sitting",
+		});
+	}
+
+	await db.$transaction(async (tx) => {
+		if (existing) {
+			await tx.participation.update({
+				where: {
+					userId_sittingId: {
+						userId: input.userId,
+						sittingId: sitting.id,
+					},
+				},
+				data: {
+					removedAt: null,
+					progress: "not_started",
+				},
+			});
+		} else {
+			await tx.participation.create({
+				data: {
+					userId: input.userId,
+					sittingId: sitting.id,
+				},
+			});
+		}
+
+		await awardParticipationXp(
+			{ userId: input.userId, sittingId: sitting.id },
+			tx,
+		);
+	});
+
+	return { ok: true };
+}
+
+export async function removeSittingParticipant(
+	input: SittingParticipantMutationInput,
+	db: Database,
+): Promise<SittingParticipantMutationOutput> {
+	const sitting = await db.sitting.findUnique({
+		where: { slug: input.slug },
+		select: {
+			id: true,
+			status: true,
+			poll: { select: { id: true } },
+		},
+	});
+
+	if (!sitting) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Sitting not found",
+			data: { slug: input.slug },
+		});
+	}
+
+	assertSittingAcceptsParticipantChanges(sitting.status);
+
+	const participation = await db.participation.findUnique({
+		where: {
+			userId_sittingId: {
+				userId: input.userId,
+				sittingId: sitting.id,
+			},
+		},
+		select: { removedAt: true, progress: true },
+	});
+
+	if (!participation || participation.removedAt != null) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Participant not found on this sitting",
+		});
+	}
+
+	if (participation.progress === "completed") {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Cannot remove a member who already finished the book",
+		});
+	}
+
+	const activeCount = await db.participation.count({
+		where: { sittingId: sitting.id, ...activeParticipationWhere },
+	});
+
+	if (activeCount <= 1) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Cannot remove the last participant",
+		});
+	}
+
+	const removedAt = new Date();
+
+	await db.$transaction(async (tx) => {
+		await tx.participation.update({
+			where: {
+				userId_sittingId: {
+					userId: input.userId,
+					sittingId: sitting.id,
+				},
+			},
+			data: { removedAt },
+		});
+
+		if (sitting.status === "voting" && sitting.poll) {
+			await tx.pollVote.deleteMany({
+				where: {
+					userId: input.userId,
+					option: { pollId: sitting.poll.id },
+				},
+			});
+		}
+	});
+
+	return { ok: true };
 }

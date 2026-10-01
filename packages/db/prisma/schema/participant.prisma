@@ -21,6 +21,9 @@ model Participation {
 
   progress Progress @default(not_started)
 
+  /// Set when an admin removes someone mid-sitting; row kept for history and XP ledger.
+  removedAt DateTime? @map("removed_at")
+
   @@unique([userId, sittingId])
   @@index([userId])
   @@index([sittingId])

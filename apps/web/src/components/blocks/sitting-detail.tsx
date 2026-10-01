@@ -72,13 +72,6 @@ export function SittingDetail({ sitting }: SittingDetailProps) {
 					/>
 				</div>
 			) : null}
-
-			{status === "voting" ? (
-				<SittingParticipantsSection
-					status={status}
-					participants={sitting.participants}
-				/>
-			) : null}
 		</div>
 	);
 }

@@ -10,17 +10,19 @@ type SittingHubNavProps = {
 	sitting: GetSittingBySlugOutput;
 };
 
-function sittingTabHref(slug: string, segment: "overview" | "vote"): Route {
+type SittingHubSegment = "overview" | "vote" | "participants";
+
+function sittingTabHref(slug: string, segment: SittingHubSegment): Route {
 	if (segment === "overview") {
 		return `/sittings/${slug}` as Route;
 	}
-	return `/sittings/${slug}/vote` as Route;
+	if (segment === "vote") {
+		return `/sittings/${slug}/vote` as Route;
+	}
+	return `/sittings/${slug}/participants` as Route;
 }
 
-function activeTab(
-	pathname: string,
-	slug: string,
-): "overview" | "vote" | "participants" {
+function activeTab(pathname: string, slug: string): SittingHubSegment {
 	const base = `/sittings/${slug}`;
 	if (pathname.startsWith(`${base}/vote`)) {
 		return "vote";
@@ -38,10 +40,6 @@ export function SittingHubNav({ sitting }: SittingHubNavProps) {
 	const pollLabel =
 		sitting.status === "voting" ? "Vote" : hasPoll ? "Voting results" : "Vote";
 
-	if (!hasPoll) {
-		return null;
-	}
-
 	return (
 		<nav aria-label="Sitting sections">
 			<Tabs value={current}>
@@ -54,12 +52,23 @@ export function SittingHubNav({ sitting }: SittingHubNavProps) {
 						Overview
 					</TabsTrigger>
 					<TabsTrigger
-						value="vote"
+						value="participants"
 						nativeButton={false}
-						render={<Link href={sittingTabHref(sitting.slug, "vote")} />}
+						render={
+							<Link href={sittingTabHref(sitting.slug, "participants")} />
+						}
 					>
-						{pollLabel}
+						Participants
 					</TabsTrigger>
+					{hasPoll ? (
+						<TabsTrigger
+							value="vote"
+							nativeButton={false}
+							render={<Link href={sittingTabHref(sitting.slug, "vote")} />}
+						>
+							{pollLabel}
+						</TabsTrigger>
+					) : null}
 				</TabsList>
 			</Tabs>
 		</nav>

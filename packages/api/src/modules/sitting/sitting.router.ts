@@ -11,6 +11,8 @@ import {
 	GetSittingBySlugOutputSchema,
 	GetSittingListInputSchema,
 	GetSittingListOutputSchema,
+	SittingParticipantMutationInputSchema,
+	SittingParticipantMutationOutputSchema,
 	SubmitPollVotesInputSchema,
 	SubmitPollVotesOutputSchema,
 	TransitionSittingInputSchema,
@@ -23,10 +25,12 @@ import {
 	UpdateSittingDeadlinesOutputSchema,
 } from "./sitting.schema";
 import {
+	addSittingParticipant,
 	createSitting,
 	getOngoingSitting,
 	getSittingBySlug,
 	getSittingList,
+	removeSittingParticipant,
 	submitPollVotes,
 	transitionSitting,
 	updateMyParticipationProgress,
@@ -90,5 +94,19 @@ export const sittingRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await updateParticipation(input, context.db),
+		),
+	addSittingParticipant: adminProcedure
+		.input(SittingParticipantMutationInputSchema)
+		.output(SittingParticipantMutationOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await addSittingParticipant(input, context.db),
+		),
+	removeSittingParticipant: adminProcedure
+		.input(SittingParticipantMutationInputSchema)
+		.output(SittingParticipantMutationOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await removeSittingParticipant(input, context.db),
 		),
 };

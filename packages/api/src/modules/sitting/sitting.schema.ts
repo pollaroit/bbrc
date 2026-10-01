@@ -175,7 +175,7 @@ export const getSittingListFields = {
 	createdAt: true,
 	_count: {
 		select: {
-			participants: true,
+			participants: { where: { removedAt: null } },
 		},
 	},
 } as const;
@@ -231,6 +231,11 @@ export const SittingParticipantSummarySchema = zod.object({
 	rpChange: zod.number().int().nullable(),
 });
 
+export const SittingRemovedParticipantSchema =
+	SittingParticipantSummarySchema.extend({
+		removedAt: zod.coerce.date(),
+	});
+
 export const SittingSelectedBookSchema = SittingPollOptionBookSchema;
 
 export const SittingReviewSummarySchema = zod.object({
@@ -244,6 +249,7 @@ export const SittingReviewSummarySchema = zod.object({
 });
 
 export const getSittingBySlugFields = {
+	id: true,
 	slug: true,
 	status: true,
 	deadline: true,
@@ -279,6 +285,7 @@ export const getSittingBySlugFields = {
 		},
 	},
 	participants: {
+		where: { removedAt: null },
 		select: {
 			userId: true,
 			progress: true,
@@ -294,6 +301,20 @@ export const getSittingBySlugFields = {
 	},
 } as const;
 
+export const getSittingRemovedParticipantFields = {
+	userId: true,
+	progress: true,
+	removedAt: true,
+	user: {
+		select: {
+			username: true,
+			name: true,
+			image: true,
+			status: true,
+		},
+	},
+} as const;
+
 /** GET BY SLUG */
 export const GetSittingBySlugOutputSchema = SittingSchema.pick({
 	slug: true,
@@ -305,6 +326,7 @@ export const GetSittingBySlugOutputSchema = SittingSchema.pick({
 	selectedBook: SittingSelectedBookSchema.nullable(),
 	reviews: zod.array(SittingReviewSummarySchema),
 	participants: zod.array(SittingParticipantSummarySchema),
+	removedParticipants: zod.array(SittingRemovedParticipantSchema),
 });
 
 export type GetSittingBySlugOutput = z.infer<
@@ -431,6 +453,22 @@ export type UpdateParticipationInput = z.infer<
 >;
 export type UpdateParticipationOutput = z.infer<
 	typeof UpdateParticipationOutputSchema
+>;
+
+export const SittingParticipantMutationInputSchema = zod.object({
+	slug: SittingSchema.shape.slug,
+	userId: UserSchema.shape.id,
+});
+
+export const SittingParticipantMutationOutputSchema = zod.object({
+	ok: zod.literal(true),
+});
+
+export type SittingParticipantMutationInput = z.infer<
+	typeof SittingParticipantMutationInputSchema
+>;
+export type SittingParticipantMutationOutput = z.infer<
+	typeof SittingParticipantMutationOutputSchema
 >;
 
 export { refinePollConfig };

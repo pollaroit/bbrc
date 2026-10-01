@@ -435,6 +435,32 @@ export async function resolveOgImageContent(
 			}
 		}
 
+		if (rest[0] === "participants") {
+			try {
+				const sitting = await getSittingBySlug(slug, db, anonymousSession);
+				const completed = sitting.participants.filter(
+					(p) => p.progress === "completed",
+				).length;
+
+				return {
+					kind: "Sitting",
+					title: "Participants",
+					description: `${formatCount("member", sitting.participants.length)} on ${sitting.slug.replaceAll("_", " ")}`,
+					highlights: [
+						sittingStatusFilterLabels[sitting.status],
+						formatCount("participant", sitting.participants.length),
+						completed > 0 ? `${completed} finished reading` : "Club roster",
+					],
+				};
+			} catch {
+				return {
+					kind: "Sitting",
+					title: "Participants",
+					description: DEFAULT_DESCRIPTION,
+				};
+			}
+		}
+
 		try {
 			const sitting = await getSittingBySlug(slug, db, anonymousSession);
 			const statusLabel = sittingStatusFilterLabels[sitting.status];

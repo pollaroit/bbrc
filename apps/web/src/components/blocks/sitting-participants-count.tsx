@@ -15,6 +15,7 @@ export function SittingParticipantsCount({
 	const showVoteLink =
 		(sitting.status === "reading" || sitting.status === "finished") &&
 		poll != null;
+	const participantsHref = `/sittings/${sitting.slug}/participants` as Route;
 	const voteHref = `/sittings/${sitting.slug}/vote` as Route;
 
 	return (
@@ -22,6 +23,12 @@ export function SittingParticipantsCount({
 			<dt className="text-muted-foreground text-xs">Participants</dt>
 			<dd className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-medium tabular-nums">
 				<span>{count}</span>
+				<Link
+					href={participantsHref}
+					className="font-normal text-primary text-sm underline-offset-4 hover:underline"
+				>
+					View roster
+				</Link>
 				{showVoteLink ? (
 					<Link
 						href={voteHref}

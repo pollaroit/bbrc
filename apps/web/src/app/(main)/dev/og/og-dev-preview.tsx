@@ -109,6 +109,11 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 					path: `/sittings/${slug}/vote`,
 					description: "Sitting voting / results OG.",
 				},
+				{
+					label: "Sitting participants",
+					path: `/sittings/${slug}/participants`,
+					description: "Sitting participants OG.",
+				},
 			);
 		}
 		if (username.trim()) {

@@ -2,6 +2,7 @@ import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { notifyMemberFeedbackOnBook } from "../notification/notification-triggers";
+import { activeParticipationWhere } from "../sitting/participation-active";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardFeedbackXp } from "../xp/xp.service";
 import type {
@@ -41,6 +42,7 @@ async function canUserSubmitFeedback(
 	const participation = await db.participation.findFirst({
 		where: {
 			userId,
+			...activeParticipationWhere,
 			progress: "completed",
 			sitting: {
 				selectedBookId: bookId,
@@ -62,6 +64,7 @@ function feedbackEligibilityHint(
 		.findFirst({
 			where: {
 				userId,
+				...activeParticipationWhere,
 				sitting: {
 					selectedBookId: bookId,
 					status: { in: ["reading", "finished"] },
