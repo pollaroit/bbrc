@@ -169,7 +169,6 @@ export async function removeBook(slug: string, db: Database): Promise<string> {
 		await tx.favorite.deleteMany({ where: { bookId: book.id } });
 		await tx.book.delete({
 			where: { id: book.id },
-			select: {},
 		});
 	});
 
