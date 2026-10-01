@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import { cache } from "react";
 import { BookDetail } from "@/components/blocks/book-detail";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import {
+	loadBookBySlugForIsr,
+	loadBookFeedbackListForIsr,
+} from "@/lib/isr-data";
 import {
 	bookJsonLd,
 	bookSlugStaticParams,
@@ -10,7 +13,6 @@ import {
 	JsonLd,
 } from "@/lib/seo";
 import { db } from "@/services";
-import { orpc } from "@/utils/orpc";
 
 /** ISR: keep in sync with `DETAIL_PAGE_REVALIDATE_SECONDS` in `@/lib/seo`. */
 export const revalidate = 3600;
@@ -20,21 +22,13 @@ export async function generateStaticParams() {
 	return bookSlugStaticParams(db);
 }
 
-const loadBookBySlug = cache((slug: string) =>
-	orpc.book.getBookBySlug.call(slug),
-);
-
-const loadBookFeedbackList = cache((slug: string) =>
-	orpc.feedback.getBookFeedbackList.call(slug),
-);
-
 export async function generateMetadata({
 	params,
 }: PageProps<"/books/[slug]">): Promise<Metadata> {
 	const { slug } = await params;
 
 	try {
-		const book = await loadBookBySlug(slug);
+		const book = await loadBookBySlugForIsr(slug);
 		const cover = bookCoverUrl(book.coverId, "L");
 
 		return buildPageMetadata({
@@ -56,8 +50,8 @@ export async function generateMetadata({
 export default async function BookPage({ params }: PageProps<"/books/[slug]">) {
 	const { slug } = await params;
 	const [book, initialReviews] = await Promise.all([
-		loadBookBySlug(slug),
-		loadBookFeedbackList(slug),
+		loadBookBySlugForIsr(slug),
+		loadBookFeedbackListForIsr(slug),
 	]);
 
 	return (

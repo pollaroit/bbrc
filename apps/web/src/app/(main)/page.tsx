@@ -1,8 +1,8 @@
 import { ComposePostFab } from "@/components/blocks/compose-post-form";
 import { OngoingSittingBanner } from "@/components/blocks/ongoing-sitting-banner";
 import { PostFeed } from "@/components/blocks/post-feed";
+import { loadOngoingSittingForIsr } from "@/lib/isr-data";
 import { buildPageMetadata } from "@/lib/seo";
-import { orpc } from "@/utils/orpc";
 
 export const revalidate = 60;
 
@@ -13,7 +13,7 @@ export const metadata = buildPageMetadata({
 });
 
 export default async function HomePage() {
-	const ongoing = await orpc.sitting.getOngoingSitting.call();
+	const ongoing = await loadOngoingSittingForIsr();
 
 	return (
 		<div className="mx-auto flex w-full max-w-3xl flex-col gap-8 pb-24">

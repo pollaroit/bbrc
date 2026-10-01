@@ -1,21 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { cache } from "react";
 import { UserRpHistory } from "@/components/blocks/user-rp-history";
+import {
+	loadRpChartForIsr,
+	loadRpEventListForIsr,
+	loadUserByUsernameForIsr,
+} from "@/lib/isr-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
-import { orpc } from "@/utils/orpc";
-
-const loadUser = cache((username: string) =>
-	orpc.user.getUserByUsername.call({ username }),
-);
-
-const loadChart = cache((username: string) =>
-	orpc.rp.getRpChart.call({ username }),
-);
-
-const loadEvents = cache((username: string) =>
-	orpc.rp.getRpEventList.call({ username, limit: 20 }),
-);
 
 export async function generateMetadata({
 	params,
@@ -23,7 +14,7 @@ export async function generateMetadata({
 	const { username } = await params;
 
 	try {
-		const user = await loadUser(username);
+		const user = await loadUserByUsernameForIsr(username);
 
 		return buildPageMetadata({
 			title: `${user.name} · RP history`,
@@ -42,9 +33,9 @@ export default async function UserRpHistoryPage({
 
 	try {
 		const [user, chart, initialEvents] = await Promise.all([
-			loadUser(username),
-			loadChart(username),
-			loadEvents(username),
+			loadUserByUsernameForIsr(username),
+			loadRpChartForIsr(username),
+			loadRpEventListForIsr(username),
 		]);
 
 		return (

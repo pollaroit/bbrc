@@ -28,6 +28,11 @@ export async function resolveAppOrigin(): Promise<string> {
 		return window.location.origin;
 	}
 
+	const fromEnv = originFromEnv();
+	if (fromEnv) {
+		return fromEnv;
+	}
+
 	try {
 		const { headers } = await import("next/headers");
 		const requestHeaders = await headers();
@@ -47,7 +52,7 @@ export async function resolveAppOrigin(): Promise<string> {
 		// headers() unavailable outside a request (e.g. some build paths)
 	}
 
-	return originFromEnv() ?? DEV_ORIGIN;
+	return DEV_ORIGIN;
 }
 
 export const RPC_PATH = "/api/rpc";

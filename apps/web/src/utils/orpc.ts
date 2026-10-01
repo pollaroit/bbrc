@@ -48,12 +48,9 @@ export const link = new RPCLink({
 		});
 	},
 	headers: async () => {
-		if (typeof window !== "undefined") {
-			return {};
-		}
-
-		const { headers } = await import("next/headers");
-		return Object.fromEntries(await headers());
+		// Browser sends cookies via `credentials: "include"`. Avoid `headers()` on
+		// the server so ISR/static routes are not forced dynamic (DYNAMIC_SERVER_USAGE).
+		return {};
 	},
 });
 

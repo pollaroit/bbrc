@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { cache } from "react";
 import { UserProfile } from "@/components/blocks/user-profile";
+import { loadUserByUsernameForIsr } from "@/lib/isr-data";
 import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
@@ -9,7 +9,6 @@ import {
 	usernameStaticParams,
 } from "@/lib/seo";
 import { db } from "@/services";
-import { orpc } from "@/utils/orpc";
 
 /** ISR: keep in sync with `DETAIL_PAGE_REVALIDATE_SECONDS` in `@/lib/seo`. */
 export const revalidate = 3600;
@@ -19,17 +18,13 @@ export async function generateStaticParams() {
 	return usernameStaticParams(db);
 }
 
-const loadUserByUsername = cache((username: string) =>
-	orpc.user.getUserByUsername.call({ username }),
-);
-
 export async function generateMetadata({
 	params,
 }: PageProps<"/users/[username]">): Promise<Metadata> {
 	const { username } = await params;
 
 	try {
-		const user = await loadUserByUsername(username);
+		const user = await loadUserByUsernameForIsr(username);
 
 		return buildPageMetadata({
 			title: `${user.name} (@${user.username})`,
@@ -46,7 +41,7 @@ export default async function UserPage({
 	params,
 }: PageProps<"/users/[username]">) {
 	const { username } = await params;
-	const user = await loadUserByUsername(username);
+	const user = await loadUserByUsernameForIsr(username);
 
 	return (
 		<>
