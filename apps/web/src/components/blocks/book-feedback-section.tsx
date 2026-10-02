@@ -15,11 +15,13 @@ import { Label } from "@bbrc/ui/components/label";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { MessageCircle } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { FeedbackLikeEngagement } from "@/components/blocks/feedback-like-engagement";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
@@ -103,6 +105,7 @@ export function BookFeedbackSection({
 					await invalidateUserPointQueries();
 				}
 				setReview("");
+				router.push(`/books/${bookSlug}/feedbacks/${result.slug}` as Route);
 				router.refresh();
 			},
 			onError: (error) => toast.error(error.message),
@@ -126,6 +129,15 @@ export function BookFeedbackSection({
 		state.hint;
 	const myFeedback =
 		state?.myFeedback && session?.user ? state.myFeedback : null;
+	const myReviewInList = myFeedback
+		? reviews.find((entry) => entry.slug === myFeedback.slug)
+		: undefined;
+	const myFeedbackHref = myFeedback
+		? (`/books/${bookSlug}/feedbacks/${myFeedback.slug}` as Route)
+		: null;
+	const myFeedbackCommentsHref = myFeedback
+		? (`/books/${bookSlug}/feedbacks/${myFeedback.slug}#comments` as Route)
+		: null;
 
 	return (
 		<section
@@ -159,6 +171,8 @@ export function BookFeedbackSection({
 					{reviews.map((entry) => {
 						const feedbackHref =
 							`/books/${bookSlug}/feedbacks/${entry.slug}` as Route;
+						const commentsHref =
+							`/books/${bookSlug}/feedbacks/${entry.slug}#comments` as Route;
 
 						return (
 							<li key={entry.slug}>
@@ -186,12 +200,20 @@ export function BookFeedbackSection({
 										>
 											{entry.review}
 										</Link>
-										<p className="text-muted-foreground text-xs tabular-nums">
-											{entry.likeCount}{" "}
-											{entry.likeCount === 1 ? "like" : "likes"} ·{" "}
-											{entry.commentCount}{" "}
-											{entry.commentCount === 1 ? "comment" : "comments"}
-										</p>
+										<div className="flex flex-wrap items-center gap-4 border-t pt-3 text-muted-foreground text-sm">
+											<FeedbackLikeEngagement
+												feedbackSlug={entry.slug}
+												initialLikeCount={entry.likeCount}
+												initialLikedByMe={entry.likedByMe}
+											/>
+											<Link
+												href={commentsHref}
+												className="inline-flex items-center gap-1.5 tabular-nums transition-colors hover:text-foreground"
+											>
+												<MessageCircle className="size-4" aria-hidden />
+												{entry.commentCount}
+											</Link>
+										</div>
 									</CardContent>
 								</Card>
 							</li>
@@ -221,7 +243,39 @@ export function BookFeedbackSection({
 									{formatDateTime(myFeedback.createdAt)}
 								</p>
 							</div>
-							<p className="text-sm leading-relaxed">{myFeedback.review}</p>
+							{myFeedbackHref ? (
+								<Link
+									href={myFeedbackHref}
+									className="text-sm leading-relaxed transition-colors hover:text-foreground/90"
+								>
+									{myFeedback.review}
+								</Link>
+							) : (
+								<p className="text-sm leading-relaxed">{myFeedback.review}</p>
+							)}
+							{myFeedbackHref && myReviewInList && myFeedbackCommentsHref ? (
+								<div className="flex flex-wrap items-center gap-4 border-t pt-3 text-muted-foreground text-sm">
+									<FeedbackLikeEngagement
+										feedbackSlug={myFeedback.slug}
+										initialLikeCount={myReviewInList.likeCount}
+										initialLikedByMe={myReviewInList.likedByMe}
+									/>
+									<Link
+										href={myFeedbackCommentsHref}
+										className="inline-flex items-center gap-1.5 tabular-nums transition-colors hover:text-foreground"
+									>
+										<MessageCircle className="size-4" aria-hidden />
+										{myReviewInList.commentCount}
+									</Link>
+								</div>
+							) : myFeedbackHref ? (
+								<Link
+									href={myFeedbackHref}
+									className="text-muted-foreground text-sm hover:text-foreground"
+								>
+									Open review page
+								</Link>
+							) : null}
 							<LoadingButton
 								type="button"
 								variant="destructive"

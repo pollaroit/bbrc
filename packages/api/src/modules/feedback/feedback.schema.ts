@@ -19,6 +19,7 @@ export const BookFeedbackReviewSchema = zod.object({
 	review: FeedbackSchema.shape.review,
 	createdAt: zod.coerce.date(),
 	likeCount: zod.number().int().min(0),
+	likedByMe: zod.boolean(),
 	commentCount: zod.number().int().min(0),
 });
 
@@ -38,6 +39,7 @@ export const GetBookFeedbackStateOutputSchema = zod.object({
 	canSubmit: zod.boolean(),
 	myFeedback: zod
 		.object({
+			slug: FeedbackSchema.shape.slug,
 			rating: FeedbackSchema.shape.rating,
 			review: FeedbackSchema.shape.review,
 			createdAt: zod.coerce.date(),
@@ -135,7 +137,6 @@ export const GetFeedbackBySlugOutputSchema = FeedbackSchema.pick({
 	likeCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
 	commentCount: zod.number().int().min(0),
-	canLike: zod.boolean(),
 	sittingSlug: BookSchema.shape.slug.nullable(),
 });
 

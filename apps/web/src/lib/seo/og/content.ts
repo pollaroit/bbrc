@@ -181,13 +181,14 @@ export async function resolveOgImageContent(
 			return {
 				kind: "Review",
 				title: truncateOgTitle(feedback.review),
-				description: truncateOgLine(feedback.review, 160),
+				description: truncateOgLine(
+					`${feedback.bookTitle} · ${feedback.author.name} (@${feedback.author.username})`,
+					140,
+				),
 				highlights: [
-					feedback.bookTitle,
-					`@${feedback.author.username}`,
 					`${feedback.rating.toFixed(1)} / 5`,
-					`${feedback.likeCount} like${feedback.likeCount === 1 ? "" : "s"}`,
-					`${feedback.commentCount} comment${feedback.commentCount === 1 ? "" : "s"}`,
+					formatCount("like", feedback.likeCount),
+					formatCount("comment", feedback.commentCount),
 				],
 			};
 		} catch {

@@ -3,7 +3,6 @@ import { LikeSourceSchema } from "@bbrc/schemas";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
-import { userParticipatedClubRead } from "../book/book-read-eligibility";
 import { notifyReactionOnYourPost } from "../notification/notification-triggers";
 import {
 	likeListRanging,
@@ -259,16 +258,6 @@ export async function toggleLike(
 	db: Database,
 ): Promise<ToggleLikeOutput> {
 	const target = await resolveLikeTarget(input, db);
-
-	if (target.source === LikeSourceSchema.enum.feedback) {
-		const allowed = await userParticipatedClubRead(userId, target.bookId, db);
-		if (!allowed) {
-			throw new ORPCError("FORBIDDEN", {
-				message:
-					"Only participants of the sitting that read this book can like reviews",
-			});
-		}
-	}
 
 	const result = await db.$transaction(async (tx) => {
 		const existing = await tx.like.findFirst({

@@ -2,7 +2,7 @@ import type { GetFeedbackBySlugOutput } from "@bbrc/api/modules/feedback/feedbac
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MessageCircle } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { FeedbackCommentsSection } from "@/components/blocks/feedback-comments-section";
@@ -17,6 +17,8 @@ type FeedbackDetailProps = {
 
 export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
 	const bookHref = `/books/${feedback.bookSlug}` as Route;
+	const commentsHref =
+		`/books/${feedback.bookSlug}/feedbacks/${feedback.slug}#comments` as Route;
 	const profileHref = `/users/${feedback.author.username}` as Route;
 	const sittingHref = feedback.sittingSlug
 		? (`/sittings/${feedback.sittingSlug}` as Route)
@@ -58,17 +60,19 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
 					<p className="whitespace-pre-wrap text-sm leading-relaxed">
 						{feedback.review}
 					</p>
-					<div className="flex flex-wrap items-center gap-3 border-t pt-4">
+					<div className="flex flex-wrap items-center gap-4 border-t pt-4 text-muted-foreground text-sm">
 						<FeedbackLikeEngagement
 							feedbackSlug={feedback.slug}
 							initialLikeCount={feedback.likeCount}
 							initialLikedByMe={feedback.likedByMe}
-							canLike={feedback.canLike}
 						/>
-						<span className="inline-flex items-center gap-1.5 text-muted-foreground text-sm tabular-nums">
-							{feedback.commentCount}{" "}
-							{feedback.commentCount === 1 ? "comment" : "comments"}
-						</span>
+						<Link
+							href={commentsHref}
+							className="inline-flex items-center gap-1.5 tabular-nums transition-colors hover:text-foreground"
+						>
+							<MessageCircle className="size-4" aria-hidden />
+							{feedback.commentCount}
+						</Link>
 						<FeedbackCopyLinkButton
 							bookSlug={feedback.bookSlug}
 							feedbackSlug={feedback.slug}

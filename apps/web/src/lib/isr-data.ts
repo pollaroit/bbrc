@@ -23,7 +23,7 @@ export const loadBookBySlugForIsr = cache((slug: string) =>
 );
 
 export const loadBookFeedbackListForIsr = cache((slug: string) =>
-	getBookFeedbackList(slug, db),
+	getBookFeedbackList(slug, db, anonymousSession),
 );
 
 export const loadPostBySlugForIsr = cache((slug: string) =>

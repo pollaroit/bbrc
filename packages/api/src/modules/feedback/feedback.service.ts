@@ -6,7 +6,6 @@ import { definePagination } from "../../utils/pagination";
 import {
 	clubReadEligibilityHint,
 	userCompletedClubRead,
-	userParticipatedClubRead,
 } from "../book/book-read-eligibility";
 import { notifyMemberFeedbackOnBook } from "../notification/notification-triggers";
 import { XP_AWARD } from "../xp/xp.schema";
@@ -68,16 +67,23 @@ function feedbackEligibilityHint(
 	});
 }
 
+function viewerUserId(session: Session | null): string | null {
+	return session?.user.id ?? null;
+}
+
 export async function getBookFeedbackList(
 	bookSlug: string,
 	db: Database,
+	session: Session | null,
 ): Promise<GetBookFeedbackListOutput> {
 	const book = await loadBookBySlug(bookSlug, db);
+	const userId = viewerUserId(session);
 
 	const feedbacks = await db.feedback.findMany({
 		where: { bookId: book.id },
 		orderBy: { createdAt: "desc" },
 		select: {
+			id: true,
 			slug: true,
 			rating: true,
 			review: true,
@@ -99,6 +105,12 @@ export async function getBookFeedbackList(
 		},
 	});
 
+	const likedFeedbackIds = await loadLikedFeedbackIds(
+		feedbacks.map((row) => row.id),
+		userId,
+		db,
+	);
+
 	return feedbacks.map((feedback) => ({
 		slug: feedback.slug,
 		authorId: feedback.authorId,
@@ -109,6 +121,7 @@ export async function getBookFeedbackList(
 		review: feedback.review,
 		createdAt: feedback.createdAt,
 		likeCount: feedback._count.likes,
+		likedByMe: likedFeedbackIds.has(feedback.id),
 		commentCount: feedback._count.comments,
 	}));
 }
@@ -166,11 +179,6 @@ export async function getFeedbackBySlug(
 		orderBy: { createdAt: "desc" },
 	});
 
-	const canLike =
-		userId != null
-			? await userParticipatedClubRead(userId, feedback.bookId, db)
-			: false;
-
 	return {
 		slug: feedback.slug,
 		review: feedback.review,
@@ -182,7 +190,6 @@ export async function getFeedbackBySlug(
 		likeCount: feedback._count.likes,
 		likedByMe: likedFeedbackIds.has(feedback.id),
 		commentCount: feedback._count.comments,
-		canLike,
 		sittingSlug: sitting?.slug ?? null,
 	};
 }
@@ -246,6 +253,7 @@ export async function getBookFeedbackState(
 			},
 		},
 		select: {
+			slug: true,
 			rating: true,
 			review: true,
 			createdAt: true,

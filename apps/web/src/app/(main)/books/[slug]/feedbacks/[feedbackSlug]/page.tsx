@@ -7,6 +7,7 @@ import {
 	buildPageMetadata,
 	truncateDescription,
 } from "@/lib/seo";
+import { truncateOgTitle } from "@/lib/seo/og/helpers";
 import { db } from "@/services";
 
 export const dynamic = "force-dynamic";
@@ -29,10 +30,10 @@ export async function generateMetadata({
 		}
 
 		return buildPageMetadata({
-			title: `Review by ${feedback.author.name}`,
-			description:
-				truncateDescription(feedback.review) ||
-				`Club review of ${feedback.bookTitle} on BBRC.`,
+			title: truncateOgTitle(feedback.review),
+			description: truncateDescription(
+				`${feedback.bookTitle} · ${feedback.rating.toFixed(1)} / 5 · ${feedback.author.name}`,
+			),
 			path: `/books/${slug}/feedbacks/${feedbackSlug}`,
 			openGraph: { type: "article" },
 		});
