@@ -7,7 +7,7 @@ import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
-import { Pencil, Trash2 } from "lucide-react";
+import { Link2, Pencil, Trash2 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
@@ -38,6 +38,47 @@ type CommentListItemProps = {
 	onReply?: () => void;
 	className?: string;
 };
+
+function CommentCopyLinkButton({
+	postSlug,
+	commentSlug,
+	className,
+}: {
+	postSlug: string;
+	commentSlug: string;
+	className?: string;
+}) {
+	const [copied, setCopied] = useState(false);
+
+	async function handleCopy() {
+		try {
+			const url = `${window.location.origin}/posts/${postSlug}/comments/${commentSlug}`;
+			await navigator.clipboard.writeText(url);
+			toast.success("Comment link copied.");
+			setCopied(true);
+			window.setTimeout(() => setCopied(false), 2000);
+		} catch {
+			toast.error("Could not copy link.");
+		}
+	}
+
+	return (
+		<Button
+			type="button"
+			variant="ghost"
+			size="sm"
+			className={cn(
+				"h-7 gap-1 px-2 text-muted-foreground text-xs hover:text-foreground",
+				className,
+			)}
+			aria-label="Copy link to this comment"
+			onClick={() => void handleCopy()}
+		>
+			<Link2 className="size-3.5 shrink-0" aria-hidden />
+			{copied ? "Copied" : "Copy link"}
+		</Button>
+	);
+}
 
 async function invalidateCommentQueries() {
 	await queryClient.invalidateQueries({
@@ -272,6 +313,12 @@ export function CommentListItemView({
 								initialLikedByMe={comment.likedByMe}
 								size="sm"
 							/>
+							{postSlug ? (
+								<CommentCopyLinkButton
+									postSlug={postSlug}
+									commentSlug={comment.slug}
+								/>
+							) : null}
 							{canReply && onReply && session?.user ? (
 								<Button
 									type="button"
@@ -335,6 +382,13 @@ export function CommentListItemView({
 						initialLikedByMe={comment.likedByMe}
 						size={isCompact ? "sm" : "md"}
 					/>
+					{postSlug ? (
+						<CommentCopyLinkButton
+							postSlug={postSlug}
+							commentSlug={comment.slug}
+							className="h-auto py-1"
+						/>
+					) : null}
 					{canReply && onReply && session?.user ? (
 						<Button
 							type="button"
