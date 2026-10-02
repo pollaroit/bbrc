@@ -314,6 +314,11 @@ export async function createBookFromWork(
 	createdAt: Date,
 ) {
 	const slug = await generateCatalogBookSlug(work.title, tx);
+	const olid = openLibraryWorkKeyToOlid(work.workKey);
+
+	if (!olid) {
+		throw new Error(`Could not derive OLID from work key "${work.workKey}"`);
+	}
 
 	return tx.book.create({
 		data: {
@@ -326,7 +331,7 @@ export async function createBookFromWork(
 			publishedIn: work.publishedIn,
 			coverId: work.coverId,
 			excerpt: work.excerpt,
-			olid: openLibraryWorkKeyToOlid(work.workKey),
+			olid,
 			subjectPeople: work.subjectPeople,
 			subjectTimes: work.subjectTimes,
 			subjects: work.subjects,

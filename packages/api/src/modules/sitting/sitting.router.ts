@@ -4,6 +4,7 @@ import {
 	notBannedProcedure,
 	publicProcedure,
 } from "../../procedures";
+import { revalidateSittingIsr } from "../../revalidate-isr";
 import {
 	CreateSittingInputSchema,
 	CreateSittingOutputSchema,
@@ -64,16 +65,20 @@ export const sittingRouter = {
 	createSitting: adminProcedure
 		.input(CreateSittingInputSchema)
 		.output(CreateSittingOutputSchema)
-		.handler(
-			async ({ input, context }) => await createSitting(input, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const sitting = await createSitting(input, context.db);
+			revalidateSittingIsr(context, sitting.slug);
+			return sitting;
+		}),
 	submitPollVotes: notBannedProcedure
 		.input(SubmitPollVotesInputSchema)
 		.output(SubmitPollVotesOutputSchema)
 		.handler(async ({ input, context }) => {
 			const userId = context.session.user.id;
 
-			return await submitPollVotes(input, userId, context.db);
+			const result = await submitPollVotes(input, userId, context.db);
+			revalidateSittingIsr(context, input.sittingSlug);
+			return result;
 		}),
 	getPollOptionVotes: adminProcedure
 		.input(GetPollOptionVotesInputSchema)
@@ -84,16 +89,19 @@ export const sittingRouter = {
 	transitionSitting: adminProcedure
 		.input(TransitionSittingInputSchema)
 		.output(TransitionSittingOutputSchema)
-		.handler(
-			async ({ input, context }) => await transitionSitting(input, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const result = await transitionSitting(input, context.db);
+			revalidateSittingIsr(context, result.slug);
+			return result;
+		}),
 	updateSittingDeadlines: adminProcedure
 		.input(UpdateSittingDeadlinesInputSchema)
 		.output(UpdateSittingDeadlinesOutputSchema)
-		.handler(
-			async ({ input, context }) =>
-				await updateSittingDeadlines(input, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const result = await updateSittingDeadlines(input, context.db);
+			revalidateSittingIsr(context, input.slug);
+			return result;
+		}),
 	updateMyParticipationProgress: notBannedProcedure
 		.input(UpdateMyParticipationProgressInputSchema)
 		.output(UpdateMyParticipationProgressOutputSchema)
@@ -103,22 +111,25 @@ export const sittingRouter = {
 	updateParticipation: adminProcedure
 		.input(UpdateParticipationInputSchema)
 		.output(UpdateParticipationOutputSchema)
-		.handler(
-			async ({ input, context }) =>
-				await updateParticipation(input, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const result = await updateParticipation(input, context.db);
+			revalidateSittingIsr(context, input.slug);
+			return result;
+		}),
 	addSittingParticipant: adminProcedure
 		.input(SittingParticipantMutationInputSchema)
 		.output(SittingParticipantMutationOutputSchema)
-		.handler(
-			async ({ input, context }) =>
-				await addSittingParticipant(input, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const result = await addSittingParticipant(input, context.db);
+			revalidateSittingIsr(context, input.slug);
+			return result;
+		}),
 	removeSittingParticipant: adminProcedure
 		.input(SittingParticipantMutationInputSchema)
 		.output(SittingParticipantMutationOutputSchema)
-		.handler(
-			async ({ input, context }) =>
-				await removeSittingParticipant(input, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const result = await removeSittingParticipant(input, context.db);
+			revalidateSittingIsr(context, input.slug);
+			return result;
+		}),
 };

@@ -1,6 +1,7 @@
 export * from "./club-timezone";
 export * from "./comment-thread";
 export * from "./favorites";
+export * from "./isr-paths";
 export * from "./notifications";
 export * from "./open-library";
 export * from "./reading-deadline";

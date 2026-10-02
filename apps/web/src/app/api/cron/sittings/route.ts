@@ -1,6 +1,7 @@
 import { runSittingDeadlineCron } from "@bbrc/api/modules/sitting/sitting-cron.service";
 import { NextResponse } from "next/server";
 import { ENV } from "@/env";
+import { createIsrRevalidator } from "@/lib/isr-revalidation";
 import { db } from "@/services";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,14 @@ export async function GET(request: Request) {
 	}
 
 	const result = await runSittingDeadlineCron(db);
+
+	const revalidateIsr = createIsrRevalidator();
+	const slugsToRefresh = [
+		...new Set([...result.pollsClosed, ...result.sittingsFinished]),
+	];
+	for (const slug of slugsToRefresh) {
+		revalidateIsr.revalidateSitting(slug);
+	}
 
 	return NextResponse.json({
 		ok: true,

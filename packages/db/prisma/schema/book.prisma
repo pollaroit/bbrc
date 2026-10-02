@@ -33,8 +33,8 @@ model Book {
   excerpt         String?    @db.Text
 
   /// @zod.import(["import { isOpenLibraryOlid } from '@bbrc/shared'"])
-  /// @zod.refine((v) => v == null || isOpenLibraryOlid(v), { message: "Invalid Open Library work ID" }).nullish()
-  olid            String?    @unique
+  /// @zod.refine((v) => isOpenLibraryOlid(v), { message: "Invalid Open Library work ID" })
+  olid            String     @unique
 
   subjectPeople String[] @default([]) @map("subject_people")
   subjectTimes  String[] @default([]) @map("subject_times")

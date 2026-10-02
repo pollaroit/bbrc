@@ -16,7 +16,6 @@ export const EditBookFormSchema = z.object({
 	publishedIn: BookSchema.shape.publishedIn,
 	averageRating: z.number().min(0).max(5).nullable(),
 	status: BookStatusSchema,
-	olid: BookSchema.shape.olid,
 });
 
 export type EditBookFormValues = z.infer<typeof EditBookFormSchema>;
@@ -34,7 +33,6 @@ export function bookToEditFormValues(
 		publishedIn: book.publishedIn,
 		averageRating: book.averageRating ?? null,
 		status: book.status,
-		olid: book.olid ?? null,
 	};
 }
 
@@ -50,6 +48,5 @@ export function toUpdateBookInput(slug: string, values: EditBookFormValues) {
 		publishedIn: values.publishedIn,
 		averageRating: values.averageRating ?? undefined,
 		status: values.status,
-		olid: values.olid ?? undefined,
 	});
 }

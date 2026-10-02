@@ -1,4 +1,5 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { revalidateCommentIsr, revalidatePostIsr } from "../../revalidate-isr";
 import {
 	CreateCommentInputSchema,
 	CreateCommentOutputSchema,
@@ -35,19 +36,41 @@ export const commentRouter = {
 	create: notBannedProcedure
 		.input(CreateCommentInputSchema)
 		.output(CreateCommentOutputSchema)
-		.handler(async ({ input, context }) =>
-			createComment(input, context.session.user.id, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const comment = await createComment(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			if (input.postSlug) {
+				revalidatePostIsr(context, input.postSlug);
+			} else if (input.feedbackSlug) {
+				await revalidateCommentIsr(context, context.db, comment.slug);
+			}
+			return comment;
+		}),
 	update: notBannedProcedure
 		.input(UpdateCommentInputSchema)
 		.output(UpdateCommentOutputSchema)
-		.handler(async ({ input, context }) =>
-			updateComment(input, context.session.user.id, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const comment = await updateComment(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			await revalidateCommentIsr(context, context.db, comment.slug);
+			return comment;
+		}),
 	delete: notBannedProcedure
 		.input(DeleteCommentInputSchema)
 		.output(DeleteCommentOutputSchema)
-		.handler(async ({ input, context }) =>
-			deleteComment(input, context.session.user.id, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			await revalidateCommentIsr(context, context.db, input.slug);
+			const result = await deleteComment(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			return result;
+		}),
 };

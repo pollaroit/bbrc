@@ -114,7 +114,6 @@ export const UpdateBookInputSchema = BookSchema.pick({
 	averageRating: true,
 	status: true,
 	slug: true,
-	olid: true,
 })
 	.partial()
 	.required({ slug: true });

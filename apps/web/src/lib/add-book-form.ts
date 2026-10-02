@@ -37,7 +37,7 @@ export function toAddBookInput(values: AddNewBookFormValues) {
 		excerpt: values.excerpt ?? undefined,
 		pages: values.pages,
 		publishedIn: values.publishedIn,
-		olid: values.olid ?? undefined,
+		olid: values.olid,
 		subjectPeople: values.subjectPeople,
 		subjectTimes: values.subjectTimes,
 		subjects: values.subjects,

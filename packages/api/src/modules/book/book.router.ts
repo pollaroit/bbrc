@@ -1,5 +1,6 @@
 import { BookSchema } from "@bbrc/schemas";
 import { adminProcedure, publicProcedure } from "../../procedures";
+import { revalidateBookIsr } from "../../revalidate-isr";
 import {
 	AddBookInputSchema,
 	AddBookOutputSchema,
@@ -33,13 +34,25 @@ export const bookRouter = {
 	addBook: adminProcedure
 		.input(AddBookInputSchema)
 		.output(AddBookOutputSchema)
-		.handler(async ({ input, context }) => await addBook(input, context.db)),
+		.handler(async ({ input, context }) => {
+			const book = await addBook(input, context.db);
+			revalidateBookIsr(context, book.slug);
+			return book;
+		}),
 	updateBook: adminProcedure
 		.input(UpdateBookInputSchema)
 		.output(UpdateBookOutputSchema)
-		.handler(async ({ input, context }) => await updateBook(input, context.db)),
+		.handler(async ({ input, context }) => {
+			const book = await updateBook(input, context.db);
+			revalidateBookIsr(context, book.slug);
+			return book;
+		}),
 	removeBook: adminProcedure
 		.input(BookSchema.shape.slug)
 		.output(BookSchema.shape.slug)
-		.handler(async ({ input, context }) => await removeBook(input, context.db)),
+		.handler(async ({ input, context }) => {
+			const slug = await removeBook(input, context.db);
+			revalidateBookIsr(context, slug);
+			return slug;
+		}),
 };

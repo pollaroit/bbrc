@@ -3,6 +3,7 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "../../procedures";
+import { revalidateBookIsr } from "../../revalidate-isr";
 import {
 	CreateFeedbackInputSchema,
 	CreateFeedbackOutputSchema,
@@ -54,13 +55,25 @@ export const feedbackRouter = {
 	create: notBannedProcedure
 		.input(CreateFeedbackInputSchema)
 		.output(CreateFeedbackOutputSchema)
-		.handler(async ({ input, context }) =>
-			createFeedback(input, context.session.user.id, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const feedback = await createFeedback(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			revalidateBookIsr(context, input.bookSlug);
+			return feedback;
+		}),
 	delete: notBannedProcedure
 		.input(DeleteFeedbackInputSchema)
 		.output(DeleteFeedbackOutputSchema)
-		.handler(async ({ input, context }) =>
-			deleteFeedback(input, context.session.user.id, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const result = await deleteFeedback(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			revalidateBookIsr(context, input);
+			return result;
+		}),
 };

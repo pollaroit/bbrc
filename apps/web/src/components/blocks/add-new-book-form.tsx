@@ -39,6 +39,15 @@ import type { OpenLibrarySearchWork } from "@/lib/open-library/types";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
+function requireWorkOlid(work: OpenLibrarySearchWork): string {
+	const olid = openLibraryWorkKeyToOlid(work.workKey);
+	if (!olid) {
+		throw new Error(`Could not resolve Open Library ID for "${work.title}"`);
+	}
+
+	return olid;
+}
+
 function workToFormValues(work: OpenLibrarySearchWork): AddNewBookFormValues {
 	return {
 		title: work.title,
@@ -48,7 +57,7 @@ function workToFormValues(work: OpenLibrarySearchWork): AddNewBookFormValues {
 		excerpt: work.description,
 		pages: 0,
 		publishedIn: work.publishedIn ?? new Date().getFullYear(),
-		olid: openLibraryWorkKeyToOlid(work.workKey),
+		olid: requireWorkOlid(work),
 		subjectPeople: [],
 		subjectTimes: [],
 		subjects: [],
@@ -443,6 +452,17 @@ export function AddNewBookForm() {
 		setSelectedWork(null);
 	};
 
+	const handleSelectWork = (work: OpenLibrarySearchWork) => {
+		if (!openLibraryWorkKeyToOlid(work.workKey)) {
+			toast.error(
+				"This Open Library work could not be linked. Try another result.",
+			);
+			return;
+		}
+
+		setSelectedWork(work);
+	};
+
 	const handleAddAnother = () => {
 		setSelectedWork(null);
 		setSearchQuery("");
@@ -484,7 +504,7 @@ export function AddNewBookForm() {
 					<OpenLibraryWorkResults
 						works={searchData?.works ?? []}
 						selectedWorkKey={null}
-						onSelect={setSelectedWork}
+						onSelect={handleSelectWork}
 						isLoading={searchEnabled && isSearching}
 					/>
 				) : (

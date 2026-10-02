@@ -1,4 +1,5 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { revalidatePostIsr } from "../../revalidate-isr";
 import {
 	CreatePostInputSchema,
 	CreatePostOutputSchema,
@@ -35,19 +36,29 @@ export const postRouter = {
 	create: notBannedProcedure
 		.input(CreatePostInputSchema)
 		.output(CreatePostOutputSchema)
-		.handler(async ({ input, context }) =>
-			createPost(input, context.session.user.id, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const post = await createPost(input, context.session.user.id, context.db);
+			revalidatePostIsr(context, post.slug);
+			return post;
+		}),
 	update: notBannedProcedure
 		.input(UpdatePostInputSchema)
 		.output(UpdatePostOutputSchema)
-		.handler(async ({ input, context }) =>
-			updatePost(input, context.session.user.id, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const post = await updatePost(input, context.session.user.id, context.db);
+			revalidatePostIsr(context, post.slug);
+			return post;
+		}),
 	delete: notBannedProcedure
 		.input(DeletePostInputSchema)
 		.output(DeletePostOutputSchema)
-		.handler(async ({ input, context }) =>
-			deletePost(input, context.session.user.id, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const result = await deletePost(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			revalidatePostIsr(context, result.slug);
+			return result;
+		}),
 };
