@@ -5,20 +5,11 @@ import { notFound, redirect } from "next/navigation";
 import { SittingParticipantsPageContent } from "@/components/blocks/sitting-participants-page-content";
 import { SittingParticipantsPageIntro } from "@/components/blocks/sitting-participants-page-intro";
 import { loadSittingBySlugForIsr } from "@/lib/isr-data";
-import {
-	buildNotFoundMetadata,
-	buildPageMetadata,
-	sittingSlugStaticParams,
-} from "@/lib/seo";
+import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { auth, db } from "@/services";
 
-/** ISR: keep in sync with `DETAIL_PAGE_REVALIDATE_SECONDS` in `@/lib/seo`. */
-export const revalidate = 3600;
-export const dynamicParams = true;
-
-export async function generateStaticParams() {
-	return sittingSlugStaticParams(db);
-}
+/** Session-gated (`headers()`); do not ISR or prerender this segment. */
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
 	params,
