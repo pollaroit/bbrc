@@ -1,23 +1,38 @@
+"use client";
+
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { Badge } from "@bbrc/ui/components/badge";
+import { useQuery } from "@tanstack/react-query";
 import { formatDateTime } from "@/lib/format-datetime";
+import { formatPollPageRange } from "@/lib/poll-page-range";
+import { orpc } from "@/utils/orpc";
+
+type SittingPoll = NonNullable<GetSittingBySlugOutput["poll"]>;
 
 type SittingVotePageIntroProps = {
-	sitting: GetSittingBySlugOutput;
+	sittingSlug: string;
+	sittingStatus: GetSittingBySlugOutput["status"];
+	initialPoll: SittingPoll;
 };
 
-export function SittingVotePageIntro({ sitting }: SittingVotePageIntroProps) {
-	const poll = sitting.poll;
-	if (!poll) {
-		return null;
-	}
+export function SittingVotePageIntro({
+	sittingSlug,
+	sittingStatus,
+	initialPoll,
+}: SittingVotePageIntroProps) {
+	const { data: sitting } = useQuery({
+		...orpc.sitting.getSittingBySlug.queryOptions({ input: sittingSlug }),
+	});
+
+	const poll = sitting?.poll ?? initialPoll;
+	const status = sitting?.status ?? sittingStatus;
 
 	const maxChoices = poll.maxChoices ?? poll.take;
 	const totalVotes = poll.options.reduce(
 		(sum, option) => sum + option.voteCount,
 		0,
 	);
-	const isOpen = sitting.status === "voting";
+	const isOpen = status === "voting";
 
 	return (
 		<header className="flex flex-col gap-4 border border-border bg-muted/30 p-4 sm:p-6">
@@ -55,7 +70,7 @@ export function SittingVotePageIntro({ sitting }: SittingVotePageIntroProps) {
 				<div className="border border-border/60 bg-background/80 px-3 py-2">
 					<dt className="text-muted-foreground text-xs">Page range</dt>
 					<dd className="font-medium text-sm tabular-nums">
-						{poll.minPages ?? "—"} – {poll.maxPages ?? "—"}
+						{formatPollPageRange(poll.minPages, poll.maxPages)}
 					</dd>
 				</div>
 				<div className="border border-border/60 bg-background/80 px-3 py-2">

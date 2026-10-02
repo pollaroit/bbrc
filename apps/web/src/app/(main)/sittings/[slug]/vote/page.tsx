@@ -73,7 +73,11 @@ export default async function SittingVotePage({
 
 	return (
 		<div className="flex flex-col gap-6">
-			<SittingVotePageIntro sitting={sitting} />
+			<SittingVotePageIntro
+				sittingSlug={sitting.slug}
+				sittingStatus={sitting.status}
+				initialPoll={sitting.poll}
+			/>
 			<SittingPollSection
 				sittingSlug={sitting.slug}
 				sittingStatus={sitting.status}

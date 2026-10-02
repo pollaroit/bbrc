@@ -24,6 +24,7 @@ import { authClient } from "@/lib/auth-client";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
+import { formatPollPageRange } from "@/lib/poll-page-range";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -57,9 +58,11 @@ export function SittingPollSection({
 	const { data: session, isPending: isSessionPending } =
 		authClient.useSession();
 
+	const syncPollFromServer = layout === "page" || !readonly;
+
 	const { data: sittingData } = useQuery({
 		...orpc.sitting.getSittingBySlug.queryOptions({ input: sittingSlug }),
-		enabled: !readonly,
+		enabled: syncPollFromServer,
 	});
 
 	const poll = sittingData?.poll ?? initialPoll;
@@ -91,14 +94,22 @@ export function SittingPollSection({
 		}
 	}, [poll.myVoteOptionIds]);
 
+	const effectiveParticipantUserIds = useMemo(() => {
+		if (sittingData?.participants) {
+			return sittingData.participants.map((participant) => participant.userId);
+		}
+
+		return participantUserIds;
+	}, [participantUserIds, sittingData?.participants]);
+
 	const isParticipant = useMemo(() => {
 		const userId = session?.user.id;
 		if (!userId) {
 			return false;
 		}
 
-		return participantUserIds.includes(userId);
-	}, [participantUserIds, session?.user.id]);
+		return effectiveParticipantUserIds.includes(userId);
+	}, [effectiveParticipantUserIds, session?.user.id]);
 
 	const canVoteBase =
 		!readonly &&
@@ -191,7 +202,7 @@ export function SittingPollSection({
 					<div>
 						<dt className="text-muted-foreground text-xs">Page range</dt>
 						<dd className="font-medium text-sm tabular-nums">
-							{poll.minPages ?? "—"} – {poll.maxPages ?? "—"}
+							{formatPollPageRange(poll.minPages, poll.maxPages)}
 						</dd>
 					</div>
 				</dl>
