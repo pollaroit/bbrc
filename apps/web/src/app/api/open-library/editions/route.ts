@@ -1,6 +1,7 @@
 import type { OpenLibraryEditionHints } from "@/lib/open-library/editions";
 import {
 	buildEditionHints,
+	mergeWorkSubjectsIntoEditionHints,
 	type OpenLibraryEditionsResponse,
 	type OpenLibraryWorkDocument,
 	type OpenLibraryWorkRatingsResponse,
@@ -54,10 +55,13 @@ export async function GET(request: Request) {
 	const editionsPayload =
 		(await editionsResponse.json()) as OpenLibraryEditionsResponse;
 
-	const hints = buildEditionHints(
-		editionsPayload.entries ?? [],
-		parseWorkRatingsAverage(ratingsPayload),
-		parseWorkExcerpt(workPayload),
+	const hints = mergeWorkSubjectsIntoEditionHints(
+		buildEditionHints(
+			editionsPayload.entries ?? [],
+			parseWorkRatingsAverage(ratingsPayload),
+			parseWorkExcerpt(workPayload),
+		),
+		workPayload,
 	);
 
 	return Response.json(hints satisfies OpenLibraryEditionHints);

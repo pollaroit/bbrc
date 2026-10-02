@@ -1,6 +1,8 @@
 import { AddBookInputSchema } from "@bbrc/api/modules/book/book.schema";
 import z from "zod";
 
+const stringArrayField = z.array(z.string());
+
 export const AddNewBookFormSchema = z.object({
 	title: AddBookInputSchema.shape.title,
 	authorsText: z.string().min(1, "At least one author is required"),
@@ -9,6 +11,10 @@ export const AddNewBookFormSchema = z.object({
 	excerpt: z.string().max(4000).nullable(),
 	pages: AddBookInputSchema.shape.pages,
 	publishedIn: AddBookInputSchema.shape.publishedIn,
+	olid: AddBookInputSchema.shape.olid,
+	subjectPeople: stringArrayField,
+	subjectTimes: stringArrayField,
+	subjects: stringArrayField,
 });
 
 export type AddNewBookFormValues = z.infer<typeof AddNewBookFormSchema>;
@@ -31,6 +37,10 @@ export function toAddBookInput(values: AddNewBookFormValues) {
 		excerpt: values.excerpt ?? undefined,
 		pages: values.pages,
 		publishedIn: values.publishedIn,
+		olid: values.olid ?? undefined,
+		subjectPeople: values.subjectPeople,
+		subjectTimes: values.subjectTimes,
+		subjects: values.subjects,
 	});
 }
 

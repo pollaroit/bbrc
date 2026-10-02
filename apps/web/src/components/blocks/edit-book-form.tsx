@@ -286,6 +286,34 @@ export function EditBookForm({ book }: EditBookFormProps) {
 						/>
 					</div>
 
+					<Field>
+						<form.Input
+							name="olid"
+							label="Open Library work ID"
+							render={(field, fieldState) => (
+								<Input
+									id={field.name}
+									placeholder="OL1234567W"
+									spellCheck={false}
+									autoCapitalize="characters"
+									aria-invalid={fieldState.invalid}
+									value={field.value ?? ""}
+									onChange={(event) => {
+										const next = event.target.value.trim();
+										field.onChange(next === "" ? null : next.toUpperCase());
+									}}
+									onBlur={field.onBlur}
+									name={field.name}
+									ref={field.ref}
+								/>
+							)}
+						/>
+						<FieldDescription>
+							Optional. Example: OL82563W. Links this entry to Open Library and
+							prevents duplicate imports.
+						</FieldDescription>
+					</Field>
+
 					<form.Input
 						name="status"
 						label="Club reading status"

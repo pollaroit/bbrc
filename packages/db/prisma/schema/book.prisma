@@ -32,6 +32,14 @@ model Book {
   /// @zod.max(4000, "Excerpt must be at most 4000 characters long").nullish()
   excerpt         String?    @db.Text
 
+  /// @zod.import(["import { isOpenLibraryOlid } from '@bbrc/shared'"])
+  /// @zod.refine((v) => v == null || isOpenLibraryOlid(v), { message: "Invalid Open Library work ID" }).nullish()
+  olid            String?    @unique
+
+  subjectPeople String[] @default([]) @map("subject_people")
+  subjectTimes  String[] @default([]) @map("subject_times")
+  subjects      String[] @default([])
+
   feedbacks Feedback[]
   polls     PollOption[]
   posts     Post[]

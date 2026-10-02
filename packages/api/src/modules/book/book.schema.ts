@@ -79,6 +79,10 @@ export const AddBookInputSchema = BookSchema.pick({
 	excerpt: true,
 	pages: true,
 	publishedIn: true,
+	olid: true,
+	subjectPeople: true,
+	subjectTimes: true,
+	subjects: true,
 });
 
 export const AddBookOutputSchema = BookSchema.pick({
@@ -110,6 +114,7 @@ export const UpdateBookInputSchema = BookSchema.pick({
 	averageRating: true,
 	status: true,
 	slug: true,
+	olid: true,
 })
 	.partial()
 	.required({ slug: true });

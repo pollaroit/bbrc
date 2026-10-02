@@ -1,4 +1,4 @@
-import { generateUniqueSlug } from "@bbrc/shared";
+import { generateUniqueSlug, openLibraryWorkKeyToOlid } from "@bbrc/shared";
 import type { BookStatus } from "../../prisma/generated/client.js";
 import type { DatabaseTransaction } from "../index.js";
 
@@ -40,6 +40,9 @@ export type OpenLibraryWorkSeed = {
 	pages: number;
 	openLibraryRating: number | null;
 	excerpt: string | null;
+	subjectPeople: string[];
+	subjectTimes: string[];
+	subjects: string[];
 };
 
 const SEARCH_QUERIES = [
@@ -77,6 +80,63 @@ type SearchDoc = {
 type EditionEntry = {
 	number_of_pages?: number;
 };
+
+type WorkDocument = {
+	description?: unknown;
+	subjects?: unknown[];
+	subject_people?: unknown[];
+	subject_times?: unknown[];
+};
+
+function normalizeSubjectEntry(entry: unknown): string | null {
+	if (typeof entry === "string") {
+		const trimmed = entry.trim();
+		return trimmed ? trimmed : null;
+	}
+
+	if (entry != null && typeof entry === "object" && "name" in entry) {
+		const name = (entry as { name?: unknown }).name;
+		if (typeof name === "string") {
+			const trimmed = name.trim();
+			return trimmed ? trimmed : null;
+		}
+	}
+
+	return null;
+}
+
+function normalizeSubjectList(values: unknown[] | undefined): string[] {
+	if (!values?.length) {
+		return [];
+	}
+
+	const seen = new Set<string>();
+	const result: string[] = [];
+
+	for (const entry of values) {
+		const normalized = normalizeSubjectEntry(entry);
+		if (!normalized) {
+			continue;
+		}
+
+		const key = normalized.toLowerCase();
+		if (seen.has(key)) {
+			continue;
+		}
+
+		seen.add(key);
+		result.push(normalized);
+	}
+
+	return result;
+}
+
+async function fetchWorkDocument(workKey: string): Promise<WorkDocument> {
+	return (
+		(await fetchJson<WorkDocument>(`https://openlibrary.org${workKey}.json`)) ??
+		{}
+	);
+}
 
 function median(values: number[]): number | null {
 	if (values.length === 0) {
@@ -192,9 +252,10 @@ async function searchWork(query: string): Promise<OpenLibraryWorkSeed | null> {
 		authors.push("Unknown Author");
 	}
 
-	const [pages, openLibraryRating] = await Promise.all([
+	const [pages, openLibraryRating, workDocument] = await Promise.all([
 		fetchWorkPages(doc.key),
 		fetchWorkRating(doc.key),
+		fetchWorkDocument(doc.key),
 	]);
 
 	return {
@@ -206,6 +267,9 @@ async function searchWork(query: string): Promise<OpenLibraryWorkSeed | null> {
 		pages,
 		openLibraryRating,
 		excerpt: parseExcerpt(doc),
+		subjectPeople: normalizeSubjectList(workDocument.subject_people),
+		subjectTimes: normalizeSubjectList(workDocument.subject_times),
+		subjects: normalizeSubjectList(workDocument.subjects),
 	};
 }
 
@@ -262,6 +326,10 @@ export async function createBookFromWork(
 			publishedIn: work.publishedIn,
 			coverId: work.coverId,
 			excerpt: work.excerpt,
+			olid: openLibraryWorkKeyToOlid(work.workKey),
+			subjectPeople: work.subjectPeople,
+			subjectTimes: work.subjectTimes,
+			subjects: work.subjects,
 			createdAt,
 			updatedAt: createdAt,
 		},

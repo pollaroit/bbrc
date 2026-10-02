@@ -16,6 +16,7 @@ import { BookEditLink } from "@/components/blocks/book-edit-link";
 import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
 import { BookFeedbackSection } from "@/components/blocks/book-feedback-section";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
+import { BookSubjectGroup } from "@/components/blocks/book-subject-group";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 
@@ -26,6 +27,11 @@ type BookDetailProps = {
 
 export function BookDetail({ book, initialReviews }: BookDetailProps) {
 	const coverSrc = bookCoverUrl(book.coverId, "L");
+	const subjectPeople = book.subjectPeople ?? [];
+	const subjectTimes = book.subjectTimes ?? [];
+	const subjects = book.subjects ?? [];
+	const hasOpenLibrarySubjects =
+		subjectPeople.length > 0 || subjectTimes.length > 0 || subjects.length > 0;
 
 	return (
 		<div className="flex flex-col gap-8">
@@ -125,6 +131,25 @@ export function BookDetail({ book, initialReviews }: BookDetailProps) {
 						<p className="max-w-3xl whitespace-pre-wrap text-muted-foreground text-sm leading-relaxed">
 							{book.excerpt}
 						</p>
+					</section>
+				</>
+			) : null}
+
+			{hasOpenLibrarySubjects ? (
+				<>
+					<Separator />
+					<section
+						aria-labelledby="book-subjects-heading"
+						className="space-y-4"
+					>
+						<h2 id="book-subjects-heading" className="font-semibold text-lg">
+							Topics from Open Library
+						</h2>
+						<div className="grid max-w-3xl gap-4 sm:grid-cols-2">
+							<BookSubjectGroup label="Subjects" items={subjects} />
+							<BookSubjectGroup label="People" items={subjectPeople} />
+							<BookSubjectGroup label="Times & places" items={subjectTimes} />
+						</div>
 					</section>
 				</>
 			) : null}

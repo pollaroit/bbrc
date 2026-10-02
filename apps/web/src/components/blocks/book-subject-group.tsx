@@ -1,0 +1,83 @@
+"use client";
+
+import { Badge } from "@bbrc/ui/components/badge";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@bbrc/ui/components/dialog";
+import { useState } from "react";
+
+const SUBJECT_PREVIEW_LIMIT = 10;
+
+type BookSubjectGroupProps = {
+	label: string;
+	items: string[];
+};
+
+function SubjectBadgeList({ items }: { items: string[] }) {
+	return (
+		<ul className="flex flex-wrap gap-1.5">
+			{items.map((item) => (
+				<li key={item}>
+					<Badge variant="secondary" className="font-normal">
+						{item}
+					</Badge>
+				</li>
+			))}
+		</ul>
+	);
+}
+
+export function BookSubjectGroup({ label, items }: BookSubjectGroupProps) {
+	const [dialogOpen, setDialogOpen] = useState(false);
+
+	if (items.length === 0) {
+		return null;
+	}
+
+	const preview = items.slice(0, SUBJECT_PREVIEW_LIMIT);
+	const hiddenCount = items.length - preview.length;
+
+	return (
+		<>
+			<div className="space-y-2">
+				<h3 className="font-medium text-sm">{label}</h3>
+				<ul className="flex flex-wrap gap-1.5">
+					{preview.map((item) => (
+						<li key={item}>
+							<Badge variant="secondary" className="font-normal">
+								{item}
+							</Badge>
+						</li>
+					))}
+					{hiddenCount > 0 ? (
+						<li>
+							<button
+								type="button"
+								className="cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+								onClick={() => setDialogOpen(true)}
+							>
+								<Badge variant="outline" className="font-normal tabular-nums">
+									+{hiddenCount} more
+								</Badge>
+							</button>
+						</li>
+					) : null}
+				</ul>
+			</div>
+
+			<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+				<DialogContent className="flex max-h-[min(85vh,560px)] max-w-lg flex-col gap-4">
+					<DialogHeader>
+						<DialogTitle>{label}</DialogTitle>
+					</DialogHeader>
+					<div className="-mx-1 overflow-y-auto px-1">
+						<SubjectBadgeList items={items} />
+					</div>
+				</DialogContent>
+			</Dialog>
+		</>
+	);
+}

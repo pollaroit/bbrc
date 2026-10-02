@@ -1,7 +1,7 @@
 "use client";
 
 import { AddBookInputSchema } from "@bbrc/api/modules/book/book.schema";
-import { generateSlug } from "@bbrc/shared";
+import { generateSlug, openLibraryWorkKeyToOlid } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
@@ -48,6 +48,10 @@ function workToFormValues(work: OpenLibrarySearchWork): AddNewBookFormValues {
 		excerpt: work.description,
 		pages: 0,
 		publishedIn: work.publishedIn ?? new Date().getFullYear(),
+		olid: openLibraryWorkKeyToOlid(work.workKey),
+		subjectPeople: [],
+		subjectTimes: [],
+		subjects: [],
 	};
 }
 
@@ -108,6 +112,14 @@ function AddBookDetailsForm({
 		if (excerpt) {
 			form.setValue("excerpt", excerpt, { shouldDirty: false });
 		}
+
+		form.setValue("subjectPeople", editionHints.subjectPeople, {
+			shouldDirty: false,
+		});
+		form.setValue("subjectTimes", editionHints.subjectTimes, {
+			shouldDirty: false,
+		});
+		form.setValue("subjects", editionHints.subjects, { shouldDirty: false });
 	}, [editionHints, form, work.description]);
 
 	const title = form.watch("title");

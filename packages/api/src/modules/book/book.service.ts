@@ -96,16 +96,42 @@ export async function getBookBySlug(
 		});
 	}
 
-	return book;
+	return normalizeBookRecord(book);
+}
+
+function normalizeBookRecord<T extends TGetBookBySlugOutputSchema>(book: T): T {
+	return {
+		...book,
+		subjectPeople: book.subjectPeople ?? [],
+		subjectTimes: book.subjectTimes ?? [],
+		subjects: book.subjects ?? [],
+	};
 }
 
 export async function addBook(input: TAddBookInputSchema, db: Database) {
 	const book = await db.$transaction(async (tx) => {
+		if (input.olid) {
+			const existing = await tx.book.findUnique({
+				where: { olid: input.olid },
+				select: { slug: true },
+			});
+
+			if (existing) {
+				throw new ORPCError("CONFLICT", {
+					message: "A book with this Open Library ID is already in the catalog",
+					data: { olid: input.olid, slug: existing.slug },
+				});
+			}
+		}
+
 		const slug = await generateBookSlug(input.title, tx);
 
 		return tx.book.create({
 			data: {
 				...input,
+				subjectPeople: input.subjectPeople ?? [],
+				subjectTimes: input.subjectTimes ?? [],
+				subjects: input.subjects ?? [],
 				slug,
 			},
 			select: {
@@ -138,11 +164,28 @@ export async function updateBook(
 	}
 
 	return await db.$transaction(async (tx) => {
-		const { slug, ...data } = input;
+		const { slug, olid, ...data } = input;
+
+		if (olid) {
+			const existing = await tx.book.findFirst({
+				where: { olid, NOT: { id: book.id } },
+				select: { slug: true },
+			});
+
+			if (existing) {
+				throw new ORPCError("CONFLICT", {
+					message: "Another book already uses this Open Library ID",
+					data: { olid, slug: existing.slug },
+				});
+			}
+		}
 
 		await tx.book.update({
 			where: { id: book.id },
-			data,
+			data: {
+				...data,
+				...(olid !== undefined ? { olid } : {}),
+			},
 		});
 
 		return { slug };

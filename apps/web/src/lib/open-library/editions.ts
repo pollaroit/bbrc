@@ -3,6 +3,9 @@ export type OpenLibraryEditionHints = {
 	suggestedPages: number | null;
 	openLibraryRating: number | null;
 	excerpt: string | null;
+	subjectPeople: string[];
+	subjectTimes: string[];
+	subjects: string[];
 };
 
 const OPEN_LIBRARY_EXCERPT_MAX_LENGTH = 4000;
@@ -25,7 +28,67 @@ type OpenLibraryWorkRatingsResponse = {
 
 type OpenLibraryWorkDocument = {
 	description?: unknown;
+	subjects?: unknown[];
+	subject_people?: unknown[];
+	subject_times?: unknown[];
 };
+
+function normalizeOpenLibrarySubjectEntry(entry: unknown): string | null {
+	if (typeof entry === "string") {
+		const trimmed = entry.trim();
+		return trimmed ? trimmed : null;
+	}
+
+	if (entry != null && typeof entry === "object" && "name" in entry) {
+		const name = (entry as { name?: unknown }).name;
+		if (typeof name === "string") {
+			const trimmed = name.trim();
+			return trimmed ? trimmed : null;
+		}
+	}
+
+	return null;
+}
+
+function normalizeOpenLibrarySubjectList(
+	values: unknown[] | undefined,
+): string[] {
+	if (!values?.length) {
+		return [];
+	}
+
+	const seen = new Set<string>();
+	const result: string[] = [];
+
+	for (const entry of values) {
+		const normalized = normalizeOpenLibrarySubjectEntry(entry);
+		if (!normalized) {
+			continue;
+		}
+
+		const key = normalized.toLowerCase();
+		if (seen.has(key)) {
+			continue;
+		}
+
+		seen.add(key);
+		result.push(normalized);
+	}
+
+	return result;
+}
+
+export function parseWorkSubjects(payload: OpenLibraryWorkDocument): {
+	subjectPeople: string[];
+	subjectTimes: string[];
+	subjects: string[];
+} {
+	return {
+		subjectPeople: normalizeOpenLibrarySubjectList(payload.subject_people),
+		subjectTimes: normalizeOpenLibrarySubjectList(payload.subject_times),
+		subjects: normalizeOpenLibrarySubjectList(payload.subjects),
+	};
+}
 
 function isTurkishEdition(edition: OpenLibraryEditionEntry): boolean {
 	if (!edition.languages?.length) {
@@ -110,6 +173,20 @@ export function buildEditionHints(
 		suggestedPages,
 		openLibraryRating: workRating,
 		excerpt,
+		subjectPeople: [],
+		subjectTimes: [],
+		subjects: [],
+	};
+}
+
+export function mergeWorkSubjectsIntoEditionHints(
+	hints: OpenLibraryEditionHints,
+	workPayload: OpenLibraryWorkDocument,
+): OpenLibraryEditionHints {
+	const subjects = parseWorkSubjects(workPayload);
+	return {
+		...hints,
+		...subjects,
 	};
 }
 
