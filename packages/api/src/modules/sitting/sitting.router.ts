@@ -8,6 +8,8 @@ import {
 	CreateSittingInputSchema,
 	CreateSittingOutputSchema,
 	GetOngoingSittingOutputSchema,
+	GetPollOptionVotesInputSchema,
+	GetPollOptionVotesOutputSchema,
 	GetSittingBySlugOutputSchema,
 	GetSittingListInputSchema,
 	GetSittingListOutputSchema,
@@ -28,6 +30,7 @@ import {
 	addSittingParticipant,
 	createSitting,
 	getOngoingSitting,
+	getPollOptionVotes,
 	getSittingBySlug,
 	getSittingList,
 	removeSittingParticipant,
@@ -72,6 +75,12 @@ export const sittingRouter = {
 
 			return await submitPollVotes(input, userId, context.db);
 		}),
+	getPollOptionVotes: adminProcedure
+		.input(GetPollOptionVotesInputSchema)
+		.output(GetPollOptionVotesOutputSchema)
+		.handler(
+			async ({ input, context }) => await getPollOptionVotes(input, context.db),
+		),
 	transitionSitting: adminProcedure
 		.input(TransitionSittingInputSchema)
 		.output(TransitionSittingOutputSchema)

@@ -365,6 +365,34 @@ export const SubmitPollVotesOutputSchema = zod.object({
 export type SubmitPollVotesInput = z.infer<typeof SubmitPollVotesInputSchema>;
 export type SubmitPollVotesOutput = z.infer<typeof SubmitPollVotesOutputSchema>;
 
+export const GetPollOptionVotesInputSchema = zod.object({
+	pollOptionId: zod.uuid(),
+});
+
+export const PollOptionVoterSchema = zod.object({
+	user: SittingParticipantSummarySchema.pick({
+		username: true,
+		name: true,
+		image: true,
+		status: true,
+	}),
+	votedAt: zod.coerce.date(),
+	totalSelections: zod.number().int().min(1),
+	maxChoices: zod.number().int().min(1),
+});
+
+export const GetPollOptionVotesOutputSchema = zod.object({
+	bookTitle: zod.string(),
+	voters: zod.array(PollOptionVoterSchema),
+});
+
+export type GetPollOptionVotesInput = z.infer<
+	typeof GetPollOptionVotesInputSchema
+>;
+export type GetPollOptionVotesOutput = z.infer<
+	typeof GetPollOptionVotesOutputSchema
+>;
+
 export const TransitionSittingInputSchema = zod.discriminatedUnion(
 	"transition",
 	[

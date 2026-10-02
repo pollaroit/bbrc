@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
+import { PollOptionVotersDialog } from "@/components/blocks/poll-option-voters-dialog";
 import { authClient } from "@/lib/auth-client";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
@@ -86,6 +87,12 @@ export function SittingPollSection({
 	const [isEditingVotes, setIsEditingVotes] = useState(
 		() => poll.myVoteOptionIds.length === 0,
 	);
+	const [adminVotersOptionId, setAdminVotersOptionId] = useState<string | null>(
+		null,
+	);
+	const [adminVotersOptionCount, setAdminVotersOptionCount] = useState(0);
+
+	const isAdmin = session?.user.isAdmin === true;
 
 	useEffect(() => {
 		setSelectedOptionIds(poll.myVoteOptionIds);
@@ -365,9 +372,26 @@ export function SittingPollSection({
 											<div>
 												<dt className="sr-only">Votes and pages</dt>
 												<dd>
-													{option.voteCount}{" "}
-													{option.voteCount === 1 ? "vote" : "votes"} ·{" "}
-													{option.book.pages} pp
+													{isAdmin && option.voteCount > 0 ? (
+														<button
+															type="button"
+															className="text-foreground underline-offset-2 hover:underline"
+															onClick={(event) => {
+																event.stopPropagation();
+																setAdminVotersOptionCount(option.voteCount);
+																setAdminVotersOptionId(option.id);
+															}}
+														>
+															{option.voteCount}{" "}
+															{option.voteCount === 1 ? "vote" : "votes"}
+														</button>
+													) : (
+														<>
+															{option.voteCount}{" "}
+															{option.voteCount === 1 ? "vote" : "votes"}
+														</>
+													)}{" "}
+													· {option.book.pages} pp
 												</dd>
 											</div>
 										</dl>
@@ -429,6 +453,16 @@ export function SittingPollSection({
 				>
 					Edit votes
 				</Button>
+			) : null}
+
+			{isAdmin ? (
+				<PollOptionVotersDialog
+					pollOptionId={adminVotersOptionId}
+					voteCount={adminVotersOptionCount}
+					onDismiss={() => {
+						setAdminVotersOptionId(null);
+					}}
+				/>
 			) : null}
 		</>
 	);

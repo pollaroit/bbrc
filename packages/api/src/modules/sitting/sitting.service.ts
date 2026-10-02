@@ -43,6 +43,8 @@ import {
 	type CreateSittingInput,
 	type CreateSittingOutput,
 	type GetOngoingSittingOutput,
+	type GetPollOptionVotesInput,
+	type GetPollOptionVotesOutput,
 	type GetSittingBySlugOutput,
 	type GetSittingListInput,
 	type GetSittingListOutput,
@@ -1336,4 +1338,83 @@ export async function removeSittingParticipant(
 	});
 
 	return { ok: true };
+}
+
+export async function getPollOptionVotes(
+	input: GetPollOptionVotesInput,
+	db: Database,
+): Promise<GetPollOptionVotesOutput> {
+	const option = await db.pollOption.findUnique({
+		where: { id: input.pollOptionId },
+		select: {
+			id: true,
+			pollId: true,
+			poll: {
+				select: {
+					maxChoices: true,
+					take: true,
+				},
+			},
+			book: {
+				select: { title: true },
+			},
+		},
+	});
+
+	if (!option) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Poll option not found",
+			data: { pollOptionId: input.pollOptionId },
+		});
+	}
+
+	const maxChoices = option.poll.maxChoices ?? option.poll.take;
+
+	const votes = await db.pollVote.findMany({
+		where: { optionId: option.id },
+		orderBy: { createdAt: "desc" },
+		select: {
+			createdAt: true,
+			userId: true,
+			user: {
+				select: {
+					username: true,
+					name: true,
+					image: true,
+					status: true,
+				},
+			},
+		},
+	});
+
+	if (votes.length === 0) {
+		return {
+			bookTitle: option.book.title,
+			voters: [],
+		};
+	}
+
+	const userIds = votes.map((vote) => vote.userId);
+	const selectionCounts = await db.pollVote.groupBy({
+		by: ["userId"],
+		where: {
+			userId: { in: userIds },
+			option: { pollId: option.pollId },
+		},
+		_count: { _all: true },
+	});
+
+	const selectionsByUserId = new Map(
+		selectionCounts.map((row) => [row.userId, row._count._all]),
+	);
+
+	return {
+		bookTitle: option.book.title,
+		voters: votes.map((vote) => ({
+			user: vote.user,
+			votedAt: vote.createdAt,
+			totalSelections: selectionsByUserId.get(vote.userId) ?? 1,
+			maxChoices,
+		})),
+	};
 }
