@@ -4,7 +4,11 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { EditBookForm } from "@/components/blocks/edit-book-form";
 import { EditBookPageHeader } from "@/components/blocks/edit-book-page-header";
-import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
+import {
+	buildNotFoundMetadata,
+	buildPageMetadata,
+	NO_INDEX_ROBOTS,
+} from "@/lib/seo";
 import { auth } from "@/services";
 import { orpc } from "@/utils/orpc";
 
@@ -24,6 +28,7 @@ export async function generateMetadata({
 			title: `Edit ${book.title}`,
 			description: `Edit library metadata for ${book.title}.`,
 			path: `/books/${book.slug}/edit`,
+			robots: NO_INDEX_ROBOTS,
 		});
 	} catch {
 		return buildNotFoundMetadata("Book");

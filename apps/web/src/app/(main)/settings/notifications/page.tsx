@@ -4,13 +4,14 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { NotificationPreferencesForm } from "@/components/blocks/notification-preferences-form";
-import { buildPageMetadata } from "@/lib/seo";
+import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 
 export const metadata: Metadata = buildPageMetadata({
 	title: "Notification settings",
 	description: "Choose in-app and push notifications for BBRC.",
 	path: "/settings/notifications",
+	robots: NO_INDEX_ROBOTS,
 });
 
 export default async function NotificationSettingsPage() {

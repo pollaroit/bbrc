@@ -5,7 +5,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { EditPostForm } from "@/components/blocks/edit-post-form";
-import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
+import {
+	buildNotFoundMetadata,
+	buildPageMetadata,
+	NO_INDEX_ROBOTS,
+} from "@/lib/seo";
 import { auth } from "@/services";
 import { orpc } from "@/utils/orpc";
 
@@ -25,6 +29,7 @@ export async function generateMetadata({
 			title: "Edit post",
 			description: `Edit your BBRC post by ${post.author.name}.`,
 			path: `/posts/${post.slug}/edit`,
+			robots: NO_INDEX_ROBOTS,
 		});
 	} catch {
 		return buildNotFoundMetadata("Post");

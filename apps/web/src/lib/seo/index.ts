@@ -2,6 +2,7 @@ export { JsonLd } from "./json-ld";
 export {
 	buildNotFoundMetadata,
 	buildPageMetadata,
+	NO_INDEX_ROBOTS,
 	truncateDescription,
 } from "./metadata";
 export { ogPathFromPagePath } from "./og/paths";

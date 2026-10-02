@@ -4,6 +4,12 @@ import { DEFAULT_DESCRIPTION, SITE_NAME } from "./site";
 
 const MAX_DESCRIPTION_LENGTH = 160;
 
+/** Settings, admin, edit, and other non-public routes. */
+export const NO_INDEX_ROBOTS: NonNullable<Metadata["robots"]> = {
+	index: false,
+	follow: false,
+};
+
 export function truncateDescription(text: string): string {
 	const trimmed = text.trim().replace(/\s+/g, " ");
 	if (trimmed.length <= MAX_DESCRIPTION_LENGTH) {
@@ -24,7 +30,7 @@ export type BuildPageMetadataInput = {
 	/** Site-relative path for canonical URL, e.g. `/books/my-slug`. */
 	path?: string;
 	openGraph?: PageOpenGraph;
-	/** Defaults to noindex for this private club app (OG previews still work). */
+	/** Override robots; admin and other private routes should pass noindex explicitly. */
 	robots?: Metadata["robots"];
 };
 
@@ -60,7 +66,7 @@ export function buildPageMetadata(input: BuildPageMetadataInput): Metadata {
 			description,
 			...(ogImageUrl ? { images: [ogImageUrl] } : {}),
 		},
-		robots: input.robots ?? { index: false, follow: false },
+		robots: input.robots ?? { index: true, follow: true },
 	};
 }
 

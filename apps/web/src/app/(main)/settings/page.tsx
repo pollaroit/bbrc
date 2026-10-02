@@ -3,13 +3,14 @@ import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { buildPageMetadata } from "@/lib/seo";
+import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 
 export const metadata: Metadata = buildPageMetadata({
 	title: "Settings",
 	description: "Manage your BBRC account preferences.",
 	path: "/settings",
+	robots: NO_INDEX_ROBOTS,
 });
 
 const settingsLinks = [

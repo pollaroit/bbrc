@@ -5,13 +5,14 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AdminUsersStats } from "@/components/blocks/admin-users-stats";
 import { AdminUsersTable } from "@/components/blocks/admin-users-table";
-import { buildPageMetadata } from "@/lib/seo";
+import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 
 export const metadata: Metadata = buildPageMetadata({
 	title: "Members admin",
 	description: "Manage club members, roles, and status.",
 	path: "/admin/users",
+	robots: NO_INDEX_ROBOTS,
 });
 
 function AdminUsersTableFallback() {
