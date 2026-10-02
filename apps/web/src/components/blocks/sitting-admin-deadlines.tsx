@@ -1,6 +1,7 @@
 "use client";
 
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
+import { clampSittingDeadlineToClubEnd } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Sheet,
@@ -13,10 +14,11 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { CalendarClockIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { SittingDeadlinePicker } from "@/components/blocks/sitting-deadline-picker";
 import { authClient } from "@/lib/auth-client";
+import { clubTimeZone } from "@/lib/club-timezone";
 import { formatDateTime } from "@/lib/format-datetime";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -32,6 +34,22 @@ export function SittingAdminDeadlines({ sitting }: SittingAdminDeadlinesProps) {
 		sitting.poll?.deadline ?? new Date(),
 	);
 	const [sittingDeadline, setSittingDeadline] = useState(sitting.deadline);
+
+	useEffect(() => {
+		if (!open) {
+			return;
+		}
+
+		if (sitting.poll) {
+			setPollDeadline(
+				clampSittingDeadlineToClubEnd(sitting.poll.deadline, clubTimeZone),
+			);
+		}
+
+		setSittingDeadline(
+			clampSittingDeadlineToClubEnd(sitting.deadline, clubTimeZone),
+		);
+	}, [open, sitting.deadline, sitting.poll]);
 
 	const mutation = useMutation(
 		orpc.sitting.updateSittingDeadlines.mutationOptions({

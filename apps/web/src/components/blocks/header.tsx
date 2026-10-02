@@ -15,6 +15,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
 import { AdminCreateMenu } from "@/components/blocks/admin-create-menu";
+import { HeaderOngoingReadButton } from "@/components/blocks/header-ongoing-read-button";
 import { NotificationBell } from "@/components/blocks/notification-bell";
 import { UserMenu } from "@/components/blocks/user-menu";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -48,6 +49,7 @@ export default function Header() {
 							{link.label}
 						</Link>
 					))}
+					<HeaderOngoingReadButton />
 				</nav>
 
 				<div className="ml-auto hidden items-center gap-2 md:flex">
@@ -110,6 +112,9 @@ export default function Header() {
 										{link.label}
 									</SheetClose>
 								))}
+								<div className="border-border border-b py-3 last:border-b-0">
+									<HeaderOngoingReadButton />
+								</div>
 							</nav>
 
 							<SheetFooter>

@@ -19,9 +19,9 @@ import {
 	PopoverTrigger,
 } from "@bbrc/ui/components/popover";
 import { CalendarIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { clubTimeZone } from "@/lib/club-timezone";
-import { formatDateTime } from "@/lib/format-datetime";
+import { formatDateTimeInTimeZone } from "@/lib/format-datetime";
 import { cn } from "@/lib/utils";
 
 type SittingDeadlinePickerProps = {
@@ -41,10 +41,22 @@ export function SittingDeadlinePicker({
 	invalid,
 	errorMessage,
 }: SittingDeadlinePickerProps) {
-	const [open, setOpen] = useState(false);
-	const [calendarMonth, setCalendarMonth] = useState(() => value);
+	const clubDeadline = useMemo(
+		() => clampSittingDeadlineToClubEnd(value, clubTimeZone),
+		[value],
+	);
 
-	const displayLabel = useMemo(() => formatDateTime(value), [value]);
+	const [open, setOpen] = useState(false);
+	const [calendarMonth, setCalendarMonth] = useState(() => clubDeadline);
+
+	useEffect(() => {
+		setCalendarMonth(clubDeadline);
+	}, [clubDeadline]);
+
+	const displayLabel = useMemo(
+		() => formatDateTimeInTimeZone(clubDeadline, clubTimeZone),
+		[clubDeadline],
+	);
 
 	const minSelectable = useMemo(() => {
 		const startOfToday = new Date();
@@ -77,7 +89,7 @@ export function SittingDeadlinePicker({
 					<div className="flex flex-col gap-3 p-3">
 						<Calendar
 							mode="single"
-							selected={value}
+							selected={clubDeadline}
 							month={calendarMonth}
 							onMonthChange={setCalendarMonth}
 							onSelect={(day) => {

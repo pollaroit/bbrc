@@ -54,7 +54,10 @@ export const sittingRouter = {
 		),
 	getOngoingSitting: publicProcedure
 		.output(GetOngoingSittingOutputSchema)
-		.handler(async ({ context }) => await getOngoingSitting(context.db)),
+		.handler(
+			async ({ context }) =>
+				await getOngoingSitting(context.db, context.session?.user.id),
+		),
 	createSitting: adminProcedure
 		.input(CreateSittingInputSchema)
 		.output(CreateSittingOutputSchema)

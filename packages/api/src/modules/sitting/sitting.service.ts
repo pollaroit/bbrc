@@ -418,6 +418,7 @@ export async function getSittingBySlug(
 
 export async function getOngoingSitting(
 	db: Database,
+	viewerUserId?: string,
 ): Promise<GetOngoingSittingOutput> {
 	const sitting = await db.sitting.findFirst({
 		where: sittingOngoingWhere(),
@@ -446,6 +447,19 @@ export async function getOngoingSitting(
 		sitting.id,
 	);
 
+	let viewerIsParticipant = false;
+	if (viewerUserId) {
+		const participation = await db.participation.findFirst({
+			where: {
+				sittingId: sitting.id,
+				userId: viewerUserId,
+				...activeParticipationWhere,
+			},
+			select: { id: true },
+		});
+		viewerIsParticipant = participation != null;
+	}
+
 	return {
 		slug: sitting.slug,
 		status: sitting.status,
@@ -454,6 +468,7 @@ export async function getOngoingSitting(
 		participantCount,
 		pollDeadline: sitting.poll?.deadline ?? null,
 		selectedBookTitle: sitting.selectedBook?.title ?? null,
+		viewerIsParticipant,
 	};
 }
 

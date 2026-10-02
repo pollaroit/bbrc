@@ -344,6 +344,7 @@ export const GetOngoingSittingOutputSchema = SittingSchema.pick({
 		participantCount: zod.number().int().min(0),
 		pollDeadline: PollStoredDeadlineSchema.nullable(),
 		selectedBookTitle: zod.string().nullable(),
+		viewerIsParticipant: zod.boolean(),
 	})
 	.nullable();
 
