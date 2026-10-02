@@ -9,6 +9,7 @@ type OgDevPreviewProps = {
 	samples: {
 		bookSlug?: string;
 		postSlug?: string;
+		commentSlug?: string;
 		sittingSlug?: string;
 		username?: string;
 	};
@@ -77,6 +78,7 @@ function SocialCardPreview({
 export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 	const [bookSlug, setBookSlug] = useState(samples.bookSlug ?? "");
 	const [postSlug, setPostSlug] = useState(samples.postSlug ?? "");
+	const [commentSlug, setCommentSlug] = useState(samples.commentSlug ?? "");
 	const [sittingSlug, setSittingSlug] = useState(samples.sittingSlug ?? "");
 	const [username, setUsername] = useState(samples.username ?? "");
 
@@ -90,11 +92,19 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 			});
 		}
 		if (postSlug.trim()) {
+			const post = postSlug.trim();
 			entries.push({
 				label: "Post",
-				path: `/posts/${postSlug.trim()}`,
+				path: `/posts/${post}`,
 				description: "Club post OG.",
 			});
+			if (commentSlug.trim()) {
+				entries.push({
+					label: "Comment",
+					path: `/posts/${post}/comments/${commentSlug.trim()}`,
+					description: "Permalink comment thread OG.",
+				});
+			}
 		}
 		if (sittingSlug.trim()) {
 			const slug = sittingSlug.trim();
@@ -137,7 +147,7 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 			);
 		}
 		return entries;
-	}, [bookSlug, postSlug, sittingSlug, username]);
+	}, [bookSlug, commentSlug, postSlug, sittingSlug, username]);
 
 	const cacheBust = Date.now();
 
@@ -169,6 +179,15 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 						className="border border-input bg-background px-3 py-2"
 						value={postSlug}
 						onChange={(e) => setPostSlug(e.target.value)}
+					/>
+				</label>
+				<label className="flex flex-col gap-1 text-sm">
+					<span className="font-medium">Comment slug</span>
+					<input
+						className="border border-input bg-background px-3 py-2"
+						value={commentSlug}
+						onChange={(e) => setCommentSlug(e.target.value)}
+						placeholder="Requires post slug above"
 					/>
 				</label>
 				<label className="flex flex-col gap-1 text-sm">

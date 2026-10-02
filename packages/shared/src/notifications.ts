@@ -2,6 +2,7 @@
 export const NOTIFICATION_KINDS = [
 	"member_posted",
 	"comment_on_your_post",
+	"reply_to_your_comment",
 	"reaction_on_your_post",
 	"member_feedback_on_book",
 	"book_added_to_library",
@@ -17,6 +18,7 @@ export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
 	member_posted: "New club post",
 	comment_on_your_post: "Comment on your post",
+	reply_to_your_comment: "Reply to your comment",
 	reaction_on_your_post: "Reaction on your post",
 	member_feedback_on_book: "Book feedback",
 	book_added_to_library: "Book added to library",
@@ -35,6 +37,7 @@ export const NOTIFICATION_KIND_GROUPS = {
 	] as const satisfies readonly NotificationKind[],
 	personal: [
 		"comment_on_your_post",
+		"reply_to_your_comment",
 		"reaction_on_your_post",
 	] as const satisfies readonly NotificationKind[],
 	sitting: [
@@ -50,6 +53,7 @@ export const NOTIFICATION_KIND_GROUPS = {
 export const NOTIFICATION_KINDS_PUSH_ENABLED_BY_DEFAULT = [
 	"book_added_to_library",
 	"comment_on_your_post",
+	"reply_to_your_comment",
 	"sitting_poll_started",
 	"sitting_poll_closed",
 	"sitting_finished",

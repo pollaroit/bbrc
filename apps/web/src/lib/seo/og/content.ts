@@ -1,4 +1,5 @@
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
+import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
 import { getPostBySlug } from "@bbrc/api/modules/post/post.service";
 import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.schema";
 import { getSittingBySlug } from "@bbrc/api/modules/sitting/sitting.service";
@@ -215,6 +216,47 @@ export async function resolveOgImageContent(
 			return {
 				kind: "Book",
 				title: "Book not found",
+				description: DEFAULT_DESCRIPTION,
+			};
+		}
+	}
+
+	if (section === "posts" && rest[0] === "comments" && rest[1]) {
+		const postSlug = slug;
+		const commentSlug = rest[1];
+		try {
+			const comment = await getCommentBySlug(commentSlug, db, anonymousSession);
+			if (comment.postSlug !== postSlug) {
+				return {
+					kind: "Comment",
+					title: "Comment not found",
+					description: DEFAULT_DESCRIPTION,
+				};
+			}
+
+			const highlights = [
+				`@${comment.author.username}`,
+				`${comment.likeCount} like${comment.likeCount === 1 ? "" : "s"}`,
+			];
+			if (comment.replyCount > 0) {
+				highlights.push(
+					`${comment.replyCount} repl${comment.replyCount === 1 ? "y" : "ies"}`,
+				);
+			}
+			if (comment.editedAt) {
+				highlights.push("Edited");
+			}
+
+			return {
+				kind: "Comment",
+				title: truncateOgTitle(comment.content),
+				description: truncateOgLine(comment.content, 160),
+				highlights,
+			};
+		} catch {
+			return {
+				kind: "Comment",
+				title: "Comment not found",
 				description: DEFAULT_DESCRIPTION,
 			};
 		}

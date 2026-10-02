@@ -15,7 +15,7 @@ export const commentSortableFields = [
 export const commentListSorting = defineSorting<
 	typeof commentSortableFields,
 	Prisma.CommentOrderByWithRelationInput
->(commentSortableFields, "createdAt", "asc", {
+>(commentSortableFields, "createdAt", "desc", {
 	orderBy: {
 		"likes._count": (direction) => ({
 			likes: { _count: direction },

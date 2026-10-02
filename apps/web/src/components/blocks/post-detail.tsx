@@ -1,9 +1,11 @@
 import type { GetPostBySlugOutput } from "@bbrc/api/modules/post/post.schema";
+import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { PostCommentFocusSection } from "@/components/blocks/post-comment-focus-section";
 import { PostCommentsSection } from "@/components/blocks/post-comments-section";
 import { PostEditLink } from "@/components/blocks/post-edit-link";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
@@ -13,6 +15,9 @@ import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 
 type PostDetailProps = {
 	post: GetPostBySlugOutput;
+	/** When set, show this comment thread instead of the full comments section. */
+	commentFocusSlug?: string | null;
+	showCommentsSection?: boolean;
 };
 
 function PostAttachedBook({
@@ -53,8 +58,13 @@ function PostAttachedBook({
 	);
 }
 
-export function PostDetail({ post }: PostDetailProps) {
+export function PostDetail({
+	post,
+	commentFocusSlug = null,
+	showCommentsSection = true,
+}: PostDetailProps) {
 	const profileHref = `/users/${post.author.username}` as Route;
+	const postHref = `/posts/${post.slug}` as Route;
 
 	return (
 		<div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -114,7 +124,24 @@ export function PostDetail({ post }: PostDetailProps) {
 				</CardContent>
 			</Card>
 
-			<PostCommentsSection postSlug={post.slug} />
+			{commentFocusSlug ? (
+				<>
+					<PostCommentFocusSection
+						postSlug={post.slug}
+						focusCommentSlug={commentFocusSlug}
+					/>
+					<Button
+						variant="outline"
+						className="w-fit"
+						render={<Link href={postHref} />}
+						nativeButton={false}
+					>
+						View all comments
+					</Button>
+				</>
+			) : showCommentsSection ? (
+				<PostCommentsSection postSlug={post.slug} />
+			) : null}
 		</div>
 	);
 }

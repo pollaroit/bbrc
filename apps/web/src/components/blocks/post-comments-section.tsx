@@ -1,10 +1,10 @@
 "use client";
 
-import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { CommentListItemView } from "@/components/blocks/comment-list-item";
+import { useEffect, useState } from "react";
+import { CommentThreadList } from "@/components/blocks/comment-thread-list";
 import { PostCommentForm } from "@/components/blocks/post-comment-form";
 import { orpc } from "@/utils/orpc";
 
@@ -12,7 +12,8 @@ type PostCommentsSectionProps = {
 	postSlug: string;
 };
 
-const COMMENT_PAGE_SIZE = 15;
+/** Max allowed by `CursorPaginationInputSchema` — fetch additional pages for full thread. */
+const COMMENT_PAGE_SIZE = 100;
 
 function CommentsListSkeleton() {
 	return (
@@ -26,6 +27,7 @@ function CommentsListSkeleton() {
 
 export function PostCommentsSection({ postSlug }: PostCommentsSectionProps) {
 	const router = useRouter();
+	const [replyingToSlug, setReplyingToSlug] = useState<string | null>(null);
 
 	const query = useInfiniteQuery(
 		orpc.comment.getCommentList.infiniteOptions({
@@ -35,62 +37,86 @@ export function PostCommentsSection({ postSlug }: PostCommentsSectionProps) {
 				postSlug,
 				limit: COMMENT_PAGE_SIZE,
 				sortBy: "createdAt",
-				sortDirection: "asc",
+				sortDirection: "desc",
 				...(pageCursor != null ? { cursor: pageCursor } : {}),
 			}),
 		}),
 	);
 
+	useEffect(() => {
+		if (query.hasNextPage && !query.isFetchingNextPage && !query.isPending) {
+			void query.fetchNextPage();
+		}
+	}, [
+		query.data,
+		query.fetchNextPage,
+		query.hasNextPage,
+		query.isFetchingNextPage,
+		query.isPending,
+	]);
+
 	const comments = query.data?.pages.flatMap((page) => page.items) ?? [];
+	const commentCount = comments.length;
+	const loadingThread =
+		query.isPending || query.isFetchingNextPage || query.hasNextPage;
+
+	const refreshComments = () => {
+		void query.refetch();
+		router.refresh();
+	};
 
 	return (
 		<section
 			id="comments"
 			aria-labelledby="post-comments-heading"
-			className="flex scroll-mt-20 flex-col gap-4"
+			className="flex scroll-mt-20 flex-col gap-5"
 		>
-			<h2 id="post-comments-heading" className="font-semibold text-lg">
-				Comments
-			</h2>
+			<div className="flex flex-wrap items-baseline justify-between gap-2">
+				<h2 id="post-comments-heading" className="font-semibold text-lg">
+					Comments
+				</h2>
+				{commentCount > 0 && !loadingThread ? (
+					<p className="text-muted-foreground text-sm tabular-nums">
+						{commentCount} {commentCount === 1 ? "comment" : "comments"}
+					</p>
+				) : null}
+			</div>
 
-			<PostCommentForm
-				postSlug={postSlug}
-				onCommentCreated={() => {
-					router.refresh();
-				}}
-			/>
+			<div className="border border-border bg-muted/20 px-4 py-4">
+				<PostCommentForm
+					postSlug={postSlug}
+					onCommentCreated={() => {
+						setReplyingToSlug(null);
+						refreshComments();
+					}}
+				/>
+			</div>
 
-			<InfiniteScroll
-				className="flex flex-col gap-3"
-				hasNextPage={query.hasNextPage}
-				isFetchingNextPage={query.isFetchingNextPage}
-				fetchNextPage={() => {
-					void query.fetchNextPage();
-				}}
-				isPending={query.isPending}
-				isError={query.isError}
-				error={query.error}
-				onRetry={() => {
-					void query.refetch();
-				}}
-				isEmpty={comments.length === 0}
-				emptyTitle="No comments yet"
-				emptyDescription="Start the conversation with a comment above."
-				loadingContent={<CommentsListSkeleton />}
-				endMessage="End of comments."
-			>
-				<ul className="flex flex-col gap-3">
-					{comments.map((comment) => (
-						<li key={comment.slug}>
-							<CommentListItemView
-								comment={comment}
-								variant="full"
-								postSlug={postSlug}
-							/>
-						</li>
-					))}
-				</ul>
-			</InfiniteScroll>
+			{loadingThread && comments.length === 0 ? (
+				<CommentsListSkeleton />
+			) : query.isError ? (
+				<p className="text-destructive text-sm">{query.error.message}</p>
+			) : comments.length === 0 ? (
+				<p className="border border-border border-dashed px-4 py-8 text-center text-muted-foreground text-sm">
+					No comments yet. Be the first to reply above.
+				</p>
+			) : (
+				<div className="border border-border px-3 pt-4 pb-1 sm:px-4">
+					<CommentThreadList
+						comments={comments}
+						postSlug={postSlug}
+						replyingToSlug={replyingToSlug}
+						onReply={setReplyingToSlug}
+						onCancelReply={() => setReplyingToSlug(null)}
+						onCommentCreated={refreshComments}
+					/>
+					{loadingThread ? (
+						<p className="border-border border-t py-3 text-center text-muted-foreground text-xs">
+							Loading more comments…
+						</p>
+					) : null}
+				</div>
+			)}
 		</section>
 	);
 }

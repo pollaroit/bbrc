@@ -32,10 +32,13 @@ export const CommentListItemSchema = CommentSchema.pick({
 	content: true,
 	createdAt: true,
 	editedAt: true,
+	depth: true,
 }).extend({
+	parentSlug: CommentSchema.shape.slug.nullable(),
 	author: PostAuthorSchema,
 	likeCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
+	replyCount: zod.number().int().min(0),
 });
 
 /** LIST — scoped to a single post (infinite scroll on post detail). */
@@ -56,12 +59,17 @@ export const getCommentListFields = {
 	content: true,
 	createdAt: true,
 	editedAt: true,
+	depth: true,
+	parent: {
+		select: { slug: true },
+	},
 	author: {
 		select: postAuthorFields,
 	},
 	_count: {
 		select: {
 			likes: true,
+			replies: true,
 		},
 	},
 } as const;
@@ -78,6 +86,7 @@ export type CommentListItem = z.infer<typeof CommentListItemSchema>;
 export const CreateCommentInputSchema = zod.object({
 	postSlug: PostSchema.shape.slug,
 	content: CommentSchema.shape.content,
+	parentSlug: CommentSchema.shape.slug.optional(),
 });
 
 export const CreateCommentOutputSchema = CommentSchema.pick({
@@ -96,12 +105,15 @@ export const GetCommentBySlugOutputSchema = CommentSchema.omit({
 	id: true,
 	authorId: true,
 	postId: true,
+	parentId: true,
 	updatedAt: true,
 }).extend({
 	postSlug: PostSchema.shape.slug,
+	parentSlug: CommentSchema.shape.slug.nullable(),
 	author: PostAuthorSchema,
 	likeCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
+	replyCount: zod.number().int().min(0),
 });
 
 export type GetCommentBySlugInput = z.infer<typeof GetCommentBySlugInputSchema>;
@@ -145,8 +157,12 @@ export const getCommentBySlugFields = {
 	createdAt: true,
 	updatedAt: true,
 	editedAt: true,
+	depth: true,
 	authorId: true,
 	postId: true,
+	parent: {
+		select: { slug: true },
+	},
 	author: {
 		select: postAuthorFields,
 	},

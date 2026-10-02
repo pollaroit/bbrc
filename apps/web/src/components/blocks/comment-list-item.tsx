@@ -28,10 +28,14 @@ export type CommentDisplayItem =
 type CommentListItemProps = {
 	comment: CommentDisplayItem;
 	variant?: "compact" | "full";
+	/** Thread view on post detail uses flat rows; card layout for legacy/other surfaces. */
+	layout?: "card" | "thread";
 	/** When set (compact feed previews), links comment text to the post thread. */
 	threadHref?: Route;
 	/** Required on post detail for author edit/delete. */
 	postSlug?: string;
+	canReply?: boolean;
+	onReply?: () => void;
 	className?: string;
 };
 
@@ -104,7 +108,7 @@ function CommentAuthorActions({
 				open={deleteOpen}
 				onOpenChange={setDeleteOpen}
 				title="Delete comment?"
-				description="Likes on this comment will be removed. This cannot be undone."
+				description="Replies and likes on this comment will be removed. This cannot be undone."
 				confirmLabel="Delete comment"
 				loading={deleteMutation.isPending}
 				onConfirm={() => deleteMutation.mutate({ slug: comment.slug })}
@@ -187,12 +191,17 @@ function CommentEditForm({
 export function CommentListItemView({
 	comment,
 	variant = "full",
+	layout = "card",
 	threadHref,
 	postSlug,
+	canReply = false,
+	onReply,
 	className,
 }: CommentListItemProps) {
+	const { data: session } = authClient.useSession();
 	const profileHref = `/users/${comment.author.username}` as Route;
 	const isCompact = variant === "compact";
+	const isThread = layout === "thread" && !isCompact;
 	const isFullListItem = !isCompact && postSlug != null;
 	const listComment = isFullListItem ? (comment as CommentListItem) : null;
 	const [editing, setEditing] = useState(false);
@@ -216,6 +225,68 @@ export function CommentListItemView({
 				comment={listComment}
 				onCancel={() => setEditing(false)}
 			/>
+		) : isThread ? (
+			<>
+				<div className="flex items-start gap-3">
+					<Link href={profileHref} className="shrink-0 outline-offset-2">
+						<UserPanel
+							user={comment.author}
+							className="min-w-0"
+							renderTitle={false}
+							renderDescription={false}
+							imageClassName="size-8"
+						/>
+					</Link>
+					<div className="min-w-0 flex-1">
+						<div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground text-xs">
+							<Link
+								href={profileHref}
+								className="font-medium text-foreground text-sm hover:underline"
+							>
+								{comment.author.name}
+							</Link>
+							<span className="text-muted-foreground">
+								@{comment.author.username}
+							</span>
+							<span aria-hidden>·</span>
+							<RelativeTime date={comment.createdAt} />
+							{editedAt ? (
+								<span>
+									· edited <RelativeTime date={editedAt} className="inline" />
+								</span>
+							) : null}
+							{listComment ? (
+								<span className="ml-auto flex shrink-0 items-center">
+									<CommentAuthorActions
+										comment={listComment}
+										onEditingChange={setEditing}
+									/>
+								</span>
+							) : null}
+						</div>
+						{content}
+						<div className="mt-2 flex flex-wrap items-center gap-1">
+							<CommentLikeEngagement
+								commentSlug={comment.slug}
+								initialLikeCount={comment.likeCount}
+								initialLikedByMe={comment.likedByMe}
+								size="sm"
+							/>
+							{canReply && onReply && session?.user ? (
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="h-7 px-2 text-muted-foreground text-xs hover:text-foreground"
+									onClick={onReply}
+								>
+									Reply
+								</Button>
+							) : null}
+						</div>
+					</div>
+				</div>
+			</>
 		) : (
 			<>
 				<div className="mb-2 flex flex-wrap items-start justify-between gap-2">
@@ -257,13 +328,24 @@ export function CommentListItemView({
 				) : (
 					content
 				)}
-				<div className="mt-2">
+				<div className="mt-2 flex flex-wrap items-center gap-3">
 					<CommentLikeEngagement
 						commentSlug={comment.slug}
 						initialLikeCount={comment.likeCount}
 						initialLikedByMe={comment.likedByMe}
 						size={isCompact ? "sm" : "md"}
 					/>
+					{canReply && onReply && session?.user ? (
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="h-auto px-2 py-1 text-muted-foreground text-xs"
+							onClick={onReply}
+						>
+							Reply
+						</Button>
+					) : null}
 				</div>
 			</>
 		);
@@ -278,8 +360,23 @@ export function CommentListItemView({
 		);
 	}
 
+	if (isThread) {
+		return (
+			<article
+				id={`comment-${comment.slug}`}
+				className={cn("scroll-mt-24", className)}
+			>
+				{body}
+			</article>
+		);
+	}
+
 	return (
-		<Card size="sm" className={className}>
+		<Card
+			size="sm"
+			id={`comment-${comment.slug}`}
+			className={cn("scroll-mt-24", className)}
+		>
 			<CardContent>{body}</CardContent>
 		</Card>
 	);

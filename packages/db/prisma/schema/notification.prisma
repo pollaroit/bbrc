@@ -1,6 +1,7 @@
 enum NotificationKind {
   member_posted
   comment_on_your_post
+  reply_to_your_comment
   reaction_on_your_post
   member_feedback_on_book
   book_added_to_library

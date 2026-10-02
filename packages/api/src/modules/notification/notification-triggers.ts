@@ -76,6 +76,36 @@ export async function notifyCommentOnYourPost(
 	});
 }
 
+export async function notifyReplyToYourComment(
+	db: Database,
+	postSlug: string,
+	commentSlug: string,
+	replyAuthorId: string,
+	parentAuthorId: string | null,
+): Promise<void> {
+	if (!parentAuthorId || parentAuthorId === replyAuthorId) {
+		return;
+	}
+
+	const replyAuthor = await db.user.findUnique({
+		where: { id: replyAuthorId },
+		select: { name: true, username: true },
+	});
+
+	if (!replyAuthor) {
+		return;
+	}
+
+	await dispatchNotification(db, {
+		kind: "reply_to_your_comment",
+		recipientUserIds: [parentAuthorId],
+		excludeUserIds: [replyAuthorId],
+		title: "Reply to your comment",
+		body: `${memberDisplayName(replyAuthor)} replied to your comment.`,
+		href: `/posts/${postSlug}#comment-${commentSlug}`,
+	});
+}
+
 export async function notifyReactionOnYourPost(
 	db: Database,
 	postSlug: string,

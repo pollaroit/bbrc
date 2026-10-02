@@ -1,10 +1,14 @@
 import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import { LikeSourceSchema } from "@bbrc/schemas";
+import { MAX_COMMENT_DEPTH } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
-import { notifyCommentOnYourPost } from "../notification/notification-triggers";
+import {
+	notifyCommentOnYourPost,
+	notifyReplyToYourComment,
+} from "../notification/notification-triggers";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardCommentXp } from "../xp/xp.service";
 import {
@@ -44,6 +48,7 @@ const getCommentBySlugSelect = {
 	_count: {
 		select: {
 			likes: true,
+			replies: true,
 		},
 	},
 } as const;
@@ -104,9 +109,12 @@ function mapCommentListRow(
 		content: row.content,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
+		depth: row.depth,
+		parentSlug: row.parent?.slug ?? null,
 		author: row.author,
 		likeCount: row._count.likes,
 		likedByMe: likedCommentIds.has(row.id),
+		replyCount: row._count.replies,
 	};
 }
 
@@ -119,10 +127,13 @@ function mapCommentDetailRow(
 		content: row.content,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
+		depth: row.depth,
+		parentSlug: row.parent?.slug ?? null,
 		postSlug: row.post.slug,
 		author: row.author,
 		likeCount: row._count.likes,
 		likedByMe: likedCommentIds.has(row.id),
+		replyCount: row._count.replies,
 	};
 }
 
@@ -229,6 +240,35 @@ export async function createComment(
 ): Promise<CreateCommentOutput> {
 	const postId = await loadPostIdBySlug(input.postSlug, db);
 
+	let parent: {
+		id: string;
+		postId: string;
+		depth: number;
+		authorId: string;
+	} | null = null;
+
+	if (input.parentSlug) {
+		const row = await db.comment.findUnique({
+			where: { slug: input.parentSlug },
+			select: { id: true, postId: true, depth: true, authorId: true },
+		});
+
+		if (!row || row.postId !== postId) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "Reply target must be a comment on this post",
+				data: { parentSlug: input.parentSlug },
+			});
+		}
+
+		if (row.depth >= MAX_COMMENT_DEPTH) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: `Replies cannot exceed ${MAX_COMMENT_DEPTH + 1} levels deep`,
+			});
+		}
+
+		parent = row;
+	}
+
 	return db
 		.$transaction(async (tx) => {
 			const slug = await generateCommentSlug(input.content, tx);
@@ -239,6 +279,8 @@ export async function createComment(
 					slug,
 					authorId: userId,
 					postId,
+					parentId: parent?.id ?? null,
+					depth: parent ? parent.depth + 1 : 0,
 				},
 				select: { id: true, slug: true },
 			});
@@ -250,11 +292,26 @@ export async function createComment(
 				? XP_AWARD.comment
 				: 0;
 
-			return { slug: comment.slug, xpAwarded };
+			return {
+				slug: comment.slug,
+				xpAwarded,
+				parentAuthorId: parent?.authorId ?? null,
+			};
 		})
 		.then(async (result) => {
-			void notifyCommentOnYourPost(db, input.postSlug, userId);
-			return result;
+			if (parent) {
+				void notifyReplyToYourComment(
+					db,
+					input.postSlug,
+					result.slug,
+					userId,
+					result.parentAuthorId,
+				);
+			} else {
+				void notifyCommentOnYourPost(db, input.postSlug, userId);
+			}
+
+			return { slug: result.slug, xpAwarded: result.xpAwarded };
 		});
 }
 

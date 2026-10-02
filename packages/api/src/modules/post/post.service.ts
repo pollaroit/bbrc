@@ -198,7 +198,7 @@ async function loadTopCommentsByPostId(
 	}
 
 	const comments = await db.comment.findMany({
-		where: { postId: { in: postIds } },
+		where: { postId: { in: postIds }, parentId: null },
 		select: topCommentSelect,
 	});
 
