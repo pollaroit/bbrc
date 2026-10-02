@@ -35,9 +35,14 @@ export default function Header() {
 	return (
 		<header className="sticky top-0 z-30 w-full border-border border-b bg-background/80 backdrop-blur">
 			<div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-6 px-6">
-				<Link href="/" className="flex shrink-0 items-center gap-2.5">
-					<span className="font-bold text-base tracking-tight">BBRC</span>
-				</Link>
+				<div className="flex shrink-0 items-center gap-2">
+					<Link href="/" className="flex items-center gap-2.5">
+						<span className="font-bold text-base tracking-tight">BBRC</span>
+					</Link>
+					<div className="md:hidden">
+						<HeaderOngoingReadButton />
+					</div>
+				</div>
 
 				<nav className="hidden items-center gap-7 md:flex">
 					{navLinks.map((link) => (
@@ -112,9 +117,6 @@ export default function Header() {
 										{link.label}
 									</SheetClose>
 								))}
-								<div className="border-border border-b py-3 last:border-b-0">
-									<HeaderOngoingReadButton />
-								</div>
 							</nav>
 
 							<SheetFooter>
