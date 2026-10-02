@@ -3,6 +3,7 @@
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { Badge } from "@bbrc/ui/components/badge";
 import { useQuery } from "@tanstack/react-query";
+import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { formatDateTime } from "@/lib/format-datetime";
 import { formatPollPageRange } from "@/lib/poll-page-range";
 import { orpc } from "@/utils/orpc";
@@ -47,9 +48,21 @@ export function SittingVotePageIntro({
 							: "Final vote totals from this sitting's poll. The club pick is marked below."}
 					</p>
 				</div>
-				<Badge variant={isOpen ? "default" : "outline"}>
-					{isOpen ? "Voting open" : "Voting closed"}
-				</Badge>
+				<div className="flex flex-wrap items-center gap-2">
+					<Badge variant={isOpen ? "default" : "outline"}>
+						{isOpen ? "Voting open" : "Voting closed"}
+					</Badge>
+					<ResourceShareMenu
+						path={`/sittings/${sittingSlug}/vote`}
+						shareText={
+							isOpen
+								? `Vote on books for ${sittingSlug.replaceAll("_", " ")}`
+								: `Voting results · ${sittingSlug.replaceAll("_", " ")}`
+						}
+						label="Share poll"
+						size="md"
+					/>
+				</div>
 			</div>
 
 			<dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

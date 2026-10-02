@@ -12,8 +12,10 @@ import Link from "next/link";
 import { CommentListItemView } from "@/components/blocks/comment-list-item";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { shareSnippet } from "@/lib/share-snippet";
 import { cn } from "@/lib/utils";
 
 export type PostCardPost = GetPostListOutput["items"][number];
@@ -114,6 +116,11 @@ export function PostCard({ post, className }: PostCardProps) {
 						<MessageCircle className="size-4" aria-hidden />
 						{post.commentCount}
 					</Link>
+					<ResourceShareMenu
+						path={`/posts/${post.slug}`}
+						shareText={shareSnippet(post.content)}
+						label="Share post"
+					/>
 				</div>
 
 				{post.topComments.length > 0 ? (

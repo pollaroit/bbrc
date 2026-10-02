@@ -161,13 +161,16 @@ export async function resolveXpEntitySources(
 			const comment = commentById.get(event.entityId);
 			const postSlug = comment?.post?.slug;
 			const feedbackHref =
-				comment?.feedback != null
-					? `/books/${comment.feedback.book.slug}/feedbacks/${comment.feedback.slug}#comments`
+				comment?.feedback != null && comment.slug
+					? `/books/${comment.feedback.book.slug}/feedbacks/${comment.feedback.slug}/comments/${comment.slug}`
+					: null;
+			const postHref =
+				postSlug && comment?.slug
+					? `/posts/${postSlug}/comments/${comment.slug}`
 					: null;
 			result.set(key, {
 				label: "Comment",
-				href:
-					postSlug && comment ? `/posts/${postSlug}#comments` : feedbackHref,
+				href: postHref ?? feedbackHref,
 			});
 			continue;
 		}

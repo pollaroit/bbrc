@@ -22,11 +22,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { FeedbackLikeEngagement } from "@/components/blocks/feedback-like-engagement";
+import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
 import { formatDateTime } from "@/lib/format-datetime";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
+import { shareSnippet } from "@/lib/share-snippet";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type BookFeedbackSectionProps = {
@@ -213,6 +215,11 @@ export function BookFeedbackSection({
 												<MessageCircle className="size-4" aria-hidden />
 												{entry.commentCount}
 											</Link>
+											<ResourceShareMenu
+												path={`/books/${bookSlug}/feedbacks/${entry.slug}`}
+												shareText={shareSnippet(entry.review)}
+												label="Share review"
+											/>
 										</div>
 									</CardContent>
 								</Card>
@@ -275,6 +282,13 @@ export function BookFeedbackSection({
 								>
 									Open review page
 								</Link>
+							) : null}
+							{myFeedbackHref ? (
+								<ResourceShareMenu
+									path={`/books/${bookSlug}/feedbacks/${myFeedback.slug}`}
+									shareText={shareSnippet(myFeedback.review)}
+									label="Share review"
+								/>
 							) : null}
 							<LoadingButton
 								type="button"

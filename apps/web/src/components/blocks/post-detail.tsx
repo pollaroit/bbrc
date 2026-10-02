@@ -10,8 +10,10 @@ import { PostCommentsSection } from "@/components/blocks/post-comments-section";
 import { PostEditLink } from "@/components/blocks/post-edit-link";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { shareSnippet } from "@/lib/share-snippet";
 
 type PostDetailProps = {
 	post: GetPostBySlugOutput;
@@ -120,6 +122,12 @@ export function PostDetail({
 							<MessageCircle className="size-4" aria-hidden />
 							{post.commentCount}
 						</Link>
+						<ResourceShareMenu
+							path={`/posts/${post.slug}`}
+							shareText={shareSnippet(post.content)}
+							label="Share post"
+							size="md"
+						/>
 					</div>
 				</CardContent>
 			</Card>

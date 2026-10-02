@@ -109,11 +109,20 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 			}
 		}
 		if (bookSlug.trim() && feedbackSlug.trim()) {
+			const book = bookSlug.trim();
+			const feedback = feedbackSlug.trim();
 			entries.push({
 				label: "Book review",
-				path: `/books/${bookSlug.trim()}/feedbacks/${feedbackSlug.trim()}`,
+				path: `/books/${book}/feedbacks/${feedback}`,
 				description: "Club feedback permalink OG.",
 			});
+			if (commentSlug.trim()) {
+				entries.push({
+					label: "Review comment",
+					path: `/books/${book}/feedbacks/${feedback}/comments/${commentSlug.trim()}`,
+					description: "Comment on a club review OG.",
+				});
+			}
 		}
 		if (sittingSlug.trim()) {
 			const slug = sittingSlug.trim();

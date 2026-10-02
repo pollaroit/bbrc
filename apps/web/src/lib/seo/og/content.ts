@@ -19,6 +19,34 @@ import type { OgImageContent } from "./template";
 
 const anonymousSession = null;
 
+type CommentOgContext = Awaited<ReturnType<typeof getCommentBySlug>>;
+
+function commentOgHighlights(comment: CommentOgContext): string[] {
+	const highlights = [
+		`@${comment.author.username}`,
+		formatCount("like", comment.likeCount),
+	];
+	if (comment.replyCount > 0) {
+		highlights.push(formatCount("reply", comment.replyCount));
+	}
+	if (comment.editedAt) {
+		highlights.push("Edited");
+	}
+	return highlights;
+}
+
+function commentOgPayload(
+	comment: CommentOgContext,
+	contextDescription: string,
+): OgImageContent {
+	return {
+		kind: "Comment",
+		title: truncateOgTitle(comment.content),
+		description: truncateOgLine(contextDescription, 140),
+		highlights: commentOgHighlights(comment),
+	};
+}
+
 const STATIC_PAGES: Record<string, OgImageContent> = {
 	"": {
 		title: "Club feed",
@@ -161,6 +189,46 @@ export async function resolveOgImageContent(
 		);
 	}
 
+	if (
+		section === "books" &&
+		rest[0] === "feedbacks" &&
+		rest[1] &&
+		rest[2] === "comments" &&
+		rest[3]
+	) {
+		const bookSlug = slug;
+		const feedbackSlug = rest[1];
+		const commentSlug = rest[3];
+		try {
+			const [comment, feedback] = await Promise.all([
+				getCommentBySlug(commentSlug, db, anonymousSession),
+				getFeedbackBySlug(feedbackSlug, db, anonymousSession),
+			]);
+			if (
+				comment.bookSlug !== bookSlug ||
+				comment.feedbackSlug !== feedbackSlug ||
+				feedback.bookSlug !== bookSlug
+			) {
+				return {
+					kind: "Comment",
+					title: "Comment not found",
+					description: DEFAULT_DESCRIPTION,
+				};
+			}
+
+			return commentOgPayload(
+				comment,
+				`${feedback.bookTitle} · review by ${feedback.author.name} (@${feedback.author.username})`,
+			);
+		} catch {
+			return {
+				kind: "Comment",
+				title: "Comment not found",
+				description: DEFAULT_DESCRIPTION,
+			};
+		}
+	}
+
 	if (section === "books" && rest[0] === "feedbacks" && rest[1]) {
 		const bookSlug = slug;
 		const feedbackSlug = rest[1];
@@ -265,7 +333,10 @@ export async function resolveOgImageContent(
 		const postSlug = slug;
 		const commentSlug = rest[1];
 		try {
-			const comment = await getCommentBySlug(commentSlug, db, anonymousSession);
+			const [comment, post] = await Promise.all([
+				getCommentBySlug(commentSlug, db, anonymousSession),
+				getPostBySlug(postSlug, db, anonymousSession),
+			]);
 			if (comment.postSlug !== postSlug) {
 				return {
 					kind: "Comment",
@@ -274,25 +345,10 @@ export async function resolveOgImageContent(
 				};
 			}
 
-			const highlights = [
-				`@${comment.author.username}`,
-				`${comment.likeCount} like${comment.likeCount === 1 ? "" : "s"}`,
-			];
-			if (comment.replyCount > 0) {
-				highlights.push(
-					`${comment.replyCount} repl${comment.replyCount === 1 ? "y" : "ies"}`,
-				);
-			}
-			if (comment.editedAt) {
-				highlights.push("Edited");
-			}
-
-			return {
-				kind: "Comment",
-				title: truncateOgTitle(comment.content),
-				description: truncateOgLine(comment.content, 160),
-				highlights,
-			};
+			return commentOgPayload(
+				comment,
+				`@${comment.author.username} · post by ${post.author.name} (@${post.author.username})`,
+			);
 		} catch {
 			return {
 				kind: "Comment",
@@ -308,7 +364,10 @@ export async function resolveOgImageContent(
 			return {
 				kind: "Edit",
 				title: truncateOgTitle(post.content),
-				description: truncateOgLine(post.content, 160),
+				description: truncateOgLine(
+					`@${post.author.username} · edit mode`,
+					140,
+				),
 				highlights: [`@${post.author.username}`, "Edit mode"],
 			};
 		} catch {
@@ -335,10 +394,14 @@ export async function resolveOgImageContent(
 				highlights.push("Edited");
 			}
 
+			const postContext = post.attachedBook
+				? `@${post.author.username} · ${post.attachedBook.title}`
+				: `@${post.author.username}`;
+
 			return {
 				kind: "Post",
 				title: truncateOgTitle(post.content),
-				description: truncateOgLine(post.content, 160),
+				description: truncateOgLine(postContext, 140),
 				highlights,
 			};
 		} catch {

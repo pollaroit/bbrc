@@ -7,7 +7,7 @@ import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
-import { Link2, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
@@ -15,9 +15,14 @@ import { toast } from "sonner";
 import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
 import { CommentLikeEngagement } from "@/components/blocks/comment-like-engagement";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import {
+	commentSharePath,
+	ResourceShareMenu,
+} from "@/components/blocks/resource-share-menu";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
+import { shareSnippet } from "@/lib/share-snippet";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -40,59 +45,6 @@ type CommentListItemProps = {
 	onReply?: () => void;
 	className?: string;
 };
-
-function CommentCopyLinkButton({
-	postSlug,
-	bookSlug,
-	feedbackContextSlug,
-	commentSlug,
-	className,
-}: {
-	postSlug?: string;
-	bookSlug?: string;
-	feedbackContextSlug?: string;
-	commentSlug: string;
-	className?: string;
-}) {
-	const [copied, setCopied] = useState(false);
-
-	async function handleCopy() {
-		try {
-			const path = postSlug
-				? `/posts/${postSlug}/comments/${commentSlug}`
-				: bookSlug && feedbackContextSlug
-					? `/books/${bookSlug}/feedbacks/${feedbackContextSlug}#comment-${commentSlug}`
-					: null;
-			if (!path) {
-				return;
-			}
-			const url = `${window.location.origin}${path}`;
-			await navigator.clipboard.writeText(url);
-			toast.success("Comment link copied.");
-			setCopied(true);
-			window.setTimeout(() => setCopied(false), 2000);
-		} catch {
-			toast.error("Could not copy link.");
-		}
-	}
-
-	return (
-		<Button
-			type="button"
-			variant="ghost"
-			size="sm"
-			className={cn(
-				"h-7 gap-1 px-2 text-muted-foreground text-xs hover:text-foreground",
-				className,
-			)}
-			aria-label="Copy link to this comment"
-			onClick={() => void handleCopy()}
-		>
-			<Link2 className="size-3.5 shrink-0" aria-hidden />
-			{copied ? "Copied" : "Copy link"}
-		</Button>
-	);
-}
 
 async function invalidateCommentQueries() {
 	await queryClient.invalidateQueries({
@@ -264,6 +216,13 @@ export function CommentListItemView({
 	const listComment = isFullListItem ? (comment as CommentListItem) : null;
 	const [editing, setEditing] = useState(false);
 	const editedAt = "editedAt" in comment ? comment.editedAt : null;
+	const commentShare =
+		commentSharePath({
+			postSlug,
+			bookSlug,
+			feedbackContextSlug,
+			commentSlug: comment.slug,
+		}) ?? null;
 
 	const content = (
 		<p
@@ -330,12 +289,11 @@ export function CommentListItemView({
 								initialLikedByMe={comment.likedByMe}
 								size="sm"
 							/>
-							{postSlug || (bookSlug && feedbackContextSlug) ? (
-								<CommentCopyLinkButton
-									postSlug={postSlug}
-									bookSlug={bookSlug}
-									feedbackContextSlug={feedbackContextSlug}
-									commentSlug={comment.slug}
+							{commentShare ? (
+								<ResourceShareMenu
+									path={commentShare}
+									shareText={shareSnippet(comment.content)}
+									label="Share comment"
 								/>
 							) : null}
 							{canReply && onReply && session?.user ? (
@@ -401,13 +359,11 @@ export function CommentListItemView({
 						initialLikedByMe={comment.likedByMe}
 						size={isCompact ? "sm" : "md"}
 					/>
-					{postSlug || (bookSlug && feedbackContextSlug) ? (
-						<CommentCopyLinkButton
-							postSlug={postSlug}
-							bookSlug={bookSlug}
-							feedbackContextSlug={feedbackContextSlug}
-							commentSlug={comment.slug}
-							className="h-auto py-1"
+					{commentShare ? (
+						<ResourceShareMenu
+							path={commentShare}
+							shareText={shareSnippet(comment.content)}
+							label="Share comment"
 						/>
 					) : null}
 					{canReply && onReply && session?.user ? (

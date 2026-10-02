@@ -9,8 +9,10 @@ import {
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
+import { shareSnippet } from "@/lib/share-snippet";
 
 type UserFeedbackCardProps = {
 	item: GetUserFeedbackListOutput["items"][number];
@@ -61,9 +63,16 @@ export function UserFeedbackCard({ item }: UserFeedbackCardProps) {
 					>
 						{item.review}
 					</Link>
-					<p className="text-muted-foreground text-xs">
-						{formatDateTime(item.createdAt)}
-					</p>
+					<div className="flex flex-wrap items-center gap-3">
+						<p className="text-muted-foreground text-xs">
+							{formatDateTime(item.createdAt)}
+						</p>
+						<ResourceShareMenu
+							path={`/books/${item.book.slug}/feedbacks/${item.slug}`}
+							shareText={`${item.book.title} · ${shareSnippet(item.review)}`}
+							label="Share review"
+						/>
+					</div>
 				</div>
 			</CardContent>
 		</Card>

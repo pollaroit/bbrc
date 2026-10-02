@@ -16,6 +16,7 @@ import { BookEditLink } from "@/components/blocks/book-edit-link";
 import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
 import { BookFeedbackSection } from "@/components/blocks/book-feedback-section";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
+import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 
 type BookDetailProps = {
@@ -64,7 +65,13 @@ export function BookDetail({ book, initialReviews }: BookDetailProps) {
 								{formatBookAuthors(book.authors)}
 							</p>
 						</div>
-						<div className="flex shrink-0 items-center gap-1">
+						<div className="flex shrink-0 flex-wrap items-center gap-1">
+							<ResourceShareMenu
+								path={`/books/${book.slug}`}
+								shareText={book.title}
+								label="Share book"
+								size="md"
+							/>
 							<BookFavoriteButton
 								bookSlug={book.slug}
 								bookTitle={book.title}

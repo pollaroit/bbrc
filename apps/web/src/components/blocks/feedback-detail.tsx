@@ -5,18 +5,29 @@ import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { FeedbackCommentFocusSection } from "@/components/blocks/feedback-comment-focus-section";
 import { FeedbackCommentsSection } from "@/components/blocks/feedback-comments-section";
-import { FeedbackCopyLinkButton } from "@/components/blocks/feedback-copy-link-button";
 import { FeedbackLikeEngagement } from "@/components/blocks/feedback-like-engagement";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { shareSnippet } from "@/lib/share-snippet";
 
 type FeedbackDetailProps = {
 	feedback: GetFeedbackBySlugOutput;
+	/** When set, show this comment thread instead of the full comments section. */
+	commentFocusSlug?: string | null;
+	showCommentsSection?: boolean;
 };
 
-export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
+export function FeedbackDetail({
+	feedback,
+	commentFocusSlug = null,
+	showCommentsSection = true,
+}: FeedbackDetailProps) {
 	const bookHref = `/books/${feedback.bookSlug}` as Route;
+	const feedbackHref =
+		`/books/${feedback.bookSlug}/feedbacks/${feedback.slug}` as Route;
 	const commentsHref =
 		`/books/${feedback.bookSlug}/feedbacks/${feedback.slug}#comments` as Route;
 	const profileHref = `/users/${feedback.author.username}` as Route;
@@ -73,18 +84,38 @@ export function FeedbackDetail({ feedback }: FeedbackDetailProps) {
 							<MessageCircle className="size-4" aria-hidden />
 							{feedback.commentCount}
 						</Link>
-						<FeedbackCopyLinkButton
-							bookSlug={feedback.bookSlug}
-							feedbackSlug={feedback.slug}
+						<ResourceShareMenu
+							path={`/books/${feedback.bookSlug}/feedbacks/${feedback.slug}`}
+							shareText={`${feedback.bookTitle} · ${shareSnippet(feedback.review)}`}
+							label="Share review"
+							size="md"
 						/>
 					</div>
 				</CardContent>
 			</Card>
 
-			<FeedbackCommentsSection
-				feedbackSlug={feedback.slug}
-				bookSlug={feedback.bookSlug}
-			/>
+			{commentFocusSlug ? (
+				<>
+					<FeedbackCommentFocusSection
+						feedbackSlug={feedback.slug}
+						bookSlug={feedback.bookSlug}
+						focusCommentSlug={commentFocusSlug}
+					/>
+					<Button
+						variant="outline"
+						className="w-fit"
+						render={<Link href={feedbackHref} />}
+						nativeButton={false}
+					>
+						View all comments on this review
+					</Button>
+				</>
+			) : showCommentsSection ? (
+				<FeedbackCommentsSection
+					feedbackSlug={feedback.slug}
+					bookSlug={feedback.bookSlug}
+				/>
+			) : null}
 
 			<Button
 				variant="outline"

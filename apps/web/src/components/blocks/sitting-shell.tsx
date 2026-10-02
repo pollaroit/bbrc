@@ -2,6 +2,7 @@ import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.s
 import { ArrowLeft } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SittingAdminActions } from "@/components/blocks/sitting-admin-actions";
 import { SittingAdminDeadlines } from "@/components/blocks/sitting-admin-deadlines";
 import { SittingHubNav } from "@/components/blocks/sitting-hub-nav";
@@ -35,7 +36,15 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 						</p>
 					</div>
 					<div className="flex flex-col items-start gap-3 sm:items-end">
-						<SittingStatusBadge status={sitting.status} />
+						<div className="flex flex-wrap items-center gap-2">
+							<SittingStatusBadge status={sitting.status} />
+							<ResourceShareMenu
+								path={`/sittings/${sitting.slug}`}
+								shareText={sitting.slug.replaceAll("_", " ")}
+								label="Share sitting"
+								size="md"
+							/>
+						</div>
 						<div className="flex flex-wrap justify-end gap-2">
 							<SittingAdminDeadlines sitting={sitting} />
 							<SittingAdminActions sitting={sitting} />

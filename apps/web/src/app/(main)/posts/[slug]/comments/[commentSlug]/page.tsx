@@ -1,4 +1,5 @@
 import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
+import { getPostBySlug } from "@bbrc/api/modules/post/post.service";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PostDetail } from "@/components/blocks/post-detail";
@@ -8,6 +9,7 @@ import {
 	buildPageMetadata,
 	truncateDescription,
 } from "@/lib/seo";
+import { truncateOgTitle } from "@/lib/seo/og/helpers";
 import { db } from "@/services";
 
 /** On-demand only — too many comments for static generation or sitemap. */
@@ -21,16 +23,19 @@ export async function generateMetadata({
 	const { slug, commentSlug } = await params;
 
 	try {
-		const comment = await getCommentBySlug(commentSlug, db, anonymousSession);
+		const [comment, post] = await Promise.all([
+			getCommentBySlug(commentSlug, db, anonymousSession),
+			getPostBySlug(slug, db, anonymousSession),
+		]);
 		if (comment.postSlug !== slug) {
 			return buildNotFoundMetadata("Comment");
 		}
 
 		return buildPageMetadata({
-			title: `Comment by ${comment.author.name}`,
-			description:
-				truncateDescription(comment.content) ||
-				`Comment on a BBRC post by @${comment.author.username}.`,
+			title: truncateOgTitle(comment.content),
+			description: truncateDescription(
+				`@${comment.author.username} · post by ${post.author.name}`,
+			),
 			path: `/posts/${slug}/comments/${commentSlug}`,
 			openGraph: { type: "article" },
 		});
