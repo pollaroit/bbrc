@@ -10,7 +10,7 @@ export default async function OgDevPage() {
 		notFound();
 	}
 
-	const [book, post, comment, sitting, user] = await Promise.all([
+	const [book, post, comment, feedback, sitting, user] = await Promise.all([
 		db.book.findFirst({
 			orderBy: { createdAt: "desc" },
 			select: { slug: true },
@@ -20,6 +20,10 @@ export default async function OgDevPage() {
 			select: { slug: true },
 		}),
 		db.comment.findFirst({
+			orderBy: { createdAt: "desc" },
+			select: { slug: true },
+		}),
+		db.feedback.findFirst({
 			orderBy: { createdAt: "desc" },
 			select: { slug: true },
 		}),
@@ -62,6 +66,7 @@ export default async function OgDevPage() {
 				bookSlug: book?.slug,
 				postSlug: post?.slug,
 				commentSlug: comment?.slug,
+				feedbackSlug: feedback?.slug,
 				sittingSlug: sitting?.slug,
 				username: user?.username,
 			}}

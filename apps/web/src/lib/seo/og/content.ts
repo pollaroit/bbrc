@@ -1,5 +1,6 @@
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
+import { getFeedbackBySlug } from "@bbrc/api/modules/feedback/feedback.service";
 import { getPostBySlug } from "@bbrc/api/modules/post/post.service";
 import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.schema";
 import { getSittingBySlug } from "@bbrc/api/modules/sitting/sitting.service";
@@ -158,6 +159,44 @@ export async function resolveOgImageContent(
 				description: DEFAULT_DESCRIPTION,
 			}
 		);
+	}
+
+	if (section === "books" && rest[0] === "feedbacks" && rest[1]) {
+		const bookSlug = slug;
+		const feedbackSlug = rest[1];
+		try {
+			const feedback = await getFeedbackBySlug(
+				feedbackSlug,
+				db,
+				anonymousSession,
+			);
+			if (feedback.bookSlug !== bookSlug) {
+				return {
+					kind: "Review",
+					title: "Review not found",
+					description: DEFAULT_DESCRIPTION,
+				};
+			}
+
+			return {
+				kind: "Review",
+				title: truncateOgTitle(feedback.review),
+				description: truncateOgLine(feedback.review, 160),
+				highlights: [
+					feedback.bookTitle,
+					`@${feedback.author.username}`,
+					`${feedback.rating.toFixed(1)} / 5`,
+					`${feedback.likeCount} like${feedback.likeCount === 1 ? "" : "s"}`,
+					`${feedback.commentCount} comment${feedback.commentCount === 1 ? "" : "s"}`,
+				],
+			};
+		} catch {
+			return {
+				kind: "Review",
+				title: "Review not found",
+				description: DEFAULT_DESCRIPTION,
+			};
+		}
 	}
 
 	if (section === "books" && rest[0] === "edit") {

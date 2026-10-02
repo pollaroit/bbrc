@@ -2,6 +2,7 @@ import {
 	CommentSchema,
 	CursorPaginationInputSchema,
 	CursorPaginationOutputSchema,
+	FeedbackSchema,
 	LikeSchema,
 	LikeSourceSchema,
 	PostSchema,
@@ -31,26 +32,24 @@ export {
 } from "./like.listing";
 
 function refineLikeTarget(
-	value: { postSlug?: string; commentSlug?: string },
+	value: {
+		postSlug?: string;
+		commentSlug?: string;
+		feedbackSlug?: string;
+	},
 	ctx: zod.RefinementCtx,
 	pathPrefix: (string | number)[] = [],
 ): void {
-	const hasPost = value.postSlug != null && value.postSlug !== "";
-	const hasComment = value.commentSlug != null && value.commentSlug !== "";
+	const targets = [
+		value.postSlug != null && value.postSlug !== "",
+		value.commentSlug != null && value.commentSlug !== "",
+		value.feedbackSlug != null && value.feedbackSlug !== "",
+	].filter(Boolean);
 
-	if (hasPost && hasComment) {
+	if (targets.length !== 1) {
 		ctx.addIssue({
 			code: "custom",
-			message: "Provide either postSlug or commentSlug, not both",
-			path: [...pathPrefix, "commentSlug"],
-		});
-		return;
-	}
-
-	if (!hasPost && !hasComment) {
-		ctx.addIssue({
-			code: "custom",
-			message: "Provide postSlug or commentSlug",
+			message: "Provide exactly one of postSlug, commentSlug, or feedbackSlug",
 			path: [...pathPrefix, "postSlug"],
 		});
 	}
@@ -94,6 +93,7 @@ export const ToggleLikeInputSchema = zod
 	.object({
 		postSlug: PostSchema.shape.slug.optional(),
 		commentSlug: CommentSchema.shape.slug.optional(),
+		feedbackSlug: FeedbackSchema.shape.slug.optional(),
 	})
 	.superRefine((value, ctx) => {
 		refineLikeTarget(value, ctx);
@@ -115,6 +115,7 @@ export const getLikeLookupFields = {
 	userId: true,
 	postId: true,
 	commentId: true,
+	feedbackId: true,
 } as const;
 
 export const getLikeCountFields = {

@@ -1,5 +1,10 @@
 import type { Prisma } from "@bbrc/db";
-import { CommentSchema, LikeSourceSchema, PostSchema } from "@bbrc/schemas";
+import {
+	CommentSchema,
+	FeedbackSchema,
+	LikeSourceSchema,
+	PostSchema,
+} from "@bbrc/schemas";
 import z from "zod";
 import { defineRanging } from "../../utils/ranging";
 import { defineSearching } from "../../utils/searching";
@@ -49,6 +54,7 @@ export const likeListSearching = defineSearching<
 export const likeListFiltersSchema = z.object({
 	postSlug: PostSchema.shape.slug.optional(),
 	commentSlug: CommentSchema.shape.slug.optional(),
+	feedbackSlug: FeedbackSchema.shape.slug.optional(),
 });
 
 export function likeOnPostWhere(postSlug: string): Prisma.LikeWhereInput {
@@ -65,9 +71,19 @@ export function likeOnCommentWhere(commentSlug: string): Prisma.LikeWhereInput {
 	};
 }
 
+export function likeOnFeedbackWhere(
+	feedbackSlug: string,
+): Prisma.LikeWhereInput {
+	return {
+		source: LikeSourceSchema.enum.feedback,
+		feedback: { slug: feedbackSlug },
+	};
+}
+
 export function likeListTargetWhere(input: {
 	postSlug?: string;
 	commentSlug?: string;
+	feedbackSlug?: string;
 }): Prisma.LikeWhereInput {
 	if (input.postSlug) {
 		return likeOnPostWhere(input.postSlug);
@@ -77,5 +93,11 @@ export function likeListTargetWhere(input: {
 		return likeOnCommentWhere(input.commentSlug);
 	}
 
-	throw new Error("likeListTargetWhere requires postSlug or commentSlug");
+	if (input.feedbackSlug) {
+		return likeOnFeedbackWhere(input.feedbackSlug);
+	}
+
+	throw new Error(
+		"likeListTargetWhere requires postSlug, commentSlug, or feedbackSlug",
+	);
 }

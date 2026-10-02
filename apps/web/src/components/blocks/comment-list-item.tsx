@@ -34,6 +34,8 @@ type CommentListItemProps = {
 	threadHref?: Route;
 	/** Required on post detail for author edit/delete. */
 	postSlug?: string;
+	bookSlug?: string;
+	feedbackContextSlug?: string;
 	canReply?: boolean;
 	onReply?: () => void;
 	className?: string;
@@ -41,10 +43,14 @@ type CommentListItemProps = {
 
 function CommentCopyLinkButton({
 	postSlug,
+	bookSlug,
+	feedbackContextSlug,
 	commentSlug,
 	className,
 }: {
-	postSlug: string;
+	postSlug?: string;
+	bookSlug?: string;
+	feedbackContextSlug?: string;
 	commentSlug: string;
 	className?: string;
 }) {
@@ -52,7 +58,15 @@ function CommentCopyLinkButton({
 
 	async function handleCopy() {
 		try {
-			const url = `${window.location.origin}/posts/${postSlug}/comments/${commentSlug}`;
+			const path = postSlug
+				? `/posts/${postSlug}/comments/${commentSlug}`
+				: bookSlug && feedbackContextSlug
+					? `/books/${bookSlug}/feedbacks/${feedbackContextSlug}#comment-${commentSlug}`
+					: null;
+			if (!path) {
+				return;
+			}
+			const url = `${window.location.origin}${path}`;
 			await navigator.clipboard.writeText(url);
 			toast.success("Comment link copied.");
 			setCopied(true);
@@ -235,6 +249,8 @@ export function CommentListItemView({
 	layout = "card",
 	threadHref,
 	postSlug,
+	bookSlug,
+	feedbackContextSlug,
 	canReply = false,
 	onReply,
 	className,
@@ -243,7 +259,8 @@ export function CommentListItemView({
 	const profileHref = `/users/${comment.author.username}` as Route;
 	const isCompact = variant === "compact";
 	const isThread = layout === "thread" && !isCompact;
-	const isFullListItem = !isCompact && postSlug != null;
+	const isFullListItem =
+		!isCompact && (postSlug != null || feedbackContextSlug != null);
 	const listComment = isFullListItem ? (comment as CommentListItem) : null;
 	const [editing, setEditing] = useState(false);
 	const editedAt = "editedAt" in comment ? comment.editedAt : null;
@@ -313,9 +330,11 @@ export function CommentListItemView({
 								initialLikedByMe={comment.likedByMe}
 								size="sm"
 							/>
-							{postSlug ? (
+							{postSlug || (bookSlug && feedbackContextSlug) ? (
 								<CommentCopyLinkButton
 									postSlug={postSlug}
+									bookSlug={bookSlug}
+									feedbackContextSlug={feedbackContextSlug}
 									commentSlug={comment.slug}
 								/>
 							) : null}
@@ -382,9 +401,11 @@ export function CommentListItemView({
 						initialLikedByMe={comment.likedByMe}
 						size={isCompact ? "sm" : "md"}
 					/>
-					{postSlug ? (
+					{postSlug || (bookSlug && feedbackContextSlug) ? (
 						<CommentCopyLinkButton
 							postSlug={postSlug}
+							bookSlug={bookSlug}
+							feedbackContextSlug={feedbackContextSlug}
 							commentSlug={comment.slug}
 							className="h-auto py-1"
 						/>

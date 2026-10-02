@@ -3,6 +3,7 @@ import { LikeSourceSchema } from "@bbrc/schemas";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
+import { userParticipatedClubRead } from "../book/book-read-eligibility";
 import { notifyReactionOnYourPost } from "../notification/notification-triggers";
 import {
 	likeListRanging,
@@ -41,11 +42,22 @@ type LikeTarget =
 			source: typeof LikeSourceSchema.enum.post;
 			postId: string;
 			commentId: null;
+			feedbackId: null;
+			bookId: null;
 	  }
 	| {
 			source: typeof LikeSourceSchema.enum.comment;
 			postId: null;
 			commentId: string;
+			feedbackId: null;
+			bookId: null;
+	  }
+	| {
+			source: typeof LikeSourceSchema.enum.feedback;
+			postId: null;
+			commentId: null;
+			feedbackId: string;
+			bookId: string;
 	  };
 
 function withStableIdOrderBy(
@@ -75,6 +87,8 @@ async function resolvePostTarget(
 		source: LikeSourceSchema.enum.post,
 		postId: post.id,
 		commentId: null,
+		feedbackId: null,
+		bookId: null,
 	};
 }
 
@@ -98,6 +112,33 @@ async function resolveCommentTarget(
 		source: LikeSourceSchema.enum.comment,
 		postId: null,
 		commentId: comment.id,
+		feedbackId: null,
+		bookId: null,
+	};
+}
+
+async function resolveFeedbackTarget(
+	feedbackSlug: string,
+	db: Database,
+): Promise<LikeTarget> {
+	const feedback = await db.feedback.findUnique({
+		where: { slug: feedbackSlug },
+		select: { id: true, bookId: true },
+	});
+
+	if (!feedback) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Feedback not found",
+			data: { slug: feedbackSlug },
+		});
+	}
+
+	return {
+		source: LikeSourceSchema.enum.feedback,
+		postId: null,
+		commentId: null,
+		feedbackId: feedback.id,
+		bookId: feedback.bookId,
 	};
 }
 
@@ -113,8 +154,12 @@ async function resolveLikeTarget(
 		return resolveCommentTarget(input.commentSlug, db);
 	}
 
+	if (input.feedbackSlug) {
+		return resolveFeedbackTarget(input.feedbackSlug, db);
+	}
+
 	throw new ORPCError("BAD_REQUEST", {
-		message: "Provide postSlug or commentSlug",
+		message: "Provide postSlug, commentSlug, or feedbackSlug",
 	});
 }
 
@@ -131,10 +176,19 @@ async function countLikesForTarget(
 		});
 	}
 
+	if (target.source === LikeSourceSchema.enum.comment) {
+		return db.like.count({
+			where: {
+				source: target.source,
+				commentId: target.commentId,
+			},
+		});
+	}
+
 	return db.like.count({
 		where: {
 			source: target.source,
-			commentId: target.commentId,
+			feedbackId: target.feedbackId,
 		},
 	});
 }
@@ -151,10 +205,18 @@ function existingLikeWhere(
 		};
 	}
 
+	if (target.source === LikeSourceSchema.enum.comment) {
+		return {
+			userId,
+			source: target.source,
+			commentId: target.commentId,
+		};
+	}
+
 	return {
 		userId,
 		source: target.source,
-		commentId: target.commentId,
+		feedbackId: target.feedbackId,
 	};
 }
 
@@ -198,6 +260,16 @@ export async function toggleLike(
 ): Promise<ToggleLikeOutput> {
 	const target = await resolveLikeTarget(input, db);
 
+	if (target.source === LikeSourceSchema.enum.feedback) {
+		const allowed = await userParticipatedClubRead(userId, target.bookId, db);
+		if (!allowed) {
+			throw new ORPCError("FORBIDDEN", {
+				message:
+					"Only participants of the sitting that read this book can like reviews",
+			});
+		}
+	}
+
 	const result = await db.$transaction(async (tx) => {
 		const existing = await tx.like.findFirst({
 			where: existingLikeWhere(target, userId),
@@ -222,6 +294,7 @@ export async function toggleLike(
 				userId,
 				postId: target.postId,
 				commentId: target.commentId,
+				feedbackId: target.feedbackId,
 			},
 		});
 

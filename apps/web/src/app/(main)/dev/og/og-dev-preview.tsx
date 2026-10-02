@@ -10,6 +10,7 @@ type OgDevPreviewProps = {
 		bookSlug?: string;
 		postSlug?: string;
 		commentSlug?: string;
+		feedbackSlug?: string;
 		sittingSlug?: string;
 		username?: string;
 	};
@@ -79,6 +80,7 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 	const [bookSlug, setBookSlug] = useState(samples.bookSlug ?? "");
 	const [postSlug, setPostSlug] = useState(samples.postSlug ?? "");
 	const [commentSlug, setCommentSlug] = useState(samples.commentSlug ?? "");
+	const [feedbackSlug, setFeedbackSlug] = useState(samples.feedbackSlug ?? "");
 	const [sittingSlug, setSittingSlug] = useState(samples.sittingSlug ?? "");
 	const [username, setUsername] = useState(samples.username ?? "");
 
@@ -105,6 +107,13 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 					description: "Permalink comment thread OG.",
 				});
 			}
+		}
+		if (bookSlug.trim() && feedbackSlug.trim()) {
+			entries.push({
+				label: "Book review",
+				path: `/books/${bookSlug.trim()}/feedbacks/${feedbackSlug.trim()}`,
+				description: "Club feedback permalink OG.",
+			});
 		}
 		if (sittingSlug.trim()) {
 			const slug = sittingSlug.trim();
@@ -147,7 +156,7 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 			);
 		}
 		return entries;
-	}, [bookSlug, commentSlug, postSlug, sittingSlug, username]);
+	}, [bookSlug, commentSlug, feedbackSlug, postSlug, sittingSlug, username]);
 
 	const cacheBust = Date.now();
 
@@ -179,6 +188,15 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 						className="border border-input bg-background px-3 py-2"
 						value={postSlug}
 						onChange={(e) => setPostSlug(e.target.value)}
+					/>
+				</label>
+				<label className="flex flex-col gap-1 text-sm">
+					<span className="font-medium">Feedback slug</span>
+					<input
+						className="border border-input bg-background px-3 py-2"
+						value={feedbackSlug}
+						onChange={(e) => setFeedbackSlug(e.target.value)}
+						placeholder="Requires book slug above"
 					/>
 				</label>
 				<label className="flex flex-col gap-1 text-sm">

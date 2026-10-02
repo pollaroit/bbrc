@@ -36,6 +36,10 @@ model Feedback {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
+  /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
+  slug String @unique
+
   /// @zod.uuid("Invalid user id")
   authorId String @map("author_id")
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -49,9 +53,13 @@ model Feedback {
   /// @zod.min(0, "Rating must be a non-negative number").max(5, "Rating must be at most 5")
   rating Float
 
+  likes    Like[]
+  comments Comment[]
+
   @@unique([authorId, bookId])
   @@index([bookId])
   @@index([authorId])
   @@index([rating])
+  @@index([slug])
   @@map("feedback")
 }

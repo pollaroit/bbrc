@@ -1,9 +1,12 @@
+import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
+import { LikeSourceSchema } from "@bbrc/schemas";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import {
 	clubReadEligibilityHint,
 	userCompletedClubRead,
+	userParticipatedClubRead,
 } from "../book/book-read-eligibility";
 import { notifyMemberFeedbackOnBook } from "../notification/notification-triggers";
 import { XP_AWARD } from "../xp/xp.schema";
@@ -15,10 +18,15 @@ import type {
 	DeleteFeedbackOutput,
 	GetBookFeedbackListOutput,
 	GetBookFeedbackStateOutput,
+	GetFeedbackBySlugOutput,
 	GetUserFeedbackListInput,
 	GetUserFeedbackListOutput,
 } from "./feedback.schema";
-import { getUserFeedbackListFields } from "./feedback.schema";
+import {
+	getFeedbackBySlugFields,
+	getUserFeedbackListFields,
+} from "./feedback.schema";
+import { generateFeedbackSlug } from "./feedback-slug";
 
 async function loadBookBySlug(slug: string, db: Database) {
 	const book = await db.book.findUnique({
@@ -70,6 +78,7 @@ export async function getBookFeedbackList(
 		where: { bookId: book.id },
 		orderBy: { createdAt: "desc" },
 		select: {
+			slug: true,
 			rating: true,
 			review: true,
 			createdAt: true,
@@ -81,10 +90,17 @@ export async function getBookFeedbackList(
 					image: true,
 				},
 			},
+			_count: {
+				select: {
+					likes: true,
+					comments: true,
+				},
+			},
 		},
 	});
 
 	return feedbacks.map((feedback) => ({
+		slug: feedback.slug,
 		authorId: feedback.authorId,
 		username: feedback.author.username,
 		name: feedback.author.name,
@@ -92,7 +108,83 @@ export async function getBookFeedbackList(
 		rating: feedback.rating,
 		review: feedback.review,
 		createdAt: feedback.createdAt,
+		likeCount: feedback._count.likes,
+		commentCount: feedback._count.comments,
 	}));
+}
+
+async function loadLikedFeedbackIds(
+	feedbackIds: string[],
+	userId: string | null,
+	db: Database,
+): Promise<Set<string>> {
+	if (!userId || feedbackIds.length === 0) {
+		return new Set();
+	}
+
+	const likes = await db.like.findMany({
+		where: {
+			userId,
+			source: LikeSourceSchema.enum.feedback,
+			feedbackId: { in: feedbackIds },
+		},
+		select: { feedbackId: true },
+	});
+
+	return new Set(
+		likes.map((row) => row.feedbackId).filter((id): id is string => id != null),
+	);
+}
+
+export async function getFeedbackBySlug(
+	slug: string,
+	db: Database,
+	session: Session | null,
+): Promise<GetFeedbackBySlugOutput> {
+	const feedback = await db.feedback.findUnique({
+		where: { slug },
+		select: getFeedbackBySlugFields,
+	});
+
+	if (!feedback) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Feedback not found",
+			data: { slug },
+		});
+	}
+
+	const userId = session?.user.id ?? null;
+	const likedFeedbackIds = await loadLikedFeedbackIds(
+		[feedback.id],
+		userId,
+		db,
+	);
+
+	const sitting = await db.sitting.findFirst({
+		where: { selectedBookId: feedback.bookId },
+		select: { slug: true },
+		orderBy: { createdAt: "desc" },
+	});
+
+	const canLike =
+		userId != null
+			? await userParticipatedClubRead(userId, feedback.bookId, db)
+			: false;
+
+	return {
+		slug: feedback.slug,
+		review: feedback.review,
+		rating: feedback.rating,
+		createdAt: feedback.createdAt,
+		bookSlug: feedback.book.slug,
+		bookTitle: feedback.book.title,
+		author: feedback.author,
+		likeCount: feedback._count.likes,
+		likedByMe: likedFeedbackIds.has(feedback.id),
+		commentCount: feedback._count.comments,
+		canLike,
+		sittingSlug: sitting?.slug ?? null,
+	};
 }
 
 type UserFeedbackListRow = Prisma.FeedbackGetPayload<{
@@ -235,13 +327,17 @@ export async function createFeedback(
 
 	return db
 		.$transaction(async (tx) => {
+			const feedbackSlug = await generateFeedbackSlug(input.review, tx);
+
 			const feedback = await tx.feedback.create({
 				data: {
+					slug: feedbackSlug,
 					authorId: userId,
 					bookId: book.id,
 					rating: input.rating,
 					review: input.review.trim(),
 				},
+				select: { id: true, slug: true },
 			});
 
 			await recalculateBookAverageRating(book.id, tx);
@@ -253,7 +349,7 @@ export async function createFeedback(
 				? XP_AWARD.feedback
 				: 0;
 
-			return { id: feedback.id, xpAwarded };
+			return { slug: feedback.slug, xpAwarded };
 		})
 		.then(async (result) => {
 			void notifyMemberFeedbackOnBook(db, input.bookSlug, userId);

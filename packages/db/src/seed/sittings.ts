@@ -348,8 +348,12 @@ export async function seedBooksAndSittings(
 							continue;
 						}
 
+						const review = faker.lorem
+							.paragraph({ min: 2, max: 4 })
+							.slice(0, 500);
 						const feedback = await tx.feedback.create({
 							data: {
+								slug: `review_${participation.userId.replace(/-/g, "").slice(0, 12)}_${selectedBook.slug.slice(0, 20)}`,
 								authorId: participation.userId,
 								bookId: selectedBook.id,
 								rating: faker.number.float({
@@ -357,7 +361,7 @@ export async function seedBooksAndSittings(
 									max: 5,
 									fractionDigits: 1,
 								}),
-								review: faker.lorem.paragraph({ min: 2, max: 4 }).slice(0, 500),
+								review,
 								createdAt: new Date(readingDeadline.getTime() + 86_400_000),
 								updatedAt: new Date(readingDeadline.getTime() + 86_400_000),
 							},

@@ -128,6 +128,9 @@ function groupTopComments(
 	const byPostId = new Map<string, TopCommentRow[]>();
 
 	for (const comment of comments) {
+		if (!comment.postId) {
+			continue;
+		}
 		const bucket = byPostId.get(comment.postId) ?? [];
 		bucket.push(comment);
 		byPostId.set(comment.postId, bucket);

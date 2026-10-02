@@ -10,12 +10,14 @@ import { formatDateTime } from "@/lib/format-datetime";
 import { orpc } from "@/utils/orpc";
 
 type PostLikersDialogListProps = {
-	postSlug: string;
+	postSlug?: string;
+	feedbackSlug?: string;
 	enabled: boolean;
 };
 
 export function PostLikersDialogList({
 	postSlug,
+	feedbackSlug,
 	enabled,
 }: PostLikersDialogListProps) {
 	const query = useInfiniteQuery({
@@ -23,7 +25,8 @@ export function PostLikersDialogList({
 			initialPageParam: undefined as string | undefined,
 			getNextPageParam: (lastPage) => lastPage.metadata.nextCursor ?? undefined,
 			input: (pageCursor) => ({
-				postSlug,
+				...(postSlug ? { postSlug } : {}),
+				...(feedbackSlug ? { feedbackSlug } : {}),
 				limit: 20,
 				sortBy: "createdAt",
 				sortDirection: "desc",

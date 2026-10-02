@@ -13,6 +13,7 @@ import { XP_AWARD } from "../xp/xp.schema";
 import { awardCommentXp } from "../xp/xp.service";
 import {
 	commentAuthorUsernameWhere,
+	commentFeedbackSlugWhere,
 	commentListRanging,
 	commentListSearching,
 	commentListSorting,
@@ -129,7 +130,9 @@ function mapCommentDetailRow(
 		editedAt: row.editedAt,
 		depth: row.depth,
 		parentSlug: row.parent?.slug ?? null,
-		postSlug: row.post.slug,
+		postSlug: row.post?.slug ?? null,
+		feedbackSlug: row.feedback?.slug ?? null,
+		bookSlug: row.feedback?.book.slug ?? null,
 		author: row.author,
 		likeCount: row._count.likes,
 		likedByMe: likedCommentIds.has(row.id),
@@ -167,6 +170,25 @@ async function loadPostIdBySlug(
 	return post.id;
 }
 
+async function loadFeedbackIdBySlug(
+	feedbackSlug: string,
+	db: Database,
+): Promise<string> {
+	const feedback = await db.feedback.findUnique({
+		where: { slug: feedbackSlug },
+		select: { id: true },
+	});
+
+	if (!feedback) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Feedback not found",
+			data: { slug: feedbackSlug },
+		});
+	}
+
+	return feedback.id;
+}
+
 export async function getCommentList(
 	input: GetCommentListInput,
 	db: Database,
@@ -178,8 +200,12 @@ export async function getCommentList(
 	const searching = commentListSearching.from(input);
 	const userId = viewerUserId(session);
 
+	const targetWhere = input.postSlug
+		? commentPostSlugWhere(input.postSlug)
+		: commentFeedbackSlugWhere(input.feedbackSlug!);
+
 	const where = mergeWhereFragments<Prisma.CommentWhereInput>(
-		commentPostSlugWhere(input.postSlug),
+		targetWhere,
 		ranging.use(),
 		searching.use(),
 		input.authorUsername
@@ -238,11 +264,17 @@ export async function createComment(
 	userId: string,
 	db: Database,
 ): Promise<CreateCommentOutput> {
-	const postId = await loadPostIdBySlug(input.postSlug, db);
+	const postId = input.postSlug
+		? await loadPostIdBySlug(input.postSlug, db)
+		: null;
+	const feedbackId = input.feedbackSlug
+		? await loadFeedbackIdBySlug(input.feedbackSlug, db)
+		: null;
 
 	let parent: {
 		id: string;
-		postId: string;
+		postId: string | null;
+		feedbackId: string | null;
 		depth: number;
 		authorId: string;
 	} | null = null;
@@ -250,12 +282,23 @@ export async function createComment(
 	if (input.parentSlug) {
 		const row = await db.comment.findUnique({
 			where: { slug: input.parentSlug },
-			select: { id: true, postId: true, depth: true, authorId: true },
+			select: {
+				id: true,
+				postId: true,
+				feedbackId: true,
+				depth: true,
+				authorId: true,
+			},
 		});
 
-		if (!row || row.postId !== postId) {
+		const sameTarget =
+			row &&
+			((postId != null && row.postId === postId) ||
+				(feedbackId != null && row.feedbackId === feedbackId));
+
+		if (!row || !sameTarget) {
 			throw new ORPCError("BAD_REQUEST", {
-				message: "Reply target must be a comment on this post",
+				message: "Reply target must be a comment on this thread",
 				data: { parentSlug: input.parentSlug },
 			});
 		}
@@ -279,6 +322,7 @@ export async function createComment(
 					slug,
 					authorId: userId,
 					postId,
+					feedbackId,
 					parentId: parent?.id ?? null,
 					depth: parent ? parent.depth + 1 : 0,
 				},
@@ -299,16 +343,18 @@ export async function createComment(
 			};
 		})
 		.then(async (result) => {
-			if (parent) {
-				void notifyReplyToYourComment(
-					db,
-					input.postSlug,
-					result.slug,
-					userId,
-					result.parentAuthorId,
-				);
-			} else {
-				void notifyCommentOnYourPost(db, input.postSlug, userId);
+			if (input.postSlug) {
+				if (parent) {
+					void notifyReplyToYourComment(
+						db,
+						input.postSlug,
+						result.slug,
+						userId,
+						result.parentAuthorId,
+					);
+				} else {
+					void notifyCommentOnYourPost(db, input.postSlug, userId);
+				}
 			}
 
 			return { slug: result.slug, xpAwarded: result.xpAwarded };

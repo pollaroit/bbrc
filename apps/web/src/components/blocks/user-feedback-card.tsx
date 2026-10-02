@@ -18,6 +18,8 @@ type UserFeedbackCardProps = {
 
 export function UserFeedbackCard({ item }: UserFeedbackCardProps) {
 	const bookHref = `/books/${item.book.slug}` as Route;
+	const feedbackHref =
+		`/books/${item.book.slug}/feedbacks/${item.slug}` as Route;
 	const coverSrc = bookCoverUrl(item.book.coverId);
 
 	return (
@@ -53,7 +55,12 @@ export function UserFeedbackCard({ item }: UserFeedbackCardProps) {
 					<p className="text-muted-foreground text-sm">
 						{formatBookAuthors(item.book.authors)}
 					</p>
-					<p className="text-sm leading-relaxed">{item.review}</p>
+					<Link
+						href={feedbackHref}
+						className="text-sm leading-relaxed transition-colors hover:text-foreground/90"
+					>
+						{item.review}
+					</Link>
 					<p className="text-muted-foreground text-xs">
 						{formatDateTime(item.createdAt)}
 					</p>

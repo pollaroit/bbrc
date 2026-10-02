@@ -30,6 +30,7 @@ model Post {
 enum LikeSource {
   post
   comment
+  feedback
 }
 
 model Like {
@@ -52,9 +53,14 @@ model Like {
   commentId String?  @map("comment_id")
   comment   Comment? @relation(fields: [commentId], references: [id])
 
+  /// @zod.uuid("Invalid feedback id")
+  feedbackId String?   @map("feedback_id")
+  feedback   Feedback? @relation(fields: [feedbackId], references: [id])
+
   @@index([userId])
   @@index([postId])
   @@index([commentId])
+  @@index([feedbackId])
   @@map("like")
 }
 
@@ -76,8 +82,12 @@ model Comment {
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   /// @zod.uuid("Invalid post id")
-  postId String @map("post_id")
-  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId String? @map("post_id")
+  post   Post?   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid feedback id")
+  feedbackId String?   @map("feedback_id")
+  feedback   Feedback? @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
 
   /// @zod.uuid("Invalid parent comment id")
   parentId String?  @map("parent_id")
@@ -92,6 +102,8 @@ model Comment {
   @@index([authorId])
   @@index([postId])
   @@index([postId, parentId])
+  @@index([feedbackId])
+  @@index([feedbackId, parentId])
   @@index([slug])
   @@map("comment")
 }

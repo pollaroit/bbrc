@@ -68,7 +68,7 @@ export function UserFeedbacksFeed({ username }: UserFeedbacksFeedProps) {
 		>
 			<ul className="flex flex-col gap-4">
 				{items.map((item) => (
-					<li key={item.id}>
+					<li key={item.slug}>
 						<UserFeedbackCard item={item} />
 					</li>
 				))}

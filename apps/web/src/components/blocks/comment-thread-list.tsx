@@ -18,7 +18,9 @@ import { cn } from "@/lib/utils";
 
 type CommentThreadListProps = {
 	comments: CommentListItem[];
-	postSlug: string;
+	postSlug?: string;
+	bookSlug?: string;
+	feedbackContextSlug?: string;
 	replyingToSlug: string | null;
 	onReply: (slug: string) => void;
 	onCancelReply: () => void;
@@ -36,6 +38,8 @@ function defaultThreadExpanded(depth: number): boolean {
 function CommentThreadNode({
 	node,
 	postSlug,
+	bookSlug,
+	feedbackContextSlug,
 	replyingToSlug,
 	onReply,
 	onCancelReply,
@@ -44,7 +48,9 @@ function CommentThreadNode({
 	expandAllReplies = false,
 }: {
 	node: CommentTreeNode;
-	postSlug: string;
+	postSlug?: string;
+	bookSlug?: string;
+	feedbackContextSlug?: string;
 	replyingToSlug: string | null;
 	onReply: (slug: string) => void;
 	onCancelReply: () => void;
@@ -96,6 +102,8 @@ function CommentThreadNode({
 					variant="full"
 					layout="thread"
 					postSlug={postSlug}
+					bookSlug={bookSlug}
+					feedbackContextSlug={feedbackContextSlug}
 					canReply={canReplyAtDepth(node.depth)}
 					onReply={() => onReply(node.slug)}
 				/>
@@ -103,7 +111,10 @@ function CommentThreadNode({
 				{showReplyForm ? (
 					<div className="mt-3 border-border/60 border-l-2 pl-3">
 						<PostCommentForm
-							postSlug={postSlug}
+							{...(postSlug ? { postSlug } : {})}
+							{...(feedbackContextSlug
+								? { feedbackSlug: feedbackContextSlug }
+								: {})}
 							parentSlug={node.slug}
 							replyToUsername={node.author.username}
 							onCancelReply={onCancelReply}
@@ -148,6 +159,8 @@ function CommentThreadNode({
 								key={child.slug}
 								node={child}
 								postSlug={postSlug}
+								bookSlug={bookSlug}
+								feedbackContextSlug={feedbackContextSlug}
 								replyingToSlug={replyingToSlug}
 								onReply={onReply}
 								onCancelReply={onCancelReply}
@@ -166,6 +179,8 @@ function CommentThreadNode({
 export function CommentThreadList({
 	comments,
 	postSlug,
+	bookSlug,
+	feedbackContextSlug,
 	replyingToSlug,
 	onReply,
 	onCancelReply,
@@ -184,6 +199,8 @@ export function CommentThreadList({
 				<CommentThreadNode
 					node={focused}
 					postSlug={postSlug}
+					bookSlug={bookSlug}
+					feedbackContextSlug={feedbackContextSlug}
 					replyingToSlug={replyingToSlug}
 					onReply={onReply}
 					onCancelReply={onCancelReply}
@@ -204,6 +221,8 @@ export function CommentThreadList({
 					key={node.slug}
 					node={node}
 					postSlug={postSlug}
+					bookSlug={bookSlug}
+					feedbackContextSlug={feedbackContextSlug}
 					replyingToSlug={replyingToSlug}
 					onReply={onReply}
 					onCancelReply={onCancelReply}

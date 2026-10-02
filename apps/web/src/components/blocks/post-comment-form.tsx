@@ -14,7 +14,8 @@ import { authClient } from "@/lib/auth-client";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type PostCommentFormProps = {
-	postSlug: string;
+	postSlug?: string;
+	feedbackSlug?: string;
 	parentSlug?: string;
 	replyToUsername?: string;
 	onCancelReply?: () => void;
@@ -33,10 +34,14 @@ async function invalidateCommentQueries() {
 	await queryClient.invalidateQueries({
 		queryKey: orpc.post.getPostBySlug.key(),
 	});
+	await queryClient.invalidateQueries({
+		queryKey: orpc.feedback.getFeedbackBySlug.key(),
+	});
 }
 
 export function PostCommentForm({
 	postSlug,
+	feedbackSlug,
 	parentSlug,
 	replyToUsername,
 	onCancelReply,
@@ -49,7 +54,9 @@ export function PostCommentForm({
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const fieldId = parentSlug
 		? `comment-reply-${parentSlug}`
-		: "post-comment-content";
+		: feedbackSlug
+			? `feedback-comment-${feedbackSlug}`
+			: "post-comment-content";
 
 	useEffect(() => {
 		if (!autoFocus) {
@@ -112,7 +119,8 @@ export function PostCommentForm({
 				}
 
 				createMutation.mutate({
-					postSlug,
+					...(postSlug ? { postSlug } : {}),
+					...(feedbackSlug ? { feedbackSlug } : {}),
 					content: parsed.data,
 					...(parentSlug ? { parentSlug } : {}),
 				});

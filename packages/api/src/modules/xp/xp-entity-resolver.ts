@@ -75,6 +75,7 @@ export async function resolveXpEntitySources(
 					where: { id: { in: [...feedbackIds] } },
 					select: {
 						id: true,
+						slug: true,
 						book: { select: { slug: true, title: true } },
 					},
 				})
@@ -92,6 +93,12 @@ export async function resolveXpEntitySources(
 						id: true,
 						slug: true,
 						post: { select: { slug: true } },
+						feedback: {
+							select: {
+								slug: true,
+								book: { select: { slug: true } },
+							},
+						},
 					},
 				})
 			: Promise.resolve([]),
@@ -133,7 +140,10 @@ export async function resolveXpEntitySources(
 			const feedback = feedbackById.get(event.entityId);
 			result.set(key, {
 				label: feedback?.book.title ?? "Book feedback",
-				href: feedback?.book.slug ? `/books/${feedback.book.slug}` : null,
+				href:
+					feedback?.book.slug && feedback.slug
+						? `/books/${feedback.book.slug}/feedbacks/${feedback.slug}`
+						: null,
 			});
 			continue;
 		}
@@ -149,10 +159,15 @@ export async function resolveXpEntitySources(
 
 		if (event.reason === "comment") {
 			const comment = commentById.get(event.entityId);
-			const postSlug = comment?.post.slug;
+			const postSlug = comment?.post?.slug;
+			const feedbackHref =
+				comment?.feedback != null
+					? `/books/${comment.feedback.book.slug}/feedbacks/${comment.feedback.slug}#comments`
+					: null;
 			result.set(key, {
 				label: "Comment",
-				href: postSlug && comment ? `/posts/${postSlug}#comments` : null,
+				href:
+					postSlug && comment ? `/posts/${postSlug}#comments` : feedbackHref,
 			});
 			continue;
 		}

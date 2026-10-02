@@ -12,6 +12,8 @@ import {
 	GetBookFeedbackListOutputSchema,
 	GetBookFeedbackStateInputSchema,
 	GetBookFeedbackStateOutputSchema,
+	GetFeedbackBySlugInputSchema,
+	GetFeedbackBySlugOutputSchema,
 	GetUserFeedbackListInputSchema,
 	GetUserFeedbackListOutputSchema,
 } from "./feedback.schema";
@@ -20,10 +22,17 @@ import {
 	deleteFeedback,
 	getBookFeedbackList,
 	getBookFeedbackState,
+	getFeedbackBySlug,
 	getUserFeedbackList,
 } from "./feedback.service";
 
 export const feedbackRouter = {
+	getFeedbackBySlug: publicProcedure
+		.input(GetFeedbackBySlugInputSchema)
+		.output(GetFeedbackBySlugOutputSchema)
+		.handler(async ({ input, context }) =>
+			getFeedbackBySlug(input, context.db, context.session),
+		),
 	getBookFeedbackList: publicProcedure
 		.input(GetBookFeedbackListInputSchema)
 		.output(GetBookFeedbackListOutputSchema)

@@ -15,6 +15,8 @@ import { Label } from "@bbrc/ui/components/label";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import type { Route } from "next";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -154,26 +156,47 @@ export function BookFeedbackSection({
 				</Card>
 			) : (
 				<ul className="flex flex-col gap-3">
-					{reviews.map((entry) => (
-						<li key={entry.authorId}>
-							<Card size="sm">
-								<CardContent className="flex flex-col gap-3">
-									<div className="flex flex-wrap items-start justify-between gap-3">
-										<UserPanel user={entry} />
-										<div className="flex flex-col items-end gap-1 text-right">
-											<Badge variant="outline" className="tabular-nums">
-												{entry.rating.toFixed(1)} / 5
-											</Badge>
-											<p className="text-muted-foreground text-xs">
-												{formatDateTime(entry.createdAt)}
-											</p>
+					{reviews.map((entry) => {
+						const feedbackHref =
+							`/books/${bookSlug}/feedbacks/${entry.slug}` as Route;
+
+						return (
+							<li key={entry.slug}>
+								<Card size="sm">
+									<CardContent className="flex flex-col gap-3">
+										<div className="flex flex-wrap items-start justify-between gap-3">
+											<Link
+												href={feedbackHref}
+												className="min-w-0 outline-offset-2"
+											>
+												<UserPanel user={entry} />
+											</Link>
+											<div className="flex flex-col items-end gap-1 text-right">
+												<Badge variant="outline" className="tabular-nums">
+													{entry.rating.toFixed(1)} / 5
+												</Badge>
+												<p className="text-muted-foreground text-xs">
+													{formatDateTime(entry.createdAt)}
+												</p>
+											</div>
 										</div>
-									</div>
-									<p className="text-sm leading-relaxed">{entry.review}</p>
-								</CardContent>
-							</Card>
-						</li>
-					))}
+										<Link
+											href={feedbackHref}
+											className="text-sm leading-relaxed transition-colors hover:text-foreground/90"
+										>
+											{entry.review}
+										</Link>
+										<p className="text-muted-foreground text-xs tabular-nums">
+											{entry.likeCount}{" "}
+											{entry.likeCount === 1 ? "like" : "likes"} ·{" "}
+											{entry.commentCount}{" "}
+											{entry.commentCount === 1 ? "comment" : "comments"}
+										</p>
+									</CardContent>
+								</Card>
+							</li>
+						);
+					})}
 				</ul>
 			)}
 

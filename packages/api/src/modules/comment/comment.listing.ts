@@ -1,5 +1,5 @@
 import type { Prisma } from "@bbrc/db";
-import { PostSchema, UserSchema } from "@bbrc/schemas";
+import { FeedbackSchema, PostSchema, UserSchema } from "@bbrc/schemas";
 import z from "zod";
 import { defineRanging } from "../../utils/ranging";
 import { defineSearching } from "../../utils/searching";
@@ -53,20 +53,55 @@ export const commentListSearching = defineSearching<
 	},
 });
 
+export function refineCommentTarget(
+	value: { postSlug?: string; feedbackSlug?: string },
+	ctx: z.RefinementCtx,
+): void {
+	const hasPost = value.postSlug != null && value.postSlug !== "";
+	const hasFeedback = value.feedbackSlug != null && value.feedbackSlug !== "";
+
+	if (hasPost && hasFeedback) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Provide either postSlug or feedbackSlug, not both",
+			path: ["feedbackSlug"],
+		});
+		return;
+	}
+
+	if (!hasPost && !hasFeedback) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Provide postSlug or feedbackSlug",
+			path: ["postSlug"],
+		});
+	}
+}
+
 export const commentListFiltersSchema = z
 	.object({
-		/** Comments on this post (required for list endpoints). */
-		postSlug: PostSchema.shape.slug,
+		postSlug: PostSchema.shape.slug.optional(),
+		feedbackSlug: FeedbackSchema.shape.slug.optional(),
 		authorUsername: UserSchema.shape.username,
 	})
 	.partial()
-	.required({ postSlug: true });
+	.superRefine((value, ctx) => {
+		refineCommentTarget(value, ctx);
+	});
 
 export function commentPostSlugWhere(
 	postSlug: string,
 ): Prisma.CommentWhereInput {
 	return {
 		post: { slug: postSlug },
+	};
+}
+
+export function commentFeedbackSlugWhere(
+	feedbackSlug: string,
+): Prisma.CommentWhereInput {
+	return {
+		feedback: { slug: feedbackSlug },
 	};
 }
 

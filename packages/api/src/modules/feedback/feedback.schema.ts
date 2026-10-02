@@ -7,8 +7,10 @@ import {
 } from "@bbrc/schemas";
 import type { z } from "zod";
 import zod from "zod";
+import { PostAuthorSchema } from "../post/post.schema";
 
 export const BookFeedbackReviewSchema = zod.object({
+	slug: FeedbackSchema.shape.slug,
 	authorId: UserSchema.shape.id,
 	username: UserSchema.shape.username,
 	name: UserSchema.shape.name,
@@ -16,6 +18,8 @@ export const BookFeedbackReviewSchema = zod.object({
 	rating: FeedbackSchema.shape.rating,
 	review: FeedbackSchema.shape.review,
 	createdAt: zod.coerce.date(),
+	likeCount: zod.number().int().min(0),
+	commentCount: zod.number().int().min(0),
 });
 
 export const GetBookFeedbackListInputSchema = BookSchema.shape.slug;
@@ -53,7 +57,7 @@ export const CreateFeedbackInputSchema = zod.object({
 });
 
 export const CreateFeedbackOutputSchema = zod.object({
-	id: FeedbackSchema.shape.id,
+	slug: FeedbackSchema.shape.slug,
 	xpAwarded: zod.number().int().min(0),
 });
 
@@ -77,7 +81,7 @@ export const UserFeedbackBookSchema = BookSchema.pick({
 });
 
 export const UserFeedbackListItemSchema = zod.object({
-	id: FeedbackSchema.shape.id,
+	slug: FeedbackSchema.shape.slug,
 	rating: FeedbackSchema.shape.rating,
 	review: FeedbackSchema.shape.review,
 	createdAt: zod.coerce.date(),
@@ -102,6 +106,7 @@ export type GetUserFeedbackListOutput = z.infer<
 
 export const getUserFeedbackListFields = {
 	id: true,
+	slug: true,
 	rating: true,
 	review: true,
 	createdAt: true,
@@ -111,6 +116,61 @@ export const getUserFeedbackListFields = {
 			title: true,
 			authors: true,
 			coverId: true,
+		},
+	},
+} as const;
+
+/** GET BY SLUG (permalink page). */
+export const GetFeedbackBySlugInputSchema = FeedbackSchema.shape.slug;
+
+export const GetFeedbackBySlugOutputSchema = FeedbackSchema.pick({
+	slug: true,
+	review: true,
+	rating: true,
+	createdAt: true,
+}).extend({
+	bookSlug: BookSchema.shape.slug,
+	bookTitle: BookSchema.shape.title,
+	author: PostAuthorSchema,
+	likeCount: zod.number().int().min(0),
+	likedByMe: zod.boolean(),
+	commentCount: zod.number().int().min(0),
+	canLike: zod.boolean(),
+	sittingSlug: BookSchema.shape.slug.nullable(),
+});
+
+export type GetFeedbackBySlugInput = z.infer<
+	typeof GetFeedbackBySlugInputSchema
+>;
+export type GetFeedbackBySlugOutput = z.infer<
+	typeof GetFeedbackBySlugOutputSchema
+>;
+
+export const getFeedbackBySlugFields = {
+	id: true,
+	slug: true,
+	review: true,
+	rating: true,
+	createdAt: true,
+	authorId: true,
+	bookId: true,
+	author: {
+		select: {
+			username: true,
+			name: true,
+			image: true,
+		},
+	},
+	book: {
+		select: {
+			slug: true,
+			title: true,
+		},
+	},
+	_count: {
+		select: {
+			likes: true,
+			comments: true,
 		},
 	},
 } as const;

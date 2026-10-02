@@ -1,7 +1,9 @@
 import {
+	BookSchema,
 	CommentSchema,
 	CursorPaginationInputSchema,
 	CursorPaginationOutputSchema,
+	FeedbackSchema,
 	PostSchema,
 } from "@bbrc/schemas";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
@@ -13,10 +15,12 @@ import {
 	commentListRanging,
 	commentListSearching,
 	commentListSorting,
+	refineCommentTarget,
 } from "./comment.listing";
 
 export {
 	commentAuthorUsernameWhere,
+	commentFeedbackSlugWhere,
 	commentListFiltersSchema,
 	commentListRanging,
 	commentListSearching,
@@ -52,6 +56,7 @@ export const GetCommentListInputSchema = commentListFiltersSchema
 			{ rangeMin: value.rangeMin, rangeMax: value.rangeMax },
 			ctx,
 		);
+		refineCommentTarget(value, ctx);
 	});
 
 export const getCommentListFields = {
@@ -82,12 +87,42 @@ export type GetCommentListInput = z.infer<typeof GetCommentListInputSchema>;
 export type GetCommentListOutput = z.infer<typeof GetCommentListOutputSchema>;
 export type CommentListItem = z.infer<typeof CommentListItemSchema>;
 
+function refineCommentCreateTarget(
+	value: { postSlug?: string; feedbackSlug?: string },
+	ctx: zod.RefinementCtx,
+): void {
+	const hasPost = value.postSlug != null && value.postSlug !== "";
+	const hasFeedback = value.feedbackSlug != null && value.feedbackSlug !== "";
+
+	if (hasPost && hasFeedback) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Provide either postSlug or feedbackSlug, not both",
+			path: ["feedbackSlug"],
+		});
+		return;
+	}
+
+	if (!hasPost && !hasFeedback) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Provide postSlug or feedbackSlug",
+			path: ["postSlug"],
+		});
+	}
+}
+
 /** CREATE */
-export const CreateCommentInputSchema = zod.object({
-	postSlug: PostSchema.shape.slug,
-	content: CommentSchema.shape.content,
-	parentSlug: CommentSchema.shape.slug.optional(),
-});
+export const CreateCommentInputSchema = zod
+	.object({
+		postSlug: PostSchema.shape.slug.optional(),
+		feedbackSlug: FeedbackSchema.shape.slug.optional(),
+		content: CommentSchema.shape.content,
+		parentSlug: CommentSchema.shape.slug.optional(),
+	})
+	.superRefine((value, ctx) => {
+		refineCommentCreateTarget(value, ctx);
+	});
 
 export const CreateCommentOutputSchema = CommentSchema.pick({
 	slug: true,
@@ -108,7 +143,9 @@ export const GetCommentBySlugOutputSchema = CommentSchema.omit({
 	parentId: true,
 	updatedAt: true,
 }).extend({
-	postSlug: PostSchema.shape.slug,
+	postSlug: PostSchema.shape.slug.nullable(),
+	feedbackSlug: FeedbackSchema.shape.slug.nullable(),
+	bookSlug: BookSchema.shape.slug.nullable(),
 	parentSlug: CommentSchema.shape.slug.nullable(),
 	author: PostAuthorSchema,
 	likeCount: zod.number().int().min(0),
@@ -169,6 +206,16 @@ export const getCommentBySlugFields = {
 	post: {
 		select: {
 			slug: true,
+		},
+	},
+	feedback: {
+		select: {
+			slug: true,
+			book: {
+				select: {
+					slug: true,
+				},
+			},
 		},
 	},
 } as const;
