@@ -68,10 +68,7 @@ export function PostDetail({ post }: PostDetailProps) {
 
 			<Card size="sm" className="overflow-hidden">
 				<CardHeader className="flex flex-row items-center justify-between gap-3 border-b">
-					<Link
-						href={profileHref}
-						className="min-w-0 rounded-sm outline-offset-2"
-					>
+					<Link href={profileHref} className="min-w-0 outline-offset-2">
 						<UserPanel user={post.author} className="min-w-0 items-start" />
 					</Link>
 					<div className="flex shrink-0 items-center gap-2">

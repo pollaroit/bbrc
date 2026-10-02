@@ -56,7 +56,7 @@ export default async function SettingsPage() {
 				</p>
 			</section>
 
-			<ul className="divide-y rounded-lg border">
+			<ul className="divide-y border">
 				{settingsLinks.map((link) => (
 					<li key={link.href}>
 						<Link

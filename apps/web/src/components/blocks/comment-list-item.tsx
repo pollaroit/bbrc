@@ -219,10 +219,7 @@ export function CommentListItemView({
 		) : (
 			<>
 				<div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-					<Link
-						href={profileHref}
-						className="min-w-0 rounded-sm outline-offset-2"
-					>
+					<Link href={profileHref} className="min-w-0 outline-offset-2">
 						<UserPanel
 							user={comment.author}
 							className="min-w-0"
@@ -254,7 +251,7 @@ export function CommentListItemView({
 					</div>
 				</div>
 				{threadHref ? (
-					<Link href={threadHref} className="block rounded-sm outline-offset-2">
+					<Link href={threadHref} className="block outline-offset-2">
 						{content}
 					</Link>
 				) : (

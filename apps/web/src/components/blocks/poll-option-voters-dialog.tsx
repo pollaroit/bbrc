@@ -90,7 +90,7 @@ export function PollOptionVotersDialog({
 								<li key={`${entry.user.username}-${entry.votedAt.toString()}`}>
 									<Link
 										href={`/users/${entry.user.username}` as Route}
-										className="flex flex-col gap-1 rounded-md border px-3 py-2 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
+										className="flex flex-col gap-1 border px-3 py-2 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
 									>
 										<UserPanel user={entry.user} className="min-w-0" />
 										<div className="flex shrink-0 flex-col items-start gap-0.5 sm:items-end">

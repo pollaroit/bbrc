@@ -46,9 +46,9 @@ export function AdminUsersTable() {
 			<AdminUsersToolbar />
 
 			{isPending ? (
-				<Skeleton className="h-[480px] w-full" />
+				<Skeleton className="h-120 w-full" />
 			) : isError ? (
-				<div className="flex flex-col items-start gap-3 rounded-lg border border-dashed p-6">
+				<div className="flex flex-col items-start gap-3 border border-dashed p-6">
 					<p className="text-sm">
 						{error?.message ?? "Could not load members."}
 					</p>
@@ -57,7 +57,7 @@ export function AdminUsersTable() {
 					</Button>
 				</div>
 			) : data.items.length === 0 ? (
-				<div className="rounded-lg border border-dashed p-8 text-center">
+				<div className="border border-dashed p-8 text-center">
 					<p className="font-medium text-sm">No members match these filters</p>
 					<p className="mt-1 text-muted-foreground text-sm">
 						Try clearing search or filters.

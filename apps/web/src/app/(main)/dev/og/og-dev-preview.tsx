@@ -28,13 +28,13 @@ function SocialCardPreview({
 	description: string;
 }) {
 	return (
-		<article className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+		<article className="flex flex-col gap-3 border border-border bg-card p-4">
 			<div className="flex flex-wrap items-baseline justify-between gap-2">
 				<h2 className="font-semibold text-lg">{title}</h2>
 				<code className="text-muted-foreground text-xs">{pagePath}</code>
 			</div>
 			<p className="text-muted-foreground text-sm">{description}</p>
-			<div className="overflow-hidden rounded-md border border-border bg-muted/30">
+			<div className="overflow-hidden border border-border bg-muted/30">
 				{/* eslint-disable-next-line @next/next/no-img-element -- dev-only OG preview */}
 				<img
 					src={ogSrc}
@@ -44,7 +44,7 @@ function SocialCardPreview({
 					className="h-auto w-full"
 				/>
 			</div>
-			<div className="rounded-md border border-border bg-background p-3 text-sm">
+			<div className="border border-border bg-background p-3 text-sm">
 				<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
 					Link preview (approx.)
 				</p>
@@ -153,11 +153,11 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 				</p>
 			</header>
 
-			<section className="grid gap-4 rounded-lg border border-border p-4 md:grid-cols-2">
+			<section className="grid gap-4 border border-border p-4 md:grid-cols-2">
 				<label className="flex flex-col gap-1 text-sm">
 					<span className="font-medium">Book slug</span>
 					<input
-						className="rounded-md border border-input bg-background px-3 py-2"
+						className="border border-input bg-background px-3 py-2"
 						value={bookSlug}
 						onChange={(e) => setBookSlug(e.target.value)}
 						placeholder="e.g. dune"
@@ -166,7 +166,7 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 				<label className="flex flex-col gap-1 text-sm">
 					<span className="font-medium">Post slug</span>
 					<input
-						className="rounded-md border border-input bg-background px-3 py-2"
+						className="border border-input bg-background px-3 py-2"
 						value={postSlug}
 						onChange={(e) => setPostSlug(e.target.value)}
 					/>
@@ -174,7 +174,7 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 				<label className="flex flex-col gap-1 text-sm">
 					<span className="font-medium">Sitting slug</span>
 					<input
-						className="rounded-md border border-input bg-background px-3 py-2"
+						className="border border-input bg-background px-3 py-2"
 						value={sittingSlug}
 						onChange={(e) => setSittingSlug(e.target.value)}
 					/>
@@ -182,7 +182,7 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 				<label className="flex flex-col gap-1 text-sm">
 					<span className="font-medium">Username</span>
 					<input
-						className="rounded-md border border-input bg-background px-3 py-2"
+						className="border border-input bg-background px-3 py-2"
 						value={username}
 						onChange={(e) => setUsername(e.target.value)}
 					/>

@@ -66,7 +66,7 @@ export function PostLikersDialogList({
 					<li key={`${entry.user.username}-${entry.likedAt.toString()}`}>
 						<Link
 							href={`/users/${entry.user.username}` as Route}
-							className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 transition-colors hover:bg-muted/40"
+							className="flex items-center justify-between gap-3 border px-3 py-2 transition-colors hover:bg-muted/40"
 						>
 							<UserPanel user={entry.user} className="min-w-0" />
 							<span className="shrink-0 text-muted-foreground text-xs tabular-nums">

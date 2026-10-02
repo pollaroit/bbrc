@@ -70,10 +70,7 @@ export function PostCard({ post, className }: PostCardProps) {
 	return (
 		<Card size="sm" className={cn("overflow-hidden", className)}>
 			<CardHeader className="flex flex-row items-start justify-between gap-3 border-b">
-				<Link
-					href={profileHref}
-					className="min-w-0 rounded-sm outline-offset-2"
-				>
+				<Link href={profileHref} className="min-w-0 outline-offset-2">
 					<UserPanel user={post.author} className="min-w-0 items-start" />
 				</Link>
 				<div className="shrink-0 text-right text-muted-foreground text-xs">
