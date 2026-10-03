@@ -15,8 +15,17 @@ import {
 import { buildBookListWhere } from "./book-list-where";
 import { generateBookSlug } from "./book-slug";
 
+const bookListSelect = {
+	...getBookListFields,
+	_count: {
+		select: {
+			documents: { where: { status: "approved" as const } },
+		},
+	},
+} as const;
+
 type BookListRow = Prisma.BookGetPayload<{
-	select: typeof getBookListFields;
+	select: typeof bookListSelect;
 }>;
 
 const bookListCursorCodec = {
@@ -49,10 +58,25 @@ export async function getBookList(
 		...pagination.use(),
 		where,
 		orderBy: withStableSlugOrderBy(sorting.use(), sorting.sortDirection),
-		select: getBookListFields,
+		select: bookListSelect,
 	});
 
-	return pagination.paginate(rows);
+	const page = pagination.paginate(rows);
+
+	return {
+		items: page.items.map((row) => ({
+			slug: row.slug,
+			title: row.title,
+			authors: row.authors,
+			coverId: row.coverId,
+			openLibraryRating: row.openLibraryRating,
+			pages: row.pages,
+			publishedIn: row.publishedIn,
+			status: row.status,
+			approvedDocumentCount: row._count.documents,
+		})),
+		metadata: page.metadata,
+	};
 }
 
 export async function getBookBySlug(

@@ -5,7 +5,9 @@ import { BookPlus, Plus } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { AdminBookRequestsSheet } from "@/components/blocks/admin-book-requests-sheet";
+import { AdminDocumentRequestsSheet } from "@/components/blocks/admin-document-requests-sheet";
 import { UserBookRequestsSheet } from "@/components/blocks/user-book-requests-sheet";
+import { UserDocumentsSheet } from "@/components/blocks/user-documents-sheet";
 import { authClient } from "@/lib/auth-client";
 
 export function LibraryBookActionLink() {
@@ -19,6 +21,7 @@ export function LibraryBookActionLink() {
 		return (
 			<div className="flex flex-wrap items-center gap-2">
 				<AdminBookRequestsSheet />
+				<AdminDocumentRequestsSheet />
 				<Button
 					render={<Link href={"/books/new" as Route} />}
 					nativeButton={false}
@@ -34,6 +37,7 @@ export function LibraryBookActionLink() {
 	return (
 		<div className="flex flex-wrap items-center gap-2">
 			<UserBookRequestsSheet />
+			<UserDocumentsSheet />
 			<Button
 				render={<Link href={"/books/request" as Route} />}
 				nativeButton={false}

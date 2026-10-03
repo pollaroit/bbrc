@@ -1,0 +1,112 @@
+"use client";
+
+import { documentLanguageLabel } from "@bbrc/shared";
+import { Button } from "@bbrc/ui/components/button";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
+} from "@bbrc/ui/components/sheet";
+import { useQuery } from "@tanstack/react-query";
+import { FileText } from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
+import { useState } from "react";
+import { RelativeTime } from "@/components/blocks/relative-time";
+import { authClient } from "@/lib/auth-client";
+import { orpc } from "@/utils/orpc";
+
+export function UserDocumentsSheet() {
+	const { data: session, isPending: isSessionPending } =
+		authClient.useSession();
+	const [open, setOpen] = useState(false);
+
+	const { data, isPending: isListPending } = useQuery({
+		...orpc.document.listMine.queryOptions(),
+		enabled: Boolean(session?.user),
+		staleTime: 30_000,
+	});
+
+	if (isSessionPending || !session?.user || session.user.isAdmin) {
+		return null;
+	}
+
+	const pendingCount =
+		data?.items.filter((item) => item.status === "pending").length ?? 0;
+	const label =
+		pendingCount > 0 ? `My documents (${pendingCount})` : "My documents";
+
+	return (
+		<>
+			<Button
+				type="button"
+				variant="outline"
+				size="sm"
+				onClick={() => setOpen(true)}
+				disabled={isListPending && !data}
+			>
+				<FileText data-icon="inline-start" />
+				{label}
+			</Button>
+
+			<Sheet open={open} onOpenChange={setOpen}>
+				<SheetContent side="right" className="flex flex-col gap-0 sm:max-w-md">
+					<SheetHeader>
+						<SheetTitle>Your documents</SheetTitle>
+						<SheetDescription>
+							PDFs you submitted for club books and their review status.
+						</SheetDescription>
+					</SheetHeader>
+					<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+						{!data?.count ? (
+							<p className="text-muted-foreground text-sm">
+								You have not submitted any documents yet.
+							</p>
+						) : (
+							<ul className="flex flex-col gap-3">
+								{data.items.map((item) => (
+									<li key={item.id} className="border border-border p-3">
+										<p className="font-medium text-sm">{item.name}</p>
+										<p className="text-muted-foreground text-xs">
+											<Link
+												href={`/books/${item.bookSlug}` as Route}
+												className="text-foreground underline-offset-2 hover:underline"
+											>
+												{item.bookTitle}
+											</Link>{" "}
+											· {documentLanguageLabel(item.language)} ·{" "}
+											<span className="capitalize">{item.status}</span> ·{" "}
+											<RelativeTime date={item.createdAt} />
+										</p>
+										{item.status === "rejected" && item.rejectionReason ? (
+											<p className="mt-2 text-destructive text-xs">
+												{item.rejectionReason}
+											</p>
+										) : null}
+										{item.status === "approved" && item.acceptanceNotes ? (
+											<p className="mt-2 text-muted-foreground text-xs">
+												{item.acceptanceNotes}
+											</p>
+										) : null}
+										<div className="mt-2">
+											<Link
+												href={
+													`/books/${item.bookSlug}/edit/docs/${item.slug}/edit` as Route
+												}
+												className="text-foreground text-xs underline-offset-2 hover:underline"
+											>
+												Edit
+											</Link>
+										</div>
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
+				</SheetContent>
+			</Sheet>
+		</>
+	);
+}

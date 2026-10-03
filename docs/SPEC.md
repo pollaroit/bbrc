@@ -317,11 +317,11 @@ Consider alias `/books/[slug]/documents/new` → redirect to edit path for reada
 - [ ] Tests for image authZ (beyond key builder tests)
 
 ### Phase 3
-- [ ] Prisma `Document` model + migration
-- [ ] Document API + admin sheet + notifications
-- [ ] Book list icon + book detail section
-- [ ] New/edit document pages
-- [ ] Sitting page link
+- [x] Prisma `Document` model + migration
+- [x] Document API + admin sheet + notifications
+- [x] Book list icon + book detail section
+- [x] New/edit document pages
+- [x] Sitting page link
 - [ ] Seed/fixtures for approved docs (optional)
 
 ---

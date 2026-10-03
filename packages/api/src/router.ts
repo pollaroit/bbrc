@@ -4,6 +4,7 @@ import { adminRouter } from "./modules/admin/admin.router";
 import { bookRouter } from "./modules/book/book.router";
 import { bookRequestRouter } from "./modules/book-request/book-request.router";
 import { commentRouter } from "./modules/comment/comment.router";
+import { documentRouter } from "./modules/document/document.router";
 import { favoriteRouter } from "./modules/favorite/favorite.router";
 import { feedbackRouter } from "./modules/feedback/feedback.router";
 import { healthRouter } from "./modules/health/health.router";
@@ -23,6 +24,7 @@ export const appRouter = {
 	book: bookRouter,
 	bookRequest: bookRequestRouter,
 	comment: commentRouter,
+	document: documentRouter,
 	favorite: favoriteRouter,
 	feedback: feedbackRouter,
 	like: likeRouter,

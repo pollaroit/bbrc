@@ -1,7 +1,7 @@
 import type { GetBookListOutput } from "@bbrc/api/modules/book/book.schema";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Card, CardContent } from "@bbrc/ui/components/card";
-import { BookCheck } from "lucide-react";
+import { BookCheck, FileText } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -86,6 +86,16 @@ export function BookCard({
 					<div className="mt-auto flex flex-wrap items-end justify-between gap-2">
 						<div className="flex flex-wrap items-center gap-1.5">
 							<BookStatusBadge status={book.status} />
+							{book.approvedDocumentCount > 0 ? (
+								<Badge
+									variant="outline"
+									className="gap-0.5 border-emerald-600/35 px-1.5 text-emerald-800 dark:text-emerald-400"
+									title="Has club documents"
+								>
+									<FileText className="size-3.5 shrink-0" aria-hidden />
+									<span className="sr-only">Has club documents</span>
+								</Badge>
+							) : null}
 							{showClubReadBadge ? (
 								<Badge
 									variant="outline"

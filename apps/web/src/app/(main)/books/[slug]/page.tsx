@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BookDetail } from "@/components/blocks/book-detail";
 import { formatBookAuthors } from "@/lib/book-cover";
 import {
+	loadApprovedDocumentsForIsr,
 	loadBookBySlugForIsr,
 	loadBookFeedbackListForIsr,
 } from "@/lib/isr-data";
@@ -47,15 +48,20 @@ export async function generateMetadata({
 
 export default async function BookPage({ params }: PageProps<"/books/[slug]">) {
 	const { slug } = await params;
-	const [book, initialReviews] = await Promise.all([
+	const [book, initialReviews, documents] = await Promise.all([
 		loadBookBySlugForIsr(slug),
 		loadBookFeedbackListForIsr(slug),
+		loadApprovedDocumentsForIsr(slug),
 	]);
 
 	return (
 		<>
 			<JsonLd data={bookJsonLd(book)} />
-			<BookDetail book={book} initialReviews={initialReviews} />
+			<BookDetail
+				book={book}
+				initialReviews={initialReviews}
+				approvedDocuments={documents.items}
+			/>
 		</>
 	);
 }

@@ -46,6 +46,7 @@ model Book {
   favorites Favorite[]
   shelfBooks ShelfBook[]
   sittingsSelectedFor Sitting[] @relation("SittingSelectedBook")
+  documents           Document[]
 
   @@index([slug])
   @@index([title])

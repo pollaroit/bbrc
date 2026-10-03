@@ -10,6 +10,9 @@ enum NotificationKind {
   participant_finished_book
   sitting_finished
   book_requested
+  document_submitted
+  document_approved
+  document_rejected
 }
 
 model Notification {

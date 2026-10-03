@@ -202,6 +202,66 @@ export async function notifyBookRequested(
 	});
 }
 
+export async function notifyDocumentSubmitted(
+	db: Database,
+	_documentId: string,
+	submitterUserId: string,
+	bookSlug: string,
+	bookTitle: string,
+): Promise<void> {
+	const submitter = await db.user.findUnique({
+		where: { id: submitterUserId },
+		select: { name: true, username: true },
+	});
+
+	if (!submitter) {
+		return;
+	}
+
+	const recipientUserIds = await listAdminUserIds(db);
+
+	await dispatchNotification(db, {
+		kind: "document_submitted",
+		recipientUserIds,
+		excludeUserIds: [submitterUserId],
+		title: "Document submitted",
+		body: `${memberDisplayName(submitter)} submitted a PDF for “${bookTitle}”.`,
+		href: `/books/${bookSlug}`,
+		adminNtfy: true,
+	});
+}
+
+export async function notifyDocumentApproved(
+	db: Database,
+	authorUserId: string,
+	bookSlug: string,
+	bookTitle: string,
+): Promise<void> {
+	await dispatchNotification(db, {
+		kind: "document_approved",
+		recipientUserIds: [authorUserId],
+		title: "Document approved",
+		body: `Your PDF for “${bookTitle}” was approved.`,
+		href: `/books/${bookSlug}`,
+	});
+}
+
+export async function notifyDocumentRejected(
+	db: Database,
+	authorUserId: string,
+	bookSlug: string,
+	bookTitle: string,
+	reason: string,
+): Promise<void> {
+	await dispatchNotification(db, {
+		kind: "document_rejected",
+		recipientUserIds: [authorUserId],
+		title: "Document rejected",
+		body: `Your PDF for “${bookTitle}” was rejected: ${reason}`,
+		href: `/books/${bookSlug}`,
+	});
+}
+
 export async function notifyBookAddedToLibrary(
 	db: Database,
 	bookSlug: string,

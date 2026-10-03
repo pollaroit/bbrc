@@ -1,0 +1,44 @@
+enum DocumentStatus {
+  pending
+  approved
+  rejected
+}
+
+model Document {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.min(2, "Name must be at least 2 characters long").max(120, "Name must be at most 120 characters long")
+  name String
+
+  /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
+  /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
+  slug String @unique
+
+  /// @zod.length(2, "Use a two-letter ISO 639-1 language code").regex(/^[a-z]{2}$/, "Use lowercase ISO 639-1 (e.g. en, az)")
+  language String
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid book id")
+  bookId String @map("book_id")
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  /// @zod.min(1, "Document URL is required")
+  documentKey String @map("document_key")
+
+  status DocumentStatus @default(pending)
+
+  /// @zod.max(200, "Acceptance notes must be at most 200 characters long")
+  acceptanceNotes String? @map("acceptance_notes")
+  /// @zod.max(200, "Rejection reason must be at most 200 characters long")
+  rejectionReason String? @map("rejection_reason")
+
+  @@index([bookId, status])
+  @@index([userId])
+  @@map("document")
+}

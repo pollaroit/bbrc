@@ -11,6 +11,9 @@ export const NOTIFICATION_KINDS = [
 	"participant_finished_book",
 	"sitting_finished",
 	"book_requested",
+	"document_submitted",
+	"document_approved",
+	"document_rejected",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -27,6 +30,9 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
 	participant_finished_book: "Participant finished reading",
 	sitting_finished: "Sitting finished",
 	book_requested: "Book requested",
+	document_submitted: "Document submitted",
+	document_approved: "Document approved",
+	document_rejected: "Document rejected",
 };
 
 export const NOTIFICATION_KIND_GROUPS = {
@@ -39,6 +45,8 @@ export const NOTIFICATION_KIND_GROUPS = {
 		"comment_on_your_post",
 		"reply_to_your_comment",
 		"reaction_on_your_post",
+		"document_approved",
+		"document_rejected",
 	] as const satisfies readonly NotificationKind[],
 	sitting: [
 		"sitting_poll_started",
@@ -46,7 +54,10 @@ export const NOTIFICATION_KIND_GROUPS = {
 		"participant_finished_book",
 		"sitting_finished",
 	] as const satisfies readonly NotificationKind[],
-	admin: ["book_requested"] as const satisfies readonly NotificationKind[],
+	admin: [
+		"book_requested",
+		"document_submitted",
+	] as const satisfies readonly NotificationKind[],
 };
 
 /** Push (ntfy) on by default for these kinds when preferences are first created. */
@@ -58,6 +69,9 @@ export const NOTIFICATION_KINDS_PUSH_ENABLED_BY_DEFAULT = [
 	"sitting_poll_closed",
 	"sitting_finished",
 	"book_requested",
+	"document_submitted",
+	"document_approved",
+	"document_rejected",
 ] as const satisfies readonly NotificationKind[];
 
 const pushEnabledByDefaultSet = new Set<string>(

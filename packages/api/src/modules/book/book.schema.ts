@@ -70,9 +70,12 @@ export const getBookListFields = {
 	status: true,
 } as const;
 
-export const GetBookListOutputSchema = CursorPaginationOutputSchema(
-	BookSchema.pick(getBookListFields),
-);
+export const BookListItemSchema = BookSchema.pick(getBookListFields).extend({
+	approvedDocumentCount: z.number().int().min(0),
+});
+
+export const GetBookListOutputSchema =
+	CursorPaginationOutputSchema(BookListItemSchema);
 
 export type GetBookListInput = z.infer<typeof GetBookListInputSchema>;
 export type GetBookListOutput = z.infer<typeof GetBookListOutputSchema>;

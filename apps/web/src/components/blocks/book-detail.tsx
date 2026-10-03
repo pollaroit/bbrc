@@ -1,4 +1,5 @@
 import type { TGetBookBySlugOutputSchema } from "@bbrc/api/modules/book/book.schema";
+import type { ListApprovedDocumentsByBookOutput } from "@bbrc/api/modules/document/document.schema";
 import type { GetBookFeedbackListOutput } from "@bbrc/api/modules/feedback/feedback.schema";
 import {
 	Card,
@@ -12,6 +13,7 @@ import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { BookDeleteButton } from "@/components/blocks/book-delete-button";
+import { BookDocumentsSection } from "@/components/blocks/book-documents-section";
 import { BookEditLink } from "@/components/blocks/book-edit-link";
 import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
 import { BookFeedbackSection } from "@/components/blocks/book-feedback-section";
@@ -24,9 +26,14 @@ import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 type BookDetailProps = {
 	book: TGetBookBySlugOutputSchema;
 	initialReviews: GetBookFeedbackListOutput;
+	approvedDocuments: ListApprovedDocumentsByBookOutput["items"];
 };
 
-export function BookDetail({ book, initialReviews }: BookDetailProps) {
+export function BookDetail({
+	book,
+	initialReviews,
+	approvedDocuments,
+}: BookDetailProps) {
 	const coverSrc = bookCoverUrl(book.coverId, "L");
 	const subjectPeople = book.subjectPeople ?? [];
 	const subjectTimes = book.subjectTimes ?? [];
@@ -154,6 +161,14 @@ export function BookDetail({ book, initialReviews }: BookDetailProps) {
 					</section>
 				</>
 			) : null}
+
+			<Separator />
+
+			<BookDocumentsSection
+				bookSlug={book.slug}
+				bookTitle={book.title}
+				documents={approvedDocuments}
+			/>
 
 			<Separator />
 
