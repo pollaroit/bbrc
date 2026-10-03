@@ -93,12 +93,20 @@ export function UserMenu({ ...props }: Props) {
 					<Settings /> Settings
 				</DropdownMenuItem>
 				{props.user.isAdmin ? (
-					<DropdownMenuItem
-						className="cursor-pointer"
-						render={<Link href={"/admin/users" as Route} />}
-					>
-						<Shield /> Users
-					</DropdownMenuItem>
+					<>
+						<DropdownMenuItem
+							className="cursor-pointer"
+							render={<Link href={"/books/blocked" as Route} />}
+						>
+							<BookOpen /> Blocked Works
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							className="cursor-pointer"
+							render={<Link href={"/admin/users" as Route} />}
+						>
+							<Shield /> Users
+						</DropdownMenuItem>
+					</>
 				) : null}
 				<DropdownMenuItem
 					closeOnClick={false}

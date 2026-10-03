@@ -8,7 +8,7 @@ import {
 	DropdownMenuTrigger,
 } from "@bbrc/ui/components/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
-import { BookPlus, PenLine, Plus, Sofa } from "lucide-react";
+import { BookPlus, LayoutList, PenLine, Plus, Sofa } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
@@ -25,11 +25,13 @@ export function AdminCreateMenu() {
 	});
 	const [composeOpen, setComposeOpen] = useState(false);
 
-	if (isSessionPending || !session?.user.isAdmin) {
+	if (isSessionPending || !session?.user) {
 		return null;
 	}
 
-	const showStartSitting = !isOngoingPending && !ongoing;
+	const isAdmin = session.user.isAdmin;
+	const showStartSitting = isAdmin && !isOngoingPending && !ongoing;
+	const newShelfHref = `/users/${session.user.username}/shelves/new` as Route;
 
 	return (
 		<>
@@ -42,18 +44,21 @@ export function AdminCreateMenu() {
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" className="min-w-44">
 					<DropdownMenuItem
-						render={<Link href={"/books/new" as Route} />}
+						render={<Link href={newShelfHref} />}
 						nativeButton={false}
 					>
-						<BookPlus className="size-4" aria-hidden="true" />
-						Add book
+						<LayoutList className="size-4" aria-hidden="true" />
+						Create shelf
 					</DropdownMenuItem>
-					<DropdownMenuItem
-						render={<Link href={"/books/blocked" as Route} />}
-						nativeButton={false}
-					>
-						Blocked OL works
-					</DropdownMenuItem>
+					{isAdmin ? (
+						<DropdownMenuItem
+							render={<Link href={"/books/new" as Route} />}
+							nativeButton={false}
+						>
+							<BookPlus className="size-4" aria-hidden="true" />
+							Add book
+						</DropdownMenuItem>
+					) : null}
 					{showStartSitting ? (
 						<DropdownMenuItem
 							render={<Link href={"/sittings/new" as Route} />}
@@ -63,14 +68,18 @@ export function AdminCreateMenu() {
 							Start sitting
 						</DropdownMenuItem>
 					) : null}
-					<DropdownMenuItem onClick={() => setComposeOpen(true)}>
-						<PenLine className="size-4" aria-hidden="true" />
-						Create post
-					</DropdownMenuItem>
+					{isAdmin ? (
+						<DropdownMenuItem onClick={() => setComposeOpen(true)}>
+							<PenLine className="size-4" aria-hidden="true" />
+							Create post
+						</DropdownMenuItem>
+					) : null}
 				</DropdownMenuContent>
 			</DropdownMenu>
 
-			<ComposePostDialog open={composeOpen} onOpenChange={setComposeOpen} />
+			{isAdmin ? (
+				<ComposePostDialog open={composeOpen} onOpenChange={setComposeOpen} />
+			) : null}
 		</>
 	);
 }
