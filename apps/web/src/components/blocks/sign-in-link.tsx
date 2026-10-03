@@ -2,8 +2,8 @@
 
 import type { Route } from "next";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { authPageHref, currentPageCallbackUrl } from "@/lib/auth-callback-url";
+import { usePathname } from "next/navigation";
+import { authPageHref } from "@/lib/auth-callback-url";
 
 type SignInLinkProps = {
 	className?: string;
@@ -12,11 +12,7 @@ type SignInLinkProps = {
 
 export function useSignInHref(): Route {
 	const pathname = usePathname();
-	const searchParams = useSearchParams();
-	return authPageHref(
-		"/sign-in",
-		currentPageCallbackUrl(pathname, searchParams.toString()),
-	);
+	return authPageHref("/sign-in", pathname);
 }
 
 export function SignInLink({ className, children }: SignInLinkProps) {
