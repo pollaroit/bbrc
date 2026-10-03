@@ -1,5 +1,8 @@
+import { Button } from "@bbrc/ui/components/button";
+import { ArrowLeft } from "lucide-react";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EditShelfForm } from "@/components/blocks/edit-shelf-form";
 import { loadUserByUsernameForIsr } from "@/lib/isr-data";
@@ -40,8 +43,23 @@ export default async function EditShelfPage({
 
 	return (
 		<div className="flex flex-col gap-8">
-			<header className="space-y-1.5 border-border border-b pb-6">
-				<h1 className="font-bold text-2xl tracking-tight">Edit shelf</h1>
+			<header className="flex flex-col gap-4 border-border border-b pb-6">
+				<Button
+					render={<Link href={`/users/${username}/shelves/${slug}` as Route} />}
+					nativeButton={false}
+					variant="ghost"
+					size="sm"
+					className="-ml-2 w-fit gap-1.5 text-muted-foreground hover:text-foreground"
+				>
+					<ArrowLeft className="size-4" />
+					Back to shelf
+				</Button>
+				<div className="space-y-1.5">
+					<h1 className="font-bold text-2xl tracking-tight">Edit shelf</h1>
+					<p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
+						Update the title, visibility, and how books are shown on the page.
+					</p>
+				</div>
 			</header>
 			<EditShelfForm username={username} shelfSlug={slug} />
 		</div>

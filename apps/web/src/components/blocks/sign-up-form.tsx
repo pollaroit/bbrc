@@ -3,15 +3,18 @@
 import { SignupInputSchema } from "@bbrc/schemas";
 import { FieldGroup } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAppForm } from "@/hooks/use-app-form";
+import { safeCallbackUrl } from "@/lib/auth-callback-url";
 import { authClient } from "@/lib/auth-client";
 
 export default function SignupForm() {
 	const [isLoading, setIsLoading] = useState(false);
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const callbackUrl = safeCallbackUrl(searchParams.get("callback_url"));
 
 	const form = useAppForm(SignupInputSchema, {
 		name: "",
@@ -30,7 +33,7 @@ export default function SignupForm() {
 					email: values.email,
 					username: values.username,
 					password: values.password,
-					callbackURL: "/",
+					callbackURL: callbackUrl,
 				});
 
 				if (error) {
@@ -41,7 +44,7 @@ export default function SignupForm() {
 
 				toast.success(`Welcome to BBRC, ${data.user.name}!`);
 
-				router.replace("/");
+				router.replace(callbackUrl);
 			} catch (error) {
 				toast.error(
 					(error as Error).message ?? "Something went wrong. Please try again.",

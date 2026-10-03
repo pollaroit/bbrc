@@ -2,6 +2,7 @@ import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { getBookFeedbackList } from "@bbrc/api/modules/feedback/feedback.service";
 import { getPostBySlug } from "@bbrc/api/modules/post/post.service";
 import { getRpChart, getRpEventList } from "@bbrc/api/modules/rp/rp.service";
+import { getShelfBySlug } from "@bbrc/api/modules/shelf/shelf.service";
 import {
 	getOngoingSitting,
 	getSittingBySlug,
@@ -36,6 +37,11 @@ export const loadSittingBySlugForIsr = cache((slug: string) =>
 
 export const loadUserByUsernameForIsr = cache((username: string) =>
 	getUserByUsername({ username }, db),
+);
+
+export const loadShelfBySlugForIsr = cache(
+	(username: string, shelfSlug: string, viewerUserId?: string) =>
+		getShelfBySlug(username, shelfSlug, viewerUserId, db),
 );
 
 export const loadOngoingSittingForIsr = cache(() => getOngoingSitting(db));

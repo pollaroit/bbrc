@@ -10,11 +10,12 @@ import {
 	SheetTitle,
 	SheetTrigger,
 } from "@bbrc/ui/components/sheet";
-import { ArrowRight, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { AdminCreateMenu } from "@/components/blocks/admin-create-menu";
+import { HeaderAuthLinks } from "@/components/blocks/header-auth-links";
 import { HeaderOngoingReadButton } from "@/components/blocks/header-ongoing-read-button";
 import { NotificationBell } from "@/components/blocks/notification-bell";
 import { UserMenu } from "@/components/blocks/user-menu";
@@ -24,6 +25,7 @@ import { authClient } from "@/lib/auth-client";
 const navLinks = [
 	{ label: "Home", href: "/" },
 	{ label: "Library", href: "/books" },
+	{ label: "Shelves", href: "/shelves" },
 	{ label: "Sittings", href: "/sittings" },
 	{ label: "Members", href: "/users" },
 ];
@@ -66,20 +68,9 @@ export default function Header() {
 							<UserMenu user={session.user} />
 						</>
 					) : (
-						<>
-							<Button
-								render={<Link href="/sign-in" />}
-								nativeButton={false}
-								variant="ghost"
-								className="text-muted-foreground hover:text-foreground"
-							>
-								Sign in
-							</Button>
-							<Button render={<Link href="/sign-up" />} nativeButton={false}>
-								Get Started
-								<ArrowRight data-icon="inline-end" aria-hidden="true" />
-							</Button>
-						</>
+						<Suspense fallback={null}>
+							<HeaderAuthLinks variant="desktop" />
+						</Suspense>
 					)}
 				</div>
 
@@ -123,34 +114,12 @@ export default function Header() {
 								{isPending ? null : session ? (
 									<UserMenu user={session.user} />
 								) : (
-									<>
-										<SheetClose
-											nativeButton={false}
-											render={
-												<Button
-													render={<Link href="/sign-in" />}
-													nativeButton={false}
-													variant="outline"
-													className="w-full"
-												/>
-											}
-										>
-											Sign in
-										</SheetClose>
-										<SheetClose
-											nativeButton={false}
-											render={
-												<Button
-													render={<Link href="/sign-up" />}
-													nativeButton={false}
-													className="w-full"
-												/>
-											}
-										>
-											Get Started
-											<ArrowRight data-icon="inline-end" aria-hidden="true" />
-										</SheetClose>
-									</>
+									<Suspense fallback={null}>
+										<HeaderAuthLinks
+											variant="mobile"
+											onNavigate={() => setOpen(false)}
+										/>
+									</Suspense>
 								)}
 							</SheetFooter>
 						</SheetContent>

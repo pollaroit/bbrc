@@ -5,11 +5,10 @@ import { Button } from "@bbrc/ui/components/button";
 import { Field, FieldLabel } from "@bbrc/ui/components/field";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
-import type { Route } from "next";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
+import { SignInLink } from "@/components/blocks/sign-in-link";
 import { authClient } from "@/lib/auth-client";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -67,7 +66,7 @@ export function PostCommentForm({
 			return;
 		}
 		node.focus({ preventScroll: true });
-	}, [autoFocus, fieldId]);
+	}, [autoFocus]);
 
 	const createMutation = useMutation(
 		orpc.comment.create.mutationOptions({
@@ -94,9 +93,7 @@ export function PostCommentForm({
 	if (!session?.user) {
 		return (
 			<p className="text-muted-foreground text-sm">
-				<Link href={"/sign-in" as Route} className="text-foreground underline">
-					Sign in
-				</Link>{" "}
+				<SignInLink className="text-foreground underline">Sign in</SignInLink>{" "}
 				to join the conversation.
 			</p>
 		);

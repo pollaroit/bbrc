@@ -6,23 +6,82 @@ import type { ShelfStatusSchema } from "./shelf.schema";
 type ShelfStatus = z.infer<typeof ShelfStatusSchema>;
 
 import { ORPCError } from "@orpc/server";
+import { definePagination } from "../../utils/pagination";
 import { awardShelfXp } from "../xp/xp.service";
+import { shelfListSorting } from "./shelf.listing";
 import type {
 	CreateShelfInput,
 	CreateShelfOutput,
 	DeleteShelfInput,
 	GetShelfBySlugOutput,
+	GetShelfListInput,
+	GetShelfListOutput,
 	ListMyEditableShelvesOutput,
 	ListShelvesByUsernameOutput,
 	ListShelvesForBookOutput,
 	UpdateShelfInput,
 } from "./shelf.schema";
 import {
+	getShelfListFields,
 	mapShelfListItem,
 	shelfBookSelect,
 	shelfListItemSelect,
 } from "./shelf.schema";
+import { buildPublicShelfListWhere } from "./shelf-list-where";
 import { generateShelfSlug } from "./shelf-slug";
+
+const COVER_PREVIEW_LIMIT = 4;
+
+type ShelfListRow = Prisma.ShelfGetPayload<{
+	select: typeof getShelfListFields;
+}>;
+
+const shelfListCursorCodec = {
+	decode(cursor: string): { id: string } {
+		return { id: cursor };
+	},
+	encode(item: ShelfListRow): string {
+		return item.id;
+	},
+};
+
+function withStableShelfOrderBy(
+	orderBy: Prisma.ShelfOrderByWithRelationInput,
+	sortDirection: "asc" | "desc",
+): Prisma.ShelfOrderByWithRelationInput[] {
+	return [orderBy, { id: sortDirection }];
+}
+
+async function loadCoverPreviewMap(
+	shelfIds: string[],
+	db: Database,
+): Promise<Map<string, (number | null)[]>> {
+	if (shelfIds.length === 0) {
+		return new Map();
+	}
+
+	const rows = await db.shelfBook.findMany({
+		where: { shelfId: { in: shelfIds } },
+		orderBy: [{ shelfId: "asc" }, { position: "asc" }],
+		select: {
+			shelfId: true,
+			book: { select: { coverId: true } },
+		},
+	});
+
+	const map = new Map<string, (number | null)[]>();
+
+	for (const row of rows) {
+		const current = map.get(row.shelfId) ?? [];
+		if (current.length >= COVER_PREVIEW_LIMIT) {
+			continue;
+		}
+		current.push(row.book.coverId ?? null);
+		map.set(row.shelfId, current);
+	}
+
+	return map;
+}
 
 async function loadUserByUsername(username: string, db: Database) {
 	const user = await db.user.findUnique({
@@ -136,8 +195,13 @@ export async function listShelvesByUsername(
 		select: shelfListItemSelect,
 	});
 
+	const coverMap = await loadCoverPreviewMap(
+		rows.map((row) => row.id),
+		db,
+	);
+
 	return {
-		items: rows.map(mapShelfListItem),
+		items: rows.map((row) => mapShelfListItem(row, coverMap.get(row.id) ?? [])),
 		isOwner,
 	};
 }
@@ -172,11 +236,43 @@ export async function getShelfBySlug(
 	assertCanViewShelf(shelf, viewerUserId);
 
 	const isOwner = viewerIsOwner(viewerUserId, shelf.userId);
+	const coverMap = await loadCoverPreviewMap([shelf.id], db);
+	const coverPreviewCoverIds = coverMap.get(shelf.id) ?? [];
 
 	return {
-		...mapShelfListItem(shelf),
+		...mapShelfListItem(shelf, coverPreviewCoverIds),
 		books: shelf.books,
 		isOwner,
+	};
+}
+
+export async function getShelfList(
+	input: GetShelfListInput,
+	db: Database,
+): Promise<GetShelfListOutput> {
+	const pagination = definePagination.cursor(input, shelfListCursorCodec);
+	const sorting = shelfListSorting.from(input);
+	const where = await buildPublicShelfListWhere(input, db);
+
+	const rows = await db.shelf.findMany({
+		...pagination.use(),
+		where,
+		orderBy: withStableShelfOrderBy(sorting.use(), sorting.sortDirection),
+		select: getShelfListFields,
+	});
+
+	const page = pagination.paginate(rows);
+	const coverMap = await loadCoverPreviewMap(
+		page.items.map((row) => row.id),
+		db,
+	);
+
+	return {
+		items: page.items.map((row) => ({
+			...mapShelfListItem(row, coverMap.get(row.id) ?? []),
+			owner: row.user,
+		})),
+		metadata: page.metadata,
 	};
 }
 
@@ -235,6 +331,12 @@ export async function updateShelf(
 		data.description = input.description?.trim() || null;
 	}
 	if (input.status !== undefined) {
+		if (input.status === "draft" && shelf.status !== "draft") {
+			throw new ORPCError("BAD_REQUEST", {
+				message:
+					"A shelf that has been public or archived cannot be moved back to draft.",
+			});
+		}
 		data.status = input.status;
 	}
 	if (input.type !== undefined) {
@@ -363,16 +465,16 @@ export async function removeBookFromShelf(
 			select: { id: true, bookId: true },
 		});
 
-		for (let i = 0; i < remaining.length; i++) {
+		for (const [i, row] of remaining.entries()) {
 			await tx.shelfBook.update({
-				where: { id: remaining[i]!.id },
+				where: { id: row.id },
 				data: { position: -1 - i },
 			});
 		}
 
-		for (let i = 0; i < remaining.length; i++) {
+		for (const [i, row] of remaining.entries()) {
 			await tx.shelfBook.update({
-				where: { id: remaining[i]!.id },
+				where: { id: row.id },
 				data: { position: i },
 			});
 		}
@@ -430,24 +532,24 @@ export async function reorderShelfBooks(
 			});
 		}
 
-		for (let i = 0; i < orderedBookIds.length; i++) {
+		for (const [i, bookId] of orderedBookIds.entries()) {
 			await tx.shelfBook.update({
 				where: {
 					shelfId_bookId: {
 						shelfId: shelf.id,
-						bookId: orderedBookIds[i]!,
+						bookId,
 					},
 				},
 				data: { position: -1 - i },
 			});
 		}
 
-		for (let i = 0; i < orderedBookIds.length; i++) {
+		for (const [i, bookId] of orderedBookIds.entries()) {
 			await tx.shelfBook.update({
 				where: {
 					shelfId_bookId: {
 						shelfId: shelf.id,
-						bookId: orderedBookIds[i]!,
+						bookId,
 					},
 				},
 				data: { position: i },
@@ -465,23 +567,37 @@ export async function reorderShelfBooks(
 
 export async function listShelvesForBook(
 	bookSlug: string,
-	userId: string,
+	viewerUserId: string | undefined,
 	db: Database,
 ): Promise<ListShelvesForBookOutput> {
 	const book = await loadBookBySlug(bookSlug, db);
 
 	const rows = await db.shelf.findMany({
 		where: {
-			userId,
-			status: { in: ["draft", "active"] },
 			books: { some: { bookId: book.id } },
+			OR: [
+				{ status: "active" },
+				...(viewerUserId ? [{ userId: viewerUserId }] : []),
+			],
 		},
-		orderBy: { title: "asc" },
-		select: { slug: true, title: true, status: true },
+		orderBy: [{ user: { username: "asc" } }, { title: "asc" }],
+		select: {
+			slug: true,
+			title: true,
+			status: true,
+			userId: true,
+			user: { select: { username: true } },
+		},
 	});
 
 	return {
-		items: rows,
+		items: rows.map((row) => ({
+			slug: row.slug,
+			title: row.title,
+			status: row.status,
+			ownerUsername: row.user.username,
+			isOwner: viewerUserId != null && row.userId === viewerUserId,
+		})),
 		maxBooksPerShelf: MAX_BOOKS_PER_SHELF,
 	};
 }

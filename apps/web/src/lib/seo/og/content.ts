@@ -2,6 +2,7 @@ import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
 import { getFeedbackBySlug } from "@bbrc/api/modules/feedback/feedback.service";
 import { getPostBySlug } from "@bbrc/api/modules/post/post.service";
+import { getShelfBySlug } from "@bbrc/api/modules/shelf/shelf.service";
 import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.schema";
 import { getSittingBySlug } from "@bbrc/api/modules/sitting/sitting.service";
 import { getUserByUsername } from "@bbrc/api/modules/user/user.service";
@@ -137,6 +138,28 @@ async function resolveBooksListOg(): Promise<OgImageContent> {
 	};
 }
 
+async function resolveShelvesListOg(): Promise<OgImageContent> {
+	const [shelfCount, bookLinks, creators] = await Promise.all([
+		db.shelf.count({ where: { status: "active" } }),
+		db.shelfBook.count({
+			where: { shelf: { status: "active" } },
+		}),
+		db.user.count({
+			where: { shelves: { some: { status: "active" } } },
+		}),
+	]);
+
+	return {
+		kind: "Shelves",
+		title: "Member shelves",
+		description: [
+			formatCount("public list", shelfCount),
+			formatCount("listed book", bookLinks),
+			formatCount("curator", creators),
+		].join(" · "),
+	};
+}
+
 async function resolveSittingsListOg(): Promise<OgImageContent> {
 	const [total, active, finished] = await Promise.all([
 		db.sitting.count(),
@@ -198,6 +221,9 @@ export async function resolveOgImageContent(
 	}
 	if (staticKey === "books/request") {
 		return resolveBooksRequestOg();
+	}
+	if (staticKey === "shelves") {
+		return resolveShelvesListOg();
 	}
 	if (staticKey === "sittings") {
 		return resolveSittingsListOg();
@@ -447,6 +473,104 @@ export async function resolveOgImageContent(
 	}
 
 	if (section === "users") {
+		if (rest[0] === "shelves") {
+			const shelfSegments = rest.slice(1);
+
+			if (shelfSegments[0] === "new") {
+				try {
+					const user = await getUserByUsername({ username: slug }, db);
+					return {
+						kind: "Shelf",
+						title: "New shelf",
+						description: `Create a reading list · ${user.name}`,
+						highlights: [`@${user.username}`],
+					};
+				} catch {
+					return {
+						kind: "Shelf",
+						title: "New shelf",
+						description: DEFAULT_DESCRIPTION,
+					};
+				}
+			}
+
+			if (!shelfSegments[0]) {
+				try {
+					const user = await getUserByUsername({ username: slug }, db);
+					const [activeCount, totalCount] = await Promise.all([
+						db.shelf.count({
+							where: { user: { username: slug }, status: "active" },
+						}),
+						db.shelf.count({ where: { user: { username: slug } } }),
+					]);
+
+					return {
+						kind: "Shelves",
+						title: `${user.name} · Shelves`,
+						description: `${formatCount("public list", activeCount)}${totalCount > activeCount ? ` · ${totalCount} total` : ""}`,
+						highlights: [`@${user.username}`],
+					};
+				} catch {
+					return {
+						kind: "Shelves",
+						title: "Shelves",
+						description: DEFAULT_DESCRIPTION,
+					};
+				}
+			}
+
+			const shelfSlug = shelfSegments[0];
+			if (shelfSegments[1] === "edit") {
+				try {
+					const shelf = await getShelfBySlug(slug, shelfSlug, undefined, db);
+					return {
+						kind: "Shelf",
+						title: `Edit · ${shelf.title}`,
+						description: "Update shelf settings",
+						highlights: [shelf.status, formatCount("book", shelf.bookCount)],
+					};
+				} catch {
+					return {
+						kind: "Shelf",
+						title: "Edit shelf",
+						description: DEFAULT_DESCRIPTION,
+					};
+				}
+			}
+
+			try {
+				const [user, shelf] = await Promise.all([
+					getUserByUsername({ username: slug }, db),
+					getShelfBySlug(slug, shelfSlug, undefined, db),
+				]);
+
+				const highlights = [
+					`@${user.username}`,
+					formatCount("book", shelf.bookCount),
+					shelf.type === "ordered" ? "Ranked list" : "Simple list",
+				];
+				if (shelf.status !== "active") {
+					highlights.push(shelf.status);
+				}
+
+				return {
+					kind: "Shelf",
+					title: shelf.title,
+					description: truncateOgLine(
+						shelf.description?.trim() || `${user.name}'s reading list on BBRC`,
+						140,
+					),
+					highlights,
+				};
+			} catch {
+				return {
+					kind: "Shelf",
+					title: "Shelf not found",
+					description: DEFAULT_DESCRIPTION,
+				};
+			}
+		}
+
 		if (rest[0] === "posts") {
 			try {
 				const user = await getUserByUsername({ username: slug }, db);

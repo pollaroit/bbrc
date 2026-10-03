@@ -68,7 +68,8 @@ async function userIdsWithMinRelationCount(
 		| "likes"
 		| "feedbacks"
 		| "participations"
-		| "favorites",
+		| "favorites"
+		| "shelves",
 	min: number,
 ): Promise<string[]> {
 	if (min <= 0) {
@@ -124,6 +125,14 @@ async function userIdsWithMinRelationCount(
 			});
 			return rows.map((row) => row.userId);
 		}
+		case "shelves": {
+			const rows = await db.shelf.groupBy({
+				by: ["userId"],
+				_count: { _all: true },
+				having: { userId: { _count: { gte: min } } },
+			});
+			return rows.map((row) => row.userId);
+		}
 	}
 }
 
@@ -152,6 +161,7 @@ async function resolveMinCountUserIds(
 		{ key: "minFeedbacks", relation: "feedbacks" },
 		{ key: "minParticipations", relation: "participations" },
 		{ key: "minFavorites", relation: "favorites" },
+		{ key: "minShelves", relation: "shelves" },
 	];
 
 	let ids: string[] | null = null;

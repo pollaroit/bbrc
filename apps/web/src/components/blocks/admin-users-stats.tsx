@@ -165,6 +165,12 @@ export function AdminUsersStats() {
 									{data.engagement.favorites}
 								</dd>
 							</div>
+							<div>
+								<dt className="text-muted-foreground">Shelves</dt>
+								<dd className="font-medium tabular-nums">
+									{data.engagement.shelves}
+								</dd>
+							</div>
 						</dl>
 					</CardContent>
 				</Card>

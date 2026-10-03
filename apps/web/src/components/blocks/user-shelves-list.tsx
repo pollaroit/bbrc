@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { ShelfCover } from "@/components/blocks/shelf-cover";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
@@ -127,10 +128,11 @@ export function UserShelvesList({ username }: UserShelvesListProps) {
 							<Link
 								href={shelfHref(username, shelf.slug)}
 								className={cn(
-									"flex h-full flex-col gap-2 border border-border p-4 transition-colors",
+									"flex h-full flex-col gap-3 border border-border p-4 transition-colors",
 									"hover:bg-muted/40",
 								)}
 							>
+								<ShelfCover coverIds={shelf.coverPreviewCoverIds} size="md" />
 								<div className="flex flex-wrap items-center gap-2">
 									<h2 className="font-semibold leading-snug">{shelf.title}</h2>
 									{shelf.type === "ordered" ? (

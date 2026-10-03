@@ -2,6 +2,7 @@ import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { CreateShelfForm } from "@/components/blocks/create-shelf-form";
+import { CreateShelfPageHeader } from "@/components/blocks/create-shelf-page-header";
 import { loadUserByUsernameForIsr } from "@/lib/isr-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { auth } from "@/services";
@@ -40,12 +41,7 @@ export default async function NewShelfPage({
 
 	return (
 		<div className="flex flex-col gap-8">
-			<header className="space-y-1.5 border-border border-b pb-6">
-				<h1 className="font-bold text-2xl tracking-tight">New shelf</h1>
-				<p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
-					Group books into a list you can keep private or share on your profile.
-				</p>
-			</header>
+			<CreateShelfPageHeader username={username} />
 			<CreateShelfForm username={username} />
 		</div>
 	);

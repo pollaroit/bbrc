@@ -10,11 +10,10 @@ import {
 } from "@bbrc/ui/components/dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
-import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CommentLikersDialogList } from "@/components/blocks/comment-likers-dialog-list";
+import { SignInLink, useSignInHref } from "@/components/blocks/sign-in-link";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -78,13 +77,15 @@ export function CommentLikeEngagement({
 		}),
 	);
 
+	const signInHref = useSignInHref();
+
 	function handleToggleLike() {
 		if (!session?.user) {
 			toast.error("Sign in to like comments.", {
 				action: {
 					label: "Sign in",
 					onClick: () => {
-						window.location.href = "/sign-in";
+						window.location.href = signInHref;
 					},
 				},
 			});
@@ -156,12 +157,9 @@ export function CommentLikeEngagement({
 					</div>
 					{!session?.user ? (
 						<p className="border-border border-t px-4 py-3 text-center text-muted-foreground text-sm">
-							<Link
-								href={"/sign-in" as Route}
-								className="text-foreground underline"
-							>
+							<SignInLink className="text-foreground underline">
 								Sign in
-							</Link>{" "}
+							</SignInLink>{" "}
 							to like this comment.
 						</p>
 					) : null}

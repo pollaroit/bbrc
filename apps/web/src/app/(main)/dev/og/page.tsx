@@ -10,32 +10,38 @@ export default async function OgDevPage() {
 		notFound();
 	}
 
-	const [book, post, comment, feedback, sitting, user] = await Promise.all([
-		db.book.findFirst({
-			orderBy: { createdAt: "desc" },
-			select: { slug: true },
-		}),
-		db.post.findFirst({
-			orderBy: { createdAt: "desc" },
-			select: { slug: true },
-		}),
-		db.comment.findFirst({
-			orderBy: { createdAt: "desc" },
-			select: { slug: true },
-		}),
-		db.feedback.findFirst({
-			orderBy: { createdAt: "desc" },
-			select: { slug: true },
-		}),
-		db.sitting.findFirst({
-			orderBy: { createdAt: "desc" },
-			select: { slug: true },
-		}),
-		db.user.findFirst({
-			orderBy: { createdAt: "asc" },
-			select: { username: true },
-		}),
-	]);
+	const [book, post, comment, feedback, sitting, user, shelf] =
+		await Promise.all([
+			db.book.findFirst({
+				orderBy: { createdAt: "desc" },
+				select: { slug: true },
+			}),
+			db.post.findFirst({
+				orderBy: { createdAt: "desc" },
+				select: { slug: true },
+			}),
+			db.comment.findFirst({
+				orderBy: { createdAt: "desc" },
+				select: { slug: true },
+			}),
+			db.feedback.findFirst({
+				orderBy: { createdAt: "desc" },
+				select: { slug: true },
+			}),
+			db.sitting.findFirst({
+				orderBy: { createdAt: "desc" },
+				select: { slug: true },
+			}),
+			db.user.findFirst({
+				orderBy: { createdAt: "asc" },
+				select: { username: true },
+			}),
+			db.shelf.findFirst({
+				where: { status: "active" },
+				orderBy: { updatedAt: "desc" },
+				select: { slug: true, user: { select: { username: true } } },
+			}),
+		]);
 
 	const staticPaths = [
 		...STATIC_APP_ROUTES.map(({ path }) => ({
@@ -47,6 +53,7 @@ export default async function OgDevPage() {
 		{ label: "Sign in", path: "/sign-in" },
 		{ label: "Add book", path: "/books/new" },
 		{ label: "Request book", path: "/books/request" },
+		{ label: "Shelves", path: "/shelves" },
 		...(user?.username
 			? [
 					{
@@ -56,6 +63,10 @@ export default async function OgDevPage() {
 					{
 						label: "Member feedbacks",
 						path: `/users/${user.username}/feedbacks`,
+					},
+					{
+						label: "Member shelves",
+						path: `/users/${user.username}/shelves`,
 					},
 				]
 			: []),
@@ -71,6 +82,8 @@ export default async function OgDevPage() {
 				feedbackSlug: feedback?.slug,
 				sittingSlug: sitting?.slug,
 				username: user?.username,
+				shelfSlug: shelf?.slug,
+				shelfUsername: shelf?.user.username,
 			}}
 		/>
 	);

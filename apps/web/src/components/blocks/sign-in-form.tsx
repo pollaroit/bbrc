@@ -3,15 +3,18 @@
 import { SignInInputSchema } from "@bbrc/schemas";
 import { FieldGroup } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAppForm } from "@/hooks/use-app-form";
+import { safeCallbackUrl } from "@/lib/auth-callback-url";
 import { authClient } from "@/lib/auth-client";
 
 export default function SignInForm() {
 	const [isLoading, setIsLoading] = useState(false);
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const callbackUrl = safeCallbackUrl(searchParams.get("callback_url"));
 
 	const form = useAppForm(SignInInputSchema, {
 		email: "",
@@ -25,7 +28,7 @@ export default function SignInForm() {
 				const { data, error } = await authClient.signIn.email({
 					email: values.email,
 					password: values.password,
-					callbackURL: "/",
+					callbackURL: callbackUrl,
 				});
 
 				if (error) {
@@ -36,7 +39,7 @@ export default function SignInForm() {
 
 				toast.success(`Welcome back, ${data.user.name}!`);
 
-				router.replace("/");
+				router.replace(callbackUrl);
 			} catch (error) {
 				toast.error(
 					(error as Error).message ?? "Something went wrong. Please try again.",

@@ -4,6 +4,10 @@ import {
 	publicProcedure,
 } from "../../procedures";
 import {
+	revalidateBookIsr,
+	revalidateUserShelvesIsr,
+} from "../../revalidate-isr";
+import {
 	AddBookToShelfInputSchema,
 	AddBookToShelfOutputSchema,
 	CreateShelfInputSchema,
@@ -12,6 +16,8 @@ import {
 	DeleteShelfOutputSchema,
 	GetShelfBySlugInputSchema,
 	GetShelfBySlugOutputSchema,
+	GetShelfListInputSchema,
+	GetShelfListOutputSchema,
 	ListMyEditableShelvesOutputSchema,
 	ListShelvesByUsernameInputSchema,
 	ListShelvesByUsernameOutputSchema,
@@ -29,6 +35,7 @@ import {
 	createShelf,
 	deleteShelf,
 	getShelfBySlug,
+	getShelfList,
 	listMyEditableShelves,
 	listShelvesByUsername,
 	listShelvesForBook,
@@ -38,6 +45,10 @@ import {
 } from "./shelf.service";
 
 export const shelfRouter = {
+	getList: publicProcedure
+		.input(GetShelfListInputSchema)
+		.output(GetShelfListOutputSchema)
+		.handler(async ({ input, context }) => getShelfList(input, context.db)),
 	listByUsername: publicProcedure
 		.input(ListShelvesByUsernameInputSchema)
 		.output(ListShelvesByUsernameOutputSchema)
@@ -63,59 +74,108 @@ export const shelfRouter = {
 	create: notBannedProcedure
 		.input(CreateShelfInputSchema)
 		.output(CreateShelfOutputSchema)
-		.handler(async ({ input, context }) =>
-			createShelf(input, context.session.user.id, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const result = await createShelf(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			revalidateUserShelvesIsr(
+				context,
+				context.session.user.username,
+				result.slug,
+			);
+			if (input.addBookSlug) {
+				revalidateBookIsr(context, input.addBookSlug);
+			}
+			return result;
+		}),
 	update: notBannedProcedure
 		.input(UpdateShelfInputSchema)
 		.output(UpdateShelfOutputSchema)
-		.handler(async ({ input, context }) =>
-			updateShelf(input, context.session.user.id, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const result = await updateShelf(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			revalidateUserShelvesIsr(
+				context,
+				context.session.user.username,
+				result.slug,
+			);
+			return result;
+		}),
 	delete: notBannedProcedure
 		.input(DeleteShelfInputSchema)
 		.output(DeleteShelfOutputSchema)
-		.handler(async ({ input, context }) =>
-			deleteShelf(input, context.session.user.id, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const result = await deleteShelf(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			revalidateUserShelvesIsr(context, context.session.user.username);
+			return result;
+		}),
 	addBook: notBannedProcedure
 		.input(AddBookToShelfInputSchema)
 		.output(AddBookToShelfOutputSchema)
-		.handler(async ({ input, context }) =>
-			addBookToShelf(
+		.handler(async ({ input, context }) => {
+			const result = await addBookToShelf(
 				input.shelfSlug,
 				input.bookSlug,
 				context.session.user.id,
 				context.db,
-			),
-		),
+			);
+			revalidateUserShelvesIsr(
+				context,
+				context.session.user.username,
+				input.shelfSlug,
+			);
+			revalidateBookIsr(context, input.bookSlug);
+			return result;
+		}),
 	removeBook: notBannedProcedure
 		.input(RemoveBookFromShelfInputSchema)
 		.output(RemoveBookFromShelfOutputSchema)
-		.handler(async ({ input, context }) =>
-			removeBookFromShelf(
+		.handler(async ({ input, context }) => {
+			const result = await removeBookFromShelf(
 				input.shelfSlug,
 				input.bookSlug,
 				context.session.user.id,
 				context.db,
-			),
-		),
+			);
+			revalidateUserShelvesIsr(
+				context,
+				context.session.user.username,
+				input.shelfSlug,
+			);
+			revalidateBookIsr(context, input.bookSlug);
+			return result;
+		}),
 	reorderBooks: notBannedProcedure
 		.input(ReorderShelfBooksInputSchema)
 		.output(ReorderShelfBooksOutputSchema)
-		.handler(async ({ input, context }) =>
-			reorderShelfBooks(
+		.handler(async ({ input, context }) => {
+			const result = await reorderShelfBooks(
 				input.shelfSlug,
 				input.bookSlugs,
 				context.session.user.id,
 				context.db,
-			),
-		),
-	listForBook: protectedProcedure
+			);
+			revalidateUserShelvesIsr(
+				context,
+				context.session.user.username,
+				input.shelfSlug,
+			);
+			return result;
+		}),
+	listForBook: publicProcedure
 		.input(ListShelvesForBookInputSchema)
 		.output(ListShelvesForBookOutputSchema)
 		.handler(async ({ input, context }) =>
-			listShelvesForBook(input.bookSlug, context.session.user.id, context.db),
+			listShelvesForBook(input.bookSlug, context.session?.user?.id, context.db),
 		),
 	listMineEditable: protectedProcedure
 		.input(ListShelvesForBookInputSchema.partial())

@@ -18,3 +18,11 @@ export function postDetailIsrPath(slug: string) {
 export function userProfileIsrPath(username: string) {
 	return `/users/${username}`;
 }
+
+export function userShelvesListIsrPath(username: string) {
+	return `/users/${username}/shelves`;
+}
+
+export function userShelfDetailIsrPath(username: string, shelfSlug: string) {
+	return `/users/${username}/shelves/${shelfSlug}`;
+}

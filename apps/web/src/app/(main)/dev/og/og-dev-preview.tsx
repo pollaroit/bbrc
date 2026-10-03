@@ -13,6 +13,8 @@ type OgDevPreviewProps = {
 		feedbackSlug?: string;
 		sittingSlug?: string;
 		username?: string;
+		shelfSlug?: string;
+		shelfUsername?: string;
 	};
 };
 
@@ -83,6 +85,10 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 	const [feedbackSlug, setFeedbackSlug] = useState(samples.feedbackSlug ?? "");
 	const [sittingSlug, setSittingSlug] = useState(samples.sittingSlug ?? "");
 	const [username, setUsername] = useState(samples.username ?? "");
+	const [shelfSlug, setShelfSlug] = useState(samples.shelfSlug ?? "");
+	const [shelfUsername, setShelfUsername] = useState(
+		samples.shelfUsername ?? "",
+	);
 
 	const dynamicEntries = useMemo(() => {
 		const entries: { label: string; path: string; description: string }[] = [];
@@ -162,10 +168,32 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 					path: `/users/${u}/rp`,
 					description: "RP history OG.",
 				},
+				{
+					label: "Shelves list",
+					path: `/users/${u}/shelves`,
+					description: "Member shelves index OG.",
+				},
 			);
 		}
+		const shelfOwner = shelfUsername.trim() || username.trim();
+		if (shelfOwner && shelfSlug.trim()) {
+			entries.push({
+				label: "Shelf",
+				path: `/users/${shelfOwner}/shelves/${shelfSlug.trim()}`,
+				description: "Public shelf detail OG.",
+			});
+		}
 		return entries;
-	}, [bookSlug, commentSlug, feedbackSlug, postSlug, sittingSlug, username]);
+	}, [
+		bookSlug,
+		commentSlug,
+		feedbackSlug,
+		postSlug,
+		shelfSlug,
+		shelfUsername,
+		sittingSlug,
+		username,
+	]);
 
 	const cacheBust = Date.now();
 
@@ -231,6 +259,24 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 						className="border border-input bg-background px-3 py-2"
 						value={username}
 						onChange={(e) => setUsername(e.target.value)}
+					/>
+				</label>
+				<label className="flex flex-col gap-1 text-sm">
+					<span className="font-medium">Shelf slug</span>
+					<input
+						className="border border-input bg-background px-3 py-2"
+						value={shelfSlug}
+						onChange={(e) => setShelfSlug(e.target.value)}
+						placeholder="Requires shelf owner username"
+					/>
+				</label>
+				<label className="flex flex-col gap-1 text-sm">
+					<span className="font-medium">Shelf owner username</span>
+					<input
+						className="border border-input bg-background px-3 py-2"
+						value={shelfUsername}
+						onChange={(e) => setShelfUsername(e.target.value)}
+						placeholder="Defaults to username above"
 					/>
 				</label>
 			</section>

@@ -84,6 +84,9 @@ export function AdminUsersTable() {
 								<TableHead className="hidden text-right tabular-nums xl:table-cell">
 									Feedbacks
 								</TableHead>
+								<TableHead className="hidden text-right tabular-nums xl:table-cell">
+									Shelves
+								</TableHead>
 								<TableHead className="w-12">
 									<span className="sr-only">Actions</span>
 								</TableHead>
@@ -136,6 +139,9 @@ export function AdminUsersTable() {
 									</TableCell>
 									<TableCell className="hidden text-right tabular-nums xl:table-cell">
 										{user.counts.feedbacks}
+									</TableCell>
+									<TableCell className="hidden text-right tabular-nums xl:table-cell">
+										{user.counts.shelves}
 									</TableCell>
 									<TableCell>
 										<AdminUserRowActions user={user} />

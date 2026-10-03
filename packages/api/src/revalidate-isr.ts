@@ -18,6 +18,14 @@ export function revalidateUserIsr(context: Context, username: string) {
 	context.revalidateIsr?.revalidateUser(username);
 }
 
+export function revalidateUserShelvesIsr(
+	context: Context,
+	username: string,
+	shelfSlug?: string,
+) {
+	context.revalidateIsr?.revalidateUserShelves(username, shelfSlug);
+}
+
 export function revalidateHomeIsr(context: Context) {
 	context.revalidateIsr?.revalidateHome();
 }

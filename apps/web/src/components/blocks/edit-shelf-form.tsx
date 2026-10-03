@@ -1,24 +1,31 @@
 "use client";
 
+import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
+import {
+	Field,
+	FieldDescription,
+	FieldGroup,
+	FieldLegend,
+	FieldSet,
+} from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { Label } from "@bbrc/ui/components/label";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@bbrc/ui/components/select";
+import { Separator } from "@bbrc/ui/components/separator";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
+import {
+	ShelfOptionPicker,
+	shelfTypeOptions,
+	shelfVisibilityOptionsForEdit,
+} from "@/components/blocks/shelf-form-options";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type EditShelfFormProps = {
@@ -28,6 +35,8 @@ type EditShelfFormProps = {
 
 export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 	const router = useRouter();
+	const titleId = useId();
+	const descriptionId = useId();
 
 	const shelfQuery = useQuery(
 		orpc.shelf.getBySlug.queryOptions({
@@ -72,7 +81,7 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 	);
 
 	if (shelfQuery.isPending) {
-		return <Skeleton className="h-64 w-full max-w-lg" />;
+		return <Skeleton className="h-96 w-full max-w-2xl" />;
 	}
 
 	if (shelfQuery.isError || !shelfQuery.data?.isOwner) {
@@ -83,82 +92,116 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 		);
 	}
 
+	const trimmedTitle = title.trim();
+	const visibilityOptions = shelfVisibilityOptionsForEdit(
+		shelfQuery.data.status,
+	);
+
 	return (
 		<form
-			className="mx-auto flex max-w-lg flex-col gap-6"
+			className="flex max-w-2xl flex-col gap-8 pb-8"
 			onSubmit={(event) => {
 				event.preventDefault();
-				if (!title.trim()) {
-					toast.error("Title is required.");
+				if (!trimmedTitle) {
+					toast.error("Add a title for your shelf.");
 					return;
 				}
 				updateMutation.mutate({
 					shelfSlug,
-					title: title.trim(),
+					title: trimmedTitle,
 					description: description.trim() || null,
 					status,
 					type,
 				});
 			}}
 		>
-			<div className="grid gap-2">
-				<Label htmlFor="edit-shelf-title">Title</Label>
-				<Input
-					id="edit-shelf-title"
-					value={title}
-					onChange={(e) => setTitle(e.target.value)}
-					maxLength={120}
-					required
-				/>
-			</div>
+			<FieldSet>
+				<FieldLegend>Basics</FieldLegend>
+				<FieldDescription>
+					Title and description appear at the top of the shelf page.
+				</FieldDescription>
+				<FieldGroup className="gap-4">
+					<Field>
+						<div className="flex items-baseline justify-between gap-2">
+							<Label htmlFor={titleId}>Title</Label>
+							<span className="text-muted-foreground text-xs tabular-nums">
+								{title.length}/120
+							</span>
+						</div>
+						<Input
+							id={titleId}
+							value={title}
+							onChange={(e) => setTitle(e.target.value)}
+							maxLength={120}
+							placeholder="e.g. Books I want to read this year"
+							autoComplete="off"
+							required
+						/>
+					</Field>
 
-			<div className="grid gap-2">
-				<Label htmlFor="edit-shelf-description">Description</Label>
-				<Textarea
-					id="edit-shelf-description"
-					value={description}
-					onChange={(e) => setDescription(e.target.value)}
-					maxLength={2000}
-					rows={4}
-				/>
-			</div>
+					<Field>
+						<div className="flex items-baseline justify-between gap-2">
+							<Label htmlFor={descriptionId}>
+								Description{" "}
+								<span className="font-normal text-muted-foreground">
+									(optional)
+								</span>
+							</Label>
+							<span className="text-muted-foreground text-xs tabular-nums">
+								{description.length}/2000
+							</span>
+						</div>
+						<Textarea
+							id={descriptionId}
+							value={description}
+							onChange={(e) => setDescription(e.target.value)}
+							maxLength={2000}
+							rows={4}
+							placeholder="What is this list for? A sentence or two is enough."
+							className="min-h-24 resize-y"
+						/>
+					</Field>
+				</FieldGroup>
+			</FieldSet>
 
-			<div className="grid gap-2">
-				<Label htmlFor="edit-shelf-status">Visibility</Label>
-				<Select
-					value={status}
-					onValueChange={(value) =>
-						setStatus(value as "draft" | "active" | "archived")
-					}
-				>
-					<SelectTrigger id="edit-shelf-status" className="w-full">
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="draft">Draft (only you)</SelectItem>
-						<SelectItem value="active">Active (public)</SelectItem>
-						<SelectItem value="archived">Archived (only you)</SelectItem>
-					</SelectContent>
-				</Select>
-			</div>
+			<Separator />
 
-			<div className="grid gap-2">
-				<Label htmlFor="edit-shelf-type">List style</Label>
-				<Select
-					value={type}
-					onValueChange={(value) => setType(value as "ordered" | "unordered")}
-				>
-					<SelectTrigger id="edit-shelf-type" className="w-full">
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="unordered">List (no rank numbers)</SelectItem>
-						<SelectItem value="ordered">Ranked (show 1, 2, 3…)</SelectItem>
-					</SelectContent>
-				</Select>
-			</div>
+			<FieldSet>
+				<FieldLegend>Visibility</FieldLegend>
+				{shelfQuery.data.status !== "draft" ? (
+					<FieldDescription>
+						This shelf has been public or archived before, so it cannot go back
+						to draft.
+					</FieldDescription>
+				) : null}
+				<FieldGroup>
+					<ShelfOptionPicker
+						name="edit-shelf-visibility"
+						label="Who can see this shelf?"
+						value={status}
+						options={visibilityOptions}
+						onChange={setStatus}
+					/>
+				</FieldGroup>
+			</FieldSet>
 
-			<div className="flex flex-wrap gap-3">
+			<Separator />
+
+			<FieldSet>
+				<FieldLegend>Display</FieldLegend>
+				<FieldGroup>
+					<ShelfOptionPicker
+						name="edit-shelf-type"
+						label="How should books appear?"
+						description={`Reorder from the shelf page. Up to ${MAX_BOOKS_PER_SHELF} books per shelf.`}
+						value={type}
+						options={[...shelfTypeOptions]}
+						onChange={setType}
+					/>
+				</FieldGroup>
+			</FieldSet>
+
+			<div className="flex flex-col gap-3 border-border border-t pt-6 sm:flex-row sm:items-center">
 				<LoadingButton type="submit" loading={updateMutation.isPending}>
 					Save changes
 				</LoadingButton>

@@ -1,4 +1,3 @@
-import { Button } from "@bbrc/ui/components/button";
 import {
 	Card,
 	CardContent,
@@ -8,7 +7,8 @@ import {
 	CardTitle,
 } from "@bbrc/ui/components/card";
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Suspense } from "react";
+import { AuthPageSwitchLink } from "@/components/blocks/auth-page-switch-link";
 import SignupForm from "@/components/blocks/sign-up-form";
 import { buildPageMetadata } from "@/lib/seo";
 
@@ -17,8 +17,6 @@ export const metadata: Metadata = buildPageMetadata({
 	description: "Create your BBRC account.",
 	path: "/sign-up",
 });
-
-export const dynamic = "force-static";
 
 export default function SignupPage() {
 	return (
@@ -34,19 +32,16 @@ export default function SignupPage() {
 				</CardHeader>
 
 				<CardContent className="flex flex-col gap-6">
-					<SignupForm />
+					<Suspense fallback={null}>
+						<SignupForm />
+					</Suspense>
 				</CardContent>
 
 				<CardFooter className="justify-center text-muted-foreground text-sm">
 					Already have an account?
-					<Button
-						variant="link"
-						className="px-1"
-						render={<Link href="/sign-in" />}
-						nativeButton={false}
-					>
-						Sign in
-					</Button>
+					<Suspense fallback={null}>
+						<AuthPageSwitchLink target="/sign-in" label="Sign in" />
+					</Suspense>
 				</CardFooter>
 			</Card>
 		</section>

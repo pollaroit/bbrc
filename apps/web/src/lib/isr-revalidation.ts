@@ -5,6 +5,8 @@ import {
 	sittingDetailIsrPath,
 	sittingVoteIsrPath,
 	userProfileIsrPath,
+	userShelfDetailIsrPath,
+	userShelvesListIsrPath,
 } from "@bbrc/shared";
 import { revalidatePath } from "next/cache";
 
@@ -29,6 +31,12 @@ export function createIsrRevalidator(): IsrRevalidator {
 		},
 		revalidateUser(username) {
 			revalidatePageAndLayout(userProfileIsrPath(username));
+		},
+		revalidateUserShelves(username, shelfSlug) {
+			revalidatePageAndLayout(userShelvesListIsrPath(username));
+			if (shelfSlug) {
+				revalidatePageAndLayout(userShelfDetailIsrPath(username, shelfSlug));
+			}
 		},
 		revalidateHome() {
 			revalidatePath("/");

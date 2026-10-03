@@ -9,6 +9,7 @@ import {
 } from "@bbrc/ui/components/dropdown-menu";
 import {
 	BookOpen,
+	LayoutList,
 	LogOut,
 	MessageSquare,
 	Settings,
@@ -76,6 +77,14 @@ export function UserMenu({ ...props }: Props) {
 					}
 				>
 					<BookOpen /> My feedbacks
+				</DropdownMenuItem>
+				<DropdownMenuItem
+					className="cursor-pointer"
+					render={
+						<Link href={`/users/${props.user.username}/shelves` as Route} />
+					}
+				>
+					<LayoutList /> My shelves
 				</DropdownMenuItem>
 				<DropdownMenuItem
 					className="cursor-pointer"

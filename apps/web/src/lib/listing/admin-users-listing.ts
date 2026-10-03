@@ -31,6 +31,7 @@ export const adminUserSortByLabels = {
 	"feedbacks._count": "Feedbacks",
 	"participations._count": "Sittings",
 	"favorites._count": "Favorites",
+	"shelves._count": "Shelves",
 } as const satisfies FieldLabels<(typeof adminUserSortableFields)[number]>;
 
 export const adminUserListingSearchParams = {
@@ -58,6 +59,7 @@ export const adminUserListingSearchParams = {
 	minFeedbacks: parseAsInteger.withOptions({ shallow: false }),
 	minParticipations: parseAsInteger.withOptions({ shallow: false }),
 	minFavorites: parseAsInteger.withOptions({ shallow: false }),
+	minShelves: parseAsInteger.withOptions({ shallow: false }),
 };
 
 export function useAdminUsersListingSearchParams() {
@@ -90,5 +92,6 @@ export function toAdminUsersListCallInput(
 		minFeedbacks: params.minFeedbacks,
 		minParticipations: params.minParticipations,
 		minFavorites: params.minFavorites,
+		minShelves: params.minShelves,
 	}) as ListAdminUsersInput;
 }

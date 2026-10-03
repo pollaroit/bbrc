@@ -1,7 +1,19 @@
-import { BookSchema, UserSchema } from "@bbrc/schemas";
+import {
+	BookSchema,
+	CursorPaginationInputSchema,
+	CursorPaginationOutputSchema,
+	UserSchema,
+} from "@bbrc/schemas";
+import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
 import type { z } from "zod";
 import zod from "zod";
+import {
+	shelfListFiltersSchema,
+	shelfListRanging,
+	shelfListSearching,
+	shelfListSorting,
+} from "./shelf.listing";
 
 export const ShelfStatusSchema = zod.enum(["draft", "active", "archived"]);
 export const ShelfTypeSchema = zod.enum(["ordered", "unordered"]);
@@ -25,7 +37,46 @@ export const ShelfListItemSchema = zod.object({
 	type: ShelfTypeSchema,
 	bookCount: zod.number().int().min(0),
 	updatedAt: zod.coerce.date(),
+	/** First up to 4 book covers by shelf order; not stored on Shelf. */
+	coverPreviewCoverIds: zod.array(zod.number().nullable()).max(4),
 });
+
+export const PublicShelfListItemSchema = ShelfListItemSchema.extend({
+	owner: zod.object({
+		username: UserSchema.shape.username,
+		name: UserSchema.shape.name,
+	}),
+});
+
+export const GetShelfListInputSchema = shelfListFiltersSchema
+	.extend(CursorPaginationInputSchema.shape)
+	.extend(shelfListSorting.inputSchema.shape)
+	.extend(shelfListRanging.inputSchema.shape)
+	.extend(shelfListSearching.inputSchema.shape)
+	.superRefine((value, ctx) => {
+		refineRangingBounds(
+			{ rangeMin: value.rangeMin, rangeMax: value.rangeMax },
+			ctx,
+		);
+	});
+
+export const GetShelfListOutputSchema = CursorPaginationOutputSchema(
+	PublicShelfListItemSchema,
+);
+
+export type GetShelfListInput = z.infer<typeof GetShelfListInputSchema>;
+export type GetShelfListOutput = z.infer<typeof GetShelfListOutputSchema>;
+
+export {
+	shelfListFiltersSchema,
+	shelfListRanging,
+	shelfListSearching,
+	shelfListSorting,
+	shelfRangeableFields,
+	shelfSearchableFields,
+	shelfSortableFields,
+	shelfTypeFilterLabels,
+} from "./shelf.listing";
 
 export const ShelfDetailSchema = ShelfListItemSchema.extend({
 	books: zod.array(ShelfBookOnShelfSchema),
@@ -131,6 +182,8 @@ export const ShelfChipSchema = zod.object({
 	slug: zod.string(),
 	title: zod.string(),
 	status: ShelfStatusSchema,
+	ownerUsername: zod.string(),
+	isOwner: zod.boolean(),
 });
 
 export const ListShelvesForBookOutputSchema = zod.object({
@@ -170,6 +223,17 @@ export const shelfListItemSelect = {
 	_count: { select: { books: true } },
 } as const;
 
+export const shelfCoverPreviewSelect = {
+	orderBy: { position: "asc" as const },
+	take: 4,
+	select: { book: { select: { coverId: true } } },
+} as const;
+
+export const shelfListItemWithCoverSelect = {
+	...shelfListItemSelect,
+	books: shelfCoverPreviewSelect,
+} as const;
+
 export const shelfBookSelect = {
 	position: true,
 	book: {
@@ -182,16 +246,29 @@ export const shelfBookSelect = {
 	},
 } as const;
 
-export function mapShelfListItem(row: {
-	id: string;
-	slug: string;
-	title: string;
-	description: string | null;
-	status: z.infer<typeof ShelfStatusSchema>;
-	type: z.infer<typeof ShelfTypeSchema>;
-	updatedAt: Date;
-	_count: { books: number };
-}): z.infer<typeof ShelfListItemSchema> {
+function mapCoverPreviewCoverIds(
+	books: { book: { coverId: number | null } }[] | undefined,
+): (number | null)[] {
+	if (!books?.length) {
+		return [];
+	}
+	return books.map((row) => row.book.coverId);
+}
+
+export function mapShelfListItem(
+	row: {
+		id: string;
+		slug: string;
+		title: string;
+		description: string | null;
+		status: z.infer<typeof ShelfStatusSchema>;
+		type: z.infer<typeof ShelfTypeSchema>;
+		updatedAt: Date;
+		_count: { books: number };
+		books?: { book: { coverId: number | null } }[];
+	},
+	coverPreviewCoverIds?: (number | null)[],
+): z.infer<typeof ShelfListItemSchema> {
 	return {
 		id: row.id,
 		slug: row.slug,
@@ -201,5 +278,17 @@ export function mapShelfListItem(row: {
 		type: row.type,
 		bookCount: row._count.books,
 		updatedAt: row.updatedAt,
+		coverPreviewCoverIds:
+			coverPreviewCoverIds ?? mapCoverPreviewCoverIds(row.books),
 	};
 }
+
+export const getShelfListFields = {
+	...shelfListItemSelect,
+	user: {
+		select: {
+			username: true,
+			name: true,
+		},
+	},
+} as const;

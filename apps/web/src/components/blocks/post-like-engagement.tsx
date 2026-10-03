@@ -10,11 +10,10 @@ import {
 } from "@bbrc/ui/components/dialog";
 import { useMutation } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
-import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PostLikersDialogList } from "@/components/blocks/post-likers-dialog-list";
+import { SignInLink, useSignInHref } from "@/components/blocks/sign-in-link";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -72,13 +71,15 @@ export function PostLikeEngagement({
 		}),
 	);
 
+	const signInHref = useSignInHref();
+
 	function handleToggleLike() {
 		if (!session?.user) {
 			toast.error("Sign in to like posts.", {
 				action: {
 					label: "Sign in",
 					onClick: () => {
-						window.location.href = "/sign-in";
+						window.location.href = signInHref;
 					},
 				},
 			});
@@ -139,12 +140,9 @@ export function PostLikeEngagement({
 					</div>
 					{!session?.user ? (
 						<p className="border-border border-t px-4 py-3 text-center text-muted-foreground text-sm">
-							<Link
-								href={"/sign-in" as Route}
-								className="text-foreground underline"
-							>
+							<SignInLink className="text-foreground underline">
 								Sign in
-							</Link>{" "}
+							</SignInLink>{" "}
 							to like this post.
 						</p>
 					) : null}

@@ -1,24 +1,31 @@
 "use client";
 
+import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
+import {
+	Field,
+	FieldDescription,
+	FieldGroup,
+	FieldLegend,
+	FieldSet,
+} from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { Label } from "@bbrc/ui/components/label";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@bbrc/ui/components/select";
+import { Separator } from "@bbrc/ui/components/separator";
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { parseAsString, useQueryState } from "nuqs";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { toast } from "sonner";
+import {
+	ShelfOptionPicker,
+	shelfTypeOptions,
+	shelfVisibilityCreateOptions,
+} from "@/components/blocks/shelf-form-options";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type CreateShelfFormProps = {
@@ -27,14 +34,14 @@ type CreateShelfFormProps = {
 
 export function CreateShelfForm({ username }: CreateShelfFormProps) {
 	const router = useRouter();
+	const titleId = useId();
+	const descriptionId = useId();
 	const [returnTo] = useQueryState("returnTo", parseAsString);
 	const [addBookSlug] = useQueryState("addBookSlug", parseAsString);
 
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
-	const [status, setStatus] = useState<"draft" | "active" | "archived">(
-		"draft",
-	);
+	const [status, setStatus] = useState<"draft" | "active">("draft");
 	const [type, setType] = useState<"ordered" | "unordered">("unordered");
 
 	const createMutation = useMutation(
@@ -61,17 +68,19 @@ export function CreateShelfForm({ username }: CreateShelfFormProps) {
 		returnTo?.startsWith("/") ? returnTo : `/users/${username}/shelves`
 	) as Route;
 
+	const trimmedTitle = title.trim();
+
 	return (
 		<form
-			className="mx-auto flex max-w-lg flex-col gap-6"
+			className="flex max-w-2xl flex-col gap-8 pb-8"
 			onSubmit={(event) => {
 				event.preventDefault();
-				if (!title.trim()) {
-					toast.error("Title is required.");
+				if (!trimmedTitle) {
+					toast.error("Add a title for your shelf.");
 					return;
 				}
 				createMutation.mutate({
-					title: title.trim(),
+					title: trimmedTitle,
 					description: description.trim() || null,
 					status,
 					type,
@@ -79,78 +88,99 @@ export function CreateShelfForm({ username }: CreateShelfFormProps) {
 				});
 			}}
 		>
-			<div className="grid gap-2">
-				<Label htmlFor="shelf-title">Title</Label>
-				<Input
-					id="shelf-title"
-					value={title}
-					onChange={(e) => setTitle(e.target.value)}
-					maxLength={120}
-					required
-				/>
-			</div>
-
-			<div className="grid gap-2">
-				<Label htmlFor="shelf-description">Description</Label>
-				<Textarea
-					id="shelf-description"
-					value={description}
-					onChange={(e) => setDescription(e.target.value)}
-					maxLength={2000}
-					rows={4}
-				/>
-				<p className="text-muted-foreground text-xs">
-					Optional. Shown on the shelf page.
-				</p>
-			</div>
-
-			<div className="grid gap-2">
-				<Label htmlFor="shelf-status">Visibility</Label>
-				<Select
-					value={status}
-					onValueChange={(value) =>
-						setStatus(value as "draft" | "active" | "archived")
-					}
-				>
-					<SelectTrigger id="shelf-status" className="w-full">
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="draft">Draft (only you)</SelectItem>
-						<SelectItem value="active">Active (public)</SelectItem>
-						<SelectItem value="archived">Archived (only you)</SelectItem>
-					</SelectContent>
-				</Select>
-			</div>
-
-			<div className="grid gap-2">
-				<Label htmlFor="shelf-type">List style</Label>
-				<Select
-					value={type}
-					onValueChange={(value) => setType(value as "ordered" | "unordered")}
-				>
-					<SelectTrigger id="shelf-type" className="w-full">
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="unordered">List (no rank numbers)</SelectItem>
-						<SelectItem value="ordered">Ranked (show 1, 2, 3…)</SelectItem>
-					</SelectContent>
-				</Select>
-				<p className="text-muted-foreground text-xs">
-					Ranked shelves show order numbers on the public page.
-				</p>
-			</div>
-
 			{addBookSlug ? (
-				<p className="text-muted-foreground text-sm">
-					After create,{" "}
-					<span className="font-mono text-foreground">{addBookSlug}</span> will
-					be added to this shelf.
-				</p>
+				<div className="border border-border bg-muted/30 px-4 py-3 text-sm leading-relaxed">
+					<p className="font-medium">Adding a book after create</p>
+					<p className="mt-1 text-muted-foreground">
+						When you save,{" "}
+						<span className="font-mono text-foreground">{addBookSlug}</span>{" "}
+						will be placed on this shelf automatically.
+					</p>
+				</div>
 			) : null}
 
-			<div className="flex flex-wrap gap-3">
+			<FieldSet>
+				<FieldLegend>Basics</FieldLegend>
+				<FieldDescription>
+					Give the shelf a clear name. Description is optional and appears under
+					the title on the shelf page.
+				</FieldDescription>
+				<FieldGroup className="gap-4">
+					<Field>
+						<div className="flex items-baseline justify-between gap-2">
+							<Label htmlFor={titleId}>Title</Label>
+							<span className="text-muted-foreground text-xs tabular-nums">
+								{title.length}/120
+							</span>
+						</div>
+						<Input
+							id={titleId}
+							value={title}
+							onChange={(e) => setTitle(e.target.value)}
+							maxLength={120}
+							placeholder="e.g. Books I want to read this year"
+							autoComplete="off"
+							required
+						/>
+					</Field>
+
+					<Field>
+						<div className="flex items-baseline justify-between gap-2">
+							<Label htmlFor={descriptionId}>
+								Description{" "}
+								<span className="font-normal text-muted-foreground">
+									(optional)
+								</span>
+							</Label>
+							<span className="text-muted-foreground text-xs tabular-nums">
+								{description.length}/2000
+							</span>
+						</div>
+						<Textarea
+							id={descriptionId}
+							value={description}
+							onChange={(e) => setDescription(e.target.value)}
+							maxLength={2000}
+							rows={4}
+							placeholder="What is this list for? A sentence or two is enough."
+							className="min-h-24 resize-y"
+						/>
+					</Field>
+				</FieldGroup>
+			</FieldSet>
+
+			<Separator />
+
+			<FieldSet>
+				<FieldLegend>Visibility</FieldLegend>
+				<FieldGroup>
+					<ShelfOptionPicker
+						name="shelf-visibility"
+						label="Who can see this shelf?"
+						value={status}
+						options={[...shelfVisibilityCreateOptions]}
+						onChange={setStatus}
+					/>
+				</FieldGroup>
+			</FieldSet>
+
+			<Separator />
+
+			<FieldSet>
+				<FieldLegend>Display</FieldLegend>
+				<FieldGroup>
+					<ShelfOptionPicker
+						name="shelf-type"
+						label="How should books appear?"
+						description={`You can reorder anytime. Each shelf holds up to ${MAX_BOOKS_PER_SHELF} books.`}
+						value={type}
+						options={[...shelfTypeOptions]}
+						onChange={setType}
+					/>
+				</FieldGroup>
+			</FieldSet>
+
+			<div className="flex flex-col gap-3 border-border border-t pt-6 sm:flex-row sm:items-center">
 				<LoadingButton type="submit" loading={createMutation.isPending}>
 					Create shelf
 				</LoadingButton>

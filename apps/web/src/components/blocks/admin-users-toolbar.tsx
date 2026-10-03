@@ -43,7 +43,8 @@ function countAdminSheetFilters(
 		params.minLikes != null ||
 		params.minFeedbacks != null ||
 		params.minParticipations != null ||
-		params.minFavorites != null
+		params.minFavorites != null ||
+		params.minShelves != null
 	) {
 		count += 1;
 	}
@@ -135,6 +136,7 @@ export function AdminUsersToolbar() {
 							minFeedbacks: null,
 							minParticipations: null,
 							minFavorites: null,
+							minShelves: null,
 							page: 1,
 						});
 					}}
@@ -240,6 +242,13 @@ export function AdminUsersToolbar() {
 							value={params.minFavorites}
 							onChange={(minFavorites) => {
 								void setParams({ minFavorites, page: 1 });
+							}}
+						/>
+						<MinCountField
+							label="Min shelves"
+							value={params.minShelves}
+							onChange={(minShelves) => {
+								void setParams({ minShelves, page: 1 });
 							}}
 						/>
 					</div>
