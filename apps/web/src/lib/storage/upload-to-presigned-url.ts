@@ -1,11 +1,10 @@
+/** @deprecated Client uploads use POST /api/storage/upload instead. */
+
 export type PresignedUploadRequest = {
 	url: string;
 	headers: Record<string, string>;
 };
 
-/**
- * PUT the file bytes directly to R2 using a presigned URL from `storage.initUpload`.
- */
 export async function uploadFileToPresignedUrl(
 	file: File,
 	presigned: PresignedUploadRequest,

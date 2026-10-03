@@ -8,12 +8,14 @@ type AutoGrowTextareaProps = React.ComponentProps<typeof Textarea>;
 export function AutoGrowTextarea({
 	className,
 	rows = 1,
+	ref,
 	...props
-}: AutoGrowTextareaProps) {
+}: AutoGrowTextareaProps & { ref?: React.Ref<HTMLTextAreaElement> }) {
 	return (
 		<Textarea
+			ref={ref}
 			rows={rows}
-			className={cn("min-h-9 resize-none py-2 leading-normal", className)}
+			className={cn("min-h-9 resize-none py-2 leading-5", className)}
 			{...props}
 		/>
 	);

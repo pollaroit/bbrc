@@ -3,6 +3,7 @@ import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { SettingsAvatarUpload } from "@/components/blocks/settings-avatar-upload";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 
@@ -38,6 +39,13 @@ export default async function SettingsPage() {
 					Preferences for your account.
 				</p>
 			</div>
+
+			<section
+				className="border border-border px-4 py-5"
+				aria-labelledby="profile-photo-heading"
+			>
+				<SettingsAvatarUpload />
+			</section>
 
 			<section
 				className="border border-border bg-muted/20 px-4 py-3 text-sm"

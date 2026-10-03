@@ -2,7 +2,6 @@ import type { Session } from "@bbrc/auth";
 import {
 	buildObjectKey,
 	buildPublicObjectUrl,
-	createPresignedUpload,
 	createR2Client,
 	deleteObject,
 	getStorageEnv,
@@ -66,7 +65,6 @@ function toObjectKeyParams(
 	}
 }
 
-/** Phase 1: coarse auth until entity commit flows land in phases 2–3. */
 function assertInitUploadAllowed(
 	input: InitUploadInput,
 	session: Session,
@@ -76,13 +74,13 @@ function assertInitUploadAllowed(
 	switch (input.kind) {
 		case "avatar":
 		case "shelf-cover":
-			return;
 		case "post-image":
 		case "comment-image":
+			return;
 		case "book-document":
 			if (!user.isAdmin) {
 				throw new ORPCError("FORBIDDEN", {
-					message: "Upload for this asset type is not enabled yet",
+					message: "Document upload is not enabled yet",
 				});
 			}
 			return;
@@ -153,7 +151,7 @@ export function getStorageStatus() {
 export async function initUpload(input: InitUploadInput, session: Session) {
 	assertInitUploadAllowed(input, session);
 
-	const { config, client } = getR2Context();
+	const { config } = getR2Context();
 	const storageEnv = getStorageEnv();
 	const username = session.user.username;
 	const keyParams = toObjectKeyParams(input, username);
@@ -166,18 +164,10 @@ export async function initUpload(input: InitUploadInput, session: Session) {
 		});
 	}
 
-	const presigned = await createPresignedUpload(client, config, {
-		key,
-		contentType: input.contentType,
-		contentLength: input.contentLength,
-	});
-
 	return {
-		url: presigned.url,
-		key: presigned.key,
-		publicUrl: buildPublicObjectUrl(config, presigned.key),
+		key,
+		publicUrl: buildPublicObjectUrl(config, key),
 		maxSize,
-		headers: presigned.headers,
 	};
 }
 

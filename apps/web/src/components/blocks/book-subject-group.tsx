@@ -56,7 +56,7 @@ export function BookSubjectGroup({ label, items }: BookSubjectGroupProps) {
 						<li>
 							<button
 								type="button"
-								className="cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+								className="cursor-pointer rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 								onClick={() => setDialogOpen(true)}
 							>
 								<Badge variant="outline" className="font-normal tabular-nums">

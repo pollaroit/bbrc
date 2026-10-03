@@ -1,0 +1,24 @@
+---
+description: BBRC UI has zero border radius everywhere
+alwaysApply: true
+---
+
+# No border radius (hard rule)
+
+This product uses **sharp corners only**. Border radius is not allowed anywhere in UI code or styles.
+
+## Do not use
+
+- Any Tailwind `rounded-*` utility except `rounded-none` (prefer omitting radius classes when `rounded-none` is redundant with global CSS).
+- Inline `borderRadius` / `border-radius` unless setting `0`.
+- Design tokens that imply curvature for UI surfaces (`--radius` is `0` in `packages/ui`).
+
+## When editing UI
+
+- Replace `rounded-md`, `rounded-lg`, `rounded-full`, `rounded-[…]`, etc. with square corners.
+- Avatars, FABs, badges, charts, and calendar range pills follow the same rule (square, not circles).
+- Do not introduce new rounded corners “just for polish.”
+
+## Source of truth
+
+Global enforcement lives in `packages/ui/src/styles/globals.css` (`--radius: 0` and base-layer `border-radius: 0`).

@@ -21,6 +21,7 @@ import { NotificationBell } from "@/components/blocks/notification-bell";
 import { UserMenu } from "@/components/blocks/user-menu";
 import { ModeToggle } from "@/components/mode-toggle";
 import { authClient } from "@/lib/auth-client";
+import { useLiveUserImage } from "@/lib/user-avatar-broadcast";
 
 const navLinks = [
 	{ label: "Home", href: "/" },
@@ -33,6 +34,10 @@ const navLinks = [
 export default function Header() {
 	const [open, setOpen] = useState(false);
 	const { data: session, isPending } = authClient.useSession();
+	const liveAvatarUrl = useLiveUserImage(session?.user.image);
+	const headerUser = session?.user
+		? { ...session.user, image: liveAvatarUrl }
+		: undefined;
 
 	return (
 		<header className="sticky top-0 z-30 w-full border-border border-b bg-background/80 backdrop-blur">
@@ -65,7 +70,7 @@ export default function Header() {
 					{isPending ? null : session ? (
 						<>
 							<NotificationBell />
-							<UserMenu user={session.user} />
+							<UserMenu user={headerUser ?? session.user} />
 						</>
 					) : (
 						<Suspense fallback={null}>
@@ -112,7 +117,7 @@ export default function Header() {
 
 							<SheetFooter>
 								{isPending ? null : session ? (
-									<UserMenu user={session.user} />
+									<UserMenu user={headerUser ?? session.user} />
 								) : (
 									<Suspense fallback={null}>
 										<HeaderAuthLinks

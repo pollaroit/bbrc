@@ -27,6 +27,10 @@ model Shelf {
   /// @zod.max(2000, "Description must be at most 2000 characters long").nullish()
   description String? @db.Text
 
+  /// Optional cover override (public R2 URL). When null, UI uses book-grid mosaic.
+  /// @zod.max(2048).nullish()
+  coverImageUrl String? @map("cover_image_url")
+
   status ShelfStatus @default(draft)
   type   ShelfType   @default(unordered)
 

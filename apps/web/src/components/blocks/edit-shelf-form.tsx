@@ -26,6 +26,7 @@ import {
 	shelfTypeOptions,
 	shelfVisibilityOptionsForEdit,
 } from "@/components/blocks/shelf-form-options";
+import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type EditShelfFormProps = {
@@ -163,6 +164,34 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 					</Field>
 				</FieldGroup>
 			</FieldSet>
+
+			<Separator />
+
+			{shelfQuery.data ? (
+				<SingleImageUploadField
+					label="Cover image"
+					description="Optional. Overrides the book-grid cover on lists and the shelf page."
+					currentUrl={shelfQuery.data.coverImageUrl}
+					uploadTarget={{
+						target: "shelf-cover",
+						shelfSlug,
+					}}
+					onRemove={async () => {
+						await orpc.storage.removeShelfCoverUpload.call({ shelfSlug });
+					}}
+					onSuccess={async () => {
+						await queryClient.invalidateQueries({
+							queryKey: orpc.shelf.getBySlug.key({
+								input: { username, shelfSlug },
+							}),
+						});
+						await queryClient.invalidateQueries({
+							queryKey: orpc.shelf.listByUsername.key(),
+						});
+						router.refresh();
+					}}
+				/>
+			) : null}
 
 			<Separator />
 

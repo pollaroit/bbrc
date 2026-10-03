@@ -136,7 +136,7 @@ function RecommendationRow({
 								type="button"
 								size="sm"
 								variant="outline"
-								className="rounded-r-none border-r-0"
+								className="rounded-none border-r-0"
 								loading={isReplacing}
 								loadingText="Finding…"
 								onClick={onReject}
@@ -150,7 +150,7 @@ function RecommendationRow({
 											type="button"
 											variant="outline"
 											size="sm"
-											className="rounded-l-none px-2"
+											className="rounded-none px-2"
 											disabled={isReplacing}
 											aria-label="More dismiss actions"
 										/>

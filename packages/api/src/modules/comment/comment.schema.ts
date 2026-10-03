@@ -34,6 +34,7 @@ export {
 export const CommentListItemSchema = CommentSchema.pick({
 	slug: true,
 	content: true,
+	imageUrl: true,
 	createdAt: true,
 	editedAt: true,
 	depth: true,
@@ -62,6 +63,7 @@ export const GetCommentListInputSchema = commentListFiltersSchema
 export const getCommentListFields = {
 	slug: true,
 	content: true,
+	imageUrl: true,
 	createdAt: true,
 	editedAt: true,
 	depth: true,
@@ -191,6 +193,7 @@ export const getCommentBySlugFields = {
 	id: true,
 	slug: true,
 	content: true,
+	imageUrl: true,
 	createdAt: true,
 	updatedAt: true,
 	editedAt: true,

@@ -50,11 +50,9 @@ export const InitUploadInputSchema = z.discriminatedUnion("kind", [
 export type InitUploadInput = z.infer<typeof InitUploadInputSchema>;
 
 export const InitUploadOutputSchema = z.object({
-	url: z.string().url(),
 	key: z.string().min(1),
 	publicUrl: z.string().url(),
 	maxSize: z.number().int().positive(),
-	headers: z.record(z.string(), z.string()),
 });
 
 export const CommitUploadInputSchema = z.object({

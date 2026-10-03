@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
+import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -99,6 +100,30 @@ export function EditPostForm({ post }: EditPostFormProps) {
 						required
 					/>
 				</Field>
+
+				<SingleImageUploadField
+					label="Post image"
+					description="Optional. JPEG, PNG, or WebP up to 2 MB."
+					currentUrl={post.imageUrl}
+					uploadTarget={{
+						target: "post-image",
+						postSlug: post.slug,
+					}}
+					onRemove={async () => {
+						await orpc.storage.removePostImage.call({
+							postSlug: post.slug,
+						});
+					}}
+					onSuccess={async () => {
+						await queryClient.invalidateQueries({
+							queryKey: orpc.post.getPostBySlug.key(),
+						});
+						await queryClient.invalidateQueries({
+							queryKey: orpc.post.getPostList.key(),
+						});
+						router.refresh();
+					}}
+				/>
 
 				{post.attachedBook ? (
 					<Field>

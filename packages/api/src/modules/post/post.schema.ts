@@ -54,6 +54,7 @@ export const PostAttachedBookSchema = BookSchema.pick(postAttachedBookFields);
 export const PostCommentPreviewSchema = zod.object({
 	slug: CommentSchema.shape.slug,
 	content: CommentSchema.shape.content,
+	imageUrl: CommentSchema.shape.imageUrl,
 	createdAt: zod.coerce.date(),
 	author: PostAuthorSchema,
 	likeCount: zod.number().int().min(0),
@@ -63,6 +64,7 @@ export const PostCommentPreviewSchema = zod.object({
 export const PostListItemSchema = PostSchema.pick({
 	slug: true,
 	content: true,
+	imageUrl: true,
 	createdAt: true,
 	editedAt: true,
 }).extend({
@@ -90,6 +92,7 @@ export const GetPostListInputSchema = postListFiltersSchema
 export const getPostListFields = {
 	slug: true,
 	content: true,
+	imageUrl: true,
 	createdAt: true,
 	editedAt: true,
 	author: {
@@ -185,6 +188,7 @@ export const getPostBySlugFields = {
 	id: true,
 	slug: true,
 	content: true,
+	imageUrl: true,
 	createdAt: true,
 	updatedAt: true,
 	editedAt: true,

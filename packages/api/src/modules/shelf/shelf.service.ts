@@ -7,6 +7,7 @@ type ShelfStatus = z.infer<typeof ShelfStatusSchema>;
 
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
+import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import { awardShelfXp } from "../xp/xp.service";
 import { shelfListSorting } from "./shelf.listing";
 import type {
@@ -130,6 +131,7 @@ async function loadOwnedShelf(
 			slug: true,
 			title: true,
 			description: true,
+			coverImageUrl: true,
 			status: true,
 			type: true,
 			userId: true,
@@ -367,6 +369,8 @@ export async function deleteShelf(
 			});
 		}
 	}
+
+	await tryDeleteR2PublicUrl(shelf.coverImageUrl);
 
 	await db.shelf.delete({ where: { id: shelf.id } });
 

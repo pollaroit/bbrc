@@ -132,7 +132,11 @@ export function UserShelvesList({ username }: UserShelvesListProps) {
 									"hover:bg-muted/40",
 								)}
 							>
-								<ShelfCover coverIds={shelf.coverPreviewCoverIds} size="md" />
+								<ShelfCover
+									coverIds={shelf.coverPreviewCoverIds}
+									coverImageUrl={shelf.coverImageUrl}
+									size="md"
+								/>
 								<div className="flex flex-wrap items-center gap-2">
 									<h2 className="font-semibold leading-snug">{shelf.title}</h2>
 									{shelf.type === "ordered" ? (

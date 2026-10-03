@@ -33,6 +33,7 @@ export const ShelfListItemSchema = zod.object({
 	slug: zod.string(),
 	title: zod.string(),
 	description: zod.string().nullable(),
+	coverImageUrl: zod.string().max(2048).nullable(),
 	status: ShelfStatusSchema,
 	type: ShelfTypeSchema,
 	bookCount: zod.number().int().min(0),
@@ -217,6 +218,7 @@ export const shelfListItemSelect = {
 	slug: true,
 	title: true,
 	description: true,
+	coverImageUrl: true,
 	status: true,
 	type: true,
 	updatedAt: true,
@@ -261,6 +263,7 @@ export function mapShelfListItem(
 		slug: string;
 		title: string;
 		description: string | null;
+		coverImageUrl: string | null;
 		status: z.infer<typeof ShelfStatusSchema>;
 		type: z.infer<typeof ShelfTypeSchema>;
 		updatedAt: Date;
@@ -274,6 +277,7 @@ export function mapShelfListItem(
 		slug: row.slug,
 		title: row.title,
 		description: row.description,
+		coverImageUrl: row.coverImageUrl,
 		status: row.status,
 		type: row.type,
 		bookCount: row._count.books,

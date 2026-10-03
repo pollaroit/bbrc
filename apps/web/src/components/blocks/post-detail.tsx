@@ -5,6 +5,7 @@ import { ArrowLeft, MessageCircle } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { PostCommentFocusSection } from "@/components/blocks/post-comment-focus-section";
 import { PostCommentsSection } from "@/components/blocks/post-comments-section";
 import { PostEditLink } from "@/components/blocks/post-edit-link";
@@ -104,6 +105,15 @@ export function PostDetail({
 					<p className="whitespace-pre-wrap text-sm leading-relaxed">
 						{post.content}
 					</p>
+
+					{post.imageUrl ? (
+						<PostAttachedImage
+							src={post.imageUrl}
+							alt="Post image"
+							priority
+							edgeToEdge
+						/>
+					) : null}
 
 					{post.attachedBook ? (
 						<PostAttachedBook book={post.attachedBook} />

@@ -5,6 +5,7 @@ import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
 import { notifyMemberPosted } from "../notification/notification-triggers";
+import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardPostXp } from "../xp/xp.service";
 import {
@@ -67,6 +68,7 @@ const topCommentSelect = {
 	id: true,
 	slug: true,
 	content: true,
+	imageUrl: true,
 	createdAt: true,
 	postId: true,
 	author: {
@@ -223,6 +225,7 @@ async function loadTopCommentsByPostId(
 			rows.map((row) => ({
 				slug: row.slug,
 				content: row.content,
+				imageUrl: row.imageUrl,
 				createdAt: row.createdAt,
 				author: row.author,
 				likeCount: row._count.likes,
@@ -242,6 +245,7 @@ function mapPostListRow(
 	return {
 		slug: row.slug,
 		content: row.content,
+		imageUrl: row.imageUrl,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -263,6 +267,7 @@ async function mapPostDetailRow(
 	return {
 		slug: row.slug,
 		content: row.content,
+		imageUrl: row.imageUrl,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -426,7 +431,7 @@ export async function deletePost(
 ): Promise<DeletePostOutput> {
 	const post = await db.post.findUnique({
 		where: { slug: input.slug },
-		select: { id: true, authorId: true },
+		select: { id: true, authorId: true, imageUrl: true },
 	});
 
 	if (!post) {
@@ -437,6 +442,8 @@ export async function deletePost(
 	}
 
 	assertPostAuthor(post, userId);
+
+	await tryDeleteR2PublicUrl(post.imageUrl);
 
 	await db.post.delete({
 		where: { id: post.id },

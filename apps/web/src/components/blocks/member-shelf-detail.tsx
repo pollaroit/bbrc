@@ -107,7 +107,11 @@ export function MemberShelfDetail({
 			<header className="flex flex-col gap-4 border-border border-b pb-6 sm:flex-row sm:items-start sm:justify-between">
 				<div className="flex gap-4">
 					<div className="shrink-0 self-start">
-						<ShelfCover coverIds={coverIds} size="lg" />
+						<ShelfCover
+							coverIds={coverIds}
+							coverImageUrl={shelf.coverImageUrl}
+							size="lg"
+						/>
 					</div>
 					<div className="min-w-0 space-y-2">
 						<div className="flex flex-wrap items-center gap-2">

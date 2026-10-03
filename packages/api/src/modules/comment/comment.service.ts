@@ -9,6 +9,7 @@ import {
 	notifyCommentOnYourPost,
 	notifyReplyToYourComment,
 } from "../notification/notification-triggers";
+import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardCommentXp } from "../xp/xp.service";
 import {
@@ -108,6 +109,7 @@ function mapCommentListRow(
 	return {
 		slug: row.slug,
 		content: row.content,
+		imageUrl: row.imageUrl,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		depth: row.depth,
@@ -126,6 +128,7 @@ function mapCommentDetailRow(
 	return {
 		slug: row.slug,
 		content: row.content,
+		imageUrl: row.imageUrl,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		depth: row.depth,
@@ -402,7 +405,7 @@ export async function deleteComment(
 ): Promise<DeleteCommentOutput> {
 	const comment = await db.comment.findUnique({
 		where: { slug: input.slug },
-		select: { id: true, authorId: true },
+		select: { id: true, authorId: true, imageUrl: true },
 	});
 
 	if (!comment) {
@@ -413,6 +416,8 @@ export async function deleteComment(
 	}
 
 	assertCommentAuthor(comment, userId);
+
+	await tryDeleteR2PublicUrl(comment.imageUrl);
 
 	await db.comment.delete({
 		where: { id: comment.id },

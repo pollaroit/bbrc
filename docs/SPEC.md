@@ -310,11 +310,11 @@ Consider alias `/books/[slug]/documents/new` → redirect to edit path for reada
 - [ ] Smoke test against live bucket (`bun run --filter @bbrc/storage smoke`)
 
 ### Phase 2
-- [ ] Prisma migration (post, comment, shelf image fields)
-- [ ] Upload init/commit API for each image type
-- [ ] Avatar + post + comment + shelf UI
-- [ ] ISR revalidation
-- [ ] Tests for key builders + authZ
+- [x] Prisma migration (post, comment, shelf image fields)
+- [x] Upload init/commit API for each image type
+- [x] Avatar + post + comment + shelf UI
+- [x] ISR revalidation on commit/remove
+- [ ] Tests for image authZ (beyond key builder tests)
 
 ### Phase 3
 - [ ] Prisma `Document` model + migration

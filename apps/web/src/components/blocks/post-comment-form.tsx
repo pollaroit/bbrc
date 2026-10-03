@@ -7,9 +7,15 @@ import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
+import {
+	PendingImageAttachment,
+	usePendingImageInput,
+} from "@/components/blocks/pending-image-attachment";
 import { SignInLink } from "@/components/blocks/sign-in-link";
+import { uploadImageForEntity } from "@/components/blocks/single-image-upload-field";
+import { TextareaWithImageAttach } from "@/components/blocks/textarea-with-image-attach";
 import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type PostCommentFormProps = {
@@ -50,6 +56,7 @@ export function PostCommentForm({
 }: PostCommentFormProps) {
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [content, setContent] = useState("");
+	const [imageFile, setImageFile] = useState<File | null>(null);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const fieldId = parentSlug
 		? `comment-reply-${parentSlug}`
@@ -68,9 +75,32 @@ export function PostCommentForm({
 		node.focus({ preventScroll: true });
 	}, [autoFocus]);
 
+	const imageInput = usePendingImageInput(setImageFile);
+
 	const createMutation = useMutation(
 		orpc.comment.create.mutationOptions({
 			onSuccess: async (result) => {
+				const file = imageFile;
+				setImageFile(null);
+				if (imageInput.inputRef.current) {
+					imageInput.inputRef.current.value = "";
+				}
+
+				if (file) {
+					try {
+						await uploadImageForEntity(file, {
+							target: "comment-image",
+							commentSlug: result.slug,
+						});
+					} catch (error) {
+						toast.error(
+							error instanceof Error
+								? error.message
+								: "Comment posted, but image upload failed.",
+						);
+					}
+				}
+
 				toast.success(
 					result.xpAwarded > 0
 						? `Comment posted (+${result.xpAwarded} XP)`
@@ -83,6 +113,8 @@ export function PostCommentForm({
 			onError: (error) => toast.error(error.message),
 		}),
 	);
+
+	const isPending = createMutation.isPending;
 
 	if (sessionPending) {
 		return (
@@ -101,7 +133,7 @@ export function PostCommentForm({
 
 	return (
 		<form
-			className={compact ? "flex flex-col gap-2" : "flex flex-col gap-3"}
+			className={cn("flex min-w-0 flex-col", compact ? "gap-2" : "gap-3")}
 			onSubmit={(event) => {
 				event.preventDefault();
 
@@ -123,14 +155,15 @@ export function PostCommentForm({
 				});
 			}}
 		>
-			<Field>
+			{imageInput.input}
+			<Field className="min-w-0">
 				<FieldLabel
 					htmlFor={fieldId}
 					className={compact ? "text-xs" : undefined}
 				>
 					{replyToUsername ? `Reply to @${replyToUsername}` : "Add a comment"}
 				</FieldLabel>
-				<AutoGrowTextarea
+				<TextareaWithImageAttach
 					ref={textareaRef}
 					id={fieldId}
 					value={content}
@@ -139,14 +172,26 @@ export function PostCommentForm({
 					placeholder={
 						replyToUsername ? "Write a reply…" : "Share your thoughts…"
 					}
+					onAttachClick={imageInput.openPicker}
+					attachDisabled={isPending}
+					hasPhoto={imageFile !== null}
 				/>
 			</Field>
+
+			<PendingImageAttachment
+				variant="comment"
+				file={imageFile}
+				onFileChange={setImageFile}
+				disabled={isPending}
+				inputRef={imageInput.inputRef}
+			/>
+
 			<div className="flex flex-wrap items-center gap-2">
 				<LoadingButton
 					type="submit"
 					size={compact ? "sm" : "default"}
 					className="w-fit"
-					loading={createMutation.isPending}
+					loading={isPending}
 					disabled={content.trim().length < 1}
 				>
 					{parentSlug ? "Post reply" : "Post comment"}
@@ -157,7 +202,7 @@ export function PostCommentForm({
 						variant="outline"
 						size={compact ? "sm" : "default"}
 						className="w-fit"
-						disabled={createMutation.isPending}
+						disabled={isPending}
 						onClick={onCancelReply}
 					>
 						Cancel

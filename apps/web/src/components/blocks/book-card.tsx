@@ -42,7 +42,7 @@ export function BookCard({
 		>
 			<Link
 				href={href}
-				className="absolute inset-0 z-0 rounded-[inherit]"
+				className="absolute inset-0 z-0 rounded-none"
 				aria-label={`View ${book.title}`}
 			/>
 			<CardContent className="pointer-events-none relative z-1 flex h-full items-stretch gap-3">

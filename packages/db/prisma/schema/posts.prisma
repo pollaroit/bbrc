@@ -7,6 +7,11 @@ model Post {
 
   /// @zod.min(1, "Content must be at least 1 character long").max(5000, "Content must be at most 5000 characters long")
   content String
+
+  /// Public R2 URL for optional post image.
+  /// @zod.max(2048).nullish()
+  imageUrl String? @map("image_url")
+
   /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
   /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
   slug    String @unique
@@ -73,6 +78,11 @@ model Comment {
 
   /// @zod.min(1, "Content must be at least 1 character long").max(5000, "Content must be at most 5000 characters long")
   content String
+
+  /// Public R2 URL for optional comment image.
+  /// @zod.max(2048).nullish()
+  imageUrl String? @map("image_url")
+
   /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
   /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
   slug    String @unique

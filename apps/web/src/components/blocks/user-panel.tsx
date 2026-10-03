@@ -43,7 +43,10 @@ export function UserPanel({
 		<div className={cn("flex items-center gap-2", className)}>
 			{!hideAvatar && (
 				<Avatar className={imageClassName}>
-					<AvatarImage src={user.image ?? undefined} />
+					<AvatarImage
+						key={user.image ?? "no-image"}
+						src={user.image ?? undefined}
+					/>
 					<AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
 				</Avatar>
 			)}

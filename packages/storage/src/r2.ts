@@ -117,6 +117,25 @@ export async function headObject(
 	}
 }
 
+export async function putObjectBuffer(
+	client: S3Client,
+	config: R2Config,
+	input: {
+		key: string;
+		body: Buffer | Uint8Array;
+		contentType: string;
+	},
+): Promise<void> {
+	await client.send(
+		new PutObjectCommand({
+			Bucket: config.bucketName,
+			Key: input.key,
+			ContentType: input.contentType,
+			Body: input.body,
+		}),
+	);
+}
+
 export async function deleteObject(
 	client: S3Client,
 	config: R2Config,

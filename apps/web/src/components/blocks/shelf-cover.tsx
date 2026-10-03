@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 
 type ShelfCoverProps = {
 	coverIds: (number | null)[];
+	/** When set, replaces the book-grid mosaic. */
+	coverImageUrl?: string | null;
 	className?: string;
 	size?: "sm" | "md" | "lg";
 };
@@ -42,11 +44,32 @@ function CoverCell({
 
 export function ShelfCover({
 	coverIds,
+	coverImageUrl,
 	className,
 	size = "md",
 }: ShelfCoverProps) {
 	const ids = coverIds.slice(0, 4);
 	const dimension = sizeClasses[size];
+
+	if (coverImageUrl) {
+		return (
+			<div
+				className={cn(
+					"relative shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10",
+					dimension,
+					className,
+				)}
+			>
+				<Image
+					src={coverImageUrl}
+					alt=""
+					fill
+					className="object-cover"
+					sizes="128px"
+				/>
+			</div>
+		);
+	}
 
 	if (ids.length === 0) {
 		return (

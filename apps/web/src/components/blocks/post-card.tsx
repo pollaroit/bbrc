@@ -10,6 +10,7 @@ import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { CommentListItemView } from "@/components/blocks/comment-list-item";
+import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
@@ -97,6 +98,18 @@ export function PostCard({ post, className }: PostCardProps) {
 					{post.content}
 				</Link>
 
+				{post.imageUrl ? (
+					<Link href={postHref} className="block">
+						<PostAttachedImage
+							src={post.imageUrl}
+							alt=""
+							className="mt-0"
+							compact
+							edgeToEdge
+						/>
+					</Link>
+				) : null}
+
 				{post.attachedBook ? (
 					<PostAttachedBook book={post.attachedBook} />
 				) : null}
@@ -124,18 +137,28 @@ export function PostCard({ post, className }: PostCardProps) {
 				</div>
 
 				{post.topComments.length > 0 ? (
-					<div className="flex flex-col gap-2">
-						<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-							Top comments
-						</p>
-						{post.topComments.map((comment) => (
-							<CommentListItemView
-								key={comment.slug}
-								comment={comment}
-								variant="compact"
-								threadHref={`${postHref}#comments` as Route}
-							/>
-						))}
+					<div className="border border-border bg-background px-3 pt-3 pb-1 sm:px-4">
+						<ul className="flex flex-col divide-y divide-border/60">
+							{post.topComments.map((comment) => (
+								<li key={comment.slug} className="py-3 first:pt-0 last:pb-2">
+									<CommentListItemView
+										comment={comment}
+										variant="compact"
+										layout="thread"
+										postSlug={post.slug}
+										threadHref={`${postHref}#comment-${comment.slug}` as Route}
+									/>
+								</li>
+							))}
+						</ul>
+						{post.commentCount > post.topComments.length ? (
+							<Link
+								href={`${postHref}#comments` as Route}
+								className="block border-border border-t py-2.5 text-center text-muted-foreground text-xs transition-colors hover:text-foreground"
+							>
+								View all {post.commentCount} comments
+							</Link>
+						) : null}
 					</div>
 				) : null}
 			</CardFooter>

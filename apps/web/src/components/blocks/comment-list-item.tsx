@@ -14,11 +14,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
 import { CommentLikeEngagement } from "@/components/blocks/comment-like-engagement";
+import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import {
 	commentSharePath,
 	ResourceShareMenu,
 } from "@/components/blocks/resource-share-menu";
+import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
@@ -172,6 +174,22 @@ function CommentEditForm({
 				maxLength={5000}
 				aria-label="Edit comment"
 			/>
+			<SingleImageUploadField
+				label="Comment image"
+				currentUrl={comment.imageUrl}
+				uploadTarget={{
+					target: "comment-image",
+					commentSlug: comment.slug,
+				}}
+				onRemove={async () => {
+					await orpc.storage.removeCommentImage.call({
+						commentSlug: comment.slug,
+					});
+				}}
+				onSuccess={async () => {
+					await invalidateCommentQueries();
+				}}
+			/>
 			<div className="flex flex-wrap gap-2">
 				<LoadingButton
 					type="submit"
@@ -210,7 +228,7 @@ export function CommentListItemView({
 	const { data: session } = authClient.useSession();
 	const profileHref = `/users/${comment.author.username}` as Route;
 	const isCompact = variant === "compact";
-	const isThread = layout === "thread" && !isCompact;
+	const isThread = layout === "thread";
 	const isFullListItem =
 		!isCompact && (postSlug != null || feedbackContextSlug != null);
 	const listComment = isFullListItem ? (comment as CommentListItem) : null;
@@ -224,16 +242,40 @@ export function CommentListItemView({
 			commentSlug: comment.slug,
 		}) ?? null;
 
+	const commentImageUrl = "imageUrl" in comment ? comment.imageUrl : null;
+
+	const contentInner = (
+		<>
+			<p
+				className={cn(
+					"whitespace-pre-wrap text-sm leading-relaxed",
+					isCompact && "line-clamp-3",
+					threadHref && "transition-colors hover:text-foreground/90",
+				)}
+			>
+				{comment.content}
+			</p>
+			{commentImageUrl ? (
+				<PostAttachedImage
+					src={commentImageUrl}
+					alt="Comment image"
+					compact
+					className={cn(isCompact ? "max-w-full" : "max-w-md")}
+				/>
+			) : null}
+		</>
+	);
+
 	const content = (
-		<p
-			className={cn(
-				"whitespace-pre-wrap text-sm leading-relaxed",
-				isCompact && "line-clamp-3",
-				threadHref && "transition-colors hover:text-foreground/90",
+		<div className="flex flex-col gap-2">
+			{threadHref && isThread ? (
+				<Link href={threadHref} className="block outline-offset-2">
+					{contentInner}
+				</Link>
+			) : (
+				contentInner
 			)}
-		>
-			{comment.content}
-		</p>
+		</div>
 	);
 
 	const body =
@@ -251,14 +293,22 @@ export function CommentListItemView({
 							className="min-w-0"
 							renderTitle={false}
 							renderDescription={false}
-							imageClassName="size-8"
+							imageClassName={isCompact ? "size-6" : "size-8"}
 						/>
 					</Link>
 					<div className="min-w-0 flex-1">
-						<div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground text-xs">
+						<div
+							className={cn(
+								"mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground",
+								isCompact ? "text-[11px]" : "text-xs",
+							)}
+						>
 							<Link
 								href={profileHref}
-								className="font-medium text-foreground text-sm hover:underline"
+								className={cn(
+									"font-medium text-foreground hover:underline",
+									isCompact ? "text-xs" : "text-sm",
+								)}
 							>
 								{comment.author.name}
 							</Link>
@@ -381,7 +431,7 @@ export function CommentListItemView({
 			</>
 		);
 
-	if (isCompact) {
+	if (isCompact && !isThread) {
 		return (
 			<div
 				className={cn("rounded-none border bg-muted/20 px-3 py-2", className)}

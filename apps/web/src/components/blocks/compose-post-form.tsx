@@ -18,11 +18,16 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
 import {
 	ClubBookPicker,
 	type ClubBookPickerValue,
 } from "@/components/blocks/club-book-picker";
+import {
+	PendingImageAttachment,
+	usePendingImageInput,
+} from "@/components/blocks/pending-image-attachment";
+import { uploadImageForEntity } from "@/components/blocks/single-image-upload-field";
+import { TextareaWithImageAttach } from "@/components/blocks/textarea-with-image-attach";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -30,9 +35,11 @@ import { orpc, queryClient } from "@/utils/orpc";
 function resetComposeForm(
 	setContent: (value: string) => void,
 	setAttachedBook: (value: ClubBookPickerValue) => void,
+	setImageFile: (value: File | null) => void,
 ) {
 	setContent("");
 	setAttachedBook(null);
+	setImageFile(null);
 }
 
 type ComposePostDialogProps = {
@@ -47,14 +54,34 @@ export function ComposePostDialog({
 	const router = useRouter();
 	const [content, setContent] = useState("");
 	const [attachedBook, setAttachedBook] = useState<ClubBookPickerValue>(null);
+	const [imageFile, setImageFile] = useState<File | null>(null);
+	const imageInput = usePendingImageInput(setImageFile);
 
 	const createMutation = useMutation(
 		orpc.post.create.mutationOptions({
 			onSuccess: async ({ slug, xpAwarded }) => {
+				const file = imageFile;
+				setImageFile(null);
+
+				if (file) {
+					try {
+						await uploadImageForEntity(file, {
+							target: "post-image",
+							postSlug: slug,
+						});
+					} catch (error) {
+						toast.error(
+							error instanceof Error
+								? error.message
+								: "Post shared, but image upload failed.",
+						);
+					}
+				}
+
 				toast.success(
 					xpAwarded > 0 ? `Post shared (+${xpAwarded} XP)` : "Post shared.",
 				);
-				resetComposeForm(setContent, setAttachedBook);
+				resetComposeForm(setContent, setAttachedBook, setImageFile);
 				onOpenChange(false);
 				await queryClient.invalidateQueries({
 					queryKey: orpc.post.getPostList.key(),
@@ -72,7 +99,10 @@ export function ComposePostDialog({
 			onOpenChange={(nextOpen) => {
 				onOpenChange(nextOpen);
 				if (!nextOpen) {
-					resetComposeForm(setContent, setAttachedBook);
+					resetComposeForm(setContent, setAttachedBook, setImageFile);
+					if (imageInput.inputRef.current) {
+						imageInput.inputRef.current.value = "";
+					}
 				}
 			}}
 		>
@@ -106,16 +136,28 @@ export function ComposePostDialog({
 						});
 					}}
 				>
+					{imageInput.input}
 					<Field>
 						<FieldLabel htmlFor="compose-post-content">Post</FieldLabel>
-						<AutoGrowTextarea
+						<TextareaWithImageAttach
 							id="compose-post-content"
 							value={content}
 							onChange={(event) => setContent(event.target.value)}
 							maxLength={5000}
 							placeholder="What are you reading or thinking about?"
+							onAttachClick={imageInput.openPicker}
+							attachDisabled={createMutation.isPending}
+							hasPhoto={imageFile !== null}
 						/>
 					</Field>
+
+					<PendingImageAttachment
+						variant="post"
+						file={imageFile}
+						onFileChange={setImageFile}
+						disabled={createMutation.isPending}
+						inputRef={imageInput.inputRef}
+					/>
 
 					<Field>
 						<FieldLabel htmlFor="club-book-picker-search">
@@ -153,7 +195,7 @@ export function ComposePostFab({ className }: { className?: string }) {
 				type="button"
 				size="icon-lg"
 				className={cn(
-					"fixed right-6 bottom-6 z-50 size-14 rounded-full shadow-lg",
+					"fixed right-6 bottom-6 z-50 size-14 shadow-lg",
 					className,
 				)}
 				aria-label="New post"
