@@ -1,0 +1,70 @@
+enum ShelfStatus {
+  draft
+  active
+  archived
+}
+
+enum ShelfType {
+  /// Shows rank numbers (1, 2, 3…) on the public shelf page.
+  ordered
+  /// Same drag order internally; public view hides rank numbers.
+  unordered
+}
+
+model Shelf {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
+  /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
+  slug String
+
+  /// @zod.min(1, "Title is required").max(120, "Title must be at most 120 characters long")
+  title String
+
+  /// @zod.max(2000, "Description must be at most 2000 characters long").nullish()
+  description String? @db.Text
+
+  status ShelfStatus @default(draft)
+  type   ShelfType   @default(unordered)
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  books ShelfBook[]
+
+  @@unique([userId, slug])
+  @@index([userId, status])
+  @@index([userId, updatedAt])
+  @@map("shelf")
+}
+
+model ShelfBook {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.uuid("Invalid shelf id")
+  shelfId String @map("shelf_id")
+  shelf   Shelf  @relation(fields: [shelfId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid book id")
+  bookId String @map("book_id")
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  /// Dense 0-based order within the shelf (both ordered and unordered types).
+  position Int
+
+  /// @zod.max(500, "Notes must be at most 500 characters long").nullish()
+  notes String? @db.Text
+
+  @@unique([shelfId, bookId])
+  @@unique([shelfId, position])
+  @@index([bookId])
+  @@index([shelfId, position])
+  @@map("shelf_book")
+}

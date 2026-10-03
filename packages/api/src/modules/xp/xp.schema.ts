@@ -29,6 +29,7 @@ export const XP_AWARD = {
 	post: 4,
 	comment: 1,
 	request: 2,
+	shelf: 5,
 } as const satisfies Record<z.infer<typeof XPEventReasonSchema>, number>;
 
 export const REASON_LABELS: Record<
@@ -41,6 +42,7 @@ export const REASON_LABELS: Record<
 	post: "Post",
 	comment: "Comment",
 	request: "Book request",
+	shelf: "Shelf created",
 };
 
 export const XpEventListItemSchema = XPEventSchema.pick({

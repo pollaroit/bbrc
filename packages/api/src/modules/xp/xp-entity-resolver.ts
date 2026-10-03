@@ -19,6 +19,7 @@ const REASON_FALLBACK_LABEL: Record<
 	post: "Post",
 	comment: "Comment",
 	request: "Book request",
+	shelf: "Shelf created",
 };
 
 export async function resolveXpEntitySources(
@@ -40,6 +41,7 @@ export async function resolveXpEntitySources(
 	const postIds = new Set<string>();
 	const commentIds = new Set<string>();
 	const bookRequestIds = new Set<string>();
+	const shelfIds = new Set<string>();
 
 	for (const event of events) {
 		if (event.reason === "participation") {
@@ -54,10 +56,12 @@ export async function resolveXpEntitySources(
 			commentIds.add(event.entityId);
 		} else if (event.reason === "request") {
 			bookRequestIds.add(event.entityId);
+		} else if (event.reason === "shelf") {
+			shelfIds.add(event.entityId);
 		}
 	}
 
-	const [sittings, polls, feedbacks, posts, comments, bookRequests] =
+	const [sittings, polls, feedbacks, posts, comments, bookRequests, shelves] =
 		await Promise.all([
 			sittingIds.size > 0
 				? db.sitting.findMany({
@@ -112,6 +116,17 @@ export async function resolveXpEntitySources(
 						select: { id: true, olid: true },
 					})
 				: Promise.resolve([]),
+			shelfIds.size > 0
+				? db.shelf.findMany({
+						where: { id: { in: [...shelfIds] } },
+						select: {
+							id: true,
+							slug: true,
+							title: true,
+							user: { select: { username: true } },
+						},
+					})
+				: Promise.resolve([]),
 		]);
 
 	const sittingById = new Map(sittings.map((row) => [row.id, row]));
@@ -120,6 +135,7 @@ export async function resolveXpEntitySources(
 	const postById = new Map(posts.map((row) => [row.id, row]));
 	const commentById = new Map(comments.map((row) => [row.id, row]));
 	const bookRequestById = new Map(bookRequests.map((row) => [row.id, row]));
+	const shelfById = new Map(shelves.map((row) => [row.id, row]));
 
 	for (const event of events) {
 		const key = sourceKey(event.reason, event.entityId);
@@ -195,6 +211,17 @@ export async function resolveXpEntitySources(
 				href: bookRequest
 					? `/books/new?olid=${encodeURIComponent(bookRequest.olid)}`
 					: null,
+			});
+			continue;
+		}
+
+		if (event.reason === "shelf") {
+			const shelf = shelfById.get(event.entityId);
+			const username = shelf?.user.username;
+			result.set(key, {
+				label: shelf?.title ?? "Shelf",
+				href:
+					shelf && username ? `/users/${username}/shelves/${shelf.slug}` : null,
 			});
 			continue;
 		}

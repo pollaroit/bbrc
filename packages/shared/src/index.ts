@@ -6,5 +6,6 @@ export * from "./notifications";
 export * from "./open-library";
 export * from "./reading-deadline";
 export * from "./scheduled-deadlines";
+export * from "./shelves";
 export * from "./slug";
 export * from "./username";

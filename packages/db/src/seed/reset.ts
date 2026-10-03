@@ -12,6 +12,8 @@ export async function resetDatabase(db: Database): Promise<void> {
 	await db.comment.deleteMany();
 	await db.post.deleteMany();
 	await db.favorite.deleteMany();
+	await db.shelfBook.deleteMany();
+	await db.shelf.deleteMany();
 	await db.notification.deleteMany();
 	await db.notificationPreference.deleteMany();
 	await db.bookRequest.deleteMany();

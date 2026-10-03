@@ -44,6 +44,7 @@ model Book {
   polls     PollOption[]
   posts     Post[]
   favorites Favorite[]
+  shelfBooks ShelfBook[]
   sittingsSelectedFor Sitting[] @relation("SittingSelectedBook")
 
   @@index([slug])
