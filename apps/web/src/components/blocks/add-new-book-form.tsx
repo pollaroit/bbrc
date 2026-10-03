@@ -8,6 +8,7 @@ import {
 	Field,
 	FieldDescription,
 	FieldGroup,
+	FieldLabel,
 	FieldLegend,
 	FieldSet,
 } from "@bbrc/ui/components/field";
@@ -19,7 +20,7 @@ import { Search } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { parseAsBoolean, useQueryState } from "nuqs";
+import { parseAsBoolean, parseAsString, useQueryState } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { OpenLibraryWorkResults } from "@/components/blocks/open-library-work-results";
@@ -33,6 +34,7 @@ import {
 } from "@/lib/add-book-form";
 import {
 	fetchOpenLibraryEditionHints,
+	fetchOpenLibraryWorkByOlid,
 	searchOpenLibraryWorks,
 } from "@/lib/open-library/client";
 import type { OpenLibrarySearchWork } from "@/lib/open-library/types";
@@ -91,8 +93,21 @@ function AddBookDetailsForm({
 	const addMoreRef = useRef(addMore);
 	addMoreRef.current = addMore;
 	const initialValues = useMemo(() => workToFormValues(work), [work]);
+	const workOlid = useMemo(() => requireWorkOlid(work), [work]);
+	const [acceptanceNotes, setAcceptanceNotes] = useState("");
 
 	const form = useAppForm(AddNewBookFormSchema, initialValues);
+
+	const { data: pendingRequests } = useQuery({
+		...orpc.bookRequest.listPending.queryOptions(),
+		staleTime: 30_000,
+	});
+
+	const hasPendingMemberRequest = useMemo(
+		() =>
+			pendingRequests?.items.some((item) => item.olid === workOlid) ?? false,
+		[pendingRequests?.items, workOlid],
+	);
 
 	const { data: editionHints, isFetching: isLoadingEditions } = useQuery({
 		queryKey: ["open-library-editions", work.workKey],
@@ -193,6 +208,12 @@ function AddBookDetailsForm({
 				void queryClient.invalidateQueries({
 					queryKey: orpc.book.getBookList.key(),
 				});
+				void queryClient.invalidateQueries({
+					queryKey: orpc.bookRequest.listPending.key(),
+				});
+				void queryClient.invalidateQueries({
+					queryKey: orpc.bookRequest.listMine.key(),
+				});
 				toast.success("Book added to the library.");
 				if (addMoreRef.current) {
 					onAddAnother();
@@ -215,7 +236,13 @@ function AddBookDetailsForm({
 				return;
 			}
 
-			const apiCheck = AddBookInputSchema.safeParse(parsed);
+			const trimmedNotes = acceptanceNotes.trim();
+			const withNotes =
+				trimmedNotes.length > 0
+					? { ...parsed, acceptanceNotes: trimmedNotes }
+					: parsed;
+
+			const apiCheck = AddBookInputSchema.safeParse(withNotes);
 			if (!apiCheck.success) {
 				toast.error(apiCheck.error.issues[0]?.message ?? "Invalid form data");
 				return;
@@ -401,6 +428,29 @@ function AddBookDetailsForm({
 				</FieldGroup>
 			</FieldSet>
 
+			{hasPendingMemberRequest ? (
+				<FieldSet className="gap-3">
+					<FieldLegend variant="label">Member request</FieldLegend>
+					<Field>
+						<FieldLabel htmlFor="acceptance-notes">
+							Acceptance note (optional)
+						</FieldLabel>
+						<Textarea
+							id="acceptance-notes"
+							value={acceptanceNotes}
+							maxLength={200}
+							rows={3}
+							placeholder="Short note for the member who requested this title…"
+							onChange={(event) => setAcceptanceNotes(event.target.value)}
+						/>
+						<FieldDescription>
+							Shown to the requester when this book is added ·{" "}
+							{acceptanceNotes.trim().length}/200
+						</FieldDescription>
+					</Field>
+				</FieldSet>
+			) : null}
+
 			<div className="flex flex-col gap-4">
 				{/** biome-ignore lint/a11y/noLabelWithoutControl: checkbox is the control */}
 				<label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
@@ -433,6 +483,7 @@ export function AddNewBookForm() {
 		"add_more",
 		parseAsBoolean.withDefault(false),
 	);
+	const [prefillOlid, setPrefillOlid] = useQueryState("olid", parseAsString);
 	const [searchQuery, setSearchQuery] = useState("");
 	const debouncedQuery = useDebouncedValue(searchQuery, 500);
 	const [selectedWork, setSelectedWork] =
@@ -448,8 +499,44 @@ export function AddNewBookForm() {
 		staleTime: 60_000,
 	});
 
+	const {
+		data: prefillWork,
+		isError: prefillFailed,
+		isFetching: isPrefillLoading,
+	} = useQuery({
+		queryKey: ["open-library-work-by-olid", prefillOlid],
+		queryFn: () => fetchOpenLibraryWorkByOlid(prefillOlid ?? ""),
+		enabled: prefillOlid != null && selectedWork == null,
+		staleTime: 3600_000,
+		retry: false,
+	});
+
+	useEffect(() => {
+		if (!prefillWork || selectedWork != null) {
+			return;
+		}
+
+		if (!openLibraryWorkKeyToOlid(prefillWork.workKey)) {
+			toast.error("Could not load the requested Open Library work.");
+			void setPrefillOlid(null);
+			return;
+		}
+
+		setSelectedWork(prefillWork);
+	}, [prefillWork, selectedWork, setPrefillOlid]);
+
+	useEffect(() => {
+		if (!prefillFailed || prefillOlid == null) {
+			return;
+		}
+
+		toast.error("Could not load the requested Open Library work.");
+		void setPrefillOlid(null);
+	}, [prefillFailed, prefillOlid, setPrefillOlid]);
+
 	const handleChangeWork = () => {
 		setSelectedWork(null);
+		void setPrefillOlid(null);
 	};
 
 	const handleSelectWork = (work: OpenLibrarySearchWork) => {
@@ -501,12 +588,18 @@ export function AddNewBookForm() {
 				</FieldSet>
 
 				{selectedWork == null ? (
-					<OpenLibraryWorkResults
-						works={searchData?.works ?? []}
-						selectedWorkKey={null}
-						onSelect={handleSelectWork}
-						isLoading={searchEnabled && isSearching}
-					/>
+					isPrefillLoading && prefillOlid ? (
+						<p className="text-muted-foreground text-sm">
+							Loading requested book from Open Library…
+						</p>
+					) : (
+						<OpenLibraryWorkResults
+							works={searchData?.works ?? []}
+							selectedWorkKey={null}
+							onSelect={handleSelectWork}
+							isLoading={searchEnabled && isSearching}
+						/>
+					)
 				) : (
 					<div className="flex flex-wrap items-center justify-between gap-2">
 						<p className="text-muted-foreground text-sm">

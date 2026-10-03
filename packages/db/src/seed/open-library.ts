@@ -1,4 +1,8 @@
-import { generateUniqueSlug, openLibraryWorkKeyToOlid } from "@bbrc/shared";
+import {
+	generateUniqueSlug,
+	openLibraryWorkKeyToOlid,
+	parseOpenLibraryDescription,
+} from "@bbrc/shared";
 import type { BookStatus } from "../../prisma/generated/client.js";
 import type { DatabaseTransaction } from "../index.js";
 
@@ -33,6 +37,7 @@ async function generateCatalogBookSlug(
 
 export type OpenLibraryWorkSeed = {
 	workKey: string;
+	olid: string;
 	title: string;
 	authors: string[];
 	coverId: number | null;
@@ -68,6 +73,13 @@ const SEARCH_QUERIES = [
 	"One Hundred Years of Solitude",
 ] as const;
 
+/** Extra queries for pending book requests (not used for catalog seed count). */
+export const BOOK_REQUEST_SEARCH_QUERIES = [
+	"The Catcher in the Rye",
+	"Catch-22 Heller",
+	"Don Quixote",
+] as const;
+
 type SearchDoc = {
 	key?: string;
 	title?: string;
@@ -79,6 +91,7 @@ type SearchDoc = {
 
 type EditionEntry = {
 	number_of_pages?: number;
+	languages?: Array<{ key?: string } | string>;
 };
 
 type WorkDocument = {
@@ -159,6 +172,17 @@ function median(values: number[]): number | null {
 	return sorted[mid] ?? null;
 }
 
+function isTurkishEdition(edition: EditionEntry): boolean {
+	if (!edition.languages?.length) {
+		return false;
+	}
+
+	return edition.languages.some((language) => {
+		const key = typeof language === "string" ? language : language.key;
+		return key?.includes("/languages/tur") ?? false;
+	});
+}
+
 async function fetchJson<T>(url: string): Promise<T | null> {
 	try {
 		const response = await fetch(url, {
@@ -180,12 +204,24 @@ async function fetchWorkPages(workKey: string): Promise<number> {
 		`https://openlibrary.org${workKey}/editions.json?limit=50`,
 	);
 
-	const pages =
-		editions?.entries
-			?.map((entry) => entry.number_of_pages)
-			.filter((value): value is number => value != null && value >= 1) ?? [];
+	const turkishPages: number[] = [];
+	const otherPages: number[] = [];
 
-	return median(pages) ?? 280;
+	for (const entry of editions?.entries ?? []) {
+		const pages = entry.number_of_pages;
+		if (pages == null || pages < 1) {
+			continue;
+		}
+
+		if (isTurkishEdition(entry)) {
+			turkishPages.push(pages);
+		} else {
+			otherPages.push(pages);
+		}
+	}
+
+	const preferred = turkishPages.length > 0 ? turkishPages : otherPages;
+	return median(preferred) ?? 280;
 }
 
 async function fetchWorkRating(workKey: string): Promise<number | null> {
@@ -205,7 +241,7 @@ async function fetchWorkRating(workKey: string): Promise<number | null> {
 	return Math.round(average * 10) / 10;
 }
 
-function parseExcerpt(doc: SearchDoc): string | null {
+function parseSearchExcerpt(doc: SearchDoc): string | null {
 	if (typeof doc.first_sentence === "string" && doc.first_sentence.trim()) {
 		return doc.first_sentence.trim().slice(0, 4000);
 	}
@@ -229,7 +265,9 @@ function clampPublishedYear(year: number): number {
 	return Math.min(year, currentYear);
 }
 
-async function searchWork(query: string): Promise<OpenLibraryWorkSeed | null> {
+export async function searchOpenLibraryWorkByQuery(
+	query: string,
+): Promise<OpenLibraryWorkSeed | null> {
 	const url = new URL("https://openlibrary.org/search.json");
 	url.searchParams.set("q", query);
 	url.searchParams.set("limit", "1");
@@ -242,6 +280,11 @@ async function searchWork(query: string): Promise<OpenLibraryWorkSeed | null> {
 	const doc = payload?.docs?.[0];
 
 	if (!doc?.key || !doc.title?.trim()) {
+		return null;
+	}
+
+	const olid = openLibraryWorkKeyToOlid(doc.key);
+	if (!olid) {
 		return null;
 	}
 
@@ -258,15 +301,20 @@ async function searchWork(query: string): Promise<OpenLibraryWorkSeed | null> {
 		fetchWorkDocument(doc.key),
 	]);
 
+	const excerpt =
+		parseOpenLibraryDescription(workDocument.description) ??
+		parseSearchExcerpt(doc);
+
 	return {
 		workKey: doc.key,
+		olid,
 		title: doc.title.trim(),
 		authors,
 		coverId: doc.cover_i ?? null,
 		publishedIn: clampPublishedYear(doc.first_publish_year ?? 2000),
 		pages,
 		openLibraryRating,
-		excerpt: parseExcerpt(doc),
+		excerpt,
 		subjectPeople: normalizeSubjectList(workDocument.subject_people),
 		subjectTimes: normalizeSubjectList(workDocument.subject_times),
 		subjects: normalizeSubjectList(workDocument.subjects),
@@ -277,24 +325,19 @@ export async function fetchOpenLibraryBooks(
 	count: number,
 ): Promise<OpenLibraryWorkSeed[]> {
 	const works: OpenLibraryWorkSeed[] = [];
-	const seenTitles = new Set<string>();
+	const seenOlids = new Set<string>();
 
 	for (const query of SEARCH_QUERIES) {
 		if (works.length >= count) {
 			break;
 		}
 
-		const work = await searchWork(query);
-		if (!work) {
+		const work = await searchOpenLibraryWorkByQuery(query);
+		if (!work || seenOlids.has(work.olid)) {
 			continue;
 		}
 
-		const key = work.title.toLowerCase();
-		if (seenTitles.has(key)) {
-			continue;
-		}
-
-		seenTitles.add(key);
+		seenOlids.add(work.olid);
 		works.push(work);
 	}
 
@@ -314,11 +357,6 @@ export async function createBookFromWork(
 	createdAt: Date,
 ) {
 	const slug = await generateCatalogBookSlug(work.title, tx);
-	const olid = openLibraryWorkKeyToOlid(work.workKey);
-
-	if (!olid) {
-		throw new Error(`Could not derive OLID from work key "${work.workKey}"`);
-	}
 
 	return tx.book.create({
 		data: {
@@ -331,7 +369,7 @@ export async function createBookFromWork(
 			publishedIn: work.publishedIn,
 			coverId: work.coverId,
 			excerpt: work.excerpt,
-			olid,
+			olid: work.olid,
 			subjectPeople: work.subjectPeople,
 			subjectTimes: work.subjectTimes,
 			subjects: work.subjects,

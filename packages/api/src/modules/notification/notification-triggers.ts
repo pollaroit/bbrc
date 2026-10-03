@@ -1,7 +1,9 @@
 import type { Database } from "@bbrc/db";
+import { fetchOpenLibraryWorkTitle } from "../../lib/open-library-work-title";
 import {
 	dispatchNotification,
 	listActiveMemberUserIds,
+	listAdminUserIds,
 	listSittingParticipantUserIds,
 } from "./notification.service";
 
@@ -167,6 +169,36 @@ export async function notifyMemberFeedbackOnBook(
 		title: "New book feedback",
 		body: `${memberDisplayName(author)} reviewed “${book.title}”.`,
 		href: `/books/${bookSlug}`,
+	});
+}
+
+export async function notifyBookRequested(
+	db: Database,
+	_requestId: string,
+	requesterUserId: string,
+	olid: string,
+): Promise<void> {
+	const requester = await db.user.findUnique({
+		where: { id: requesterUserId },
+		select: { name: true, username: true },
+	});
+
+	if (!requester) {
+		return;
+	}
+
+	const workTitle = await fetchOpenLibraryWorkTitle(olid);
+	const titleLabel = workTitle ?? olid;
+	const recipientUserIds = await listAdminUserIds(db);
+
+	await dispatchNotification(db, {
+		kind: "book_requested",
+		recipientUserIds,
+		excludeUserIds: [requesterUserId],
+		title: "Book requested",
+		body: `${memberDisplayName(requester)} requested “${titleLabel}”.`,
+		href: `/books/new?olid=${encodeURIComponent(olid)}`,
+		adminNtfy: true,
 	});
 }
 

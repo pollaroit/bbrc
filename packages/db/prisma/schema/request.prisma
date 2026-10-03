@@ -14,12 +14,9 @@ model BookRequest {
   userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  /// @zod.min(2, "Title must be at least 2 characters long").max(255, "Title must be at most 255 characters long")
-  title       String
-  /// @zod.max(500, "Description must be at most 500 characters long")
-  description String?
-  /// @zod.url("Invalid URL")
-  url         String?
+  /// @zod.import(["import { isOpenLibraryOlid } from '@bbrc/shared'"])
+  /// @zod.refine((v) => isOpenLibraryOlid(v), { message: "Invalid Open Library work ID" })
+  olid String
 
   status          BookRequestStatus @default(pending)
   /// @zod.max(200, "Rejection reason must be at most 200 characters long")
@@ -28,5 +25,6 @@ model BookRequest {
   acceptanceNotes String?
 
   @@index([userId])
+  @@index([olid])
   @@map("book_request")
 }

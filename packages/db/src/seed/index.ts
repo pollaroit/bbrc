@@ -3,6 +3,7 @@ import { hashPassword } from "better-auth/crypto";
 import { ENV } from "../env.js";
 import { createPrismaClient } from "../index.js";
 import { assertDevSeedEnvironment } from "./assert-dev.js";
+import { seedBookRequests } from "./book-requests.js";
 import { SEED_FAKER_SEED, SEED_PASSWORD } from "./constants.js";
 import { fetchOpenLibraryBooks } from "./open-library.js";
 import { seedPostsAndComments } from "./posts.js";
@@ -33,6 +34,28 @@ async function main() {
 		console.log("Creating books, sittings, polls, votes, XP/RP, and feedback…");
 		const { books, sittings } = await seedBooksAndSittings(db, users, works);
 
+		let bookRequests = 0;
+		console.log("Creating pending book requests…");
+		const catalogOlids = new Set(books.map((book) => book.olid));
+		try {
+			bookRequests = await seedBookRequests(db, users, catalogOlids);
+		} catch (error) {
+			const code =
+				error != null &&
+				typeof error === "object" &&
+				"code" in error &&
+				typeof error.code === "string"
+					? error.code
+					: null;
+			if (code === "P2022") {
+				console.warn(
+					"  Skipped book requests: run `npm run db:migrate:deploy` in packages/db (book_request schema out of date).",
+				);
+			} else {
+				throw error;
+			}
+		}
+
 		console.log("Creating posts, comments, and likes…");
 		const { posts, comments } = await seedPostsAndComments(
 			db,
@@ -50,6 +73,7 @@ async function main() {
 			`  Users: ${users.length} (${SEED_USER_SPECS.length} configured)`,
 		);
 		console.log(`  Books: ${books.length}`);
+		console.log(`  Pending book requests: ${bookRequests}`);
 		console.log(
 			`  Sittings: ${sittings.length} (${finished} finished, ${active} active)`,
 		);

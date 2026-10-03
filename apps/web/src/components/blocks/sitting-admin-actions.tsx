@@ -37,6 +37,7 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 	const router = useRouter();
 	const { data: session, isPending } = authClient.useSession();
 	const [startOpen, setStartOpen] = useState(false);
+	const [startConfirmOpen, setStartConfirmOpen] = useState(false);
 	const [finishOpen, setFinishOpen] = useState(false);
 	const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
 
@@ -45,10 +46,16 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 		return [...sitting.poll.options].sort((a, b) => b.voteCount - a.voteCount);
 	}, [sitting.poll?.options]);
 
+	const selectedPollOption = useMemo(
+		() => pollOptions.find((option) => option.id === selectedOptionId) ?? null,
+		[pollOptions, selectedOptionId],
+	);
+
 	const startReading = useMutation(
 		orpc.sitting.transitionSitting.mutationOptions({
 			onSuccess: async () => {
 				toast.success("Reading phase started");
+				setStartConfirmOpen(false);
 				setStartOpen(false);
 				await queryClient.invalidateQueries({
 					queryKey: orpc.sitting.getSittingBySlug.key(),
@@ -118,6 +125,9 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 						onOpenChange={(next) => {
 							if (startReading.isPending) return;
 							setStartOpen(next);
+							if (!next) {
+								setStartConfirmOpen(false);
+							}
 						}}
 					>
 						<SheetContent
@@ -168,10 +178,46 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 								>
 									Cancel
 								</Button>
-								<LoadingButton
+								<Button
 									type="button"
 									disabled={!selectedOptionId}
+									onClick={() => setStartConfirmOpen(true)}
+								>
+									Start reading
+								</Button>
+							</SheetFooter>
+						</SheetContent>
+					</Sheet>
+					<AlertDialog
+						open={startConfirmOpen}
+						onOpenChange={(next) => {
+							if (startReading.isPending) return;
+							setStartConfirmOpen(next);
+						}}
+					>
+						<AlertDialogContent>
+							<AlertDialogHeader className="text-left sm:place-items-start sm:text-left">
+								<AlertDialogTitle>Start reading phase?</AlertDialogTitle>
+								<AlertDialogDescription>
+									{selectedPollOption ? (
+										<>
+											Close voting and start reading with “
+											{selectedPollOption.book.title}”. The poll will be locked
+											and cannot be reopened.
+										</>
+									) : (
+										"Close voting and start the reading phase. The poll will be locked and cannot be reopened."
+									)}
+								</AlertDialogDescription>
+							</AlertDialogHeader>
+							<AlertDialogFooter>
+								<AlertDialogCancel disabled={startReading.isPending}>
+									Cancel
+								</AlertDialogCancel>
+								<LoadingButton
+									type="button"
 									loading={startReading.isPending}
+									disabled={!selectedOptionId}
 									onClick={() => {
 										if (!selectedOptionId) return;
 										startReading.mutate({
@@ -183,9 +229,9 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 								>
 									Start reading
 								</LoadingButton>
-							</SheetFooter>
-						</SheetContent>
-					</Sheet>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
 				</>
 			) : null}
 

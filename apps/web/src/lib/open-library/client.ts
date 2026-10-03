@@ -1,5 +1,9 @@
+import { isOpenLibraryOlid } from "@bbrc/shared";
 import type { OpenLibraryEditionHints } from "@/lib/open-library/editions";
-import type { OpenLibrarySearchResponse } from "@/lib/open-library/types";
+import type {
+	OpenLibrarySearchResponse,
+	OpenLibrarySearchWork,
+} from "@/lib/open-library/types";
 
 export async function searchOpenLibraryWorks(
 	query: string,
@@ -25,4 +29,29 @@ export async function fetchOpenLibraryEditionHints(workKey: string) {
 	}
 
 	return (await response.json()) as OpenLibraryEditionHints;
+}
+
+export async function fetchOpenLibraryWorkByOlid(
+	olid: string,
+): Promise<OpenLibrarySearchWork | null> {
+	const normalized = olid.trim().toUpperCase();
+	if (!isOpenLibraryOlid(normalized)) {
+		return null;
+	}
+
+	const params = new URLSearchParams({ olid: normalized });
+	const response = await fetch(`/api/open-library/work?${params.toString()}`);
+
+	if (response.status === 404) {
+		return null;
+	}
+
+	if (!response.ok) {
+		throw new Error("Could not load this Open Library work.");
+	}
+
+	const data = (await response.json()) as {
+		work: OpenLibrarySearchWork | null;
+	};
+	return data.work;
 }

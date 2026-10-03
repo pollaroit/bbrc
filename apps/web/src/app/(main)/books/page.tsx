@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { AddBookLink } from "@/components/blocks/add-book-link";
 import { BooksList } from "@/components/blocks/books-list";
 import { BooksListingToolbar } from "@/components/blocks/books-listing-toolbar";
+import { LibraryBookActionLink } from "@/components/blocks/library-book-action-link";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { buildPageMetadata } from "@/lib/seo";
 
@@ -18,7 +18,7 @@ export default function BooksPage() {
 		<div className="flex flex-col gap-6">
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<h1 className="font-bold text-2xl">Books</h1>
-				<AddBookLink />
+				<LibraryBookActionLink />
 			</div>
 			<ListingSearchParamsBoundary>
 				<BooksListingToolbar />

@@ -4,7 +4,7 @@ import {
 	CursorPaginationOutputSchema,
 } from "@bbrc/schemas";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
-import type { z } from "zod";
+import { z } from "zod";
 import {
 	bookListFiltersSchema,
 	bookListRanging,
@@ -83,6 +83,12 @@ export const AddBookInputSchema = BookSchema.pick({
 	subjectPeople: true,
 	subjectTimes: true,
 	subjects: true,
+}).extend({
+	acceptanceNotes: z
+		.string()
+		.trim()
+		.max(200, "Acceptance notes must be at most 200 characters long")
+		.optional(),
 });
 
 export const AddBookOutputSchema = BookSchema.pick({

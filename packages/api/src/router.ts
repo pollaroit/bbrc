@@ -2,6 +2,7 @@ import type { RouterClient } from "@orpc/server";
 
 import { adminRouter } from "./modules/admin/admin.router";
 import { bookRouter } from "./modules/book/book.router";
+import { bookRequestRouter } from "./modules/book-request/book-request.router";
 import { commentRouter } from "./modules/comment/comment.router";
 import { favoriteRouter } from "./modules/favorite/favorite.router";
 import { feedbackRouter } from "./modules/feedback/feedback.router";
@@ -18,6 +19,7 @@ export const appRouter = {
 	admin: adminRouter,
 	health: healthRouter,
 	book: bookRouter,
+	bookRequest: bookRequestRouter,
 	comment: commentRouter,
 	favorite: favoriteRouter,
 	feedback: feedbackRouter,

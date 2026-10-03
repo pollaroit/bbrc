@@ -58,6 +58,11 @@ const STATIC_PAGES: Record<string, OgImageContent> = {
 		description: "Add a book to the BBRC library from Open Library.",
 		kind: "Library",
 	},
+	"books/request": {
+		title: "Request a book",
+		description: "Search Open Library and suggest titles for the club library.",
+		kind: "Library",
+	},
 	"sittings/new": {
 		title: "New sitting",
 		description: "Start a new reading sitting.",
@@ -84,6 +89,31 @@ const STATIC_PAGES: Record<string, OgImageContent> = {
 		kind: "Auth",
 	},
 };
+
+async function resolveBooksRequestOg(): Promise<OgImageContent> {
+	const [pendingCount, requestCount] = await Promise.all([
+		db.bookRequest.count({ where: { status: "pending" } }),
+		db.bookRequest.count(),
+	]);
+
+	const highlights = [
+		"Open Library search",
+		pendingCount > 0
+			? `${pendingCount} pending for admins`
+			: "Queue clear for admins",
+	];
+	if (requestCount > 0) {
+		highlights.push(formatCount("member request", requestCount));
+	}
+
+	return {
+		kind: "Library",
+		title: "Request a book",
+		description:
+			"Suggest a work for the club catalog · admins review and add titles.",
+		highlights,
+	};
+}
 
 async function resolveBooksListOg(): Promise<OgImageContent> {
 	const [bookCount, ratedCount, reviewCount] = await Promise.all([
@@ -165,6 +195,9 @@ export async function resolveOgImageContent(
 
 	if (staticKey === "books") {
 		return resolveBooksListOg();
+	}
+	if (staticKey === "books/request") {
+		return resolveBooksRequestOg();
 	}
 	if (staticKey === "sittings") {
 		return resolveSittingsListOg();

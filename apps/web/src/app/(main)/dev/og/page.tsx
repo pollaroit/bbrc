@@ -45,6 +45,8 @@ export default async function OgDevPage() {
 		{ label: "Settings", path: "/settings" },
 		{ label: "Notifications", path: "/settings/notifications" },
 		{ label: "Sign in", path: "/sign-in" },
+		{ label: "Add book", path: "/books/new" },
+		{ label: "Request book", path: "/books/request" },
 		...(user?.username
 			? [
 					{

@@ -158,6 +158,21 @@ export async function awardCommentXp(
 	);
 }
 
+export async function awardBookRequestXp(
+	input: { userId: string; bookRequestId: string },
+	tx: DatabaseTransaction,
+): Promise<boolean> {
+	return tryAwardXp(
+		{
+			userId: input.userId,
+			reason: "request",
+			entityId: input.bookRequestId,
+			points: XP_AWARD.request,
+		},
+		tx,
+	);
+}
+
 async function loadXpUser(username: string, db: Database) {
 	const user = await db.user.findUnique({
 		where: { username },

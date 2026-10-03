@@ -109,33 +109,47 @@ function normalizeBookRecord<T extends TGetBookBySlugOutputSchema>(book: T): T {
 }
 
 export async function addBook(input: TAddBookInputSchema, db: Database) {
+	const { acceptanceNotes, ...bookInput } = input;
+	const trimmedAcceptanceNotes = acceptanceNotes?.trim() || null;
+
 	const book = await db.$transaction(async (tx) => {
 		const existing = await tx.book.findUnique({
-			where: { olid: input.olid },
+			where: { olid: bookInput.olid },
 			select: { slug: true },
 		});
 
 		if (existing) {
 			throw new ORPCError("CONFLICT", {
 				message: "A book with this Open Library ID is already in the catalog",
-				data: { olid: input.olid, slug: existing.slug },
+				data: { olid: bookInput.olid, slug: existing.slug },
 			});
 		}
 
-		const slug = await generateBookSlug(input.title, tx);
+		const slug = await generateBookSlug(bookInput.title, tx);
 
-		return tx.book.create({
+		const book = await tx.book.create({
 			data: {
-				...input,
-				subjectPeople: input.subjectPeople ?? [],
-				subjectTimes: input.subjectTimes ?? [],
-				subjects: input.subjects ?? [],
+				...bookInput,
+				subjectPeople: bookInput.subjectPeople ?? [],
+				subjectTimes: bookInput.subjectTimes ?? [],
+				subjects: bookInput.subjects ?? [],
 				slug,
 			},
 			select: {
 				slug: true,
 			},
 		});
+
+		await tx.bookRequest.updateMany({
+			where: { olid: bookInput.olid, status: "pending" },
+			data: {
+				status: "accepted",
+				acceptanceNotes: trimmedAcceptanceNotes,
+				rejectionReason: null,
+			},
+		});
+
+		return book;
 	});
 
 	void notifyBookAddedToLibrary(db, book.slug);
