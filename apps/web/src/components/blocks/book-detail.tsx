@@ -15,6 +15,7 @@ import { BookDeleteButton } from "@/components/blocks/book-delete-button";
 import { BookEditLink } from "@/components/blocks/book-edit-link";
 import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
 import { BookFeedbackSection } from "@/components/blocks/book-feedback-section";
+import { BookShelvesSection } from "@/components/blocks/book-shelves-section";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { BookSubjectGroup } from "@/components/blocks/book-subject-group";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
@@ -153,6 +154,10 @@ export function BookDetail({ book, initialReviews }: BookDetailProps) {
 					</section>
 				</>
 			) : null}
+
+			<Separator />
+
+			<BookShelvesSection bookSlug={book.slug} />
 
 			<Separator />
 

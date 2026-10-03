@@ -55,6 +55,7 @@ function mapAdminUserRow(row: AdminUserListRow) {
 			feedbacks: row._count.feedbacks,
 			participations: row._count.participations,
 			favorites: row._count.favorites,
+			shelves: row._count.shelves,
 		},
 	};
 }
@@ -234,6 +235,7 @@ export async function getAdminUserStats(
 		feedbackCount,
 		participationCount,
 		favoriteCount,
+		shelfCount,
 		recentUsers,
 	] = await Promise.all([
 		db.user.count(),
@@ -247,6 +249,7 @@ export async function getAdminUserStats(
 		db.feedback.count(),
 		db.participation.count(),
 		db.favorite.count(),
+		db.shelf.count(),
 		db.user.findMany({
 			where: { createdAt: { gte: since } },
 			select: { createdAt: true },
@@ -283,6 +286,7 @@ export async function getAdminUserStats(
 			feedbacks: feedbackCount,
 			participations: participationCount,
 			favorites: favoriteCount,
+			shelves: shelfCount,
 		},
 		signupsByDay: [...countsByDay.entries()].map(([date, count]) => ({
 			date,

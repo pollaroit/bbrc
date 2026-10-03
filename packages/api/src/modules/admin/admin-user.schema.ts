@@ -21,6 +21,7 @@ export const AdminUserCountsSchema = zod.object({
 	feedbacks: zod.number().int().min(0),
 	participations: zod.number().int().min(0),
 	favorites: zod.number().int().min(0),
+	shelves: zod.number().int().min(0),
 });
 
 export const AdminUserListItemSchema = UserSchema.pick({
@@ -72,6 +73,7 @@ export const AdminUserStatsOutputSchema = zod.object({
 		feedbacks: zod.number().int().min(0),
 		participations: zod.number().int().min(0),
 		favorites: zod.number().int().min(0),
+		shelves: zod.number().int().min(0),
 	}),
 	signupsByDay: zod.array(
 		zod.object({
@@ -176,6 +178,7 @@ export const adminUserListSelect = {
 			feedbacks: true,
 			participations: true,
 			favorites: true,
+			shelves: true,
 		},
 	},
 } as const;

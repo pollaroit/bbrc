@@ -11,6 +11,7 @@ import { likeRouter } from "./modules/like/like.router";
 import { notificationRouter } from "./modules/notification/notification.router";
 import { postRouter } from "./modules/post/post.router";
 import { rpRouter } from "./modules/rp/rp.router";
+import { shelfRouter } from "./modules/shelf/shelf.router";
 import { sittingRouter } from "./modules/sitting/sitting.router";
 import { userRouter } from "./modules/user/user.router";
 import { xpRouter } from "./modules/xp/xp.router";
@@ -26,6 +27,7 @@ export const appRouter = {
 	like: likeRouter,
 	notification: notificationRouter,
 	post: postRouter,
+	shelf: shelfRouter,
 	sitting: sittingRouter,
 	user: userRouter,
 	rp: rpRouter,

@@ -173,6 +173,21 @@ export async function awardBookRequestXp(
 	);
 }
 
+export async function awardShelfXp(
+	input: { userId: string; shelfId: string },
+	tx: DatabaseTransaction,
+): Promise<boolean> {
+	return tryAwardXp(
+		{
+			userId: input.userId,
+			reason: "shelf",
+			entityId: input.shelfId,
+			points: XP_AWARD.shelf,
+		},
+		tx,
+	);
+}
+
 async function loadXpUser(username: string, db: Database) {
 	const user = await db.user.findUnique({
 		where: { username },

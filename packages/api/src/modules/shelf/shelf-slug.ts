@@ -1,0 +1,43 @@
+import type { Database, DatabaseTransaction } from "@bbrc/db";
+import { generateUniqueSlug } from "@bbrc/shared";
+
+const SHELF_SLUG_MIN_LENGTH = 3;
+
+async function isShelfSlugAvailable(
+	userId: string,
+	slug: string,
+	db: Database | DatabaseTransaction,
+): Promise<boolean> {
+	const existing = await db.shelf.findUnique({
+		where: { userId_slug: { userId, slug } },
+		select: { id: true },
+	});
+	return existing == null;
+}
+
+export async function generateShelfSlug(
+	title: string,
+	userId: string,
+	db: Database | DatabaseTransaction,
+): Promise<string> {
+	const trimmed = title.trim();
+	const seeds =
+		trimmed.length >= SHELF_SLUG_MIN_LENGTH
+			? [trimmed, "my-shelf"]
+			: ["my-shelf"];
+
+	for (const seed of seeds) {
+		try {
+			const slug = await generateUniqueSlug(seed, (candidate) =>
+				isShelfSlugAvailable(userId, candidate, db),
+			);
+			if (slug.length >= SHELF_SLUG_MIN_LENGTH) {
+				return slug;
+			}
+		} catch {
+			// try next seed
+		}
+	}
+
+	throw new Error("Failed to generate shelf slug");
+}
