@@ -17,7 +17,7 @@ export async function buildAppSitemap(
 ): Promise<MetadataRoute.Sitemap> {
 	const now = new Date();
 
-	const [books, posts, sittings, users] = await Promise.all([
+	const [books, posts, sittings, users, shelves] = await Promise.all([
 		db.book.findMany({
 			select: { slug: true, updatedAt: true },
 			orderBy: { updatedAt: "desc" },
@@ -32,6 +32,15 @@ export async function buildAppSitemap(
 		}),
 		db.user.findMany({
 			select: { username: true, updatedAt: true },
+			orderBy: { updatedAt: "desc" },
+		}),
+		db.shelf.findMany({
+			select: {
+				slug: true,
+				updatedAt: true,
+				user: { select: { username: true } },
+			},
+			where: { status: "active" },
 			orderBy: { updatedAt: "desc" },
 		}),
 	]);
@@ -65,6 +74,14 @@ export async function buildAppSitemap(
 				user.updatedAt,
 				"monthly",
 				0.5,
+			),
+		),
+		...shelves.map((shelf) =>
+			entry(
+				absoluteUrl(`/users/${shelf.user.username}/shelves/${shelf.slug}`),
+				shelf.updatedAt,
+				"monthly",
+				0.75,
 			),
 		),
 	];
