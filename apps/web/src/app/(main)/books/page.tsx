@@ -5,11 +5,21 @@ import { LibraryBookActionLink } from "@/components/blocks/library-book-action-l
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = buildPageMetadata({
+const booksPageMetadata = buildPageMetadata({
 	title: "Books",
 	description: "Browse the BBRC library and club reading list.",
 	path: "/books",
 });
+
+export const metadata: Metadata = {
+	...booksPageMetadata,
+	alternates: {
+		...booksPageMetadata.alternates,
+		types: {
+			"application/rss+xml": "/feed/books",
+		},
+	},
+};
 
 export const dynamic = "force-static";
 

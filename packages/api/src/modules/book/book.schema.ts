@@ -21,31 +21,43 @@ export {
 	bookSortableFields,
 } from "./book.listing";
 
-/** LIST — composed as a concrete ZodObject so oRPC clients get input autocomplete. */
-export const GetBookListInputSchema = bookListFiltersSchema
-	.extend(CursorPaginationInputSchema.shape)
+export const bookListQueryInputShape = bookListFiltersSchema
 	.extend(bookListSorting.inputSchema.shape)
 	.extend(bookListRanging.inputSchema.shape)
-	.extend(bookListSearching.inputSchema.shape)
-	.superRefine((value, ctx) => {
-		refineRangingBounds(
-			{ rangeMin: value.rangeMin, rangeMax: value.rangeMax },
-			ctx,
-		);
+	.extend(bookListSearching.inputSchema.shape);
 
-		if (
-			value.maxOpenLibraryRating != null &&
-			value.minOpenLibraryRating != null &&
-			value.maxOpenLibraryRating < value.minOpenLibraryRating
-		) {
-			ctx.addIssue({
-				code: "custom",
-				message:
-					"Maximum Open Library rating must be greater than or equal to minimum",
-				path: ["maxOpenLibraryRating"],
-			});
-		}
-	});
+export function refineBookListQueryInput(
+	value: z.infer<typeof bookListQueryInputShape>,
+	ctx: z.RefinementCtx,
+) {
+	refineRangingBounds(
+		{ rangeMin: value.rangeMin, rangeMax: value.rangeMax },
+		ctx,
+	);
+
+	if (
+		value.maxOpenLibraryRating != null &&
+		value.minOpenLibraryRating != null &&
+		value.maxOpenLibraryRating < value.minOpenLibraryRating
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message:
+				"Maximum Open Library rating must be greater than or equal to minimum",
+			path: ["maxOpenLibraryRating"],
+		});
+	}
+}
+
+/** Filters, sort, range, and search — no pagination cursor. */
+export const BookListQueryInputSchema = bookListQueryInputShape.superRefine(
+	refineBookListQueryInput,
+);
+
+/** LIST — composed as a concrete ZodObject so oRPC clients get input autocomplete. */
+export const GetBookListInputSchema = bookListQueryInputShape
+	.extend(CursorPaginationInputSchema.shape)
+	.superRefine(refineBookListQueryInput);
 
 export const getBookListFields = {
 	slug: true,

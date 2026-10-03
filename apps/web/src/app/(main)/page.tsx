@@ -6,11 +6,21 @@ import { buildPageMetadata } from "@/lib/seo";
 
 export const revalidate = 60;
 
-export const metadata = buildPageMetadata({
+const homeMetadata = buildPageMetadata({
 	title: "Feed",
 	description: "Club activity and the current reading sitting at a glance.",
 	path: "/",
 });
+
+export const metadata = {
+	...homeMetadata,
+	alternates: {
+		...homeMetadata.alternates,
+		types: {
+			"application/rss+xml": "/feed/posts",
+		},
+	},
+};
 
 export default async function HomePage() {
 	const ongoing = await loadOngoingSittingForIsr();

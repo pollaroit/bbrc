@@ -49,5 +49,11 @@ export const bookListFiltersSchema = z
 		minOpenLibraryRating: z.number().min(0).max(5),
 		maxOpenLibraryRating: z.number().min(0).max(5),
 		statuses: z.array(BookStatusSchema),
+		/** Completed club read for the authenticated viewer. */
+		viewerRead: z.boolean(),
+		/** Favorited by the authenticated viewer. */
+		viewerFavorite: z.boolean(),
+		/** Reviewed (feedback) by the authenticated viewer. */
+		viewerReviewed: z.boolean(),
 	})
 	.partial();

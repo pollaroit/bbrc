@@ -1,5 +1,5 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
-import { revalidatePostIsr } from "../../revalidate-isr";
+import { revalidateFeedsIsr, revalidatePostIsr } from "../../revalidate-isr";
 import {
 	CreatePostInputSchema,
 	CreatePostOutputSchema,
@@ -39,6 +39,7 @@ export const postRouter = {
 		.handler(async ({ input, context }) => {
 			const post = await createPost(input, context.session.user.id, context.db);
 			revalidatePostIsr(context, post.slug);
+			revalidateFeedsIsr(context);
 			return post;
 		}),
 	update: notBannedProcedure
@@ -47,6 +48,7 @@ export const postRouter = {
 		.handler(async ({ input, context }) => {
 			const post = await updatePost(input, context.session.user.id, context.db);
 			revalidatePostIsr(context, post.slug);
+			revalidateFeedsIsr(context);
 			return post;
 		}),
 	delete: notBannedProcedure
@@ -59,6 +61,7 @@ export const postRouter = {
 				context.db,
 			);
 			revalidatePostIsr(context, result.slug);
+			revalidateFeedsIsr(context);
 			return result;
 		}),
 };

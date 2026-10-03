@@ -22,6 +22,10 @@ export function revalidateHomeIsr(context: Context) {
 	context.revalidateIsr?.revalidateHome();
 }
 
+export function revalidateFeedsIsr(context: Context) {
+	context.revalidateIsr?.revalidateFeeds();
+}
+
 export async function revalidateCommentIsr(
 	context: Context,
 	db: Database,

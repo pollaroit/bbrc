@@ -1,6 +1,6 @@
 import { BookSchema } from "@bbrc/schemas";
 import { adminProcedure, publicProcedure } from "../../procedures";
-import { revalidateBookIsr } from "../../revalidate-isr";
+import { revalidateBookIsr, revalidateFeedsIsr } from "../../revalidate-isr";
 import {
 	AddBookInputSchema,
 	AddBookOutputSchema,
@@ -17,6 +17,11 @@ import {
 	removeBook,
 	updateBook,
 } from "./book.service";
+import {
+	ExportBookListInputSchema,
+	ExportBookListOutputSchema,
+} from "./book-export.schema";
+import { exportBookList } from "./book-export.service";
 import {
 	ListCatalogOlidsOutputSchema,
 	RecommendOpenLibraryBooksOutputSchema,
@@ -46,7 +51,15 @@ export const bookRouter = {
 		.input(GetBookListInputSchema)
 		.output(GetBookListOutputSchema)
 		.handler(
-			async ({ input, context }) => await getBookList(input, context.db),
+			async ({ input, context }) =>
+				await getBookList(input, context.db, context.session?.user?.id),
+		),
+	exportBookList: publicProcedure
+		.input(ExportBookListInputSchema)
+		.output(ExportBookListOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await exportBookList(input, context.db, context.session?.user?.id),
 		),
 	getBookBySlug: publicProcedure
 		.input(BookSchema.shape.slug)
@@ -60,6 +73,7 @@ export const bookRouter = {
 		.handler(async ({ input, context }) => {
 			const book = await addBook(input, context.db);
 			revalidateBookIsr(context, book.slug);
+			revalidateFeedsIsr(context);
 			return book;
 		}),
 	updateBook: adminProcedure
@@ -76,6 +90,7 @@ export const bookRouter = {
 		.handler(async ({ input, context }) => {
 			const slug = await removeBook(input, context.db);
 			revalidateBookIsr(context, slug);
+			revalidateFeedsIsr(context);
 			return slug;
 		}),
 	recommendOpenLibrary: adminProcedure

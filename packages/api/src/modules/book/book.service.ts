@@ -1,13 +1,8 @@
 import type { Database, Prisma } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
-import { mergeWhereFragments } from "../../utils/searching";
 import { notifyBookAddedToLibrary } from "../notification/notification-triggers";
-import {
-	bookListRanging,
-	bookListSearching,
-	bookListSorting,
-} from "./book.listing";
+import { bookListSorting } from "./book.listing";
 import {
 	type GetBookListInput,
 	type GetBookListOutput,
@@ -17,6 +12,7 @@ import {
 	type TUpdateBookInputSchema,
 	type TUpdateBookOutputSchema,
 } from "./book.schema";
+import { buildBookListWhere } from "./book-list-where";
 import { generateBookSlug } from "./book-slug";
 
 type BookListRow = Prisma.BookGetPayload<{
@@ -42,26 +38,12 @@ function withStableSlugOrderBy(
 export async function getBookList(
 	input: GetBookListInput,
 	db: Database,
+	viewerUserId?: string,
 ): Promise<GetBookListOutput> {
 	const pagination = definePagination.cursor(input, bookListCursorCodec);
 	const sorting = bookListSorting.from(input);
-	const ranging = bookListRanging.from(input);
-	const searching = bookListSearching.from(input);
 
-	const where = mergeWhereFragments<Prisma.BookWhereInput>(
-		ranging.use(),
-		searching.use(),
-		{
-			status: input.statuses ? { in: input.statuses } : undefined,
-			openLibraryRating:
-				input.minOpenLibraryRating == null && input.maxOpenLibraryRating == null
-					? undefined
-					: {
-							gte: input.minOpenLibraryRating ?? undefined,
-							lte: input.maxOpenLibraryRating ?? undefined,
-						},
-		},
-	);
+	const where = buildBookListWhere(input, viewerUserId);
 
 	const rows = await db.book.findMany({
 		...pagination.use(),

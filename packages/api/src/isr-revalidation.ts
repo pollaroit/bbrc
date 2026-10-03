@@ -5,4 +5,5 @@ export type IsrRevalidator = {
 	revalidatePost: (slug: string) => void;
 	revalidateUser: (username: string) => void;
 	revalidateHome: () => void;
+	revalidateFeeds: () => void;
 };

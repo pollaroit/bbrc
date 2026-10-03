@@ -12,6 +12,7 @@ import {
 import { buildListCallInput } from "@/lib/listing/build-list-call-input";
 import type { FieldLabels } from "@/lib/listing/labels";
 import {
+	booleanFilterParser,
 	createRangeByParser,
 	createSortByParser,
 	rangeMaxParser,
@@ -62,7 +63,16 @@ export const bookListingSearchParams = {
 	}),
 	minOpenLibraryRating: parseAsFloat.withOptions({ shallow: false }),
 	maxOpenLibraryRating: parseAsFloat.withOptions({ shallow: false }),
+	viewerRead: booleanFilterParser.withOptions({ shallow: false }),
+	viewerFavorite: booleanFilterParser.withOptions({ shallow: false }),
+	viewerReviewed: booleanFilterParser.withOptions({ shallow: false }),
 };
+
+export const viewerBookFilterLabels = {
+	viewerRead: "Read",
+	viewerFavorite: "Favorite",
+	viewerReviewed: "Reviewed",
+} as const;
 
 export function useBookListingSearchParams() {
 	return useQueryStates(bookListingSearchParams, { shallow: false });
@@ -85,8 +95,19 @@ export function toBookListCallInput(
 		statuses: params.statuses,
 		minOpenLibraryRating: params.minOpenLibraryRating,
 		maxOpenLibraryRating: params.maxOpenLibraryRating,
+		viewerRead: params.viewerRead === true ? true : undefined,
+		viewerFavorite: params.viewerFavorite === true ? true : undefined,
+		viewerReviewed: params.viewerReviewed === true ? true : undefined,
 		limit: 24,
 	}) as Partial<GetBookListInput>;
+}
+
+export function toBookExportCallInput(
+	params: BookListingSearchParams,
+): Partial<GetBookListInput> {
+	const listInput = toBookListCallInput(params);
+	const { limit: _limit, ...rest } = listInput;
+	return rest;
 }
 
 export function countBookSheetFilters(params: BookListingSearchParams): number {
@@ -107,6 +128,18 @@ export function countBookSheetFilters(params: BookListingSearchParams): number {
 		count += 1;
 	}
 
+	if (params.viewerRead === true) {
+		count += 1;
+	}
+
+	if (params.viewerFavorite === true) {
+		count += 1;
+	}
+
+	if (params.viewerReviewed === true) {
+		count += 1;
+	}
+
 	return count;
 }
 
@@ -120,5 +153,8 @@ export function clearBookSheetFilters(
 		rangeBy: null,
 		rangeMin: null,
 		rangeMax: null,
+		viewerRead: null,
+		viewerFavorite: null,
+		viewerReviewed: null,
 	});
 }

@@ -4,12 +4,14 @@ import {
 	bookRangeableFields,
 	bookSortableFields,
 } from "@bbrc/api/modules/book/book.listing";
+import { BooksListExportMenu } from "@/components/blocks/books-list-export-menu";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
 import { ListingRangeFields } from "@/components/listing/listing-range-fields";
 import { ListingRatingRangeFields } from "@/components/listing/listing-rating-range-fields";
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
+import { authClient } from "@/lib/auth-client";
 import {
 	type BookListingStatus,
 	bookRangeByLabels,
@@ -19,11 +21,28 @@ import {
 	clearBookSheetFilters,
 	countBookSheetFilters,
 	useBookListingSearchParams,
+	viewerBookFilterLabels,
 } from "@/lib/listing/books-listing";
+
+const viewerFilterKeys = [
+	"viewerRead",
+	"viewerFavorite",
+	"viewerReviewed",
+] as const;
 
 export function BooksListingToolbar() {
 	const [params, setParams] = useBookListingSearchParams();
+	const { data: session } = authClient.useSession();
 	const sheetFilterCount = countBookSheetFilters(params);
+
+	const toggleViewerFilter = (
+		key: (typeof viewerFilterKeys)[number],
+		checked: boolean,
+	) => {
+		void setParams({
+			[key]: checked ? true : null,
+		});
+	};
 
 	const toggleStatus = (status: BookListingStatus, checked: boolean) => {
 		const current = params.statuses ?? [];
@@ -60,12 +79,28 @@ export function BooksListingToolbar() {
 					sortByLabels={bookSortByLabels}
 				/>
 
+				<BooksListExportMenu />
+
 				<ListingFiltersSheet
 					title="Book filters"
-					description="Filter by status, rating, or date."
+					description="Filter by status, rating, date, or your library."
 					activeFilterCount={sheetFilterCount}
 					onClear={() => clearBookSheetFilters(setParams)}
 				>
+					{session?.user ? (
+						<ListingCheckboxList
+							legend="Your library"
+							options={viewerFilterKeys.map((key) => ({
+								id: key,
+								label: viewerBookFilterLabels[key],
+								checked: params[key] === true,
+								onCheckedChange: (checked) => {
+									toggleViewerFilter(key, checked);
+								},
+							}))}
+						/>
+					) : null}
+
 					<ListingCheckboxList
 						legend="Status"
 						options={bookStatuses.map((status) => ({

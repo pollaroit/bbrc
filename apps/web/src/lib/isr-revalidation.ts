@@ -33,5 +33,10 @@ export function createIsrRevalidator(): IsrRevalidator {
 		revalidateHome() {
 			revalidatePath("/");
 		},
+		revalidateFeeds() {
+			revalidatePath("/feed");
+			revalidatePath("/feed/posts");
+			revalidatePath("/feed/books");
+		},
 	};
 }
