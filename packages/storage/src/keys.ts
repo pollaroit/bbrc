@@ -1,0 +1,38 @@
+import type { StorageEnv } from "./env";
+
+export type ObjectKeyParams =
+	| { kind: "avatar"; username: string }
+	| { kind: "post-image"; postSlug: string }
+	| { kind: "comment-image"; commentSlug: string }
+	| {
+			kind: "shelf-cover";
+			username: string;
+			shelfSlug: string;
+	  }
+	| {
+			kind: "book-document";
+			bookSlug: string;
+			documentSlug: string;
+	  };
+
+export function buildObjectKey(
+	storageEnv: StorageEnv,
+	params: ObjectKeyParams,
+): string {
+	switch (params.kind) {
+		case "avatar":
+			return `${storageEnv}/users/${params.username}/avatar.jpg`;
+		case "post-image":
+			return `${storageEnv}/posts/${params.postSlug}/image.png`;
+		case "comment-image":
+			return `${storageEnv}/comments/${params.commentSlug}/image.png`;
+		case "shelf-cover":
+			return `${storageEnv}/users/${params.username}/shelves/${params.shelfSlug}/image.png`;
+		case "book-document":
+			return `${storageEnv}/books/${params.bookSlug}/documents/${params.documentSlug}.pdf`;
+		default: {
+			const _exhaustive: never = params;
+			return _exhaustive;
+		}
+	}
+}

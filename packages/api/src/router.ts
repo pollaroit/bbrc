@@ -13,6 +13,7 @@ import { postRouter } from "./modules/post/post.router";
 import { rpRouter } from "./modules/rp/rp.router";
 import { shelfRouter } from "./modules/shelf/shelf.router";
 import { sittingRouter } from "./modules/sitting/sitting.router";
+import { storageRouter } from "./modules/storage/storage.router";
 import { userRouter } from "./modules/user/user.router";
 import { xpRouter } from "./modules/xp/xp.router";
 
@@ -28,6 +29,7 @@ export const appRouter = {
 	notification: notificationRouter,
 	post: postRouter,
 	shelf: shelfRouter,
+	storage: storageRouter,
 	sitting: sittingRouter,
 	user: userRouter,
 	rp: rpRouter,

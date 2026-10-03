@@ -4,6 +4,30 @@ const withVarlock = varlockNextConfigPlugin();
 
 import type { NextConfig } from "next";
 
+function r2ImageRemotePattern():
+	| { protocol: "https"; hostname: string; pathname: string }
+	| undefined {
+	const raw = process.env.R2_PUBLIC_BASE_URL?.trim();
+	if (!raw) {
+		return undefined;
+	}
+	try {
+		const url = new URL(raw);
+		if (url.protocol !== "https:") {
+			return undefined;
+		}
+		return {
+			protocol: "https",
+			hostname: url.hostname,
+			pathname: "/**",
+		};
+	} catch {
+		return undefined;
+	}
+}
+
+const r2Pattern = r2ImageRemotePattern();
+
 const nextConfig: NextConfig = {
 	typedRoutes: true,
 	reactCompiler: true,
@@ -23,6 +47,7 @@ const nextConfig: NextConfig = {
 				hostname: "covers.openlibrary.org",
 				pathname: "/b/id/**",
 			},
+			...(r2Pattern ? [r2Pattern] : []),
 		],
 	},
 };

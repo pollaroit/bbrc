@@ -14,6 +14,7 @@
 		"@bbrc/shared": "workspace:*",
 		"@bbrc/db": "workspace:*",
 		"@bbrc/schemas": "workspace:*",
+		"@bbrc/storage": "workspace:*",
 		"@orpc/client": "catalog:",
 		"@orpc/openapi": "catalog:",
 		"@orpc/server": "catalog:",
