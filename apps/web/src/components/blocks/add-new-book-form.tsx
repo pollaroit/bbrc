@@ -214,6 +214,9 @@ function AddBookDetailsForm({
 				void queryClient.invalidateQueries({
 					queryKey: orpc.bookRequest.listMine.key(),
 				});
+				void queryClient.invalidateQueries({
+					queryKey: orpc.book.listCatalogOlids.key(),
+				});
 				toast.success("Book added to the library.");
 				if (addMoreRef.current) {
 					onAddAnother();

@@ -17,6 +17,29 @@ import {
 	removeBook,
 	updateBook,
 } from "./book.service";
+import {
+	ListCatalogOlidsOutputSchema,
+	RecommendOpenLibraryBooksOutputSchema,
+	RecommendOpenLibraryReplaceInputSchema,
+	RecommendOpenLibraryReplaceOutputSchema,
+} from "./book-recommendation.schema";
+import {
+	invalidateRecommendationCache,
+	listCatalogOlids,
+	recommendOpenLibraryBooks,
+	replaceBookRecommendation,
+} from "./book-recommendation.service";
+import {
+	BlockOpenLibraryWorkInputSchema,
+	ListBlockedOpenLibraryWorksOutputSchema,
+	OpenLibraryOlidResultSchema,
+	UnblockOpenLibraryWorkInputSchema,
+} from "./book-recommendation-block.schema";
+import {
+	blockOpenLibraryWork,
+	listBlockedOpenLibraryWorks,
+	unblockOpenLibraryWork,
+} from "./book-recommendation-block.service";
 
 export const bookRouter = {
 	getBookList: publicProcedure
@@ -54,5 +77,42 @@ export const bookRouter = {
 			const slug = await removeBook(input, context.db);
 			revalidateBookIsr(context, slug);
 			return slug;
+		}),
+	recommendOpenLibrary: adminProcedure
+		.output(RecommendOpenLibraryBooksOutputSchema)
+		.handler(async ({ context }) => recommendOpenLibraryBooks(context.db)),
+	recommendOpenLibraryReplace: adminProcedure
+		.input(RecommendOpenLibraryReplaceInputSchema)
+		.output(RecommendOpenLibraryReplaceOutputSchema)
+		.handler(async ({ input, context }) => ({
+			item: await replaceBookRecommendation(context.db, input),
+		})),
+	listCatalogOlids: adminProcedure
+		.output(ListCatalogOlidsOutputSchema)
+		.handler(async ({ context }) => ({
+			olids: await listCatalogOlids(context.db),
+		})),
+	listBlockedOpenLibraryWorks: adminProcedure
+		.output(ListBlockedOpenLibraryWorksOutputSchema)
+		.handler(async ({ context }) => listBlockedOpenLibraryWorks(context.db)),
+	blockOpenLibraryWork: adminProcedure
+		.input(BlockOpenLibraryWorkInputSchema)
+		.output(OpenLibraryOlidResultSchema)
+		.handler(async ({ input, context }) => {
+			const result = await blockOpenLibraryWork(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			invalidateRecommendationCache();
+			return result;
+		}),
+	unblockOpenLibraryWork: adminProcedure
+		.input(UnblockOpenLibraryWorkInputSchema)
+		.output(OpenLibraryOlidResultSchema)
+		.handler(async ({ input, context }) => {
+			const result = await unblockOpenLibraryWork(input.olid, context.db);
+			invalidateRecommendationCache();
+			return result;
 		}),
 };

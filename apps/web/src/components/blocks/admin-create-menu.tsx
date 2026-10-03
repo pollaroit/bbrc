@@ -48,6 +48,12 @@ export function AdminCreateMenu() {
 						<BookPlus className="size-4" aria-hidden="true" />
 						Add book
 					</DropdownMenuItem>
+					<DropdownMenuItem
+						render={<Link href={"/books/blocked" as Route} />}
+						nativeButton={false}
+					>
+						Blocked OL works
+					</DropdownMenuItem>
 					{showStartSitting ? (
 						<DropdownMenuItem
 							render={<Link href={"/sittings/new" as Route} />}

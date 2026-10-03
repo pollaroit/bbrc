@@ -39,6 +39,7 @@ model User {
   comments     Comment[]
   posts        Post[]
   bookRequests BookRequest[]
+  blockedOpenLibraryWorks BlockedOpenLibraryWork[]
   favorites    Favorite[]
   notifications            Notification[]
   notificationPreferences NotificationPreference[]

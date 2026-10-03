@@ -2,6 +2,7 @@ import { Button } from "@bbrc/ui/components/button";
 import { ArrowLeft } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { AdminBookRecommendationsSheet } from "@/components/blocks/admin-book-recommendations-sheet";
 
 export function AddBookPageHeader() {
 	return (
@@ -16,13 +17,16 @@ export function AddBookPageHeader() {
 				<ArrowLeft className="size-4" />
 				Back to books
 			</Button>
-			<div className="space-y-1.5">
-				<h1 className="font-bold text-2xl tracking-tight">Add book</h1>
-				<p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
-					Search Open Library for a work, then fill in club-specific details
-					(pages and optional rating). Cover and bibliographic fields come from
-					Open Library.
-				</p>
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div className="space-y-1.5">
+					<h1 className="font-bold text-2xl tracking-tight">Add book</h1>
+					<p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
+						Search Open Library for a work, then fill in club-specific details
+						(pages and optional rating). Cover and bibliographic fields come
+						from Open Library.
+					</p>
+				</div>
+				<AdminBookRecommendationsSheet />
 			</div>
 		</header>
 	);

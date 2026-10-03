@@ -1,0 +1,19 @@
+model BlockedOpenLibraryWork {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// @zod.import(["import { isOpenLibraryOlid } from '@bbrc/shared'"])
+  /// @zod.refine((v) => isOpenLibraryOlid(v), { message: "Invalid Open Library work ID" })
+  olid String @unique
+
+  /// @zod.max(255).nullish()
+  title String?
+
+  /// @zod.uuid("Invalid user id")
+  blockedByUserId String @map("blocked_by_user_id")
+  blockedByUser   User   @relation(fields: [blockedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([blockedByUserId])
+  @@map("blocked_open_library_work")
+}
