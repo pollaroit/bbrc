@@ -24,7 +24,8 @@ export function PostAttachedImage({
 		<div
 			className={cn(
 				"flex w-full min-w-0 justify-center border border-border bg-muted/20",
-				edgeToEdge && "-mx-6 w-[calc(100%+3rem)] border-x-0",
+				edgeToEdge &&
+					"-mx-(--card-spacing) w-[calc(100%+var(--card-spacing)*2)] max-w-none border-x-0",
 				!edgeToEdge && "overflow-hidden",
 				className,
 			)}
