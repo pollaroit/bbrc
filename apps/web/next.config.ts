@@ -1,8 +1,9 @@
+import { withSerwist } from "@serwist/turbopack";
 import { varlockNextConfigPlugin } from "@varlock/nextjs-integration/plugin";
 
-const withVarlock = varlockNextConfigPlugin();
-
 import type { NextConfig } from "next";
+
+const withVarlock = varlockNextConfigPlugin();
 
 function r2ImageRemotePattern():
 	| { protocol: "https"; hostname: string; pathname: string }
@@ -52,4 +53,4 @@ const nextConfig: NextConfig = {
 	},
 };
 
-export default withVarlock(nextConfig);
+export default withVarlock(withSerwist(nextConfig));

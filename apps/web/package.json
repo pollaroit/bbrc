@@ -47,11 +47,14 @@
 	},
 	"devDependencies": {
 		"@bbrc/config": "workspace:*",
+		"@serwist/turbopack": "^9.5.13",
 		"@tailwindcss/postcss": "catalog:",
 		"@tanstack/react-query-devtools": "^5.102.8",
 		"@types/node": "catalog:",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
+		"esbuild": "^0.28.2",
+		"serwist": "^9.5.13",
 		"tailwindcss": "catalog:",
 		"typescript": "catalog:"
 	}

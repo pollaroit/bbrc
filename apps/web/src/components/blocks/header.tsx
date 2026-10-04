@@ -17,6 +17,7 @@ import { Suspense, useState } from "react";
 import { AdminCreateMenu } from "@/components/blocks/admin-create-menu";
 import { HeaderAuthLinks } from "@/components/blocks/header-auth-links";
 import { HeaderOngoingReadButton } from "@/components/blocks/header-ongoing-read-button";
+import { Logo } from "@/components/blocks/logo";
 import { NotificationBell } from "@/components/blocks/notification-bell";
 import { UserMenu } from "@/components/blocks/user-menu";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -44,7 +45,7 @@ export default function Header() {
 			<div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-6 px-6">
 				<div className="flex shrink-0 items-center gap-2">
 					<Link href="/" className="flex items-center gap-2.5">
-						<span className="font-bold text-base tracking-tight">BBRC</span>
+						<Logo className="size-7" label="" />
 					</Link>
 					<div className="md:hidden">
 						<HeaderOngoingReadButton />
@@ -94,7 +95,7 @@ export default function Header() {
 						<SheetContent side="right" className="w-3/4 max-w-xs">
 							<SheetHeader>
 								<SheetTitle className="flex items-center gap-2.5">
-									BBRC
+									<Logo className="size-6" label="" />
 								</SheetTitle>
 							</SheetHeader>
 
