@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { PollOptionVotersDialog } from "@/components/blocks/poll-option-voters-dialog";
+import { PollVotesByVoterSection } from "@/components/blocks/poll-votes-by-voter-section";
 import { authClient } from "@/lib/auth-client";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
@@ -463,6 +464,10 @@ export function SittingPollSection({
 						setAdminVotersOptionId(null);
 					}}
 				/>
+			) : null}
+
+			{isAdmin && layout === "page" ? (
+				<PollVotesByVoterSection sittingSlug={sittingSlug} />
 			) : null}
 		</>
 	);

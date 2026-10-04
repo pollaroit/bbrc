@@ -46,6 +46,8 @@ import {
 	type GetOngoingSittingOutput,
 	type GetPollOptionVotesInput,
 	type GetPollOptionVotesOutput,
+	type GetPollVotesByUserInput,
+	type GetPollVotesByUserOutput,
 	type GetSittingBySlugOutput,
 	type GetSittingListInput,
 	type GetSittingListOutput,
@@ -1442,4 +1444,82 @@ export async function getPollOptionVotes(
 			maxChoices,
 		})),
 	};
+}
+
+export async function getPollVotesByUser(
+	input: GetPollVotesByUserInput,
+	db: Database,
+): Promise<GetPollVotesByUserOutput> {
+	const sitting = await db.sitting.findUnique({
+		where: { slug: input.sittingSlug },
+		select: {
+			poll: {
+				select: {
+					id: true,
+					maxChoices: true,
+					take: true,
+				},
+			},
+		},
+	});
+
+	if (!sitting?.poll) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Poll not found for this sitting",
+			data: { sittingSlug: input.sittingSlug },
+		});
+	}
+
+	const maxChoices = sitting.poll.maxChoices ?? sitting.poll.take;
+
+	const votes = await db.pollVote.findMany({
+		where: { option: { pollId: sitting.poll.id } },
+		orderBy: [{ user: { username: "asc" } }, { createdAt: "asc" }],
+		select: {
+			userId: true,
+			createdAt: true,
+			optionId: true,
+			user: {
+				select: {
+					username: true,
+					name: true,
+					image: true,
+					status: true,
+				},
+			},
+			option: {
+				select: {
+					book: {
+						select: { title: true },
+					},
+				},
+			},
+		},
+	});
+
+	const voters: GetPollVotesByUserOutput["voters"] = [];
+	const indexByUserId = new Map<string, number>();
+
+	for (const vote of votes) {
+		const choice = {
+			pollOptionId: vote.optionId,
+			bookTitle: vote.option.book.title,
+			votedAt: vote.createdAt,
+		};
+
+		const existingIndex = indexByUserId.get(vote.userId);
+		if (existingIndex == null) {
+			indexByUserId.set(vote.userId, voters.length);
+			voters.push({
+				user: vote.user,
+				choices: [choice],
+				maxChoices,
+			});
+			continue;
+		}
+
+		voters[existingIndex]?.choices.push(choice);
+	}
+
+	return { maxChoices, voters };
 }

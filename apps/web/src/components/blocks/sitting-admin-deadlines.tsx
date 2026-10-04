@@ -1,8 +1,17 @@
 "use client";
 
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
-import { clampSittingDeadlineToClubEnd } from "@bbrc/shared";
+import {
+	calculateSittingReadingDeadline,
+	clampSittingDeadlineToClubEnd,
+} from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupInput,
+} from "@bbrc/ui/components/input-group";
 import {
 	Sheet,
 	SheetContent,
@@ -34,6 +43,9 @@ export function SittingAdminDeadlines({ sitting }: SittingAdminDeadlinesProps) {
 		sitting.poll?.deadline ?? new Date(),
 	);
 	const [sittingDeadline, setSittingDeadline] = useState(sitting.deadline);
+	const [pageCountInput, setPageCountInput] = useState("");
+	const [calculatedDeadlineInPast, setCalculatedDeadlineInPast] =
+		useState(false);
 
 	useEffect(() => {
 		if (!open) {
@@ -49,7 +61,11 @@ export function SittingAdminDeadlines({ sitting }: SittingAdminDeadlinesProps) {
 		setSittingDeadline(
 			clampSittingDeadlineToClubEnd(sitting.deadline, clubTimeZone),
 		);
-	}, [open, sitting.deadline, sitting.poll]);
+		setPageCountInput(
+			sitting.selectedBook != null ? String(sitting.selectedBook.pages) : "",
+		);
+		setCalculatedDeadlineInPast(false);
+	}, [open, sitting.deadline, sitting.poll, sitting.selectedBook]);
 
 	const mutation = useMutation(
 		orpc.sitting.updateSittingDeadlines.mutationOptions({
@@ -64,6 +80,63 @@ export function SittingAdminDeadlines({ sitting }: SittingAdminDeadlinesProps) {
 			onError: (error) => toast.error(error.message),
 		}),
 	);
+
+	const savePagesMutation = useMutation(
+		orpc.book.updateBook.mutationOptions({
+			onSuccess: async () => {
+				toast.success("Book page count saved");
+				await queryClient.invalidateQueries({
+					queryKey: orpc.sitting.getSittingBySlug.key(),
+				});
+				await queryClient.invalidateQueries({
+					queryKey: orpc.book.getBookBySlug.key(),
+				});
+				router.refresh();
+			},
+			onError: (error) => toast.error(error.message),
+		}),
+	);
+
+	function parsePageCount(): number | null {
+		const pages = Number.parseInt(pageCountInput.trim(), 10);
+		if (!Number.isFinite(pages) || pages < 1) {
+			return null;
+		}
+
+		return pages;
+	}
+
+	function handleCalculateReadingDeadline() {
+		const pages = parsePageCount();
+		if (pages == null) {
+			toast.error("Enter a valid page count (1 or more).");
+			return;
+		}
+
+		const raw = calculateSittingReadingDeadline(pages);
+		const clamped = clampSittingDeadlineToClubEnd(raw, clubTimeZone);
+		setSittingDeadline(clamped);
+		setCalculatedDeadlineInPast(
+			sitting.status === "reading" && clamped.getTime() < Date.now(),
+		);
+		toast.success("Reading deadline updated in this form — save to persist.");
+	}
+
+	function handleSaveBookPages() {
+		const pages = parsePageCount();
+		if (pages == null) {
+			toast.error("Enter a valid page count (1 or more).");
+			return;
+		}
+
+		const bookSlug = sitting.selectedBook?.slug;
+		if (!bookSlug) {
+			toast.error("This sitting has no selected book yet.");
+			return;
+		}
+
+		savePagesMutation.mutate({ slug: bookSlug, pages });
+	}
 
 	if (isPending || !session?.user.isAdmin) {
 		return null;
@@ -106,8 +179,65 @@ export function SittingAdminDeadlines({ sitting }: SittingAdminDeadlinesProps) {
 						<SittingDeadlinePicker
 							label="Reading deadline"
 							value={sittingDeadline}
-							onChange={setSittingDeadline}
+							onChange={(value) => {
+								setSittingDeadline(value);
+								setCalculatedDeadlineInPast(false);
+							}}
 						/>
+						<div className="flex flex-col gap-2">
+							<p className="font-medium text-sm">Page count</p>
+							<p className="text-muted-foreground text-xs">
+								Calculate updates the reading deadline in this sheet only (club
+								reading rules). Save PP updates the library book for future
+								sittings.
+							</p>
+							<InputGroup className="h-auto min-h-8">
+								<InputGroupInput
+									type="number"
+									min={1}
+									inputMode="numeric"
+									placeholder="Pages"
+									value={pageCountInput}
+									onChange={(event) => {
+										setPageCountInput(event.target.value);
+										setCalculatedDeadlineInPast(false);
+									}}
+									aria-label="Page count for reading schedule"
+								/>
+								<InputGroupAddon align="inline-end" className="gap-1 pr-1">
+									<InputGroupButton
+										type="button"
+										variant="outline"
+										onClick={handleCalculateReadingDeadline}
+									>
+										Calculate
+									</InputGroupButton>
+									<InputGroupButton
+										type="button"
+										variant="outline"
+										disabled={
+											savePagesMutation.isPending ||
+											sitting.selectedBook == null
+										}
+										onClick={handleSaveBookPages}
+									>
+										Save PP
+									</InputGroupButton>
+								</InputGroupAddon>
+							</InputGroup>
+							{sitting.selectedBook == null ? (
+								<p className="text-muted-foreground text-xs">
+									Save PP is available after a book is selected for this
+									sitting.
+								</p>
+							) : null}
+							{calculatedDeadlineInPast ? (
+								<p className="text-amber-600 text-xs dark:text-amber-500">
+									Calculated deadline is in the past. Adjust manually or confirm
+									before saving.
+								</p>
+							) : null}
+						</div>
 					</div>
 					<SheetFooter className="border-border border-t">
 						<Button

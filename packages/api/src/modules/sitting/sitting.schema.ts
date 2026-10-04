@@ -398,6 +398,39 @@ export type GetPollOptionVotesOutput = z.infer<
 	typeof GetPollOptionVotesOutputSchema
 >;
 
+export const GetPollVotesByUserInputSchema = zod.object({
+	sittingSlug: SittingSchema.shape.slug,
+});
+
+export const PollVoteByUserChoiceSchema = zod.object({
+	pollOptionId: zod.uuid(),
+	bookTitle: zod.string(),
+	votedAt: zod.coerce.date(),
+});
+
+export const PollVotesByUserEntrySchema = zod.object({
+	user: SittingParticipantSummarySchema.pick({
+		username: true,
+		name: true,
+		image: true,
+		status: true,
+	}),
+	choices: zod.array(PollVoteByUserChoiceSchema).min(1),
+	maxChoices: zod.number().int().min(1),
+});
+
+export const GetPollVotesByUserOutputSchema = zod.object({
+	maxChoices: zod.number().int().min(1),
+	voters: zod.array(PollVotesByUserEntrySchema),
+});
+
+export type GetPollVotesByUserInput = z.infer<
+	typeof GetPollVotesByUserInputSchema
+>;
+export type GetPollVotesByUserOutput = z.infer<
+	typeof GetPollVotesByUserOutputSchema
+>;
+
 export const TransitionSittingInputSchema = zod.discriminatedUnion(
 	"transition",
 	[
