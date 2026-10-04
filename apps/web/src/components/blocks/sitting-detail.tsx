@@ -2,8 +2,8 @@ import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.s
 import type { Route } from "next";
 import Link from "next/link";
 import { SittingDeadlinesSummary } from "@/components/blocks/sitting-admin-deadlines";
+import { SittingBookFeedbackPrompt } from "@/components/blocks/sitting-book-feedback-prompt";
 import { SittingParticipantsCount } from "@/components/blocks/sitting-participants-count";
-import { SittingParticipantsSection } from "@/components/blocks/sitting-participants-section";
 import { SittingPhaseIntro } from "@/components/blocks/sitting-phase-intro";
 import { SittingReadingBook } from "@/components/blocks/sitting-reading-book";
 import { SittingReadingHero } from "@/components/blocks/sitting-reading-hero";
@@ -32,15 +32,7 @@ export function SittingDetail({ sitting }: SittingDetailProps) {
 
 			<SittingVotePrompt sitting={sitting} />
 
-			{status === "reading" ? (
-				<div className="flex flex-col gap-10">
-					<SittingReadingHero sitting={sitting} />
-					<SittingParticipantsSection
-						status={status}
-						participants={sitting.participants}
-					/>
-				</div>
-			) : null}
+			{status === "reading" ? <SittingReadingHero sitting={sitting} /> : null}
 
 			{status === "finished" ? (
 				<div className="flex flex-col gap-10">
@@ -49,27 +41,30 @@ export function SittingDetail({ sitting }: SittingDetailProps) {
 							book={sitting.selectedBook}
 							heading="Book we read"
 							footer={
-								<p className="text-muted-foreground text-sm">
-									Completed the book?{" "}
-									<Link
-										href={`/books/${sitting.selectedBook.slug}` as Route}
-										className="font-medium text-foreground underline-offset-4 hover:underline"
-									>
-										Leave feedback on the book page
-									</Link>
-									.
-								</p>
+								<div className="flex flex-col gap-3">
+									<SittingBookFeedbackPrompt
+										bookSlug={sitting.selectedBook.slug}
+										bookTitle={sitting.selectedBook.title}
+									/>
+									<p className="text-muted-foreground text-sm">
+										<Link
+											href={`/books/${sitting.selectedBook.slug}` as Route}
+											className="font-medium text-foreground underline-offset-4 hover:underline"
+										>
+											Open book page
+										</Link>
+									</p>
+								</div>
 							}
 						/>
 					) : null}
-					<SittingReviewsSection
-						reviews={sitting.reviews}
-						participantCount={sitting.participants.length}
-					/>
-					<SittingParticipantsSection
-						status={status}
-						participants={sitting.participants}
-					/>
+					{sitting.selectedBook ? (
+						<SittingReviewsSection
+							bookSlug={sitting.selectedBook.slug}
+							reviews={sitting.reviews}
+							participantCount={sitting.participants.length}
+						/>
+					) : null}
 				</div>
 			) : null}
 		</div>

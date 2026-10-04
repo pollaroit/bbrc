@@ -2,6 +2,7 @@ export * from "./club-timezone";
 export * from "./comment-thread";
 export * from "./documents";
 export * from "./favorites";
+export * from "./feedback-rating";
 export * from "./isr-paths";
 export * from "./notifications";
 export * from "./open-library";

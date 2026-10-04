@@ -72,15 +72,20 @@ function viewerUserId(session: Session | null): string | null {
 }
 
 export async function getBookFeedbackList(
-	bookSlug: string,
+	input: { bookSlug: string; minRating?: number },
 	db: Database,
 	session: Session | null,
 ): Promise<GetBookFeedbackListOutput> {
-	const book = await loadBookBySlug(bookSlug, db);
+	const book = await loadBookBySlug(input.bookSlug, db);
 	const userId = viewerUserId(session);
 
 	const feedbacks = await db.feedback.findMany({
-		where: { bookId: book.id },
+		where: {
+			bookId: book.id,
+			...(input.minRating !== undefined
+				? { rating: { gte: input.minRating } }
+				: {}),
+		},
 		orderBy: { createdAt: "desc" },
 		select: {
 			id: true,
@@ -105,7 +110,7 @@ export async function getBookFeedbackList(
 		},
 	});
 
-	const likedFeedbackIds = await loadLikedFeedbackIds(
+	const likedFeedbackIds = await loadLikedFeedbackIdsForViewer(
 		feedbacks.map((row) => row.id),
 		userId,
 		db,
@@ -126,7 +131,7 @@ export async function getBookFeedbackList(
 	}));
 }
 
-async function loadLikedFeedbackIds(
+export async function loadLikedFeedbackIdsForViewer(
 	feedbackIds: string[],
 	userId: string | null,
 	db: Database,
@@ -167,7 +172,7 @@ export async function getFeedbackBySlug(
 	}
 
 	const userId = session?.user.id ?? null;
-	const likedFeedbackIds = await loadLikedFeedbackIds(
+	const likedFeedbackIds = await loadLikedFeedbackIdsForViewer(
 		[feedback.id],
 		userId,
 		db,

@@ -5,6 +5,7 @@ import {
 	FeedbackSchema,
 	UserSchema,
 } from "@bbrc/schemas";
+import { isFeedbackRatingStep } from "@bbrc/shared";
 import type { z } from "zod";
 import zod from "zod";
 import { PostAuthorSchema } from "../post/post.schema";
@@ -23,7 +24,15 @@ export const BookFeedbackReviewSchema = zod.object({
 	commentCount: zod.number().int().min(0),
 });
 
-export const GetBookFeedbackListInputSchema = BookSchema.shape.slug;
+const FeedbackRatingStepSchema = FeedbackSchema.shape.rating.refine(
+	isFeedbackRatingStep,
+	{ message: "Rating must be in half-star steps from 0 to 5" },
+);
+
+export const GetBookFeedbackListInputSchema = zod.object({
+	bookSlug: BookSchema.shape.slug,
+	minRating: FeedbackRatingStepSchema.optional(),
+});
 
 export const GetBookFeedbackListOutputSchema = zod.array(
 	BookFeedbackReviewSchema,
@@ -54,7 +63,7 @@ export type GetBookFeedbackStateOutput = z.infer<
 
 export const CreateFeedbackInputSchema = zod.object({
 	bookSlug: BookSchema.shape.slug,
-	rating: FeedbackSchema.shape.rating,
+	rating: FeedbackRatingStepSchema,
 	review: FeedbackSchema.shape.review,
 });
 

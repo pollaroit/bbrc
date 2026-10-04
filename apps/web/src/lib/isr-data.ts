@@ -25,7 +25,7 @@ export const loadBookBySlugForIsr = cache((slug: string) =>
 );
 
 export const loadBookFeedbackListForIsr = cache((slug: string) =>
-	getBookFeedbackList(slug, db, anonymousSession),
+	getBookFeedbackList({ bookSlug: slug }, db, anonymousSession),
 );
 
 export const loadApprovedDocumentsForIsr = cache((slug: string) =>

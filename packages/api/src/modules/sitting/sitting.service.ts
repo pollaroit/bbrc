@@ -15,6 +15,7 @@ import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
 import { getBookListFields } from "../book/book.schema";
+import { loadLikedFeedbackIdsForViewer } from "../feedback/feedback.service";
 import {
 	notifyParticipantFinishedBook,
 	notifySittingFinished,
@@ -246,6 +247,7 @@ async function loadSittingReviews(
 	bookId: string,
 	participantUserIds: string[],
 	db: Database,
+	viewerUserId: string | null,
 ): Promise<GetSittingBySlugOutput["reviews"]> {
 	if (participantUserIds.length === 0) {
 		return [];
@@ -258,6 +260,8 @@ async function loadSittingReviews(
 		},
 		orderBy: { createdAt: "desc" },
 		select: {
+			id: true,
+			slug: true,
 			rating: true,
 			review: true,
 			createdAt: true,
@@ -269,10 +273,23 @@ async function loadSittingReviews(
 					image: true,
 				},
 			},
+			_count: {
+				select: {
+					likes: true,
+					comments: true,
+				},
+			},
 		},
 	});
 
+	const likedFeedbackIds = await loadLikedFeedbackIdsForViewer(
+		feedbacks.map((row) => row.id),
+		viewerUserId,
+		db,
+	);
+
 	return feedbacks.map((feedback) => ({
+		slug: feedback.slug,
 		authorId: feedback.authorId,
 		username: feedback.author.username,
 		name: feedback.author.name,
@@ -280,6 +297,9 @@ async function loadSittingReviews(
 		rating: feedback.rating,
 		review: feedback.review,
 		createdAt: feedback.createdAt,
+		likeCount: feedback._count.likes,
+		likedByMe: likedFeedbackIds.has(feedback.id),
+		commentCount: feedback._count.comments,
 	}));
 }
 
@@ -364,7 +384,12 @@ export async function getSittingBySlug(
 
 	const reviews =
 		sitting.selectedBookId != null
-			? await loadSittingReviews(sitting.selectedBookId, participantUserIds, db)
+			? await loadSittingReviews(
+					sitting.selectedBookId,
+					participantUserIds,
+					db,
+					userId ?? null,
+				)
 			: [];
 
 	const pollVoterCount =
