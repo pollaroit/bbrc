@@ -23,7 +23,7 @@ type FullWidthImagePreviewProps = {
 function imageMaxHeightClass(size: ImagePreviewSize) {
 	switch (size) {
 		case "avatar":
-			return "max-h-28 max-w-28";
+			return "";
 		case "cover":
 			return "max-h-48";
 		case "compact":
@@ -45,27 +45,37 @@ export function FullWidthImagePreview({
 	compact,
 }: FullWidthImagePreviewProps) {
 	const size = sizeProp ?? (compact ? "compact" : "default");
+	const isAvatar = size === "avatar";
 
 	return (
 		<div
 			className={cn(
-				"flex w-full min-w-0 max-w-full flex-col border border-border bg-muted/25",
-				size === "avatar" && "w-fit max-w-[9rem]",
-				bleed ? "-mx-6 w-[calc(100%+3rem)]" : "overflow-hidden",
+				"flex w-full min-w-0 flex-col border border-border bg-muted/25",
+				isAvatar && "w-fit max-w-[9rem]",
+				bleed && "-mx-6 w-[calc(100%+3rem)] max-w-none self-stretch",
+				!bleed && !isAvatar && "max-w-full overflow-hidden",
 				className,
 			)}
 		>
-			<div className="flex w-full min-w-0 justify-center">
+			<div
+				className={cn(
+					"flex w-full min-w-0 justify-center",
+					isAvatar && "aspect-square size-28",
+					!isAvatar && "overflow-hidden",
+				)}
+			>
 				{/* eslint-disable-next-line @next/next/no-img-element */}
 				<img
 					src={src}
 					alt={alt}
 					className={cn(
-						"block h-auto object-contain object-center",
-						size === "avatar"
-							? "mx-auto w-auto max-w-full"
-							: "w-full max-w-full",
-						imageMaxHeightClass(size),
+						"block",
+						isAvatar
+							? "size-full object-cover object-center"
+							: cn(
+									"h-auto w-full max-w-full object-contain object-center",
+									imageMaxHeightClass(size),
+								),
 					)}
 				/>
 			</div>

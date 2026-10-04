@@ -1,28 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import { FullWidthImagePreview } from "@/components/blocks/full-width-image-preview";
-import {
-	ACCEPT_IMAGE_MIME,
-	MAX_IMAGE_BYTES,
-	parseAllowedImageMime,
-} from "@/lib/storage/image-upload-limits";
+import type { ImageUploadKind } from "@/lib/storage/image-upload-profile";
+import { useImageCropCompressFlow } from "@/lib/storage/use-image-crop-compress-flow";
 
 export type PendingImageAttachmentProps = {
 	variant: "post" | "comment";
 	file: File | null;
 	onFileChange: (file: File | null) => void;
 	disabled?: boolean;
-	/** Ref to wire a compact trigger (comment toolbar). */
-	inputRef?: React.RefObject<HTMLInputElement | null>;
+	inputRef: React.RefObject<HTMLInputElement | null>;
 };
+
+function kindForVariant(variant: "post" | "comment"): ImageUploadKind {
+	return variant === "post" ? "post-image" : "comment-image";
+}
 
 export function usePendingImageInput(
 	onFileChange: (file: File | null) => void,
-	disabled?: boolean,
+	options?: { disabled?: boolean; variant?: "post" | "comment" },
 ) {
 	const inputRef = useRef<HTMLInputElement>(null);
+	const variant = options?.variant ?? "post";
+	const { stageRawFile, cropDialog } = useImageCropCompressFlow({
+		kind: kindForVariant(variant),
+		onReady: onFileChange,
+	});
 
 	function openPicker() {
 		inputRef.current?.click();
@@ -31,46 +35,42 @@ export function usePendingImageInput(
 	function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
 		const next = event.target.files?.[0];
 		if (!next) {
-			onFileChange(null);
 			return;
 		}
-		if (!parseAllowedImageMime(next.type)) {
-			toast.error("Use JPEG, PNG, or WebP.");
-			event.target.value = "";
-			return;
+		stageRawFile(next);
+		if (inputRef.current) {
+			inputRef.current.value = "";
 		}
-		if (next.size > MAX_IMAGE_BYTES) {
-			toast.error("Image must be 2 MB or smaller.");
-			event.target.value = "";
-			return;
-		}
-		onFileChange(next);
 	}
 
 	const input = (
 		<input
 			ref={inputRef}
 			type="file"
-			accept={ACCEPT_IMAGE_MIME}
+			accept="image/jpeg,image/png,image/webp"
 			className="sr-only"
-			disabled={disabled}
+			disabled={options?.disabled}
 			onChange={handleChange}
 		/>
 	);
 
-	return { inputRef, input, openPicker, clear: () => onFileChange(null) };
+	return {
+		inputRef,
+		input,
+		openPicker,
+		clear: () => onFileChange(null),
+		cropDialog,
+	};
 }
 
-/** Post compose: optional photo with full-width preview when selected. */
+/** Preview for a post/comment photo already chosen (after crop). */
 export function PendingImageAttachment({
 	variant,
 	file,
 	onFileChange,
 	disabled,
-	inputRef: externalInputRef,
+	inputRef,
 }: PendingImageAttachmentProps) {
-	const internal = usePendingImageInput(onFileChange, disabled);
-	const inputRef = externalInputRef ?? internal.inputRef;
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -94,15 +94,12 @@ export function PendingImageAttachment({
 		}
 	}
 
-	const hiddenInput = externalInputRef ? null : internal.input;
-
 	if (!file || !previewUrl) {
-		return hiddenInput;
+		return null;
 	}
 
 	return (
-		<div className="min-w-0 max-w-full">
-			{hiddenInput}
+		<div className="w-full min-w-0 self-stretch">
 			<FullWidthImagePreview
 				src={previewUrl}
 				alt={

@@ -75,7 +75,7 @@ export function PostCommentForm({
 		node.focus({ preventScroll: true });
 	}, [autoFocus]);
 
-	const imageInput = usePendingImageInput(setImageFile);
+	const imageInput = usePendingImageInput(setImageFile, { variant: "comment" });
 
 	const createMutation = useMutation(
 		orpc.comment.create.mutationOptions({
@@ -156,6 +156,7 @@ export function PostCommentForm({
 			}}
 		>
 			{imageInput.input}
+			{imageInput.cropDialog}
 			<Field className="min-w-0">
 				<FieldLabel
 					htmlFor={fieldId}

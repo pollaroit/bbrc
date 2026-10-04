@@ -55,7 +55,7 @@ export function ComposePostDialog({
 	const [content, setContent] = useState("");
 	const [attachedBook, setAttachedBook] = useState<ClubBookPickerValue>(null);
 	const [imageFile, setImageFile] = useState<File | null>(null);
-	const imageInput = usePendingImageInput(setImageFile);
+	const imageInput = usePendingImageInput(setImageFile, { variant: "post" });
 
 	const createMutation = useMutation(
 		orpc.post.create.mutationOptions({
@@ -137,6 +137,7 @@ export function ComposePostDialog({
 					}}
 				>
 					{imageInput.input}
+					{imageInput.cropDialog}
 					<Field>
 						<FieldLabel htmlFor="compose-post-content">Post</FieldLabel>
 						<TextareaWithImageAttach
@@ -151,20 +152,22 @@ export function ComposePostDialog({
 						/>
 					</Field>
 
-					<PendingImageAttachment
-						variant="post"
-						file={imageFile}
-						onFileChange={setImageFile}
-						disabled={createMutation.isPending}
-						inputRef={imageInput.inputRef}
-					/>
-
 					<Field>
 						<FieldLabel htmlFor="club-book-picker-search">
 							Attached book
 						</FieldLabel>
 						<ClubBookPicker value={attachedBook} onChange={setAttachedBook} />
 					</Field>
+
+					{imageFile ? (
+						<PendingImageAttachment
+							variant="post"
+							file={imageFile}
+							onFileChange={setImageFile}
+							disabled={createMutation.isPending}
+							inputRef={imageInput.inputRef}
+						/>
+					) : null}
 
 					<DialogFooter className="border-border border-t p-6 pt-4">
 						<LoadingButton
