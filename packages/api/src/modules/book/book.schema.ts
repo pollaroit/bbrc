@@ -1,7 +1,7 @@
 import {
 	BookSchema,
 	CursorPaginationInputSchema,
-	CursorPaginationOutputSchema,
+	CursorPaginationMetadataSchema,
 } from "@bbrc/schemas";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import { z } from "zod";
@@ -47,6 +47,18 @@ export function refineBookListQueryInput(
 			path: ["maxOpenLibraryRating"],
 		});
 	}
+
+	if (
+		value.maxPages != null &&
+		value.minPages != null &&
+		value.maxPages < value.minPages
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Maximum pages must be greater than or equal to minimum",
+			path: ["maxPages"],
+		});
+	}
 }
 
 /** Filters, sort, range, and search — no pagination cursor. */
@@ -74,8 +86,14 @@ export const BookListItemSchema = BookSchema.pick(getBookListFields).extend({
 	approvedDocumentCount: z.number().int().min(0),
 });
 
-export const GetBookListOutputSchema =
-	CursorPaginationOutputSchema(BookListItemSchema);
+export const BookListMetadataSchema = CursorPaginationMetadataSchema.extend({
+	total: z.number().int().min(0).optional(),
+});
+
+export const GetBookListOutputSchema = z.object({
+	items: z.array(BookListItemSchema),
+	metadata: BookListMetadataSchema,
+});
 
 export type GetBookListInput = z.infer<typeof GetBookListInputSchema>;
 export type GetBookListOutput = z.infer<typeof GetBookListOutputSchema>;

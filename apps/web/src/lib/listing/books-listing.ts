@@ -6,6 +6,7 @@ import type { GetBookListInput } from "@bbrc/api/modules/book/book.schema";
 import {
 	parseAsArrayOf,
 	parseAsFloat,
+	parseAsInteger,
 	parseAsStringLiteral,
 	useQueryStates,
 } from "nuqs";
@@ -29,6 +30,7 @@ export const bookSortByLabels = {
 	createdAt: "Date added",
 	updatedAt: "Last updated",
 	title: "Title",
+	pages: "Page count",
 	averageRating: "Club rating",
 	openLibraryRating: "Open Library rating",
 	publishedIn: "Publication year",
@@ -63,6 +65,8 @@ export const bookListingSearchParams = {
 	}),
 	minOpenLibraryRating: parseAsFloat.withOptions({ shallow: false }),
 	maxOpenLibraryRating: parseAsFloat.withOptions({ shallow: false }),
+	minPages: parseAsInteger.withOptions({ shallow: false }),
+	maxPages: parseAsInteger.withOptions({ shallow: false }),
 	viewerRead: booleanFilterParser.withOptions({ shallow: false }),
 	viewerFavorite: booleanFilterParser.withOptions({ shallow: false }),
 	viewerReviewed: booleanFilterParser.withOptions({ shallow: false }),
@@ -95,6 +99,8 @@ export function toBookListCallInput(
 		statuses: params.statuses,
 		minOpenLibraryRating: params.minOpenLibraryRating,
 		maxOpenLibraryRating: params.maxOpenLibraryRating,
+		minPages: params.minPages,
+		maxPages: params.maxPages,
 		viewerRead: params.viewerRead === true ? true : undefined,
 		viewerFavorite: params.viewerFavorite === true ? true : undefined,
 		viewerReviewed: params.viewerReviewed === true ? true : undefined,
@@ -124,6 +130,10 @@ export function countBookSheetFilters(params: BookListingSearchParams): number {
 		count += 1;
 	}
 
+	if (params.minPages != null || params.maxPages != null) {
+		count += 1;
+	}
+
 	if (params.rangeMin != null || params.rangeMax != null) {
 		count += 1;
 	}
@@ -150,6 +160,8 @@ export function clearBookSheetFilters(
 		statuses: null,
 		minOpenLibraryRating: null,
 		maxOpenLibraryRating: null,
+		minPages: null,
+		maxPages: null,
 		rangeBy: null,
 		rangeMin: null,
 		rangeMax: null,

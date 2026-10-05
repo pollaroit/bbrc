@@ -54,12 +54,17 @@ export async function getBookList(
 
 	const where = buildBookListWhere(input, viewerUserId);
 
-	const rows = await db.book.findMany({
-		...pagination.use(),
-		where,
-		orderBy: withStableSlugOrderBy(sorting.use(), sorting.sortDirection),
-		select: bookListSelect,
-	});
+	const isFirstPage = input.cursor == null;
+
+	const [rows, total] = await Promise.all([
+		db.book.findMany({
+			...pagination.use(),
+			where,
+			orderBy: withStableSlugOrderBy(sorting.use(), sorting.sortDirection),
+			select: bookListSelect,
+		}),
+		isFirstPage ? db.book.count({ where }) : Promise.resolve(undefined),
+	]);
 
 	const page = pagination.paginate(rows);
 
@@ -75,7 +80,10 @@ export async function getBookList(
 			status: row.status,
 			approvedDocumentCount: row._count.documents,
 		})),
-		metadata: page.metadata,
+		metadata: {
+			...page.metadata,
+			...(total != null ? { total } : {}),
+		},
 	};
 }
 

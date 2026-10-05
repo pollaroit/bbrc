@@ -62,6 +62,13 @@ export function buildBookListWhere(
 							gte: input.minOpenLibraryRating ?? undefined,
 							lte: input.maxOpenLibraryRating ?? undefined,
 						},
+			pages:
+				input.minPages == null && input.maxPages == null
+					? undefined
+					: {
+							gte: input.minPages ?? undefined,
+							lte: input.maxPages ?? undefined,
+						},
 		},
 		...viewerFragments,
 	);

@@ -70,8 +70,16 @@ export function BooksList() {
 	);
 
 	const books = data?.pages.flatMap((page) => page.items) ?? [];
+	const filteredTotal = data?.pages[0]?.metadata.total;
 
 	const engagementLoading = Boolean(session?.user) && engagementQuery.isPending;
+
+	const countLabel =
+		filteredTotal == null
+			? null
+			: filteredTotal === 1
+				? "1 book"
+				: `${filteredTotal.toLocaleString()} books`;
 
 	return (
 		<InfiniteScroll
@@ -93,6 +101,13 @@ export function BooksList() {
 			loadingContent={<BooksListSkeleton />}
 			endMessage="You have reached the end of the list."
 		>
+			{isPending && filteredTotal == null ? (
+				<Skeleton className="h-5 w-24" aria-hidden />
+			) : countLabel ? (
+				<p className="text-muted-foreground text-sm tabular-nums">
+					{countLabel}
+				</p>
+			) : null}
 			<ul className={booksGridClassName}>
 				{books.map((book) => {
 					const listEngagement = !session?.user

@@ -9,6 +9,7 @@ export const bookSortableFields = [
 	"createdAt",
 	"updatedAt",
 	"title",
+	"pages",
 	"averageRating",
 	"openLibraryRating",
 	"publishedIn",
@@ -37,7 +38,7 @@ export const bookListRanging = defineRanging<
 	Prisma.BookWhereInput
 >(bookRangeableFields, "createdAt");
 
-export const bookSearchableFields = ["title"] as const;
+export const bookSearchableFields = ["title", "slug"] as const;
 
 export const bookListSearching = defineSearching<
 	typeof bookSearchableFields,
@@ -48,6 +49,8 @@ export const bookListFiltersSchema = z
 	.object({
 		minOpenLibraryRating: z.number().min(0).max(5),
 		maxOpenLibraryRating: z.number().min(0).max(5),
+		minPages: z.number().int().min(1),
+		maxPages: z.number().int().min(1),
 		statuses: z.array(BookStatusSchema),
 		/** Completed club read for the authenticated viewer. */
 		viewerRead: z.boolean(),

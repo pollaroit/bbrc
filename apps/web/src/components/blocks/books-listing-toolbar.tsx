@@ -7,6 +7,7 @@ import {
 import { BooksListExportMenu } from "@/components/blocks/books-list-export-menu";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
+import { ListingIntegerRangeFields } from "@/components/listing/listing-integer-range-fields";
 import { ListingRangeFields } from "@/components/listing/listing-range-fields";
 import { ListingRatingRangeFields } from "@/components/listing/listing-rating-range-fields";
 import { ListingSearch } from "@/components/listing/listing-search";
@@ -62,7 +63,7 @@ export function BooksListingToolbar() {
 				onChange={(search) => {
 					void setParams({ search });
 				}}
-				placeholder="Search books by title…"
+				placeholder="Search by title or slug…"
 			/>
 
 			<div className="flex flex-wrap items-center gap-2 lg:shrink-0">
@@ -122,6 +123,20 @@ export function BooksListingToolbar() {
 						}}
 						onMaxChange={(maxOpenLibraryRating) => {
 							void setParams({ maxOpenLibraryRating });
+						}}
+					/>
+
+					<ListingIntegerRangeFields
+						legend="Page count"
+						minId="book-filter-min-pages"
+						maxId="book-filter-max-pages"
+						min={params.minPages}
+						max={params.maxPages}
+						onMinChange={(minPages) => {
+							void setParams({ minPages });
+						}}
+						onMaxChange={(maxPages) => {
+							void setParams({ maxPages });
 						}}
 					/>
 
