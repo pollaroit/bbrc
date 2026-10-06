@@ -40,10 +40,14 @@ export { sittingStatusFilterLabels };
 
 export const sittingListingSearchParams = {
 	search: searchParser.withOptions({ shallow: false, throttleMs: 400 }),
-	sortBy: createSortByParser(sittingSortableFields).withOptions({
+	sortBy: createSortByParser(sittingSortableFields)
+		.withDefault("createdAt")
+		.withOptions({
+			shallow: false,
+		}),
+	sortDirection: sortDirectionParser.withDefault("desc").withOptions({
 		shallow: false,
 	}),
-	sortDirection: sortDirectionParser.withOptions({ shallow: false }),
 	rangeBy: createRangeByParser(sittingRangeableFields).withOptions({
 		shallow: false,
 	}),
@@ -68,8 +72,8 @@ export function toSittingListCallInput(
 ): Partial<GetSittingListInput> {
 	return buildListCallInput({
 		search: params.search,
-		sortBy: params.sortBy,
-		sortDirection: params.sortDirection,
+		sortBy: params.sortBy ?? "createdAt",
+		sortDirection: params.sortDirection ?? "desc",
 		rangeBy: params.rangeBy,
 		rangeMin: params.rangeMin,
 		rangeMax: params.rangeMax,

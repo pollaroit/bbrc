@@ -11,6 +11,9 @@ export async function invalidateFeedbackQueries() {
 		queryKey: orpc.book.getBookBySlug.key(),
 	});
 	await queryClient.invalidateQueries({
+		queryKey: orpc.sitting.getSittingBySlug.key(),
+	});
+	await queryClient.invalidateQueries({
 		queryKey: orpc.feedback.getUserFeedbackList.key(),
 	});
 }

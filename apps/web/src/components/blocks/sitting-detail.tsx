@@ -59,11 +59,7 @@ export function SittingDetail({ sitting }: SittingDetailProps) {
 						/>
 					) : null}
 					{sitting.selectedBook ? (
-						<SittingReviewsSection
-							bookSlug={sitting.selectedBook.slug}
-							reviews={sitting.reviews}
-							participantCount={sitting.participants.length}
-						/>
+						<SittingReviewsSection sitting={sitting} />
 					) : null}
 				</div>
 			) : null}
