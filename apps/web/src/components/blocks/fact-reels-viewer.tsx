@@ -102,9 +102,11 @@ function FactReelEndSlide({
 
 function FactReelActions({
 	item,
+	mode,
 	onVoteChange,
 }: {
 	item: FactReelItem;
+	mode: FactReelsMode;
 	onVoteChange: (factId: string, vote: "up" | "down" | null) => void;
 }) {
 	const [viewerVote, setViewerVote] = useState(item.viewerVote);
@@ -148,7 +150,14 @@ function FactReelActions({
 	}
 
 	return (
-		<div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+		<div
+			className={cn(
+				"pointer-events-none fixed z-50",
+				mode === "history"
+					? "right-[max(1.25rem,calc(env(safe-area-inset-right)+0.5rem))] bottom-[max(2.5rem,calc(env(safe-area-inset-bottom)+1.75rem))]"
+					: "inset-x-0 bottom-0 flex justify-end px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]",
+			)}
+		>
 			<div className="pointer-events-auto flex flex-col gap-3">
 				<Button
 					type="button"
@@ -490,6 +499,7 @@ export function FactReelsViewer({
 
 					{mergedActiveItem ? (
 						<FactReelActions
+							mode={mode}
 							item={mergedActiveItem}
 							onVoteChange={(factId, vote) => {
 								setVotesByFactId((current) => ({
