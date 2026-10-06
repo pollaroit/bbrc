@@ -112,7 +112,11 @@ export async function listAuthorFacetsForBooks(
 
 	return [...bySlug.entries()]
 		.map(([slug, { name, bookCount }]) => ({ slug, name, bookCount }))
-		.sort((a, b) =>
-			a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-		);
+		.sort((a, b) => {
+			if (b.bookCount !== a.bookCount) {
+				return b.bookCount - a.bookCount;
+			}
+
+			return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+		});
 }
