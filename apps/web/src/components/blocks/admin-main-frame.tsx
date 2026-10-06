@@ -5,6 +5,11 @@ import { usePathname } from "next/navigation";
 export function AdminMainFrame({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
 	const isAdmin = pathname.startsWith("/admin");
+	const isReels = pathname.startsWith("/reels");
+
+	if (isReels) {
+		return <>{children}</>;
+	}
 
 	if (isAdmin) {
 		return <div className="w-full">{children}</div>;

@@ -16,7 +16,7 @@ import {
 	SidebarSeparator,
 	SidebarTrigger,
 } from "@bbrc/ui/components/sidebar";
-import { BookOpen, Home, LayoutDashboard, Users } from "lucide-react";
+import { BookOpen, Home, LayoutDashboard, Sparkles, Users } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -39,6 +39,12 @@ const mainNav = [
 		label: "Books",
 		icon: BookOpen,
 		match: (pathname: string) => pathname.startsWith("/admin/books"),
+	},
+	{
+		href: "/admin/facts",
+		label: "Facts",
+		icon: Sparkles,
+		match: (pathname: string) => pathname.startsWith("/admin/facts"),
 	},
 ] as const;
 

@@ -30,6 +30,11 @@ const resources = [
 		title: "Books",
 		description: "Catalog overview, rankings, list, and stats.",
 	},
+	{
+		href: "/admin/facts" as Route,
+		title: "Fact reels",
+		description: "AI-assisted drafts and published reel inventory.",
+	},
 ] as const;
 
 export default async function AdminHubPage() {

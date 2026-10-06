@@ -2,7 +2,7 @@
 
 import { cn } from "@bbrc/ui/lib/utils";
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
 	type ReactNode,
 	useCallback,
@@ -21,6 +21,10 @@ type PullPhase = "idle" | "pulling" | "refreshing";
 
 export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 	const router = useRouter();
+	const pathname = usePathname();
+	const pathnameRef = useRef(pathname);
+	pathnameRef.current = pathname;
+
 	const [enabled, setEnabled] = useState(false);
 	const [phase, setPhase] = useState<PullPhase>("idle");
 	const [pullDistance, setPullDistance] = useState(0);
@@ -64,6 +68,9 @@ export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 		}
 
 		const onTouchStart = (event: TouchEvent) => {
+			if (pathnameRef.current.startsWith("/reels")) {
+				return;
+			}
 			if (phase === "refreshing") {
 				return;
 			}
@@ -79,6 +86,9 @@ export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 		};
 
 		const onTouchMove = (event: TouchEvent) => {
+			if (pathnameRef.current.startsWith("/reels")) {
+				return;
+			}
 			if (!pulling.current || touchStartY.current === null) {
 				return;
 			}
@@ -127,6 +137,12 @@ export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 			window.removeEventListener("touchcancel", resetPull);
 		};
 	}, [enabled, phase, resetPull, runRefresh]);
+
+	useEffect(() => {
+		if (pathname.startsWith("/reels")) {
+			resetPull();
+		}
+	}, [pathname, resetPull]);
 
 	if (!enabled) {
 		return children;

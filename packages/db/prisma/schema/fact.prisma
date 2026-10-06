@@ -1,0 +1,82 @@
+enum FactCategory {
+  general
+  history
+  science
+  literature
+  philosophy
+}
+
+enum FactConfidence {
+  low
+  medium
+  high
+}
+
+model Fact {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.min(1).max(2000)
+  body String
+
+  category   FactCategory
+  confidence FactConfidence
+
+  /// @zod.url()
+  source String
+
+  /// @zod.url().optional()
+  image String?
+
+  publishedAt DateTime? @map("published_at")
+
+  /// @zod.uuid("Invalid user id")
+  createdById String @map("created_by_id")
+  createdBy   User   @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  likes        FactLike[]
+  impressions  FactImpression[]
+
+  @@index([publishedAt(sort: Desc)])
+  @@index([createdById])
+  @@map("fact")
+}
+
+model FactLike {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// @zod.uuid("Invalid fact id")
+  factId String @map("fact_id")
+  fact   Fact   @relation(fields: [factId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([factId, userId])
+  @@index([factId])
+  @@index([userId])
+  @@map("fact_like")
+}
+
+model FactImpression {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// @zod.uuid("Invalid fact id")
+  factId String @map("fact_id")
+  fact   Fact   @relation(fields: [factId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([factId, userId])
+  @@index([userId])
+  @@map("fact_impression")
+}

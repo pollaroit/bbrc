@@ -10,9 +10,10 @@ import { cn } from "@/lib/utils";
 
 export function MobileAppShell({ children }: { children: ReactNode }) {
 	const pathname = usePathname();
-	const isAdmin = pathname.startsWith("/admin");
+	const hideChrome =
+		pathname.startsWith("/admin") || pathname.startsWith("/reels");
 
-	if (isAdmin) {
+	if (hideChrome) {
 		return <>{children}</>;
 	}
 

@@ -48,6 +48,9 @@ model User {
   booksRequested          Book[] @relation("BookRequestedBy")
   booksApproved           Book[] @relation("BookApprovedBy")
   postAttachmentsAsMember   PostAttachment[] @relation("PostAttachmentMember")
+  factsCreated              Fact[]
+  factLikes                 FactLike[]
+  factImpressions           FactImpression[]
 
   @@map("user")
 }

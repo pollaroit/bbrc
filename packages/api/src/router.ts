@@ -5,6 +5,7 @@ import { bookRouter } from "./modules/book/book.router";
 import { bookRequestRouter } from "./modules/book-request/book-request.router";
 import { commentRouter } from "./modules/comment/comment.router";
 import { documentRouter } from "./modules/document/document.router";
+import { factRouter } from "./modules/fact/fact.router";
 import { favoriteRouter } from "./modules/favorite/favorite.router";
 import { feedbackRouter } from "./modules/feedback/feedback.router";
 import { healthRouter } from "./modules/health/health.router";
@@ -25,6 +26,7 @@ export const appRouter = {
 	bookRequest: bookRequestRouter,
 	comment: commentRouter,
 	document: documentRouter,
+	fact: factRouter,
 	favorite: favoriteRouter,
 	feedback: feedbackRouter,
 	like: likeRouter,

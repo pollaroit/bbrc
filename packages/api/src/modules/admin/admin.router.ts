@@ -12,6 +12,31 @@ import {
 	listAdminBooks,
 } from "./admin-book.service";
 import {
+	AdminFactIdInputSchema,
+	BatchCreateAdminFactsInputSchema,
+	BatchCreateAdminFactsOutputSchema,
+	CreateAdminFactInputSchema,
+	CreateAdminFactOutputSchema,
+	DeleteAdminFactOutputSchema,
+	GenerateAdminFactDraftInputSchema,
+	GenerateAdminFactDraftOutputSchema,
+	ListAdminFactEngagementInputSchema,
+	ListAdminFactEngagementOutputSchema,
+	ListAdminFactsInputSchema,
+	ListAdminFactsOutputSchema,
+	PublishAdminFactOutputSchema,
+} from "./admin-fact.schema";
+import {
+	batchCreateAdminFacts,
+	createAdminFact,
+	deleteAdminFact,
+	generateAdminFactDraft,
+	listAdminFactImpressions,
+	listAdminFactLikes,
+	listAdminFacts,
+	publishAdminFact,
+} from "./admin-fact.service";
+import {
 	AdminDeleteUserInputSchema,
 	AdminDeleteUserOutputSchema,
 	AdminSetUserPasswordInputSchema,
@@ -96,4 +121,44 @@ export const adminRouter = {
 		.handler(async ({ input, context }) =>
 			adminSetUserPassword(input, context.db),
 		),
+	generateFactDraft: adminProcedure
+		.input(GenerateAdminFactDraftInputSchema)
+		.output(GenerateAdminFactDraftOutputSchema)
+		.handler(async ({ input }) => generateAdminFactDraft(input)),
+	createFact: adminProcedure
+		.input(CreateAdminFactInputSchema)
+		.output(CreateAdminFactOutputSchema)
+		.handler(async ({ input, context }) =>
+			createAdminFact(input, context.session.user.id, context.db),
+		),
+	batchCreateFacts: adminProcedure
+		.input(BatchCreateAdminFactsInputSchema)
+		.output(BatchCreateAdminFactsOutputSchema)
+		.handler(async ({ input, context }) =>
+			batchCreateAdminFacts(input, context.session.user.id, context.db),
+		),
+	listFacts: adminProcedure
+		.input(ListAdminFactsInputSchema)
+		.output(ListAdminFactsOutputSchema)
+		.handler(async ({ input, context }) => listAdminFacts(input, context.db)),
+	listFactLikes: adminProcedure
+		.input(ListAdminFactEngagementInputSchema)
+		.output(ListAdminFactEngagementOutputSchema)
+		.handler(async ({ input, context }) =>
+			listAdminFactLikes(input, context.db),
+		),
+	listFactImpressions: adminProcedure
+		.input(ListAdminFactEngagementInputSchema)
+		.output(ListAdminFactEngagementOutputSchema)
+		.handler(async ({ input, context }) =>
+			listAdminFactImpressions(input, context.db),
+		),
+	publishFact: adminProcedure
+		.input(AdminFactIdInputSchema)
+		.output(PublishAdminFactOutputSchema)
+		.handler(async ({ input, context }) => publishAdminFact(input, context.db)),
+	deleteFact: adminProcedure
+		.input(AdminFactIdInputSchema)
+		.output(DeleteAdminFactOutputSchema)
+		.handler(async ({ input, context }) => deleteAdminFact(input, context.db)),
 };
