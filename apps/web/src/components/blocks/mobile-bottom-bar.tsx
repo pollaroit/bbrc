@@ -3,9 +3,12 @@
 import { BookOpen, Home, LayoutList, Sofa, User } from "lucide-react";
 import type { Route } from "next";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useRef, useState } from "react";
+import { Suspense, useState } from "react";
 import { CreateMenu } from "@/components/blocks/create-menu";
-import { MobileNavTab } from "@/components/blocks/mobile-nav-tab";
+import {
+	MobileNavTab,
+	MobileNavTabButton,
+} from "@/components/blocks/mobile-nav-tab";
 import { mobileChromeBottomClass } from "@/components/blocks/mobile-shell-chrome";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { UserMenuDrawer } from "@/components/blocks/user-menu-drawer";
@@ -14,8 +17,6 @@ import { authClient } from "@/lib/auth-client";
 import { isMobileNavActive } from "@/lib/mobile-nav-active";
 import { useLiveUserImage } from "@/lib/user-avatar-broadcast";
 import { cn } from "@/lib/utils";
-
-const LONG_PRESS_MS = 500;
 
 type TabConfig = {
 	label: string;
@@ -29,8 +30,6 @@ function MobileBottomBarInner() {
 	const { data: session, isPending } = authClient.useSession();
 	const liveAvatarUrl = useLiveUserImage(session?.user.image);
 	const [accountOpen, setAccountOpen] = useState(false);
-	const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const longPressTriggeredRef = useRef(false);
 
 	const signedIn = !isPending && session?.user;
 	const user = session?.user
@@ -46,32 +45,6 @@ function MobileBottomBarInner() {
 		{ label: "Shelves", href: "/shelves", icon: LayoutList },
 		{ label: "Sittings", href: "/sittings", icon: Sofa },
 	];
-
-	const clearLongPress = useCallback(() => {
-		if (longPressRef.current) {
-			clearTimeout(longPressRef.current);
-			longPressRef.current = null;
-		}
-	}, []);
-
-	const startLongPress = useCallback(() => {
-		longPressTriggeredRef.current = false;
-		clearLongPress();
-		longPressRef.current = setTimeout(() => {
-			longPressTriggeredRef.current = true;
-			setAccountOpen(true);
-		}, LONG_PRESS_MS);
-	}, [clearLongPress]);
-
-	const handleUserPointerUp = useCallback(
-		(event: React.PointerEvent<HTMLAnchorElement>) => {
-			clearLongPress();
-			if (longPressTriggeredRef.current) {
-				event.preventDefault();
-			}
-		},
-		[clearLongPress],
-	);
 
 	const navGridClass = "mx-auto grid max-w-lg grid-cols-5";
 
@@ -107,7 +80,6 @@ function MobileBottomBarInner() {
 		);
 	}
 
-	const profileHref = `/users/${user.username}` as Route;
 	const profileActive = pathname.startsWith(`/users/${user.username}`);
 
 	const homeTab = { label: "Home", href: "/" as Route, icon: Home };
@@ -150,25 +122,11 @@ function MobileBottomBarInner() {
 						icon={shelvesTab.icon}
 						active={isMobileNavActive(pathname, shelvesTab.href)}
 					/>
-					<MobileNavTab
-						href={profileHref}
+					<MobileNavTabButton
 						label="You"
 						active={profileActive}
-						onPointerDown={startLongPress}
-						onPointerUp={handleUserPointerUp}
-						onPointerLeave={clearLongPress}
-						onPointerCancel={clearLongPress}
-						onContextMenu={(event) => {
-							event.preventDefault();
-							setAccountOpen(true);
-						}}
-						onKeyDown={(event) => {
-							if (event.key === "ArrowUp") {
-								event.preventDefault();
-								setAccountOpen(true);
-							}
-						}}
-						aria-label="Your profile. Long-press or press Arrow up for account menu."
+						onClick={() => setAccountOpen(true)}
+						aria-label="Account menu"
 						iconSlot={<UserAvatar user={user} className="size-6" />}
 					/>
 				</div>

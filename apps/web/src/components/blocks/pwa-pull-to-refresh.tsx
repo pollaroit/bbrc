@@ -141,7 +141,7 @@ export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 		: pullDistance * 0.35;
 
 	return (
-		<div className="relative min-h-full">
+		<div className="relative min-h-dvh">
 			<div
 				className={cn(
 					"pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center pt-[max(0.5rem,env(safe-area-inset-top))] transition-opacity duration-150",
@@ -165,7 +165,7 @@ export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 			</div>
 			<div
 				className={cn(
-					"min-h-full transition-transform duration-150 ease-out",
+					"min-h-dvh transition-transform duration-150 ease-out",
 					phase === "refreshing" && "duration-300",
 				)}
 				style={{ transform: `translateY(${translateY}px)` }}

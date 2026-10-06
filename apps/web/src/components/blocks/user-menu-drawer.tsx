@@ -24,16 +24,13 @@ export function UserMenuDrawer({
 		<Sheet open={open} onOpenChange={onOpenChange}>
 			<SheetContent
 				side="bottom"
+				showCloseButton={false}
 				className="gap-0 px-0 pt-3 pb-[env(safe-area-inset-bottom)] sm:mx-auto sm:max-w-lg"
 			>
 				<div className="mx-auto mb-4 h-1 w-10 bg-border" aria-hidden="true" />
 				<SheetHeader className="border-border border-b px-4 pb-4 text-left">
 					<SheetTitle className="sr-only">Account menu</SheetTitle>
 					<UserPanel user={user} />
-					<p className="sr-only">
-						Long-press your profile tab for this menu. When the tab is focused,
-						press Arrow up to open it.
-					</p>
 				</SheetHeader>
 				<UserMenuItems
 					user={user}

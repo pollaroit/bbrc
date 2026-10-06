@@ -1,22 +1,71 @@
 "use client";
 
 import { Button } from "@bbrc/ui/components/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@bbrc/ui/components/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, List, Sofa } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
-const splitControlClass =
-	"inline-flex shrink-0 border border-border bg-background";
+const sittingsHref = "/sittings" as Route;
+
+/** Shared height + border for top-bar sitting controls (matches bar rhythm). */
+const controlFrameClass =
+	"inline-flex h-8 shrink-0 items-stretch border border-border bg-background";
+
+function SittingsIndexButton({
+	className,
+	showLabel = false,
+}: {
+	className?: string;
+	showLabel?: boolean;
+}) {
+	return (
+		<Button
+			render={<Link href={sittingsHref} />}
+			nativeButton={false}
+			variant="ghost"
+			size={showLabel ? "sm" : "icon-sm"}
+			className={cn(
+				"h-8 shadow-none",
+				showLabel ? "px-2.5" : "size-8 border-0",
+				className,
+			)}
+			aria-label={showLabel ? undefined : "Sittings"}
+		>
+			<BookOpen
+				className="size-4 shrink-0"
+				data-icon={showLabel ? "inline-start" : undefined}
+				aria-hidden="true"
+			/>
+			{showLabel ? "Sittings" : null}
+		</Button>
+	);
+}
+
+function ReadSittingButton({ href }: { href: Route }) {
+	return (
+		<Button
+			render={<Link href={href} />}
+			nativeButton={false}
+			size="sm"
+			className="h-8 border-0 px-3 shadow-none"
+		>
+			Read
+		</Button>
+	);
+}
+
+function ControlPlaceholder() {
+	return (
+		<div
+			className="h-8 w-20 animate-pulse border border-border bg-muted/30"
+			aria-hidden="true"
+		/>
+	);
+}
 
 export function MobileReadSittingsControl() {
 	const { data: session, isPending: isSessionPending } =
@@ -26,72 +75,43 @@ export function MobileReadSittingsControl() {
 		enabled: session != null,
 	});
 
-	if (isSessionPending || !session) {
-		return null;
+	if (isSessionPending) {
+		return <ControlPlaceholder />;
 	}
 
-	const showRead = !isOngoingPending && ongoing?.viewerIsParticipant === true;
+	if (!session) {
+		return (
+			<div className={controlFrameClass}>
+				<SittingsIndexButton showLabel className="hover:bg-muted/80" />
+			</div>
+		);
+	}
+
+	if (isOngoingPending) {
+		return (
+			<div className={controlFrameClass}>
+				<SittingsIndexButton />
+			</div>
+		);
+	}
+
+	const showRead = ongoing?.viewerIsParticipant === true;
 	const ongoingHref = ongoing
 		? (`/sittings/${ongoing.slug}` as Route)
 		: undefined;
 
+	if (showRead && ongoingHref) {
+		return (
+			<div className={cn(controlFrameClass, "divide-x divide-border")}>
+				<SittingsIndexButton className="hover:bg-muted/80" />
+				<ReadSittingButton href={ongoingHref} />
+			</div>
+		);
+	}
+
 	return (
-		<div
-			className={cn(splitControlClass, showRead && "divide-x divide-border")}
-		>
-			{showRead && ongoingHref ? (
-				<Button
-					render={<Link href={ongoingHref} />}
-					nativeButton={false}
-					size="sm"
-					className="h-8 max-w-[6rem] truncate border-0 px-3 shadow-none"
-				>
-					Read
-				</Button>
-			) : null}
-			<DropdownMenu>
-				<DropdownMenuTrigger
-					render={
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							aria-label="Sittings menu"
-							className={cn(
-								"h-8 border-0 shadow-none",
-								showRead ? "px-2" : "px-3",
-							)}
-						/>
-					}
-				>
-					{showRead ? (
-						<ChevronDown className="size-4" aria-hidden="true" />
-					) : (
-						<>
-							<Sofa data-icon="inline-start" className="size-4" aria-hidden />
-							Sittings
-						</>
-					)}
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="start" className="min-w-44">
-					<DropdownMenuItem
-						render={<Link href={"/sittings" as Route} />}
-						nativeButton={false}
-					>
-						<List className="size-4" aria-hidden="true" />
-						All sittings
-					</DropdownMenuItem>
-					{showRead && ongoingHref ? (
-						<DropdownMenuItem
-							render={<Link href={ongoingHref} />}
-							nativeButton={false}
-						>
-							<Sofa className="size-4" aria-hidden="true" />
-							Current sitting
-						</DropdownMenuItem>
-					) : null}
-				</DropdownMenuContent>
-			</DropdownMenu>
+		<div className={controlFrameClass}>
+			<SittingsIndexButton className="hover:bg-muted/80" />
 		</div>
 	);
 }

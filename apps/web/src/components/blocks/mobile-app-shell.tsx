@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { BodyPortal } from "@/components/blocks/body-portal";
 import { MobileBottomBar } from "@/components/blocks/mobile-bottom-bar";
 import { MobileTopBar } from "@/components/blocks/mobile-top-bar";
 import { cn } from "@/lib/utils";
@@ -16,7 +17,10 @@ export function MobileAppShell({ children }: { children: ReactNode }) {
 
 	return (
 		<>
-			<MobileTopBar />
+			<BodyPortal>
+				<MobileTopBar />
+				<MobileBottomBar />
+			</BodyPortal>
 			<div
 				className={cn(
 					"md:contents",
@@ -25,7 +29,6 @@ export function MobileAppShell({ children }: { children: ReactNode }) {
 			>
 				{children}
 			</div>
-			<MobileBottomBar />
 		</>
 	);
 }

@@ -55,11 +55,11 @@ export default function RootLayout({
 	return (
 		<html
 			lang="en"
-			className="min-h-full bg-background text-foreground"
+			className="min-h-dvh bg-background text-foreground"
 			suppressHydrationWarning
 		>
 			<body
-				className={`${geistMono.variable} min-h-full bg-background font-sans text-foreground antialiased`}
+				className={`${geistMono.variable} min-h-dvh bg-background font-sans text-foreground antialiased`}
 			>
 				<DefaultSiteJsonLd />
 				<SerwistProvider swUrl="/serwist/sw.js">
