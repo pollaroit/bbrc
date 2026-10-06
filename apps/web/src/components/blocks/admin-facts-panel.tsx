@@ -1,20 +1,10 @@
 "use client";
 
-import type {
-	AdminFactDraft,
-	FactCategory,
-} from "@bbrc/api/modules/admin/admin-fact.schema";
+import type { AdminFactDraft } from "@bbrc/api/modules/admin/admin-fact.schema";
 import { Button } from "@bbrc/ui/components/button";
 import { Field, FieldLabel } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@bbrc/ui/components/select";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useMutation } from "@tanstack/react-query";
 import { Sparkles, X } from "lucide-react";
@@ -24,14 +14,6 @@ import { AdminFactsInventory } from "@/components/blocks/admin-facts-inventory";
 import { FactCategoryBadge } from "@/components/blocks/fact-category-badge";
 import { consumeAdminFactDraftsStream } from "@/lib/admin-fact-drafts-stream";
 import { orpc, queryClient } from "@/utils/orpc";
-
-const CATEGORIES: FactCategory[] = [
-	"general",
-	"history",
-	"science",
-	"literature",
-	"philosophy",
-];
 
 const GENERATION_COUNT = 10;
 
@@ -50,13 +32,13 @@ function draftToCreateItem(draft: AdminFactDraft) {
 	return {
 		body: draft.fact,
 		category: draft.category,
+		subcategory: draft.subcategory,
 		source: draft.source,
 		confidence: draft.confidence,
 	};
 }
 
 export function AdminFactsPanel() {
-	const [category, setCategory] = useState<FactCategory>("general");
 	const [topic, setTopic] = useState("");
 	const [queue, setQueue] = useState<QueueItem[]>([]);
 	const [isStreaming, setIsStreaming] = useState(false);
@@ -98,7 +80,6 @@ export function AdminFactsPanel() {
 		try {
 			await consumeAdminFactDraftsStream({
 				count: GENERATION_COUNT,
-				category,
 				topic: topic.trim() === "" ? undefined : topic.trim(),
 				signal: controller.signal,
 				onEvent: (event) => {
@@ -143,7 +124,7 @@ export function AdminFactsPanel() {
 				setPendingSlots(0);
 			}
 		}
-	}, [category, topic]);
+	}, [topic]);
 
 	function rejectItem(localId: string) {
 		setQueue((current) =>
@@ -180,9 +161,7 @@ export function AdminFactsPanel() {
 
 		const savedIds = new Set(items.map((item) => item.localId));
 		setQueue((current) =>
-			current.map((item) =>
-				savedIds.has(item.localId) ? { ...item, status: "saved" } : item,
-			),
+			current.filter((item) => !savedIds.has(item.localId)),
 		);
 	}
 
@@ -192,40 +171,21 @@ export function AdminFactsPanel() {
 				<div className="flex flex-col gap-1">
 					<h2 className="font-semibold text-lg">Generate batch</h2>
 					<p className="text-muted-foreground text-sm">
-						Streams {GENERATION_COUNT} facts one at a time. Reject bad picks,
-						then save or publish the rest in one click.
+						Streams {GENERATION_COUNT} facts one at a time across mixed
+						categories. Reject bad picks, then save or publish the rest in one
+						click.
 					</p>
 				</div>
 
-				<div className="grid gap-4 md:grid-cols-2">
-					<Field>
-						<FieldLabel htmlFor="fact-topic">Topic hint (optional)</FieldLabel>
-						<Input
-							id="fact-topic"
-							value={topic}
-							onChange={(event) => setTopic(event.target.value)}
-							placeholder="e.g. Ottoman libraries"
-						/>
-					</Field>
-					<Field>
-						<FieldLabel>Category bias</FieldLabel>
-						<Select
-							value={category}
-							onValueChange={(value) => setCategory(value as FactCategory)}
-						>
-							<SelectTrigger>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{CATEGORIES.map((item) => (
-									<SelectItem key={item} value={item}>
-										{item}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</Field>
-				</div>
+				<Field>
+					<FieldLabel htmlFor="fact-topic">Topic hint (optional)</FieldLabel>
+					<Input
+						id="fact-topic"
+						value={topic}
+						onChange={(event) => setTopic(event.target.value)}
+						placeholder="e.g. Ottoman libraries, jazz history, marine biology"
+					/>
+				</Field>
 
 				<div className="flex flex-wrap gap-2">
 					<LoadingButton
@@ -324,9 +284,7 @@ export function AdminFactsPanel() {
 												Publish
 											</LoadingButton>
 										</div>
-									) : (
-										<p className="text-muted-foreground text-xs">Saved</p>
-									)}
+									) : null}
 								</li>
 							))}
 						{isStreaming

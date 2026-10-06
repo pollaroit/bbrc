@@ -12,12 +12,16 @@ import {
 } from "@bbrc/ui/components/select";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Eye, Heart, Trash2 } from "lucide-react";
+import { Eye, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AdminFactEngagementDialog } from "@/components/blocks/admin-fact-engagement-dialog";
 import { FactCategoryBadge } from "@/components/blocks/fact-category-badge";
 import { FactStatusBadge } from "@/components/blocks/fact-status-badge";
+import {
+	buildAdminFactsListInput,
+	useAdminFactsListingSearchParams,
+} from "@/lib/listing/admin-facts-listing";
 import { orpc, queryClient } from "@/utils/orpc";
 
 function formatDate(date: Date) {
@@ -35,21 +39,19 @@ async function invalidateAdminFacts() {
 
 type EngagementTarget = {
 	fact: AdminFactRecord;
-	kind: "likes" | "impressions";
+	kind: "upvotes" | "downvotes" | "impressions";
 };
 
 export function AdminFactsInventory() {
-	const [listStatus, setListStatus] = useState<"all" | "draft" | "published">(
-		"all",
-	);
-	const [page, setPage] = useState(1);
+	const [params, setParams] = useAdminFactsListingSearchParams();
+	const listInput = buildAdminFactsListInput(params);
 	const [engagement, setEngagement] = useState<EngagementTarget | null>(null);
 	const [engagementPage, setEngagementPage] = useState(1);
 	const [dialogOpen, setDialogOpen] = useState(false);
 
 	const listQuery = useQuery(
 		orpc.admin.listFacts.queryOptions({
-			input: { page, limit: 10, status: listStatus },
+			input: listInput,
 		}),
 	);
 
@@ -75,7 +77,7 @@ export function AdminFactsInventory() {
 
 	function openEngagement(
 		fact: AdminFactRecord,
-		kind: "likes" | "impressions",
+		kind: EngagementTarget["kind"],
 	) {
 		setEngagement({ fact, kind });
 		setEngagementPage(1);
@@ -83,6 +85,8 @@ export function AdminFactsInventory() {
 	}
 
 	const total = listQuery.data?.metadata.total ?? 0;
+	const page = params.page;
+	const listStatus = params.status;
 
 	return (
 		<section className="flex flex-col gap-6">
@@ -90,8 +94,9 @@ export function AdminFactsInventory() {
 				<div className="flex max-w-xl flex-col gap-1">
 					<h2 className="font-semibold text-xl tracking-tight">Inventory</h2>
 					<p className="text-muted-foreground text-sm leading-relaxed">
-						Published facts flow to member reels in random order. Impressions
-						track who has seen a card; likes come from the reel feed.
+						Published facts flow to member reels with taste-aware ordering.
+						Impressions track views; upvotes and downvotes train
+						recommendations.
 					</p>
 					{listQuery.data ? (
 						<p className="text-muted-foreground text-xs tabular-nums">
@@ -102,8 +107,10 @@ export function AdminFactsInventory() {
 				<Select
 					value={listStatus}
 					onValueChange={(value) => {
-						setListStatus(value as typeof listStatus);
-						setPage(1);
+						void setParams({
+							status: value as typeof listStatus,
+							page: 1,
+						});
 					}}
 				>
 					<SelectTrigger className="w-full md:w-44">
@@ -183,11 +190,22 @@ export function AdminFactsInventory() {
 										variant="outline"
 										size="sm"
 										className="justify-start tabular-nums"
-										disabled={row.likeCount === 0}
-										onClick={() => openEngagement(row, "likes")}
+										disabled={row.upvoteCount === 0}
+										onClick={() => openEngagement(row, "upvotes")}
 									>
-										<Heart className="size-4 shrink-0" aria-hidden />
-										{row.likeCount} likes
+										<ThumbsUp className="size-4 shrink-0" aria-hidden />
+										{row.upvoteCount} up
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										className="justify-start tabular-nums"
+										disabled={row.downvoteCount === 0}
+										onClick={() => openEngagement(row, "downvotes")}
+									>
+										<ThumbsDown className="size-4 shrink-0" aria-hidden />
+										{row.downvoteCount} down
 									</Button>
 								</div>
 								<div className="flex gap-2 md:w-full">
@@ -226,7 +244,7 @@ export function AdminFactsInventory() {
 						variant="outline"
 						size="sm"
 						disabled={page <= 1}
-						onClick={() => setPage((current) => current - 1)}
+						onClick={() => void setParams({ page: page - 1 })}
 					>
 						Previous
 					</Button>
@@ -238,7 +256,7 @@ export function AdminFactsInventory() {
 						variant="outline"
 						size="sm"
 						disabled={!listQuery.data.metadata.hasNextPage}
-						onClick={() => setPage((current) => current + 1)}
+						onClick={() => void setParams({ page: page + 1 })}
 					>
 						Next
 					</Button>

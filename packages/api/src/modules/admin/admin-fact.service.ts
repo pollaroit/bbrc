@@ -7,6 +7,7 @@ import { definePagination } from "../../utils/pagination";
 import {
 	ADMIN_FACT_SYSTEM_PROMPT,
 	buildAdminFactUserPrompt,
+	pickRandomFactCategory,
 } from "./admin-fact.prompts";
 import {
 	AdminFactDraftSchema,
@@ -43,12 +44,23 @@ const adminFactSelect = {
 			username: true,
 		},
 	},
-	_count: { select: { likes: true, impressions: true } },
+	_count: { select: { impressions: true } },
+	votes: { select: { value: true } },
 } as const satisfies Prisma.FactSelect;
 
 type AdminFactRow = Prisma.FactGetPayload<{ select: typeof adminFactSelect }>;
 
 function mapAdminFact(row: AdminFactRow): AdminFactRecord {
+	let upvoteCount = 0;
+	let downvoteCount = 0;
+	for (const vote of row.votes) {
+		if (vote.value === "up") {
+			upvoteCount += 1;
+		} else {
+			downvoteCount += 1;
+		}
+	}
+
 	return {
 		id: row.id,
 		body: row.body,
@@ -59,7 +71,8 @@ function mapAdminFact(row: AdminFactRow): AdminFactRecord {
 		createdAt: row.createdAt,
 		publishedAt: row.publishedAt,
 		createdBy: row.createdBy,
-		likeCount: row._count.likes,
+		upvoteCount,
+		downvoteCount,
 		impressionCount: row._count.impressions,
 	};
 }
@@ -81,17 +94,17 @@ async function assertAdminFactExists(factId: string, db: Database) {
 	}
 }
 
-export async function listAdminFactLikes(
-	input: ListAdminFactEngagementInput,
+export async function listAdminFactVotes(
+	input: ListAdminFactEngagementInput & { direction: "up" | "down" },
 	db: Database,
 ): Promise<ListAdminFactEngagementOutput> {
 	await assertAdminFactExists(input.id, db);
 	const pagination = definePagination.offset(input);
 
-	const where = { factId: input.id };
+	const where = { factId: input.id, value: input.direction };
 
 	const [rows, total] = await Promise.all([
-		db.factLike.findMany({
+		db.factVote.findMany({
 			...pagination.use(),
 			where,
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -100,7 +113,7 @@ export async function listAdminFactLikes(
 				user: { select: factEngagementUserSelect },
 			},
 		}),
-		db.factLike.count({ where }),
+		db.factVote.count({ where }),
 	]);
 
 	const page = pagination.paginate(rows, total);
@@ -216,7 +229,7 @@ export async function* streamAdminFactDrafts(input: {
 	for (let index = 0; index < targetCount; index += 1) {
 		try {
 			const draft = await generateOneAdminFactDraft({
-				category: input.category,
+				category: input.category ?? pickRandomFactCategory(),
 				topic: input.topic,
 				avoidFacts,
 				index,
@@ -245,9 +258,11 @@ export async function createAdminFact(
 		data: {
 			body: input.body,
 			category: input.category,
+			subcategory: input.subcategory ?? null,
 			source: input.source,
 			image: input.image ?? null,
 			confidence: input.confidence,
+			aiGenerated: true,
 			createdById,
 			publishedAt: input.publish ? new Date() : null,
 		},
@@ -271,9 +286,11 @@ export async function batchCreateAdminFacts(
 			data: {
 				body: item.body,
 				category: item.category,
+				subcategory: item.subcategory,
 				source: item.source,
 				confidence: item.confidence,
 				image: null,
+				aiGenerated: true,
 				createdById,
 				publishedAt,
 			},

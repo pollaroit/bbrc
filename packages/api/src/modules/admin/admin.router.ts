@@ -24,6 +24,7 @@ import {
 	ListAdminFactEngagementOutputSchema,
 	ListAdminFactsInputSchema,
 	ListAdminFactsOutputSchema,
+	ListAdminFactVotesInputSchema,
 	PublishAdminFactOutputSchema,
 } from "./admin-fact.schema";
 import {
@@ -32,8 +33,8 @@ import {
 	deleteAdminFact,
 	generateAdminFactDraft,
 	listAdminFactImpressions,
-	listAdminFactLikes,
 	listAdminFacts,
+	listAdminFactVotes,
 	publishAdminFact,
 } from "./admin-fact.service";
 import {
@@ -141,11 +142,11 @@ export const adminRouter = {
 		.input(ListAdminFactsInputSchema)
 		.output(ListAdminFactsOutputSchema)
 		.handler(async ({ input, context }) => listAdminFacts(input, context.db)),
-	listFactLikes: adminProcedure
-		.input(ListAdminFactEngagementInputSchema)
+	listFactVotes: adminProcedure
+		.input(ListAdminFactVotesInputSchema)
 		.output(ListAdminFactEngagementOutputSchema)
 		.handler(async ({ input, context }) =>
-			listAdminFactLikes(input, context.db),
+			listAdminFactVotes(input, context.db),
 		),
 	listFactImpressions: adminProcedure
 		.input(ListAdminFactEngagementInputSchema)

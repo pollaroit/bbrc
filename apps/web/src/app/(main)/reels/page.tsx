@@ -27,5 +27,11 @@ export default async function ReelsPage({ searchParams }: ReelsPageProps) {
 
 	const { fact: initialFactId } = await searchParams;
 
-	return <FactReelsViewer initialFactId={initialFactId} />;
+	return (
+		<FactReelsViewer
+			mode="discover"
+			viewerUsername={session.user.username}
+			initialFactId={initialFactId}
+		/>
+	);
 }

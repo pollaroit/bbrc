@@ -10,7 +10,19 @@ export const FactCategorySchema = z.enum([
 	"science",
 	"literature",
 	"philosophy",
+	"art",
+	"music",
+	"geography",
+	"psychology",
+	"technology",
+	"language",
+	"nature",
+	"culture",
+	"biography",
+	"mathematics",
 ]);
+
+export const FACT_CATEGORIES = FactCategorySchema.options;
 
 export type FactCategory = z.infer<typeof FactCategorySchema>;
 
@@ -36,9 +48,12 @@ export type GenerateAdminFactDraftInput = z.infer<
 	typeof GenerateAdminFactDraftInputSchema
 >;
 
+export const FactSubcategorySchema = z.string().trim().min(2).max(120);
+
 export const AdminFactDraftSchema = z.object({
 	fact: z.string().trim().min(1).max(2000),
 	category: FactCategorySchema,
+	subcategory: FactSubcategorySchema,
 	source: httpsUrlSchema,
 	confidence: FactConfidenceSchema,
 });
@@ -64,6 +79,11 @@ export const adminFactDraftGeminiSchema = {
 			type: "string",
 			enum: FactCategorySchema.options,
 		},
+		subcategory: {
+			type: "string",
+			description:
+				"Specific niche tag (2–6 words, lowercase ok) e.g. 'byzantine mosaics', 'RNA splicing', 'persian poetry'.",
+		},
 		source: {
 			type: "string",
 			description:
@@ -75,7 +95,7 @@ export const adminFactDraftGeminiSchema = {
 			description: "How confident you are the fact and source are correct.",
 		},
 	},
-	required: ["fact", "category", "source", "confidence"],
+	required: ["fact", "category", "subcategory", "source", "confidence"],
 } as const;
 
 const optionalHttpsImageSchema = z
@@ -91,6 +111,7 @@ const optionalHttpsImageSchema = z
 export const CreateAdminFactInputSchema = z.object({
 	body: z.string().trim().min(1).max(2000),
 	category: FactCategorySchema,
+	subcategory: FactSubcategorySchema.optional(),
 	source: httpsUrlSchema,
 	image: optionalHttpsImageSchema,
 	confidence: FactConfidenceSchema,
@@ -113,7 +134,8 @@ export const AdminFactRecordSchema = z.object({
 		name: z.string(),
 		username: z.string(),
 	}),
-	likeCount: z.number().int().min(0),
+	upvoteCount: z.number().int().min(0),
+	downvoteCount: z.number().int().min(0),
 	impressionCount: z.number().int().min(0),
 });
 
@@ -147,6 +169,7 @@ export const DEFAULT_FACT_GENERATION_BATCH = 10;
 export const BatchCreateAdminFactItemSchema = z.object({
 	body: z.string().trim().min(1).max(2000),
 	category: FactCategorySchema,
+	subcategory: FactSubcategorySchema,
 	source: httpsUrlSchema,
 	confidence: FactConfidenceSchema,
 });
@@ -183,6 +206,11 @@ export type AdminFactMemberEvent = z.infer<typeof AdminFactMemberEventSchema>;
 export const ListAdminFactEngagementInputSchema = AdminFactIdInputSchema.merge(
 	OffsetPaginationInputSchema,
 );
+
+export const ListAdminFactVotesInputSchema =
+	ListAdminFactEngagementInputSchema.extend({
+		direction: z.enum(["up", "down"]),
+	});
 
 export type ListAdminFactEngagementInput = z.infer<
 	typeof ListAdminFactEngagementInputSchema

@@ -3,7 +3,7 @@
 import type { FactReelItem } from "@bbrc/api/modules/fact/fact.schema";
 import { Button } from "@bbrc/ui/components/button";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Heart, Share2 } from "lucide-react";
+import { ArrowLeft, Share2, ThumbsDown, ThumbsUp } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 
 const DECK_PULL_SIZE = 5;
+
+type FactReelsMode = "discover" | "history";
 
 function FactReelSlide({ item }: { item: FactReelItem }) {
 	return (
@@ -43,33 +45,88 @@ function FactReelSlide({ item }: { item: FactReelItem }) {
 	);
 }
 
+function FactReelEndSlide({
+	mode,
+	username,
+}: {
+	mode: FactReelsMode;
+	username?: string;
+}) {
+	return (
+		<section className="flex h-dvh w-full shrink-0 snap-start snap-always flex-col items-center justify-center gap-3 px-6 text-center">
+			<p className="font-medium text-lg">
+				{mode === "history" ? "End of your replay" : "You&apos;re caught up"}
+			</p>
+			<p className="max-w-sm text-muted-foreground text-sm leading-relaxed">
+				{mode === "history" ? (
+					<>
+						That&apos;s every fact you&apos;ve seen so far. New picks will show
+						up here after you watch them in the main reels feed.
+					</>
+				) : (
+					<>
+						You&apos;ve seen all published facts for now. Check back when admins
+						add more — your upvotes and downvotes help tailor what you see next.
+					</>
+				)}
+			</p>
+			<div className="mt-2 flex flex-wrap justify-center gap-2">
+				{mode === "discover" && username ? (
+					<Button
+						nativeButton={false}
+						render={<Link href={`/users/${username}/reels` as Route} />}
+						variant="outline"
+					>
+						Replay seen facts
+					</Button>
+				) : null}
+				<Button
+					nativeButton={false}
+					render={
+						<Link
+							href={
+								(mode === "history" && username
+									? `/users/${username}/reels`
+									: "/") as Route
+							}
+						/>
+					}
+					variant="outline"
+				>
+					{mode === "history" ? "Back to replays" : "Back to feed"}
+				</Button>
+			</div>
+		</section>
+	);
+}
+
 function FactReelActions({
 	item,
-	onLikeStateChange,
+	onVoteChange,
 }: {
 	item: FactReelItem;
-	onLikeStateChange: (factId: string, liked: boolean) => void;
+	onVoteChange: (factId: string, vote: "up" | "down" | null) => void;
 }) {
-	const [liked, setLiked] = useState(item.likedByViewer);
+	const [viewerVote, setViewerVote] = useState(item.viewerVote);
 
 	useEffect(() => {
-		setLiked(item.likedByViewer);
-	}, [item.id, item.likedByViewer]);
+		setViewerVote(item.viewerVote);
+	}, [item.viewerVote]);
 
-	const toggleMutation = useMutation(
-		orpc.fact.toggleLike.mutationOptions({
-			onMutate: () => {
-				const snapshot = liked;
-				setLiked(!liked);
+	const voteMutation = useMutation(
+		orpc.fact.setVote.mutationOptions({
+			onMutate: ({ direction }) => {
+				const snapshot = viewerVote;
+				setViewerVote((current) => (current === direction ? null : direction));
 				return snapshot;
 			},
 			onSuccess: (result) => {
-				setLiked(result.liked);
-				onLikeStateChange(item.id, result.liked);
+				setViewerVote(result.viewerVote);
+				onVoteChange(item.id, result.viewerVote);
 			},
-			onError: (error, _variables, wasLiked) => {
-				if (typeof wasLiked === "boolean") {
-					setLiked(wasLiked);
+			onError: (error, _variables, snapshot) => {
+				if (snapshot !== undefined) {
+					setViewerVote(snapshot);
 				}
 				toast.error(error.message);
 			},
@@ -98,12 +155,38 @@ function FactReelActions({
 					size="icon-lg"
 					variant="secondary"
 					className="size-12 shadow-md"
-					aria-label={liked ? "Unlike fact" : "Like fact"}
-					disabled={toggleMutation.isPending}
-					onClick={() => toggleMutation.mutate({ factId: item.id })}
+					aria-label={viewerVote === "up" ? "Remove upvote" : "Upvote fact"}
+					disabled={voteMutation.isPending}
+					onClick={() =>
+						voteMutation.mutate({ factId: item.id, direction: "up" })
+					}
 				>
-					<Heart
-						className={cn("size-5", liked && "fill-current text-red-600")}
+					<ThumbsUp
+						className={cn(
+							"size-5",
+							viewerVote === "up" && "fill-current text-foreground",
+						)}
+						aria-hidden
+					/>
+				</Button>
+				<Button
+					type="button"
+					size="icon-lg"
+					variant="secondary"
+					className="size-12 shadow-md"
+					aria-label={
+						viewerVote === "down" ? "Remove downvote" : "Downvote fact"
+					}
+					disabled={voteMutation.isPending}
+					onClick={() =>
+						voteMutation.mutate({ factId: item.id, direction: "down" })
+					}
+				>
+					<ThumbsDown
+						className={cn(
+							"size-5",
+							viewerVote === "down" && "fill-current text-foreground",
+						)}
 						aria-hidden
 					/>
 				</Button>
@@ -123,44 +206,65 @@ function FactReelActions({
 }
 
 type FactReelsViewerProps = {
+	mode?: FactReelsMode;
+	username?: string;
+	viewerUsername?: string;
 	initialFactId?: string;
 };
 
-export function FactReelsViewer({ initialFactId }: FactReelsViewerProps) {
+export function FactReelsViewer({
+	mode = "discover",
+	username,
+	viewerUsername,
+	initialFactId,
+}: FactReelsViewerProps) {
 	const router = useRouter();
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	const deckRef = useRef<FactReelItem[]>([]);
 	const seenIdsRef = useRef<Set<string>>(new Set());
 	const loadingMoreRef = useRef(false);
 	const exhaustedRef = useRef(false);
+	const seenDeckAnchorRef = useRef(initialFactId);
 
 	const [deck, setDeck] = useState<FactReelItem[]>([]);
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [exhausted, setExhausted] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
-	const [likedByFactId, setLikedByFactId] = useState<Record<string, boolean>>(
-		{},
-	);
+	const [votesByFactId, setVotesByFactId] = useState<
+		Record<string, "up" | "down" | null>
+	>({});
 
 	deckRef.current = deck;
 	exhaustedRef.current = exhausted;
 
-	const markSeen = useCallback(async (factId: string) => {
-		if (seenIdsRef.current.has(factId)) {
-			return;
-		}
-		seenIdsRef.current.add(factId);
+	const markSeen = useCallback(
+		async (factId: string) => {
+			if (mode === "history") {
+				return;
+			}
+			if (seenIdsRef.current.has(factId)) {
+				return;
+			}
+			seenIdsRef.current.add(factId);
 
-		try {
-			await client.fact.markSeen({ factId });
-		} catch {
-			seenIdsRef.current.delete(factId);
-		}
-	}, []);
+			try {
+				await client.fact.markSeen({ factId });
+			} catch {
+				seenIdsRef.current.delete(factId);
+			}
+		},
+		[mode],
+	);
 
 	const pullMore = useCallback(async () => {
 		if (loadingMoreRef.current || exhaustedRef.current) {
+			return;
+		}
+
+		if (mode === "history" && !username) {
+			setLoadError("Missing member.");
+			setLoading(false);
 			return;
 		}
 
@@ -175,10 +279,26 @@ export function FactReelsViewer({ initialFactId }: FactReelsViewerProps) {
 				]),
 			];
 
-			const result = await client.fact.pullDeck({
-				limit: DECK_PULL_SIZE,
-				excludeFactIds,
-			});
+			const isFirstHistoryPull = mode === "history" && currentDeck.length === 0;
+			const anchorFactId = isFirstHistoryPull
+				? seenDeckAnchorRef.current
+				: undefined;
+			if (isFirstHistoryPull) {
+				seenDeckAnchorRef.current = undefined;
+			}
+
+			const result =
+				mode === "history"
+					? await client.fact.pullSeenDeck({
+							username: username ?? "",
+							limit: DECK_PULL_SIZE,
+							excludeFactIds: anchorFactId ? [] : excludeFactIds,
+							anchorFactId,
+						})
+					: await client.fact.pullDeck({
+							limit: DECK_PULL_SIZE,
+							excludeFactIds,
+						});
 
 			setDeck((previous) => {
 				const existing = new Set(previous.map((item) => item.id));
@@ -187,6 +307,9 @@ export function FactReelsViewer({ initialFactId }: FactReelsViewerProps) {
 			});
 
 			if (result.exhausted && result.items.length === 0) {
+				exhaustedRef.current = true;
+				setExhausted(true);
+			} else if (result.exhausted) {
 				exhaustedRef.current = true;
 				setExhausted(true);
 			}
@@ -198,18 +321,19 @@ export function FactReelsViewer({ initialFactId }: FactReelsViewerProps) {
 			loadingMoreRef.current = false;
 			setLoading(false);
 		}
-	}, []);
+	}, [mode, username]);
 
 	useEffect(() => {
 		seenIdsRef.current = new Set();
 		exhaustedRef.current = false;
+		seenDeckAnchorRef.current = initialFactId;
 		setDeck([]);
 		setActiveIndex(0);
 		setExhausted(false);
 		setLoading(true);
 		setLoadError(null);
 		void pullMore();
-	}, [pullMore]);
+	}, [initialFactId, pullMore]);
 
 	useEffect(() => {
 		if (!initialFactId || deck.length === 0) {
@@ -226,11 +350,15 @@ export function FactReelsViewer({ initialFactId }: FactReelsViewerProps) {
 		}
 	}, [initialFactId, deck]);
 
-	const activeItem = deck[activeIndex];
+	const slideCount = deck.length + (exhausted && deck.length > 0 ? 1 : 0);
+
+	const activeItem =
+		exhausted && activeIndex >= deck.length ? null : deck[activeIndex];
 	const mergedActiveItem = activeItem
 		? {
 				...activeItem,
-				likedByViewer: likedByFactId[activeItem.id] ?? activeItem.likedByViewer,
+				viewerVote:
+					votesByFactId[activeItem.id] ?? activeItem.viewerVote ?? null,
 			}
 		: null;
 
@@ -277,7 +405,7 @@ export function FactReelsViewer({ initialFactId }: FactReelsViewerProps) {
 
 		scrollerEl.addEventListener("scroll", onScroll, { passive: true });
 		return () => scrollerEl.removeEventListener("scroll", onScroll);
-	}, [deck.length]);
+	}, [slideCount]);
 
 	return (
 		<div className="relative h-dvh overflow-hidden bg-background">
@@ -291,6 +419,8 @@ export function FactReelsViewer({ initialFactId }: FactReelsViewerProps) {
 					onClick={() => {
 						if (window.history.length > 1) {
 							router.back();
+						} else if (mode === "history" && username) {
+							router.push(`/users/${username}/reels` as Route);
 						} else {
 							router.push("/" as Route);
 						}
@@ -321,16 +451,24 @@ export function FactReelsViewer({ initialFactId }: FactReelsViewerProps) {
 				</div>
 			) : deck.length === 0 ? (
 				<div className="flex h-dvh flex-col items-center justify-center gap-2 px-6 text-center">
-					<p className="font-medium">You&apos;ve seen every fact</p>
+					<p className="font-medium">
+						{mode === "history"
+							? "No facts to replay yet"
+							: "You&apos;ve seen every fact"}
+					</p>
 					<p className="text-muted-foreground text-sm">
-						Come back when admins publish more.
+						{mode === "history"
+							? "Watch facts in the main reels feed first."
+							: "Come back when admins publish more."}
 					</p>
 					<Button
 						nativeButton={false}
-						render={<Link href={"/" as Route} />}
+						render={
+							<Link href={(mode === "history" ? "/reels" : "/") as Route} />
+						}
 						variant="outline"
 					>
-						Back to feed
+						{mode === "history" ? "Open reels" : "Back to feed"}
 					</Button>
 				</div>
 			) : (
@@ -342,15 +480,21 @@ export function FactReelsViewer({ initialFactId }: FactReelsViewerProps) {
 						{deck.map((item) => (
 							<FactReelSlide key={item.id} item={item} />
 						))}
+						{exhausted ? (
+							<FactReelEndSlide
+								mode={mode}
+								username={mode === "history" ? username : viewerUsername}
+							/>
+						) : null}
 					</div>
 
 					{mergedActiveItem ? (
 						<FactReelActions
 							item={mergedActiveItem}
-							onLikeStateChange={(factId, liked) => {
-								setLikedByFactId((current) => ({
+							onVoteChange={(factId, vote) => {
+								setVotesByFactId((current) => ({
 									...current,
-									[factId]: liked,
+									[factId]: vote,
 								}));
 							}}
 						/>

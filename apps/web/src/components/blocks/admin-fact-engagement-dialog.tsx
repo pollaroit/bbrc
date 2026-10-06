@@ -19,7 +19,7 @@ import { orpc } from "@/utils/orpc";
 
 const PAGE_SIZE = 20;
 
-type EngagementKind = "likes" | "impressions";
+type EngagementKind = "upvotes" | "downvotes" | "impressions";
 
 type AdminFactEngagementDialogProps = {
 	fact: AdminFactRecord | null;
@@ -38,14 +38,27 @@ export function AdminFactEngagementDialog({
 	page,
 	onPageChange,
 }: AdminFactEngagementDialogProps) {
-	const query = useQuery(
-		orpc.admin.listFactLikes.queryOptions({
+	const upvotesQuery = useQuery(
+		orpc.admin.listFactVotes.queryOptions({
 			input: {
 				id: fact?.id ?? "",
 				page,
 				limit: PAGE_SIZE,
+				direction: "up",
 			},
-			enabled: open && kind === "likes" && fact != null,
+			enabled: open && kind === "upvotes" && fact != null,
+		}),
+	);
+
+	const downvotesQuery = useQuery(
+		orpc.admin.listFactVotes.queryOptions({
+			input: {
+				id: fact?.id ?? "",
+				page,
+				limit: PAGE_SIZE,
+				direction: "down",
+			},
+			enabled: open && kind === "downvotes" && fact != null,
 		}),
 	);
 
@@ -60,14 +73,29 @@ export function AdminFactEngagementDialog({
 		}),
 	);
 
-	const activeQuery = kind === "impressions" ? impressionsQuery : query;
-	const title = kind === "impressions" ? "Who saw this" : "Who liked this";
+	const activeQuery =
+		kind === "impressions"
+			? impressionsQuery
+			: kind === "downvotes"
+				? downvotesQuery
+				: upvotesQuery;
+
+	const title =
+		kind === "impressions"
+			? "Who saw this"
+			: kind === "downvotes"
+				? "Who downvoted"
+				: "Who upvoted";
 	const emptyTitle =
-		kind === "impressions" ? "No impressions yet" : "No likes yet";
+		kind === "impressions"
+			? "No impressions yet"
+			: kind === "downvotes"
+				? "No downvotes yet"
+				: "No upvotes yet";
 	const emptyDescription =
 		kind === "impressions"
 			? "Members appear here after the fact shows in their reel."
-			: "Likes from the reel feed show up here.";
+			: "Votes from the reel feed show up here.";
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -81,36 +109,37 @@ export function AdminFactEngagementDialog({
 
 				<div className="min-h-0 flex-1 overflow-y-auto py-4">
 					{activeQuery.isPending ? (
-						<div className="flex flex-col gap-2" aria-hidden>
+						<div className="flex flex-col gap-3">
 							{Array.from({ length: 4 }, (_, index) => (
-								<Skeleton key={index} className="h-14 w-full" />
+								<Skeleton key={index} className="h-12 w-full" />
 							))}
 						</div>
 					) : activeQuery.isError ? (
-						<p className="text-muted-foreground text-sm">
+						<p className="text-destructive text-sm">
 							{activeQuery.error.message}
 						</p>
 					) : activeQuery.data.items.length === 0 ? (
-						<div className="border border-dashed px-4 py-8 text-center">
+						<div className="py-8 text-center">
 							<p className="font-medium text-sm">{emptyTitle}</p>
 							<p className="mt-1 text-muted-foreground text-sm">
 								{emptyDescription}
 							</p>
 						</div>
 					) : (
-						<ul className="flex flex-col gap-2">
-							{activeQuery.data.items.map((entry) => (
-								<li
-									key={`${entry.user.username}-${entry.createdAt.toString()}`}
-								>
+						<ul className="flex flex-col gap-3">
+							{activeQuery.data.items.map((row) => (
+								<li key={`${row.user.id}-${row.createdAt.toISOString()}`}>
 									<Link
-										href={`/users/${entry.user.username}` as Route}
-										className="flex items-center justify-between gap-3 border border-border px-3 py-2 transition-colors hover:bg-muted/40"
+										href={`/users/${row.user.username}` as Route}
+										className="flex items-center justify-between gap-3 border border-border p-3 hover:bg-muted/30"
 									>
-										<UserPanel user={entry.user} className="min-w-0" />
-										<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-											{formatDateTime(entry.createdAt)}
-										</span>
+										<UserPanel user={row.user} />
+										<time
+											className="shrink-0 text-muted-foreground text-xs tabular-nums"
+											dateTime={row.createdAt.toISOString()}
+										>
+											{formatDateTime(row.createdAt)}
+										</time>
 									</Link>
 								</li>
 							))}

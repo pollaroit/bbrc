@@ -7,11 +7,12 @@ import { usePathname } from "next/navigation";
 
 type MemberProfileNavProps = {
 	username: string;
+	isOwnProfile?: boolean;
 };
 
 function profileTabHref(
 	username: string,
-	segment: "readings" | "posts" | "feedbacks" | "shelves",
+	segment: "readings" | "posts" | "feedbacks" | "shelves" | "reels",
 ) {
 	if (segment === "readings") {
 		return `/users/${username}` as Route;
@@ -33,10 +34,16 @@ function activeTab(pathname: string, username: string): string {
 	if (pathname.startsWith(`${base}/shelves`)) {
 		return "shelves";
 	}
+	if (pathname.startsWith(`${base}/reels`)) {
+		return "reels";
+	}
 	return "readings";
 }
 
-export function MemberProfileNav({ username }: MemberProfileNavProps) {
+export function MemberProfileNav({
+	username,
+	isOwnProfile = false,
+}: MemberProfileNavProps) {
 	const pathname = usePathname();
 	const current = activeTab(pathname, username);
 
@@ -72,6 +79,15 @@ export function MemberProfileNav({ username }: MemberProfileNavProps) {
 					>
 						Shelves
 					</TabsTrigger>
+					{isOwnProfile ? (
+						<TabsTrigger
+							value="reels"
+							nativeButton={false}
+							render={<Link href={profileTabHref(username, "reels")} />}
+						>
+							Reels
+						</TabsTrigger>
+					) : null}
 				</TabsList>
 			</Tabs>
 		</nav>

@@ -1,9 +1,17 @@
-import { CursorPaginationInputSchema } from "@bbrc/schemas";
+import {
+	CursorPaginationInputSchema,
+	OffsetPaginationInputSchema,
+	OffsetPaginationOutputSchema,
+} from "@bbrc/schemas";
 import { z } from "zod";
 import {
 	FactCategorySchema,
 	FactConfidenceSchema,
 } from "../admin/admin-fact.schema";
+
+export const FactVoteValueSchema = z.enum(["up", "down"]);
+
+export type FactVoteValue = z.infer<typeof FactVoteValueSchema>;
 
 export const FactReelItemSchema = z.object({
 	id: z.string().uuid(),
@@ -13,8 +21,7 @@ export const FactReelItemSchema = z.object({
 	image: z.string().url().nullable(),
 	confidence: FactConfidenceSchema,
 	publishedAt: z.coerce.date(),
-	likeCount: z.number().int().min(0),
-	likedByViewer: z.boolean(),
+	viewerVote: FactVoteValueSchema.nullable(),
 });
 
 export type FactReelItem = z.infer<typeof FactReelItemSchema>;
@@ -33,6 +40,53 @@ export const PullFactReelDeckOutputSchema = z.object({
 
 export type PullFactReelDeckOutput = z.infer<
 	typeof PullFactReelDeckOutputSchema
+>;
+
+export const PullUserSeenFactReelDeckInputSchema = z.object({
+	username: z.string().trim().min(1).max(64),
+	limit: z.number().int().min(1).max(10).default(5),
+	excludeFactIds: z.array(z.string().uuid()).max(200).default([]),
+	anchorFactId: z.string().uuid().optional(),
+});
+
+export const UserSeenFactGridItemSchema = z.object({
+	id: z.string().uuid(),
+	body: z.string(),
+	category: FactCategorySchema,
+	image: z.string().url().nullable(),
+	seenAt: z.coerce.date(),
+	viewerVote: FactVoteValueSchema.nullable(),
+});
+
+export type UserSeenFactGridItem = z.infer<typeof UserSeenFactGridItemSchema>;
+
+export const ListUserSeenFactsInputSchema = OffsetPaginationInputSchema.extend({
+	username: z.string().trim().min(1).max(64),
+});
+
+export type ListUserSeenFactsInput = z.infer<
+	typeof ListUserSeenFactsInputSchema
+>;
+
+export const ListUserSeenFactsOutputSchema = OffsetPaginationOutputSchema(
+	UserSeenFactGridItemSchema,
+);
+
+export type ListUserSeenFactsOutput = z.infer<
+	typeof ListUserSeenFactsOutputSchema
+>;
+
+export type PullUserSeenFactReelDeckInput = z.infer<
+	typeof PullUserSeenFactReelDeckInputSchema
+>;
+
+export const PullUserSeenFactReelDeckOutputSchema =
+	PullFactReelDeckOutputSchema.extend({
+		username: z.string(),
+	});
+
+export type PullUserSeenFactReelDeckOutput = z.infer<
+	typeof PullUserSeenFactReelDeckOutputSchema
 >;
 
 /** @deprecated Prefer `pullDeck` — kept for older clients still calling `listReels`. */
@@ -60,15 +114,15 @@ export type MarkFactReelSeenInput = z.infer<typeof MarkFactReelSeenInputSchema>;
 
 export const MarkFactReelSeenOutputSchema = z.object({ ok: z.literal(true) });
 
-export const ToggleFactLikeInputSchema = z.object({
+export const SetFactVoteInputSchema = z.object({
 	factId: z.string().uuid(),
+	direction: FactVoteValueSchema,
 });
 
-export type ToggleFactLikeInput = z.infer<typeof ToggleFactLikeInputSchema>;
+export type SetFactVoteInput = z.infer<typeof SetFactVoteInputSchema>;
 
-export const ToggleFactLikeOutputSchema = z.object({
-	liked: z.boolean(),
-	likeCount: z.number().int().min(0),
+export const SetFactVoteOutputSchema = z.object({
+	viewerVote: FactVoteValueSchema.nullable(),
 });
 
-export type ToggleFactLikeOutput = z.infer<typeof ToggleFactLikeOutputSchema>;
+export type SetFactVoteOutput = z.infer<typeof SetFactVoteOutputSchema>;

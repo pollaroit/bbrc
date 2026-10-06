@@ -5,18 +5,20 @@ import { MemberProfileNav } from "@/components/blocks/member-profile-nav";
 
 type MemberProfileShellProps = {
 	user: GetUserByUsernameOutput;
+	isOwnProfile?: boolean;
 	children: React.ReactNode;
 };
 
 export function MemberProfileShell({
 	user,
+	isOwnProfile = false,
 	children,
 }: MemberProfileShellProps) {
 	return (
 		<div className="flex flex-col gap-8">
 			<MemberProfileHeader user={user} />
 			<MemberProfileFavorites username={user.username} />
-			<MemberProfileNav username={user.username} />
+			<MemberProfileNav isOwnProfile={isOwnProfile} username={user.username} />
 			<div>{children}</div>
 		</div>
 	);

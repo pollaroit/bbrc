@@ -74,6 +74,16 @@ export function UserMenuItems({
 				My shelves
 			</Link>
 			<Link
+				href={`/users/${user.username}/reels` as Route}
+				className={itemClass}
+				onClick={onNavigate}
+			>
+				<span className="flex size-4 shrink-0 items-center justify-center font-serif text-sm leading-none">
+					?
+				</span>
+				My fact replays
+			</Link>
+			<Link
 				href={"/settings" as Route}
 				className={itemClass}
 				onClick={onNavigate}

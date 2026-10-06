@@ -4,12 +4,27 @@ enum FactCategory {
   science
   literature
   philosophy
+  art
+  music
+  geography
+  psychology
+  technology
+  language
+  nature
+  culture
+  biography
+  mathematics
 }
 
 enum FactConfidence {
   low
   medium
   high
+}
+
+enum FactVoteValue {
+  up
+  down
 }
 
 model Fact {
@@ -22,6 +37,10 @@ model Fact {
   body String
 
   category   FactCategory
+  /// Fine-grained tag from AI (e.g. "Ottoman libraries"); used for taste modeling, not shown in reels UI.
+  /// @zod.max(120).optional()
+  subcategory String?
+
   confidence FactConfidence
 
   /// @zod.url()
@@ -30,24 +49,29 @@ model Fact {
   /// @zod.url().optional()
   image String?
 
+  aiGenerated Boolean @default(true) @map("ai_generated")
+
   publishedAt DateTime? @map("published_at")
 
   /// @zod.uuid("Invalid user id")
   createdById String @map("created_by_id")
   createdBy   User   @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
-  likes        FactLike[]
-  impressions  FactImpression[]
+  votes       FactVote[]
+  impressions FactImpression[]
 
   @@index([publishedAt(sort: Desc)])
   @@index([createdById])
+  @@index([category])
   @@map("fact")
 }
 
-model FactLike {
+model FactVote {
   /// @zod.uuid("Invalid UUID")
   id        String   @id @default(uuid())
   createdAt DateTime @default(now()) @map("created_at")
+
+  value FactVoteValue
 
   /// @zod.uuid("Invalid fact id")
   factId String @map("fact_id")
@@ -60,7 +84,7 @@ model FactLike {
   @@unique([factId, userId])
   @@index([factId])
   @@index([userId])
-  @@map("fact_like")
+  @@map("fact_vote")
 }
 
 model FactImpression {
