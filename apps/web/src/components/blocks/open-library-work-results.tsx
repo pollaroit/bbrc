@@ -1,5 +1,7 @@
 "use client";
 
+import { openLibraryWorkKeyToOlid } from "@bbrc/shared";
+import { Badge } from "@bbrc/ui/components/badge";
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import Image from "next/image";
@@ -26,6 +28,8 @@ type OpenLibraryWorkResultsProps = {
 	works: OpenLibrarySearchWork[];
 	selectedWorkKey: string | null;
 	onSelect: (work: OpenLibrarySearchWork) => void;
+	/** Work OLIDs already in the club catalog — rows are disabled with an Added badge. */
+	inCatalogOlids?: ReadonlySet<string>;
 	isLoading?: boolean;
 	className?: string;
 };
@@ -34,6 +38,7 @@ export function OpenLibraryWorkResults({
 	works,
 	selectedWorkKey,
 	onSelect,
+	inCatalogOlids,
 	isLoading = false,
 	className,
 }: OpenLibraryWorkResultsProps) {
@@ -60,21 +65,32 @@ export function OpenLibraryWorkResults({
 			{works.map((work) => {
 				const isSelected = work.workKey === selectedWorkKey;
 				const src = coverUrl(work.coverId);
+				const olid = openLibraryWorkKeyToOlid(work.workKey);
+				const inCatalog = olid != null && (inCatalogOlids?.has(olid) ?? false);
 
 				return (
 					<li key={work.workKey}>
 						<button
 							type="button"
+							disabled={inCatalog}
 							onClick={() => {
+								if (inCatalog) {
+									return;
+								}
 								onSelect(work);
 							}}
-							className="w-full text-left"
+							className={cn(
+								"w-full text-left",
+								inCatalog && "cursor-not-allowed",
+							)}
 						>
 							<Card
 								size="sm"
 								className={cn(
-									"transition-colors hover:bg-muted/40",
+									"transition-colors",
+									!inCatalog && "hover:bg-muted/40",
 									isSelected && "ring-2 ring-ring",
+									inCatalog && "opacity-60",
 								)}
 							>
 								<CardContent className="flex gap-3">
@@ -94,9 +110,14 @@ export function OpenLibraryWorkResults({
 										)}
 									</div>
 									<div className="min-w-0 flex-1 space-y-1">
-										<p className="line-clamp-2 font-medium text-sm leading-snug">
-											{work.title}
-										</p>
+										<div className="flex flex-wrap items-start gap-2">
+											{inCatalog ? (
+												<Badge variant="destructive">Added</Badge>
+											) : null}
+											<p className="line-clamp-2 min-w-0 flex-1 font-medium text-sm leading-snug">
+												{work.title}
+											</p>
+										</div>
 										<p className="truncate text-muted-foreground text-xs">
 											{formatAuthors(work.authors)}
 											{work.publishedIn != null

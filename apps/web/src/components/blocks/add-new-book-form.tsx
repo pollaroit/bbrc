@@ -495,6 +495,20 @@ export function AddNewBookForm() {
 	const trimmedQuery = debouncedQuery.trim();
 	const searchEnabled = trimmedQuery.length >= 2 && selectedWork == null;
 
+	const { data: catalogOlidsData } = useQuery({
+		...orpc.book.listCatalogOlids.queryOptions(),
+		staleTime: 60_000,
+	});
+
+	const inCatalogOlids = useMemo(() => {
+		const set = new Set<string>();
+		for (const olid of catalogOlidsData?.olids ?? []) {
+			const normalized = openLibraryWorkKeyToOlid(olid) ?? olid.toUpperCase();
+			set.add(normalized);
+		}
+		return set;
+	}, [catalogOlidsData?.olids]);
+
 	const { data: searchData, isFetching: isSearching } = useQuery({
 		queryKey: ["open-library-search", trimmedQuery],
 		queryFn: () => searchOpenLibraryWorks(trimmedQuery),
@@ -519,14 +533,21 @@ export function AddNewBookForm() {
 			return;
 		}
 
-		if (!openLibraryWorkKeyToOlid(prefillWork.workKey)) {
+		const olid = openLibraryWorkKeyToOlid(prefillWork.workKey);
+		if (!olid) {
 			toast.error("Could not load the requested Open Library work.");
 			void setPrefillOlid(null);
 			return;
 		}
 
+		if (inCatalogOlids.has(olid)) {
+			toast.error("This book is already in the catalog.");
+			void setPrefillOlid(null);
+			return;
+		}
+
 		setSelectedWork(prefillWork);
-	}, [prefillWork, selectedWork, setPrefillOlid]);
+	}, [prefillWork, inCatalogOlids, selectedWork, setPrefillOlid]);
 
 	useEffect(() => {
 		if (!prefillFailed || prefillOlid == null) {
@@ -543,10 +564,15 @@ export function AddNewBookForm() {
 	};
 
 	const handleSelectWork = (work: OpenLibrarySearchWork) => {
-		if (!openLibraryWorkKeyToOlid(work.workKey)) {
+		const olid = openLibraryWorkKeyToOlid(work.workKey);
+		if (!olid) {
 			toast.error(
 				"This Open Library work could not be linked. Try another result.",
 			);
+			return;
+		}
+
+		if (inCatalogOlids.has(olid)) {
 			return;
 		}
 
@@ -600,6 +626,7 @@ export function AddNewBookForm() {
 							works={searchData?.works ?? []}
 							selectedWorkKey={null}
 							onSelect={handleSelectWork}
+							inCatalogOlids={inCatalogOlids}
 							isLoading={searchEnabled && isSearching}
 						/>
 					)
