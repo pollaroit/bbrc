@@ -200,6 +200,7 @@ export async function getAdminBookOverview(
 	const [
 		totalBooks,
 		statusGroups,
+		pageSumAgg,
 		pageAgg,
 		allAuthorsRows,
 		addedLast7Days,
@@ -211,6 +212,7 @@ export async function getAdminBookOverview(
 	] = await Promise.all([
 		db.book.count(),
 		db.book.groupBy({ by: ["status"], _count: { _all: true } }),
+		db.book.aggregate({ _sum: { pages: true } }),
 		db.book.aggregate({ _avg: { pages: true } }),
 		db.book.findMany({ select: { authors: true } }),
 		db.book.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
@@ -239,6 +241,7 @@ export async function getAdminBookOverview(
 			totalBooks,
 			distinctAuthors: distinctAuthorCount(allAuthorsRows),
 			averagePages: Math.round((pageAgg._avg.pages ?? 0) * 10) / 10,
+			totalPages: pageSumAgg._sum.pages ?? 0,
 			statusCounts,
 			addedLast7Days,
 			addedLast30Days,

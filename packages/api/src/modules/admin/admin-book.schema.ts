@@ -33,6 +33,7 @@ export const AdminBookOverviewOutputSchema = z.object({
 		totalBooks: z.number().int().min(0),
 		distinctAuthors: z.number().int().min(0),
 		averagePages: z.number().min(0),
+		totalPages: z.number().int().min(0),
 		statusCounts: z.object({
 			completed: z.number().int().min(0),
 			reading: z.number().int().min(0),

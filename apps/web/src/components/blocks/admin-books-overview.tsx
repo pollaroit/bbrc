@@ -140,7 +140,10 @@ export function AdminBooksOverview() {
 			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 				<StatCard label="Total books" value={kpis.totalBooks} />
 				<StatCard label="Distinct authors" value={kpis.distinctAuthors} />
-				<StatCard label="Average pages" value={kpis.averagePages} />
+				<StatCard
+					label="Average / Total pages"
+					value={`${kpis.averagePages} / ${kpis.totalPages}`}
+				/>
 				<StatCard
 					label="Added (7d / 30d)"
 					value={`${kpis.addedLast7Days} / ${kpis.addedLast30Days}`}
