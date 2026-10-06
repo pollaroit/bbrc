@@ -88,6 +88,7 @@ export function BookDetail({
 								path={`/books/${book.slug}`}
 								shareText={book.title}
 								label="Share book"
+								storyBookSlug={book.slug}
 								size="md"
 							/>
 							<BookFavoriteButton

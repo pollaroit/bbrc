@@ -205,7 +205,14 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 					Images are generated at <code className="bg-muted px-1">/og/…</code>{" "}
 					(mirrors page paths). Metadata on each route points crawlers to the
 					same URL, so you can iterate locally without deploying or pasting
-					links into WhatsApp.
+					links into WhatsApp. Instagram Story cards live at{" "}
+					<a
+						href="/dev/story"
+						className="text-primary underline-offset-4 hover:underline"
+					>
+						/dev/story
+					</a>
+					.
 				</p>
 			</header>
 

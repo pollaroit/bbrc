@@ -13,6 +13,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
 	FacebookIcon,
+	InstagramIcon,
 	TelegramIcon,
 	WhatsAppIcon,
 	XTwitterIcon,
@@ -25,6 +26,7 @@ import {
 	buildWhatsAppShareUrl,
 	openShareWindow,
 } from "@/lib/share-urls";
+import { shareBookToInstagramStory } from "@/lib/story/share-instagram-story";
 import { cn } from "@/lib/utils";
 
 type ResourceShareMenuProps = {
@@ -34,6 +36,8 @@ type ResourceShareMenuProps = {
 	shareText?: string;
 	/** Accessible name for the trigger, e.g. "Share post". */
 	label: string;
+	/** When set, shows “Instagram Story” and renders a 9:16 book card (cover, title, your rating). */
+	storyBookSlug?: string;
 	className?: string;
 	triggerClassName?: string;
 	size?: "sm" | "md";
@@ -43,6 +47,7 @@ export function ResourceShareMenu({
 	path,
 	shareText,
 	label,
+	storyBookSlug,
 	className,
 	triggerClassName,
 	size = "sm",
@@ -113,6 +118,17 @@ export function ResourceShareMenu({
 					<TelegramIcon />
 					Telegram
 				</DropdownMenuItem>
+				{storyBookSlug ? (
+					<>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							onClick={() => void shareBookToInstagramStory(storyBookSlug)}
+						>
+							<InstagramIcon />
+							Instagram Story
+						</DropdownMenuItem>
+					</>
+				) : null}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
