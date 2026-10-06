@@ -102,9 +102,9 @@ export function UserMenu({ ...props }: Props) {
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							className="cursor-pointer"
-							render={<Link href={"/admin/users" as Route} />}
+							render={<Link href={"/admin" as Route} />}
 						>
-							<Shield /> Users
+							<Shield /> Dashboard
 						</DropdownMenuItem>
 					</>
 				) : null}

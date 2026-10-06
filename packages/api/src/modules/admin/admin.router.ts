@@ -1,5 +1,17 @@
 import { adminProcedure } from "../../procedures";
 import {
+	AdminBookOverviewOutputSchema,
+	GetAdminBookStatsInputSchema,
+	GetAdminBookStatsOutputSchema,
+	ListAdminBooksInputSchema,
+	ListAdminBooksOutputSchema,
+} from "./admin-book.schema";
+import {
+	getAdminBookOverview,
+	getAdminBookStats,
+	listAdminBooks,
+} from "./admin-book.service";
+import {
 	AdminDeleteUserInputSchema,
 	AdminDeleteUserOutputSchema,
 	AdminSetUserPasswordInputSchema,
@@ -25,6 +37,19 @@ import {
 } from "./admin-user.service";
 
 export const adminRouter = {
+	getBookOverview: adminProcedure
+		.output(AdminBookOverviewOutputSchema)
+		.handler(async ({ context }) => getAdminBookOverview(context.db)),
+	listBooks: adminProcedure
+		.input(ListAdminBooksInputSchema)
+		.output(ListAdminBooksOutputSchema)
+		.handler(async ({ input, context }) => listAdminBooks(input, context.db)),
+	getBookStats: adminProcedure
+		.input(GetAdminBookStatsInputSchema)
+		.output(GetAdminBookStatsOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminBookStats(input, context.db),
+		),
 	getUserStats: adminProcedure
 		.output(AdminUserStatsOutputSchema)
 		.handler(async ({ context }) => getAdminUserStats(context.db)),

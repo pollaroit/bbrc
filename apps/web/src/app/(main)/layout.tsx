@@ -1,3 +1,4 @@
+import { AdminMainFrame } from "@/components/blocks/admin-main-frame";
 import Header from "@/components/blocks/header";
 import { MainShell } from "@/components/blocks/main-shell";
 
@@ -9,7 +10,7 @@ export default function MainLayout({
 	return (
 		<MainShell>
 			<Header />
-			<main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+			<AdminMainFrame>{children}</AdminMainFrame>
 		</MainShell>
 	);
 }

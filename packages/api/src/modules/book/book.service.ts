@@ -268,7 +268,7 @@ export async function updateBook(
 export async function removeBook(slug: string, db: Database): Promise<string> {
 	const book = await db.book.findUnique({
 		where: { slug },
-		select: { id: true },
+		select: { id: true, status: true },
 	});
 
 	if (!book) {
@@ -277,6 +277,14 @@ export async function removeBook(slug: string, db: Database): Promise<string> {
 			data: {
 				slug,
 			},
+		});
+	}
+
+	if (book.status !== "wishlist") {
+		throw new ORPCError("BAD_REQUEST", {
+			message:
+				"Only wishlist books can be removed. Change status or keep the title in the catalog.",
+			data: { slug, status: book.status },
 		});
 	}
 

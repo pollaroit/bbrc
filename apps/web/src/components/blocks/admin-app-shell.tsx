@@ -1,0 +1,120 @@
+"use client";
+
+import {
+	Sidebar,
+	SidebarContent,
+	SidebarFooter,
+	SidebarGroup,
+	SidebarGroupContent,
+	SidebarGroupLabel,
+	SidebarHeader,
+	SidebarInset,
+	SidebarMenu,
+	SidebarMenuButton,
+	SidebarMenuItem,
+	SidebarProvider,
+	SidebarRail,
+	SidebarSeparator,
+	SidebarTrigger,
+} from "@bbrc/ui/components/sidebar";
+import { BookOpen, Home, LayoutDashboard, Users } from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const mainNav = [
+	{
+		href: "/admin",
+		label: "Hub",
+		icon: LayoutDashboard,
+		match: (pathname: string) => pathname === "/admin",
+	},
+	{
+		href: "/admin/users",
+		label: "Members",
+		icon: Users,
+		match: (pathname: string) => pathname.startsWith("/admin/users"),
+	},
+	{
+		href: "/admin/books",
+		label: "Books",
+		icon: BookOpen,
+		match: (pathname: string) => pathname.startsWith("/admin/books"),
+	},
+] as const;
+
+export function AdminAppShell({ children }: { children: React.ReactNode }) {
+	const pathname = usePathname();
+
+	return (
+		<SidebarProvider className="min-h-[calc(100dvh-4rem)] w-full">
+			<Sidebar
+				collapsible="icon"
+				variant="sidebar"
+				className="top-16 h-[calc(100svh-4rem)]"
+			>
+				<SidebarHeader>
+					<SidebarMenu>
+						<SidebarMenuItem>
+							<SidebarMenuButton
+								size="lg"
+								render={<Link href={"/admin" as Route} />}
+								isActive={pathname === "/admin"}
+							>
+								<span className="font-semibold">Admin</span>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+					</SidebarMenu>
+				</SidebarHeader>
+				<SidebarContent>
+					<SidebarGroup>
+						<SidebarGroupLabel>Resources</SidebarGroupLabel>
+						<SidebarGroupContent>
+							<SidebarMenu>
+								{mainNav.map((item) => (
+									<SidebarMenuItem key={item.href}>
+										<SidebarMenuButton
+											render={<Link href={item.href as Route} />}
+											isActive={item.match(pathname)}
+											tooltip={item.label}
+										>
+											<item.icon />
+											<span>{item.label}</span>
+										</SidebarMenuButton>
+									</SidebarMenuItem>
+								))}
+							</SidebarMenu>
+						</SidebarGroupContent>
+					</SidebarGroup>
+				</SidebarContent>
+				<SidebarFooter>
+					<SidebarMenu>
+						<SidebarMenuItem>
+							<SidebarMenuButton
+								render={<Link href={"/" as Route} />}
+								tooltip="Back to club"
+							>
+								<Home />
+								<span>Back to club</span>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+					</SidebarMenu>
+				</SidebarFooter>
+				<SidebarRail />
+			</Sidebar>
+			<SidebarInset>
+				<header className="flex h-12 shrink-0 items-center gap-2 border-border border-b px-4">
+					<SidebarTrigger />
+					<SidebarSeparator
+						orientation="vertical"
+						className="mr-2 data-[orientation=vertical]:h-4"
+					/>
+					<span className="text-muted-foreground text-sm">
+						Club administration
+					</span>
+				</header>
+				<div className="flex flex-col gap-8 p-6">{children}</div>
+			</SidebarInset>
+		</SidebarProvider>
+	);
+}
