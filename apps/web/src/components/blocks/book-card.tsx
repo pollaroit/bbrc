@@ -83,7 +83,7 @@ export function BookCard({
 						</div>
 					</div>
 
-					<div className="mt-auto flex flex-wrap items-end justify-between gap-2">
+					<div className="mt-auto flex flex-col gap-2">
 						<div className="flex flex-wrap items-center gap-1.5">
 							<BookStatusBadge status={book.status} />
 							{book.approvedDocumentCount > 0 ? (
@@ -107,7 +107,7 @@ export function BookCard({
 								</Badge>
 							) : null}
 						</div>
-						<dl className="flex shrink-0 flex-col items-end gap-0.5 text-muted-foreground text-xs tabular-nums">
+						<dl className="flex flex-col items-end gap-0.5 self-end text-muted-foreground text-xs tabular-nums">
 							<div>
 								<dt className="sr-only">Open Library rating</dt>
 								<dd>
