@@ -1,6 +1,7 @@
 import { ComposePostFab } from "@/components/blocks/compose-post-form";
 import { OngoingSittingBanner } from "@/components/blocks/ongoing-sitting-banner";
 import { PostFeed } from "@/components/blocks/post-feed";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { loadOngoingSittingForIsr } from "@/lib/isr-data";
 import { buildPageMetadata } from "@/lib/seo";
 
@@ -36,7 +37,9 @@ export default async function HomePage() {
 
 			{ongoing ? <OngoingSittingBanner sitting={ongoing} /> : null}
 
-			<PostFeed />
+			<ListingSearchParamsBoundary>
+				<PostFeed showFeedControls />
+			</ListingSearchParamsBoundary>
 
 			<ComposePostFab />
 		</div>

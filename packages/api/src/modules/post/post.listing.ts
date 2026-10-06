@@ -1,5 +1,6 @@
 import type { Prisma } from "@bbrc/db";
 import { UserSchema } from "@bbrc/schemas";
+import { postFeedRangeValues, postFeedSortValues } from "@bbrc/shared";
 import z from "zod";
 import { defineRanging } from "../../utils/ranging";
 import { defineSearching } from "../../utils/searching";
@@ -63,8 +64,14 @@ export const postListFiltersSchema = z
 		authorUsername: UserSchema.shape.username,
 		/** When true, only posts with an attached book; when false, only without. */
 		hasAttachedBook: z.boolean(),
+		/** Club home feed sort (ignored for member profile lists). */
+		feedSort: z.enum(postFeedSortValues),
+		/** Time window for Top / Newest; ignored for Hot and profile lists. */
+		feedRange: z.enum(postFeedRangeValues),
 	})
 	.partial();
+
+export { postFeedRangeValues, postFeedSortValues };
 
 export function postAuthorUsernameWhere(
 	username: string,

@@ -1,6 +1,6 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
 
-import { type Prisma, PrismaClient } from "../prisma/generated/client";
+import { Prisma, PrismaClient } from "../prisma/generated/client";
 import type { DatabaseConfig } from "./config";
 
 export function createPrismaClient(env: DatabaseConfig) {
@@ -17,4 +17,4 @@ export type DatabaseTransaction = Prisma.TransactionClient;
 
 export { LONG_INTERACTIVE_TRANSACTION } from "./transaction-options";
 
-export type { Prisma };
+export { Prisma };

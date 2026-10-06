@@ -1,8 +1,15 @@
 import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import { LikeSourceSchema } from "@bbrc/schemas";
+import {
+	decodePostFeedCursor,
+	encodePostFeedCursor,
+	type PostFeedCursor,
+	type PostFeedRange,
+	type PostFeedSort,
+	postFeedRangeMin,
+} from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
-import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
 import { notifyMemberPosted } from "../notification/notification-triggers";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
@@ -11,9 +18,7 @@ import { awardPostXp } from "../xp/xp.service";
 import {
 	postAttachedBookWhere,
 	postAuthorUsernameWhere,
-	postListRanging,
 	postListSearching,
-	postListSorting,
 } from "./post.listing";
 import {
 	type CreatePostInput,
@@ -34,6 +39,7 @@ import {
 	mapPostAttachmentFromPostRow,
 	syncPostAttachment,
 } from "./post-attachment.service";
+import { queryRankedPostSlugs } from "./post-feed-query";
 import { generatePostSlug } from "./post-slug";
 
 const postListSelect = {
@@ -59,15 +65,6 @@ type PostDetailRow = Prisma.PostGetPayload<{
 	select: typeof getPostBySlugSelect;
 }>;
 
-const postListCursorCodec = {
-	decode(cursor: string): { slug: string } {
-		return { slug: cursor };
-	},
-	encode(item: PostListRow): string {
-		return item.slug;
-	},
-};
-
 const topCommentSelect = {
 	id: true,
 	slug: true,
@@ -88,13 +85,6 @@ const topCommentSelect = {
 type TopCommentRow = Prisma.CommentGetPayload<{
 	select: typeof topCommentSelect;
 }>;
-
-function withStableSlugOrderBy(
-	orderBy: Prisma.PostOrderByWithRelationInput,
-	sortDirection: "asc" | "desc",
-): Prisma.PostOrderByWithRelationInput[] {
-	return [orderBy, { slug: sortDirection }];
-}
 
 function viewerUserId(session: Session | null): string | null {
 	return session?.user.id ?? null;
@@ -269,19 +259,95 @@ function assertPostAuthor(post: { authorId: string }, userId: string): void {
 	}
 }
 
+function resolveFeedMode(input: GetPostListInput): {
+	feedSort: PostFeedSort;
+	feedRange: PostFeedRange;
+} {
+	if (input.authorUsername) {
+		return { feedSort: "recent", feedRange: "all" };
+	}
+
+	return {
+		feedSort: input.feedSort ?? "hot",
+		feedRange: input.feedRange ?? "week",
+	};
+}
+
+function buildRecentCursorWhere(
+	cursor: Extract<PostFeedCursor, { kind: "recent" }>,
+): Prisma.PostWhereInput {
+	const createdAt = new Date(cursor.createdAt);
+	return {
+		OR: [
+			{ createdAt: { lt: createdAt } },
+			{ createdAt, slug: { lt: cursor.slug } },
+		],
+	};
+}
+
+async function fetchPostsBySlugsInOrder(
+	slugs: string[],
+	db: Database,
+): Promise<PostListRow[]> {
+	if (slugs.length === 0) {
+		return [];
+	}
+
+	const rows = await db.post.findMany({
+		where: { slug: { in: slugs } },
+		select: postListSelect,
+	});
+	const bySlug = new Map(rows.map((row) => [row.slug, row]));
+
+	return slugs.flatMap((slug) => {
+		const row = bySlug.get(slug);
+		return row ? [row] : [];
+	});
+}
+
+async function hydratePostListPage(
+	rows: PostListRow[],
+	userId: string | null,
+	db: Database,
+): Promise<PostListItem[]> {
+	const postIds = rows.map((row) => row.id);
+	const [likedPostIds, topCommentsByPostId] = await Promise.all([
+		loadLikedPostIds(postIds, userId, db),
+		loadTopCommentsByPostId(postIds, userId, db),
+	]);
+
+	return rows.map((row) =>
+		mapPostListRow(row, likedPostIds, topCommentsByPostId),
+	);
+}
+
+function listPageMetadata(input: {
+	limit: number;
+	hasNextPage: boolean;
+	cursor?: string;
+	nextCursor: string | null;
+}) {
+	return {
+		limit: input.limit,
+		hasNextPage: input.hasNextPage,
+		hasPreviousPage: input.cursor != null,
+		nextCursor: input.nextCursor,
+	};
+}
+
 export async function getPostList(
 	input: GetPostListInput,
 	db: Database,
 	session: Session | null,
 ): Promise<GetPostListOutput> {
-	const pagination = definePagination.cursor(input, postListCursorCodec);
-	const sorting = postListSorting.from(input);
-	const ranging = postListRanging.from(input);
 	const searching = postListSearching.from(input);
 	const userId = viewerUserId(session);
+	const limit = input.limit ?? 10;
+	const overfetch = limit + 1;
+	const { feedSort, feedRange } = resolveFeedMode(input);
+	const feedCursor = input.cursor ? decodePostFeedCursor(input.cursor) : null;
 
-	const where = mergeWhereFragments<Prisma.PostWhereInput>(
-		ranging.use(),
+	const baseWhere = mergeWhereFragments<Prisma.PostWhereInput>(
 		searching.use(),
 		input.authorUsername ? postAuthorUsernameWhere(input.authorUsername) : {},
 		input.hasAttachedBook != null
@@ -289,25 +355,76 @@ export async function getPostList(
 			: {},
 	);
 
+	if (feedSort === "hot" || feedSort === "top") {
+		const ranked = await queryRankedPostSlugs(db, {
+			mode: feedSort,
+			feedRange,
+			authorUsername: input.authorUsername,
+			limit: overfetch,
+			cursor: feedCursor,
+		});
+		const pageRanked = ranked.slice(0, limit);
+		const rows = await fetchPostsBySlugsInOrder(
+			pageRanked.map((entry) => entry.slug),
+			db,
+		);
+		const lastIncluded = ranked.at(limit - 1);
+		const nextCursor =
+			ranked.length > limit && lastIncluded
+				? encodePostFeedCursor({
+						kind: feedSort,
+						score: lastIncluded.score,
+						slug: lastIncluded.slug,
+					})
+				: null;
+
+		return {
+			items: await hydratePostListPage(rows, userId, db),
+			metadata: listPageMetadata({
+				limit,
+				hasNextPage: ranked.length > limit,
+				cursor: input.cursor,
+				nextCursor,
+			}),
+		};
+	}
+
+	const rangeMin = input.authorUsername
+		? undefined
+		: postFeedRangeMin(feedRange);
+	const recentCursor = feedCursor?.kind === "recent" ? feedCursor : null;
+
 	const rows = await db.post.findMany({
-		...pagination.use(),
-		where,
-		orderBy: withStableSlugOrderBy(sorting.use(), sorting.sortDirection),
+		take: overfetch,
+		where: mergeWhereFragments(
+			baseWhere,
+			rangeMin ? { createdAt: { gte: rangeMin } } : {},
+			recentCursor ? buildRecentCursorWhere(recentCursor) : {},
+		),
+		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
 		select: postListSelect,
 	});
 
-	const page = pagination.paginate(rows);
-	const postIds = page.items.map((row) => row.id);
-	const [likedPostIds, topCommentsByPostId] = await Promise.all([
-		loadLikedPostIds(postIds, userId, db),
-		loadTopCommentsByPostId(postIds, userId, db),
-	]);
+	const hasNextPage = rows.length > limit;
+	const pageRows = hasNextPage ? rows.slice(0, limit) : rows;
+	const lastRow = pageRows.at(-1);
+	const nextCursor =
+		hasNextPage && lastRow
+			? encodePostFeedCursor({
+					kind: "recent",
+					createdAt: lastRow.createdAt.toISOString(),
+					slug: lastRow.slug,
+				})
+			: null;
 
 	return {
-		items: page.items.map((row) =>
-			mapPostListRow(row, likedPostIds, topCommentsByPostId),
-		),
-		metadata: page.metadata,
+		items: await hydratePostListPage(pageRows, userId, db),
+		metadata: listPageMetadata({
+			limit,
+			hasNextPage,
+			cursor: input.cursor,
+			nextCursor,
+		}),
 	};
 }
 
