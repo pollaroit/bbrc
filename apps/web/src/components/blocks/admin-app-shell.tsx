@@ -46,11 +46,11 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
 
 	return (
-		<SidebarProvider className="min-h-[calc(100dvh-4rem)] w-full">
+		<SidebarProvider className="min-h-dvh w-full md:min-h-[calc(100dvh-4rem)]">
 			<Sidebar
 				collapsible="icon"
 				variant="sidebar"
-				className="top-16 h-[calc(100svh-4rem)]"
+				className="top-0 h-dvh md:top-16 md:h-[calc(100svh-4rem)]"
 			>
 				<SidebarContent>
 					<SidebarGroup>

@@ -1,6 +1,7 @@
 import { AdminMainFrame } from "@/components/blocks/admin-main-frame";
 import Header from "@/components/blocks/header";
 import { MainShell } from "@/components/blocks/main-shell";
+import { MobileAppShell } from "@/components/blocks/mobile-app-shell";
 
 export default function MainLayout({
 	children,
@@ -10,7 +11,9 @@ export default function MainLayout({
 	return (
 		<MainShell>
 			<Header />
-			<AdminMainFrame>{children}</AdminMainFrame>
+			<MobileAppShell>
+				<AdminMainFrame>{children}</AdminMainFrame>
+			</MobileAppShell>
 		</MainShell>
 	);
 }

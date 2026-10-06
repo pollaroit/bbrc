@@ -212,7 +212,10 @@ export function ComposePostFab({ className }: { className?: string }) {
 		<Button
 			type="button"
 			size="icon-lg"
-			className={cn("fixed right-6 bottom-6 z-50 size-14 shadow-lg", className)}
+			className={cn(
+				"fixed right-6 bottom-6 z-50 hidden size-14 shadow-lg md:inline-flex",
+				className,
+			)}
 			aria-label="New post"
 			onClick={() => openCompose()}
 		>
