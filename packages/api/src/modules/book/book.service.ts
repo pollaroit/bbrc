@@ -140,6 +140,16 @@ export async function getBookBySlug(
 		omit: {
 			id: true,
 			updatedAt: true,
+			requestedById: true,
+			approvedById: true,
+		},
+		include: {
+			requestedBy: {
+				select: {
+					username: true,
+					name: true,
+				},
+			},
 		},
 	});
 
@@ -164,7 +174,11 @@ function normalizeBookRecord<T extends TGetBookBySlugOutputSchema>(book: T): T {
 	};
 }
 
-export async function addBook(input: TAddBookInputSchema, db: Database) {
+export async function addBook(
+	input: TAddBookInputSchema,
+	db: Database,
+	adminUserId: string,
+) {
 	const { acceptanceNotes, ...bookInput } = input;
 	const trimmedAcceptanceNotes = acceptanceNotes?.trim() || null;
 
@@ -183,6 +197,12 @@ export async function addBook(input: TAddBookInputSchema, db: Database) {
 
 		const slug = await generateBookSlug(bookInput.title, tx);
 
+		const pendingRequest = await tx.bookRequest.findFirst({
+			where: { olid: bookInput.olid, status: "pending" },
+			orderBy: { createdAt: "asc" },
+			select: { userId: true },
+		});
+
 		const book = await tx.book.create({
 			data: {
 				...bookInput,
@@ -190,6 +210,8 @@ export async function addBook(input: TAddBookInputSchema, db: Database) {
 				subjectTimes: bookInput.subjectTimes ?? [],
 				subjects: bookInput.subjects ?? [],
 				slug,
+				approvedById: adminUserId,
+				requestedById: pendingRequest?.userId ?? null,
 			},
 			select: {
 				slug: true,

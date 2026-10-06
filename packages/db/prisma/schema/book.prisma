@@ -48,6 +48,14 @@ model Book {
   sittingsSelectedFor Sitting[] @relation("SittingSelectedBook")
   documents           Document[]
 
+  /// @zod.uuid("Invalid UUID")
+  requestedById String? @map("requested_by_id")
+  requestedBy   User?   @relation("BookRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+
+  /// @zod.uuid("Invalid UUID")
+  approvedById String? @map("approved_by_id")
+  approvedBy   User?   @relation("BookApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
   @@index([slug])
   @@index([title])
   @@index([pages])

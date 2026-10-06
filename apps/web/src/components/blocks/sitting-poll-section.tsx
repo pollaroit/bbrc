@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { BookRequestedByLine } from "@/components/blocks/book-requested-by";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { PollOptionVotersDialog } from "@/components/blocks/poll-option-voters-dialog";
 import { PollVotesByVoterSection } from "@/components/blocks/poll-votes-by-voter-section";
@@ -358,6 +359,11 @@ export function SittingPollSection({
 										<p className="truncate text-muted-foreground text-xs">
 											{formatBookAuthors(option.book.authors)}
 										</p>
+										{option.book.requestedBy ? (
+											<BookRequestedByLine
+												requestedBy={option.book.requestedBy}
+											/>
+										) : null}
 									</div>
 									<div className="mt-auto flex flex-wrap items-end justify-between gap-2">
 										<BookStatusBadge status={option.book.status} />

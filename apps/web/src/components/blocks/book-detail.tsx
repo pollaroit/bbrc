@@ -17,6 +17,7 @@ import { BookDocumentsSection } from "@/components/blocks/book-documents-section
 import { BookEditLink } from "@/components/blocks/book-edit-link";
 import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
 import { BookFeedbackSection } from "@/components/blocks/book-feedback-section";
+import { BookRequestedByLine } from "@/components/blocks/book-requested-by";
 import { BookShelvesSection } from "@/components/blocks/book-shelves-section";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { BookSubjectGroup } from "@/components/blocks/book-subject-group";
@@ -78,6 +79,9 @@ export function BookDetail({
 							<p className="text-muted-foreground">
 								{formatBookAuthors(book.authors)}
 							</p>
+							{book.requestedBy ? (
+								<BookRequestedByLine requestedBy={book.requestedBy} />
+							) : null}
 						</div>
 						<div className="flex shrink-0 flex-wrap items-center gap-1">
 							<ResourceShareMenu

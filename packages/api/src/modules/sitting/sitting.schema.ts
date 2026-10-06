@@ -12,7 +12,11 @@ import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import { isSlug, SLUG_MAX_LENGTH } from "@bbrc/shared";
 import type { z } from "zod";
 import zod from "zod";
-import { getBookListFields } from "../book/book.schema";
+import {
+	BookWithRequestedBySchema,
+	getBookListFields,
+	getBookPollSelect,
+} from "../book/book.schema";
 import {
 	sittingListFiltersSchema,
 	sittingListRanging,
@@ -208,7 +212,7 @@ export const SittingPollSummarySchema = PollSchema.pick({
 	deadline: PollStoredDeadlineSchema,
 });
 
-export const SittingPollOptionBookSchema = BookSchema.pick(getBookListFields);
+export const SittingPollOptionBookSchema = BookWithRequestedBySchema;
 
 export const SittingPollOptionSchema = zod.object({
 	id: zod.uuid(),
@@ -237,7 +241,7 @@ export const SittingRemovedParticipantSchema =
 		removedAt: zod.coerce.date(),
 	});
 
-export const SittingSelectedBookSchema = SittingPollOptionBookSchema;
+export const SittingSelectedBookSchema = BookSchema.pick(getBookListFields);
 
 export const SittingReviewSummarySchema = zod.object({
 	slug: FeedbackSchema.shape.slug,
@@ -283,7 +287,7 @@ export const getSittingBySlugFields = {
 						},
 					},
 					book: {
-						select: getBookListFields,
+						select: getBookPollSelect,
 					},
 				},
 			},

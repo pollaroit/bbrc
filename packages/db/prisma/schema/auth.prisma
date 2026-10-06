@@ -45,6 +45,8 @@ model User {
   shelves      Shelf[]
   notifications            Notification[]
   notificationPreferences NotificationPreference[]
+  booksRequested          Book[] @relation("BookRequestedBy")
+  booksApproved           Book[] @relation("BookApprovedBy")
 
   @@map("user")
 }

@@ -2,6 +2,7 @@ import {
 	BookSchema,
 	CursorPaginationInputSchema,
 	CursorPaginationMetadataSchema,
+	UserSchema,
 } from "@bbrc/schemas";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import { isAuthorSlug } from "@bbrc/shared";
@@ -83,6 +84,31 @@ export const getBookListFields = {
 	status: true,
 } as const;
 
+export const bookRequestedByFields = {
+	username: true,
+	name: true,
+} as const;
+
+export const BookRequestedBySchema = z.object({
+	username: UserSchema.shape.username,
+	name: UserSchema.shape.name,
+});
+
+export type BookRequestedBy = z.infer<typeof BookRequestedBySchema>;
+
+export const getBookPollSelect = {
+	...getBookListFields,
+	requestedBy: {
+		select: bookRequestedByFields,
+	},
+} as const;
+
+export const BookWithRequestedBySchema = BookSchema.pick(
+	getBookListFields,
+).extend({
+	requestedBy: BookRequestedBySchema.nullable(),
+});
+
 export const BookListItemSchema = BookSchema.pick(getBookListFields).extend({
 	approvedDocumentCount: z.number().int().min(0),
 });
@@ -163,6 +189,10 @@ export type TAddBookOutputSchema = z.infer<typeof AddBookOutputSchema>;
 export const GetBookBySlugOutputSchema = BookSchema.omit({
 	id: true,
 	updatedAt: true,
+	requestedById: true,
+	approvedById: true,
+}).extend({
+	requestedBy: BookRequestedBySchema.nullable(),
 });
 
 export type TGetBookBySlugOutputSchema = z.infer<
