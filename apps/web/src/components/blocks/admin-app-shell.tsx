@@ -73,7 +73,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
 						</SidebarGroupContent>
 					</SidebarGroup>
 				</SidebarContent>
-				<SidebarFooter>
+				<SidebarFooter className="pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-2">
 					<SidebarMenu>
 						<SidebarMenuItem>
 							<SidebarMenuButton

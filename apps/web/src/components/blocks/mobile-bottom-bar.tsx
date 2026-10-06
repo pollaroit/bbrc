@@ -9,7 +9,10 @@ import {
 	MobileNavTab,
 	MobileNavTabButton,
 } from "@/components/blocks/mobile-nav-tab";
-import { mobileChromeBottomClass } from "@/components/blocks/mobile-shell-chrome";
+import {
+	mobileChromeBottomClass,
+	mobileChromeInsetClass,
+} from "@/components/blocks/mobile-shell-chrome";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { UserMenuDrawer } from "@/components/blocks/user-menu-drawer";
 import { authPageHref, currentPageCallbackUrl } from "@/lib/auth-callback-url";
@@ -51,7 +54,7 @@ function MobileBottomBarInner() {
 	if (isPending) {
 		return (
 			<nav className={mobileChromeBottomClass} aria-hidden="true">
-				<div className={cn(navGridClass, "h-16")} />
+				<div className={cn(navGridClass, mobileChromeInsetClass, "h-16")} />
 			</nav>
 		);
 	}
@@ -59,7 +62,7 @@ function MobileBottomBarInner() {
 	if (!signedIn || !user) {
 		return (
 			<nav className={mobileChromeBottomClass} aria-label="Main">
-				<div className={navGridClass}>
+				<div className={cn(navGridClass, mobileChromeInsetClass)}>
 					{guestTabs.map((tab) => (
 						<MobileNavTab
 							key={tab.href}
@@ -97,7 +100,9 @@ function MobileBottomBarInner() {
 	return (
 		<>
 			<nav className={mobileChromeBottomClass} aria-label="Main">
-				<div className={cn(navGridClass, "items-end pt-1")}>
+				<div
+					className={cn(navGridClass, mobileChromeInsetClass, "items-end pt-1")}
+				>
 					<MobileNavTab
 						href={homeTab.href}
 						label={homeTab.label}
@@ -145,7 +150,9 @@ export function MobileBottomBar() {
 		<Suspense
 			fallback={
 				<nav className={mobileChromeBottomClass} aria-hidden="true">
-					<div className="mx-auto h-16 max-w-lg" />
+					<div
+						className={cn("mx-auto h-16 max-w-lg", mobileChromeInsetClass)}
+					/>
 				</nav>
 			}
 		>

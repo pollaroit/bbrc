@@ -4,17 +4,27 @@ import type { Route } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/blocks/logo";
 import { MobileReadSittingsControl } from "@/components/blocks/mobile-read-sittings-control";
-import { mobileChromeTopClass } from "@/components/blocks/mobile-shell-chrome";
+import {
+	mobileChromeInsetClass,
+	mobileChromeTopClass,
+} from "@/components/blocks/mobile-shell-chrome";
 import { NotificationBell } from "@/components/blocks/notification-bell";
 import { ModeToggle } from "@/components/mode-toggle";
 import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 
 export function MobileTopBar() {
 	const { data: session, isPending } = authClient.useSession();
 
 	return (
 		<header className={mobileChromeTopClass}>
-			<div className="mx-auto grid h-14 w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-4">
+			<div
+				className={cn(
+					"mx-auto grid h-14 w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-2 pt-1",
+					mobileChromeInsetClass,
+					"pb-0",
+				)}
+			>
 				<div className="flex min-w-0 items-center justify-start">
 					<MobileReadSittingsControl />
 				</div>

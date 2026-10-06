@@ -3,7 +3,6 @@
 import {
 	BookOpen,
 	LayoutList,
-	LogOut,
 	MessageSquare,
 	Settings,
 	Shield,
@@ -11,11 +10,8 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { toast } from "sonner";
+import { UserAccountSignOutButton } from "@/components/blocks/user-account-sign-out-button";
 import type { UserPanel } from "@/components/blocks/user-panel";
-import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 type UserMenuUser = React.ComponentProps<typeof UserPanel>["user"];
@@ -25,6 +21,7 @@ type UserMenuItemsProps = {
 	onNavigate?: () => void;
 	itemClassName?: string;
 	variant?: "default" | "drawer";
+	hideSignOut?: boolean;
 };
 
 export function UserMenuItems({
@@ -32,23 +29,8 @@ export function UserMenuItems({
 	onNavigate,
 	itemClassName,
 	variant = "default",
+	hideSignOut = false,
 }: UserMenuItemsProps) {
-	const [loading, setLoading] = useState(false);
-	const router = useRouter();
-
-	const handleSignOut = async () => {
-		setLoading(true);
-		try {
-			await authClient.signOut();
-			onNavigate?.();
-			router.refresh();
-		} catch {
-			toast.error("Failed to sign out");
-		} finally {
-			setLoading(false);
-		}
-	};
-
 	const itemClass = cn(
 		"flex w-full items-center gap-3 text-left text-sm transition-colors",
 		variant === "drawer"
@@ -119,18 +101,16 @@ export function UserMenuItems({
 					</Link>
 				</>
 			) : null}
-			<button
-				type="button"
-				className={cn(
-					itemClass,
-					"text-destructive hover:bg-destructive/10 hover:text-destructive disabled:opacity-50",
-				)}
-				disabled={loading}
-				onClick={handleSignOut}
-			>
-				<LogOut className="size-4 shrink-0" aria-hidden="true" />
-				Sign out
-			</button>
+			{hideSignOut ? null : (
+				<UserAccountSignOutButton
+					onSignedOut={onNavigate}
+					className={
+						variant === "drawer"
+							? "border-border border-b last:border-b-0"
+							: undefined
+					}
+				/>
+			)}
 		</nav>
 	);
 }
