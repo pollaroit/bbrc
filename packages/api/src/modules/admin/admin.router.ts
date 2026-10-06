@@ -22,7 +22,9 @@ import {
 	AdminUpdateUserRoleOutputSchema,
 	AdminUpdateUserStatusInputSchema,
 	AdminUpdateUserStatusOutputSchema,
+	AdminUserOverviewOutputSchema,
 	AdminUserStatsOutputSchema,
+	GetAdminUserStatsInputSchema,
 	ListAdminUsersInputSchema,
 	ListAdminUsersOutputSchema,
 } from "./admin-user.schema";
@@ -32,6 +34,7 @@ import {
 	adminUpdateUserName,
 	adminUpdateUserRole,
 	adminUpdateUserStatus,
+	getAdminUserOverview,
 	getAdminUserStats,
 	listAdminUsers,
 } from "./admin-user.service";
@@ -50,9 +53,15 @@ export const adminRouter = {
 		.handler(async ({ input, context }) =>
 			getAdminBookStats(input, context.db),
 		),
+	getUserOverview: adminProcedure
+		.output(AdminUserOverviewOutputSchema)
+		.handler(async ({ context }) => getAdminUserOverview(context.db)),
 	getUserStats: adminProcedure
+		.input(GetAdminUserStatsInputSchema)
 		.output(AdminUserStatsOutputSchema)
-		.handler(async ({ context }) => getAdminUserStats(context.db)),
+		.handler(async ({ input, context }) =>
+			getAdminUserStats(input, context.db),
+		),
 	listUsers: adminProcedure
 		.input(ListAdminUsersInputSchema)
 		.output(ListAdminUsersOutputSchema)

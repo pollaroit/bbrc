@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import {
@@ -16,6 +17,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { AdminUserRowActions } from "@/components/blocks/admin-user-row-actions";
 import { AdminUsersToolbar } from "@/components/blocks/admin-users-toolbar";
+import { UserAvatar } from "@/components/blocks/user-avatar";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
 import {
 	toAdminUsersListCallInput,
@@ -23,7 +25,7 @@ import {
 } from "@/lib/listing/admin-users-listing";
 import { orpc } from "@/utils/orpc";
 
-function formatJoined(date: Date) {
+function formatDate(date: Date) {
 	return new Intl.DateTimeFormat(undefined, {
 		year: "numeric",
 		month: "short",
@@ -65,91 +67,125 @@ export function AdminUsersTable() {
 				</div>
 			) : (
 				<>
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Member</TableHead>
-								<TableHead>Status</TableHead>
-								<TableHead className="text-right tabular-nums">XP</TableHead>
-								<TableHead className="text-right tabular-nums">RP</TableHead>
-								<TableHead className="hidden text-right tabular-nums lg:table-cell">
-									Posts
-								</TableHead>
-								<TableHead className="hidden text-right tabular-nums md:table-cell">
-									Comments
-								</TableHead>
-								<TableHead className="hidden text-right tabular-nums xl:table-cell">
-									Likes
-								</TableHead>
-								<TableHead className="hidden text-right tabular-nums xl:table-cell">
-									Feedbacks
-								</TableHead>
-								<TableHead className="hidden text-right tabular-nums xl:table-cell">
-									Shelves
-								</TableHead>
-								<TableHead className="w-12">
-									<span className="sr-only">Actions</span>
-								</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{data.items.map((user) => (
-								<TableRow key={user.id}>
-									<TableCell>
-										<div className="flex min-w-0 flex-col gap-0.5">
-											<Link
-												href={`/users/${user.username}` as Route}
-												className="flex min-w-0 items-center gap-1.5 font-medium hover:underline"
-											>
-												<span className="truncate">{user.name}</span>
-												{user.isAdmin ? (
-													<Crown
-														className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
-														aria-label="Administrator"
-													/>
-												) : null}
-											</Link>
-											<p className="truncate text-muted-foreground text-xs">
-												@{user.username}, {user.email}
-											</p>
-											<p className="text-muted-foreground text-xs lg:hidden">
-												Joined {formatJoined(user.createdAt)}
-											</p>
-										</div>
-									</TableCell>
-									<TableCell>
-										<div className="flex flex-col gap-1">
-											<UserStatusBadge status={user.status} />
-										</div>
-									</TableCell>
-									<TableCell className="text-right tabular-nums">
-										{user.xp}
-									</TableCell>
-									<TableCell className="text-right tabular-nums">
-										{user.rp}
-									</TableCell>
-									<TableCell className="hidden text-right tabular-nums lg:table-cell">
-										{user.counts.posts}
-									</TableCell>
-									<TableCell className="hidden text-right tabular-nums md:table-cell">
-										{user.counts.comments}
-									</TableCell>
-									<TableCell className="hidden text-right tabular-nums xl:table-cell">
-										{user.counts.likes}
-									</TableCell>
-									<TableCell className="hidden text-right tabular-nums xl:table-cell">
-										{user.counts.feedbacks}
-									</TableCell>
-									<TableCell className="hidden text-right tabular-nums xl:table-cell">
-										{user.counts.shelves}
-									</TableCell>
-									<TableCell>
-										<AdminUserRowActions user={user} />
-									</TableCell>
+					<div className="overflow-x-auto">
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Member</TableHead>
+									<TableHead>Status</TableHead>
+									<TableHead className="text-right tabular-nums">XP</TableHead>
+									<TableHead className="text-right tabular-nums">RP</TableHead>
+									<TableHead className="hidden text-right tabular-nums lg:table-cell">
+										Posts
+									</TableHead>
+									<TableHead className="hidden text-right tabular-nums md:table-cell">
+										Comments
+									</TableHead>
+									<TableHead className="hidden text-right tabular-nums xl:table-cell">
+										Likes
+									</TableHead>
+									<TableHead className="hidden text-right tabular-nums xl:table-cell">
+										Fb
+									</TableHead>
+									<TableHead className="hidden text-right tabular-nums xl:table-cell">
+										Sittings
+									</TableHead>
+									<TableHead className="hidden text-right tabular-nums xl:table-cell">
+										Fav
+									</TableHead>
+									<TableHead className="hidden text-right tabular-nums xl:table-cell">
+										Shelves
+									</TableHead>
+									<TableHead className="hidden lg:table-cell">Joined</TableHead>
+									<TableHead className="w-12">
+										<span className="sr-only">Actions</span>
+									</TableHead>
 								</TableRow>
-							))}
-						</TableBody>
-					</Table>
+							</TableHeader>
+							<TableBody>
+								{data.items.map((user) => (
+									<TableRow key={user.id}>
+										<TableCell>
+											<div className="flex min-w-0 items-start gap-2">
+												<UserAvatar user={user} className="size-9" />
+												<div className="flex min-w-0 flex-col gap-0.5">
+													<Link
+														href={`/users/${user.username}` as Route}
+														className="flex min-w-0 items-center gap-1.5 font-medium hover:underline"
+													>
+														<span className="truncate">{user.name}</span>
+														{user.isAdmin ? (
+															<Crown
+																className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+																aria-label="Administrator"
+															/>
+														) : null}
+													</Link>
+													<p className="truncate text-muted-foreground text-xs">
+														@{user.username}
+													</p>
+													<p className="truncate text-muted-foreground text-xs">
+														{user.email}
+													</p>
+													<div className="flex flex-wrap gap-1 lg:hidden">
+														{!user.emailVerified ? (
+															<Badge variant="outline">Unverified</Badge>
+														) : null}
+													</div>
+												</div>
+											</div>
+										</TableCell>
+										<TableCell>
+											<div className="flex flex-col gap-1">
+												<UserStatusBadge status={user.status} />
+												{!user.emailVerified ? (
+													<Badge
+														variant="outline"
+														className="hidden lg:inline-flex"
+													>
+														Unverified email
+													</Badge>
+												) : null}
+											</div>
+										</TableCell>
+										<TableCell className="text-right tabular-nums">
+											{user.xp}
+										</TableCell>
+										<TableCell className="text-right tabular-nums">
+											{user.rp}
+										</TableCell>
+										<TableCell className="hidden text-right tabular-nums lg:table-cell">
+											{user.counts.posts}
+										</TableCell>
+										<TableCell className="hidden text-right tabular-nums md:table-cell">
+											{user.counts.comments}
+										</TableCell>
+										<TableCell className="hidden text-right tabular-nums xl:table-cell">
+											{user.counts.likes}
+										</TableCell>
+										<TableCell className="hidden text-right tabular-nums xl:table-cell">
+											{user.counts.feedbacks}
+										</TableCell>
+										<TableCell className="hidden text-right tabular-nums xl:table-cell">
+											{user.counts.participations}
+										</TableCell>
+										<TableCell className="hidden text-right tabular-nums xl:table-cell">
+											{user.counts.favorites}
+										</TableCell>
+										<TableCell className="hidden text-right tabular-nums xl:table-cell">
+											{user.counts.shelves}
+										</TableCell>
+										<TableCell className="hidden text-muted-foreground text-sm lg:table-cell">
+											{formatDate(user.createdAt)}
+										</TableCell>
+										<TableCell>
+											<AdminUserRowActions user={user} />
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</div>
 
 					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 						<p className="text-muted-foreground text-sm tabular-nums">

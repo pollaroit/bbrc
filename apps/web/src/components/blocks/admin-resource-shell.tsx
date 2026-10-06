@@ -59,3 +59,9 @@ export const adminBookTabs = [
 	{ href: "/admin/books/list" as Route, label: "List" },
 	{ href: "/admin/books/stats" as Route, label: "Stats" },
 ] as const;
+
+export const adminMemberTabs = [
+	{ href: "/admin/users" as Route, label: "Overview" },
+	{ href: "/admin/users/list" as Route, label: "List" },
+	{ href: "/admin/users/stats" as Route, label: "Stats" },
+] as const;

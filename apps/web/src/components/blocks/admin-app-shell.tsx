@@ -7,7 +7,6 @@ import {
 	SidebarGroup,
 	SidebarGroupContent,
 	SidebarGroupLabel,
-	SidebarHeader,
 	SidebarInset,
 	SidebarMenu,
 	SidebarMenuButton,
@@ -25,7 +24,7 @@ import { usePathname } from "next/navigation";
 const mainNav = [
 	{
 		href: "/admin",
-		label: "Hub",
+		label: "Overview",
 		icon: LayoutDashboard,
 		match: (pathname: string) => pathname === "/admin",
 	},
@@ -53,19 +52,6 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
 				variant="sidebar"
 				className="top-16 h-[calc(100svh-4rem)]"
 			>
-				<SidebarHeader>
-					<SidebarMenu>
-						<SidebarMenuItem>
-							<SidebarMenuButton
-								size="lg"
-								render={<Link href={"/admin" as Route} />}
-								isActive={pathname === "/admin"}
-							>
-								<span className="font-semibold">Admin</span>
-							</SidebarMenuButton>
-						</SidebarMenuItem>
-					</SidebarMenu>
-				</SidebarHeader>
 				<SidebarContent>
 					<SidebarGroup>
 						<SidebarGroupLabel>Resources</SidebarGroupLabel>

@@ -154,7 +154,8 @@ export const GetAdminBookStatsInputSchema = z
 		rangeMin: z.coerce.date().optional(),
 		rangeMax: z.coerce.date().optional(),
 	})
-	.partial();
+	.partial()
+	.default({});
 
 export const AdminBookStatsPointSchema = z.object({
 	label: z.string(),

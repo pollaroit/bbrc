@@ -51,6 +51,9 @@ async function invalidateAdminUsers() {
 			queryKey: orpc.admin.getUserStats.key(),
 		}),
 		queryClient.invalidateQueries({
+			queryKey: orpc.admin.getUserOverview.key(),
+		}),
+		queryClient.invalidateQueries({
 			queryKey: orpc.user.getUserList.key(),
 		}),
 		queryClient.invalidateQueries({

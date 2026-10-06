@@ -44,7 +44,7 @@ export default async function AdminHubPage() {
 	return (
 		<div className="flex flex-col gap-8">
 			<div className="flex flex-col gap-1">
-				<h1 className="font-bold text-2xl tracking-tight">Dashboard</h1>
+				<h1 className="font-bold text-2xl tracking-tight">Overview</h1>
 				<p className="max-w-2xl text-muted-foreground text-sm">
 					Admin views for club resources. More sections will appear here as they
 					ship.
