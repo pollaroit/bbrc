@@ -2,8 +2,8 @@
 
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { SittingParticipantCard } from "@/components/blocks/sitting-participant-card";
+import { SittingParticipantCardFooter } from "@/components/blocks/sitting-participant-card-footer";
 import {
-	ParticipantRemoveButton,
 	SittingParticipantsAdminToolbar,
 	SittingRemovedParticipantsSection,
 	useParticipantRemoveDialog,
@@ -13,16 +13,16 @@ import { cn } from "@/lib/utils";
 type SittingParticipantsPageContentProps = {
 	sitting: GetSittingBySlugOutput;
 	isAdmin: boolean;
+	viewerUserId: string;
 };
 
 export function SittingParticipantsPageContent({
 	sitting,
 	isAdmin,
+	viewerUserId,
 }: SittingParticipantsPageContentProps) {
 	const { canRemove, requestRemove, removeDialog } =
 		useParticipantRemoveDialog(sitting);
-
-	const showAdminActions = isAdmin && canRemove;
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -38,25 +38,34 @@ export function SittingParticipantsPageContent({
 					className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3")}
 				>
 					{sitting.participants.map((participant) => (
-						<li key={participant.userId} className="flex flex-col gap-2">
+						<li
+							key={participant.userId}
+							className="flex flex-col overflow-hidden bg-card ring-1 ring-foreground/10"
+						>
 							<SittingParticipantCard
 								participant={participant}
 								sittingStatus={sitting.status}
+								className="ring-0"
 							/>
-							{showAdminActions ? (
-								<ParticipantRemoveButton
-									onRemove={() => requestRemove(participant)}
-									disabled={
-										sitting.participants.length <= 1 ||
-										participant.progress === "completed"
-									}
-									title={
-										participant.progress === "completed"
-											? "Members who finished the book stay on the roster"
+							<SittingParticipantCardFooter
+								sitting={sitting}
+								participant={participant}
+								viewerUserId={viewerUserId}
+								isAdmin={isAdmin}
+								canRemoveParticipant={canRemove}
+								onRemove={() => requestRemove(participant)}
+								removeDisabled={
+									sitting.participants.length <= 1 ||
+									participant.progress === "completed"
+								}
+								removeDisabledReason={
+									participant.progress === "completed"
+										? "Members who finished the book stay on the roster"
+										: sitting.participants.length <= 1
+											? "At least one participant must remain"
 											: undefined
-									}
-								/>
-							) : null}
+								}
+							/>
 						</li>
 					))}
 				</ul>

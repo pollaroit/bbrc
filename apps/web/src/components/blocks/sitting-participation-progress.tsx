@@ -21,6 +21,21 @@ const progressLabels: Record<ParticipationProgress, string> = {
 	dnf: "Did not finish",
 };
 
+/** Participant card accent when sitting is in reading/finished. */
+const progressCardAccentClassName: Record<ParticipationProgress, string> = {
+	not_started: "bg-warning/5 ring-warning/35",
+	in_progress: "bg-primary/5 ring-primary/35",
+	completed: "bg-success/5 ring-success/35",
+	dnf: "bg-destructive/5 ring-destructive/35",
+};
+
+const progressIndicatorClassName: Record<ParticipationProgress, string> = {
+	not_started: "bg-warning",
+	in_progress: "bg-primary",
+	completed: "bg-success",
+	dnf: "bg-destructive",
+};
+
 type SittingParticipationProgressProps = {
 	sittingSlug: string;
 	sittingStatus: GetSittingBySlugOutput["status"];
@@ -118,4 +133,8 @@ export function SittingParticipationProgress({
 	);
 }
 
-export { progressLabels };
+export {
+	progressCardAccentClassName,
+	progressIndicatorClassName,
+	progressLabels,
+};

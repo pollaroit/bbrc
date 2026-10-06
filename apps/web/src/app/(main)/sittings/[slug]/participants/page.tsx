@@ -61,7 +61,11 @@ export default async function SittingParticipantsPage({
 	return (
 		<div className="flex flex-col gap-6">
 			<SittingParticipantsPageIntro sitting={sitting} />
-			<SittingParticipantsPageContent sitting={sitting} isAdmin={isAdmin} />
+			<SittingParticipantsPageContent
+				sitting={sitting}
+				isAdmin={isAdmin}
+				viewerUserId={session.user.id}
+			/>
 		</div>
 	);
 }

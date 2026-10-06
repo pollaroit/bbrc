@@ -1,5 +1,6 @@
 import type { GetUserByUsernameOutput } from "@bbrc/api/modules/user/user.schema";
 import { Badge } from "@bbrc/ui/components/badge";
+import { cn } from "@/lib/utils";
 
 export type UserStatus = GetUserByUsernameOutput["status"];
 
@@ -15,9 +16,18 @@ function formatStatusLabel(status: UserStatus) {
 	return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-export function UserStatusBadge({ status }: { status: UserStatus }) {
+export function UserStatusBadge({
+	status,
+	className,
+}: {
+	status: UserStatus;
+	className?: string;
+}) {
 	return (
-		<Badge variant="outline" className={statusBadgeClassName[status]}>
+		<Badge
+			variant="outline"
+			className={cn(statusBadgeClassName[status], className)}
+		>
 			{formatStatusLabel(status)}
 		</Badge>
 	);

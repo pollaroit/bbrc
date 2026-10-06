@@ -1,5 +1,7 @@
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { Badge } from "@bbrc/ui/components/badge";
+import { progressIndicatorClassName } from "@/components/blocks/sitting-participation-progress";
+import { cn } from "@/lib/utils";
 
 const readingProgressStats = [
 	{ key: "not_started" as const, label: "Not started" },
@@ -47,12 +49,19 @@ export function SittingParticipantsPageIntro({
 						{readingProgressStats.map(({ key, label }) => (
 							<div
 								key={key}
-								className="border border-border/60 bg-background/80 px-3 py-2"
+								className="grid grid-cols-[0.5rem_minmax(0,1fr)] gap-x-1.5 gap-y-1 bg-background/80 px-3 py-2"
 							>
+								<span
+									className={cn(
+										"size-2 shrink-0 self-center",
+										progressIndicatorClassName[key],
+									)}
+									aria-hidden
+								/>
 								<dt className="text-muted-foreground text-xs leading-snug">
 									{label}
 								</dt>
-								<dd className="mt-1 font-medium text-sm tabular-nums">
+								<dd className="col-start-2 font-medium text-sm tabular-nums">
 									{progressCounts[key]}
 								</dd>
 							</div>
