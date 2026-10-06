@@ -141,6 +141,11 @@ export function MemberShelfDetail({
 							path={`/users/${username}/shelves/${shelfSlug}`}
 							shareText={shelf.title}
 							label="Share shelf"
+							shareInPost={{
+								kind: "shelf",
+								ownerUsername: username,
+								slug: shelfSlug,
+							}}
 							size="md"
 						/>
 					) : null}

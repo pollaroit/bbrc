@@ -42,7 +42,8 @@ model Book {
 
   feedbacks Feedback[]
   polls     PollOption[]
-  posts     Post[]
+  posts            Post[]
+  postAttachments  PostAttachment[]
   favorites Favorite[]
   shelfBooks ShelfBook[]
   sittingsSelectedFor Sitting[] @relation("SittingSelectedBook")

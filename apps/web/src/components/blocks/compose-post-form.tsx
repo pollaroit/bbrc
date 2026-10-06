@@ -1,5 +1,6 @@
 "use client";
 
+import type { PostAttachmentInput } from "@bbrc/api/modules/post/post-attachment.schema";
 import { PostSchema } from "@bbrc/schemas";
 import { Button } from "@bbrc/ui/components/button";
 import {
@@ -16,16 +17,17 @@ import { useMutation } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-	ClubBookPicker,
-	type ClubBookPickerValue,
-} from "@/components/blocks/club-book-picker";
+import { useComposePost } from "@/components/blocks/compose-post-provider";
 import {
 	PendingImageAttachment,
 	usePendingImageInput,
 } from "@/components/blocks/pending-image-attachment";
+import {
+	PostAttachmentComposePicker,
+	type PostAttachmentComposeValue,
+} from "@/components/blocks/post-attachment-compose-picker";
 import { uploadImageForEntity } from "@/components/blocks/single-image-upload-field";
 import { TextareaWithImageAttach } from "@/components/blocks/textarea-with-image-attach";
 import { authClient } from "@/lib/auth-client";
@@ -34,28 +36,39 @@ import { orpc, queryClient } from "@/utils/orpc";
 
 function resetComposeForm(
 	setContent: (value: string) => void,
-	setAttachedBook: (value: ClubBookPickerValue) => void,
+	setAttachment: (value: PostAttachmentComposeValue) => void,
 	setImageFile: (value: File | null) => void,
 ) {
 	setContent("");
-	setAttachedBook(null);
+	setAttachment(null);
 	setImageFile(null);
 }
 
 type ComposePostDialogProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	initialAttachment?: PostAttachmentInput | null;
+	onClosed?: () => void;
 };
 
 export function ComposePostDialog({
 	open,
 	onOpenChange,
+	initialAttachment = null,
+	onClosed,
 }: ComposePostDialogProps) {
 	const router = useRouter();
 	const [content, setContent] = useState("");
-	const [attachedBook, setAttachedBook] = useState<ClubBookPickerValue>(null);
+	const [attachment, setAttachment] =
+		useState<PostAttachmentComposeValue>(null);
 	const [imageFile, setImageFile] = useState<File | null>(null);
 	const imageInput = usePendingImageInput(setImageFile, { variant: "post" });
+
+	useEffect(() => {
+		if (open && initialAttachment) {
+			setAttachment(initialAttachment);
+		}
+	}, [open, initialAttachment]);
 
 	const createMutation = useMutation(
 		orpc.post.create.mutationOptions({
@@ -81,7 +94,7 @@ export function ComposePostDialog({
 				toast.success(
 					xpAwarded > 0 ? `Post shared (+${xpAwarded} XP)` : "Post shared.",
 				);
-				resetComposeForm(setContent, setAttachedBook, setImageFile);
+				resetComposeForm(setContent, setAttachment, setImageFile);
 				onOpenChange(false);
 				await queryClient.invalidateQueries({
 					queryKey: orpc.post.getPostList.key(),
@@ -99,7 +112,8 @@ export function ComposePostDialog({
 			onOpenChange={(nextOpen) => {
 				onOpenChange(nextOpen);
 				if (!nextOpen) {
-					resetComposeForm(setContent, setAttachedBook, setImageFile);
+					resetComposeForm(setContent, setAttachment, setImageFile);
+					onClosed?.();
 					if (imageInput.inputRef.current) {
 						imageInput.inputRef.current.value = "";
 					}
@@ -110,8 +124,8 @@ export function ComposePostDialog({
 				<DialogHeader className="border-border border-b p-6">
 					<DialogTitle>Share an update</DialogTitle>
 					<DialogDescription>
-						Post to the club feed. You can optionally attach a book from the
-						library.
+						Post to the club feed. Optionally attach a book, shelf, or member—or
+						use Share → Share in post on any resource.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -132,7 +146,7 @@ export function ComposePostDialog({
 
 						createMutation.mutate({
 							content: parsed.data,
-							...(attachedBook ? { attachedBookSlug: attachedBook.slug } : {}),
+							...(attachment ? { attachment } : {}),
 						});
 					}}
 				>
@@ -153,10 +167,12 @@ export function ComposePostDialog({
 					</Field>
 
 					<Field>
-						<FieldLabel htmlFor="club-book-picker-search">
-							Attached book
-						</FieldLabel>
-						<ClubBookPicker value={attachedBook} onChange={setAttachedBook} />
+						<FieldLabel>Attachment</FieldLabel>
+						<PostAttachmentComposePicker
+							value={attachment}
+							onChange={setAttachment}
+							disabled={createMutation.isPending}
+						/>
 					</Field>
 
 					{imageFile ? (
@@ -186,28 +202,21 @@ export function ComposePostDialog({
 
 export function ComposePostFab({ className }: { className?: string }) {
 	const { data: session, isPending: sessionPending } = authClient.useSession();
-	const [open, setOpen] = useState(false);
+	const { openCompose } = useComposePost();
 
 	if (sessionPending || !session?.user) {
 		return null;
 	}
 
 	return (
-		<>
-			<Button
-				type="button"
-				size="icon-lg"
-				className={cn(
-					"fixed right-6 bottom-6 z-50 size-14 shadow-lg",
-					className,
-				)}
-				aria-label="New post"
-				onClick={() => setOpen(true)}
-			>
-				<Plus className="size-6" aria-hidden />
-			</Button>
-
-			<ComposePostDialog open={open} onOpenChange={setOpen} />
-		</>
+		<Button
+			type="button"
+			size="icon-lg"
+			className={cn("fixed right-6 bottom-6 z-50 size-14 shadow-lg", className)}
+			aria-label="New post"
+			onClick={() => openCompose()}
+		>
+			<Plus className="size-6" aria-hidden />
+		</Button>
 	);
 }

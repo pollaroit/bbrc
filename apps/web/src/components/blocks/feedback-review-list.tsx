@@ -120,6 +120,7 @@ export function FeedbackReviewList({
 											path={`/books/${bookSlug}/feedbacks/${entry.slug}`}
 											shareText={shareSnippet(entry.review)}
 											label="Share review"
+											shareInPost={{ kind: "feedback", slug: entry.slug }}
 										/>
 										{isOwner ? (
 											<LoadingButton

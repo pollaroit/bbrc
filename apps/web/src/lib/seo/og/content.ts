@@ -7,6 +7,7 @@ import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.sch
 import { getSittingBySlug } from "@bbrc/api/modules/sitting/sitting.service";
 import { getUserByUsername } from "@bbrc/api/modules/user/user.service";
 import { formatBookAuthors } from "@/lib/book-cover";
+import { postAttachmentLabel } from "@/lib/post-attachment-label";
 import { truncateDescription } from "@/lib/seo/metadata";
 import { DEFAULT_DESCRIPTION } from "@/lib/seo/site";
 import { db } from "@/services";
@@ -446,15 +447,18 @@ export async function resolveOgImageContent(
 				`${post.commentCount} comment${post.commentCount === 1 ? "" : "s"}`,
 				`@${post.author.username}`,
 			];
-			if (post.attachedBook) {
-				highlights.unshift(post.attachedBook.title);
+			if (post.attachment) {
+				highlights.unshift(postAttachmentLabel(post.attachment));
 			}
 			if (post.editedAt) {
 				highlights.push("Edited");
 			}
 
-			const postContext = post.attachedBook
-				? `@${post.author.username} · ${post.attachedBook.title}`
+			const attachmentTitle = post.attachment
+				? postAttachmentLabel(post.attachment)
+				: null;
+			const postContext = attachmentTitle
+				? `@${post.author.username} · ${attachmentTitle}`
 				: `@${post.author.username}`;
 
 			return {

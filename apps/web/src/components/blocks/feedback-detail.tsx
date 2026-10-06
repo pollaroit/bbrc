@@ -88,6 +88,7 @@ export function FeedbackDetail({
 							path={`/books/${feedback.bookSlug}/feedbacks/${feedback.slug}`}
 							shareText={`${feedback.bookTitle} · ${shareSnippet(feedback.review)}`}
 							label="Share review"
+							shareInPost={{ kind: "feedback", slug: feedback.slug }}
 							size="md"
 						/>
 					</div>

@@ -42,6 +42,7 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 								path={`/sittings/${sitting.slug}`}
 								shareText={sitting.slug.replaceAll("_", " ")}
 								label="Share sitting"
+								shareInPost={{ kind: "sitting", slug: sitting.slug }}
 								storyBookSlug={sitting.selectedBook?.slug}
 								size="md"
 							/>

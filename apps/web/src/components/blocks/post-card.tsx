@@ -7,15 +7,14 @@ import {
 } from "@bbrc/ui/components/card";
 import { MessageCircle } from "lucide-react";
 import type { Route } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { CommentListItemView } from "@/components/blocks/comment-list-item";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
+import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserPanel } from "@/components/blocks/user-panel";
-import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { shareSnippet } from "@/lib/share-snippet";
 import { cn } from "@/lib/utils";
 
@@ -25,46 +24,6 @@ type PostCardProps = {
 	post: PostCardPost;
 	className?: string;
 };
-
-function PostAttachedBook({
-	book,
-}: {
-	book: NonNullable<PostCardPost["attachedBook"]>;
-}) {
-	const href = `/books/${book.slug}` as Route;
-	const coverSrc = bookCoverUrl(book.coverId);
-
-	return (
-		<Link
-			href={href}
-			className="flex items-center gap-3 rounded-none border bg-muted/30 p-2 transition-colors hover:bg-muted/50"
-		>
-			<div className="relative aspect-2/3 w-10 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10">
-				{coverSrc ? (
-					<Image
-						src={coverSrc}
-						alt=""
-						fill
-						className="object-cover"
-						sizes="40px"
-					/>
-				) : (
-					<div className="flex size-full items-center justify-center text-[10px] text-muted-foreground">
-						—
-					</div>
-				)}
-			</div>
-			<div className="min-w-0">
-				<p className="line-clamp-2 font-medium text-sm leading-snug">
-					{book.title}
-				</p>
-				<p className="truncate text-muted-foreground text-xs">
-					{formatBookAuthors(book.authors)}
-				</p>
-			</div>
-		</Link>
-	);
-}
 
 export function PostCard({ post, className }: PostCardProps) {
 	const postHref = `/posts/${post.slug}` as Route;
@@ -110,8 +69,8 @@ export function PostCard({ post, className }: PostCardProps) {
 					</Link>
 				) : null}
 
-				{post.attachedBook ? (
-					<PostAttachedBook book={post.attachedBook} />
+				{post.attachment ? (
+					<PostAttachmentCard attachment={post.attachment} className="w-full" />
 				) : null}
 			</CardContent>
 
@@ -133,6 +92,7 @@ export function PostCard({ post, className }: PostCardProps) {
 						path={`/posts/${post.slug}`}
 						shareText={shareSnippet(post.content)}
 						label="Share post"
+						shareInPost={{ kind: "post", slug: post.slug }}
 					/>
 				</div>
 

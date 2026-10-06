@@ -8,15 +8,15 @@ import { Field, FieldGroup, FieldLabel } from "@bbrc/ui/components/field";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
+import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
 import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
-import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { postAttachmentLabel } from "@/lib/post-attachment-label";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type EditPostFormProps = {
@@ -26,11 +26,8 @@ type EditPostFormProps = {
 export function EditPostForm({ post }: EditPostFormProps) {
 	const router = useRouter();
 	const [content, setContent] = useState(post.content);
-	const [detachBook, setDetachBook] = useState(false);
+	const [detachAttachment, setDetachAttachment] = useState(false);
 	const [deleteOpen, setDeleteOpen] = useState(false);
-	const attachedCoverSrc = post.attachedBook
-		? bookCoverUrl(post.attachedBook.coverId)
-		: null;
 
 	const updateMutation = useMutation(
 		orpc.post.update.mutationOptions({
@@ -85,7 +82,7 @@ export function EditPostForm({ post }: EditPostFormProps) {
 				updateMutation.mutate({
 					slug: post.slug,
 					content: parsedContent.data,
-					...(detachBook ? { attachedBookSlug: null } : {}),
+					...(detachAttachment ? { attachment: null } : {}),
 				});
 			}}
 		>
@@ -125,41 +122,29 @@ export function EditPostForm({ post }: EditPostFormProps) {
 					}}
 				/>
 
-				{post.attachedBook ? (
+				{post.attachment ? (
 					<Field>
-						<FieldLabel>Attached book</FieldLabel>
-						<div className="flex items-center gap-3 rounded-none border bg-muted/30 p-3 opacity-100">
-							<div className="relative aspect-2/3 w-14 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10">
-								{attachedCoverSrc ? (
-									<Image
-										src={attachedCoverSrc}
-										alt=""
-										fill
-										className="object-cover"
-										sizes="56px"
-									/>
-								) : null}
-							</div>
-							<div className="min-w-0 flex-1">
-								<p className="font-medium text-sm leading-snug">
-									{post.attachedBook.title}
-								</p>
-								<p className="text-muted-foreground text-sm">
-									{formatBookAuthors(post.attachedBook.authors)}
-								</p>
-							</div>
+						<FieldLabel>Attachment</FieldLabel>
+						<div
+							className={
+								detachAttachment ? "pointer-events-none opacity-50" : undefined
+							}
+						>
+							<PostAttachmentCard attachment={post.attachment} />
 						</div>
-						{/** biome-ignore lint/a11y/noLabelWithoutControl: This needs to be a label */}
+						{/** biome-ignore lint/a11y/noLabelWithoutControl: checkbox paired with text */}
 						<label className="mt-2 flex items-center gap-2 text-sm">
 							<Checkbox
-								checked={detachBook}
-								onCheckedChange={(checked) => setDetachBook(checked === true)}
+								checked={detachAttachment}
+								onCheckedChange={(checked) =>
+									setDetachAttachment(checked === true)
+								}
 							/>
-							Remove attached book
+							Remove attachment ({postAttachmentLabel(post.attachment)})
 						</label>
 						<p className="text-muted-foreground text-xs">
-							You cannot attach a different book when editing. Remove it here or
-							create a new post to link another title.
+							You cannot attach something else when editing. Remove it here or
+							create a new post to link another resource.
 						</p>
 					</Field>
 				) : null}

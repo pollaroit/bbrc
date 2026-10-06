@@ -24,12 +24,67 @@ model Post {
   attachedBookId String? @map("attached_book_id")
   attachedBook   Book?   @relation(fields: [attachedBookId], references: [id], onDelete: SetNull)
 
+  attachment PostAttachment?
+  quotedInAttachments PostAttachment[] @relation("QuotedPostAttachment")
+
   likes    Like[]
   comments Comment[]
 
   @@index([authorId])
   @@index([slug])
   @@map("post")
+}
+
+enum PostAttachmentKind {
+  book
+  shelf
+  sitting
+  user
+  feedback
+  post
+  comment
+}
+
+model PostAttachment {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// @zod.uuid("Invalid post id")
+  postId String @unique @map("post_id")
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  kind PostAttachmentKind
+
+  /// @zod.uuid("Invalid book id")
+  bookId String? @map("book_id")
+  book   Book?   @relation(fields: [bookId], references: [id], onDelete: SetNull)
+
+  /// @zod.uuid("Invalid shelf id")
+  shelfId String? @map("shelf_id")
+  shelf   Shelf?  @relation(fields: [shelfId], references: [id], onDelete: SetNull)
+
+  /// @zod.uuid("Invalid sitting id")
+  sittingId String? @map("sitting_id")
+  sitting   Sitting? @relation(fields: [sittingId], references: [id], onDelete: SetNull)
+
+  /// @zod.uuid("Invalid user id")
+  memberId String? @map("member_id")
+  member   User?   @relation("PostAttachmentMember", fields: [memberId], references: [id], onDelete: SetNull)
+
+  /// @zod.uuid("Invalid feedback id")
+  feedbackId String? @map("feedback_id")
+  feedback   Feedback? @relation(fields: [feedbackId], references: [id], onDelete: SetNull)
+
+  /// @zod.uuid("Invalid post id")
+  attachedPostId String? @map("attached_post_id")
+  attachedPost   Post?   @relation("QuotedPostAttachment", fields: [attachedPostId], references: [id], onDelete: SetNull)
+
+  /// @zod.uuid("Invalid comment id")
+  commentId String? @map("comment_id")
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: SetNull)
+
+  @@index([kind])
+  @@map("post_attachment")
 }
 
 enum LikeSource {
@@ -108,6 +163,7 @@ model Comment {
   depth Int @default(0)
 
   likes Like[]
+  postAttachments PostAttachment[]
 
   @@index([authorId])
   @@index([postId])

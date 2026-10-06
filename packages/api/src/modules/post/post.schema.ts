@@ -9,13 +9,18 @@ import {
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import type { z } from "zod";
 import zod from "zod";
-import type { getBookListFields } from "../book/book.schema";
 import {
 	postListFiltersSchema,
 	postListRanging,
 	postListSearching,
 	postListSorting,
 } from "./post.listing";
+import {
+	PostAttachmentInputSchema,
+	PostAttachmentOutputSchema,
+	postAttachedBookCardFields,
+	postAttachmentSelect,
+} from "./post-attachment.schema";
 
 export {
 	postAttachedBookWhere,
@@ -38,17 +43,13 @@ export const postAuthorFields = {
 
 export const PostAuthorSchema = UserSchema.pick(postAuthorFields);
 
-/** Book card when a post references library catalog. */
-export const postAttachedBookFields = {
-	slug: true,
-	title: true,
-	authors: true,
-	coverId: true,
-} as const satisfies {
-	[K in keyof typeof getBookListFields]?: true;
-};
+/** @deprecated Use `postAttachedBookCardFields` / book attachment card. */
+export const postAttachedBookFields = postAttachedBookCardFields;
 
-export const PostAttachedBookSchema = BookSchema.pick(postAttachedBookFields);
+/** @deprecated Use `PostAttachmentOutput` book variant. */
+export const PostAttachedBookSchema = BookSchema.pick(
+	postAttachedBookCardFields,
+);
 
 /** Short comment row shown under a post on the home feed. */
 export const PostCommentPreviewSchema = zod.object({
@@ -69,7 +70,7 @@ export const PostListItemSchema = PostSchema.pick({
 	editedAt: true,
 }).extend({
 	author: PostAuthorSchema,
-	attachedBook: PostAttachedBookSchema.nullable(),
+	attachment: PostAttachmentOutputSchema.nullable(),
 	likeCount: zod.number().int().min(0),
 	commentCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
@@ -99,7 +100,10 @@ export const getPostListFields = {
 		select: postAuthorFields,
 	},
 	attachedBook: {
-		select: postAttachedBookFields,
+		select: postAttachedBookCardFields,
+	},
+	attachment: {
+		select: postAttachmentSelect,
 	},
 	_count: {
 		select: {
@@ -119,9 +123,13 @@ export type PostListItem = z.infer<typeof PostListItemSchema>;
 /** CREATE */
 export const CreatePostInputSchema = PostSchema.pick({
 	content: true,
-}).extend({
-	attachedBookSlug: BookSchema.shape.slug.optional(),
-});
+})
+	.extend({
+		attachedBookSlug: BookSchema.shape.slug.optional(),
+	})
+	.extend({
+		attachment: PostAttachmentInputSchema.optional(),
+	});
 
 export const CreatePostOutputSchema = PostSchema.pick({
 	slug: true,
@@ -142,7 +150,7 @@ export const GetPostBySlugOutputSchema = PostSchema.omit({
 	updatedAt: true,
 }).extend({
 	author: PostAuthorSchema,
-	attachedBook: PostAttachedBookSchema.nullable(),
+	attachment: PostAttachmentOutputSchema.nullable(),
 	likeCount: zod.number().int().min(0),
 	commentCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
@@ -160,6 +168,7 @@ export const UpdatePostInputSchema = PostSchema.pick({
 	.extend({
 		/** Omit to leave unchanged; pass `null` to detach the book. */
 		attachedBookSlug: BookSchema.shape.slug.nullish(),
+		attachment: PostAttachmentInputSchema.nullish(),
 	})
 	.required({ slug: true });
 
@@ -183,6 +192,17 @@ export const DeletePostOutputSchema = zod.object({
 export type DeletePostInput = z.infer<typeof DeletePostInputSchema>;
 export type DeletePostOutput = z.infer<typeof DeletePostOutputSchema>;
 
+/** PREVIEW ATTACHMENT (compose / share-in-post) */
+export const PreviewPostAttachmentInputSchema = PostAttachmentInputSchema;
+export const PreviewPostAttachmentOutputSchema = PostAttachmentOutputSchema;
+
+export type PreviewPostAttachmentInput = z.infer<
+	typeof PreviewPostAttachmentInputSchema
+>;
+export type PreviewPostAttachmentOutput = z.infer<
+	typeof PreviewPostAttachmentOutputSchema
+>;
+
 /** Prisma select for slug lookups (author checks, edits). */
 export const getPostBySlugFields = {
 	id: true,
@@ -198,6 +218,9 @@ export const getPostBySlugFields = {
 		select: postAuthorFields,
 	},
 	attachedBook: {
-		select: postAttachedBookFields,
+		select: postAttachedBookCardFields,
+	},
+	attachment: {
+		select: postAttachmentSelect,
 	},
 } as const;

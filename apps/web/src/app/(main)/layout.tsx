@@ -1,4 +1,5 @@
 import Header from "@/components/blocks/header";
+import { MainShell } from "@/components/blocks/main-shell";
 
 export default function MainLayout({
 	children,
@@ -6,9 +7,9 @@ export default function MainLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<div>
+		<MainShell>
 			<Header />
 			<main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
-		</div>
+		</MainShell>
 	);
 }

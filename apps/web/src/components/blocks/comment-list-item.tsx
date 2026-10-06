@@ -344,6 +344,7 @@ export function CommentListItemView({
 									path={commentShare}
 									shareText={shareSnippet(comment.content)}
 									label="Share comment"
+									shareInPost={{ kind: "comment", slug: comment.slug }}
 								/>
 							) : null}
 							{canReply && onReply && session?.user ? (
@@ -414,6 +415,7 @@ export function CommentListItemView({
 							path={commentShare}
 							shareText={shareSnippet(comment.content)}
 							label="Share comment"
+							shareInPost={{ kind: "comment", slug: comment.slug }}
 						/>
 					) : null}
 					{canReply && onReply && session?.user ? (

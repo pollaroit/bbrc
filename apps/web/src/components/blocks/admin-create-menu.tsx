@@ -11,8 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BookPlus, LayoutList, PenLine, Plus, Sofa } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { useState } from "react";
-import { ComposePostDialog } from "@/components/blocks/compose-post-form";
+import { useComposePost } from "@/components/blocks/compose-post-provider";
 import { authClient } from "@/lib/auth-client";
 import { orpc } from "@/utils/orpc";
 
@@ -23,7 +22,7 @@ export function AdminCreateMenu() {
 		...orpc.sitting.getOngoingSitting.queryOptions(),
 		enabled: session?.user.isAdmin === true,
 	});
-	const [composeOpen, setComposeOpen] = useState(false);
+	const { openCompose } = useComposePost();
 
 	if (isSessionPending || !session?.user) {
 		return null;
@@ -69,17 +68,13 @@ export function AdminCreateMenu() {
 						</DropdownMenuItem>
 					) : null}
 					{isAdmin ? (
-						<DropdownMenuItem onClick={() => setComposeOpen(true)}>
+						<DropdownMenuItem onClick={() => openCompose()}>
 							<PenLine className="size-4" aria-hidden="true" />
 							Create post
 						</DropdownMenuItem>
 					) : null}
 				</DropdownMenuContent>
 			</DropdownMenu>
-
-			{isAdmin ? (
-				<ComposePostDialog open={composeOpen} onOpenChange={setComposeOpen} />
-			) : null}
 		</>
 	);
 }

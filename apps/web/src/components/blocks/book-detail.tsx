@@ -89,6 +89,7 @@ export function BookDetail({
 								shareText={book.title}
 								label="Share book"
 								storyBookSlug={book.slug}
+								shareInPost={{ kind: "book", slug: book.slug }}
 								size="md"
 							/>
 							<BookFavoriteButton

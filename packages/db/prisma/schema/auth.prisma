@@ -47,6 +47,7 @@ model User {
   notificationPreferences NotificationPreference[]
   booksRequested          Book[] @relation("BookRequestedBy")
   booksApproved           Book[] @relation("BookApprovedBy")
+  postAttachmentsAsMember   PostAttachment[] @relation("PostAttachmentMember")
 
   @@map("user")
 }

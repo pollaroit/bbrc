@@ -3,9 +3,9 @@ import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import type { Route } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
+import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
 import { PostCommentFocusSection } from "@/components/blocks/post-comment-focus-section";
 import { PostCommentsSection } from "@/components/blocks/post-comments-section";
 import { PostEditLink } from "@/components/blocks/post-edit-link";
@@ -13,7 +13,6 @@ import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserPanel } from "@/components/blocks/user-panel";
-import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { shareSnippet } from "@/lib/share-snippet";
 
 type PostDetailProps = {
@@ -22,44 +21,6 @@ type PostDetailProps = {
 	commentFocusSlug?: string | null;
 	showCommentsSection?: boolean;
 };
-
-function PostAttachedBook({
-	book,
-}: {
-	book: NonNullable<GetPostBySlugOutput["attachedBook"]>;
-}) {
-	const href = `/books/${book.slug}` as Route;
-	const coverSrc = bookCoverUrl(book.coverId);
-
-	return (
-		<Link
-			href={href}
-			className="flex items-center gap-3 rounded-none border bg-muted/30 p-3 transition-colors hover:bg-muted/50"
-		>
-			<div className="relative aspect-2/3 w-14 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10">
-				{coverSrc ? (
-					<Image
-						src={coverSrc}
-						alt=""
-						fill
-						className="object-cover"
-						sizes="56px"
-					/>
-				) : (
-					<div className="flex size-full items-center justify-center text-muted-foreground text-xs">
-						No cover
-					</div>
-				)}
-			</div>
-			<div className="min-w-0">
-				<p className="font-medium text-sm leading-snug">{book.title}</p>
-				<p className="text-muted-foreground text-sm">
-					{formatBookAuthors(book.authors)}
-				</p>
-			</div>
-		</Link>
-	);
-}
 
 export function PostDetail({
 	post,
@@ -115,8 +76,11 @@ export function PostDetail({
 						/>
 					) : null}
 
-					{post.attachedBook ? (
-						<PostAttachedBook book={post.attachedBook} />
+					{post.attachment ? (
+						<PostAttachmentCard
+							attachment={post.attachment}
+							className="w-full"
+						/>
 					) : null}
 
 					<div className="flex flex-wrap items-center gap-4 border-t pt-4 text-muted-foreground text-sm">
@@ -136,6 +100,7 @@ export function PostDetail({
 							path={`/posts/${post.slug}`}
 							shareText={shareSnippet(post.content)}
 							label="Share post"
+							shareInPost={{ kind: "post", slug: post.slug }}
 							size="md"
 						/>
 					</div>

@@ -22,9 +22,10 @@ model Sitting {
   selectedBookId String? @map("selected_book_id")
   selectedBook   Book?   @relation("SittingSelectedBook", fields: [selectedBookId], references: [id], onDelete: SetNull)
 
-  participants Participation[]
-  poll         Poll?
-  rpEvents     RPEvent[]
+  participants    Participation[]
+  poll            Poll?
+  rpEvents        RPEvent[]
+  postAttachments PostAttachment[]
 
   @@index([slug])
   @@map("sitting")
@@ -53,8 +54,9 @@ model Feedback {
   /// @zod.min(0, "Rating must be a non-negative number").max(5, "Rating must be at most 5")
   rating Float
 
-  likes    Like[]
-  comments Comment[]
+  likes           Like[]
+  comments        Comment[]
+  postAttachments PostAttachment[]
 
   @@unique([authorId, bookId])
   @@index([bookId])

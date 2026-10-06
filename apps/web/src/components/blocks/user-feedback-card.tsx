@@ -71,6 +71,7 @@ export function UserFeedbackCard({ item }: UserFeedbackCardProps) {
 							path={`/books/${item.book.slug}/feedbacks/${item.slug}`}
 							shareText={`${item.book.title} · ${shareSnippet(item.review)}`}
 							label="Share review"
+							shareInPost={{ kind: "feedback", slug: item.slug }}
 						/>
 					</div>
 				</div>

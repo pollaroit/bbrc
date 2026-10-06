@@ -30,6 +30,10 @@ import {
 	type UpdatePostInput,
 	type UpdatePostOutput,
 } from "./post.schema";
+import {
+	mapPostAttachmentFromPostRow,
+	syncPostAttachment,
+} from "./post-attachment.service";
 import { generatePostSlug } from "./post-slug";
 
 const postListSelect = {
@@ -94,33 +98,6 @@ function withStableSlugOrderBy(
 
 function viewerUserId(session: Session | null): string | null {
 	return session?.user.id ?? null;
-}
-
-async function resolveAttachedBookId(
-	bookSlug: string | null | undefined,
-	db: Database,
-): Promise<string | null | undefined> {
-	if (bookSlug === undefined) {
-		return undefined;
-	}
-
-	if (bookSlug === null) {
-		return null;
-	}
-
-	const book = await db.book.findUnique({
-		where: { slug: bookSlug },
-		select: { id: true },
-	});
-
-	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
-			data: { slug: bookSlug },
-		});
-	}
-
-	return book.id;
 }
 
 function groupTopComments(
@@ -249,7 +226,10 @@ function mapPostListRow(
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
-		attachedBook: row.attachedBook,
+		attachment: mapPostAttachmentFromPostRow({
+			attachment: row.attachment,
+			attachedBook: row.attachedBook,
+		}),
 		likeCount: row._count.likes,
 		commentCount: row._count.comments,
 		likedByMe: likedPostIds.has(row.id),
@@ -271,7 +251,10 @@ async function mapPostDetailRow(
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
-		attachedBook: row.attachedBook,
+		attachment: mapPostAttachmentFromPostRow({
+			attachment: row.attachment,
+			attachedBook: row.attachedBook,
+		}),
 		likeCount: row._count.likes,
 		commentCount: row._count.comments,
 		likedByMe: likedPostIds.has(row.id),
@@ -348,14 +331,24 @@ export async function getPostBySlug(
 	return mapPostDetailRow(post, viewerUserId(session), db);
 }
 
+function resolveCreateAttachment(
+	input: CreatePostInput,
+): CreatePostInput["attachment"] | null {
+	if (input.attachment) {
+		return input.attachment;
+	}
+	if (input.attachedBookSlug) {
+		return { kind: "book", slug: input.attachedBookSlug };
+	}
+	return null;
+}
+
 export async function createPost(
 	input: CreatePostInput,
 	userId: string,
 	db: Database,
 ): Promise<CreatePostOutput> {
-	const attachedBookId = input.attachedBookSlug
-		? await resolveAttachedBookId(input.attachedBookSlug, db)
-		: null;
+	const attachmentInput = resolveCreateAttachment(input);
 
 	const result = await db.$transaction(async (tx) => {
 		const slug = await generatePostSlug(input.content, tx);
@@ -365,9 +358,19 @@ export async function createPost(
 				content: input.content.trim(),
 				slug,
 				authorId: userId,
-				attachedBookId: attachedBookId ?? null,
+				attachedBookId: null,
 			},
 			select: { id: true, slug: true },
+		});
+
+		const attachedBookId = await syncPostAttachment(
+			post.id,
+			attachmentInput ?? null,
+			tx,
+		);
+		await tx.post.update({
+			where: { id: post.id },
+			data: { attachedBookId: attachedBookId ?? null },
 		});
 
 		const xpAwarded = (await awardPostXp({ userId, postId: post.id }, tx))
@@ -401,24 +404,36 @@ export async function updatePost(
 
 	assertPostAuthor(post, userId);
 
-	const attachedBookId = await resolveAttachedBookId(
-		input.attachedBookSlug,
-		db,
-	);
-
 	const content = input.content?.trim();
 	const contentChanged = content != null && content !== post.content;
 
-	await db.post.update({
-		where: { id: post.id },
-		data: {
-			...(content != null ? { content } : {}),
-			...(contentChanged ? { editedAt: new Date() } : {}),
-			...(attachedBookId !== undefined
-				? { attachedBookId: attachedBookId ?? null }
-				: {}),
-		},
-		select: { slug: true },
+	let attachmentPatch: CreatePostInput["attachment"] | null | undefined;
+	if (input.attachment !== undefined) {
+		attachmentPatch = input.attachment;
+	} else if (input.attachedBookSlug !== undefined) {
+		attachmentPatch = input.attachedBookSlug
+			? { kind: "book", slug: input.attachedBookSlug }
+			: null;
+	}
+
+	await db.$transaction(async (tx) => {
+		const attachedBookId = await syncPostAttachment(
+			post.id,
+			attachmentPatch,
+			tx,
+		);
+
+		await tx.post.update({
+			where: { id: post.id },
+			data: {
+				...(content != null ? { content } : {}),
+				...(contentChanged ? { editedAt: new Date() } : {}),
+				...(attachedBookId !== undefined
+					? { attachedBookId: attachedBookId ?? null }
+					: {}),
+			},
+			select: { id: true },
+		});
 	});
 
 	return { slug: input.slug };

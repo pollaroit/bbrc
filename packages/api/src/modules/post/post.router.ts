@@ -9,6 +9,8 @@ import {
 	GetPostBySlugOutputSchema,
 	GetPostListInputSchema,
 	GetPostListOutputSchema,
+	PreviewPostAttachmentInputSchema,
+	PreviewPostAttachmentOutputSchema,
 	UpdatePostInputSchema,
 	UpdatePostOutputSchema,
 } from "./post.schema";
@@ -19,6 +21,7 @@ import {
 	getPostList,
 	updatePost,
 } from "./post.service";
+import { getPostAttachmentPreview } from "./post-attachment.service";
 
 export const postRouter = {
 	getPostList: publicProcedure
@@ -32,6 +35,12 @@ export const postRouter = {
 		.output(GetPostBySlugOutputSchema)
 		.handler(async ({ input, context }) =>
 			getPostBySlug(input, context.db, context.session),
+		),
+	previewAttachment: publicProcedure
+		.input(PreviewPostAttachmentInputSchema)
+		.output(PreviewPostAttachmentOutputSchema)
+		.handler(async ({ input, context }) =>
+			getPostAttachmentPreview(input, context.db),
 		),
 	create: notBannedProcedure
 		.input(CreatePostInputSchema)

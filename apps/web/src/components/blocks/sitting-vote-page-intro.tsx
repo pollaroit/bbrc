@@ -60,6 +60,7 @@ export function SittingVotePageIntro({
 								: `Voting results · ${sittingSlug.replaceAll("_", " ")}`
 						}
 						label="Share poll"
+						shareInPost={{ kind: "sitting", slug: sittingSlug }}
 						size="md"
 					/>
 				</div>

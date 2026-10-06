@@ -1,5 +1,6 @@
 "use client";
 
+import type { PostAttachmentInput } from "@bbrc/api/modules/post/post-attachment.schema";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	DropdownMenu,
@@ -8,9 +9,10 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@bbrc/ui/components/dropdown-menu";
-import { Link2, Share2 } from "lucide-react";
+import { Link2, PenLine, Share2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useComposePost } from "@/components/blocks/compose-post-provider";
 import {
 	FacebookIcon,
 	InstagramIcon,
@@ -18,6 +20,7 @@ import {
 	WhatsAppIcon,
 	XTwitterIcon,
 } from "@/components/blocks/share-brand-icons";
+import { authClient } from "@/lib/auth-client";
 import {
 	absoluteShareUrl,
 	buildFacebookShareUrl,
@@ -38,6 +41,8 @@ type ResourceShareMenuProps = {
 	label: string;
 	/** When set, shows “Instagram Story” and renders a 9:16 book card (cover, title, your rating). */
 	storyBookSlug?: string;
+	/** Opens the compose dialog with this resource attached. */
+	shareInPost?: PostAttachmentInput;
 	className?: string;
 	triggerClassName?: string;
 	size?: "sm" | "md";
@@ -48,11 +53,14 @@ export function ResourceShareMenu({
 	shareText,
 	label,
 	storyBookSlug,
+	shareInPost,
 	className,
 	triggerClassName,
 	size = "sm",
 }: ResourceShareMenuProps) {
 	const [copied, setCopied] = useState(false);
+	const { data: session } = authClient.useSession();
+	const compose = useComposePost();
 
 	async function handleCopyLink() {
 		try {
@@ -97,6 +105,16 @@ export function ResourceShareMenu({
 				Share
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="min-w-44">
+				{shareInPost && session?.user ? (
+					<DropdownMenuItem
+						onClick={() => {
+							compose.openCompose(shareInPost);
+						}}
+					>
+						<PenLine aria-hidden />
+						Share in post
+					</DropdownMenuItem>
+				) : null}
 				<DropdownMenuItem onClick={() => void handleCopyLink()}>
 					<Link2 aria-hidden />
 					{copied ? "Copied" : "Copy link"}

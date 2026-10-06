@@ -11,6 +11,7 @@ import { Separator } from "@bbrc/ui/components/separator";
 import { ArrowLeft, Crown } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
 
@@ -48,7 +49,16 @@ export function MemberProfileHeader({ user }: MemberProfileHeaderProps) {
 						</span>
 					)}
 				/>
-				<UserStatusBadge status={user.status} />
+				<div className="flex flex-wrap items-center gap-2">
+					<ResourceShareMenu
+						path={`/users/${user.username}`}
+						shareText={user.name}
+						label="Share member profile"
+						shareInPost={{ kind: "user", username: user.username }}
+						size="md"
+					/>
+					<UserStatusBadge status={user.status} />
+				</div>
 			</div>
 
 			<Separator />
