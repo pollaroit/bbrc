@@ -4,6 +4,8 @@ import { definePagination } from "../../utils/pagination";
 import { notifyBookAddedToLibrary } from "../notification/notification-triggers";
 import { bookListSorting } from "./book.listing";
 import {
+	type GetBookListAuthorFacetsInput,
+	type GetBookListAuthorFacetsOutput,
 	type GetBookListInput,
 	type GetBookListOutput,
 	getBookListFields,
@@ -12,7 +14,8 @@ import {
 	type TUpdateBookInputSchema,
 	type TUpdateBookOutputSchema,
 } from "./book.schema";
-import { buildBookListWhere } from "./book-list-where";
+import { listAuthorFacetsForBooks } from "./book-author-filter";
+import { buildBookListWhereWithAuthors } from "./book-list-where";
 import { generateBookSlug } from "./book-slug";
 
 const bookListSelect = {
@@ -52,7 +55,20 @@ export async function getBookList(
 	const pagination = definePagination.cursor(input, bookListCursorCodec);
 	const sorting = bookListSorting.from(input);
 
-	const where = buildBookListWhere(input, viewerUserId);
+	const where = await buildBookListWhereWithAuthors(input, db, viewerUserId);
+
+	if (where == null) {
+		return {
+			items: [],
+			metadata: {
+				limit: pagination.limit,
+				hasNextPage: false,
+				hasPreviousPage: pagination.hasPreviousPage,
+				nextCursor: null,
+				total: 0,
+			},
+		};
+	}
 
 	const isFirstPage = input.cursor == null;
 
@@ -85,6 +101,32 @@ export async function getBookList(
 			...(total != null ? { total } : {}),
 		},
 	};
+}
+
+export async function getBookListAuthorFacets(
+	input: GetBookListAuthorFacetsInput,
+	db: Database,
+	viewerUserId?: string,
+): Promise<GetBookListAuthorFacetsOutput> {
+	const { pinnedAuthorSlugs, authors: _selectedAuthors, ...listInput } = input;
+
+	const where = await buildBookListWhereWithAuthors(
+		listInput,
+		db,
+		viewerUserId,
+	);
+
+	if (where == null) {
+		return { authors: [] };
+	}
+
+	const authors = await listAuthorFacetsForBooks(
+		db,
+		where,
+		pinnedAuthorSlugs ?? [],
+	);
+
+	return { authors };
 }
 
 export async function getBookBySlug(

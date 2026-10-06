@@ -4,6 +4,7 @@ import {
 	CursorPaginationMetadataSchema,
 } from "@bbrc/schemas";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
+import { isAuthorSlug } from "@bbrc/shared";
 import { z } from "zod";
 import {
 	bookListFiltersSchema,
@@ -97,6 +98,33 @@ export const GetBookListOutputSchema = z.object({
 
 export type GetBookListInput = z.infer<typeof GetBookListInputSchema>;
 export type GetBookListOutput = z.infer<typeof GetBookListOutputSchema>;
+
+export const BookListAuthorFacetSchema = z.object({
+	slug: z.string(),
+	name: z.string().min(1),
+	bookCount: z.number().int().min(0),
+});
+
+export const GetBookListAuthorFacetsInputSchema = bookListQueryInputShape
+	.extend({
+		pinnedAuthorSlugs: z
+			.array(
+				z.string().refine(isAuthorSlug, { message: "Invalid author slug" }),
+			)
+			.optional(),
+	})
+	.superRefine(refineBookListQueryInput);
+
+export const GetBookListAuthorFacetsOutputSchema = z.object({
+	authors: z.array(BookListAuthorFacetSchema),
+});
+
+export type GetBookListAuthorFacetsInput = z.infer<
+	typeof GetBookListAuthorFacetsInputSchema
+>;
+export type GetBookListAuthorFacetsOutput = z.infer<
+	typeof GetBookListAuthorFacetsOutputSchema
+>;
 
 /** @deprecated Use `GetBookListInput` */
 export type TGetBookListInputSchema = GetBookListInput;

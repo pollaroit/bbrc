@@ -1,5 +1,6 @@
 import type { Prisma } from "@bbrc/db";
 import { BookStatusSchema } from "@bbrc/schemas";
+import { isAuthorSlug } from "@bbrc/shared";
 import z from "zod";
 import { defineRanging } from "../../utils/ranging";
 import { defineSearching } from "../../utils/searching";
@@ -51,6 +52,9 @@ export const bookListFiltersSchema = z
 		maxOpenLibraryRating: z.number().min(0).max(5),
 		minPages: z.number().int().min(1),
 		maxPages: z.number().int().min(1),
+		authors: z.array(
+			z.string().refine(isAuthorSlug, { message: "Invalid author slug" }),
+		),
 		statuses: z.array(BookStatusSchema),
 		/** Completed club read for the authenticated viewer. */
 		viewerRead: z.boolean(),

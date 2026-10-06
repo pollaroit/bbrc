@@ -5,6 +5,8 @@ import {
 	AddBookInputSchema,
 	AddBookOutputSchema,
 	GetBookBySlugOutputSchema,
+	GetBookListAuthorFacetsInputSchema,
+	GetBookListAuthorFacetsOutputSchema,
 	GetBookListInputSchema,
 	GetBookListOutputSchema,
 	UpdateBookInputSchema,
@@ -14,6 +16,7 @@ import {
 	addBook,
 	getBookBySlug,
 	getBookList,
+	getBookListAuthorFacets,
 	removeBook,
 	updateBook,
 } from "./book.service";
@@ -53,6 +56,17 @@ export const bookRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await getBookList(input, context.db, context.session?.user?.id),
+		),
+	getBookListAuthorFacets: publicProcedure
+		.input(GetBookListAuthorFacetsInputSchema)
+		.output(GetBookListAuthorFacetsOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await getBookListAuthorFacets(
+					input,
+					context.db,
+					context.session?.user?.id,
+				),
 		),
 	exportBookList: publicProcedure
 		.input(ExportBookListInputSchema)

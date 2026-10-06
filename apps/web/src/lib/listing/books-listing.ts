@@ -2,11 +2,16 @@ import {
 	bookRangeableFields,
 	bookSortableFields,
 } from "@bbrc/api/modules/book/book.listing";
-import type { GetBookListInput } from "@bbrc/api/modules/book/book.schema";
+import type {
+	GetBookListAuthorFacetsInput,
+	GetBookListInput,
+} from "@bbrc/api/modules/book/book.schema";
+import { isAuthorSlug } from "@bbrc/shared";
 import {
 	parseAsArrayOf,
 	parseAsFloat,
 	parseAsInteger,
+	parseAsString,
 	parseAsStringLiteral,
 	useQueryStates,
 } from "nuqs";
@@ -67,6 +72,7 @@ export const bookListingSearchParams = {
 	maxOpenLibraryRating: parseAsFloat.withOptions({ shallow: false }),
 	minPages: parseAsInteger.withOptions({ shallow: false }),
 	maxPages: parseAsInteger.withOptions({ shallow: false }),
+	authors: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
 	viewerRead: booleanFilterParser.withOptions({ shallow: false }),
 	viewerFavorite: booleanFilterParser.withOptions({ shallow: false }),
 	viewerReviewed: booleanFilterParser.withOptions({ shallow: false }),
@@ -86,6 +92,17 @@ export type BookListingSearchParams = ReturnType<
 	typeof useBookListingSearchParams
 >[0];
 
+function normalizeAuthorSlugs(
+	authors: string[] | null | undefined,
+): string[] | undefined {
+	if (!authors || authors.length === 0) {
+		return undefined;
+	}
+
+	const slugs = authors.filter(isAuthorSlug);
+	return slugs.length > 0 ? slugs : undefined;
+}
+
 export function toBookListCallInput(
 	params: BookListingSearchParams,
 ): Partial<GetBookListInput> {
@@ -101,11 +118,29 @@ export function toBookListCallInput(
 		maxOpenLibraryRating: params.maxOpenLibraryRating,
 		minPages: params.minPages,
 		maxPages: params.maxPages,
+		authors: normalizeAuthorSlugs(params.authors),
 		viewerRead: params.viewerRead === true ? true : undefined,
 		viewerFavorite: params.viewerFavorite === true ? true : undefined,
 		viewerReviewed: params.viewerReviewed === true ? true : undefined,
 		limit: 24,
 	}) as Partial<GetBookListInput>;
+}
+
+export function toBookListAuthorFacetsInput(
+	params: BookListingSearchParams,
+): Partial<GetBookListAuthorFacetsInput> {
+	const listInput = toBookListCallInput(params);
+	const {
+		authors: selectedAuthors,
+		limit: _limit,
+		cursor: _cursor,
+		...rest
+	} = listInput;
+
+	return buildListCallInput({
+		...rest,
+		pinnedAuthorSlugs: selectedAuthors,
+	}) as Partial<GetBookListAuthorFacetsInput>;
 }
 
 export function toBookExportCallInput(
@@ -131,6 +166,10 @@ export function countBookSheetFilters(params: BookListingSearchParams): number {
 	}
 
 	if (params.minPages != null || params.maxPages != null) {
+		count += 1;
+	}
+
+	if (params.authors && params.authors.length > 0) {
 		count += 1;
 	}
 
@@ -162,6 +201,7 @@ export function clearBookSheetFilters(
 		maxOpenLibraryRating: null,
 		minPages: null,
 		maxPages: null,
+		authors: null,
 		rangeBy: null,
 		rangeMin: null,
 		rangeMax: null,

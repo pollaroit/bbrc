@@ -1,3 +1,4 @@
+export * from "./author-slug";
 export * from "./club-timezone";
 export * from "./comment-thread";
 export * from "./documents";

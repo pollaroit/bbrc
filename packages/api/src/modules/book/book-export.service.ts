@@ -4,7 +4,7 @@ import type {
 	ExportBookListInput,
 	ExportBookListOutput,
 } from "./book-export.schema";
-import { buildBookListWhere } from "./book-list-where";
+import { buildBookListWhereWithAuthors } from "./book-list-where";
 
 const exportBookSelect = {
 	title: true,
@@ -69,8 +69,12 @@ export async function exportBookList(
 	viewerUserId?: string,
 ): Promise<ExportBookListOutput> {
 	const sorting = bookListSorting.from(input);
-	const where = buildBookListWhere(input, viewerUserId);
+	const where = await buildBookListWhereWithAuthors(input, db, viewerUserId);
 	const take = input.limit ?? 5000;
+
+	if (where == null) {
+		return { count: 0, items: [] };
+	}
 
 	const rows = await db.book.findMany({
 		where,

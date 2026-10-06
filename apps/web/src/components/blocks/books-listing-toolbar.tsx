@@ -4,7 +4,9 @@ import {
 	bookRangeableFields,
 	bookSortableFields,
 } from "@bbrc/api/modules/book/book.listing";
+import { useMemo } from "react";
 import { BooksListExportMenu } from "@/components/blocks/books-list-export-menu";
+import { ListingAuthorMultiSelect } from "@/components/listing/listing-author-multi-select";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
 import { ListingIntegerRangeFields } from "@/components/listing/listing-integer-range-fields";
@@ -21,6 +23,7 @@ import {
 	bookStatusFilterLabels,
 	clearBookSheetFilters,
 	countBookSheetFilters,
+	toBookListAuthorFacetsInput,
 	useBookListingSearchParams,
 	viewerBookFilterLabels,
 } from "@/lib/listing/books-listing";
@@ -35,6 +38,10 @@ export function BooksListingToolbar() {
 	const [params, setParams] = useBookListingSearchParams();
 	const { data: session } = authClient.useSession();
 	const sheetFilterCount = countBookSheetFilters(params);
+	const authorFacetsInput = useMemo(
+		() => toBookListAuthorFacetsInput(params),
+		[params],
+	);
 
 	const toggleViewerFilter = (
 		key: (typeof viewerFilterKeys)[number],
@@ -84,7 +91,7 @@ export function BooksListingToolbar() {
 
 				<ListingFiltersSheet
 					title="Book filters"
-					description="Filter by status, rating, date, or your library."
+					description="Filter by author, status, rating, pages, date, or your library."
 					activeFilterCount={sheetFilterCount}
 					onClear={() => clearBookSheetFilters(setParams)}
 				>
@@ -138,6 +145,16 @@ export function BooksListingToolbar() {
 						onMaxChange={(maxPages) => {
 							void setParams({ maxPages });
 						}}
+					/>
+
+					<ListingAuthorMultiSelect
+						selectedSlugs={params.authors ?? []}
+						onSelectedSlugsChange={(authors) => {
+							void setParams({
+								authors: authors.length > 0 ? authors : null,
+							});
+						}}
+						facetInput={authorFacetsInput}
 					/>
 
 					<ListingRangeFields
