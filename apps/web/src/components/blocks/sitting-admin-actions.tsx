@@ -21,7 +21,7 @@ import {
 	SheetTitle,
 } from "@bbrc/ui/components/sheet";
 import { useMutation } from "@tanstack/react-query";
-import { BookOpenIcon, FlagIcon } from "lucide-react";
+import { BarChart3Icon, BookOpenIcon, FlagIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -67,6 +67,17 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 					queryKey: orpc.sitting.getOngoingSitting.key(),
 				});
 				router.refresh();
+			},
+			onError: (error) => {
+				toast.error(error.message);
+			},
+		}),
+	);
+
+	const sendTelegramProgressPoll = useMutation(
+		orpc.sitting.sendSittingTelegramProgressPoll.mutationOptions({
+			onSuccess: () => {
+				toast.success("Progress poll sent to Telegram");
 			},
 			onError: (error) => {
 				toast.error(error.message);
@@ -237,6 +248,18 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 
 			{sitting.status === "reading" ? (
 				<>
+					<LoadingButton
+						type="button"
+						size="sm"
+						variant="outline"
+						loading={sendTelegramProgressPoll.isPending}
+						onClick={() =>
+							sendTelegramProgressPoll.mutate({ slug: sitting.slug })
+						}
+					>
+						<BarChart3Icon data-icon="inline-start" />
+						Send Telegram progress poll
+					</LoadingButton>
 					<Button
 						type="button"
 						size="sm"

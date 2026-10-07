@@ -542,4 +542,19 @@ export type SittingParticipantMutationOutput = z.infer<
 	typeof SittingParticipantMutationOutputSchema
 >;
 
+export const SendSittingTelegramProgressPollInputSchema = zod.object({
+	slug: SittingSchema.shape.slug,
+});
+
+export const SendSittingTelegramProgressPollOutputSchema = zod.object({
+	ok: zod.literal(true),
+});
+
+export type SendSittingTelegramProgressPollInput = z.infer<
+	typeof SendSittingTelegramProgressPollInputSchema
+>;
+export type SendSittingTelegramProgressPollOutput = z.infer<
+	typeof SendSittingTelegramProgressPollOutputSchema
+>;
+
 export { refinePollConfig };

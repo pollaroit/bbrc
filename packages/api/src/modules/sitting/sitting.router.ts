@@ -16,6 +16,8 @@ import {
 	GetSittingBySlugOutputSchema,
 	GetSittingListInputSchema,
 	GetSittingListOutputSchema,
+	SendSittingTelegramProgressPollInputSchema,
+	SendSittingTelegramProgressPollOutputSchema,
 	SittingParticipantMutationInputSchema,
 	SittingParticipantMutationOutputSchema,
 	SubmitPollVotesInputSchema,
@@ -38,6 +40,7 @@ import {
 	getSittingBySlug,
 	getSittingList,
 	removeSittingParticipant,
+	sendSittingTelegramProgressPoll,
 	submitPollVotes,
 	transitionSitting,
 	updateMyParticipationProgress,
@@ -141,4 +144,11 @@ export const sittingRouter = {
 			revalidateSittingIsr(context, input.slug);
 			return result;
 		}),
+	sendSittingTelegramProgressPoll: adminProcedure
+		.input(SendSittingTelegramProgressPollInputSchema)
+		.output(SendSittingTelegramProgressPollOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await sendSittingTelegramProgressPoll(input, context.db),
+		),
 };

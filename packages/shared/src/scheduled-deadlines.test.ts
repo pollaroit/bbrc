@@ -18,7 +18,7 @@ describe("scheduled deadlines", () => {
 
 		for (const slot of slots.slice(0, 8)) {
 			const parts = getZonedParts(slot, TZ);
-			expect(POLL_DEADLINE_HOURS).toContain(parts.hour);
+			expect(POLL_DEADLINE_HOURS as readonly number[]).toContain(parts.hour);
 			expect(parts.minute).toBe(0);
 			expect(slot.getTime()).toBeGreaterThan(from.getTime());
 		}
@@ -28,7 +28,7 @@ describe("scheduled deadlines", () => {
 		const from = new Date("2026-03-30T08:00:00.000Z");
 		const deadline = defaultPollDeadline(from, TZ);
 		const parts = getZonedParts(deadline, TZ);
-		expect(POLL_DEADLINE_HOURS).toContain(parts.hour);
+		expect(POLL_DEADLINE_HOURS as readonly number[]).toContain(parts.hour);
 		expect(deadline.getTime()).toBeGreaterThan(from.getTime());
 	});
 

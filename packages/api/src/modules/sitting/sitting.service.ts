@@ -12,6 +12,12 @@ import {
 	snapPollDeadlineOnOrAfter,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import {
+	telegramAnnouncePollOpen,
+	telegramAnnounceReadingStarted,
+	telegramAnnounceSittingFinished,
+	telegramSendReadingProgressPoll,
+} from "../../lib/telegram/sitting-announcements";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
 import { getBookListFields } from "../book/book.schema";
@@ -54,6 +60,8 @@ import {
 	getSittingBySlugFields,
 	getSittingListFields,
 	getSittingRemovedParticipantFields,
+	type SendSittingTelegramProgressPollInput,
+	type SendSittingTelegramProgressPollOutput,
 	type SittingParticipantMutationInput,
 	type SittingParticipantMutationOutput,
 	type SubmitPollVotesInput,
@@ -614,6 +622,7 @@ export async function createSitting(
 	});
 
 	void notifySittingPollStarted(db, created.slug);
+	void telegramAnnouncePollOpen(db, created.slug);
 
 	return created;
 }
@@ -838,6 +847,7 @@ export async function transitionSitting(
 			updated.slug,
 			updated.selectedBook?.title ?? "the selected book",
 		);
+		void telegramAnnounceReadingStarted(db, updated.slug);
 
 		return updated;
 	}
@@ -932,6 +942,7 @@ export async function transitionSitting(
 	}
 
 	void notifySittingFinished(db, updated.slug);
+	void telegramAnnounceSittingFinished(db, updated.slug);
 
 	return updated;
 }
@@ -1522,4 +1533,44 @@ export async function getPollVotesByUser(
 	}
 
 	return { maxChoices, voters };
+}
+
+export async function sendSittingTelegramProgressPoll(
+	input: SendSittingTelegramProgressPollInput,
+	db: Database,
+): Promise<SendSittingTelegramProgressPollOutput> {
+	const sitting = await db.sitting.findUnique({
+		where: { slug: input.slug },
+		select: { status: true, selectedBookId: true },
+	});
+
+	if (!sitting) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Sitting not found",
+			data: { slug: input.slug },
+		});
+	}
+
+	if (sitting.status !== "reading") {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Progress poll is only available during the reading phase",
+			data: { status: sitting.status },
+		});
+	}
+
+	if (!sitting.selectedBookId) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "This sitting has no selected book",
+		});
+	}
+
+	const sent = await telegramSendReadingProgressPoll(db, input.slug);
+	if (!sent) {
+		throw new ORPCError("FAILED_PRECONDITION", {
+			message:
+				"Telegram is disabled or the poll could not be sent. Check TELEGRAM_BOT_ENABLED, token, and group chat id.",
+		});
+	}
+
+	return { ok: true };
 }
