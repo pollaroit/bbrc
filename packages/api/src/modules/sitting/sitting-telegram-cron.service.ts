@@ -23,7 +23,7 @@ export async function runSittingTelegramCronJob(
 		select: { status: true },
 	});
 
-	if (!sitting || sitting.status !== "reading") {
+	if (sitting?.status !== "reading") {
 		return {
 			ok: true,
 			type: job.type,

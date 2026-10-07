@@ -55,7 +55,7 @@ export async function syncSittingReadingTelegramJobs(
 		},
 	});
 
-	if (!sitting || sitting.status !== "reading" || !sitting.readingStartedAt) {
+	if (sitting?.status !== "reading" || !sitting?.readingStartedAt) {
 		return;
 	}
 
