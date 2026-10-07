@@ -17,11 +17,14 @@ function absoluteUrl(path: string): string {
 export async function telegramAnnouncePollOpen(
 	db: Database,
 	sittingSlug: string,
-): Promise<void> {
+	options?: { force?: boolean },
+): Promise<boolean> {
 	const sitting = await db.sitting.findUnique({
 		where: { slug: sittingSlug },
 		select: {
+			id: true,
 			slug: true,
+			telegramPollOpenSentAt: true,
 			poll: {
 				select: {
 					deadline: true,
@@ -33,7 +36,11 @@ export async function telegramAnnouncePollOpen(
 	});
 
 	if (!sitting?.poll) {
-		return;
+		return false;
+	}
+
+	if (sitting.telegramPollOpenSentAt && !options?.force) {
+		return false;
 	}
 
 	const label = escapeTelegramHtml(sittingLabel(sitting.slug));
@@ -49,7 +56,14 @@ export async function telegramAnnouncePollOpen(
 		`<a href="${voteUrl}">Vote now</a>`,
 	].join("\n");
 
-	await sendTelegramMessage({ text });
+	const sent = await sendTelegramMessage({ text });
+	if (sent) {
+		await db.sitting.update({
+			where: { id: sitting.id },
+			data: { telegramPollOpenSentAt: new Date() },
+		});
+	}
+	return sent;
 }
 
 export async function telegramAnnounceReadingStarted(
@@ -170,4 +184,62 @@ export async function telegramSendReadingProgressPoll(
 		isAnonymous: true,
 		explanation,
 	});
+}
+
+/** ~24h before reading ends: warn the group and name members not yet completed. */
+export async function telegramSendReading24hWarning(
+	db: Database,
+	sittingSlug: string,
+): Promise<boolean> {
+	const sitting = await db.sitting.findUnique({
+		where: { slug: sittingSlug },
+		select: {
+			slug: true,
+			status: true,
+			deadline: true,
+			selectedBook: { select: { title: true } },
+			participants: {
+				where: activeParticipationWhere,
+				select: {
+					progress: true,
+					user: { select: { name: true, username: true } },
+				},
+			},
+		},
+	});
+
+	if (!sitting?.selectedBook || sitting.status !== "reading") {
+		return false;
+	}
+
+	const behind = sitting.participants.filter(
+		(row) => row.progress !== "completed",
+	);
+	const bookTitle = escapeTelegramHtml(sitting.selectedBook.title);
+	const deadline = escapeTelegramHtml(formatClubDateTime(sitting.deadline));
+	const sittingUrl = absoluteUrl(`/sittings/${sitting.slug}`);
+
+	const nameLines =
+		behind.length === 0
+			? "Everyone has marked completed on BBRC."
+			: behind
+					.slice(0, 20)
+					.map((row) => {
+						const label = escapeTelegramHtml(
+							row.user.name?.trim() || row.user.username,
+						);
+						return `· ${label} (${row.progress.replaceAll("_", " ")})`;
+					})
+					.join("\n");
+
+	const text = [
+		"<b>24 hours left</b>",
+		`Reading <i>${bookTitle}</i> ends ${deadline} (club time).`,
+		behind.length > 0
+			? `<b>Not completed yet (${behind.length}):</b>\n${nameLines}`
+			: nameLines,
+		`<a href="${sittingUrl}">Open sitting</a>`,
+	].join("\n\n");
+
+	return sendTelegramMessage({ text });
 }

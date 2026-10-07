@@ -16,6 +16,8 @@ import {
 	GetSittingBySlugOutputSchema,
 	GetSittingListInputSchema,
 	GetSittingListOutputSchema,
+	ResendSittingTelegramPollOpenInputSchema,
+	ResendSittingTelegramPollOpenOutputSchema,
 	SendSittingTelegramProgressPollInputSchema,
 	SendSittingTelegramProgressPollOutputSchema,
 	SittingParticipantMutationInputSchema,
@@ -40,6 +42,7 @@ import {
 	getSittingBySlug,
 	getSittingList,
 	removeSittingParticipant,
+	resendSittingTelegramPollOpen,
 	sendSittingTelegramProgressPoll,
 	submitPollVotes,
 	transitionSitting,
@@ -150,5 +153,12 @@ export const sittingRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await sendSittingTelegramProgressPoll(input, context.db),
+		),
+	resendSittingTelegramPollOpen: adminProcedure
+		.input(ResendSittingTelegramPollOpenInputSchema)
+		.output(ResendSittingTelegramPollOpenOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await resendSittingTelegramPollOpen(input, context.db),
 		),
 };

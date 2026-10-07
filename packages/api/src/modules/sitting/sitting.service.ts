@@ -4,6 +4,7 @@ import { LONG_INTERACTIVE_TRANSACTION } from "@bbrc/db";
 import {
 	calculateSittingReadingDeadline,
 	clampSittingDeadlineToClubEnd,
+	computeMidtermAt,
 	defaultPollDeadline,
 	generateSlug,
 	generateUniqueSlug,
@@ -60,6 +61,8 @@ import {
 	getSittingBySlugFields,
 	getSittingListFields,
 	getSittingRemovedParticipantFields,
+	type ResendSittingTelegramPollOpenInput,
+	type ResendSittingTelegramPollOpenOutput,
 	type SendSittingTelegramProgressPollInput,
 	type SendSittingTelegramProgressPollOutput,
 	type SittingParticipantMutationInput,
@@ -76,6 +79,10 @@ import {
 	type UpdateSittingDeadlinesOutput,
 } from "./sitting.schema";
 import { applyFinishedSittingParticipantEffects } from "./sitting-finish-participant-effects";
+import {
+	cancelSittingReadingTelegramJobs,
+	syncSittingReadingTelegramJobs,
+} from "./sitting-qstash.service";
 import { applyUserStatusForParticipationProgress } from "./sitting-user-status";
 
 type SittingListRow = Prisma.SittingGetPayload<{
@@ -812,9 +819,16 @@ export async function transitionSitting(
 			});
 		}
 
+		const clubTimeZone = resolveClubTimeZone();
+		const readingStartedAt = new Date();
 		const readingDeadline = clampSittingDeadlineToClubEnd(
 			calculateSittingReadingDeadline(book.pages),
-			resolveClubTimeZone(),
+			clubTimeZone,
+		);
+		const midtermAt = computeMidtermAt(
+			readingStartedAt,
+			readingDeadline,
+			clubTimeZone,
 		);
 
 		const updated = await db.$transaction(async (tx) => {
@@ -824,6 +838,8 @@ export async function transitionSitting(
 					status: "reading",
 					selectedBookId: selectedOption.bookId,
 					deadline: readingDeadline,
+					readingStartedAt,
+					midtermAt,
 				},
 				select: {
 					slug: true,
@@ -848,6 +864,7 @@ export async function transitionSitting(
 			updated.selectedBook?.title ?? "the selected book",
 		);
 		void telegramAnnounceReadingStarted(db, updated.slug);
+		void syncSittingReadingTelegramJobs(db, updated.slug);
 
 		return updated;
 	}
@@ -876,6 +893,8 @@ export async function transitionSitting(
 			message: "This sitting has no selected book to complete",
 		});
 	}
+
+	void cancelSittingReadingTelegramJobs(db, input.slug);
 
 	const selectedBookId = sitting.selectedBookId;
 
@@ -955,7 +974,10 @@ export async function updateSittingDeadlines(
 		where: { slug: input.slug },
 		select: {
 			id: true,
+			slug: true,
+			status: true,
 			deadline: true,
+			readingStartedAt: true,
 			poll: { select: { id: true, deadline: true } },
 		},
 	});
@@ -967,14 +989,24 @@ export async function updateSittingDeadlines(
 		});
 	}
 
+	const sittingDeadlineChanged = input.sittingDeadline != null;
+
 	if (input.sittingDeadline != null) {
+		const clubTimeZone = resolveClubTimeZone();
+		const newDeadline = clampSittingDeadlineToClubEnd(
+			input.sittingDeadline,
+			clubTimeZone,
+		);
+		const midtermAt =
+			sitting.status === "reading" && sitting.readingStartedAt
+				? computeMidtermAt(sitting.readingStartedAt, newDeadline, clubTimeZone)
+				: undefined;
+
 		await db.sitting.update({
 			where: { id: sitting.id },
 			data: {
-				deadline: clampSittingDeadlineToClubEnd(
-					input.sittingDeadline,
-					resolveClubTimeZone(),
-				),
+				deadline: newDeadline,
+				...(midtermAt ? { midtermAt } : {}),
 			},
 		});
 	}
@@ -1008,6 +1040,10 @@ export async function updateSittingDeadlines(
 
 	if (!refreshed) {
 		throw new ORPCError("NOT_FOUND", { message: "Sitting not found" });
+	}
+
+	if (sitting.status === "reading" && sittingDeadlineChanged) {
+		void syncSittingReadingTelegramJobs(db, sitting.slug);
 	}
 
 	return {
@@ -1573,4 +1609,37 @@ export async function sendSittingTelegramProgressPoll(
 	}
 
 	return { ok: true };
+}
+
+export async function resendSittingTelegramPollOpen(
+	input: ResendSittingTelegramPollOpenInput,
+	db: Database,
+): Promise<ResendSittingTelegramPollOpenOutput> {
+	const sitting = await db.sitting.findUnique({
+		where: { slug: input.slug },
+		select: { status: true, poll: { select: { id: true } } },
+	});
+
+	if (!sitting) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Sitting not found",
+			data: { slug: input.slug },
+		});
+	}
+
+	if (sitting.status !== "voting" || !sitting.poll) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Poll open announcement is only for sittings in voting",
+		});
+	}
+
+	const sent = await telegramAnnouncePollOpen(db, input.slug, { force: true });
+	if (!sent) {
+		throw new ORPCError("FAILED_PRECONDITION", {
+			message:
+				"Telegram is disabled or the message could not be sent. Check TELEGRAM_BOT_ENABLED, token, and group chat id.",
+		});
+	}
+
+	return { ok: true, sent: true };
 }

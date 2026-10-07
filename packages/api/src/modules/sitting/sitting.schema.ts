@@ -550,11 +550,26 @@ export const SendSittingTelegramProgressPollOutputSchema = zod.object({
 	ok: zod.literal(true),
 });
 
+export const ResendSittingTelegramPollOpenInputSchema = zod.object({
+	slug: SittingSchema.shape.slug,
+});
+
+export const ResendSittingTelegramPollOpenOutputSchema = zod.object({
+	ok: zod.literal(true),
+	sent: zod.boolean(),
+});
+
 export type SendSittingTelegramProgressPollInput = z.infer<
 	typeof SendSittingTelegramProgressPollInputSchema
 >;
 export type SendSittingTelegramProgressPollOutput = z.infer<
 	typeof SendSittingTelegramProgressPollOutputSchema
+>;
+export type ResendSittingTelegramPollOpenInput = z.infer<
+	typeof ResendSittingTelegramPollOpenInputSchema
+>;
+export type ResendSittingTelegramPollOpenOutput = z.infer<
+	typeof ResendSittingTelegramPollOpenOutputSchema
 >;
 
 export { refinePollConfig };

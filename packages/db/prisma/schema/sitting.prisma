@@ -14,6 +14,14 @@ model Sitting {
   /// @zod.refine((v) => v > new Date(), { message: "Deadline must be in the future" })
   deadline DateTime
 
+  readingStartedAt DateTime? @map("reading_started_at")
+  midtermAt        DateTime? @map("midterm_at")
+
+  qstashMidtermMessageId        String? @map("qstash_midterm_message_id")
+  qstashReadingWarningMessageId String? @map("qstash_reading_warning_message_id")
+
+  telegramPollOpenSentAt DateTime? @map("telegram_poll_open_sent_at")
+
   /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
   /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
   slug String @unique

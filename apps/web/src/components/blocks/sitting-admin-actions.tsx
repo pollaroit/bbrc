@@ -21,7 +21,7 @@ import {
 	SheetTitle,
 } from "@bbrc/ui/components/sheet";
 import { useMutation } from "@tanstack/react-query";
-import { BarChart3Icon, BookOpenIcon, FlagIcon } from "lucide-react";
+import { BarChart3Icon, BookOpenIcon, FlagIcon, SendIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -67,6 +67,17 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 					queryKey: orpc.sitting.getOngoingSitting.key(),
 				});
 				router.refresh();
+			},
+			onError: (error) => {
+				toast.error(error.message);
+			},
+		}),
+	);
+
+	const resendTelegramPollOpen = useMutation(
+		orpc.sitting.resendSittingTelegramPollOpen.mutationOptions({
+			onSuccess: () => {
+				toast.success("Poll open announcement sent to Telegram");
 			},
 			onError: (error) => {
 				toast.error(error.message);
@@ -120,6 +131,18 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 		<div className="flex flex-wrap gap-2">
 			{sitting.status === "voting" && sitting.poll ? (
 				<>
+					<LoadingButton
+						type="button"
+						size="sm"
+						variant="outline"
+						loading={resendTelegramPollOpen.isPending}
+						onClick={() =>
+							resendTelegramPollOpen.mutate({ slug: sitting.slug })
+						}
+					>
+						<SendIcon data-icon="inline-start" />
+						Announce poll on Telegram
+					</LoadingButton>
 					<Button
 						type="button"
 						size="sm"

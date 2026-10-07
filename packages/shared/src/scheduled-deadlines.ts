@@ -104,6 +104,26 @@ export function snapPollDeadlineOnOrAfter(
 	return defaultPollDeadline(reference, timeZone);
 }
 
+const MS_PER_HOUR = 60 * 60 * 1000;
+const READING_END_WARNING_MS = 24 * MS_PER_HOUR;
+
+/** Midpoint of reading window, snapped to the next club hot hour on or after the true midpoint. */
+export function computeMidtermAt(
+	readingStartedAt: Date,
+	readingDeadlineAt: Date,
+	timeZone = resolveClubTimeZone(),
+): Date {
+	const midpointMs =
+		readingStartedAt.getTime() +
+		(readingDeadlineAt.getTime() - readingStartedAt.getTime()) / 2;
+	return snapPollDeadlineOnOrAfter(new Date(midpointMs), timeZone);
+}
+
+/** Instant for the “24 hours left” Telegram warning (exactly 24h before reading end). */
+export function computeReadingEndWarningAt(readingDeadlineAt: Date): Date {
+	return new Date(readingDeadlineAt.getTime() - READING_END_WARNING_MS);
+}
+
 /** Force a reading deadline to {@link CLUB_DEADLINE_HOUR}:00 club local on that calendar day. */
 export function clampSittingDeadlineToClubEnd(
 	raw: Date,

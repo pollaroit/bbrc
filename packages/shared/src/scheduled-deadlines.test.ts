@@ -3,6 +3,8 @@ import { getZonedParts, zonedTimeToUtc } from "./club-timezone";
 import {
 	CLUB_DEADLINE_HOUR,
 	clampSittingDeadlineToClubEnd,
+	computeMidtermAt,
+	computeReadingEndWarningAt,
 	defaultPollDeadline,
 	POLL_DEADLINE_HOURS,
 	snapPollDeadlineOnOrAfter,
@@ -46,5 +48,21 @@ describe("scheduled deadlines", () => {
 		const parts = getZonedParts(snapped, TZ);
 		expect(parts.hour).toBe(14);
 		expect(snapped.getTime()).toBeGreaterThanOrEqual(reference.getTime());
+	});
+
+	test("computeMidtermAt snaps to a hot hour on or after midpoint", () => {
+		const started = zonedTimeToUtc(2026, 4, 1, 14, 0, TZ);
+		const ends = zonedTimeToUtc(2026, 4, 8, 20, 0, TZ);
+		const midterm = computeMidtermAt(started, ends, TZ);
+		const parts = getZonedParts(midterm, TZ);
+		expect(POLL_DEADLINE_HOURS as readonly number[]).toContain(parts.hour);
+		expect(midterm.getTime()).toBeGreaterThan(started.getTime());
+		expect(midterm.getTime()).toBeLessThan(ends.getTime());
+	});
+
+	test("computeReadingEndWarningAt is 24h before deadline", () => {
+		const ends = zonedTimeToUtc(2026, 4, 8, 20, 0, TZ);
+		const warning = computeReadingEndWarningAt(ends);
+		expect(warning.getTime()).toBe(ends.getTime() - 24 * 60 * 60 * 1000);
 	});
 });
