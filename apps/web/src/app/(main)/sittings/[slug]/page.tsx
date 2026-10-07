@@ -25,7 +25,7 @@ export async function generateMetadata({
 		const sitting = await loadSittingBySlugForIsr(slug);
 
 		return buildPageMetadata({
-			title: `Sitting ${sitting.slug}`,
+			title: sitting.displayName,
 			description: `BBRC reading sitting · ${sitting.participants.length} participants · status ${sitting.status}.`,
 			path: `/sittings/${sitting.slug}`,
 		});

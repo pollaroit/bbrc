@@ -61,6 +61,7 @@ export const PostAttachmentSittingSchema = zod.object({
 		slug: SittingSchema.shape.slug,
 		status: SittingStatusSchema,
 		deadline: zod.coerce.date(),
+		displayName: zod.string().min(1),
 		pollDeadline: zod.coerce.date().nullable(),
 		participantCount: zod.number().int().min(0),
 		selectedBookTitle: zod.string().nullable(),

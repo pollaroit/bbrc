@@ -8,7 +8,7 @@ export function postAttachmentLabel(attachment: PostAttachmentOutput): string {
 		case "shelf":
 			return attachment.shelf.title;
 		case "sitting":
-			return attachment.sitting.slug.replaceAll("_", " ");
+			return attachment.sitting.displayName;
 		case "user":
 			return `@${attachment.user.username}`;
 		case "feedback":

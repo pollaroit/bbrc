@@ -725,7 +725,7 @@ export async function resolveOgImageContent(
 					title: isOpen ? "Book poll" : "Voting results",
 					description: isOpen
 						? `Rank wishlist books · ${formatCount("participant", sitting.participants.length)}`
-						: `Final totals · ${sitting.selectedBook?.title ?? sitting.slug.replaceAll("_", " ")}`,
+						: `Final totals · ${sitting.displayName}`,
 					highlights: [
 						isOpen ? "Voting open" : sittingStatusFilterLabels[sitting.status],
 						`${pollOptions} options · ${pollVotes} votes · ${sitting.poll.voterCount} voters`,
@@ -751,7 +751,7 @@ export async function resolveOgImageContent(
 				return {
 					kind: "Sitting",
 					title: "Participants",
-					description: `${formatCount("member", sitting.participants.length)} on ${sitting.slug.replaceAll("_", " ")}`,
+					description: `${formatCount("member", sitting.participants.length)} on ${sitting.displayName}`,
 					highlights: [
 						sittingStatusFilterLabels[sitting.status],
 						formatCount("participant", sitting.participants.length),
@@ -783,9 +783,7 @@ export async function resolveOgImageContent(
 			const pollVotes =
 				sitting.poll?.options.reduce((sum, o) => sum + o.voteCount, 0) ?? 0;
 
-			const title =
-				sitting.selectedBook?.title ??
-				`Sitting ${sitting.slug.replaceAll("_", " ")}`;
+			const title = sitting.displayName;
 
 			const highlights: string[] = [
 				statusLabel,

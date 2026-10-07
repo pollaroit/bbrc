@@ -1,4 +1,5 @@
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
+import { formatSittingDisplayName } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import {
 	POST_ATTACHMENT_TRUNCATE,
@@ -58,15 +59,21 @@ function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
 			if (!row.sitting) {
 				throw new Error("Sitting attachment missing sitting row");
 			}
+			const selectedBookTitle = row.sitting.selectedBook?.title ?? null;
 			return {
 				kind: "sitting",
 				sitting: {
 					slug: row.sitting.slug,
 					status: row.sitting.status,
 					deadline: row.sitting.deadline,
+					displayName: formatSittingDisplayName(
+						row.sitting.slug,
+						row.sitting.status,
+						selectedBookTitle,
+					),
 					pollDeadline: row.sitting.poll?.deadline ?? null,
 					participantCount: row.sitting._count.participants,
-					selectedBookTitle: row.sitting.selectedBook?.title ?? null,
+					selectedBookTitle,
 					selectedBookSlug: row.sitting.selectedBook?.slug ?? null,
 					selectedBookCoverId: row.sitting.selectedBook?.coverId ?? null,
 				},

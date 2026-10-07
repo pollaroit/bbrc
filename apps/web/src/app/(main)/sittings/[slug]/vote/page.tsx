@@ -37,11 +37,11 @@ export async function generateMetadata({
 
 		return buildPageMetadata({
 			title: isOpen
-				? `Book poll · ${sitting.slug.replaceAll("_", " ")}`
-				: `Voting results · ${sitting.slug.replaceAll("_", " ")}`,
+				? `Book poll · ${sitting.displayName}`
+				: `Voting results · ${sitting.displayName}`,
 			description: isOpen
 				? `Rank wishlist books for this BBRC sitting. ${sitting.poll.options.length} options · ${pollVotes} votes so far.`
-				: `Archived poll results for sitting ${sitting.slug.replaceAll("_", " ")}.`,
+				: `Archived poll results for ${sitting.displayName}.`,
 			path: `/sittings/${sitting.slug}/vote`,
 		});
 	} catch {

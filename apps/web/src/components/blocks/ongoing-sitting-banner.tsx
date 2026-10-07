@@ -33,13 +33,13 @@ export function OngoingSittingBanner({ sitting }: OngoingSittingBannerProps) {
 						<p className="font-semibold text-sm">Ongoing sitting</p>
 						<SittingStatusBadge status={sitting.status} />
 					</div>
-					<p className="font-medium">{sitting.slug}</p>
+					<p className="font-medium">{sitting.displayName}</p>
 					<dl className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground text-xs">
 						<div>
 							<dt className="sr-only">Participants</dt>
 							<dd>{sitting.participantCount} participants</dd>
 						</div>
-						{sitting.selectedBookTitle ? (
+						{sitting.status === "voting" && sitting.selectedBookTitle ? (
 							<div className="flex items-center gap-1">
 								<BookOpen className="size-3.5" aria-hidden />
 								<dd>{sitting.selectedBookTitle}</dd>

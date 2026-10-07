@@ -178,6 +178,9 @@ export const getSittingListFields = {
 	status: true,
 	deadline: true,
 	createdAt: true,
+	selectedBook: {
+		select: { title: true },
+	},
 	_count: {
 		select: {
 			participants: { where: { removedAt: null } },
@@ -192,6 +195,7 @@ const SittingListItemSchema = SittingSchema.pick({
 }).extend({
 	deadline: SittingStoredDeadlineSchema,
 	participantCount: zod.number().int().min(0),
+	displayName: zod.string().min(1),
 });
 
 export const GetSittingListOutputSchema = CursorPaginationOutputSchema(
@@ -331,6 +335,7 @@ export const GetSittingBySlugOutputSchema = SittingSchema.pick({
 	createdAt: true,
 }).extend({
 	deadline: SittingStoredDeadlineSchema,
+	displayName: zod.string().min(1),
 	poll: SittingPollDetailSchema.nullable(),
 	selectedBook: SittingSelectedBookSchema.nullable(),
 	reviews: zod.array(SittingReviewSummarySchema),
@@ -351,6 +356,7 @@ export const GetOngoingSittingOutputSchema = SittingSchema.pick({
 	.extend({
 		deadline: SittingStoredDeadlineSchema,
 		participantCount: zod.number().int().min(0),
+		displayName: zod.string().min(1),
 		pollDeadline: PollStoredDeadlineSchema.nullable(),
 		selectedBookTitle: zod.string().nullable(),
 		viewerIsParticipant: zod.boolean(),

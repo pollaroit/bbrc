@@ -164,7 +164,7 @@ function PostAttachmentSittingCard({
 	sitting: Extract<PostAttachmentOutput, { kind: "sitting" }>["sitting"];
 }) {
 	const href = `/sittings/${sitting.slug}` as Route;
-	const title = sitting.slug.replaceAll("_", " ");
+	const title = sitting.displayName;
 	const deadlineLabel =
 		sitting.status === "voting" && sitting.pollDeadline
 			? `Voting ends ${formatDateTime(sitting.pollDeadline)}`
@@ -189,7 +189,9 @@ function PostAttachmentSittingCard({
 					{sittingStatusFilterLabels[sitting.status]} ·{" "}
 					{sitting.participantCount} participant
 					{sitting.participantCount === 1 ? "" : "s"}
-					{sitting.selectedBookTitle ? ` · ${sitting.selectedBookTitle}` : ""}
+					{sitting.status === "voting" && sitting.selectedBookTitle
+						? ` · ${sitting.selectedBookTitle}`
+						: ""}
 				</AttachmentDescription>
 				{deadlineLabel ? (
 					<p className="mt-0.5 text-[11px] text-muted-foreground">

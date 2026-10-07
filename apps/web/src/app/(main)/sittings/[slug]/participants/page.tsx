@@ -20,7 +20,7 @@ export async function generateMetadata({
 		const sitting = await loadSittingBySlugForIsr(slug);
 
 		return buildPageMetadata({
-			title: `Participants · ${sitting.slug.replaceAll("_", " ")}`,
+			title: `Participants · ${sitting.displayName}`,
 			description: `${sitting.participants.length} members on this BBRC sitting · status ${sitting.status}.`,
 			path: `/sittings/${sitting.slug}/participants`,
 		});

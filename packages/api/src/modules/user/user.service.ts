@@ -1,4 +1,5 @@
 import type { Database, Prisma } from "@bbrc/db";
+import { formatSittingDisplayName } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
@@ -128,7 +129,28 @@ export async function getUserParticipationList(
 		select: getUserParticipationListFields,
 	});
 
-	return pagination.paginate(rows);
+	const page = pagination.paginate(rows);
+
+	return {
+		items: page.items.map((row) => ({
+			id: row.id,
+			progress: row.progress,
+			updatedAt: row.updatedAt,
+			sitting: {
+				slug: row.sitting.slug,
+				status: row.sitting.status,
+				deadline: row.sitting.deadline,
+				createdAt: row.sitting.createdAt,
+				displayName: formatSittingDisplayName(
+					row.sitting.slug,
+					row.sitting.status,
+					row.sitting.selectedBook?.title,
+				),
+				selectedBook: row.sitting.selectedBook,
+			},
+		})),
+		metadata: page.metadata,
+	};
 }
 
 export async function updateUserStatus(

@@ -108,6 +108,7 @@ export const UserParticipationListItemSchema = zod.object({
 		status: SittingStatusSchema,
 		deadline: zod.coerce.date().nullable(),
 		createdAt: zod.coerce.date(),
+		displayName: zod.string().min(1),
 		selectedBook: UserParticipationBookSchema.nullable(),
 	}),
 });

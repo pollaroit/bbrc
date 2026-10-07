@@ -29,7 +29,7 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div className="flex flex-col gap-1.5">
 						<h1 className="font-bold text-2xl tracking-tight sm:text-3xl">
-							{sitting.slug.replaceAll("_", " ")}
+							{sitting.displayName}
 						</h1>
 						<p className="text-muted-foreground text-sm">
 							Started {formatDateTime(sitting.createdAt)}
@@ -40,7 +40,7 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 							<SittingStatusBadge status={sitting.status} />
 							<ResourceShareMenu
 								path={`/sittings/${sitting.slug}`}
-								shareText={sitting.slug.replaceAll("_", " ")}
+								shareText={sitting.displayName}
 								label="Share sitting"
 								shareInPost={{ kind: "sitting", slug: sitting.slug }}
 								storyBookSlug={sitting.selectedBook?.slug}

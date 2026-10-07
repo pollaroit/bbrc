@@ -22,7 +22,9 @@ export function SittingCard({ sitting, className }: SittingCardProps) {
 			<Card size="sm" className="h-full transition-colors hover:bg-muted/40">
 				<CardContent className="flex h-full flex-col gap-3">
 					<div className="flex items-start justify-between gap-2">
-						<p className="font-medium text-sm leading-snug">{sitting.slug}</p>
+						<p className="font-medium text-sm leading-snug">
+							{sitting.displayName}
+						</p>
 						<SittingStatusBadge status={sitting.status} />
 					</div>
 

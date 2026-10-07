@@ -6,6 +6,7 @@ import {
 	clampSittingDeadlineToClubEnd,
 	computeMidtermAt,
 	defaultPollDeadline,
+	formatSittingDisplayName,
 	generateSlug,
 	generateUniqueSlug,
 	resolveClubTimeZone,
@@ -198,6 +199,11 @@ function mapSittingListRow(row: SittingListRow) {
 		deadline: row.deadline,
 		createdAt: row.createdAt,
 		participantCount: row._count.participants,
+		displayName: formatSittingDisplayName(
+			row.slug,
+			row.status,
+			row.selectedBook?.title,
+		),
 	};
 }
 
@@ -215,6 +221,11 @@ function mapSittingDetail(
 		status: row.status,
 		deadline: row.deadline,
 		createdAt: row.createdAt,
+		displayName: formatSittingDisplayName(
+			row.slug,
+			row.status,
+			row.selectedBook?.title,
+		),
 		selectedBook: row.selectedBook,
 		poll: row.poll
 			? {
@@ -504,16 +515,33 @@ export async function getOngoingSitting(
 		viewerIsParticipant = participation != null;
 	}
 
+	const selectedBookTitle = sitting.selectedBook?.title ?? null;
+
 	return {
 		slug: sitting.slug,
 		status: sitting.status,
 		deadline: sitting.deadline,
 		createdAt: sitting.createdAt,
 		participantCount,
+		displayName: formatSittingDisplayName(
+			sitting.slug,
+			sitting.status,
+			selectedBookTitle,
+		),
 		pollDeadline: sitting.poll?.deadline ?? null,
-		selectedBookTitle: sitting.selectedBook?.title ?? null,
+		selectedBookTitle,
 		viewerIsParticipant,
 	};
+}
+
+async function markPollWinnerBookAsReading(
+	tx: DatabaseTransaction,
+	bookId: string,
+): Promise<void> {
+	await tx.book.update({
+		where: { id: bookId },
+		data: { status: "reading" },
+	});
 }
 
 export async function createSitting(
@@ -850,10 +878,7 @@ export async function transitionSitting(
 				},
 			});
 
-			await tx.book.update({
-				where: { id: selectedOption.bookId },
-				data: { status: "reading" },
-			});
+			await markPollWinnerBookAsReading(tx, selectedOption.bookId);
 
 			return sittingUpdate;
 		});

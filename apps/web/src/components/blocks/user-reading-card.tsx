@@ -31,7 +31,7 @@ export function UserReadingCard({ item }: UserReadingCardProps) {
 				<div className="min-w-0 space-y-1">
 					<CardTitle className="text-base">
 						<Link href={sittingHref} className="hover:underline">
-							{sitting.slug.replaceAll("_", " ")}
+							{sitting.displayName}
 						</Link>
 					</CardTitle>
 					<p className="text-muted-foreground text-xs">

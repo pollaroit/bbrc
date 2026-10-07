@@ -11,5 +11,6 @@ export * from "./post-feed-ranking";
 export * from "./reading-deadline";
 export * from "./scheduled-deadlines";
 export * from "./shelves";
+export * from "./sitting-display";
 export * from "./slug";
 export * from "./username";
