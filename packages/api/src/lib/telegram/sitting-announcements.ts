@@ -149,9 +149,10 @@ export async function telegramAnnounceSittingFinished(
 }
 
 const READING_PROGRESS_POLL_OPTIONS = [
-	"Not started",
-	"Started",
-	"About half",
+	"Not started yet",
+	"Just started",
+	"About half way",
+	"Close to finish",
 	"Finished",
 ] as const;
 
