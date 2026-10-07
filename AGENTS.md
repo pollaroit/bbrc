@@ -12,3 +12,9 @@ This block is written and re-added by `turbo` before repository-scoped commands 
 ## UI: no border radius
 
 BBRC uses **zero border radius** on all UI. Do not add `rounded-*` (except cleanup to `rounded-none`), `border-radius`, or curved tokens. See `.cursor/rules/no-border-radius.mdc` and `packages/ui/src/styles/globals.css`.
+
+## Environment (varlock)
+
+- Schema: `apps/web/.env.schema` → generated `apps/web/src/env.ts`. Values: `apps/web/.env` (never commit).
+- **New env var:** add to `.env.schema` and `turbo.json` `globalEnv` *before* `bun install` / `env:generate`. Root `postinstall` runs `scripts/guard-varlock-env.mjs` then `varlock codegen`.
+- See `.cursor/rules/varlock-env.mdc`.

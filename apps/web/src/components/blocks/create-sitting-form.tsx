@@ -133,9 +133,10 @@ export function CreateSittingForm() {
 			<FieldSet>
 				<FieldLegend>Poll schedule</FieldLegend>
 				<FieldDescription>
-					Pick the calendar day when voting closes (always 20:00 club time;
-					default is about 12 hours ahead). The reading deadline is calculated
-					from the chosen book&apos;s page count when reading starts.
+					Pick the calendar day when voting closes (deadline snaps to 14:00,
+					17:00, 20:00, or 23:00 club time; default is about 12 hours ahead).
+					The reading deadline is calculated from the chosen book&apos;s page
+					count when reading starts.
 				</FieldDescription>
 				<FieldGroup>
 					<form.Input

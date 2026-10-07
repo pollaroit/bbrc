@@ -3,6 +3,7 @@
 import {
 	CLUB_DEADLINE_HOUR,
 	clampSittingDeadlineToClubEnd,
+	POLL_DEADLINE_HOURS,
 	snapPollDeadlineOnOrAfter,
 } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
@@ -129,8 +130,12 @@ export function SittingDeadlinePicker({
 				</PopoverContent>
 			</Popover>
 			<FieldDescription>
-				Deadlines are always {String(CLUB_DEADLINE_HOUR).padStart(2, "0")}:00
-				club time ({clubTimeZone}).
+				Poll deadlines snap to{" "}
+				{POLL_DEADLINE_HOURS.map((h) => String(h).padStart(2, "0")).join(
+					":00, ",
+				)}
+				:00 club time ({clubTimeZone}). Reading end defaults to{" "}
+				{String(CLUB_DEADLINE_HOUR).padStart(2, "0")}:00 when you pick a date.
 			</FieldDescription>
 			{errorMessage ? <FieldError>{errorMessage}</FieldError> : null}
 		</Field>

@@ -41,8 +41,8 @@
 		"db:migrate": "turbo run db:migrate -F @bbrc/db --",
 		"db:migrate:deploy": "turbo run db:migrate:deploy -F @bbrc/db --",
 		"db:seed": "turbo run db:seed -F @bbrc/db --",
-		"env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./packages/db/",
-		"postinstall": "varlock codegen --path ./apps/web/ && varlock codegen --path ./packages/db/",
+		"env:generate": "node ./scripts/guard-varlock-env.mjs && varlock codegen --path ./apps/web/ && varlock codegen --path ./packages/db/",
+		"postinstall": "node ./scripts/guard-varlock-env.mjs && varlock codegen --path ./apps/web/ && varlock codegen --path ./packages/db/",
 		"auth:generate": "cd apps/web && bun run auth:generate",
 		"check": "biome check --write .",
 		"prepare": "lefthook install"

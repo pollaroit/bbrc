@@ -1,0 +1,22 @@
+---
+description: Varlock .env safety — declare keys in schema before install/codegen
+alwaysApply: true
+---
+
+# Varlock / `.env` safety
+
+Local secrets live in `apps/web/.env` (gitignored). **`postinstall` runs `varlock codegen`.**
+
+## Before adding values to `.env`
+
+1. Declare the variable in **`apps/web/.env.schema`** first (with comments and types).
+2. Add the name to **`turbo.json` → `globalEnv`** if the app reads it at build/runtime on Vercel.
+3. Then run `bun run env:generate` (or `bun install`).
+
+Undeclared keys in `.env` are ignored by varlock and can lead to lost configuration. Root **`scripts/guard-varlock-env.mjs`** blocks `postinstall` until every `.env` key is in the schema.
+
+## Agents
+
+- Do **not** run `bun add` / `bun install` at repo root after editing `.env` until new keys are in `.env.schema`.
+- Do **not** hand-edit `apps/web/src/env.ts` (generated from schema).
+- Prefer `vercel env pull` or Cursor Local History to recover `.env`, not git.

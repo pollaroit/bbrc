@@ -7,14 +7,14 @@ import {
 
 export const DEFAULT_POLL_DURATION_MS = 12 * 60 * 60 * 1000;
 
-/** Poll close and reading end — same club-local time every day. */
+/** Default reading-end hour when the UI picks a calendar day only. */
 export const CLUB_DEADLINE_HOUR = 20;
 
 /** @deprecated Use {@link CLUB_DEADLINE_HOUR}. */
 export const SITTING_DEADLINE_HOUR = CLUB_DEADLINE_HOUR;
 
-/** Valid poll deadline hours (only {@link CLUB_DEADLINE_HOUR}). */
-export const POLL_DEADLINE_HOURS = [CLUB_DEADLINE_HOUR] as const;
+/** Club-local hours when polls may close and cron may run (ascending). */
+export const POLL_DEADLINE_HOURS = [14, 17, 20, 23] as const;
 
 const MS_PER_MINUTE = 60_000;
 
@@ -22,12 +22,13 @@ function clubDeadlineInstant(
 	year: number,
 	month: number,
 	day: number,
+	hour: number,
 	timeZone: string,
 ): Date {
-	return zonedTimeToUtc(year, month, day, CLUB_DEADLINE_HOUR, 0, timeZone);
+	return zonedTimeToUtc(year, month, day, hour, 0, timeZone);
 }
 
-/** Upcoming 20:00 club-local deadlines strictly after `from`. */
+/** Upcoming club-local deadline slots strictly after `from`. */
 export function upcomingPollDeadlineSlots(
 	from: Date,
 	timeZone: string,
@@ -38,9 +39,17 @@ export function upcomingPollDeadlineSlots(
 
 	for (let dayOffset = 0; dayOffset <= dayCount; dayOffset += 1) {
 		const ymd = addCalendarDays(start.year, start.month, start.day, dayOffset);
-		const slot = clubDeadlineInstant(ymd.year, ymd.month, ymd.day, timeZone);
-		if (slot.getTime() > from.getTime()) {
-			slots.push(slot);
+		for (const hour of POLL_DEADLINE_HOURS) {
+			const slot = clubDeadlineInstant(
+				ymd.year,
+				ymd.month,
+				ymd.day,
+				hour,
+				timeZone,
+			);
+			if (slot.getTime() > from.getTime()) {
+				slots.push(slot);
+			}
 		}
 	}
 
@@ -48,7 +57,7 @@ export function upcomingPollDeadlineSlots(
 	return slots;
 }
 
-/** Default poll deadline: ~12h ahead, snapped to the nearest future 20:00 slot. */
+/** Default poll deadline: ~12h ahead, snapped to the nearest future hot-hour slot. */
 export function defaultPollDeadline(
 	from = new Date(),
 	timeZone = resolveClubTimeZone(),
@@ -77,7 +86,7 @@ export function defaultPollDeadline(
 	return best;
 }
 
-/** Snap an admin-chosen time to the next 20:00 club-local (same instant if already valid). */
+/** Snap an admin-chosen time to the next hot hour club-local (same instant if already valid). */
 export function snapPollDeadlineOnOrAfter(
 	reference: Date,
 	timeZone = resolveClubTimeZone(),
@@ -95,19 +104,25 @@ export function snapPollDeadlineOnOrAfter(
 	return defaultPollDeadline(reference, timeZone);
 }
 
-/** Force a reading deadline to 20:00 club local on that calendar day. */
+/** Force a reading deadline to {@link CLUB_DEADLINE_HOUR}:00 club local on that calendar day. */
 export function clampSittingDeadlineToClubEnd(
 	raw: Date,
 	timeZone = resolveClubTimeZone(),
 ): Date {
 	const { year, month, day } = getZonedParts(raw, timeZone);
-	return clubDeadlineInstant(year, month, day, timeZone);
+	return clubDeadlineInstant(year, month, day, CLUB_DEADLINE_HOUR, timeZone);
 }
 
-/** Vercel Hobby cron (UTC): 20:00 in `Asia/Baku` (UTC+4, no DST). Closes polls and finishes sittings. */
+/**
+ * QStash recurring schedule (UTC): club 14/17/20/23 in `Asia/Baku` or `Asia/Dubai` (UTC+4, no DST).
+ * Adjust cron if `CLUB_TIMEZONE` uses a different offset.
+ */
+export const QSTASH_CRON_DEADLINES_UTC = "0 10,13,16,19 * * *" as const;
+
+/** @deprecated Vercel Hobby cron removed; use {@link QSTASH_CRON_DEADLINES_UTC}. */
 export const VERCEL_CRON_DEADLINES_UTC = "0 16 * * *" as const;
 
-/** @deprecated Use {@link VERCEL_CRON_DEADLINES_UTC}. */
+/** @deprecated Use {@link QSTASH_CRON_DEADLINES_UTC}. */
 export const VERCEL_CRON_POLL_AND_SITTING_UTC = [
 	VERCEL_CRON_DEADLINES_UTC,
 ] as const;
