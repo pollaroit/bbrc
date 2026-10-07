@@ -1,4 +1,4 @@
-import { resolveTelegramConfig } from "./config";
+import { resolveTelegramBotToken, resolveTelegramConfig } from "./config";
 
 export type SendTelegramMessageInput = {
 	text: string;
@@ -14,25 +14,26 @@ export type SendTelegramPollInput = {
 	explanation?: string;
 };
 
-export async function sendTelegramMessage(
+async function postTelegramSendMessage(
+	botToken: string,
+	chatId: string | number,
 	input: SendTelegramMessageInput,
+	options?: { replyToMessageId?: number },
 ): Promise<boolean> {
-	const config = resolveTelegramConfig();
-	if (!config) {
-		return false;
-	}
-
-	const url = `https://api.telegram.org/bot${config.botToken}/sendMessage`;
+	const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
 
 	try {
 		const response = await fetch(url, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
-				chat_id: config.groupChatId,
+				chat_id: chatId,
 				text: input.text,
 				parse_mode: input.parseMode ?? "HTML",
 				disable_web_page_preview: input.disableWebPagePreview ?? false,
+				...(options?.replyToMessageId != null
+					? { reply_parameters: { message_id: options.replyToMessageId } }
+					: {}),
 			}),
 		});
 
@@ -49,6 +50,36 @@ export async function sendTelegramMessage(
 		console.error("telegram sendMessage error", error);
 		return false;
 	}
+}
+
+export async function sendTelegramMessage(
+	input: SendTelegramMessageInput,
+): Promise<boolean> {
+	const config = resolveTelegramConfig();
+	if (!config) {
+		return false;
+	}
+
+	return postTelegramSendMessage(config.botToken, config.groupChatId, input);
+}
+
+export type SendTelegramReplyInput = SendTelegramMessageInput & {
+	chatId: string | number;
+	replyToMessageId?: number;
+};
+
+/** Reply in any chat (group DMs, supergroup) — only requires bot token. */
+export async function sendTelegramReply(
+	input: SendTelegramReplyInput,
+): Promise<boolean> {
+	const botToken = resolveTelegramBotToken();
+	if (!botToken) {
+		return false;
+	}
+
+	return postTelegramSendMessage(botToken, input.chatId, input, {
+		replyToMessageId: input.replyToMessageId,
+	});
 }
 
 export async function sendTelegramPoll(
