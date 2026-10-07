@@ -155,7 +155,7 @@ const READING_PROGRESS_POLL_OPTIONS = [
 	"Finished",
 ] as const;
 
-/** Midterm-style anonymous progress poll in the club Telegram group. */
+/** Midterm-style progress poll in the club Telegram group (non-anonymous). */
 export async function telegramSendReadingProgressPoll(
 	db: Database,
 	sittingSlug: string,
@@ -181,7 +181,7 @@ export async function telegramSendReadingProgressPoll(
 	return sendTelegramPoll({
 		question,
 		options: [...READING_PROGRESS_POLL_OPTIONS],
-		isAnonymous: true,
+		isAnonymous: false,
 		explanation,
 	});
 }

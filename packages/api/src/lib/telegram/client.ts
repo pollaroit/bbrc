@@ -74,7 +74,7 @@ export async function sendTelegramPoll(
 				chat_id: config.groupChatId,
 				question: input.question,
 				options: input.options,
-				is_anonymous: input.isAnonymous ?? true,
+				is_anonymous: input.isAnonymous ?? false,
 				allows_multiple_answers: input.allowsMultipleAnswers ?? false,
 				...(input.explanation ? { explanation: input.explanation } : {}),
 			}),
