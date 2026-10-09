@@ -27,6 +27,7 @@ import {
 	mapShelfListItem,
 	shelfBookSelect,
 	shelfListItemSelect,
+	shelfListItemWithCoverSelect,
 } from "./shelf.schema";
 import { buildPublicShelfListWhere } from "./shelf-list-where";
 import { generateShelfSlug } from "./shelf-slug";
@@ -584,22 +585,26 @@ export async function listShelvesForBook(
 				...(viewerUserId ? [{ userId: viewerUserId }] : []),
 			],
 		},
-		orderBy: [{ user: { username: "asc" } }, { title: "asc" }],
+		orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
 		select: {
-			slug: true,
-			title: true,
-			status: true,
+			...shelfListItemWithCoverSelect,
 			userId: true,
-			user: { select: { username: true } },
+			user: { select: { username: true, name: true } },
 		},
 	});
 
+	const coverMap = await loadCoverPreviewMap(
+		rows.map((row) => row.id),
+		db,
+	);
+
 	return {
 		items: rows.map((row) => ({
-			slug: row.slug,
-			title: row.title,
-			status: row.status,
-			ownerUsername: row.user.username,
+			...mapShelfListItem(row, coverMap.get(row.id) ?? []),
+			owner: {
+				username: row.user.username,
+				name: row.user.name,
+			},
 			isOwner: viewerUserId != null && row.userId === viewerUserId,
 		})),
 		maxBooksPerShelf: MAX_BOOKS_PER_SHELF,

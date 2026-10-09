@@ -109,6 +109,11 @@ export function AdminBookRankingLists({
 				metricLabel="Favorites"
 			/>
 			<BookRankingCard
+				title="Most read"
+				items={rankings.mostReads}
+				metricLabel="Reads"
+			/>
+			<BookRankingCard
 				title="Longest"
 				items={rankings.longest}
 				metricLabel="Pages"

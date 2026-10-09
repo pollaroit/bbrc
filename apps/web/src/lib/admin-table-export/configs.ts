@@ -74,6 +74,7 @@ export const adminUsersExportFields: AdminTableExportField<UserItem>[] = [
 		getValue: (r) => r.counts.participations,
 	},
 	{ key: "favorites", label: "Favorites", getValue: (r) => r.counts.favorites },
+	{ key: "reads", label: "Reads", getValue: (r) => r.counts.reads },
 	{ key: "shelves", label: "Shelves", getValue: (r) => r.counts.shelves },
 	{ key: "createdAt", label: "Joined", getValue: (r) => r.createdAt },
 	{ key: "updatedAt", label: "Updated", getValue: (r) => r.updatedAt },
@@ -113,6 +114,7 @@ export const adminBooksExportFields: AdminTableExportField<BookItem>[] = [
 		getValue: (r) => r.excerptPreview,
 	},
 	{ key: "favorites", label: "Favorites", getValue: (r) => r.counts.favorites },
+	{ key: "reads", label: "Reads", getValue: (r) => r.counts.reads },
 	{ key: "feedbacks", label: "Feedbacks", getValue: (r) => r.counts.feedbacks },
 	{
 		key: "shelfBooks",

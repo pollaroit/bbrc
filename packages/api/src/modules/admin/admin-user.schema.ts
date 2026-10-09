@@ -67,6 +67,7 @@ export const AdminUserOverviewOutputSchema = zod.object({
 		mostFavorites: zod.array(AdminUserRankingItemSchema),
 		mostShelves: zod.array(AdminUserRankingItemSchema),
 		mostBookRequests: zod.array(AdminUserRankingItemSchema),
+		mostReads: zod.array(AdminUserRankingItemSchema),
 		newestMembers: zod.array(AdminUserRankingItemSchema),
 	}),
 });
@@ -98,6 +99,8 @@ const adminUserListQueryRefine = (
 	value: {
 		rangeMin?: Date;
 		rangeMax?: Date;
+		minReads?: number;
+		maxReads?: number;
 	},
 	ctx: z.RefinementCtx,
 ) => {
@@ -105,6 +108,18 @@ const adminUserListQueryRefine = (
 		{ rangeMin: value.rangeMin, rangeMax: value.rangeMax },
 		ctx,
 	);
+
+	if (
+		value.maxReads != null &&
+		value.minReads != null &&
+		value.maxReads < value.minReads
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Maximum reads must be greater than or equal to minimum",
+			path: ["maxReads"],
+		});
+	}
 };
 
 export const ListAdminUsersInputSchema = adminUserListFiltersSchema

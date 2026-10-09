@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -8,6 +9,7 @@ import {
 	bookDetailTabFromPathname,
 } from "@/lib/book-detail-tabs";
 import { cn } from "@/lib/utils";
+import { orpc } from "@/utils/orpc";
 
 export type BookTabCounts = {
 	documents?: number;
@@ -51,6 +53,19 @@ export function BookSubnav({ slug, counts }: BookSubnavProps) {
 	const pathname = usePathname() ?? "";
 	const active = bookDetailTabFromPathname(slug, pathname);
 
+	const readsCountQuery = useQuery(
+		orpc.read.listForBook.queryOptions({
+			input: { bookSlug: slug, limit: 1 },
+		}),
+	);
+
+	const effectiveCounts: BookTabCounts | undefined = counts
+		? {
+				...counts,
+				reads: readsCountQuery.data?.total ?? counts.reads,
+			}
+		: undefined;
+
 	return (
 		<nav
 			className="flex flex-wrap gap-1 border-border border-b pb-0"
@@ -71,7 +86,7 @@ export function BookSubnav({ slug, counts }: BookSubnavProps) {
 								: "border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground",
 						)}
 					>
-						{tabLabel(tab, counts)}
+						{tabLabel(tab, effectiveCounts)}
 					</Link>
 				);
 			})}

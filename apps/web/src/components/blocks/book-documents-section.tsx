@@ -58,19 +58,19 @@ export function BookDocumentsSection({
 					) : null}
 				</p>
 			) : (
-				<ul className="divide-y divide-border border border-border">
+				<ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{documents.map((doc) => (
 						<li
 							key={doc.slug}
-							className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+							className="flex h-full flex-col gap-3 border border-border p-4"
 						>
 							<div className="min-w-0 space-y-1">
-								<p className="flex items-center gap-2 font-medium text-sm">
+								<p className="flex items-start gap-2 font-medium text-sm leading-snug">
 									<FileText
-										className="size-4 shrink-0 text-emerald-700 dark:text-emerald-400"
+										className="mt-0.5 size-4 shrink-0 text-emerald-700 dark:text-emerald-400"
 										aria-hidden
 									/>
-									<span className="truncate">{doc.name}</span>
+									<span className="line-clamp-2">{doc.name}</span>
 								</p>
 								<p className="text-muted-foreground text-xs">
 									{documentLanguageLabel(doc.language)} ·{" "}
@@ -94,7 +94,7 @@ export function BookDocumentsSection({
 								nativeButton={false}
 								size="sm"
 								variant="outline"
-								className="w-fit shrink-0"
+								className="mt-auto w-fit"
 							>
 								Download PDF
 							</Button>

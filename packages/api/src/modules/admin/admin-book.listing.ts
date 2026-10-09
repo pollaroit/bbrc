@@ -15,6 +15,7 @@ export const adminBookSortableFields = [
 	"postAttachments._count",
 	"polls._count",
 	"pollVotes",
+	"reads._count",
 ] as const;
 
 export const adminBookListSorting = defineSorting<
@@ -36,6 +37,9 @@ export const adminBookListSorting = defineSorting<
 		}),
 		"polls._count": (direction) => ({
 			polls: { _count: direction },
+		}),
+		"reads._count": (direction) => ({
+			reads: { _count: direction },
 		}),
 	},
 });
@@ -64,5 +68,7 @@ export const adminBookListFiltersSchema = z
 		minPostAttachments: z.number().int().min(0),
 		minPollOptions: z.number().int().min(0),
 		minPollVotes: z.number().int().min(0),
+		minReads: z.number().int().min(0),
+		maxReads: z.number().int().min(0),
 	})
 	.partial();

@@ -31,7 +31,12 @@ function mapBookRow(row: {
 async function topBooksByRelationCount(
 	db: Database,
 	where: Prisma.BookWhereInput,
-	relation: "favorites" | "feedbacks" | "shelfBooks" | "postAttachments",
+	relation:
+		| "favorites"
+		| "feedbacks"
+		| "shelfBooks"
+		| "postAttachments"
+		| "reads",
 ): Promise<BookRankingItem[]> {
 	const rows = await db.book.findMany({
 		where,
@@ -57,7 +62,9 @@ async function topBooksByRelationCount(
 						? row._count.feedbacks
 						: relation === "shelfBooks"
 							? row._count.shelfBooks
-							: row._count.postAttachments) ?? 0,
+							: relation === "reads"
+								? row._count.reads
+								: row._count.postAttachments) ?? 0,
 		}),
 	);
 }
@@ -255,6 +262,7 @@ export function emptyAdminBookRankings() {
 		mostPollVotes: [] as BookRankingItem[],
 		mostFeedbacks: [] as BookRankingItem[],
 		mostPostAttachments: [] as BookRankingItem[],
+		mostReads: [] as BookRankingItem[],
 	};
 }
 
@@ -275,6 +283,7 @@ export async function loadAdminBookRankings(
 		mostPollVotes,
 		mostFeedbacks,
 		mostPostAttachments,
+		mostReads,
 	] = await Promise.all([
 		topBooksByRelationCount(db, where, "favorites"),
 		topBooksByPages(db, where, "desc"),
@@ -288,6 +297,7 @@ export async function loadAdminBookRankings(
 		topBooksByPollVotes(db, where),
 		topBooksByRelationCount(db, where, "feedbacks"),
 		topBooksByRelationCount(db, where, "postAttachments"),
+		topBooksByRelationCount(db, where, "reads"),
 	]);
 
 	return {
@@ -303,5 +313,6 @@ export async function loadAdminBookRankings(
 		mostPollVotes,
 		mostFeedbacks,
 		mostPostAttachments,
+		mostReads,
 	};
 }

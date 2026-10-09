@@ -42,13 +42,13 @@ export function ListingFiltersSheet({
 			</SheetTrigger>
 			<SheetContent
 				side="right"
-				className="w-full min-w-0 max-w-[100vw] sm:max-w-md"
+				className="min-h-0 w-full max-w-[100vw] sm:max-w-md"
 			>
 				<SheetHeader>
 					<SheetTitle>{title}</SheetTitle>
 					<SheetDescription>{description}</SheetDescription>
 				</SheetHeader>
-				<div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden px-4 pb-4">
+				<div className="flex min-h-0 min-w-0 flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden px-4 pb-4">
 					{children}
 				</div>
 				{onClear ? (

@@ -38,6 +38,7 @@ export const adminUserSortByLabels = {
 	"documents._count": "Documents",
 	"bookRequests._count": "Book requests",
 	"factImpressions._count": "Fact views",
+	"reads._count": "Reads",
 } as const satisfies FieldLabels<(typeof adminUserSortableFields)[number]>;
 
 const adminUserMinCountParams = {
@@ -53,6 +54,8 @@ const adminUserMinCountParams = {
 	minDocuments: parseAsInteger.withOptions({ shallow: false }),
 	minBookRequests: parseAsInteger.withOptions({ shallow: false }),
 	minFactImpressions: parseAsInteger.withOptions({ shallow: false }),
+	minReads: parseAsInteger.withOptions({ shallow: false }),
+	maxReads: parseAsInteger.withOptions({ shallow: false }),
 } as const;
 
 export const adminUserListingSearchParams = {
@@ -103,6 +106,8 @@ function buildAdminUserFilterCallInput(params: AdminUsersListingSearchParams) {
 		minDocuments: params.minDocuments,
 		minBookRequests: params.minBookRequests,
 		minFactImpressions: params.minFactImpressions,
+		minReads: params.minReads,
+		maxReads: params.maxReads,
 	};
 }
 

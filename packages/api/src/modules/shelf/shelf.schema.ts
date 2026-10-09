@@ -179,16 +179,16 @@ export const ListShelvesForBookInputSchema = zod.object({
 	bookSlug: BookSchema.shape.slug,
 });
 
-export const ShelfChipSchema = zod.object({
-	slug: zod.string(),
-	title: zod.string(),
-	status: ShelfStatusSchema,
-	ownerUsername: zod.string(),
+export const ShelfForBookListItemSchema = ShelfListItemSchema.extend({
+	owner: zod.object({
+		username: UserSchema.shape.username,
+		name: UserSchema.shape.name,
+	}),
 	isOwner: zod.boolean(),
 });
 
 export const ListShelvesForBookOutputSchema = zod.object({
-	items: zod.array(ShelfChipSchema),
+	items: zod.array(ShelfForBookListItemSchema),
 	maxBooksPerShelf: zod.literal(MAX_BOOKS_PER_SHELF),
 });
 

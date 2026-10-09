@@ -103,6 +103,9 @@ export function AdminBooksListTable() {
 										Fav
 									</TableHead>
 									<TableHead className="hidden text-right tabular-nums xl:table-cell">
+										Reads
+									</TableHead>
+									<TableHead className="hidden text-right tabular-nums xl:table-cell">
 										Fb
 									</TableHead>
 									<TableHead className="hidden text-right tabular-nums xl:table-cell">
@@ -147,6 +150,9 @@ export function AdminBooksListTable() {
 										</TableCell>
 										<TableCell className="hidden text-right tabular-nums xl:table-cell">
 											{book.counts.favorites}
+										</TableCell>
+										<TableCell className="hidden text-right tabular-nums xl:table-cell">
+											{book.counts.reads}
 										</TableCell>
 										<TableCell className="hidden text-right tabular-nums xl:table-cell">
 											{book.counts.feedbacks}

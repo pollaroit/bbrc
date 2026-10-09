@@ -49,7 +49,9 @@ function countAdminSheetFilters(
 		params.minShelves != null ||
 		params.minDocuments != null ||
 		params.minBookRequests != null ||
-		params.minFactImpressions != null
+		params.minFactImpressions != null ||
+		params.minReads != null ||
+		params.maxReads != null
 	) {
 		count += 1;
 	}
@@ -183,7 +185,7 @@ function MemberFiltersSheet({
 	return (
 		<ListingFiltersSheet
 			title="Member filters"
-			description="Filter by role, status, join date, or minimum activity."
+			description="Filter by role, status, join date, read count, or minimum activity."
 			activeFilterCount={sheetFilterCount}
 			onClear={() => {
 				void setParams({
@@ -204,6 +206,8 @@ function MemberFiltersSheet({
 					minDocuments: null,
 					minBookRequests: null,
 					minFactImpressions: null,
+					minReads: null,
+					maxReads: null,
 					...resetPage,
 				});
 			}}
@@ -254,92 +258,118 @@ function MemberFiltersSheet({
 				rangeByLabels={userRangeByLabels}
 			/>
 
-			<div className="grid grid-cols-2 gap-3">
-				<MinCountField
-					label="Min XP"
-					value={params.minXp}
-					onChange={(minXp) => {
-						void setParams({ minXp, ...resetPage });
-					}}
-				/>
-				<MinCountField
-					label="Min RP"
-					value={params.minRp}
-					onChange={(minRp) => {
-						void setParams({ minRp, ...resetPage });
-					}}
-				/>
-				<MinCountField
-					label="Min posts"
-					value={params.minPosts}
-					onChange={(minPosts) => {
-						void setParams({ minPosts, ...resetPage });
-					}}
-				/>
-				<MinCountField
-					label="Min comments"
-					value={params.minComments}
-					onChange={(minComments) => {
-						void setParams({ minComments, ...resetPage });
-					}}
-				/>
-				<MinCountField
-					label="Min likes"
-					value={params.minLikes}
-					onChange={(minLikes) => {
-						void setParams({ minLikes, ...resetPage });
-					}}
-				/>
-				<MinCountField
-					label="Min feedbacks"
-					value={params.minFeedbacks}
-					onChange={(minFeedbacks) => {
-						void setParams({ minFeedbacks, ...resetPage });
-					}}
-				/>
-				<MinCountField
-					label="Min sittings"
-					value={params.minParticipations}
-					onChange={(minParticipations) => {
-						void setParams({ minParticipations, ...resetPage });
-					}}
-				/>
-				<MinCountField
-					label="Min favorites"
-					value={params.minFavorites}
-					onChange={(minFavorites) => {
-						void setParams({ minFavorites, ...resetPage });
-					}}
-				/>
-				<MinCountField
-					label="Min shelves"
-					value={params.minShelves}
-					onChange={(minShelves) => {
-						void setParams({ minShelves, ...resetPage });
-					}}
-				/>
-				<MinCountField
-					label="Min documents"
-					value={params.minDocuments}
-					onChange={(minDocuments) => {
-						void setParams({ minDocuments, ...resetPage });
-					}}
-				/>
-				<MinCountField
-					label="Min book requests"
-					value={params.minBookRequests}
-					onChange={(minBookRequests) => {
-						void setParams({ minBookRequests, ...resetPage });
-					}}
-				/>
-				<MinCountField
-					label="Min fact views"
-					value={params.minFactImpressions}
-					onChange={(minFactImpressions) => {
-						void setParams({ minFactImpressions, ...resetPage });
-					}}
-				/>
-			</div>
+			<fieldset className="flex min-w-0 flex-col gap-3 border-0 p-0">
+				<legend className="mb-1 font-medium text-sm">Reads</legend>
+				<p className="text-muted-foreground text-xs">
+					How many books each member has marked as read.
+				</p>
+				<div className="grid grid-cols-2 gap-3">
+					<MinCountField
+						label="Minimum"
+						value={params.minReads}
+						onChange={(minReads) => {
+							void setParams({ minReads, ...resetPage });
+						}}
+					/>
+					<MinCountField
+						label="Maximum"
+						value={params.maxReads}
+						onChange={(maxReads) => {
+							void setParams({ maxReads, ...resetPage });
+						}}
+					/>
+				</div>
+			</fieldset>
+
+			<fieldset className="flex min-w-0 flex-col gap-3 border-0 p-0">
+				<legend className="mb-1 font-medium text-sm">Minimum activity</legend>
+				<div className="grid grid-cols-2 gap-3">
+					<MinCountField
+						label="Min XP"
+						value={params.minXp}
+						onChange={(minXp) => {
+							void setParams({ minXp, ...resetPage });
+						}}
+					/>
+					<MinCountField
+						label="Min RP"
+						value={params.minRp}
+						onChange={(minRp) => {
+							void setParams({ minRp, ...resetPage });
+						}}
+					/>
+					<MinCountField
+						label="Min posts"
+						value={params.minPosts}
+						onChange={(minPosts) => {
+							void setParams({ minPosts, ...resetPage });
+						}}
+					/>
+					<MinCountField
+						label="Min comments"
+						value={params.minComments}
+						onChange={(minComments) => {
+							void setParams({ minComments, ...resetPage });
+						}}
+					/>
+					<MinCountField
+						label="Min likes"
+						value={params.minLikes}
+						onChange={(minLikes) => {
+							void setParams({ minLikes, ...resetPage });
+						}}
+					/>
+					<MinCountField
+						label="Min feedbacks"
+						value={params.minFeedbacks}
+						onChange={(minFeedbacks) => {
+							void setParams({ minFeedbacks, ...resetPage });
+						}}
+					/>
+					<MinCountField
+						label="Min sittings"
+						value={params.minParticipations}
+						onChange={(minParticipations) => {
+							void setParams({ minParticipations, ...resetPage });
+						}}
+					/>
+					<MinCountField
+						label="Min favorites"
+						value={params.minFavorites}
+						onChange={(minFavorites) => {
+							void setParams({ minFavorites, ...resetPage });
+						}}
+					/>
+					<MinCountField
+						label="Min shelves"
+						value={params.minShelves}
+						onChange={(minShelves) => {
+							void setParams({ minShelves, ...resetPage });
+						}}
+					/>
+					<MinCountField
+						label="Min documents"
+						value={params.minDocuments}
+						onChange={(minDocuments) => {
+							void setParams({ minDocuments, ...resetPage });
+						}}
+					/>
+					<MinCountField
+						label="Min book requests"
+						value={params.minBookRequests}
+						onChange={(minBookRequests) => {
+							void setParams({ minBookRequests, ...resetPage });
+						}}
+					/>
+					<MinCountField
+						label="Min fact views"
+						value={params.minFactImpressions}
+						onChange={(minFactImpressions) => {
+							void setParams({ minFactImpressions, ...resetPage });
+						}}
+					/>
+				</div>
+			</fieldset>
 		</ListingFiltersSheet>
 	);
 }

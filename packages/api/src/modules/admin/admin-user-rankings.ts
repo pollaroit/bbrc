@@ -81,7 +81,8 @@ async function topUsersByRelationCount(
 		| "participations"
 		| "favorites"
 		| "shelves"
-		| "bookRequests",
+		| "bookRequests"
+		| "reads",
 ): Promise<UserRankingItem[]> {
 	const rows = await db.user.findMany({
 		where,
@@ -109,7 +110,9 @@ async function topUsersByRelationCount(
 									? row._count.favorites
 									: relation === "shelves"
 										? row._count.shelves
-										: row._count.bookRequests;
+										: relation === "reads"
+											? row._count.reads
+											: row._count.bookRequests;
 
 		return mapUserRow({
 			username: row.username,
@@ -153,6 +156,7 @@ export function emptyAdminUserRankings() {
 		mostFavorites: [] as UserRankingItem[],
 		mostShelves: [] as UserRankingItem[],
 		mostBookRequests: [] as UserRankingItem[],
+		mostReads: [] as UserRankingItem[],
 		newestMembers: [] as UserRankingItem[],
 	};
 }
@@ -172,6 +176,7 @@ export async function loadAdminUserRankings(
 		mostFavorites,
 		mostShelves,
 		mostBookRequests,
+		mostReads,
 		newestMembersList,
 	] = await Promise.all([
 		topUsersByXp(db, where),
@@ -184,6 +189,7 @@ export async function loadAdminUserRankings(
 		topUsersByRelationCount(db, where, "favorites"),
 		topUsersByRelationCount(db, where, "shelves"),
 		topUsersByRelationCount(db, where, "bookRequests"),
+		topUsersByRelationCount(db, where, "reads"),
 		newestMembers(db, where),
 	]);
 
@@ -198,6 +204,7 @@ export async function loadAdminUserRankings(
 		mostFavorites,
 		mostShelves,
 		mostBookRequests,
+		mostReads,
 		newestMembers: newestMembersList,
 	};
 }

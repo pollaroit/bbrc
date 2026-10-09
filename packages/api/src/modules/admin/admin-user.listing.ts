@@ -21,6 +21,7 @@ export const adminUserSortableFields = [
 	"documents._count",
 	"bookRequests._count",
 	"factImpressions._count",
+	"reads._count",
 ] as const;
 
 export const adminUserListSorting = defineSorting<
@@ -38,6 +39,7 @@ export const adminUserListSorting = defineSorting<
 		"documents._count": (d) => ({ documents: { _count: d } }),
 		"bookRequests._count": (d) => ({ bookRequests: { _count: d } }),
 		"factImpressions._count": (d) => ({ factImpressions: { _count: d } }),
+		"reads._count": (d) => ({ reads: { _count: d } }),
 	},
 });
 
@@ -71,5 +73,7 @@ export const adminUserListFiltersSchema = z
 		minDocuments: z.number().int().min(0),
 		minBookRequests: z.number().int().min(0),
 		minFactImpressions: z.number().int().min(0),
+		minReads: z.number().int().min(0),
+		maxReads: z.number().int().min(0),
 	})
 	.partial();

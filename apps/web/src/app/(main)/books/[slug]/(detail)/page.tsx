@@ -111,16 +111,16 @@ export default async function BookOverviewPage({
 					{topShelves.length > 0 ? (
 						<ul className="flex flex-col gap-2 divide-y divide-border border border-border">
 							{topShelves.map((shelf) => (
-								<li key={`${shelf.ownerUsername}-${shelf.slug}`}>
+								<li key={shelf.id}>
 									<Link
 										href={
-											`/users/${shelf.ownerUsername}/shelves/${shelf.slug}` as Route
+											`/users/${shelf.owner.username}/shelves/${shelf.slug}` as Route
 										}
 										className="flex flex-col gap-0.5 px-3 py-2 transition-colors hover:bg-muted/40"
 									>
 										<span className="font-medium text-sm">{shelf.title}</span>
 										<span className="text-muted-foreground text-xs">
-											@{shelf.ownerUsername}
+											@{shelf.owner.username}
 										</span>
 									</Link>
 								</li>

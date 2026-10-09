@@ -37,6 +37,7 @@ export const adminBookSortByLabels = {
 	"postAttachments._count": "Post attachments",
 	"polls._count": "Poll options",
 	pollVotes: "Poll votes",
+	"reads._count": "Reads",
 } as const satisfies FieldLabels<(typeof adminBookSortableFields)[number]>;
 
 const adminBookMinCountParams = {
@@ -45,6 +46,8 @@ const adminBookMinCountParams = {
 	minPostAttachments: parseAsInteger.withOptions({ shallow: false }),
 	minPollOptions: parseAsInteger.withOptions({ shallow: false }),
 	minPollVotes: parseAsInteger.withOptions({ shallow: false }),
+	minReads: parseAsInteger.withOptions({ shallow: false }),
+	maxReads: parseAsInteger.withOptions({ shallow: false }),
 } as const;
 
 export const adminBooksListingSearchParams = {
@@ -102,6 +105,8 @@ function buildAdminBookFilterCallInput(params: AdminBooksListingSearchParams) {
 		minPostAttachments: params.minPostAttachments,
 		minPollOptions: params.minPollOptions,
 		minPollVotes: params.minPollVotes,
+		minReads: params.minReads,
+		maxReads: params.maxReads,
 	};
 }
 

@@ -63,6 +63,7 @@ export const AdminBookOverviewOutputSchema = z.object({
 		mostPollVotes: z.array(AdminBookRankingItemSchema),
 		mostFeedbacks: z.array(AdminBookRankingItemSchema),
 		mostPostAttachments: z.array(AdminBookRankingItemSchema),
+		mostReads: z.array(AdminBookRankingItemSchema),
 	}),
 });
 
@@ -85,6 +86,8 @@ const adminBookListQueryRefine = (
 		maxAverageRating?: number;
 		minPages?: number;
 		maxPages?: number;
+		minReads?: number;
+		maxReads?: number;
 	},
 	ctx: z.RefinementCtx,
 ) => {
@@ -127,6 +130,18 @@ const adminBookListQueryRefine = (
 			code: "custom",
 			message: "Maximum club rating must be greater than or equal to minimum",
 			path: ["maxAverageRating"],
+		});
+	}
+
+	if (
+		value.maxReads != null &&
+		value.minReads != null &&
+		value.maxReads < value.minReads
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Maximum reads must be greater than or equal to minimum",
+			path: ["maxReads"],
 		});
 	}
 };

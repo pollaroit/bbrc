@@ -141,6 +141,11 @@ export function AdminUserRankingLists({
 				metricLabel="Favorites"
 			/>
 			<UserRankingCard
+				title="Most reads"
+				items={rankings.mostReads}
+				metricLabel="Reads"
+			/>
+			<UserRankingCard
 				title="Most shelves"
 				items={rankings.mostShelves}
 				metricLabel="Shelves"

@@ -66,7 +66,9 @@ function countAdminBookSheetFilters(
 		params.minFavorites != null ||
 		params.minPostAttachments != null ||
 		params.minPollOptions != null ||
-		params.minPollVotes != null
+		params.minPollVotes != null ||
+		params.minReads != null ||
+		params.maxReads != null
 	) {
 		count += 1;
 	}
@@ -194,6 +196,8 @@ function BookFiltersSheet({
 					minPostAttachments: null,
 					minPollOptions: null,
 					minPollVotes: null,
+					minReads: null,
+					maxReads: null,
 					missingClubRating: null,
 					missingOpenLibraryRating: null,
 					...resetPage,
@@ -353,6 +357,36 @@ function BookFiltersSheet({
 						onChange={(e) => {
 							void setParams({
 								minFavorites: parseOptionalInt(e.target.value),
+								...resetPage,
+							});
+						}}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel>Min reads</FieldLabel>
+					<Input
+						type="number"
+						min={0}
+						placeholder="Any"
+						value={params.minReads ?? ""}
+						onChange={(e) => {
+							void setParams({
+								minReads: parseOptionalInt(e.target.value),
+								...resetPage,
+							});
+						}}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel>Max reads</FieldLabel>
+					<Input
+						type="number"
+						min={0}
+						placeholder="Any"
+						value={params.maxReads ?? ""}
+						onChange={(e) => {
+							void setParams({
+								maxReads: parseOptionalInt(e.target.value),
 								...resetPage,
 							});
 						}}

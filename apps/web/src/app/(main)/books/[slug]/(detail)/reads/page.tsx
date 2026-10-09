@@ -1,5 +1,9 @@
 import { fetchEditionDetailSummaries } from "@bbrc/api/lib/open-library/work-editions";
 import type { Metadata } from "next";
+
+/** Member reads change often; do not serve a stale ISR snapshot. */
+export const dynamic = "force-dynamic";
+
 import { BookReadsPanel } from "@/components/blocks/book-reads-panel";
 import { loadBookBySlugForIsr, loadBookReadsForIsr } from "@/lib/isr-data";
 import {
@@ -36,5 +40,11 @@ export default async function BookReadsPage({
 
 	const editionById = await fetchEditionDetailSummaries(editionIds);
 
-	return <BookReadsPanel data={reads} editionById={editionById} />;
+	return (
+		<BookReadsPanel
+			bookSlug={slug}
+			initialData={reads}
+			editionById={editionById}
+		/>
+	);
 }

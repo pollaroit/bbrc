@@ -128,7 +128,8 @@ async function userIdsWithMinRelationCount(
 		| "shelves"
 		| "documents"
 		| "bookRequests"
-		| "factImpressions",
+		| "factImpressions"
+		| "reads",
 	min: number,
 ): Promise<string[]> {
 	if (min <= 0) {
@@ -216,7 +217,64 @@ async function userIdsWithMinRelationCount(
 			});
 			return rows.map((row) => row.userId);
 		}
+		case "reads": {
+			const rows = await db.read.groupBy({
+				by: ["userId"],
+				_count: { _all: true },
+				having: { userId: { _count: { gte: min } } },
+			});
+			return rows.map((row) => row.userId);
+		}
 	}
+}
+
+async function userIdsWithReadsCountBounds(
+	db: Database,
+	min?: number,
+	max?: number,
+): Promise<string[] | null> {
+	if (min == null && max == null) {
+		return null;
+	}
+
+	const effectiveMin = min ?? 0;
+	const effectiveMax = max ?? Number.POSITIVE_INFINITY;
+
+	if (effectiveMax < effectiveMin) {
+		return [];
+	}
+
+	if (effectiveMax === 0) {
+		const rows = await db.user.findMany({
+			where: { reads: { none: {} } },
+			select: { id: true },
+		});
+		return rows.map((row) => row.id);
+	}
+
+	const grouped = await db.read.groupBy({
+		by: ["userId"],
+		_count: { _all: true },
+	});
+
+	const matched = grouped
+		.filter((row) => {
+			const count = row._count._all;
+			return count >= effectiveMin && count <= effectiveMax;
+		})
+		.map((row) => row.userId);
+
+	if (effectiveMin > 0) {
+		return matched;
+	}
+
+	const withReads = new Set(grouped.map((row) => row.userId));
+	const zeroReadUsers = await db.user.findMany({
+		where: withReads.size > 0 ? { id: { notIn: [...withReads] } } : undefined,
+		select: { id: true },
+	});
+
+	return [...matched, ...zeroReadUsers.map((row) => row.id)];
 }
 
 function intersectIds(
@@ -280,10 +338,25 @@ export async function buildAdminUserListWhere(
 ): Promise<{ where: Prisma.UserWhereInput; empty: boolean }> {
 	const ranging = adminUserListRanging.from(input);
 	const searching = adminUserListSearching.from(input);
-	const minCountIds = await resolveMinCountUserIds(
+	let minCountIds = await resolveMinCountUserIds(
 		db,
 		input as ListAdminUsersInput,
 	);
+
+	const readsCountIds = await userIdsWithReadsCountBounds(
+		db,
+		input.minReads ?? undefined,
+		input.maxReads ?? undefined,
+	);
+	if (readsCountIds !== null) {
+		if (readsCountIds.length === 0) {
+			return { where: {}, empty: true };
+		}
+		minCountIds = intersectIds(minCountIds, readsCountIds);
+		if (minCountIds?.length === 0) {
+			return { where: {}, empty: true };
+		}
+	}
 
 	if (minCountIds?.length === 0) {
 		return { where: {}, empty: true };

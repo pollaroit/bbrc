@@ -117,6 +117,9 @@ export function AdminUsersTable() {
 										Fav
 									</TableHead>
 									<TableHead className="hidden text-right tabular-nums xl:table-cell">
+										Reads
+									</TableHead>
+									<TableHead className="hidden text-right tabular-nums xl:table-cell">
 										Shelves
 									</TableHead>
 									<TableHead className="hidden lg:table-cell">Joined</TableHead>
@@ -207,6 +210,9 @@ export function AdminUsersTable() {
 										</TableCell>
 										<TableCell className="hidden text-right tabular-nums xl:table-cell">
 											{user.counts.favorites}
+										</TableCell>
+										<TableCell className="hidden text-right tabular-nums xl:table-cell">
+											{user.counts.reads}
 										</TableCell>
 										<TableCell className="hidden text-right tabular-nums xl:table-cell">
 											{user.counts.shelves}

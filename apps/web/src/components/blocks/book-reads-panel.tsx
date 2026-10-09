@@ -1,3 +1,5 @@
+"use client";
+
 import type { EditionDetailSummary } from "@bbrc/api/lib/open-library/work-editions";
 import type { ListBookReadsOutput } from "@bbrc/api/modules/read/read.schema";
 import { openLibraryEditionPageUrl } from "@bbrc/shared";
@@ -7,18 +9,32 @@ import {
 	EmptyHeader,
 	EmptyTitle,
 } from "@bbrc/ui/components/empty";
+import { Skeleton } from "@bbrc/ui/components/skeleton";
+import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import Image from "next/image";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { bookCoverUrl } from "@/lib/book-cover";
 import { formatReadPeriod } from "@/lib/format-read-date";
+import { cn } from "@/lib/utils";
+import { orpc } from "@/utils/orpc";
+
+const readsGridClassName =
+	"grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3";
 
 type BookReadsPanelProps = {
-	data: ListBookReadsOutput;
+	bookSlug: string;
+	initialData?: ListBookReadsOutput;
 	editionById: Map<string, EditionDetailSummary>;
 };
 
-export function BookReadsPanel({ data, editionById }: BookReadsPanelProps) {
+function BookReadsGrid({
+	data,
+	editionById,
+}: {
+	data: ListBookReadsOutput;
+	editionById: Map<string, EditionDetailSummary>;
+}) {
 	if (data.items.length === 0) {
 		return (
 			<Empty>
@@ -34,7 +50,7 @@ export function BookReadsPanel({ data, editionById }: BookReadsPanelProps) {
 	}
 
 	return (
-		<ul className="flex flex-col divide-y divide-border border border-border">
+		<ul className={readsGridClassName}>
 			{data.items.map((item) => {
 				const edition = item.editionId
 					? editionById.get(item.editionId)
@@ -46,26 +62,24 @@ export function BookReadsPanel({ data, editionById }: BookReadsPanelProps) {
 
 				return (
 					<li
-						key={`${item.user.username}-${item.recordedAt.toISOString()}`}
-						className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start"
+						key={item.user.username}
+						className="flex h-full flex-col gap-3 border border-border p-4"
 					>
-						<div className="flex min-w-0 flex-1 flex-col gap-2">
-							<UserPanel user={item.user} />
-							<p className="text-muted-foreground text-sm">
-								{formatReadPeriod(item.readStart, item.readEnd)}
-							</p>
-						</div>
+						<UserPanel user={item.user} />
+						<p className="text-muted-foreground text-sm">
+							{formatReadPeriod(item.readStart, item.readEnd)}
+						</p>
 
 						{edition || item.editionId ? (
-							<div className="flex w-full max-w-sm items-start gap-3 border border-border bg-muted/20 p-3 sm:w-auto">
-								<div className="relative size-16 shrink-0 bg-muted">
+							<div className="mt-auto flex items-start gap-3 border border-border bg-muted/20 p-3">
+								<div className="relative size-14 shrink-0 overflow-hidden bg-muted">
 									{coverSrc ? (
 										<Image
 											src={coverSrc}
 											alt=""
 											fill
 											className="object-cover"
-											sizes="64px"
+											sizes="56px"
 										/>
 									) : null}
 								</div>
@@ -100,4 +114,38 @@ export function BookReadsPanel({ data, editionById }: BookReadsPanelProps) {
 			})}
 		</ul>
 	);
+}
+
+export function BookReadsPanel({
+	bookSlug,
+	initialData,
+	editionById,
+}: BookReadsPanelProps) {
+	const readsQuery = useQuery({
+		...orpc.read.listForBook.queryOptions({
+			input: { bookSlug, limit: 100 },
+		}),
+		initialData,
+		staleTime: 0,
+	});
+
+	if (readsQuery.isPending && !readsQuery.data) {
+		return (
+			<div className={cn(readsGridClassName)} aria-hidden>
+				{Array.from({ length: 3 }, (_, index) => (
+					<Skeleton key={index} className="h-36 w-full" />
+				))}
+			</div>
+		);
+	}
+
+	if (readsQuery.isError) {
+		return (
+			<p className="text-muted-foreground text-sm">
+				Could not load reads. Refresh the page to try again.
+			</p>
+		);
+	}
+
+	return <BookReadsGrid data={readsQuery.data} editionById={editionById} />;
 }
