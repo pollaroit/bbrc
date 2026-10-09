@@ -15,7 +15,9 @@ import type { Route } from "next";
 import Link from "next/link";
 import { AdminBookRowActions } from "@/components/blocks/admin-book-row-actions";
 import { AdminBooksToolbar } from "@/components/blocks/admin-books-toolbar";
+import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
+import { adminBooksExportConfig } from "@/lib/admin-table-export/configs";
 import { formatBookAuthors } from "@/lib/book-cover";
 import {
 	toAdminBooksListCallInput,
@@ -55,12 +57,24 @@ export function AdminBooksListTable() {
 					</Button>
 				</div>
 			) : data.items.length === 0 ? (
-				<div className="border border-dashed p-8 text-center">
-					<p className="font-medium text-sm">No books match these filters</p>
-					<p className="mt-1 text-muted-foreground text-sm">
-						Try clearing search or filters.
-					</p>
-				</div>
+				<>
+					<div className="border border-dashed p-8 text-center">
+						<p className="font-medium text-sm">No books match these filters</p>
+						<p className="mt-1 text-muted-foreground text-sm">
+							Try clearing search or filters.
+						</p>
+					</div>
+					<AdminListTableFooter
+						summary={`${data.metadata.total} books · Page ${data.metadata.page} of ${Math.max(data.metadata.totalPages, 1)}`}
+						metadata={data.metadata}
+						onPageChange={(page) => {
+							void setParams({ page });
+						}}
+						exportConfig={adminBooksExportConfig}
+						listInput={listInput as Record<string, unknown>}
+						currentPageItems={data.items}
+					/>
+				</>
 			) : (
 				<>
 					<div className="overflow-x-auto">
@@ -148,38 +162,16 @@ export function AdminBooksListTable() {
 						</Table>
 					</div>
 
-					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-						<p className="text-muted-foreground text-sm tabular-nums">
-							{data.metadata.total} books · Page {data.metadata.page} of{" "}
-							{Math.max(data.metadata.totalPages, 1)}
-						</p>
-						<div className="flex items-center gap-2">
-							<Button
-								variant="outline"
-								size="sm"
-								disabled={data.metadata.prevPage == null}
-								onClick={() => {
-									if (data.metadata.prevPage != null) {
-										void setParams({ page: data.metadata.prevPage });
-									}
-								}}
-							>
-								Previous
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								disabled={data.metadata.nextPage == null}
-								onClick={() => {
-									if (data.metadata.nextPage != null) {
-										void setParams({ page: data.metadata.nextPage });
-									}
-								}}
-							>
-								Next
-							</Button>
-						</div>
-					</div>
+					<AdminListTableFooter
+						summary={`${data.metadata.total} books · Page ${data.metadata.page} of ${Math.max(data.metadata.totalPages, 1)}`}
+						metadata={data.metadata}
+						onPageChange={(page) => {
+							void setParams({ page });
+						}}
+						exportConfig={adminBooksExportConfig}
+						listInput={listInput as Record<string, unknown>}
+						currentPageItems={data.items}
+					/>
 				</>
 			)}
 		</div>

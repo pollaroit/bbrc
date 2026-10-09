@@ -15,10 +15,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Crown } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
 import { AdminUserRowActions } from "@/components/blocks/admin-user-row-actions";
 import { AdminUsersToolbar } from "@/components/blocks/admin-users-toolbar";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
+import { adminUsersExportConfig } from "@/lib/admin-table-export/configs";
 import {
 	toAdminUsersListCallInput,
 	useAdminUsersListingSearchParams,
@@ -59,12 +61,26 @@ export function AdminUsersTable() {
 					</Button>
 				</div>
 			) : data.items.length === 0 ? (
-				<div className="border border-dashed p-8 text-center">
-					<p className="font-medium text-sm">No members match these filters</p>
-					<p className="mt-1 text-muted-foreground text-sm">
-						Try clearing search or filters.
-					</p>
-				</div>
+				<>
+					<div className="border border-dashed p-8 text-center">
+						<p className="font-medium text-sm">
+							No members match these filters
+						</p>
+						<p className="mt-1 text-muted-foreground text-sm">
+							Try clearing search or filters.
+						</p>
+					</div>
+					<AdminListTableFooter
+						summary={`${data.metadata.total} members · Page ${data.metadata.page} of ${Math.max(data.metadata.totalPages, 1)}`}
+						metadata={data.metadata}
+						onPageChange={(page) => {
+							void setParams({ page });
+						}}
+						exportConfig={adminUsersExportConfig}
+						listInput={listInput as Record<string, unknown>}
+						currentPageItems={data.items}
+					/>
+				</>
 			) : (
 				<>
 					<div className="overflow-x-auto">
@@ -203,38 +219,16 @@ export function AdminUsersTable() {
 						</Table>
 					</div>
 
-					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-						<p className="text-muted-foreground text-sm tabular-nums">
-							{data.metadata.total} members · Page {data.metadata.page} of{" "}
-							{Math.max(data.metadata.totalPages, 1)}
-						</p>
-						<div className="flex items-center gap-2">
-							<Button
-								variant="outline"
-								size="sm"
-								disabled={data.metadata.prevPage == null}
-								onClick={() => {
-									if (data.metadata.prevPage != null) {
-										void setParams({ page: data.metadata.prevPage });
-									}
-								}}
-							>
-								Previous
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								disabled={data.metadata.nextPage == null}
-								onClick={() => {
-									if (data.metadata.nextPage != null) {
-										void setParams({ page: data.metadata.nextPage });
-									}
-								}}
-							>
-								Next
-							</Button>
-						</div>
-					</div>
+					<AdminListTableFooter
+						summary={`${data.metadata.total} members · Page ${data.metadata.page} of ${Math.max(data.metadata.totalPages, 1)}`}
+						metadata={data.metadata}
+						onPageChange={(page) => {
+							void setParams({ page });
+						}}
+						exportConfig={adminUsersExportConfig}
+						listInput={listInput as Record<string, unknown>}
+						currentPageItems={data.items}
+					/>
 				</>
 			)}
 		</div>
