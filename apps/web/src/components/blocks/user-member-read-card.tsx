@@ -52,11 +52,6 @@ export function UserMemberReadCard({ item }: UserMemberReadCardProps) {
 				<p className="text-muted-foreground text-sm">
 					{formatReadPeriod(item.readStart, item.readEnd)}
 				</p>
-				{item.editionId ? (
-					<p className="font-mono text-muted-foreground text-xs">
-						Edition {item.editionId}
-					</p>
-				) : null}
 			</div>
 		</article>
 	);

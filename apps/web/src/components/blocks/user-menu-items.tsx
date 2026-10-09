@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	BookCheck,
 	BookOpen,
 	LayoutList,
 	MessageSquare,
@@ -48,6 +49,14 @@ export function UserMenuItems({
 			>
 				<User className="size-4 shrink-0" aria-hidden="true" />
 				Profile
+			</Link>
+			<Link
+				href={`/users/${user.username}/reads` as Route}
+				className={itemClass}
+				onClick={onNavigate}
+			>
+				<BookCheck className="size-4 shrink-0" aria-hidden="true" />
+				My reads
 			</Link>
 			<Link
 				href={`/users/${user.username}/posts` as Route}

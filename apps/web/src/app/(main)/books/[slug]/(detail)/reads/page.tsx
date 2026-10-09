@@ -1,4 +1,3 @@
-import { fetchEditionDetailSummaries } from "@bbrc/api/lib/open-library/work-editions";
 import type { Metadata } from "next";
 
 /** Member reads change often; do not serve a stale ISR snapshot. */
@@ -20,7 +19,7 @@ export async function generateMetadata({
 		const book = await loadBookBySlugForIsr(slug);
 		return buildBookTabMetadata(book, {
 			title: "Reads",
-			description: `Members who finished ${book.title} and the editions they read.`,
+			description: `Members who finished ${book.title} and when they read it.`,
 			segment: "reads",
 		});
 	} catch {
@@ -34,17 +33,5 @@ export default async function BookReadsPage({
 	const { slug } = await params;
 	const reads = await loadBookReadsForIsr(slug);
 
-	const editionIds = reads.items
-		.map((item) => item.editionId)
-		.filter((id): id is string => id != null);
-
-	const editionById = await fetchEditionDetailSummaries(editionIds);
-
-	return (
-		<BookReadsPanel
-			bookSlug={slug}
-			initialData={reads}
-			editionById={editionById}
-		/>
-	);
+	return <BookReadsPanel bookSlug={slug} initialData={reads} />;
 }

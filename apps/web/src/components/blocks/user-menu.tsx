@@ -8,6 +8,7 @@ import {
 	DropdownMenuTrigger,
 } from "@bbrc/ui/components/dropdown-menu";
 import {
+	BookCheck,
 	BookOpen,
 	LayoutList,
 	LogOut,
@@ -61,6 +62,14 @@ export function UserMenu({ ...props }: Props) {
 					render={<Link href={`/users/${props.user.username}` as Route} />}
 				>
 					<User /> Profile
+				</DropdownMenuItem>
+				<DropdownMenuItem
+					className="cursor-pointer"
+					render={
+						<Link href={`/users/${props.user.username}/reads` as Route} />
+					}
+				>
+					<BookCheck /> My reads
 				</DropdownMenuItem>
 				<DropdownMenuItem
 					className="cursor-pointer"

@@ -1,12 +1,12 @@
 import type { GetBookListOutput } from "@bbrc/api/modules/book/book.schema";
 import { Badge } from "@bbrc/ui/components/badge";
-import { BookCheck, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { BookEditLink } from "@/components/blocks/book-edit-link";
 import type { BookListFavoriteEngagement } from "@/components/blocks/book-favorite-button";
 import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
+import { BookMarkReadButton } from "@/components/blocks/book-mark-read-button";
 import {
 	formatBookStatusLabel,
 	statusSpineClassName,
@@ -36,7 +36,6 @@ export function BookCard({
 }: BookCardProps) {
 	const href = `/books/${book.slug}` as Route;
 	const coverSrc = bookCoverUrl(book.coverId, "M");
-	const showReadBadge = viewerHasRead === true;
 
 	return (
 		<article
@@ -76,15 +75,6 @@ export function BookCard({
 							No cover
 						</div>
 					)}
-					{showReadBadge ? (
-						<div
-							className="absolute right-0 bottom-0 flex size-6 items-center justify-center bg-emerald-700 text-white"
-							title="You read this book"
-						>
-							<BookCheck className="size-3.5" aria-hidden />
-							<span className="sr-only">You read this book</span>
-						</div>
-					) : null}
 				</div>
 
 				<div className="flex min-w-0 flex-1 flex-col">
@@ -103,13 +93,13 @@ export function BookCard({
 							{book.openLibraryRating != null ? (
 								<div>
 									<dt className="sr-only">Open Library rating</dt>
-									<dd>{book.openLibraryRating.toFixed(1)} on Open Library</dd>
+									<dd>{book.openLibraryRating.toFixed(1)} OL</dd>
 								</div>
 							) : null}
 							<div>
-								<dt className="sr-only">Pages and year</dt>
+								<dt className="sr-only">Page count and year</dt>
 								<dd>
-									{book.pages} pages · {book.publishedIn}
+									{book.pages} pp · {book.publishedIn}
 								</dd>
 							</div>
 						</dl>
@@ -125,7 +115,12 @@ export function BookCard({
 									<span className="hidden sm:inline">Docs</span>
 								</Badge>
 							) : null}
-							<BookEditLink slug={book.slug} />
+							<BookMarkReadButton
+								bookSlug={book.slug}
+								bookTitle={book.title}
+								variant="icon"
+								listHasRead={viewerHasRead}
+							/>
 							<BookFavoriteButton
 								bookSlug={book.slug}
 								bookTitle={book.title}

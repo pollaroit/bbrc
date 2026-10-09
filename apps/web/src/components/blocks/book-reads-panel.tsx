@@ -1,8 +1,6 @@
 "use client";
 
-import type { EditionDetailSummary } from "@bbrc/api/lib/open-library/work-editions";
 import type { ListBookReadsOutput } from "@bbrc/api/modules/read/read.schema";
-import { openLibraryEditionPageUrl } from "@bbrc/shared";
 import {
 	Empty,
 	EmptyDescription,
@@ -11,10 +9,7 @@ import {
 } from "@bbrc/ui/components/empty";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink } from "lucide-react";
-import Image from "next/image";
 import { UserPanel } from "@/components/blocks/user-panel";
-import { bookCoverUrl } from "@/lib/book-cover";
 import { formatReadPeriod } from "@/lib/format-read-date";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
@@ -25,24 +20,16 @@ const readsGridClassName =
 type BookReadsPanelProps = {
 	bookSlug: string;
 	initialData?: ListBookReadsOutput;
-	editionById: Map<string, EditionDetailSummary>;
 };
 
-function BookReadsGrid({
-	data,
-	editionById,
-}: {
-	data: ListBookReadsOutput;
-	editionById: Map<string, EditionDetailSummary>;
-}) {
+function BookReadsGrid({ data }: { data: ListBookReadsOutput }) {
 	if (data.items.length === 0) {
 		return (
 			<Empty>
 				<EmptyHeader>
 					<EmptyTitle>No reads yet</EmptyTitle>
 					<EmptyDescription>
-						When members mark this book as read, their copies and dates show up
-						here.
+						When members mark this book as read, their dates show up here.
 					</EmptyDescription>
 				</EmptyHeader>
 			</Empty>
@@ -51,76 +38,22 @@ function BookReadsGrid({
 
 	return (
 		<ul className={readsGridClassName}>
-			{data.items.map((item) => {
-				const edition = item.editionId
-					? editionById.get(item.editionId)
-					: undefined;
-				const coverSrc = bookCoverUrl(edition?.coverId, "S");
-				const olUrl = item.editionId
-					? openLibraryEditionPageUrl(item.editionId)
-					: null;
-
-				return (
-					<li
-						key={item.user.username}
-						className="flex h-full flex-col gap-3 border border-border p-4"
-					>
-						<UserPanel user={item.user} />
-						<p className="text-muted-foreground text-sm">
-							{formatReadPeriod(item.readStart, item.readEnd)}
-						</p>
-
-						{edition || item.editionId ? (
-							<div className="mt-auto flex items-start gap-3 border border-border bg-muted/20 p-3">
-								<div className="relative size-14 shrink-0 overflow-hidden bg-muted">
-									{coverSrc ? (
-										<Image
-											src={coverSrc}
-											alt=""
-											fill
-											className="object-cover"
-											sizes="56px"
-										/>
-									) : null}
-								</div>
-								<div className="min-w-0 flex-1">
-									<p className="font-medium text-sm leading-snug">
-										{edition?.title ?? item.editionId}
-									</p>
-									<p className="text-muted-foreground text-xs">
-										{[
-											edition?.publishDate,
-											edition?.pages ? `${edition.pages} pp.` : null,
-										]
-											.filter(Boolean)
-											.join(" · ")}
-									</p>
-									{olUrl ? (
-										<a
-											href={olUrl}
-											target="_blank"
-											rel="noreferrer"
-											className="mt-1 inline-flex items-center gap-1 text-primary text-xs underline-offset-4 hover:underline"
-										>
-											Open Library
-											<ExternalLink className="size-3" />
-										</a>
-									) : null}
-								</div>
-							</div>
-						) : null}
-					</li>
-				);
-			})}
+			{data.items.map((item) => (
+				<li
+					key={item.user.username}
+					className="flex h-full flex-col gap-3 border border-border p-4"
+				>
+					<UserPanel user={item.user} />
+					<p className="text-muted-foreground text-sm">
+						{formatReadPeriod(item.readStart, item.readEnd)}
+					</p>
+				</li>
+			))}
 		</ul>
 	);
 }
 
-export function BookReadsPanel({
-	bookSlug,
-	initialData,
-	editionById,
-}: BookReadsPanelProps) {
+export function BookReadsPanel({ bookSlug, initialData }: BookReadsPanelProps) {
 	const readsQuery = useQuery({
 		...orpc.read.listForBook.queryOptions({
 			input: { bookSlug, limit: 100 },
@@ -147,5 +80,5 @@ export function BookReadsPanel({
 		);
 	}
 
-	return <BookReadsGrid data={readsQuery.data} editionById={editionById} />;
+	return <BookReadsGrid data={readsQuery.data} />;
 }

@@ -62,7 +62,7 @@ export function UserReadsFeed({ username }: UserReadsFeedProps) {
 			}}
 			isEmpty={items.length === 0}
 			emptyTitle="No books marked read yet"
-			emptyDescription="When this member marks books as read, they appear here with dates and editions."
+			emptyDescription="When this member marks books as read, they appear here with read dates."
 			loadingContent={<UserReadsFeedSkeleton />}
 			endMessage="End of read list."
 		>
