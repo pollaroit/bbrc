@@ -7,6 +7,7 @@ import { sendTelegramReply } from "./client";
 import { escapeTelegramHtml } from "./escape-html";
 import { formatReadingDeadlineTelegramLine } from "./format-reading-deadline-line";
 import { resolvePublicAppOrigin } from "./public-app-origin";
+import { handleTelegramAccountLinkMessage } from "./telegram-account-link";
 
 const PARTICIPANT_LIST_LIMIT = 40;
 const WHO_LIST_LIMIT = 25;
@@ -121,6 +122,7 @@ function buildHelpReply(): string {
 		"/book — Current book",
 		"/who — Members not finished reading",
 		"/participants — Sitting roster",
+		"Link BBRC account: Settings → Account connections on the site",
 		`<a href="${origin}">Open BBRC</a>`,
 	].join("\n");
 }
@@ -295,6 +297,26 @@ export async function handleTelegramBotUpdate(
 	const message = update.message;
 	if (!message?.text) {
 		return { handled: false };
+	}
+
+	const linked = await handleTelegramAccountLinkMessage(
+		db,
+		{
+			text: message.text,
+			chat: message.chat,
+			from: message.from,
+			message_id: message.message_id,
+		},
+		async (text) => {
+			await sendTelegramReply({
+				chatId: message.chat.id,
+				text,
+				replyToMessageId: message.message_id,
+			});
+		},
+	);
+	if (linked) {
+		return { handled: true, command: "link" };
 	}
 
 	const command = parseBotCommand(message.text);

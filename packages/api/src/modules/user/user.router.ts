@@ -1,13 +1,12 @@
 import { protectedProcedure, publicProcedure } from "../../procedures";
 import {
+	BeginTelegramLinkOutputSchema,
 	GetTelegramLinkStatusOutputSchema,
-	LinkTelegramOutputSchema,
-	TelegramLoginWidgetInputSchema,
 	UnlinkTelegramOutputSchema,
 } from "./telegram-link.schema";
 import {
+	beginTelegramLinkChallenge,
 	getTelegramLinkStatus,
-	linkTelegramAccount,
 	unlinkTelegramAccount,
 } from "./telegram-link.service";
 import {
@@ -49,11 +48,10 @@ export const userRouter = {
 		.handler(async ({ context }) =>
 			getTelegramLinkStatus(context.session.user.id, context.db),
 		),
-	linkTelegram: protectedProcedure
-		.input(TelegramLoginWidgetInputSchema)
-		.output(LinkTelegramOutputSchema)
-		.handler(async ({ input, context }) =>
-			linkTelegramAccount(context.session.user.id, input, context.db),
+	beginTelegramLink: protectedProcedure
+		.output(BeginTelegramLinkOutputSchema)
+		.handler(async ({ context }) =>
+			beginTelegramLinkChallenge(context.session.user.id, context.db),
 		),
 	unlinkTelegram: protectedProcedure
 		.output(UnlinkTelegramOutputSchema)
