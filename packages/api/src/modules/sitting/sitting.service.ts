@@ -30,6 +30,7 @@ import {
 	notifySittingPollClosed,
 	notifySittingPollStarted,
 } from "../notification/notification-triggers";
+import { ensureReadForSittingCompletion } from "../read/read.service";
 import { calculateRpPointsDelta } from "../rp/rp.service";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardParticipationXp, awardPollVoteXp } from "../xp/xp.service";
@@ -1142,6 +1143,7 @@ export async function updateMyParticipationProgress(
 
 	if (input.progress === "completed" && previousProgress !== "completed") {
 		void notifyParticipantFinishedBook(db, input.slug, userId);
+		void ensureReadForSittingCompletion(db, sitting.id, userId);
 	}
 
 	return updated;
@@ -1250,6 +1252,7 @@ export async function updateParticipation(
 		previousProgress !== "completed"
 	) {
 		void notifyParticipantFinishedBook(db, input.slug, input.userId);
+		void ensureReadForSittingCompletion(db, sitting.id, input.userId);
 	}
 
 	return {

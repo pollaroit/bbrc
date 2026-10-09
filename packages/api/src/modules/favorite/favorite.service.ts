@@ -5,7 +5,6 @@ import {
 	clubReadEligibilityHint,
 	userCompletedClubRead,
 } from "../book/book-read-eligibility";
-import { activeParticipationWhere } from "../sitting/participation-active";
 import type {
 	AddFavoriteInput,
 	AddFavoriteOutput,
@@ -66,24 +65,10 @@ export async function getViewerLibraryEngagement(
 	userId: string,
 	db: Database,
 ): Promise<GetViewerLibraryEngagementOutput> {
-	const [completedParticipations, favorites] = await Promise.all([
-		db.participation.findMany({
-			where: {
-				userId,
-				...activeParticipationWhere,
-				progress: "completed",
-				sitting: {
-					status: { in: ["reading", "finished"] },
-					selectedBookId: { not: null },
-				},
-			},
-			select: {
-				sitting: {
-					select: {
-						selectedBook: { select: { slug: true } },
-					},
-				},
-			},
+	const [reads, favorites] = await Promise.all([
+		db.read.findMany({
+			where: { userId },
+			select: { book: { select: { slug: true } } },
 		}),
 		db.favorite.findMany({
 			where: { userId },
@@ -91,18 +76,12 @@ export async function getViewerLibraryEngagement(
 		}),
 	]);
 
-	const completedSlugs = [
-		...new Set(
-			completedParticipations
-				.map((row) => row.sitting.selectedBook?.slug)
-				.filter((slug): slug is string => Boolean(slug)),
-		),
-	];
+	const readSlugs = reads.map((row) => row.book.slug);
 
 	const favoriteSlugs = favorites.map((row) => row.book.slug);
 
 	return {
-		completedSlugs,
+		readSlugs,
 		favoriteSlugs,
 		slotsUsed: favorites.length,
 		maxSlots: MAX_FAVORITES_PER_USER,

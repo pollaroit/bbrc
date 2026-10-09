@@ -1,0 +1,40 @@
+import { fetchEditionDetailSummaries } from "@bbrc/api/lib/open-library/work-editions";
+import type { Metadata } from "next";
+import { BookReadsPanel } from "@/components/blocks/book-reads-panel";
+import { loadBookBySlugForIsr, loadBookReadsForIsr } from "@/lib/isr-data";
+import {
+	buildBookTabMetadata,
+	buildNotFoundMetadata,
+} from "@/lib/seo/book-page-metadata";
+
+export async function generateMetadata({
+	params,
+}: PageProps<"/books/[slug]">): Promise<Metadata> {
+	const { slug } = await params;
+
+	try {
+		const book = await loadBookBySlugForIsr(slug);
+		return buildBookTabMetadata(book, {
+			title: "Reads",
+			description: `Members who finished ${book.title} and the editions they read.`,
+			segment: "reads",
+		});
+	} catch {
+		return buildNotFoundMetadata("Book");
+	}
+}
+
+export default async function BookReadsPage({
+	params,
+}: PageProps<"/books/[slug]">) {
+	const { slug } = await params;
+	const reads = await loadBookReadsForIsr(slug);
+
+	const editionIds = reads.items
+		.map((item) => item.editionId)
+		.filter((id): id is string => id != null);
+
+	const editionById = await fetchEditionDetailSummaries(editionIds);
+
+	return <BookReadsPanel data={reads} editionById={editionById} />;
+}

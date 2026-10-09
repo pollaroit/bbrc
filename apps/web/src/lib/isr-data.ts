@@ -2,8 +2,12 @@ import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { listApprovedDocumentsByBook } from "@bbrc/api/modules/document/document.service";
 import { getBookFeedbackList } from "@bbrc/api/modules/feedback/feedback.service";
 import { getPostBySlug } from "@bbrc/api/modules/post/post.service";
+import { listBookReads } from "@bbrc/api/modules/read/read.service";
 import { getRpChart, getRpEventList } from "@bbrc/api/modules/rp/rp.service";
-import { getShelfBySlug } from "@bbrc/api/modules/shelf/shelf.service";
+import {
+	getShelfBySlug,
+	listShelvesForBook,
+} from "@bbrc/api/modules/shelf/shelf.service";
 import {
 	getOngoingSitting,
 	getSittingBySlug,
@@ -30,6 +34,14 @@ export const loadBookFeedbackListForIsr = cache((slug: string) =>
 
 export const loadApprovedDocumentsForIsr = cache((slug: string) =>
 	listApprovedDocumentsByBook(slug, db),
+);
+
+export const loadBookReadsForIsr = cache((slug: string) =>
+	listBookReads({ bookSlug: slug }, db),
+);
+
+export const loadBookShelvesForIsr = cache((slug: string) =>
+	listShelvesForBook(slug, undefined, db),
 );
 
 export const loadPostBySlugForIsr = cache((slug: string) =>

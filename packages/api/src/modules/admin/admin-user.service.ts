@@ -109,6 +109,7 @@ function mapAdminUserRow(row: AdminUserListRow) {
 			likes: row._count.likes,
 			feedbacks: row._count.feedbacks,
 			participations: row._count.participations,
+			reads: row._count.reads,
 			favorites: row._count.favorites,
 			shelves: row._count.shelves,
 		},

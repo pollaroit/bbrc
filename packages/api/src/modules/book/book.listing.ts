@@ -56,8 +56,8 @@ export const bookListFiltersSchema = z
 			z.string().refine(isAuthorSlug, { message: "Invalid author slug" }),
 		),
 		statuses: z.array(BookStatusSchema),
-		/** Completed club read for the authenticated viewer. */
-		viewerRead: z.boolean(),
+		/** Personal read state for the authenticated viewer. */
+		viewerRead: z.enum(["read", "unread"]),
 		/** Favorited by the authenticated viewer. */
 		viewerFavorite: z.boolean(),
 		/** Reviewed (feedback) by the authenticated viewer. */

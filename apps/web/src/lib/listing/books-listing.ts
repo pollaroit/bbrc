@@ -29,6 +29,10 @@ import {
 
 export const bookStatuses = ["completed", "reading", "wishlist"] as const;
 
+export const viewerReadFilterValues = ["read", "unread"] as const;
+
+export type ViewerReadFilter = (typeof viewerReadFilterValues)[number];
+
 export type BookListingStatus = (typeof bookStatuses)[number];
 
 export const bookSortByLabels = {
@@ -73,7 +77,9 @@ export const bookListingSearchParams = {
 	minPages: parseAsInteger.withOptions({ shallow: false }),
 	maxPages: parseAsInteger.withOptions({ shallow: false }),
 	authors: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
-	viewerRead: booleanFilterParser.withOptions({ shallow: false }),
+	viewerRead: parseAsStringLiteral(viewerReadFilterValues).withOptions({
+		shallow: false,
+	}),
 	viewerFavorite: booleanFilterParser.withOptions({ shallow: false }),
 	viewerReviewed: booleanFilterParser.withOptions({ shallow: false }),
 };
@@ -119,7 +125,7 @@ export function toBookListCallInput(
 		minPages: params.minPages,
 		maxPages: params.maxPages,
 		authors: normalizeAuthorSlugs(params.authors),
-		viewerRead: params.viewerRead === true ? true : undefined,
+		viewerRead: params.viewerRead ?? undefined,
 		viewerFavorite: params.viewerFavorite === true ? true : undefined,
 		viewerReviewed: params.viewerReviewed === true ? true : undefined,
 		limit: 24,
@@ -177,7 +183,7 @@ export function countBookSheetFilters(params: BookListingSearchParams): number {
 		count += 1;
 	}
 
-	if (params.viewerRead === true) {
+	if (params.viewerRead != null) {
 		count += 1;
 	}
 

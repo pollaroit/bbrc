@@ -1,3 +1,6 @@
+export const bookCoverFrameClassName =
+	"overflow-hidden bg-muted ring-1 ring-foreground/10";
+
 export function bookCoverUrl(
 	coverId: number | null | undefined,
 	size: "S" | "M" | "L" = "M",

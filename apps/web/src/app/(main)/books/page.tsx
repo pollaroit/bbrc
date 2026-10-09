@@ -25,14 +25,26 @@ export const dynamic = "force-static";
 
 export default function BooksPage() {
 	return (
-		<div className="flex flex-col gap-6">
-			<div className="flex flex-wrap items-center justify-between gap-3">
-				<h1 className="font-bold text-2xl">Books</h1>
+		<div className="flex flex-col gap-8">
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+				<div className="flex max-w-2xl flex-col gap-2">
+					<h1 className="font-bold text-2xl tracking-tight sm:text-3xl">
+						Books
+					</h1>
+					<p className="text-muted-foreground text-sm leading-relaxed">
+						Club catalog with reading status on every title. Filter, sort, and
+						open a book for reviews, shelves, and documents.
+					</p>
+				</div>
 				<LibraryBookActionLink />
 			</div>
 			<ListingSearchParamsBoundary>
-				<BooksListingToolbar />
-				<BooksList />
+				<div className="flex flex-col gap-6">
+					<div className="border border-border bg-muted/15 p-4">
+						<BooksListingToolbar />
+					</div>
+					<BooksList />
+				</div>
 			</ListingSearchParamsBoundary>
 		</div>
 	);

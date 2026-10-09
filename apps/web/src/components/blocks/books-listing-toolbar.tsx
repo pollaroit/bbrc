@@ -4,6 +4,15 @@ import {
 	bookRangeableFields,
 	bookSortableFields,
 } from "@bbrc/api/modules/book/book.listing";
+import { Field, FieldLabel } from "@bbrc/ui/components/field";
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@bbrc/ui/components/select";
 import { useMemo } from "react";
 import { BooksListExportMenu } from "@/components/blocks/books-list-export-menu";
 import { ListingAuthorMultiSelect } from "@/components/listing/listing-author-multi-select";
@@ -25,14 +34,12 @@ import {
 	countBookSheetFilters,
 	toBookListAuthorFacetsInput,
 	useBookListingSearchParams,
+	type ViewerReadFilter,
 	viewerBookFilterLabels,
+	viewerReadFilterValues,
 } from "@/lib/listing/books-listing";
 
-const viewerFilterKeys = [
-	"viewerRead",
-	"viewerFavorite",
-	"viewerReviewed",
-] as const;
+const viewerFilterKeys = ["viewerFavorite", "viewerReviewed"] as const;
 
 export function BooksListingToolbar() {
 	const [params, setParams] = useBookListingSearchParams();
@@ -96,17 +103,52 @@ export function BooksListingToolbar() {
 					onClear={() => clearBookSheetFilters(setParams)}
 				>
 					{session?.user ? (
-						<ListingCheckboxList
-							legend="Your library"
-							options={viewerFilterKeys.map((key) => ({
-								id: key,
-								label: viewerBookFilterLabels[key],
-								checked: params[key] === true,
-								onCheckedChange: (checked) => {
-									toggleViewerFilter(key, checked);
-								},
-							}))}
-						/>
+						<>
+							<Field className="min-w-0">
+								<FieldLabel>Your reads</FieldLabel>
+								<Select
+									value={params.viewerRead ?? "any"}
+									onValueChange={(value) => {
+										void setParams({
+											viewerRead:
+												value === "any"
+													? null
+													: value === "read" || value === "unread"
+														? (value as ViewerReadFilter)
+														: null,
+										});
+									}}
+								>
+									<SelectTrigger
+										className="w-full"
+										aria-label="Filter by whether you have read the book"
+									>
+										<SelectValue placeholder="Any" />
+									</SelectTrigger>
+									<SelectContent alignItemWithTrigger={false}>
+										<SelectGroup>
+											<SelectItem value="any">Any</SelectItem>
+											{viewerReadFilterValues.map((value) => (
+												<SelectItem key={value} value={value}>
+													{value === "read" ? "Read" : "Not read"}
+												</SelectItem>
+											))}
+										</SelectGroup>
+									</SelectContent>
+								</Select>
+							</Field>
+							<ListingCheckboxList
+								legend="Your library"
+								options={viewerFilterKeys.map((key) => ({
+									id: key,
+									label: viewerBookFilterLabels[key],
+									checked: params[key] === true,
+									onCheckedChange: (checked) => {
+										toggleViewerFilter(key, checked);
+									},
+								}))}
+							/>
+						</>
 					) : null}
 
 					<ListingCheckboxList

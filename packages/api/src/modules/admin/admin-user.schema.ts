@@ -21,6 +21,7 @@ export const AdminUserCountsSchema = zod.object({
 	likes: zod.number().int().min(0),
 	feedbacks: zod.number().int().min(0),
 	participations: zod.number().int().min(0),
+	reads: zod.number().int().min(0),
 	favorites: zod.number().int().min(0),
 	shelves: zod.number().int().min(0),
 });
@@ -282,6 +283,7 @@ export const adminUserListSelect = {
 			likes: true,
 			feedbacks: true,
 			participations: true,
+			reads: true,
 			favorites: true,
 			shelves: true,
 		},

@@ -12,6 +12,7 @@ import { healthRouter } from "./modules/health/health.router";
 import { likeRouter } from "./modules/like/like.router";
 import { notificationRouter } from "./modules/notification/notification.router";
 import { postRouter } from "./modules/post/post.router";
+import { readRouter } from "./modules/read/read.router";
 import { rpRouter } from "./modules/rp/rp.router";
 import { shelfRouter } from "./modules/shelf/shelf.router";
 import { sittingRouter } from "./modules/sitting/sitting.router";
@@ -32,6 +33,7 @@ export const appRouter = {
 	like: likeRouter,
 	notification: notificationRouter,
 	post: postRouter,
+	read: readRouter,
 	shelf: shelfRouter,
 	storage: storageRouter,
 	sitting: sittingRouter,

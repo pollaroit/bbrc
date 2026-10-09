@@ -1,6 +1,5 @@
 import type { Database, Prisma } from "@bbrc/db";
 import { mergeWhereFragments } from "../../utils/searching";
-import { activeParticipationWhere } from "../sitting/participation-active";
 import { bookListRanging, bookListSearching } from "./book.listing";
 import type { GetBookListInput } from "./book.schema";
 import { resolveAuthorSlugsToNames } from "./book-author-filter";
@@ -23,18 +22,19 @@ export function buildBookListWhere(
 
 	const viewerFragments: Prisma.BookWhereInput[] = [];
 
-	if (viewerUserId && input.viewerRead) {
+	if (viewerUserId && input.viewerRead === "read") {
 		viewerFragments.push({
-			sittingsSelectedFor: {
-				some: {
-					status: { in: ["reading", "finished"] },
-					participants: {
-						some: {
-							userId: viewerUserId,
-							...activeParticipationWhere,
-							progress: "completed",
-						},
-					},
+			reads: {
+				some: { userId: viewerUserId },
+			},
+		});
+	}
+
+	if (viewerUserId && input.viewerRead === "unread") {
+		viewerFragments.push({
+			NOT: {
+				reads: {
+					some: { userId: viewerUserId },
 				},
 			},
 		});

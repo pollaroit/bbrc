@@ -14,13 +14,13 @@ import {
 import { orpc } from "@/utils/orpc";
 
 const booksGridClassName =
-	"grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3";
+	"grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3";
 
 function BooksListSkeleton() {
 	return (
 		<div className={booksGridClassName} aria-hidden>
 			{Array.from({ length: 6 }, (_, index) => (
-				<Skeleton key={index} className="h-36 w-full" />
+				<Skeleton key={index} className="h-44 w-full" />
 			))}
 		</div>
 	);
@@ -36,9 +36,9 @@ export function BooksList() {
 		enabled: Boolean(session?.user),
 	});
 
-	const completedSlugSet = useMemo(
-		() => new Set(engagementQuery.data?.completedSlugs ?? []),
-		[engagementQuery.data?.completedSlugs],
+	const readSlugSet = useMemo(
+		() => new Set(engagementQuery.data?.readSlugs ?? []),
+		[engagementQuery.data?.readSlugs],
 	);
 
 	const favoriteSlugSet = useMemo(
@@ -104,7 +104,7 @@ export function BooksList() {
 			{isPending && filteredTotal == null ? (
 				<Skeleton className="h-5 w-24" aria-hidden />
 			) : countLabel ? (
-				<p className="text-muted-foreground text-sm tabular-nums">
+				<p className="border-border border-b pb-2 font-medium text-muted-foreground text-sm tabular-nums">
 					{countLabel}
 				</p>
 			) : null}
@@ -117,22 +117,22 @@ export function BooksList() {
 							: {
 									slotsUsed,
 									maxSlots,
-									canFavorite: completedSlugSet.has(book.slug),
+									canFavorite: readSlugSet.has(book.slug),
 									isFavorite: favoriteSlugSet.has(book.slug),
 								};
 
-					const viewerCompletedRead = !session?.user
+					const viewerHasRead = !session?.user
 						? undefined
 						: engagementLoading
 							? null
-							: completedSlugSet.has(book.slug);
+							: readSlugSet.has(book.slug);
 
 					return (
 						<li key={book.slug} className="min-h-0">
 							<BookCard
 								book={book}
 								listEngagement={listEngagement}
-								viewerCompletedRead={viewerCompletedRead}
+								viewerHasRead={viewerHasRead}
 							/>
 						</li>
 					);

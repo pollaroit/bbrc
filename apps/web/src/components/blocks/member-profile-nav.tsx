@@ -10,11 +10,16 @@ type MemberProfileNavProps = {
 	isOwnProfile?: boolean;
 };
 
-function profileTabHref(
-	username: string,
-	segment: "readings" | "posts" | "feedbacks" | "shelves" | "reels",
-) {
-	if (segment === "readings") {
+type ProfileSegment =
+	| "sittings"
+	| "reads"
+	| "posts"
+	| "feedbacks"
+	| "shelves"
+	| "reels";
+
+function profileTabHref(username: string, segment: ProfileSegment) {
+	if (segment === "sittings") {
 		return `/users/${username}` as Route;
 	}
 	return `/users/${username}/${segment}` as Route;
@@ -23,7 +28,10 @@ function profileTabHref(
 function activeTab(pathname: string, username: string): string {
 	const base = `/users/${username}`;
 	if (pathname === base || pathname === `${base}/`) {
-		return "readings";
+		return "sittings";
+	}
+	if (pathname.startsWith(`${base}/reads`)) {
+		return "reads";
 	}
 	if (pathname.startsWith(`${base}/posts`)) {
 		return "posts";
@@ -37,7 +45,7 @@ function activeTab(pathname: string, username: string): string {
 	if (pathname.startsWith(`${base}/reels`)) {
 		return "reels";
 	}
-	return "readings";
+	return "sittings";
 }
 
 export function MemberProfileNav({
@@ -52,11 +60,18 @@ export function MemberProfileNav({
 			<Tabs value={current}>
 				<TabsList variant="line" className="h-auto w-full justify-start gap-0">
 					<TabsTrigger
-						value="readings"
+						value="sittings"
 						nativeButton={false}
-						render={<Link href={profileTabHref(username, "readings")} />}
+						render={<Link href={profileTabHref(username, "sittings")} />}
 					>
-						Readings
+						Sittings
+					</TabsTrigger>
+					<TabsTrigger
+						value="reads"
+						nativeButton={false}
+						render={<Link href={profileTabHref(username, "reads")} />}
+					>
+						Reads
 					</TabsTrigger>
 					<TabsTrigger
 						value="posts"

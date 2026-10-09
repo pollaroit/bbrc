@@ -93,11 +93,39 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 	const dynamicEntries = useMemo(() => {
 		const entries: { label: string; path: string; description: string }[] = [];
 		if (bookSlug.trim()) {
-			entries.push({
-				label: "Book",
-				path: `/books/${bookSlug.trim()}`,
-				description: "Library detail page OG.",
-			});
+			const book = bookSlug.trim();
+			entries.push(
+				{
+					label: "Book overview",
+					path: `/books/${book}`,
+					description: "Library detail overview OG.",
+				},
+				{
+					label: "Book about",
+					path: `/books/${book}/about`,
+					description: "Book about tab OG.",
+				},
+				{
+					label: "Book documents",
+					path: `/books/${book}/documents`,
+					description: "Book documents tab OG.",
+				},
+				{
+					label: "Book shelves",
+					path: `/books/${book}/shelves`,
+					description: "Book shelves tab OG.",
+				},
+				{
+					label: "Book reviews",
+					path: `/books/${book}/reviews`,
+					description: "Book reviews tab OG.",
+				},
+				{
+					label: "Book reads",
+					path: `/books/${book}/reads`,
+					description: "Book reads tab OG.",
+				},
+			);
 		}
 		if (postSlug.trim()) {
 			const post = postSlug.trim();
@@ -154,9 +182,14 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 			const u = username.trim();
 			entries.push(
 				{
-					label: "Member",
+					label: "Member sittings",
 					path: `/users/${u}`,
-					description: "Member profile OG.",
+					description: "Member profile (sittings tab) OG.",
+				},
+				{
+					label: "Member reads",
+					path: `/users/${u}/reads`,
+					description: "Books this member has read.",
 				},
 				{
 					label: "XP",

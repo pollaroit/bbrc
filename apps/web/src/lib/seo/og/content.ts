@@ -347,6 +347,35 @@ export async function resolveOgImageContent(
 	}
 
 	if (section === "books") {
+		const bookTab = rest[0];
+		const BOOK_TAB_OG: Record<
+			string,
+			{ label: string; description: (title: string) => string }
+		> = {
+			about: {
+				label: "About",
+				description: (title) =>
+					`Excerpt, subjects, and catalog details for ${title}.`,
+			},
+			documents: {
+				label: "Documents",
+				description: (title) => `Member documents linked to ${title}.`,
+			},
+			shelves: {
+				label: "Shelves",
+				description: (title) => `Club shelves that include ${title}.`,
+			},
+			reviews: {
+				label: "Reviews",
+				description: (title) => `Member reviews and ratings for ${title}.`,
+			},
+			reads: {
+				label: "Reads",
+				description: (title) =>
+					`Members who finished ${title} and the editions they read.`,
+			},
+		};
+
 		try {
 			const book = await getBookBySlug(slug, db);
 			const reviewCount = await db.feedback.count({
@@ -369,6 +398,28 @@ export async function resolveOgImageContent(
 			}
 			if (book.status) {
 				highlights.push(book.status.replaceAll("_", " "));
+			}
+
+			const tabMeta = bookTab ? BOOK_TAB_OG[bookTab] : undefined;
+			if (tabMeta && rest.length === 1) {
+				return {
+					kind: "Book",
+					title: `${book.title} · ${tabMeta.label}`,
+					description: truncateDescription(tabMeta.description(book.title)),
+					highlights,
+				};
+			}
+
+			if (rest.length > 0) {
+				return {
+					kind: "Book",
+					title: book.title,
+					description: truncateDescription(
+						book.excerpt?.trim() ||
+							`In the BBRC library · first published ${book.publishedIn ?? "—"}`,
+					),
+					highlights,
+				};
 			}
 
 			return {

@@ -147,6 +147,7 @@ export const ListAdminBooksInputSchema = adminBookListQueryShape
 	.superRefine(adminBookListQueryRefine);
 
 export const AdminBookListCountsSchema = z.object({
+	reads: z.number().int().min(0),
 	favorites: z.number().int().min(0),
 	feedbacks: z.number().int().min(0),
 	shelfBooks: z.number().int().min(0),
@@ -265,6 +266,7 @@ export const adminBookListSelect = {
 	},
 	_count: {
 		select: {
+			reads: true,
 			favorites: true,
 			feedbacks: true,
 			shelfBooks: true,

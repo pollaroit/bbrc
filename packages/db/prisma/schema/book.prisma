@@ -48,6 +48,7 @@ model Book {
   shelfBooks ShelfBook[]
   sittingsSelectedFor Sitting[] @relation("SittingSelectedBook")
   documents           Document[]
+  reads               Read[]
 
   /// @zod.uuid("Invalid UUID")
   requestedById String? @map("requested_by_id")

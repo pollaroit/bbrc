@@ -7,7 +7,8 @@
 		"./models/*": "./src/generated/schemas/models/*.schema.ts",
 		"./enums": "./src/generated/schemas/enums/index.ts",
 		"./enums/*": "./src/generated/schemas/enums/*.schema.ts",
-		"./listing/*": "./src/listing/*.ts"
+		"./listing/*": "./src/listing/*.ts",
+		"./read-dates": "./src/read-dates.ts"
 	},
 	"scripts": {
 		"check-types": "tsc --noEmit",

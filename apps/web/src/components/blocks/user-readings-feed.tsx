@@ -61,10 +61,10 @@ export function UserReadingsFeed({ username }: UserReadingsFeedProps) {
 				void refetch();
 			}}
 			isEmpty={items.length === 0}
-			emptyTitle="No readings yet"
-			emptyDescription="When this member joins sittings, they will show up here."
+			emptyTitle="No sittings yet"
+			emptyDescription="When this member joins club sittings, they show up here."
 			loadingContent={<UserReadingsFeedSkeleton />}
-			endMessage="End of reading history."
+			endMessage="End of sitting history."
 		>
 			<ul className="flex flex-col gap-4">
 				{items.map((item) => (

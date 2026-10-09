@@ -1,0 +1,28 @@
+/// Per-member “has read this book” (no in-progress state — row exists or it does not).
+model Read {
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid book id")
+  bookId String @map("book_id")
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  /// Flexible partial dates (year / month / day). Validated in app via Zod.
+  readStart Json? @map("read_start")
+  readEnd   Json? @map("read_end")
+
+  /// Open Library edition OLID (e.g. `OL123456M`), optional.
+  /// @zod.import(["import { isOpenLibraryEditionOlid } from '@bbrc/shared'"])
+  /// @zod.refine((v) => v == null || isOpenLibraryEditionOlid(v), { message: "Invalid Open Library edition ID" })
+  editionId String? @map("edition_id")
+
+  @@id([userId, bookId])
+  @@index([bookId])
+  @@index([userId])
+  @@index([editionId])
+  @@map("member_read")
+}

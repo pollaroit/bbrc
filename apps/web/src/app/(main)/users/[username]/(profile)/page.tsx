@@ -26,7 +26,7 @@ export async function generateMetadata({
 
 		return buildPageMetadata({
 			title: `${user.name} (@${user.username})`,
-			description: `${user.name}'s readings, posts, and book feedback on BBRC.`,
+			description: `${user.name}'s club sittings, reads, posts, and feedback on BBRC.`,
 			path: `/users/${user.username}`,
 			openGraph: { type: "profile" },
 		});

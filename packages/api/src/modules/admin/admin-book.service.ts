@@ -168,6 +168,7 @@ function mapAdminBookListRow(
 		requestedBy: row.requestedBy,
 		approvedBy: row.approvedBy,
 		counts: {
+			reads: row._count.reads,
 			favorites: row._count.favorites,
 			feedbacks: row._count.feedbacks,
 			shelfBooks: row._count.shelfBooks,
