@@ -138,6 +138,8 @@ export const CreateSittingInputSchema = zod
 			.array(UserSchema.shape.id)
 			.min(1, "At least one participant is required"),
 		poll: CreateSittingPollInputSchema.default({}),
+		/** Reviewed poll options from the admin create flow; omit to auto-draw. */
+		optionBookIds: zod.array(BookSchema.shape.id).optional(),
 	})
 	.superRefine((value, ctx) => {
 		refinePollConfig(value.poll, ctx, ["poll"]);
@@ -216,13 +218,69 @@ export const SittingPollSummarySchema = PollSchema.pick({
 	deadline: PollStoredDeadlineSchema,
 });
 
-export const SittingPollOptionBookSchema = BookWithRequestedBySchema;
+export const SittingPollOptionBookSchema = BookWithRequestedBySchema.extend({
+	id: BookSchema.shape.id,
+});
 
 export const SittingPollOptionSchema = zod.object({
 	id: zod.uuid(),
 	voteCount: zod.number().int().min(0),
+	/** Participants (active on this sitting) who marked this book read. */
+	participantReadCount: zod.number().int().min(0),
+	/** Signed-in viewer has marked this book read (false when anonymous). */
+	viewerHasRead: zod.boolean(),
 	book: SittingPollOptionBookSchema,
 });
+
+export const SittingPollPreviewOptionSchema = zod.object({
+	book: SittingPollOptionBookSchema,
+	participantReadCount: zod.number().int().min(0),
+});
+
+export const PreviewSittingPollOptionsInputSchema = zod
+	.object({
+		participantUserIds: CreateSittingInputSchema.shape.participantUserIds,
+		poll: CreateSittingPollInputSchema.default({}),
+	})
+	.superRefine((value, ctx) => {
+		refinePollConfig(value.poll, ctx, ["poll"]);
+	});
+
+export const PreviewSittingPollOptionsOutputSchema = zod.object({
+	options: zod.array(SittingPollPreviewOptionSchema),
+	eligiblePoolSize: zod.number().int().min(0),
+	usedUniformFallback: zod.boolean(),
+});
+
+export type PreviewSittingPollOptionsInput = z.infer<
+	typeof PreviewSittingPollOptionsInputSchema
+>;
+export type PreviewSittingPollOptionsOutput = z.infer<
+	typeof PreviewSittingPollOptionsOutputSchema
+>;
+
+export const ReplaceSittingPollPreviewOptionInputSchema = zod
+	.object({
+		participantUserIds: CreateSittingInputSchema.shape.participantUserIds,
+		poll: CreateSittingPollInputSchema.default({}),
+		currentOptionBookIds: zod.array(BookSchema.shape.id).min(2),
+		replaceBookId: BookSchema.shape.id,
+	})
+	.superRefine((value, ctx) => {
+		refinePollConfig(value.poll, ctx, ["poll"]);
+	});
+
+export const ReplaceSittingPollPreviewOptionOutputSchema = zod.object({
+	option: SittingPollPreviewOptionSchema,
+	usedUniformFallback: zod.boolean(),
+});
+
+export type ReplaceSittingPollPreviewOptionInput = z.infer<
+	typeof ReplaceSittingPollPreviewOptionInputSchema
+>;
+export type ReplaceSittingPollPreviewOptionOutput = z.infer<
+	typeof ReplaceSittingPollPreviewOptionOutputSchema
+>;
 
 export const SittingPollDetailSchema = SittingPollSummarySchema.extend({
 	options: zod.array(SittingPollOptionSchema),
@@ -406,6 +464,43 @@ export type GetPollOptionVotesInput = z.infer<
 >;
 export type GetPollOptionVotesOutput = z.infer<
 	typeof GetPollOptionVotesOutputSchema
+>;
+
+export const GetPollOptionReadersInputSchema = zod.object({
+	pollOptionId: zod.uuid(),
+});
+
+export const PollOptionReaderSchema = zod.object({
+	user: SittingParticipantSummarySchema.pick({
+		username: true,
+		name: true,
+		image: true,
+		status: true,
+	}),
+	readRecordedAt: zod.coerce.date(),
+});
+
+export const GetPollOptionReadersOutputSchema = zod.object({
+	bookTitle: zod.string(),
+	participantCount: zod.number().int().min(0),
+	readers: zod.array(PollOptionReaderSchema),
+});
+
+export type GetPollOptionReadersInput = z.infer<
+	typeof GetPollOptionReadersInputSchema
+>;
+export type GetPollOptionReadersOutput = z.infer<
+	typeof GetPollOptionReadersOutputSchema
+>;
+
+/** Before a sitting exists: list participants (from create form) who read a poll book. */
+export const GetSittingPollPreviewReadersInputSchema = zod.object({
+	bookId: BookSchema.shape.id,
+	participantUserIds: CreateSittingInputSchema.shape.participantUserIds,
+});
+
+export type GetSittingPollPreviewReadersInput = z.infer<
+	typeof GetSittingPollPreviewReadersInputSchema
 >;
 
 export const GetPollVotesByUserInputSchema = zod.object({

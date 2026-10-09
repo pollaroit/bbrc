@@ -40,7 +40,7 @@ export async function generateMetadata({
 				? `Book poll · ${sitting.displayName}`
 				: `Voting results · ${sitting.displayName}`,
 			description: isOpen
-				? `Rank wishlist books for this BBRC sitting. ${sitting.poll.options.length} options · ${pollVotes} votes so far.`
+				? `Vote on wishlist books for this BBRC sitting. ${sitting.poll.options.length} options · ${pollVotes} selections so far.`
 				: `Archived poll results for ${sitting.displayName}.`,
 			path: `/sittings/${sitting.slug}/vote`,
 		});
@@ -77,6 +77,7 @@ export default async function SittingVotePage({
 				sittingSlug={sitting.slug}
 				sittingStatus={sitting.status}
 				initialPoll={sitting.poll}
+				participantCount={participantUserIds.length}
 			/>
 			<SittingPollSection
 				sittingSlug={sitting.slug}

@@ -1,6 +1,7 @@
 import {
 	type CreateSittingInput,
 	CreateSittingInputSchema,
+	type PreviewSittingPollOptionsInput,
 } from "@bbrc/api/modules/sitting/sitting.schema";
 import { defaultPollDeadline } from "@bbrc/shared";
 import zod from "zod";
@@ -47,19 +48,34 @@ export function defaultCreatePollDeadline(): Date {
 	return defaultPollDeadline();
 }
 
+function pollFromFormValues(values: CreateSittingFormValues) {
+	return {
+		minPages: values.poll.minPages,
+		maxPages: values.poll.maxPages,
+		take: values.poll.take,
+		minChoices: values.poll.minChoices,
+		maxChoices: values.poll.maxChoices,
+	};
+}
+
+export function toPreviewSittingPollOptionsInput(
+	values: CreateSittingFormValues,
+): PreviewSittingPollOptionsInput {
+	return {
+		participantUserIds: values.participantUserIds,
+		poll: pollFromFormValues(values),
+	};
+}
+
 export function toCreateSittingInput(
 	values: CreateSittingFormValues,
+	optionBookIds: string[],
 ): CreateSittingInput {
 	return {
 		pollDeadline: values.pollDeadline,
 		participantUserIds: values.participantUserIds,
-		poll: {
-			minPages: values.poll.minPages,
-			maxPages: values.poll.maxPages,
-			take: values.poll.take,
-			minChoices: values.poll.minChoices,
-			maxChoices: values.poll.maxChoices,
-		},
+		poll: pollFromFormValues(values),
+		optionBookIds,
 	};
 }
 

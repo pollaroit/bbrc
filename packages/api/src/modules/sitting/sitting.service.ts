@@ -30,7 +30,10 @@ import {
 	notifySittingPollClosed,
 	notifySittingPollStarted,
 } from "../notification/notification-triggers";
-import { ensureReadForSittingCompletion } from "../read/read.service";
+import {
+	ensureReadForSittingCompletion,
+	syncParticipationWithExistingReadsForSelectedBook,
+} from "../read/read.service";
 import { calculateRpPointsDelta } from "../rp/rp.service";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardParticipationXp, awardPollVoteXp } from "../xp/xp.service";
@@ -53,6 +56,8 @@ import {
 	type CreateSittingInput,
 	type CreateSittingOutput,
 	type GetOngoingSittingOutput,
+	type GetPollOptionReadersInput,
+	type GetPollOptionReadersOutput,
 	type GetPollOptionVotesInput,
 	type GetPollOptionVotesOutput,
 	type GetPollVotesByUserInput,
@@ -60,9 +65,14 @@ import {
 	type GetSittingBySlugOutput,
 	type GetSittingListInput,
 	type GetSittingListOutput,
+	type GetSittingPollPreviewReadersInput,
 	getSittingBySlugFields,
 	getSittingListFields,
 	getSittingRemovedParticipantFields,
+	type PreviewSittingPollOptionsInput,
+	type PreviewSittingPollOptionsOutput,
+	type ReplaceSittingPollPreviewOptionInput,
+	type ReplaceSittingPollPreviewOptionOutput,
 	type ResendSittingTelegramPollOpenInput,
 	type ResendSittingTelegramPollOpenOutput,
 	type SendSittingTelegramProgressPollInput,
@@ -81,6 +91,14 @@ import {
 	type UpdateSittingDeadlinesOutput,
 } from "./sitting.schema";
 import { applyFinishedSittingParticipantEffects } from "./sitting-finish-participant-effects";
+import {
+	assertParticipantsExist,
+	assertValidPollOptionBookIds,
+	drawInitialPollBookIds,
+	drawReplacementPollBookId,
+	loadPollDrawContext,
+	loadPollPreviewBooks,
+} from "./sitting-poll-pool";
 import {
 	cancelSittingReadingTelegramJobs,
 	syncSittingReadingTelegramJobs,
@@ -128,17 +146,25 @@ const SITTING_SLUG_NOUNS = [
 	"table",
 ] as const;
 
-function shuffleInPlace<T>(items: T[]): void {
-	for (let index = items.length - 1; index > 0; index -= 1) {
-		const swapIndex = Math.floor(Math.random() * (index + 1));
-		const current = items[index];
-		const swap = items[swapIndex];
-		if (current === undefined || swap === undefined) {
-			continue;
-		}
-		items[index] = swap;
-		items[swapIndex] = current;
+async function loadParticipantReadCountsByBookId(
+	participantUserIds: string[],
+	bookIds: string[],
+	db: Database,
+): Promise<Map<string, number>> {
+	if (participantUserIds.length === 0 || bookIds.length === 0) {
+		return new Map();
 	}
+
+	const rows = await db.read.groupBy({
+		by: ["bookId"],
+		where: {
+			userId: { in: participantUserIds },
+			bookId: { in: bookIds },
+		},
+		_count: { _all: true },
+	});
+
+	return new Map(rows.map((row) => [row.bookId, row._count._all]));
 }
 
 function randomSittingSlugSeed(): string {
@@ -214,6 +240,8 @@ function mapSittingDetail(
 	reviews: GetSittingBySlugOutput["reviews"],
 	pollVoterCount: number,
 	removedParticipants: GetSittingBySlugOutput["removedParticipants"],
+	participantReadCountByBookId: Map<string, number>,
+	viewerReadBookIds: ReadonlySet<string>,
 ): GetSittingBySlugOutput {
 	const bookPages = row.selectedBook?.pages ?? null;
 
@@ -240,6 +268,9 @@ function mapSittingDetail(
 					options: row.poll.options.map((option) => ({
 						id: option.id,
 						voteCount: option._count.votes,
+						participantReadCount:
+							participantReadCountByBookId.get(option.book.id) ?? 0,
+						viewerHasRead: viewerReadBookIds.has(option.book.id),
 						book: option.book,
 					})),
 					myVoteOptionIds,
@@ -401,6 +432,14 @@ export async function getSittingBySlug(
 		});
 	}
 
+	if (sitting.status === "reading" && sitting.selectedBookId) {
+		await syncParticipationWithExistingReadsForSelectedBook(
+			db,
+			sitting.id,
+			sitting.selectedBookId,
+		);
+	}
+
 	const userId = session?.user.id;
 	const myVoteOptionIds =
 		userId && sitting.poll
@@ -430,6 +469,28 @@ export async function getSittingBySlug(
 					})
 				).length
 			: 0;
+
+	const pollBookIds =
+		sitting.poll?.options.map((option) => option.book.id) ?? [];
+	const participantReadCountByBookId = await loadParticipantReadCountsByBookId(
+		participantUserIds,
+		pollBookIds,
+		db,
+	);
+
+	const viewerReadBookIds = new Set<string>();
+	if (userId && pollBookIds.length > 0) {
+		const viewerReads = await db.read.findMany({
+			where: {
+				userId,
+				bookId: { in: pollBookIds },
+			},
+			select: { bookId: true },
+		});
+		for (const read of viewerReads) {
+			viewerReadBookIds.add(read.bookId);
+		}
+	}
 
 	let removedParticipants: GetSittingBySlugOutput["removedParticipants"] = [];
 
@@ -469,6 +530,8 @@ export async function getSittingBySlug(
 		reviews,
 		pollVoterCount,
 		removedParticipants,
+		participantReadCountByBookId,
+		viewerReadBookIds,
 	);
 }
 
@@ -545,6 +608,67 @@ async function markPollWinnerBookAsReading(
 	});
 }
 
+export async function previewSittingPollOptions(
+	input: PreviewSittingPollOptionsInput,
+	db: Database,
+): Promise<PreviewSittingPollOptionsOutput> {
+	const context = await loadPollDrawContext(
+		input.participantUserIds,
+		input.poll,
+		db,
+	);
+
+	const { bookIds, usedUniformFallback } = drawInitialPollBookIds(context);
+	const options = await loadPollPreviewBooks(
+		bookIds,
+		context.readCountByBookId,
+		db,
+	);
+
+	return {
+		options,
+		eligiblePoolSize: context.eligibleBookIds.length,
+		usedUniformFallback,
+	};
+}
+
+export async function replaceSittingPollPreviewOption(
+	input: ReplaceSittingPollPreviewOptionInput,
+	db: Database,
+): Promise<ReplaceSittingPollPreviewOptionOutput> {
+	const context = await loadPollDrawContext(
+		input.participantUserIds,
+		input.poll,
+		db,
+	);
+
+	if (input.currentOptionBookIds.length !== context.take) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: `Expected ${context.take} current poll options`,
+		});
+	}
+
+	const { bookId, usedUniformFallback } = drawReplacementPollBookId(
+		context,
+		input.currentOptionBookIds,
+		input.replaceBookId,
+	);
+
+	const [option] = await loadPollPreviewBooks(
+		[bookId],
+		context.readCountByBookId,
+		db,
+	);
+
+	if (!option) {
+		throw new ORPCError("INTERNAL_SERVER_ERROR", {
+			message: "Could not load replacement book",
+		});
+	}
+
+	return { option, usedUniformFallback };
+}
+
 export async function createSitting(
 	input: CreateSittingInput,
 	db: Database,
@@ -561,49 +685,23 @@ export async function createSitting(
 		});
 	}
 
-	const uniqueParticipantIds = [...new Set(input.participantUserIds)];
-
-	const users = await db.user.findMany({
-		where: { id: { in: uniqueParticipantIds } },
-		select: { id: true },
-	});
-
-	if (users.length !== uniqueParticipantIds.length) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "One or more selected participants do not exist",
-		});
-	}
-
-	const take = input.poll.take ?? 10;
+	const context = await loadPollDrawContext(
+		input.participantUserIds,
+		input.poll,
+		db,
+	);
+	const uniqueParticipantIds = context.participantIds;
+	const take = context.take;
 	const minChoices = input.poll.minChoices ?? 1;
 	const maxChoices = input.poll.maxChoices ?? take;
 
-	const bookWhere: Prisma.BookWhereInput = {
-		status: "wishlist",
-	};
-
-	if (input.poll.minPages != null || input.poll.maxPages != null) {
-		bookWhere.pages = {
-			gte: input.poll.minPages ?? undefined,
-			lte: input.poll.maxPages ?? undefined,
-		};
+	let pollBookIds: string[];
+	if (input.optionBookIds != null) {
+		await assertValidPollOptionBookIds(input.optionBookIds, context, db);
+		pollBookIds = input.optionBookIds;
+	} else {
+		pollBookIds = drawInitialPollBookIds(context).bookIds;
 	}
-
-	const wishlistBooks = await db.book.findMany({
-		where: bookWhere,
-		select: { id: true },
-	});
-
-	if (wishlistBooks.length < take) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `Not enough wishlist books match the poll filters (need at least ${take})`,
-			data: { available: wishlistBooks.length, take },
-		});
-	}
-
-	const selectedBooks = [...wishlistBooks];
-	shuffleInPlace(selectedBooks);
-	const pollBookIds = selectedBooks.slice(0, take).map((book) => book.id);
 	const clubTimeZone = resolveClubTimeZone();
 	const pollDeadline = input.pollDeadline
 		? snapPollDeadlineOnOrAfter(input.pollDeadline, clubTimeZone)
@@ -880,6 +978,12 @@ export async function transitionSitting(
 			});
 
 			await markPollWinnerBookAsReading(tx, selectedOption.bookId);
+
+			await syncParticipationWithExistingReadsForSelectedBook(
+				tx,
+				sitting.id,
+				selectedOption.bookId,
+			);
 
 			return sittingUpdate;
 		});
@@ -1519,6 +1623,133 @@ export async function getPollOptionVotes(
 			maxChoices,
 		})),
 	};
+}
+
+async function loadPollOptionReadersForParticipants(
+	bookId: string,
+	participantUserIds: string[],
+	db: Database,
+	bookTitle: string,
+): Promise<GetPollOptionReadersOutput> {
+	const uniqueParticipantIds = [...new Set(participantUserIds)];
+
+	if (uniqueParticipantIds.length === 0) {
+		return {
+			bookTitle,
+			participantCount: 0,
+			readers: [],
+		};
+	}
+
+	const reads = await db.read.findMany({
+		where: {
+			bookId,
+			userId: { in: uniqueParticipantIds },
+		},
+		orderBy: { updatedAt: "desc" },
+		select: {
+			updatedAt: true,
+			user: {
+				select: {
+					username: true,
+					name: true,
+					image: true,
+					status: true,
+				},
+			},
+		},
+	});
+
+	return {
+		bookTitle,
+		participantCount: uniqueParticipantIds.length,
+		readers: reads.map((read) => ({
+			user: read.user,
+			readRecordedAt: read.updatedAt,
+		})),
+	};
+}
+
+export async function getSittingPollPreviewReaders(
+	input: GetSittingPollPreviewReadersInput,
+	db: Database,
+): Promise<GetPollOptionReadersOutput> {
+	const book = await db.book.findUnique({
+		where: { id: input.bookId },
+		select: { id: true, title: true },
+	});
+
+	if (!book) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Book not found",
+			data: { bookId: input.bookId },
+		});
+	}
+
+	await assertParticipantsExist(input.participantUserIds, db);
+
+	return loadPollOptionReadersForParticipants(
+		book.id,
+		input.participantUserIds,
+		db,
+		book.title,
+	);
+}
+
+export async function getPollOptionReaders(
+	input: GetPollOptionReadersInput,
+	userId: string,
+	isAdmin: boolean,
+	db: Database,
+): Promise<GetPollOptionReadersOutput> {
+	const option = await db.pollOption.findUnique({
+		where: { id: input.pollOptionId },
+		select: {
+			bookId: true,
+			book: {
+				select: { title: true },
+			},
+			poll: {
+				select: {
+					sitting: {
+						select: {
+							participants: {
+								where: activeParticipationWhere,
+								select: { userId: true },
+							},
+						},
+					},
+				},
+			},
+		},
+	});
+
+	if (!option) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Poll option not found",
+			data: { pollOptionId: input.pollOptionId },
+		});
+	}
+
+	const participantUserIds = option.poll.sitting.participants.map(
+		(participant) => participant.userId,
+	);
+
+	if (
+		!isAdmin &&
+		!participantUserIds.some((participantId) => participantId === userId)
+	) {
+		throw new ORPCError("FORBIDDEN", {
+			message: "Only sitting participants can view reader lists",
+		});
+	}
+
+	return loadPollOptionReadersForParticipants(
+		option.bookId,
+		participantUserIds,
+		db,
+		option.book.title,
+	);
 }
 
 export async function getPollVotesByUser(

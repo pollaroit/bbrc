@@ -97,6 +97,7 @@ export const BookRequestedBySchema = z.object({
 export type BookRequestedBy = z.infer<typeof BookRequestedBySchema>;
 
 export const getBookPollSelect = {
+	id: true,
 	...getBookListFields,
 	requestedBy: {
 		select: bookRequestedByFields,

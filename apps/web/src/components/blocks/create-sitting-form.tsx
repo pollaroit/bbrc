@@ -1,5 +1,6 @@
 "use client";
 
+import type { PreviewSittingPollOptionsOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
@@ -18,16 +19,19 @@ import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { CreateSittingPollReview } from "@/components/blocks/create-sitting-poll-review";
 import { SittingDeadlinePicker } from "@/components/blocks/sitting-deadline-picker";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
 import { useAppForm } from "@/hooks/use-app-form";
 import {
 	CreateSittingFormSchema,
+	type CreateSittingFormValues,
 	defaultCreateSittingFormValues,
 	toCreateSittingInput,
+	toPreviewSittingPollOptionsInput,
 } from "@/lib/create-sitting-form";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
 import { cn } from "@/lib/utils";
@@ -66,9 +70,18 @@ function useAllUsers() {
 	};
 }
 
+type ReviewState = Pick<
+	PreviewSittingPollOptionsOutput,
+	"options" | "eligiblePoolSize" | "usedUniformFallback"
+>;
+
 export function CreateSittingForm() {
 	const router = useRouter();
 	const { users, isPending: isLoadingUsers, isError, refetch } = useAllUsers();
+	const [step, setStep] = useState<"configure" | "review">("configure");
+	const [review, setReview] = useState<ReviewState | null>(null);
+	const [configureValues, setConfigureValues] =
+		useState<CreateSittingFormValues | null>(null);
 
 	const defaultParticipantIds = useMemo(
 		() =>
@@ -96,6 +109,14 @@ export function CreateSittingForm() {
 
 	const selectedIds = form.watch("participantUserIds");
 
+	const previewMutation = useMutation(
+		orpc.sitting.previewSittingPollOptions.mutationOptions({
+			onError: (error) => {
+				toast.error(error.message ?? "Could not draw poll options");
+			},
+		}),
+	);
+
 	const createMutation = useMutation(
 		orpc.sitting.createSitting.mutationOptions({
 			onSuccess: async (result) => {
@@ -115,6 +136,27 @@ export function CreateSittingForm() {
 		}),
 	);
 
+	if (step === "review" && configureValues != null && review != null) {
+		return (
+			<CreateSittingPollReview
+				formValues={configureValues}
+				initialOptions={review.options}
+				eligiblePoolSize={review.eligiblePoolSize}
+				initialUsedUniformFallback={review.usedUniformFallback}
+				participantCount={configureValues.participantUserIds.length}
+				confirmLoading={createMutation.isPending}
+				onBack={() => {
+					setStep("configure");
+				}}
+				onConfirm={(optionBookIds) => {
+					createMutation.mutate(
+						toCreateSittingInput(configureValues, optionBookIds),
+					);
+				}}
+			/>
+		);
+	}
+
 	function toggleParticipant(userId: string, checked: boolean) {
 		const next = checked
 			? [...new Set([...selectedIds, userId])]
@@ -127,7 +169,17 @@ export function CreateSittingForm() {
 		<form
 			className="flex max-w-2xl flex-col gap-8"
 			onSubmit={form.handleSubmit((values) => {
-				createMutation.mutate(toCreateSittingInput(values));
+				setConfigureValues(values);
+				previewMutation.mutate(toPreviewSittingPollOptionsInput(values), {
+					onSuccess: (result) => {
+						setReview({
+							options: result.options,
+							eligiblePoolSize: result.eligiblePoolSize,
+							usedUniformFallback: result.usedUniformFallback,
+						});
+						setStep("review");
+					},
+				});
 			})}
 		>
 			<FieldSet>
@@ -334,8 +386,8 @@ export function CreateSittingForm() {
 			</FieldSet>
 
 			<div className="flex flex-wrap gap-2">
-				<form.Submit loading={createMutation.isPending}>
-					Start sitting
+				<form.Submit loading={previewMutation.isPending}>
+					Continue to review
 				</form.Submit>
 				<Button
 					render={<Link href={"/sittings" as Route} />}

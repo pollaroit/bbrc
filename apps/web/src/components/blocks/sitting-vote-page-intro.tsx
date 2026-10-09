@@ -14,12 +14,14 @@ type SittingVotePageIntroProps = {
 	sittingSlug: string;
 	sittingStatus: GetSittingBySlugOutput["status"];
 	initialPoll: SittingPoll;
+	participantCount: number;
 };
 
 export function SittingVotePageIntro({
 	sittingSlug,
 	sittingStatus,
 	initialPoll,
+	participantCount,
 }: SittingVotePageIntroProps) {
 	const { data: sitting } = useQuery({
 		...orpc.sitting.getSittingBySlug.queryOptions({ input: sittingSlug }),
@@ -27,6 +29,7 @@ export function SittingVotePageIntro({
 
 	const poll = sitting?.poll ?? initialPoll;
 	const status = sitting?.status ?? sittingStatus;
+	const participants = sitting?.participants.length ?? participantCount;
 
 	const maxChoices = poll.maxChoices ?? poll.take;
 	const totalVotes = poll.options.reduce(
@@ -36,16 +39,16 @@ export function SittingVotePageIntro({
 	const isOpen = status === "voting";
 
 	return (
-		<header className="flex flex-col gap-4 border border-border bg-muted/30 p-4 sm:p-6">
-			<div className="flex flex-wrap items-start justify-between gap-3">
-				<div className="flex flex-col gap-2">
-					<h2 className="font-semibold text-xl tracking-tight sm:text-2xl">
+		<header className="flex flex-col gap-5 border border-border bg-card p-4 sm:p-6">
+			<div className="flex flex-wrap items-start justify-between gap-4">
+				<div className="flex max-w-prose flex-col gap-2">
+					<h1 className="font-semibold text-2xl tracking-tight sm:text-3xl">
 						{isOpen ? "Choose the club read" : "Voting results"}
-					</h2>
-					<p className="max-w-prose text-muted-foreground text-sm leading-relaxed">
+					</h1>
+					<p className="text-muted-foreground text-sm leading-relaxed">
 						{isOpen
-							? `Select between ${poll.minChoices} and ${maxChoices} wishlist books. You can change your picks until the poll closes.`
-							: "Final vote totals from this sitting's poll. The club pick is marked below."}
+							? `Pick ${poll.minChoices === maxChoices ? maxChoices : `${poll.minChoices} to ${maxChoices}`} wishlist books you would like the club to read. Poll options favor titles fewer participants have finished already.`
+							: "Final vote totals from this sitting's poll. The club pick is marked on the winning option."}
 					</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
@@ -66,36 +69,40 @@ export function SittingVotePageIntro({
 				</div>
 			</div>
 
-			<dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-				<div className="border border-border/60 bg-background/80 px-3 py-2">
+			<dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+				<div className="border border-border bg-muted/20 px-3 py-2.5">
 					<dt className="text-muted-foreground text-xs">
 						{isOpen ? "Closes" : "Closed"}
 					</dt>
-					<dd className="font-medium text-sm">
+					<dd className="font-medium text-sm leading-snug">
 						{formatDateTime(poll.deadline)}
 					</dd>
 				</div>
-				<div className="border border-border/60 bg-background/80 px-3 py-2">
-					<dt className="text-muted-foreground text-xs">Choices allowed</dt>
+				<div className="border border-border bg-muted/20 px-3 py-2.5">
+					<dt className="text-muted-foreground text-xs">Your ballot</dt>
 					<dd className="font-medium text-sm tabular-nums">
-						{poll.minChoices}–{maxChoices}
+						{poll.minChoices}–{maxChoices} books
 					</dd>
 				</div>
-				<div className="border border-border/60 bg-background/80 px-3 py-2">
+				<div className="border border-border bg-muted/20 px-3 py-2.5">
 					<dt className="text-muted-foreground text-xs">Page range</dt>
 					<dd className="font-medium text-sm tabular-nums">
 						{formatPollPageRange(poll.minPages, poll.maxPages)}
 					</dd>
 				</div>
-				<div className="border border-border/60 bg-background/80 px-3 py-2">
-					<dt className="text-muted-foreground text-xs">Total votes</dt>
-					<dd className="font-medium text-sm tabular-nums">{totalVotes}</dd>
+				<div className="border border-border bg-muted/20 px-3 py-2.5">
+					<dt className="text-muted-foreground text-xs">Participants</dt>
+					<dd className="font-medium text-sm tabular-nums">{participants}</dd>
 				</div>
-				<div className="border border-border/60 bg-background/80 px-3 py-2">
-					<dt className="text-muted-foreground text-xs">Total voters</dt>
+				<div className="border border-border bg-muted/20 px-3 py-2.5">
+					<dt className="text-muted-foreground text-xs">Ballots cast</dt>
 					<dd className="font-medium text-sm tabular-nums">
 						{poll.voterCount}
 					</dd>
+				</div>
+				<div className="border border-border bg-muted/20 px-3 py-2.5">
+					<dt className="text-muted-foreground text-xs">Total selections</dt>
+					<dd className="font-medium text-sm tabular-nums">{totalVotes}</dd>
 				</div>
 			</dl>
 		</header>

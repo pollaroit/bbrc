@@ -13,6 +13,7 @@ import {
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { BookCheck } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,6 +22,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BookRequestedByLine } from "@/components/blocks/book-requested-by";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
+import { PollOptionReadersDialog } from "@/components/blocks/poll-option-readers-dialog";
 import { PollOptionVotersDialog } from "@/components/blocks/poll-option-voters-dialog";
 import { PollVotesByVoterSection } from "@/components/blocks/poll-votes-by-voter-section";
 import { authClient } from "@/lib/auth-client";
@@ -93,6 +95,8 @@ export function SittingPollSection({
 		null,
 	);
 	const [adminVotersOptionCount, setAdminVotersOptionCount] = useState(0);
+	const [readersOptionId, setReadersOptionId] = useState<string | null>(null);
+	const [readersOptionCount, setReadersOptionCount] = useState(0);
 
 	const isAdmin = session?.user.isAdmin === true;
 
@@ -119,6 +123,10 @@ export function SittingPollSection({
 
 		return effectiveParticipantUserIds.includes(userId);
 	}, [effectiveParticipantUserIds, session?.user.id]);
+
+	const participantCount = effectiveParticipantUserIds.length;
+	const canOpenReadersList =
+		sittingStatus === "voting" && (isParticipant || isAdmin);
 
 	const canVoteBase =
 		!readonly &&
@@ -224,8 +232,9 @@ export function SittingPollSection({
 				</p>
 			) : canEditSelection ? (
 				<p className="text-muted-foreground text-sm">
-					Select between {poll.minChoices} and {maxChoices} wishlist books, then
-					save your votes.
+					Select between {poll.minChoices} and {maxChoices} books, then save
+					your ballot. Tap a row to toggle a choice; open a cover or title to
+					view the book.
 				</p>
 			) : hasSavedVotes && canVoteBase ? (
 				<p className="text-muted-foreground text-sm">
@@ -263,6 +272,11 @@ export function SittingPollSection({
 						showVoteBars && option.voteCount > 0
 							? option.voteCount / maxVoteCount
 							: 0;
+					const readCount = option.participantReadCount;
+					const readLabel =
+						participantCount > 0
+							? `${readCount} of ${participantCount} read`
+							: `${readCount} read`;
 
 					return (
 						<li key={option.id}>
@@ -287,13 +301,21 @@ export function SittingPollSection({
 									}
 								}}
 								className={cn(
-									"relative flex items-stretch gap-3 overflow-hidden border border-border p-3 transition-colors",
-									layout === "page" && "p-4 sm:gap-4",
-									canEditSelection && "cursor-pointer hover:bg-muted/40",
-									(checked || showAsVoted || isClubPick) &&
-										"border-primary/40 bg-muted/30",
+									"relative flex items-stretch gap-3 overflow-hidden border border-border p-3 pl-4 transition-colors",
+									layout === "page" && "p-4 pl-5 sm:gap-4",
+									canEditSelection && "cursor-pointer hover:bg-muted/30",
+									(checked || showAsVoted || isClubPick) && "bg-muted/25",
 								)}
 							>
+								<div
+									className={cn(
+										"pointer-events-none absolute inset-y-0 left-0 w-0.5",
+										checked || showAsVoted || isClubPick
+											? "bg-primary"
+											: "bg-border",
+									)}
+									aria-hidden
+								/>
 								{voteShare > 0 ? (
 									<div
 										className="pointer-events-none absolute inset-y-0 left-0 bg-primary/10"
@@ -349,6 +371,15 @@ export function SittingPollSection({
 											>
 												{option.book.title}
 											</Link>
+											{option.viewerHasRead ? (
+												<span
+													className="inline-flex shrink-0 text-emerald-700 dark:text-emerald-400"
+													title="You read this book"
+												>
+													<BookCheck className="size-4" aria-hidden />
+													<span className="sr-only">You read this book</span>
+												</span>
+											) : null}
 											{isClubPick ? (
 												<Badge variant="secondary">Club pick</Badge>
 											) : null}
@@ -365,43 +396,56 @@ export function SittingPollSection({
 											/>
 										) : null}
 									</div>
-									<div className="mt-auto flex flex-wrap items-end justify-between gap-2">
-										<BookStatusBadge status={option.book.status} />
-										<dl className="flex shrink-0 flex-col items-end gap-0.5 text-muted-foreground text-xs tabular-nums">
-											<div>
-												<dt className="sr-only">Open Library rating</dt>
-												<dd>
-													{option.book.openLibraryRating != null
-														? `${option.book.openLibraryRating.toFixed(1)} OL`
-														: "— OL"}
-												</dd>
-											</div>
-											<div>
-												<dt className="sr-only">Votes and pages</dt>
-												<dd>
-													{isAdmin && option.voteCount > 0 ? (
-														<button
-															type="button"
-															className="text-foreground underline-offset-2 hover:underline"
-															onClick={(event) => {
-																event.stopPropagation();
-																setAdminVotersOptionCount(option.voteCount);
-																setAdminVotersOptionId(option.id);
-															}}
-														>
-															{option.voteCount}{" "}
-															{option.voteCount === 1 ? "vote" : "votes"}
-														</button>
-													) : (
-														<>
-															{option.voteCount}{" "}
-															{option.voteCount === 1 ? "vote" : "votes"}
-														</>
-													)}{" "}
-													· {option.book.pages} pp
-												</dd>
-											</div>
-										</dl>
+									<div className="mt-auto flex flex-wrap items-end justify-between gap-3">
+										<div className="flex flex-wrap items-center gap-2">
+											<BookStatusBadge status={option.book.status} />
+											<span className="text-muted-foreground text-xs tabular-nums">
+												{option.book.openLibraryRating != null
+													? `${option.book.openLibraryRating.toFixed(1)} OL`
+													: "— OL"}{" "}
+												· {option.book.pages} pp
+											</span>
+										</div>
+										<div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs tabular-nums">
+											{canOpenReadersList ? (
+												<button
+													type="button"
+													className="text-foreground underline-offset-2 hover:underline"
+													onClick={(event) => {
+														event.stopPropagation();
+														setReadersOptionCount(readCount);
+														setReadersOptionId(option.id);
+													}}
+												>
+													{readLabel}
+												</button>
+											) : readCount > 0 ? (
+												<span className="text-muted-foreground">
+													{readLabel}
+												</span>
+											) : null}
+											<span className="text-muted-foreground">
+												{isAdmin && option.voteCount > 0 ? (
+													<button
+														type="button"
+														className="text-foreground underline-offset-2 hover:underline"
+														onClick={(event) => {
+															event.stopPropagation();
+															setAdminVotersOptionCount(option.voteCount);
+															setAdminVotersOptionId(option.id);
+														}}
+													>
+														{option.voteCount}{" "}
+														{option.voteCount === 1 ? "vote" : "votes"}
+													</button>
+												) : (
+													<>
+														{option.voteCount}{" "}
+														{option.voteCount === 1 ? "vote" : "votes"}
+													</>
+												)}
+											</span>
+										</div>
 									</div>
 								</div>
 							</div>
@@ -468,6 +512,17 @@ export function SittingPollSection({
 					voteCount={adminVotersOptionCount}
 					onDismiss={() => {
 						setAdminVotersOptionId(null);
+					}}
+				/>
+			) : null}
+
+			{canOpenReadersList ? (
+				<PollOptionReadersDialog
+					source="poll"
+					pollOptionId={readersOptionId}
+					readCount={readersOptionCount}
+					onDismiss={() => {
+						setReadersOptionId(null);
 					}}
 				/>
 			) : null}

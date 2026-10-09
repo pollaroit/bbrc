@@ -1,0 +1,237 @@
+import type { Database, Prisma } from "@bbrc/db";
+import { ORPCError } from "@orpc/server";
+import { getBookPollSelect } from "../book/book.schema";
+import type {
+	CreateSittingPollInput,
+	PreviewSittingPollOptionsOutput,
+} from "./sitting.schema";
+import {
+	pickOneWeightedPollBookId,
+	pickWeightedPollBookIds,
+} from "./sitting-poll-weighted-selection";
+
+export type PollDrawContext = {
+	take: number;
+	participantIds: string[];
+	eligibleBookIds: string[];
+	readCountByBookId: Map<string, number>;
+};
+
+export function resolvePollTake(poll: CreateSittingPollInput): number {
+	return poll.take ?? 10;
+}
+
+export function buildWishlistPollBookWhere(
+	poll: CreateSittingPollInput,
+): Prisma.BookWhereInput {
+	const bookWhere: Prisma.BookWhereInput = {
+		status: "wishlist",
+	};
+
+	if (poll.minPages != null || poll.maxPages != null) {
+		bookWhere.pages = {
+			gte: poll.minPages ?? undefined,
+			lte: poll.maxPages ?? undefined,
+		};
+	}
+
+	return bookWhere;
+}
+
+export async function assertParticipantsExist(
+	participantUserIds: string[],
+	db: Database,
+): Promise<string[]> {
+	const uniqueParticipantIds = [...new Set(participantUserIds)];
+
+	const users = await db.user.findMany({
+		where: { id: { in: uniqueParticipantIds } },
+		select: { id: true },
+	});
+
+	if (users.length !== uniqueParticipantIds.length) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "One or more selected participants do not exist",
+		});
+	}
+
+	return uniqueParticipantIds;
+}
+
+export async function loadPollDrawContext(
+	participantUserIds: string[],
+	poll: CreateSittingPollInput,
+	db: Database,
+): Promise<PollDrawContext> {
+	const participantIds = await assertParticipantsExist(participantUserIds, db);
+	const take = resolvePollTake(poll);
+	const bookWhere = buildWishlistPollBookWhere(poll);
+
+	const wishlistBooks = await db.book.findMany({
+		where: bookWhere,
+		select: { id: true },
+	});
+
+	if (wishlistBooks.length < take) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: `Not enough wishlist books match the poll filters (need at least ${take})`,
+			data: { available: wishlistBooks.length, take },
+		});
+	}
+
+	const eligibleBookIds = wishlistBooks.map((book) => book.id);
+	const readCountByBookId = await loadParticipantReadCountsByBookId(
+		participantIds,
+		eligibleBookIds,
+		db,
+	);
+
+	return {
+		take,
+		participantIds,
+		eligibleBookIds,
+		readCountByBookId,
+	};
+}
+
+async function loadParticipantReadCountsByBookId(
+	participantUserIds: string[],
+	bookIds: string[],
+	db: Database,
+): Promise<Map<string, number>> {
+	if (participantUserIds.length === 0 || bookIds.length === 0) {
+		return new Map();
+	}
+
+	const readRows = await db.read.findMany({
+		where: {
+			userId: { in: participantUserIds },
+			bookId: { in: bookIds },
+		},
+		select: { bookId: true },
+	});
+
+	const readCountByBookId = new Map<string, number>();
+	for (const row of readRows) {
+		readCountByBookId.set(
+			row.bookId,
+			(readCountByBookId.get(row.bookId) ?? 0) + 1,
+		);
+	}
+
+	return readCountByBookId;
+}
+
+export function drawInitialPollBookIds(context: PollDrawContext): {
+	bookIds: string[];
+	usedUniformFallback: boolean;
+} {
+	return pickWeightedPollBookIds(
+		context.eligibleBookIds,
+		context.readCountByBookId,
+		context.participantIds.length,
+		context.take,
+	);
+}
+
+export function drawReplacementPollBookId(
+	context: PollDrawContext,
+	currentOptionBookIds: string[],
+	replaceBookId: string,
+): { bookId: string; usedUniformFallback: boolean } {
+	if (!currentOptionBookIds.includes(replaceBookId)) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "The book to replace is not in the current option list",
+		});
+	}
+
+	const exclude = new Set(currentOptionBookIds);
+
+	const result = pickOneWeightedPollBookId(
+		context.eligibleBookIds,
+		exclude,
+		context.readCountByBookId,
+		context.participantIds.length,
+	);
+
+	const { bookId, usedUniformFallback } = result;
+
+	if (!bookId) {
+		throw new ORPCError("BAD_REQUEST", {
+			message:
+				"No other eligible wishlist books are available for this replacement",
+		});
+	}
+
+	return { bookId, usedUniformFallback };
+}
+
+type PollPreviewOption = PreviewSittingPollOptionsOutput["options"][number];
+
+export async function loadPollPreviewBooks(
+	bookIds: string[],
+	readCountByBookId: Map<string, number>,
+	db: Database,
+): Promise<PollPreviewOption[]> {
+	const books = await db.book.findMany({
+		where: { id: { in: bookIds } },
+		select: getBookPollSelect,
+	});
+
+	const byId = new Map(books.map((book) => [book.id, book]));
+
+	return bookIds.flatMap((id) => {
+		const book = byId.get(id);
+		if (!book) {
+			return [];
+		}
+
+		return [
+			{
+				book: book as PollPreviewOption["book"],
+				participantReadCount: readCountByBookId.get(id) ?? 0,
+			},
+		];
+	});
+}
+
+export async function assertValidPollOptionBookIds(
+	optionBookIds: string[],
+	context: PollDrawContext,
+	db: Database,
+): Promise<void> {
+	const unique = new Set(optionBookIds);
+
+	if (unique.size !== optionBookIds.length) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Poll options must not include duplicate books",
+		});
+	}
+
+	if (optionBookIds.length !== context.take) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: `Poll must have exactly ${context.take} options`,
+			data: { expected: context.take, received: optionBookIds.length },
+		});
+	}
+
+	const eligible = new Set(context.eligibleBookIds);
+	for (const bookId of optionBookIds) {
+		if (!eligible.has(bookId)) {
+			throw new ORPCError("BAD_REQUEST", {
+				message:
+					"One or more poll options are not eligible wishlist books for this configuration",
+			});
+		}
+	}
+
+	const found = await db.book.count({
+		where: { id: { in: optionBookIds } },
+	});
+
+	if (found !== optionBookIds.length) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "One or more poll option books were not found",
+		});
+	}
+}

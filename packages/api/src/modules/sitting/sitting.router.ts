@@ -9,6 +9,8 @@ import {
 	CreateSittingInputSchema,
 	CreateSittingOutputSchema,
 	GetOngoingSittingOutputSchema,
+	GetPollOptionReadersInputSchema,
+	GetPollOptionReadersOutputSchema,
 	GetPollOptionVotesInputSchema,
 	GetPollOptionVotesOutputSchema,
 	GetPollVotesByUserInputSchema,
@@ -16,6 +18,11 @@ import {
 	GetSittingBySlugOutputSchema,
 	GetSittingListInputSchema,
 	GetSittingListOutputSchema,
+	GetSittingPollPreviewReadersInputSchema,
+	PreviewSittingPollOptionsInputSchema,
+	PreviewSittingPollOptionsOutputSchema,
+	ReplaceSittingPollPreviewOptionInputSchema,
+	ReplaceSittingPollPreviewOptionOutputSchema,
 	ResendSittingTelegramPollOpenInputSchema,
 	ResendSittingTelegramPollOpenOutputSchema,
 	SendSittingTelegramProgressPollInputSchema,
@@ -37,11 +44,15 @@ import {
 	addSittingParticipant,
 	createSitting,
 	getOngoingSitting,
+	getPollOptionReaders,
 	getPollOptionVotes,
 	getPollVotesByUser,
 	getSittingBySlug,
 	getSittingList,
+	getSittingPollPreviewReaders,
+	previewSittingPollOptions,
 	removeSittingParticipant,
+	replaceSittingPollPreviewOption,
 	resendSittingTelegramPollOpen,
 	sendSittingTelegramProgressPoll,
 	submitPollVotes,
@@ -71,6 +82,20 @@ export const sittingRouter = {
 			async ({ context }) =>
 				await getOngoingSitting(context.db, context.session?.user.id),
 		),
+	previewSittingPollOptions: adminProcedure
+		.input(PreviewSittingPollOptionsInputSchema)
+		.output(PreviewSittingPollOptionsOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await previewSittingPollOptions(input, context.db),
+		),
+	replaceSittingPollPreviewOption: adminProcedure
+		.input(ReplaceSittingPollPreviewOptionInputSchema)
+		.output(ReplaceSittingPollPreviewOptionOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await replaceSittingPollPreviewOption(input, context.db),
+		),
 	createSitting: adminProcedure
 		.input(CreateSittingInputSchema)
 		.output(CreateSittingOutputSchema)
@@ -94,6 +119,24 @@ export const sittingRouter = {
 		.output(GetPollOptionVotesOutputSchema)
 		.handler(
 			async ({ input, context }) => await getPollOptionVotes(input, context.db),
+		),
+	getPollOptionReaders: notBannedProcedure
+		.input(GetPollOptionReadersInputSchema)
+		.output(GetPollOptionReadersOutputSchema)
+		.handler(async ({ input, context }) =>
+			getPollOptionReaders(
+				input,
+				context.session.user.id,
+				context.session.user.isAdmin === true,
+				context.db,
+			),
+		),
+	getSittingPollPreviewReaders: adminProcedure
+		.input(GetSittingPollPreviewReadersInputSchema)
+		.output(GetPollOptionReadersOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await getSittingPollPreviewReaders(input, context.db),
 		),
 	getPollVotesByUser: adminProcedure
 		.input(GetPollVotesByUserInputSchema)

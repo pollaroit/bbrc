@@ -1,4 +1,4 @@
-import { type Database, Prisma } from "@bbrc/db";
+import { type Database, type DatabaseTransaction, Prisma } from "@bbrc/db";
 import {
 	parseReadDateField,
 	parseReadDateFields,
@@ -103,6 +103,37 @@ export async function ensureReadForSittingCompletion(
 	}
 
 	await ensureUserReadBook(userId, sitting.selectedBookId, db);
+}
+
+/**
+ * When a sitting enters reading, participants who already marked the club pick
+ * read should show completed (bidirectional sync with member_read).
+ */
+export async function syncParticipationWithExistingReadsForSelectedBook(
+	db: Database | DatabaseTransaction,
+	sittingId: string,
+	bookId: string,
+): Promise<void> {
+	const reads = await db.read.findMany({
+		where: { bookId },
+		select: { userId: true },
+	});
+
+	if (reads.length === 0) {
+		return;
+	}
+
+	const readerUserIds = reads.map((read) => read.userId);
+
+	await db.participation.updateMany({
+		where: {
+			sittingId,
+			userId: { in: readerUserIds },
+			...activeParticipationWhere,
+			progress: { not: "completed" },
+		},
+		data: { progress: "completed" },
+	});
 }
 
 export async function getBookReadState(
