@@ -16,6 +16,11 @@ export const metadata: Metadata = buildPageMetadata({
 
 const settingsLinks = [
 	{
+		href: "/settings/accounts",
+		title: "Account connections",
+		description: "Link Telegram for club bot features.",
+	},
+	{
 		href: "/settings/notifications",
 		title: "Notifications",
 		description: "Bell alerts and one-time ntfy phone setup.",
@@ -31,6 +36,8 @@ export default async function SettingsPage() {
 		redirect("/sign-in" as Route);
 	}
 
+	const telegramLinked = Boolean(session.user.telegramUserId);
+
 	return (
 		<div className="mx-auto flex max-w-xl flex-col gap-8">
 			<div>
@@ -39,6 +46,27 @@ export default async function SettingsPage() {
 					Preferences for your account.
 				</p>
 			</div>
+
+			{!telegramLinked ? (
+				<section
+					className="border border-border bg-muted/30 px-4 py-4 text-sm"
+					aria-labelledby="telegram-nudge-heading"
+				>
+					<h2 id="telegram-nudge-heading" className="font-medium">
+						Connect Telegram
+					</h2>
+					<p className="mt-1 text-muted-foreground leading-relaxed">
+						Link your Telegram account so BBRC can recognize you in the club
+						group bot.{" "}
+						<Link
+							href={"/settings/accounts" as Route}
+							className="font-medium text-foreground underline underline-offset-4"
+						>
+							Account connections
+						</Link>
+					</p>
+				</section>
+			) : null}
 
 			<section
 				className="border border-border px-4 py-5"

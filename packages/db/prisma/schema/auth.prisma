@@ -27,6 +27,10 @@ model User {
   /// @zod.min(0, "RP must be a non-negative number")
   rp Int @default(0)
 
+  /// Telegram user id from Login Widget / bot (string for JSON-safe ids).
+  telegramUserId   String? @unique @map("telegram_user_id")
+  telegramUsername String? @map("telegram_username")
+
   sessions       Session[]
   accounts       Account[]
   participations Participation[]

@@ -8,6 +8,15 @@ export function resolveTelegramBotToken(): string | null {
 	return token || null;
 }
 
+/** Bot username without `@` — required for the Login Widget on the web. */
+export function resolveTelegramBotUsername(): string | null {
+	const username = process.env.TELEGRAM_BOT_USERNAME?.trim();
+	if (!username) {
+		return null;
+	}
+	return username.replace(/^@/, "");
+}
+
 export function resolveTelegramWebhookSecret(): string | null {
 	const secret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
 	return secret || null;

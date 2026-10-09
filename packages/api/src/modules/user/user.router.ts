@@ -1,4 +1,15 @@
-import { publicProcedure } from "../../procedures";
+import { protectedProcedure, publicProcedure } from "../../procedures";
+import {
+	GetTelegramLinkStatusOutputSchema,
+	LinkTelegramOutputSchema,
+	TelegramLoginWidgetInputSchema,
+	UnlinkTelegramOutputSchema,
+} from "./telegram-link.schema";
+import {
+	getTelegramLinkStatus,
+	linkTelegramAccount,
+	unlinkTelegramAccount,
+} from "./telegram-link.service";
 import {
 	GetUserByUsernameInputSchema,
 	GetUserByUsernameOutputSchema,
@@ -32,5 +43,21 @@ export const userRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await getUserParticipationList(input, context.db),
+		),
+	getTelegramLinkStatus: protectedProcedure
+		.output(GetTelegramLinkStatusOutputSchema)
+		.handler(async ({ context }) =>
+			getTelegramLinkStatus(context.session.user.id, context.db),
+		),
+	linkTelegram: protectedProcedure
+		.input(TelegramLoginWidgetInputSchema)
+		.output(LinkTelegramOutputSchema)
+		.handler(async ({ input, context }) =>
+			linkTelegramAccount(context.session.user.id, input, context.db),
+		),
+	unlinkTelegram: protectedProcedure
+		.output(UnlinkTelegramOutputSchema)
+		.handler(async ({ context }) =>
+			unlinkTelegramAccount(context.session.user.id, context.db),
 		),
 };
