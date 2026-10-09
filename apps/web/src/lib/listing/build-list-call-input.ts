@@ -4,6 +4,7 @@ type ListCallValue =
 	| boolean
 	| Date
 	| readonly string[]
+	| readonly number[]
 	| null
 	| undefined;
 

@@ -51,6 +51,16 @@ const resources = [
 		description: "Club feed posts, attachments, likes, and edits.",
 	},
 	{
+		href: "/admin/comments" as Route,
+		title: "Comments",
+		description: "Post and feedback threads, depth, likes, and edits.",
+	},
+	{
+		href: "/admin/documents" as Route,
+		title: "Documents",
+		description: "Book PDF submissions, review status, and languages.",
+	},
+	{
 		href: "/admin/facts/create" as Route,
 		title: "Fact reels",
 		description: "AI-assisted drafts and published reel inventory.",
@@ -72,7 +82,7 @@ export default async function AdminHubPage() {
 				<h1 className="font-bold text-2xl tracking-tight">Overview</h1>
 				<p className="max-w-2xl text-muted-foreground text-sm">
 					Admin views for club resources — members, catalog, reading cycles,
-					reviews, shelves, posts, and fact reels.
+					reviews, shelves, posts, comments, documents, and fact reels.
 				</p>
 			</div>
 

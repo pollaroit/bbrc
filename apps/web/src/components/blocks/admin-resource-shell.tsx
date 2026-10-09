@@ -90,6 +90,18 @@ export const adminPostTabs = [
 	{ href: "/admin/posts/stats" as Route, label: "Stats" },
 ] as const;
 
+export const adminCommentTabs = [
+	{ href: "/admin/comments" as Route, label: "Overview" },
+	{ href: "/admin/comments/list" as Route, label: "List" },
+	{ href: "/admin/comments/stats" as Route, label: "Stats" },
+] as const;
+
+export const adminDocumentTabs = [
+	{ href: "/admin/documents" as Route, label: "Overview" },
+	{ href: "/admin/documents/list" as Route, label: "List" },
+	{ href: "/admin/documents/stats" as Route, label: "Stats" },
+] as const;
+
 export const adminFactTabs = [
 	{ href: "/admin/facts/create" as Route, label: "Create" },
 	{ href: "/admin/facts/inventory" as Route, label: "Inventory" },

@@ -16,6 +16,10 @@ import { Crown } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
+import {
+	ADMIN_TABLE_MOBILE_MIN_WIDTH,
+	AdminListTableScroll,
+} from "@/components/blocks/admin-list-table-scroll";
 import { AdminUserRowActions } from "@/components/blocks/admin-user-row-actions";
 import { AdminUsersToolbar } from "@/components/blocks/admin-users-toolbar";
 import { UserAvatar } from "@/components/blocks/user-avatar";
@@ -83,8 +87,8 @@ export function AdminUsersTable() {
 				</>
 			) : (
 				<>
-					<div className="overflow-x-auto">
-						<Table>
+					<AdminListTableScroll>
+						<Table className={ADMIN_TABLE_MOBILE_MIN_WIDTH}>
 							<TableHeader>
 								<TableRow>
 									<TableHead>Member</TableHead>
@@ -217,7 +221,7 @@ export function AdminUsersTable() {
 								))}
 							</TableBody>
 						</Table>
-					</div>
+					</AdminListTableScroll>
 
 					<AdminListTableFooter
 						summary={`${data.metadata.total} members · Page ${data.metadata.page} of ${Math.max(data.metadata.totalPages, 1)}`}

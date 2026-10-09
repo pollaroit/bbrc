@@ -15,6 +15,10 @@ import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
+import {
+	ADMIN_TABLE_MOBILE_MIN_WIDTH,
+	AdminListTableScroll,
+} from "@/components/blocks/admin-list-table-scroll";
 import { AdminPostsToolbar } from "@/components/blocks/admin-posts-toolbar";
 import { adminPostsExportConfig } from "@/lib/admin-table-export/configs";
 import {
@@ -32,7 +36,9 @@ function formatDate(date: Date) {
 	}).format(date);
 }
 
-const POST_COLUMN_WIDTH = "w-[min(18rem,38vw)]";
+/** Override default table cell nowrap so long post text wraps inside fixed columns. */
+const WRAP_CELL =
+	"whitespace-normal break-words align-top [overflow-wrap:anywhere]";
 
 export function AdminPostsTable() {
 	const [params, setParams] = useAdminPostsListingSearchParams();
@@ -45,7 +51,7 @@ export function AdminPostsTable() {
 	);
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex min-w-0 flex-col gap-4">
 			<AdminPostsToolbar />
 
 			{isPending ? (
@@ -78,39 +84,57 @@ export function AdminPostsTable() {
 				</>
 			) : (
 				<>
-					<div className="overflow-x-auto">
-						<Table className="table-fixed">
+					<AdminListTableScroll>
+						<Table
+							className={`w-full table-fixed md:min-w-0 ${ADMIN_TABLE_MOBILE_MIN_WIDTH}`}
+						>
 							<TableHeader>
 								<TableRow>
-									<TableHead className={POST_COLUMN_WIDTH}>Post</TableHead>
-									<TableHead>Author</TableHead>
-									<TableHead className="hidden text-right tabular-nums md:table-cell">
+									<TableHead className={`${WRAP_CELL} w-[34%]`}>Post</TableHead>
+									<TableHead className={`${WRAP_CELL} w-[14%]`}>
+										Author
+									</TableHead>
+									<TableHead
+										className={`${WRAP_CELL} hidden w-[8%] text-right tabular-nums md:table-cell`}
+									>
 										Likes
 									</TableHead>
-									<TableHead className="hidden text-right tabular-nums md:table-cell">
+									<TableHead
+										className={`${WRAP_CELL} hidden w-[8%] text-right tabular-nums md:table-cell`}
+									>
 										Comments
 									</TableHead>
-									<TableHead className="hidden lg:table-cell">
+									<TableHead
+										className={`${WRAP_CELL} hidden w-[12%] lg:table-cell`}
+									>
 										Attachment
 									</TableHead>
-									<TableHead className="hidden lg:table-cell">Book</TableHead>
-									<TableHead className="hidden xl:table-cell">Posted</TableHead>
+									<TableHead
+										className={`${WRAP_CELL} hidden w-[14%] lg:table-cell`}
+									>
+										Book
+									</TableHead>
+									<TableHead
+										className={`${WRAP_CELL} hidden w-[12%] xl:table-cell`}
+									>
+										Posted
+									</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{data.items.map((post) => (
 									<TableRow key={post.id}>
-										<TableCell className={POST_COLUMN_WIDTH}>
+										<TableCell className={`${WRAP_CELL} max-w-0`}>
 											<div className="flex min-w-0 flex-col gap-0.5 overflow-hidden">
 												<Link
 													href={`/posts/${post.slug}` as Route}
-													className="block truncate text-sm hover:underline"
+													className="line-clamp-3 block text-sm hover:underline"
 													title={post.content.trim()}
 												>
 													{post.content.trim()}
 												</Link>
 												<p
-													className="truncate font-mono text-muted-foreground text-xs"
+													className="line-clamp-1 font-mono text-muted-foreground text-xs [overflow-wrap:anywhere]"
 													title={post.slug}
 												>
 													{post.slug}
@@ -118,34 +142,43 @@ export function AdminPostsTable() {
 												</p>
 											</div>
 										</TableCell>
-										<TableCell>
+										<TableCell className={`${WRAP_CELL} max-w-0`}>
 											<Link
 												href={`/users/${post.author.username}` as Route}
-												className="text-sm hover:underline"
+												className="line-clamp-2 block text-sm [overflow-wrap:anywhere] hover:underline"
 											>
 												@{post.author.username}
 											</Link>
 										</TableCell>
-										<TableCell className="hidden text-right tabular-nums md:table-cell">
+										<TableCell
+											className={`${WRAP_CELL} hidden text-right tabular-nums md:table-cell`}
+										>
 											{post.counts.likes}
 										</TableCell>
-										<TableCell className="hidden text-right tabular-nums md:table-cell">
+										<TableCell
+											className={`${WRAP_CELL} hidden text-right tabular-nums md:table-cell`}
+										>
 											{post.counts.comments}
 										</TableCell>
-										<TableCell className="hidden lg:table-cell">
+										<TableCell className={`${WRAP_CELL} hidden lg:table-cell`}>
 											{post.attachmentKind ? (
-												<Badge variant="secondary">
+												<Badge
+													variant="secondary"
+													className="whitespace-normal"
+												>
 													{adminPostAttachmentKindLabels[post.attachmentKind]}
 												</Badge>
 											) : (
 												<span className="text-muted-foreground text-xs">—</span>
 											)}
 										</TableCell>
-										<TableCell className="hidden max-w-48 lg:table-cell">
+										<TableCell
+											className={`${WRAP_CELL} hidden max-w-0 lg:table-cell`}
+										>
 											{post.attachedBook ? (
 												<Link
 													href={`/books/${post.attachedBook.slug}` as Route}
-													className="line-clamp-2 text-sm hover:underline"
+													className="line-clamp-2 block text-sm [overflow-wrap:anywhere] hover:underline"
 												>
 													{post.attachedBook.title}
 												</Link>
@@ -153,7 +186,9 @@ export function AdminPostsTable() {
 												<span className="text-muted-foreground text-xs">—</span>
 											)}
 										</TableCell>
-										<TableCell className="hidden text-muted-foreground text-xs xl:table-cell">
+										<TableCell
+											className={`${WRAP_CELL} hidden text-muted-foreground text-xs xl:table-cell`}
+										>
 											{formatDate(post.createdAt)}
 											{post.imageUrl ? (
 												<span className="ml-2 text-foreground">· image</span>
@@ -163,7 +198,7 @@ export function AdminPostsTable() {
 								))}
 							</TableBody>
 						</Table>
-					</div>
+					</AdminListTableScroll>
 
 					<AdminListTableFooter
 						summary={`${data.metadata.total} posts · Page ${data.metadata.page} of ${Math.max(data.metadata.totalPages, 1)}`}

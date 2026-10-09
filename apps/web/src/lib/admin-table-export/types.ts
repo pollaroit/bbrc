@@ -4,7 +4,9 @@ export type AdminTableExportResource =
 	| "sittings"
 	| "feedbacks"
 	| "shelves"
-	| "posts";
+	| "posts"
+	| "comments"
+	| "documents";
 
 export type AdminTableExportFormat = "json" | "csv";
 

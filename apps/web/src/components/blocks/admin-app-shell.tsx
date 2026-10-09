@@ -22,10 +22,12 @@ import {
 import {
 	BookOpen,
 	ChevronRight,
+	FileStack,
 	FileText,
 	Home,
 	LayoutDashboard,
 	Library,
+	MessageCircle,
 	MessageSquareQuote,
 	Sparkles,
 	Users,
@@ -242,6 +244,54 @@ const adminNavSections: AdminNavSection[] = [
 		],
 	},
 	{
+		id: "comments",
+		label: "Comments",
+		icon: MessageCircle,
+		defaultHref: "/admin/comments" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/comments"),
+		children: [
+			{
+				href: "/admin/comments" as Route,
+				label: "Overview",
+				isActive: (pathname) => pathname === "/admin/comments",
+			},
+			{
+				href: "/admin/comments/list" as Route,
+				label: "List",
+				isActive: (pathname) => pathname.startsWith("/admin/comments/list"),
+			},
+			{
+				href: "/admin/comments/stats" as Route,
+				label: "Stats",
+				isActive: (pathname) => pathname.startsWith("/admin/comments/stats"),
+			},
+		],
+	},
+	{
+		id: "documents",
+		label: "Documents",
+		icon: FileStack,
+		defaultHref: "/admin/documents" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/documents"),
+		children: [
+			{
+				href: "/admin/documents" as Route,
+				label: "Overview",
+				isActive: (pathname) => pathname === "/admin/documents",
+			},
+			{
+				href: "/admin/documents/list" as Route,
+				label: "List",
+				isActive: (pathname) => pathname.startsWith("/admin/documents/list"),
+			},
+			{
+				href: "/admin/documents/stats" as Route,
+				label: "Stats",
+				isActive: (pathname) => pathname.startsWith("/admin/documents/stats"),
+			},
+		],
+	},
+	{
 		id: "facts",
 		label: "Facts",
 		icon: Sparkles,
@@ -388,7 +438,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
 				</SidebarFooter>
 				<SidebarRail />
 			</Sidebar>
-			<SidebarInset>
+			<SidebarInset className="min-w-0">
 				<header className="flex h-12 shrink-0 items-center gap-2 border-border border-b px-4">
 					<SidebarTrigger />
 					<SidebarSeparator
@@ -399,7 +449,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
 						Club administration
 					</span>
 				</header>
-				<div className="flex flex-col gap-8 p-6">{children}</div>
+				<div className="flex min-w-0 flex-col gap-8 p-6">{children}</div>
 			</SidebarInset>
 		</SidebarProvider>
 	);

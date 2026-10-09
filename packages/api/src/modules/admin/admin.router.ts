@@ -13,6 +13,32 @@ import {
 	listAdminBooks,
 } from "./admin-book.service";
 import {
+	AdminCommentOverviewOutputSchema,
+	GetAdminCommentOverviewInputSchema,
+	GetAdminCommentStatsInputSchema,
+	GetAdminCommentStatsOutputSchema,
+	ListAdminCommentsInputSchema,
+	ListAdminCommentsOutputSchema,
+} from "./admin-comment.schema";
+import {
+	getAdminCommentOverview,
+	getAdminCommentStats,
+	listAdminComments,
+} from "./admin-comment.service";
+import {
+	AdminDocumentOverviewOutputSchema,
+	GetAdminDocumentOverviewInputSchema,
+	GetAdminDocumentStatsInputSchema,
+	GetAdminDocumentStatsOutputSchema,
+	ListAdminDocumentsInputSchema,
+	ListAdminDocumentsOutputSchema,
+} from "./admin-document.schema";
+import {
+	getAdminDocumentOverview,
+	getAdminDocumentStats,
+	listAdminDocuments,
+} from "./admin-document.service";
+import {
 	AdminFactIdInputSchema,
 	BatchCreateAdminFactsInputSchema,
 	BatchCreateAdminFactsOutputSchema,
@@ -289,5 +315,41 @@ export const adminRouter = {
 		.output(GetAdminPostStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminPostStats(input, context.db),
+		),
+	getCommentOverview: adminProcedure
+		.input(GetAdminCommentOverviewInputSchema)
+		.output(AdminCommentOverviewOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminCommentOverview(input, context.db),
+		),
+	listComments: adminProcedure
+		.input(ListAdminCommentsInputSchema)
+		.output(ListAdminCommentsOutputSchema)
+		.handler(async ({ input, context }) =>
+			listAdminComments(input, context.db),
+		),
+	getCommentStats: adminProcedure
+		.input(GetAdminCommentStatsInputSchema)
+		.output(GetAdminCommentStatsOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminCommentStats(input, context.db),
+		),
+	getDocumentOverview: adminProcedure
+		.input(GetAdminDocumentOverviewInputSchema)
+		.output(AdminDocumentOverviewOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminDocumentOverview(input, context.db),
+		),
+	listDocuments: adminProcedure
+		.input(ListAdminDocumentsInputSchema)
+		.output(ListAdminDocumentsOutputSchema)
+		.handler(async ({ input, context }) =>
+			listAdminDocuments(input, context.db),
+		),
+	getDocumentStats: adminProcedure
+		.input(GetAdminDocumentStatsInputSchema)
+		.output(GetAdminDocumentStatsOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminDocumentStats(input, context.db),
 		),
 };

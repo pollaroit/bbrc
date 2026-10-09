@@ -15,6 +15,10 @@ import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
+import {
+	ADMIN_TABLE_MOBILE_MIN_WIDTH,
+	AdminListTableScroll,
+} from "@/components/blocks/admin-list-table-scroll";
 import { AdminSittingsToolbar } from "@/components/blocks/admin-sittings-toolbar";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
@@ -90,8 +94,8 @@ export function AdminSittingsTable() {
 				</>
 			) : (
 				<>
-					<div className="overflow-x-auto">
-						<Table>
+					<AdminListTableScroll>
+						<Table className={ADMIN_TABLE_MOBILE_MIN_WIDTH}>
 							<TableHeader>
 								<TableRow>
 									<TableHead>Sitting</TableHead>
@@ -200,7 +204,7 @@ export function AdminSittingsTable() {
 								))}
 							</TableBody>
 						</Table>
-					</div>
+					</AdminListTableScroll>
 
 					<AdminListTableFooter
 						summary={`${data.metadata.total} sittings · Page ${data.metadata.page} of ${Math.max(data.metadata.totalPages, 1)}`}

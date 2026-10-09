@@ -15,6 +15,10 @@ import type { Route } from "next";
 import Link from "next/link";
 import { AdminFeedbacksToolbar } from "@/components/blocks/admin-feedbacks-toolbar";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
+import {
+	ADMIN_TABLE_MOBILE_MIN_WIDTH,
+	AdminListTableScroll,
+} from "@/components/blocks/admin-list-table-scroll";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { adminFeedbacksExportConfig } from "@/lib/admin-table-export/configs";
 import {
@@ -83,8 +87,8 @@ export function AdminFeedbacksTable() {
 				</>
 			) : (
 				<>
-					<div className="overflow-x-auto">
-						<Table>
+					<AdminListTableScroll>
+						<Table className={ADMIN_TABLE_MOBILE_MIN_WIDTH}>
 							<TableHeader>
 								<TableRow>
 									<TableHead>Book</TableHead>
@@ -180,7 +184,7 @@ export function AdminFeedbacksTable() {
 								})}
 							</TableBody>
 						</Table>
-					</div>
+					</AdminListTableScroll>
 
 					<AdminListTableFooter
 						summary={`${data.metadata.total} feedbacks · Page ${data.metadata.page} of ${Math.max(data.metadata.totalPages, 1)}`}

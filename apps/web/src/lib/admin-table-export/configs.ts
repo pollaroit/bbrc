@@ -1,4 +1,6 @@
 import type { ListAdminBooksOutput } from "@bbrc/api/modules/admin/admin-book.schema";
+import type { ListAdminCommentsOutput } from "@bbrc/api/modules/admin/admin-comment.schema";
+import type { ListAdminDocumentsOutput } from "@bbrc/api/modules/admin/admin-document.schema";
 import type { ListAdminFeedbacksOutput } from "@bbrc/api/modules/admin/admin-feedback.schema";
 import type { ListAdminPostsOutput } from "@bbrc/api/modules/admin/admin-post.schema";
 import type { ListAdminShelvesOutput } from "@bbrc/api/modules/admin/admin-shelf.schema";
@@ -14,6 +16,8 @@ type SittingItem = ListAdminSittingsOutput["items"][number];
 type FeedbackItem = ListAdminFeedbacksOutput["items"][number];
 type ShelfItem = ListAdminShelvesOutput["items"][number];
 type PostItem = ListAdminPostsOutput["items"][number];
+type CommentItem = ListAdminCommentsOutput["items"][number];
+type DocumentItem = ListAdminDocumentsOutput["items"][number];
 
 export type AdminTableExportConfig<TItem> = {
 	resource: AdminTableExportResource;
@@ -394,6 +398,107 @@ export const adminPostsExportConfig: AdminTableExportConfig<PostItem> = {
 	fields: adminPostsExportFields,
 	fetchPage: (input) => client.admin.listPosts(input),
 };
+
+export const adminCommentsExportFields: AdminTableExportField<CommentItem>[] = [
+	{ key: "slug", label: "Slug", getValue: (r) => r.slug },
+	{ key: "content", label: "Content", getValue: (r) => r.content },
+	{
+		key: "contentLength",
+		label: "Content length",
+		getValue: (r) => r.contentLength,
+	},
+	{
+		key: "contextType",
+		label: "Context",
+		getValue: (r) => r.context.type,
+	},
+	{
+		key: "postSlug",
+		label: "Post slug",
+		getValue: (r) => r.context.postSlug,
+	},
+	{
+		key: "feedbackSlug",
+		label: "Feedback slug",
+		getValue: (r) => r.context.feedbackSlug,
+	},
+	{
+		key: "bookSlug",
+		label: "Book slug",
+		getValue: (r) => r.context.bookSlug,
+	},
+	{
+		key: "authorUsername",
+		label: "Author username",
+		getValue: (r) => r.author.username,
+	},
+	{ key: "authorName", label: "Author name", getValue: (r) => r.author.name },
+	{ key: "depth", label: "Depth", getValue: (r) => r.depth },
+	{ key: "parentSlug", label: "Parent slug", getValue: (r) => r.parentSlug },
+	{ key: "likes", label: "Likes", getValue: (r) => r.counts.likes },
+	{ key: "replies", label: "Replies", getValue: (r) => r.counts.replies },
+	{ key: "imageUrl", label: "Image URL", getValue: (r) => r.imageUrl },
+	{ key: "createdAt", label: "Posted", getValue: (r) => r.createdAt },
+	{ key: "updatedAt", label: "Updated", getValue: (r) => r.updatedAt },
+	{ key: "editedAt", label: "Edited at", getValue: (r) => r.editedAt },
+	{
+		key: "id",
+		label: "Internal ID",
+		defaultSelected: false,
+		getValue: (r) => r.id,
+	},
+];
+
+export const adminDocumentsExportFields: AdminTableExportField<DocumentItem>[] =
+	[
+		{ key: "slug", label: "Slug", getValue: (r) => r.slug },
+		{ key: "name", label: "Name", getValue: (r) => r.name },
+		{ key: "language", label: "Language", getValue: (r) => r.language },
+		{ key: "status", label: "Status", getValue: (r) => r.status },
+		{
+			key: "submitterUsername",
+			label: "Submitter username",
+			getValue: (r) => r.submitter.username,
+		},
+		{
+			key: "submitterName",
+			label: "Submitter name",
+			getValue: (r) => r.submitter.name,
+		},
+		{ key: "bookSlug", label: "Book slug", getValue: (r) => r.book.slug },
+		{ key: "bookTitle", label: "Book title", getValue: (r) => r.book.title },
+		{
+			key: "acceptanceNotes",
+			label: "Acceptance notes",
+			getValue: (r) => r.acceptanceNotes,
+		},
+		{
+			key: "rejectionReason",
+			label: "Rejection reason",
+			getValue: (r) => r.rejectionReason,
+		},
+		{ key: "createdAt", label: "Submitted", getValue: (r) => r.createdAt },
+		{ key: "updatedAt", label: "Updated", getValue: (r) => r.updatedAt },
+		{
+			key: "id",
+			label: "Internal ID",
+			defaultSelected: false,
+			getValue: (r) => r.id,
+		},
+	];
+
+export const adminCommentsExportConfig: AdminTableExportConfig<CommentItem> = {
+	resource: "comments",
+	fields: adminCommentsExportFields,
+	fetchPage: (input) => client.admin.listComments(input),
+};
+
+export const adminDocumentsExportConfig: AdminTableExportConfig<DocumentItem> =
+	{
+		resource: "documents",
+		fields: adminDocumentsExportFields,
+		fetchPage: (input) => client.admin.listDocuments(input),
+	};
 
 export function defaultSelectedFieldKeys<TItem>(
 	fields: AdminTableExportField<TItem>[],

@@ -15,6 +15,10 @@ import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
+import {
+	ADMIN_TABLE_MOBILE_MIN_WIDTH,
+	AdminListTableScroll,
+} from "@/components/blocks/admin-list-table-scroll";
 import { AdminShelvesToolbar } from "@/components/blocks/admin-shelves-toolbar";
 import { adminShelvesExportConfig } from "@/lib/admin-table-export/configs";
 import {
@@ -85,8 +89,8 @@ export function AdminShelvesTable() {
 				</>
 			) : (
 				<>
-					<div className="overflow-x-auto">
-						<Table>
+					<AdminListTableScroll>
+						<Table className={ADMIN_TABLE_MOBILE_MIN_WIDTH}>
 							<TableHeader>
 								<TableRow>
 									<TableHead>Shelf</TableHead>
@@ -160,7 +164,7 @@ export function AdminShelvesTable() {
 								))}
 							</TableBody>
 						</Table>
-					</div>
+					</AdminListTableScroll>
 
 					<AdminListTableFooter
 						summary={`${data.metadata.total} shelves · Page ${data.metadata.page} of ${Math.max(data.metadata.totalPages, 1)}`}

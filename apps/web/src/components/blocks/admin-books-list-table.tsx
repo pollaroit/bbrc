@@ -16,6 +16,10 @@ import Link from "next/link";
 import { AdminBookRowActions } from "@/components/blocks/admin-book-row-actions";
 import { AdminBooksToolbar } from "@/components/blocks/admin-books-toolbar";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
+import {
+	ADMIN_TABLE_MOBILE_MIN_WIDTH,
+	AdminListTableScroll,
+} from "@/components/blocks/admin-list-table-scroll";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { adminBooksExportConfig } from "@/lib/admin-table-export/configs";
 import { formatBookAuthors } from "@/lib/book-cover";
@@ -77,8 +81,8 @@ export function AdminBooksListTable() {
 				</>
 			) : (
 				<>
-					<div className="overflow-x-auto">
-						<Table>
+					<AdminListTableScroll>
+						<Table className={ADMIN_TABLE_MOBILE_MIN_WIDTH}>
 							<TableHeader>
 								<TableRow>
 									<TableHead>Title</TableHead>
@@ -160,7 +164,7 @@ export function AdminBooksListTable() {
 								))}
 							</TableBody>
 						</Table>
-					</div>
+					</AdminListTableScroll>
 
 					<AdminListTableFooter
 						summary={`${data.metadata.total} books · Page ${data.metadata.page} of ${Math.max(data.metadata.totalPages, 1)}`}
