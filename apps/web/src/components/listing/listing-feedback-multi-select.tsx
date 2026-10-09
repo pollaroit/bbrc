@@ -10,7 +10,6 @@ import {
 	FieldTitle,
 } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
-import { ScrollArea } from "@bbrc/ui/components/scroll-area";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
@@ -62,30 +61,30 @@ export function ListingFeedbackMultiSelect({
 	};
 
 	return (
-		<FieldSet>
+		<FieldSet className="w-full min-w-0 max-w-full">
 			<FieldLegend>{legend}</FieldLegend>
-			<Field>
+			<Field className="min-w-0">
 				<FieldLabel className="sr-only">Search feedbacks</FieldLabel>
-				<div className="relative">
+				<div className="relative w-full min-w-0">
 					<SearchIcon className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
 					<Input
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
 						placeholder="Search by review, book, author, or slug…"
-						className="pl-9"
+						className="w-full min-w-0 pl-9"
 						aria-label="Search feedbacks in list"
 					/>
 				</div>
 			</Field>
 			{selectedSlugs.length > 0 ? (
-				<div className="flex flex-wrap gap-2">
+				<div className="flex min-w-0 max-w-full flex-wrap gap-2">
 					{selectedSlugs.map((slug) => (
 						<Button
 							key={slug}
 							type="button"
 							variant="outline"
 							size="sm"
-							className="font-mono text-xs"
+							className="max-w-full shrink font-mono text-xs [overflow-wrap:anywhere]"
 							onClick={() => toggle(slug, false)}
 						>
 							{slug} ×
@@ -101,7 +100,7 @@ export function ListingFeedbackMultiSelect({
 					</Button>
 				</div>
 			) : null}
-			<ScrollArea className="h-48 border border-border">
+			<div className="h-48 w-full min-w-0 max-w-full overflow-y-auto overflow-x-hidden border border-border">
 				{feedbacksQuery.isPending ? (
 					<div className="flex flex-col gap-2 p-3">
 						<Skeleton className="h-8 w-full" />
@@ -116,24 +115,25 @@ export function ListingFeedbackMultiSelect({
 						No feedbacks match. Try book title, review text, or @username.
 					</p>
 				) : (
-					<ul className="divide-y divide-border">
+					<ul className="min-w-0 max-w-full divide-y divide-border">
 						{visibleFeedbacks.map((feedback) => (
-							<li key={feedback.id}>
-								<div className="flex cursor-pointer items-start gap-3 p-3 hover:bg-muted/40">
+							<li key={feedback.id} className="min-w-0 max-w-full">
+								<div className="flex min-w-0 max-w-full cursor-pointer items-start gap-3 p-3 hover:bg-muted/40">
 									<Checkbox
+										className="shrink-0"
 										checked={selectedSlugs.includes(feedback.slug)}
 										onCheckedChange={(checked) => {
 											toggle(feedback.slug, checked === true);
 										}}
 									/>
-									<span className="min-w-0 flex-1">
-										<FieldTitle className="line-clamp-1 text-sm">
+									<span className="min-w-0 flex-1 overflow-hidden">
+										<FieldTitle className="line-clamp-2 break-words text-sm [overflow-wrap:anywhere]">
 											{feedback.book.title}
 										</FieldTitle>
-										<p className="line-clamp-2 text-muted-foreground text-xs">
+										<p className="line-clamp-2 break-words text-muted-foreground text-xs [overflow-wrap:anywhere]">
 											{previewReview(feedback.review)}
 										</p>
-										<span className="text-muted-foreground text-xs">
+										<span className="block break-words text-muted-foreground text-xs [overflow-wrap:anywhere]">
 											@{feedback.author.username}
 											{" · "}
 											{feedback.rating.toFixed(1)}★{" · "}
@@ -145,7 +145,7 @@ export function ListingFeedbackMultiSelect({
 						))}
 					</ul>
 				)}
-			</ScrollArea>
+			</div>
 		</FieldSet>
 	);
 }

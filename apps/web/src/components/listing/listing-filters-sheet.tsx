@@ -40,12 +40,15 @@ export function ListingFiltersSheet({
 					<Badge variant="secondary">{activeFilterCount}</Badge>
 				) : null}
 			</SheetTrigger>
-			<SheetContent side="right" className="w-full sm:max-w-md">
+			<SheetContent
+				side="right"
+				className="w-full min-w-0 max-w-[100vw] sm:max-w-md"
+			>
 				<SheetHeader>
 					<SheetTitle>{title}</SheetTitle>
 					<SheetDescription>{description}</SheetDescription>
 				</SheetHeader>
-				<div className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4">
+				<div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden px-4 pb-4">
 					{children}
 				</div>
 				{onClear ? (

@@ -10,7 +10,6 @@ import {
 	FieldTitle,
 } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
-import { ScrollArea } from "@bbrc/ui/components/scroll-area";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
@@ -62,30 +61,30 @@ export function ListingPostMultiSelect({
 	};
 
 	return (
-		<FieldSet className="min-w-0 max-w-full">
+		<FieldSet className="w-full min-w-0 max-w-full">
 			<FieldLegend>{legend}</FieldLegend>
-			<Field>
+			<Field className="min-w-0">
 				<FieldLabel className="sr-only">Search posts</FieldLabel>
-				<div className="relative">
+				<div className="relative w-full min-w-0">
 					<SearchIcon className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
 					<Input
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
 						placeholder="Search by content, slug, or author…"
-						className="pl-9"
+						className="w-full min-w-0 pl-9"
 						aria-label="Search posts in list"
 					/>
 				</div>
 			</Field>
 			{selectedSlugs.length > 0 ? (
-				<div className="flex flex-wrap gap-2">
+				<div className="flex min-w-0 max-w-full flex-wrap gap-2">
 					{selectedSlugs.map((slug) => (
 						<Button
 							key={slug}
 							type="button"
 							variant="outline"
 							size="sm"
-							className="font-mono text-xs"
+							className="max-w-full shrink font-mono text-xs [overflow-wrap:anywhere]"
 							onClick={() => toggle(slug, false)}
 						>
 							{slug} ×
@@ -101,7 +100,7 @@ export function ListingPostMultiSelect({
 					</Button>
 				</div>
 			) : null}
-			<ScrollArea className="h-48 w-full min-w-0 border border-border">
+			<div className="h-48 w-full min-w-0 max-w-full overflow-y-auto overflow-x-hidden border border-border">
 				{postsQuery.isPending ? (
 					<div className="flex flex-col gap-2 p-3">
 						<Skeleton className="h-8 w-full" />
@@ -116,10 +115,10 @@ export function ListingPostMultiSelect({
 						No posts match. Try searching content or @username.
 					</p>
 				) : (
-					<ul className="divide-y divide-border">
+					<ul className="min-w-0 max-w-full divide-y divide-border">
 						{visiblePosts.map((post) => (
-							<li key={post.id}>
-								<div className="flex min-w-0 cursor-pointer items-start gap-3 p-3 hover:bg-muted/40">
+							<li key={post.id} className="min-w-0 max-w-full">
+								<div className="flex min-w-0 max-w-full cursor-pointer items-start gap-3 p-3 hover:bg-muted/40">
 									<Checkbox
 										className="shrink-0"
 										checked={selectedSlugs.includes(post.slug)}
@@ -142,7 +141,7 @@ export function ListingPostMultiSelect({
 						))}
 					</ul>
 				)}
-			</ScrollArea>
+			</div>
 		</FieldSet>
 	);
 }
