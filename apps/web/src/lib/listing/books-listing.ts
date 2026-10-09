@@ -45,6 +45,7 @@ export const bookSortByLabels = {
 	publishedIn: "Publication year",
 	"feedbacks._count": "Feedbacks",
 	"favorites._count": "Favorites",
+	"reads._count": "Reads",
 } as const satisfies FieldLabels<(typeof bookSortableFields)[number]>;
 
 export const bookRangeByLabels = {
@@ -76,6 +77,8 @@ export const bookListingSearchParams = {
 	maxOpenLibraryRating: parseAsFloat.withOptions({ shallow: false }),
 	minPages: parseAsInteger.withOptions({ shallow: false }),
 	maxPages: parseAsInteger.withOptions({ shallow: false }),
+	minReads: parseAsInteger.withOptions({ shallow: false }),
+	maxReads: parseAsInteger.withOptions({ shallow: false }),
 	authors: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
 	viewerRead: parseAsStringLiteral(viewerReadFilterValues).withOptions({
 		shallow: false,
@@ -124,6 +127,8 @@ export function toBookListCallInput(
 		maxOpenLibraryRating: params.maxOpenLibraryRating,
 		minPages: params.minPages,
 		maxPages: params.maxPages,
+		minReads: params.minReads,
+		maxReads: params.maxReads,
 		authors: normalizeAuthorSlugs(params.authors),
 		viewerRead: params.viewerRead ?? undefined,
 		viewerFavorite: params.viewerFavorite === true ? true : undefined,
@@ -175,6 +180,10 @@ export function countBookSheetFilters(params: BookListingSearchParams): number {
 		count += 1;
 	}
 
+	if (params.minReads != null || params.maxReads != null) {
+		count += 1;
+	}
+
 	if (params.authors && params.authors.length > 0) {
 		count += 1;
 	}
@@ -207,6 +216,8 @@ export function clearBookSheetFilters(
 		maxOpenLibraryRating: null,
 		minPages: null,
 		maxPages: null,
+		minReads: null,
+		maxReads: null,
 		authors: null,
 		rangeBy: null,
 		rangeMin: null,

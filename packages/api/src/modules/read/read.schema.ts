@@ -1,7 +1,7 @@
 import { BookSchema, UserSchema } from "@bbrc/schemas";
 import {
 	CursorPaginationInputSchema,
-	CursorPaginationOutputSchema,
+	CursorPaginationMetadataSchema,
 } from "@bbrc/schemas/listing/pagination";
 import { ReadDateFieldSchema } from "@bbrc/schemas/read-dates";
 import { openLibraryEditionKeyToOlid } from "@bbrc/shared";
@@ -128,6 +128,7 @@ const UserReadBookSummarySchema = z.object({
 	status: BookSchema.shape.status,
 	pages: z.number().int(),
 	publishedIn: z.number().int(),
+	readCount: z.number().int().min(0),
 });
 
 export const UserReadListItemSchema = z.object({
@@ -142,9 +143,15 @@ export const ListUserReadsInputSchema = CursorPaginationInputSchema.extend({
 	username: UserSchema.shape.username,
 });
 
-export const ListUserReadsOutputSchema = CursorPaginationOutputSchema(
-	UserReadListItemSchema,
-);
+export const ListUserReadsMetadataSchema =
+	CursorPaginationMetadataSchema.extend({
+		total: z.number().int().min(0).optional(),
+	});
+
+export const ListUserReadsOutputSchema = z.object({
+	items: z.array(UserReadListItemSchema),
+	metadata: ListUserReadsMetadataSchema,
+});
 
 export type ListUserReadsInput = z.infer<typeof ListUserReadsInputSchema>;
 export type ListUserReadsOutput = z.infer<typeof ListUserReadsOutputSchema>;
@@ -164,6 +171,9 @@ export const userReadListSelect = {
 			status: true,
 			pages: true,
 			publishedIn: true,
+			_count: {
+				select: { reads: true },
+			},
 		},
 	},
 } as const;

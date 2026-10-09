@@ -7,6 +7,7 @@ import Link from "next/link";
 import type { BookListFavoriteEngagement } from "@/components/blocks/book-favorite-button";
 import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
 import { BookMarkReadButton } from "@/components/blocks/book-mark-read-button";
+import { BookReadCount } from "@/components/blocks/book-read-count";
 import {
 	formatBookStatusLabel,
 	statusSpineClassName,
@@ -100,6 +101,12 @@ export function BookCard({
 								<dt className="sr-only">Page count and year</dt>
 								<dd>
 									{book.pages} pp · {book.publishedIn}
+								</dd>
+							</div>
+							<div>
+								<dt className="sr-only">Members who read</dt>
+								<dd>
+									<BookReadCount count={book.readCount} className="text-xs" />
 								</dd>
 							</div>
 						</dl>

@@ -3,6 +3,7 @@ import { mergeWhereFragments } from "../../utils/searching";
 import { bookListRanging, bookListSearching } from "./book.listing";
 import type { GetBookListInput } from "./book.schema";
 import { resolveAuthorSlugsToNames } from "./book-author-filter";
+import { bookIdsWithReadsCountBounds } from "./book-read-count-filter";
 
 export type BookListQueryInput = Omit<GetBookListInput, "cursor" | "limit"> & {
 	limit?: number;
@@ -99,5 +100,25 @@ export async function buildBookListWhereWithAuthors(
 		}
 	}
 
-	return buildBookListWhere(input, viewerUserId, { resolvedAuthorNames });
+	const readsCountIds = await bookIdsWithReadsCountBounds(
+		db,
+		input.minReads ?? undefined,
+		input.maxReads ?? undefined,
+	);
+
+	if (readsCountIds !== null && readsCountIds.length === 0) {
+		return null;
+	}
+
+	const baseWhere = buildBookListWhere(input, viewerUserId, {
+		resolvedAuthorNames,
+	});
+
+	if (readsCountIds == null) {
+		return baseWhere;
+	}
+
+	return mergeWhereFragments<Prisma.BookWhereInput>(baseWhere, {
+		id: { in: readsCountIds },
+	});
 }

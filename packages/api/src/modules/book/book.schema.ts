@@ -61,6 +61,18 @@ export function refineBookListQueryInput(
 			path: ["maxPages"],
 		});
 	}
+
+	if (
+		value.maxReads != null &&
+		value.minReads != null &&
+		value.maxReads < value.minReads
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Maximum reads must be greater than or equal to minimum",
+			path: ["maxReads"],
+		});
+	}
 }
 
 /** Filters, sort, range, and search — no pagination cursor. */
@@ -112,6 +124,7 @@ export const BookWithRequestedBySchema = BookSchema.pick(
 
 export const BookListItemSchema = BookSchema.pick(getBookListFields).extend({
 	approvedDocumentCount: z.number().int().min(0),
+	readCount: z.number().int().min(0),
 });
 
 export const BookListMetadataSchema = CursorPaginationMetadataSchema.extend({

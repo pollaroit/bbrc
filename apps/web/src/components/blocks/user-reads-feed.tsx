@@ -10,7 +10,7 @@ const PAGE_LIMIT = 12;
 
 function UserReadsFeedSkeleton() {
 	return (
-		<div className="flex flex-col gap-4" aria-hidden>
+		<div className="grid grid-cols-1 gap-4 sm:grid-cols-2" aria-hidden>
 			{Array.from({ length: 4 }, (_, index) => (
 				<Skeleton key={index} className="h-36 w-full" />
 			))}
@@ -45,34 +45,43 @@ export function UserReadsFeed({ username }: UserReadsFeedProps) {
 	);
 
 	const items = data?.pages.flatMap((page) => page.items) ?? [];
+	const total = data?.pages[0]?.metadata.total;
 
 	return (
-		<InfiniteScroll
-			className="flex flex-col gap-4"
-			hasNextPage={hasNextPage}
-			isFetchingNextPage={isFetchingNextPage}
-			fetchNextPage={() => {
-				void fetchNextPage();
-			}}
-			isPending={isPending}
-			isError={isError}
-			error={error}
-			onRetry={() => {
-				void refetch();
-			}}
-			isEmpty={items.length === 0}
-			emptyTitle="No books marked read yet"
-			emptyDescription="When this member marks books as read, they appear here with read dates."
-			loadingContent={<UserReadsFeedSkeleton />}
-			endMessage="End of read list."
-		>
-			<ul className="flex flex-col gap-4">
-				{items.map((item) => (
-					<li key={item.book.slug}>
-						<UserMemberReadCard item={item} />
-					</li>
-				))}
-			</ul>
-		</InfiniteScroll>
+		<div className="flex flex-col gap-4">
+			{total != null ? (
+				<p className="text-muted-foreground text-sm tabular-nums">
+					{total} book{total === 1 ? "" : "s"} marked read
+				</p>
+			) : null}
+
+			<InfiniteScroll
+				className="flex flex-col gap-4"
+				hasNextPage={hasNextPage}
+				isFetchingNextPage={isFetchingNextPage}
+				fetchNextPage={() => {
+					void fetchNextPage();
+				}}
+				isPending={isPending}
+				isError={isError}
+				error={error}
+				onRetry={() => {
+					void refetch();
+				}}
+				isEmpty={items.length === 0}
+				emptyTitle="No books marked read yet"
+				emptyDescription="When this member marks books as read, they appear here with read dates."
+				loadingContent={<UserReadsFeedSkeleton />}
+				endMessage="End of read list."
+			>
+				<ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					{items.map((item) => (
+						<li key={item.book.slug}>
+							<UserMemberReadCard item={item} layout="grid" />
+						</li>
+					))}
+				</ul>
+			</InfiniteScroll>
+		</div>
 	);
 }

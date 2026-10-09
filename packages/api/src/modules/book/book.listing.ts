@@ -16,6 +16,7 @@ export const bookSortableFields = [
 	"publishedIn",
 	"feedbacks._count",
 	"favorites._count",
+	"reads._count",
 ] as const;
 
 export const bookListSorting = defineSorting<
@@ -28,6 +29,9 @@ export const bookListSorting = defineSorting<
 		}),
 		"favorites._count": (direction) => ({
 			favorites: { _count: direction },
+		}),
+		"reads._count": (direction) => ({
+			reads: { _count: direction },
 		}),
 	},
 });
@@ -62,5 +66,7 @@ export const bookListFiltersSchema = z
 		viewerFavorite: z.boolean(),
 		/** Reviewed (feedback) by the authenticated viewer. */
 		viewerReviewed: z.boolean(),
+		minReads: z.number().int().min(0),
+		maxReads: z.number().int().min(0),
 	})
 	.partial();

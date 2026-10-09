@@ -355,12 +355,19 @@ export async function listUserReads(
 
 	const pagination = definePagination.cursor(input, cursorCodec);
 
-	const rows = await db.read.findMany({
-		...pagination.use(),
-		where: { userId: user.id },
-		orderBy: [{ createdAt: "desc" }, { bookId: "desc" }],
-		select: userReadListSelect,
-	});
+	const isFirstPage = input.cursor == null;
+
+	const [rows, total] = await Promise.all([
+		db.read.findMany({
+			...pagination.use(),
+			where: { userId: user.id },
+			orderBy: [{ createdAt: "desc" }, { bookId: "desc" }],
+			select: userReadListSelect,
+		}),
+		isFirstPage
+			? db.read.count({ where: { userId: user.id } })
+			: Promise.resolve(undefined),
+	]);
 
 	const page = pagination.paginate(rows);
 
@@ -384,10 +391,14 @@ export async function listUserReads(
 					status: row.book.status,
 					pages: row.book.pages,
 					publishedIn: row.book.publishedIn,
+					readCount: row.book._count.reads,
 				},
 			};
 		}),
-		metadata: page.metadata,
+		metadata: {
+			...page.metadata,
+			...(total != null ? { total } : {}),
+		},
 	};
 }
 

@@ -9,6 +9,7 @@ import Link from "next/link";
 import { BookDeleteButton } from "@/components/blocks/book-delete-button";
 import { BookEditLink } from "@/components/blocks/book-edit-link";
 import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
+import { BookHeaderWriteFeedback } from "@/components/blocks/book-header-write-feedback";
 import { BookMarkReadButton } from "@/components/blocks/book-mark-read-button";
 import { BookRequestedByLine } from "@/components/blocks/book-requested-by";
 import { BookStatusBanner } from "@/components/blocks/book-status-badge";
@@ -121,6 +122,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 							) : null}
 						</div>
 						<div className="flex shrink-0 flex-wrap items-center gap-1">
+							<BookHeaderWriteFeedback bookSlug={book.slug} />
 							<ResourceShareMenu
 								path={`/books/${book.slug}`}
 								shareText={book.title}

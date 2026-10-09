@@ -23,6 +23,7 @@ const bookListSelect = {
 	_count: {
 		select: {
 			documents: { where: { status: "approved" as const } },
+			reads: true,
 		},
 	},
 } as const;
@@ -95,6 +96,7 @@ export async function getBookList(
 			publishedIn: row.publishedIn,
 			status: row.status,
 			approvedDocumentCount: row._count.documents,
+			readCount: row._count.reads,
 		})),
 		metadata: {
 			...page.metadata,

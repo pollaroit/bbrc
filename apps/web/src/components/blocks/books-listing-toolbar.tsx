@@ -189,6 +189,20 @@ export function BooksListingToolbar() {
 						}}
 					/>
 
+					<ListingIntegerRangeFields
+						legend="Member reads"
+						minId="book-filter-min-reads"
+						maxId="book-filter-max-reads"
+						min={params.minReads}
+						max={params.maxReads}
+						onMinChange={(minReads) => {
+							void setParams({ minReads });
+						}}
+						onMaxChange={(maxReads) => {
+							void setParams({ maxReads });
+						}}
+					/>
+
 					<ListingAuthorMultiSelect
 						selectedSlugs={params.authors ?? []}
 						onSelectedSlugsChange={(authors) => {

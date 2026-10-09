@@ -2,24 +2,40 @@ import type { ListUserReadsOutput } from "@bbrc/api/modules/read/read.schema";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { BookReadCount } from "@/components/blocks/book-read-count";
 import { formatBookStatusLabel } from "@/components/blocks/book-status-badge";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatReadPeriod } from "@/lib/format-read-date";
+import { cn } from "@/lib/utils";
 
 type UserMemberReadCardProps = {
 	item: ListUserReadsOutput["items"][number];
+	layout?: "list" | "grid";
 };
 
-export function UserMemberReadCard({ item }: UserMemberReadCardProps) {
+export function UserMemberReadCard({
+	item,
+	layout = "list",
+}: UserMemberReadCardProps) {
 	const { book } = item;
 	const href = `/books/${book.slug}` as Route;
 	const coverSrc = bookCoverUrl(book.coverId, "M");
 
+	const isGrid = layout === "grid";
+
 	return (
-		<article className="flex flex-col gap-4 border border-border bg-card p-4 sm:flex-row sm:items-start">
+		<article
+			className={cn(
+				"flex h-full border border-border bg-card p-4",
+				isGrid ? "flex-col gap-3" : "flex-col gap-4 sm:flex-row sm:items-start",
+			)}
+		>
 			<Link
 				href={href}
-				className="relative aspect-2/3 w-full max-w-[5.5rem] shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10 sm:w-[5.5rem]"
+				className={cn(
+					"relative aspect-2/3 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10",
+					isGrid ? "w-[4.5rem]" : "w-full max-w-[5.5rem] sm:w-[5.5rem]",
+				)}
 			>
 				{coverSrc ? (
 					<Image
@@ -52,6 +68,9 @@ export function UserMemberReadCard({ item }: UserMemberReadCardProps) {
 				<p className="text-muted-foreground text-sm">
 					{formatReadPeriod(item.readStart, item.readEnd)}
 				</p>
+				<div className="mt-auto pt-1">
+					<BookReadCount count={item.book.readCount} className="text-xs" />
+				</div>
 			</div>
 		</article>
 	);
