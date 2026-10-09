@@ -52,6 +52,32 @@ import {
 	listAdminFeedbacks,
 } from "./admin-feedback.service";
 import {
+	AdminPostOverviewOutputSchema,
+	GetAdminPostOverviewInputSchema,
+	GetAdminPostStatsInputSchema,
+	GetAdminPostStatsOutputSchema,
+	ListAdminPostsInputSchema,
+	ListAdminPostsOutputSchema,
+} from "./admin-post.schema";
+import {
+	getAdminPostOverview,
+	getAdminPostStats,
+	listAdminPosts,
+} from "./admin-post.service";
+import {
+	AdminShelfOverviewOutputSchema,
+	GetAdminShelfOverviewInputSchema,
+	GetAdminShelfStatsInputSchema,
+	GetAdminShelfStatsOutputSchema,
+	ListAdminShelvesInputSchema,
+	ListAdminShelvesOutputSchema,
+} from "./admin-shelf.schema";
+import {
+	getAdminShelfOverview,
+	getAdminShelfStats,
+	listAdminShelves,
+} from "./admin-shelf.service";
+import {
 	AdminSittingOverviewOutputSchema,
 	GetAdminSittingOverviewInputSchema,
 	GetAdminSittingStatsInputSchema,
@@ -231,5 +257,37 @@ export const adminRouter = {
 		.output(GetAdminFeedbackStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminFeedbackStats(input, context.db),
+		),
+	getShelfOverview: adminProcedure
+		.input(GetAdminShelfOverviewInputSchema)
+		.output(AdminShelfOverviewOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminShelfOverview(input, context.db),
+		),
+	listShelves: adminProcedure
+		.input(ListAdminShelvesInputSchema)
+		.output(ListAdminShelvesOutputSchema)
+		.handler(async ({ input, context }) => listAdminShelves(input, context.db)),
+	getShelfStats: adminProcedure
+		.input(GetAdminShelfStatsInputSchema)
+		.output(GetAdminShelfStatsOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminShelfStats(input, context.db),
+		),
+	getPostOverview: adminProcedure
+		.input(GetAdminPostOverviewInputSchema)
+		.output(AdminPostOverviewOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminPostOverview(input, context.db),
+		),
+	listPosts: adminProcedure
+		.input(ListAdminPostsInputSchema)
+		.output(ListAdminPostsOutputSchema)
+		.handler(async ({ input, context }) => listAdminPosts(input, context.db)),
+	getPostStats: adminProcedure
+		.input(GetAdminPostStatsInputSchema)
+		.output(GetAdminPostStatsOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminPostStats(input, context.db),
 		),
 };

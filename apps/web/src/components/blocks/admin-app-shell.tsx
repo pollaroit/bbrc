@@ -21,8 +21,11 @@ import {
 } from "@bbrc/ui/components/sidebar";
 import {
 	BookOpen,
+	ChevronRight,
+	FileText,
 	Home,
 	LayoutDashboard,
+	Library,
 	MessageSquareQuote,
 	Sparkles,
 	Users,
@@ -31,6 +34,38 @@ import {
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+
+const ADMIN_NAV_OPEN_STORAGE_KEY = "bbrc-admin-nav-open";
+
+function readAdminNavOpenState(): Record<string, boolean> {
+	try {
+		const raw = localStorage.getItem(ADMIN_NAV_OPEN_STORAGE_KEY);
+		if (!raw) {
+			return {};
+		}
+		const parsed: unknown = JSON.parse(raw);
+		if (typeof parsed !== "object" || parsed === null) {
+			return {};
+		}
+		return parsed as Record<string, boolean>;
+	} catch {
+		return {};
+	}
+}
+
+function writeAdminNavOpenState(sectionId: string, open: boolean) {
+	try {
+		const stored = readAdminNavOpenState();
+		localStorage.setItem(
+			ADMIN_NAV_OPEN_STORAGE_KEY,
+			JSON.stringify({ ...stored, [sectionId]: open }),
+		);
+	} catch {
+		// private mode / quota
+	}
+}
 
 type AdminNavChild = {
 	href: Route;
@@ -159,6 +194,54 @@ const adminNavSections: AdminNavSection[] = [
 		],
 	},
 	{
+		id: "shelves",
+		label: "Shelves",
+		icon: Library,
+		defaultHref: "/admin/shelves" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/shelves"),
+		children: [
+			{
+				href: "/admin/shelves" as Route,
+				label: "Overview",
+				isActive: (pathname) => pathname === "/admin/shelves",
+			},
+			{
+				href: "/admin/shelves/list" as Route,
+				label: "List",
+				isActive: (pathname) => pathname.startsWith("/admin/shelves/list"),
+			},
+			{
+				href: "/admin/shelves/stats" as Route,
+				label: "Stats",
+				isActive: (pathname) => pathname.startsWith("/admin/shelves/stats"),
+			},
+		],
+	},
+	{
+		id: "posts",
+		label: "Posts",
+		icon: FileText,
+		defaultHref: "/admin/posts" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/posts"),
+		children: [
+			{
+				href: "/admin/posts" as Route,
+				label: "Overview",
+				isActive: (pathname) => pathname === "/admin/posts",
+			},
+			{
+				href: "/admin/posts/list" as Route,
+				label: "List",
+				isActive: (pathname) => pathname.startsWith("/admin/posts/list"),
+			},
+			{
+				href: "/admin/posts/stats" as Route,
+				label: "Stats",
+				isActive: (pathname) => pathname.startsWith("/admin/posts/stats"),
+			},
+		],
+	},
+	{
 		id: "facts",
 		label: "Facts",
 		icon: Sparkles,
@@ -187,20 +270,66 @@ function AdminSidebarNavItem({
 	pathname: string;
 }) {
 	const sectionIsActive = section.sectionActive(pathname);
-
 	const showSubMenu = section.children.length > 1;
+	const wasActiveRef = useRef(sectionIsActive);
+
+	const [subMenuOpen, setSubMenuOpen] = useState(sectionIsActive);
+
+	useEffect(() => {
+		const stored = readAdminNavOpenState()[section.id];
+		if (stored !== undefined) {
+			setSubMenuOpen(stored);
+		}
+	}, [section.id]);
+
+	useEffect(() => {
+		if (sectionIsActive && !wasActiveRef.current) {
+			setSubMenuOpen(true);
+			writeAdminNavOpenState(section.id, true);
+		}
+		wasActiveRef.current = sectionIsActive;
+	}, [section.id, sectionIsActive]);
+
+	const setSubMenuOpenPersisted = (open: boolean) => {
+		setSubMenuOpen(open);
+		writeAdminNavOpenState(section.id, open);
+	};
+
+	if (!showSubMenu) {
+		return (
+			<SidebarMenuItem>
+				<SidebarMenuButton
+					render={<Link href={section.defaultHref} />}
+					isActive={sectionIsActive}
+					tooltip={section.label}
+				>
+					<section.icon />
+					<span>{section.label}</span>
+				</SidebarMenuButton>
+			</SidebarMenuItem>
+		);
+	}
 
 	return (
 		<SidebarMenuItem>
 			<SidebarMenuButton
-				render={<Link href={section.defaultHref} />}
+				type="button"
 				isActive={sectionIsActive}
 				tooltip={section.label}
+				aria-expanded={subMenuOpen}
+				onClick={() => setSubMenuOpenPersisted(!subMenuOpen)}
 			>
 				<section.icon />
 				<span>{section.label}</span>
+				<ChevronRight
+					className={cn(
+						"ml-auto size-4 shrink-0 transition-transform duration-200",
+						subMenuOpen && "rotate-90",
+					)}
+					aria-hidden
+				/>
 			</SidebarMenuButton>
-			{showSubMenu ? (
+			{subMenuOpen ? (
 				<SidebarMenuSub>
 					{section.children.map((child) => (
 						<SidebarMenuSubItem key={child.href}>

@@ -2,7 +2,9 @@ export type AdminTableExportResource =
 	| "users"
 	| "books"
 	| "sittings"
-	| "feedbacks";
+	| "feedbacks"
+	| "shelves"
+	| "posts";
 
 export type AdminTableExportFormat = "json" | "csv";
 

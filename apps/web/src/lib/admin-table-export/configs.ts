@@ -1,5 +1,7 @@
 import type { ListAdminBooksOutput } from "@bbrc/api/modules/admin/admin-book.schema";
 import type { ListAdminFeedbacksOutput } from "@bbrc/api/modules/admin/admin-feedback.schema";
+import type { ListAdminPostsOutput } from "@bbrc/api/modules/admin/admin-post.schema";
+import type { ListAdminShelvesOutput } from "@bbrc/api/modules/admin/admin-shelf.schema";
 import type { ListAdminSittingsOutput } from "@bbrc/api/modules/admin/admin-sitting.schema";
 import type { ListAdminUsersOutput } from "@bbrc/api/modules/admin/admin-user.schema";
 import { formatBookAuthors } from "@/lib/book-cover";
@@ -10,6 +12,8 @@ type UserItem = ListAdminUsersOutput["items"][number];
 type BookItem = ListAdminBooksOutput["items"][number];
 type SittingItem = ListAdminSittingsOutput["items"][number];
 type FeedbackItem = ListAdminFeedbacksOutput["items"][number];
+type ShelfItem = ListAdminShelvesOutput["items"][number];
+type PostItem = ListAdminPostsOutput["items"][number];
 
 export type AdminTableExportConfig<TItem> = {
 	resource: AdminTableExportResource;
@@ -298,6 +302,98 @@ export const adminFeedbacksExportConfig: AdminTableExportConfig<FeedbackItem> =
 		fields: adminFeedbacksExportFields,
 		fetchPage: (input) => client.admin.listFeedbacks(input),
 	};
+
+export const adminShelvesExportFields: AdminTableExportField<ShelfItem>[] = [
+	{ key: "slug", label: "Slug", getValue: (r) => r.slug },
+	{ key: "title", label: "Title", getValue: (r) => r.title },
+	{
+		key: "description",
+		label: "Description",
+		getValue: (r) => r.description,
+	},
+	{ key: "status", label: "Status", getValue: (r) => r.status },
+	{ key: "type", label: "List type", getValue: (r) => r.type },
+	{
+		key: "ownerUsername",
+		label: "Owner username",
+		getValue: (r) => r.owner.username,
+	},
+	{ key: "ownerName", label: "Owner name", getValue: (r) => r.owner.name },
+	{
+		key: "coverImageUrl",
+		label: "Cover image URL",
+		getValue: (r) => r.coverImageUrl,
+	},
+	{ key: "books", label: "Books", getValue: (r) => r.counts.books },
+	{
+		key: "postAttachments",
+		label: "Post attachments",
+		getValue: (r) => r.counts.postAttachments,
+	},
+	{ key: "createdAt", label: "Created", getValue: (r) => r.createdAt },
+	{ key: "updatedAt", label: "Updated", getValue: (r) => r.updatedAt },
+	{
+		key: "id",
+		label: "Internal ID",
+		defaultSelected: false,
+		getValue: (r) => r.id,
+	},
+];
+
+export const adminPostsExportFields: AdminTableExportField<PostItem>[] = [
+	{ key: "slug", label: "Slug", getValue: (r) => r.slug },
+	{ key: "content", label: "Content", getValue: (r) => r.content },
+	{
+		key: "contentLength",
+		label: "Content length",
+		getValue: (r) => r.contentLength,
+	},
+	{
+		key: "authorUsername",
+		label: "Author username",
+		getValue: (r) => r.author.username,
+	},
+	{ key: "authorName", label: "Author name", getValue: (r) => r.author.name },
+	{ key: "imageUrl", label: "Image URL", getValue: (r) => r.imageUrl },
+	{
+		key: "attachedBookSlug",
+		label: "Attached book slug",
+		getValue: (r) => r.attachedBook?.slug ?? null,
+	},
+	{
+		key: "attachedBookTitle",
+		label: "Attached book title",
+		getValue: (r) => r.attachedBook?.title ?? null,
+	},
+	{
+		key: "attachmentKind",
+		label: "Attachment kind",
+		getValue: (r) => r.attachmentKind,
+	},
+	{ key: "likes", label: "Likes", getValue: (r) => r.counts.likes },
+	{ key: "comments", label: "Comments", getValue: (r) => r.counts.comments },
+	{ key: "createdAt", label: "Posted", getValue: (r) => r.createdAt },
+	{ key: "updatedAt", label: "Updated", getValue: (r) => r.updatedAt },
+	{ key: "editedAt", label: "Edited at", getValue: (r) => r.editedAt },
+	{
+		key: "id",
+		label: "Internal ID",
+		defaultSelected: false,
+		getValue: (r) => r.id,
+	},
+];
+
+export const adminShelvesExportConfig: AdminTableExportConfig<ShelfItem> = {
+	resource: "shelves",
+	fields: adminShelvesExportFields,
+	fetchPage: (input) => client.admin.listShelves(input),
+};
+
+export const adminPostsExportConfig: AdminTableExportConfig<PostItem> = {
+	resource: "posts",
+	fields: adminPostsExportFields,
+	fetchPage: (input) => client.admin.listPosts(input),
+};
 
 export function defaultSelectedFieldKeys<TItem>(
 	fields: AdminTableExportField<TItem>[],
