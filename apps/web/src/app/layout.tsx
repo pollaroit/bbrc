@@ -5,6 +5,7 @@ import "../index.css";
 
 import { SerwistProvider } from "@serwist/turbopack/react";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import Providers from "@/components/providers";
 import { DefaultSiteJsonLd } from "@/components/seo/default-site-json-ld";
 import {
@@ -67,6 +68,7 @@ export default function RootLayout({
 					<Providers>{children}</Providers>
 				</SerwistProvider>
 				<Analytics />
+				<SpeedInsights />
 			</body>
 		</html>
 	);

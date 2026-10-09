@@ -61,6 +61,7 @@
         "@tanstack/react-query": "^5.102.8",
         "@upstash/qstash": "^2.12.0",
         "@varlock/nextjs-integration": "1.2.2",
+        "@vercel/speed-insights": "^2.0.0",
         "babel-plugin-react-compiler": "^1.0.0",
         "better-auth": "catalog:",
         "lucide-react": "catalog:",
@@ -1049,6 +1050,8 @@
     "@varlock/nextjs-integration": ["@varlock/nextjs-integration@1.2.2", "", { "peerDependencies": { "next": ">=14", "varlock": "^1.18.0" } }, "sha512-livl9GPwLT/bz3FiYDbXjdgOkQAjwlUN8f/PBaik5BjBUtCZ+xpjFpuVDfO/aFNqqQsVaaoDJQxy/dzVMAFJOw=="],
 
     "@vercel/analytics": ["@vercel/analytics@2.0.1", "", { "peerDependencies": { "@remix-run/react": "^2", "@sveltejs/kit": "^1 || ^2", "next": ">= 13", "nuxt": ">= 3", "react": "^18 || ^19 || ^19.0.0-rc", "svelte": ">= 4", "vue": "^3", "vue-router": "^4" }, "optionalPeers": ["@remix-run/react", "@sveltejs/kit", "next", "nuxt", "react", "svelte", "vue", "vue-router"] }, "sha512-MTQG6V9qQrt1tsDeF+2Uoo5aPjqbVPys1xvnIftXSJYG2SrwXRHnqEvVoYID7BTruDz4lCd2Z7rM1BdkUehk2g=="],
+
+    "@vercel/speed-insights": ["@vercel/speed-insights@2.0.0", "", { "peerDependencies": { "@sveltejs/kit": "^1 || ^2", "next": ">= 13", "nuxt": ">= 3", "react": "^18 || ^19 || ^19.0.0-rc", "svelte": ">= 4", "vue": "^3", "vue-router": "^4" }, "optionalPeers": ["@sveltejs/kit", "next", "nuxt", "react", "svelte", "vue", "vue-router"] }, "sha512-jwkNcrTeafWxjmWq4AHBaptSqZiJkYU5adLC9QBSqeim0GcqDMgN5Ievh8OG1rJ6W3A4l1oiP7qr9CWxGuzu3w=="],
 
     "@visx/curve": ["@visx/curve@4.0.1-alpha.0", "", { "dependencies": { "@visx/vendor": "4.0.0-alpha.0" } }, "sha512-jRu61Uz274pV1zyioXmboyrLutYbnKsgjj4njSGCnhdXj5GkZvZbg+ThDb6oOzoAnJOBRLz4rzPlWvNJOzuVMg=="],
 
