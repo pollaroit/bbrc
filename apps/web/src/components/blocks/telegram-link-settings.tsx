@@ -98,7 +98,7 @@ export function TelegramLinkSettings() {
 		script.setAttribute("data-telegram-login", botUsername);
 		script.setAttribute("data-size", "large");
 		script.setAttribute("data-onauth", "onTelegramLinkAuth(user)");
-		script.setAttribute("data-request-access", "write");
+		// Profile only — no `write` (avoids extra OAuth / phone flows; enough to link user id).
 		host.appendChild(script);
 
 		return () => {
@@ -160,10 +160,72 @@ export function TelegramLinkSettings() {
 					{linkMutation.isPending ? (
 						<p className="text-muted-foreground text-sm">Connecting…</p>
 					) : null}
-					<p className="text-muted-foreground text-xs">
+					<p className="text-muted-foreground text-xs leading-relaxed">
 						Use the button above to sign in with Telegram. BBRC will not replace
 						your email login — this only links identities.
 					</p>
+					{botUsername ? (
+						<details className="text-muted-foreground text-xs leading-relaxed">
+							<summary className="cursor-pointer font-medium text-foreground">
+								Confirmation never arrives?
+							</summary>
+							<ul className="mt-2 list-disc space-y-1.5 ps-4">
+								<li>
+									Use the{" "}
+									<strong className="font-medium text-foreground">
+										same site URL
+									</strong>{" "}
+									registered in @BotFather → your bot →{" "}
+									<strong className="font-medium text-foreground">
+										Login Widget
+									</strong>{" "}
+									→ Allowed URLs (exact scheme + host, e.g.{" "}
+									<code className="text-[0.7rem]">https://yoursite.com</code>
+									). Localhost is not supported.
+								</li>
+								<li>
+									Open{" "}
+									<a
+										href={`https://t.me/${botUsername}`}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="font-medium text-foreground underline underline-offset-4"
+									>
+										@{botUsername}
+									</a>{" "}
+									in Telegram, tap <strong>Start</strong>, then try again.
+								</li>
+								<li>
+									In the same browser, log in at{" "}
+									<a
+										href="https://web.telegram.org"
+										target="_blank"
+										rel="noopener noreferrer"
+										className="font-medium text-foreground underline underline-offset-4"
+									>
+										web.telegram.org
+									</a>{" "}
+									first — many stuck flows are fixed when Telegram Web already
+									has a session (allow third‑party cookies if the popup closes
+									with no data).
+								</li>
+								<li>
+									The prompt is a{" "}
+									<strong className="font-medium text-foreground">
+										Telegram in-app
+									</strong>{" "}
+									message (chat with “Telegram” / login service), not SMS. Check
+									all devices where that number is active.
+								</li>
+								<li>
+									Confirm{" "}
+									<code className="text-[0.7rem]">TELEGRAM_BOT_USERNAME</code>{" "}
+									matches the bot whose token is in{" "}
+									<code className="text-[0.7rem]">TELEGRAM_BOT_TOKEN</code>.
+								</li>
+							</ul>
+						</details>
+					) : null}
 				</div>
 			) : null}
 
