@@ -4,6 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CreateMenu } from "@/components/blocks/create-menu";
+import { GlobalSearchTrigger } from "@/components/blocks/global-search-trigger";
 import { HeaderAuthLinks } from "@/components/blocks/header-auth-links";
 import { HeaderOngoingReadButton } from "@/components/blocks/header-ongoing-read-button";
 import { Logo } from "@/components/blocks/logo";
@@ -51,6 +52,7 @@ export default function Header() {
 
 				<div className="ml-auto flex items-center gap-2">
 					<CreateMenu />
+					<GlobalSearchTrigger variant="desktop" />
 					<ModeToggle />
 					{isPending ? null : session ? (
 						<>

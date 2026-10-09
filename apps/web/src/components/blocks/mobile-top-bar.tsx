@@ -2,6 +2,7 @@
 
 import type { Route } from "next";
 import Link from "next/link";
+import { GlobalSearchMobileTrigger } from "@/components/blocks/global-search-trigger";
 import { Logo } from "@/components/blocks/logo";
 import { MobileReadSittingsControl } from "@/components/blocks/mobile-read-sittings-control";
 import {
@@ -36,6 +37,7 @@ export function MobileTopBar() {
 					<Logo className="size-7" label="" />
 				</Link>
 				<div className="flex items-center justify-end gap-0.5">
+					<GlobalSearchMobileTrigger />
 					<ModeToggle />
 					{!isPending && session ? <NotificationBell /> : null}
 				</div>

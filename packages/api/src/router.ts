@@ -14,6 +14,7 @@ import { notificationRouter } from "./modules/notification/notification.router";
 import { postRouter } from "./modules/post/post.router";
 import { readRouter } from "./modules/read/read.router";
 import { rpRouter } from "./modules/rp/rp.router";
+import { globalSearchRouter } from "./modules/search/global-search.router";
 import { shelfRouter } from "./modules/shelf/shelf.router";
 import { sittingRouter } from "./modules/sitting/sitting.router";
 import { storageRouter } from "./modules/storage/storage.router";
@@ -30,6 +31,7 @@ export const appRouter = {
 	fact: factRouter,
 	favorite: favoriteRouter,
 	feedback: feedbackRouter,
+	globalSearch: globalSearchRouter,
 	like: likeRouter,
 	notification: notificationRouter,
 	post: postRouter,

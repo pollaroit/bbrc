@@ -2,7 +2,12 @@
 
 import type { ReactNode } from "react";
 import { ComposePostProvider } from "@/components/blocks/compose-post-provider";
+import { GlobalSearchProvider } from "@/components/blocks/global-search-provider";
 
 export function MainShell({ children }: { children: ReactNode }) {
-	return <ComposePostProvider>{children}</ComposePostProvider>;
+	return (
+		<GlobalSearchProvider>
+			<ComposePostProvider>{children}</ComposePostProvider>
+		</GlobalSearchProvider>
+	);
 }
