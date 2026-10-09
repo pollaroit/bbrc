@@ -1,7 +1,7 @@
 import type { Database } from "@bbrc/db";
 import { activeParticipationWhere } from "../../modules/sitting/participation-active";
 import { sendTelegramMessage, sendTelegramPoll } from "./client";
-import { escapeTelegramHtml } from "./escape-html";
+import { escapeTelegramHtml, formatTelegramMemberMention } from "./escape-html";
 import { formatClubDateTime } from "./format-club-datetime";
 import { resolvePublicAppOrigin } from "./public-app-origin";
 
@@ -12,6 +12,50 @@ function sittingLabel(slug: string): string {
 function absoluteUrl(path: string): string {
 	const origin = resolvePublicAppOrigin();
 	return `${origin}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+const TELEGRAM_MENTION_LIST_LIMIT = 40;
+
+const participantTelegramUserSelect = {
+	name: true,
+	username: true,
+	telegramUserId: true,
+} as const;
+
+type ParticipantTelegramUser = {
+	name: string | null;
+	username: string;
+	telegramUserId: string | null;
+};
+
+function memberDisplayName(user: ParticipantTelegramUser): string {
+	return user.name?.trim() || user.username;
+}
+
+function formatParticipantMentionBlock(
+	participants: { user: ParticipantTelegramUser }[],
+	heading: string,
+): string | null {
+	if (participants.length === 0) {
+		return null;
+	}
+
+	const listed = participants.slice(0, TELEGRAM_MENTION_LIST_LIMIT);
+	const mentions = listed
+		.map((row) =>
+			formatTelegramMemberMention(
+				memberDisplayName(row.user),
+				row.user.telegramUserId,
+			),
+		)
+		.join(", ");
+
+	const overflow =
+		participants.length > TELEGRAM_MENTION_LIST_LIMIT
+			? `\n…and ${participants.length - TELEGRAM_MENTION_LIST_LIMIT} more`
+			: "";
+
+	return `<b>${escapeTelegramHtml(heading)}</b>\n${mentions}${overflow}`;
 }
 
 export async function telegramAnnouncePollOpen(
@@ -31,7 +75,13 @@ export async function telegramAnnouncePollOpen(
 					_count: { select: { options: true } },
 				},
 			},
-			_count: { select: { participants: true } },
+			participants: {
+				where: activeParticipationWhere,
+				orderBy: { user: { username: "asc" } },
+				select: {
+					user: { select: participantTelegramUserSelect },
+				},
+			},
 		},
 	});
 
@@ -48,13 +98,20 @@ export async function telegramAnnouncePollOpen(
 		formatClubDateTime(sitting.poll.deadline),
 	);
 	const voteUrl = absoluteUrl(`/sittings/${sitting.slug}/vote`);
+	const participantBlock = formatParticipantMentionBlock(
+		sitting.participants,
+		"Participants",
+	);
 
 	const text = [
 		`<b>Poll open</b> — ${label}`,
 		`Closes: ${deadline} (club time)`,
-		`Options: ${sitting.poll._count.options} · Participants: ${sitting._count.participants}`,
+		`Options: ${sitting.poll._count.options} · Participants: ${sitting.participants.length}`,
+		participantBlock,
 		`<a href="${voteUrl}">Vote now</a>`,
-	].join("\n");
+	]
+		.filter((line): line is string => line != null)
+		.join("\n\n");
 
 	const sent = await sendTelegramMessage({ text });
 	if (sent) {
@@ -203,7 +260,7 @@ export async function telegramSendReading24hWarning(
 				where: activeParticipationWhere,
 				select: {
 					progress: true,
-					user: { select: { name: true, username: true } },
+					user: { select: participantTelegramUserSelect },
 				},
 			},
 		},
@@ -226,8 +283,9 @@ export async function telegramSendReading24hWarning(
 			: behind
 					.slice(0, 20)
 					.map((row) => {
-						const label = escapeTelegramHtml(
-							row.user.name?.trim() || row.user.username,
+						const label = formatTelegramMemberMention(
+							memberDisplayName(row.user),
+							row.user.telegramUserId,
 						);
 						return `· ${label} (${row.progress.replaceAll("_", " ")})`;
 					})
