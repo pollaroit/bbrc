@@ -18,6 +18,9 @@ export const adminUserSortableFields = [
 	"participations._count",
 	"favorites._count",
 	"shelves._count",
+	"documents._count",
+	"bookRequests._count",
+	"factImpressions._count",
 ] as const;
 
 export const adminUserListSorting = defineSorting<
@@ -32,6 +35,9 @@ export const adminUserListSorting = defineSorting<
 		"participations._count": (d) => ({ participations: { _count: d } }),
 		"favorites._count": (d) => ({ favorites: { _count: d } }),
 		"shelves._count": (d) => ({ shelves: { _count: d } }),
+		"documents._count": (d) => ({ documents: { _count: d } }),
+		"bookRequests._count": (d) => ({ bookRequests: { _count: d } }),
+		"factImpressions._count": (d) => ({ factImpressions: { _count: d } }),
 	},
 });
 
@@ -62,5 +68,8 @@ export const adminUserListFiltersSchema = z
 		minParticipations: z.number().int().min(0),
 		minFavorites: z.number().int().min(0),
 		minShelves: z.number().int().min(0),
+		minDocuments: z.number().int().min(0),
+		minBookRequests: z.number().int().min(0),
+		minFactImpressions: z.number().int().min(0),
 	})
 	.partial();

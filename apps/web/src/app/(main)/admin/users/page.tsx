@@ -1,11 +1,13 @@
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import {
 	AdminResourceShell,
 	adminMemberTabs,
 } from "@/components/blocks/admin-resource-shell";
 import { AdminUsersOverview } from "@/components/blocks/admin-users-overview";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 
@@ -32,7 +34,11 @@ export default async function AdminUsersOverviewPage() {
 			tabs={[...adminMemberTabs]}
 			activeHref="/admin/users"
 		>
-			<AdminUsersOverview />
+			<ListingSearchParamsBoundary>
+				<Suspense fallback={null}>
+					<AdminUsersOverview />
+				</Suspense>
+			</ListingSearchParamsBoundary>
 		</AdminResourceShell>
 	);
 }

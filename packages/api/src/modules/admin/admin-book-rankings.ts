@@ -1,6 +1,7 @@
-import type { Database } from "@bbrc/db";
+import type { Database, Prisma } from "@bbrc/db";
 import { authorNameToSlug } from "@bbrc/shared";
 import type { z } from "zod";
+import { mergeWhereFragments } from "../../utils/searching";
 import type {
 	AdminAuthorRankingItemSchema,
 	AdminBookRankingItemSchema,
@@ -29,9 +30,11 @@ function mapBookRow(row: {
 
 async function topBooksByRelationCount(
 	db: Database,
+	where: Prisma.BookWhereInput,
 	relation: "favorites" | "feedbacks" | "shelfBooks" | "postAttachments",
 ): Promise<BookRankingItem[]> {
 	const rows = await db.book.findMany({
+		where,
 		orderBy: { [relation]: { _count: "desc" } },
 		take: RANKING_LIMIT,
 		select: {
@@ -61,10 +64,11 @@ async function topBooksByRelationCount(
 
 async function topBooksByPages(
 	db: Database,
+	where: Prisma.BookWhereInput,
 	direction: "asc" | "desc",
 ): Promise<BookRankingItem[]> {
 	const rows = await db.book.findMany({
-		where: { pages: { gte: 1 } },
+		where: mergeWhereFragments(where, { pages: { gte: 1 } }),
 		orderBy: { pages: direction },
 		take: RANKING_LIMIT,
 		select: { slug: true, title: true, coverId: true, pages: true },
@@ -82,9 +86,11 @@ async function topBooksByPages(
 
 async function topBooksByPublishedIn(
 	db: Database,
+	where: Prisma.BookWhereInput,
 	direction: "asc" | "desc",
 ): Promise<BookRankingItem[]> {
 	const rows = await db.book.findMany({
+		where,
 		orderBy: { publishedIn: direction },
 		take: RANKING_LIMIT,
 		select: { slug: true, title: true, coverId: true, publishedIn: true },
@@ -102,10 +108,11 @@ async function topBooksByPublishedIn(
 
 async function topBooksByRating(
 	db: Database,
+	where: Prisma.BookWhereInput,
 	field: "openLibraryRating" | "averageRating",
 ): Promise<BookRankingItem[]> {
 	const rows = await db.book.findMany({
-		where: { [field]: { not: null } },
+		where: mergeWhereFragments(where, { [field]: { not: null } }),
 		orderBy: { [field]: "desc" },
 		take: RANKING_LIMIT,
 		select: {
@@ -132,8 +139,9 @@ async function topBooksByRating(
 
 async function topAuthorsByCatalogSize(
 	db: Database,
+	where: Prisma.BookWhereInput,
 ): Promise<AuthorRankingItem[]> {
-	const rows = await db.book.findMany({ select: { authors: true } });
+	const rows = await db.book.findMany({ where, select: { authors: true } });
 	const counts = new Map<string, { name: string; bookCount: number }>();
 
 	for (const row of rows) {
@@ -171,8 +179,12 @@ async function topAuthorsByCatalogSize(
 		.slice(0, RANKING_LIMIT);
 }
 
-async function topBooksByPollVotes(db: Database): Promise<BookRankingItem[]> {
+async function topBooksByPollVotes(
+	db: Database,
+	where: Prisma.BookWhereInput,
+): Promise<BookRankingItem[]> {
 	const options = await db.pollOption.findMany({
+		where: Object.keys(where).length > 0 ? { book: where } : undefined,
 		select: {
 			bookId: true,
 			pollId: true,
@@ -203,7 +215,7 @@ async function topBooksByPollVotes(db: Database): Promise<BookRankingItem[]> {
 
 	const bookIds = ranked.map(([bookId]) => bookId);
 	const books = await db.book.findMany({
-		where: { id: { in: bookIds } },
+		where: mergeWhereFragments(where, { id: { in: bookIds } }),
 		select: { id: true, slug: true, title: true, coverId: true },
 	});
 	const bookById = new Map(books.map((b) => [b.id, b]));
@@ -229,7 +241,27 @@ async function topBooksByPollVotes(db: Database): Promise<BookRankingItem[]> {
 	});
 }
 
-export async function loadAdminBookRankings(db: Database) {
+export function emptyAdminBookRankings() {
+	return {
+		mostFavorited: [] as BookRankingItem[],
+		longest: [] as BookRankingItem[],
+		shortest: [] as BookRankingItem[],
+		earliestPublished: [] as BookRankingItem[],
+		newestPublished: [] as BookRankingItem[],
+		authorsByCatalogSize: [] as AuthorRankingItem[],
+		openLibraryRating: [] as BookRankingItem[],
+		clubAverageRating: [] as BookRankingItem[],
+		mostShelved: [] as BookRankingItem[],
+		mostPollVotes: [] as BookRankingItem[],
+		mostFeedbacks: [] as BookRankingItem[],
+		mostPostAttachments: [] as BookRankingItem[],
+	};
+}
+
+export async function loadAdminBookRankings(
+	db: Database,
+	where: Prisma.BookWhereInput = {},
+) {
 	const [
 		mostFavorited,
 		longest,
@@ -244,18 +276,18 @@ export async function loadAdminBookRankings(db: Database) {
 		mostFeedbacks,
 		mostPostAttachments,
 	] = await Promise.all([
-		topBooksByRelationCount(db, "favorites"),
-		topBooksByPages(db, "desc"),
-		topBooksByPages(db, "asc"),
-		topBooksByPublishedIn(db, "asc"),
-		topBooksByPublishedIn(db, "desc"),
-		topAuthorsByCatalogSize(db),
-		topBooksByRating(db, "openLibraryRating"),
-		topBooksByRating(db, "averageRating"),
-		topBooksByRelationCount(db, "shelfBooks"),
-		topBooksByPollVotes(db),
-		topBooksByRelationCount(db, "feedbacks"),
-		topBooksByRelationCount(db, "postAttachments"),
+		topBooksByRelationCount(db, where, "favorites"),
+		topBooksByPages(db, where, "desc"),
+		topBooksByPages(db, where, "asc"),
+		topBooksByPublishedIn(db, where, "asc"),
+		topBooksByPublishedIn(db, where, "desc"),
+		topAuthorsByCatalogSize(db, where),
+		topBooksByRating(db, where, "openLibraryRating"),
+		topBooksByRating(db, where, "averageRating"),
+		topBooksByRelationCount(db, where, "shelfBooks"),
+		topBooksByPollVotes(db, where),
+		topBooksByRelationCount(db, where, "feedbacks"),
+		topBooksByRelationCount(db, where, "postAttachments"),
 	]);
 
 	return {

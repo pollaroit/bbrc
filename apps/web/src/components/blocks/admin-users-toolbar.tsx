@@ -8,6 +8,7 @@ import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet"
 import { ListingRangeFields } from "@/components/listing/listing-range-fields";
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
+import { OverviewFiltersPin } from "@/components/listing/overview-filters-pin";
 import {
 	adminUserSortByLabels,
 	useAdminUsersListingSearchParams,
@@ -18,6 +19,7 @@ import {
 	userStatuses,
 	userStatusFilterLabels,
 } from "@/lib/listing/users-listing";
+import { cn } from "@/lib/utils";
 
 function parseOptionalInt(value: string): number | null {
 	const trimmed = value.trim();
@@ -44,7 +46,10 @@ function countAdminSheetFilters(
 		params.minFeedbacks != null ||
 		params.minParticipations != null ||
 		params.minFavorites != null ||
-		params.minShelves != null
+		params.minShelves != null ||
+		params.minDocuments != null ||
+		params.minBookRequests != null ||
+		params.minFactImpressions != null
 	) {
 		count += 1;
 	}
@@ -77,9 +82,16 @@ function MinCountField({
 	);
 }
 
-export function AdminUsersToolbar() {
+type AdminUsersToolbarProps = {
+	variant?: "list" | "overview";
+};
+
+export function AdminUsersToolbar({
+	variant = "list",
+}: AdminUsersToolbarProps) {
 	const [params, setParams] = useAdminUsersListingSearchParams();
 	const sheetFilterCount = countAdminSheetFilters(params);
+	const resetPage = variant === "list" ? { page: 1 as const } : {};
 
 	const toggleStatus = (status: UserListingStatus, checked: boolean) => {
 		const current = params.statuses ?? [];
@@ -89,171 +101,245 @@ export function AdminUsersToolbar() {
 
 		void setParams({
 			statuses: next.length > 0 ? next : null,
-			page: 1,
+			...resetPage,
 		});
 	};
 
 	return (
-		<div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+		<div
+			className={cn(
+				"flex w-full flex-col gap-3",
+				variant === "list" && "lg:flex-row lg:items-center",
+			)}
+		>
 			<ListingSearch
 				value={params.search ?? ""}
 				onChange={(search) => {
-					void setParams({ search, page: 1 });
+					void setParams({ search, ...resetPage });
 				}}
 				placeholder="Search by name, username, or email…"
+				className={variant === "overview" ? "w-full max-w-2xl" : undefined}
 			/>
 
-			<div className="flex flex-wrap items-center gap-2 lg:shrink-0">
-				<ListingSort
-					sortBy={params.sortBy}
-					sortDirection={params.sortDirection}
-					onSortByChange={(sortBy) => {
-						void setParams({ sortBy, page: 1 });
-					}}
-					onSortDirectionChange={(sortDirection) => {
-						void setParams({ sortDirection, page: 1 });
-					}}
-					sortByOptions={adminUserSortableFields}
-					sortByLabels={adminUserSortByLabels}
-				/>
-
-				<ListingFiltersSheet
-					title="Member filters"
-					description="Filter by role, status, join date, or minimum activity."
-					activeFilterCount={sheetFilterCount}
-					onClear={() => {
-						void setParams({
-							statuses: null,
-							isAdmin: null,
-							rangeBy: null,
-							rangeMin: null,
-							rangeMax: null,
-							minXp: null,
-							minRp: null,
-							minPosts: null,
-							minComments: null,
-							minLikes: null,
-							minFeedbacks: null,
-							minParticipations: null,
-							minFavorites: null,
-							minShelves: null,
-							page: 1,
-						});
-					}}
-				>
-					<ListingCheckboxList
-						legend="Status"
-						options={userStatuses.map((status) => ({
-							id: status,
-							label: userStatusFilterLabels[status],
-							checked: params.statuses?.includes(status) ?? false,
-							onCheckedChange: (checked) => {
-								toggleStatus(status, checked);
-							},
-						}))}
-					/>
-
-					<ListingCheckboxList
-						legend="Role"
-						options={[
-							{
-								id: "admin",
-								label: "Administrators only",
-								checked: params.isAdmin === true,
-								onCheckedChange: (checked) => {
-									void setParams({
-										isAdmin: checked ? true : null,
-										page: 1,
-									});
-								},
-							},
-						]}
-					/>
-
-					<ListingRangeFields
-						rangeBy={params.rangeBy}
-						rangeMin={params.rangeMin}
-						rangeMax={params.rangeMax}
-						onRangeByChange={(rangeBy) => {
-							void setParams({ rangeBy, page: 1 });
+			<div
+				className={cn(
+					"flex flex-wrap items-center gap-2",
+					variant === "list" && "lg:shrink-0",
+					variant === "overview" && "w-full",
+				)}
+			>
+				{variant === "list" ? (
+					<ListingSort
+						sortBy={params.sortBy}
+						sortDirection={params.sortDirection}
+						onSortByChange={(sortBy) => {
+							void setParams({ sortBy, page: 1 });
 						}}
-						onRangeMinChange={(rangeMin) => {
-							void setParams({ rangeMin, page: 1 });
+						onSortDirectionChange={(sortDirection) => {
+							void setParams({ sortDirection, page: 1 });
 						}}
-						onRangeMaxChange={(rangeMax) => {
-							void setParams({ rangeMax, page: 1 });
-						}}
-						rangeByOptions={["createdAt"] as const}
-						rangeByLabels={userRangeByLabels}
+						sortByOptions={adminUserSortableFields}
+						sortByLabels={adminUserSortByLabels}
 					/>
+				) : null}
 
-					<div className="grid grid-cols-2 gap-3">
-						<MinCountField
-							label="Min XP"
-							value={params.minXp}
-							onChange={(minXp) => {
-								void setParams({ minXp, page: 1 });
-							}}
+				{variant === "overview" ? (
+					<OverviewFiltersPin>
+						<MemberFiltersSheet
+							params={params}
+							setParams={setParams}
+							resetPage={resetPage}
+							sheetFilterCount={sheetFilterCount}
+							toggleStatus={toggleStatus}
 						/>
-						<MinCountField
-							label="Min RP"
-							value={params.minRp}
-							onChange={(minRp) => {
-								void setParams({ minRp, page: 1 });
-							}}
-						/>
-						<MinCountField
-							label="Min posts"
-							value={params.minPosts}
-							onChange={(minPosts) => {
-								void setParams({ minPosts, page: 1 });
-							}}
-						/>
-						<MinCountField
-							label="Min comments"
-							value={params.minComments}
-							onChange={(minComments) => {
-								void setParams({ minComments, page: 1 });
-							}}
-						/>
-						<MinCountField
-							label="Min likes"
-							value={params.minLikes}
-							onChange={(minLikes) => {
-								void setParams({ minLikes, page: 1 });
-							}}
-						/>
-						<MinCountField
-							label="Min feedbacks"
-							value={params.minFeedbacks}
-							onChange={(minFeedbacks) => {
-								void setParams({ minFeedbacks, page: 1 });
-							}}
-						/>
-						<MinCountField
-							label="Min sittings"
-							value={params.minParticipations}
-							onChange={(minParticipations) => {
-								void setParams({ minParticipations, page: 1 });
-							}}
-						/>
-						<MinCountField
-							label="Min favorites"
-							value={params.minFavorites}
-							onChange={(minFavorites) => {
-								void setParams({ minFavorites, page: 1 });
-							}}
-						/>
-						<MinCountField
-							label="Min shelves"
-							value={params.minShelves}
-							onChange={(minShelves) => {
-								void setParams({ minShelves, page: 1 });
-							}}
-						/>
-					</div>
-				</ListingFiltersSheet>
+					</OverviewFiltersPin>
+				) : (
+					<MemberFiltersSheet
+						params={params}
+						setParams={setParams}
+						resetPage={resetPage}
+						sheetFilterCount={sheetFilterCount}
+						toggleStatus={toggleStatus}
+					/>
+				)}
 			</div>
 		</div>
+	);
+}
+
+function MemberFiltersSheet({
+	params,
+	setParams,
+	resetPage,
+	sheetFilterCount,
+	toggleStatus,
+}: {
+	params: ReturnType<typeof useAdminUsersListingSearchParams>[0];
+	setParams: ReturnType<typeof useAdminUsersListingSearchParams>[1];
+	resetPage: { page?: 1 };
+	sheetFilterCount: number;
+	toggleStatus: (status: UserListingStatus, checked: boolean) => void;
+}) {
+	return (
+		<ListingFiltersSheet
+			title="Member filters"
+			description="Filter by role, status, join date, or minimum activity."
+			activeFilterCount={sheetFilterCount}
+			onClear={() => {
+				void setParams({
+					statuses: null,
+					isAdmin: null,
+					rangeBy: null,
+					rangeMin: null,
+					rangeMax: null,
+					minXp: null,
+					minRp: null,
+					minPosts: null,
+					minComments: null,
+					minLikes: null,
+					minFeedbacks: null,
+					minParticipations: null,
+					minFavorites: null,
+					minShelves: null,
+					minDocuments: null,
+					minBookRequests: null,
+					minFactImpressions: null,
+					...resetPage,
+				});
+			}}
+		>
+			<ListingCheckboxList
+				legend="Status"
+				options={userStatuses.map((status) => ({
+					id: status,
+					label: userStatusFilterLabels[status],
+					checked: params.statuses?.includes(status) ?? false,
+					onCheckedChange: (checked) => {
+						toggleStatus(status, checked);
+					},
+				}))}
+			/>
+
+			<ListingCheckboxList
+				legend="Role"
+				options={[
+					{
+						id: "admin",
+						label: "Administrators only",
+						checked: params.isAdmin === true,
+						onCheckedChange: (checked) => {
+							void setParams({
+								isAdmin: checked ? true : null,
+								...resetPage,
+							});
+						},
+					},
+				]}
+			/>
+
+			<ListingRangeFields
+				rangeBy={params.rangeBy}
+				rangeMin={params.rangeMin}
+				rangeMax={params.rangeMax}
+				onRangeByChange={(rangeBy) => {
+					void setParams({ rangeBy, ...resetPage });
+				}}
+				onRangeMinChange={(rangeMin) => {
+					void setParams({ rangeMin, ...resetPage });
+				}}
+				onRangeMaxChange={(rangeMax) => {
+					void setParams({ rangeMax, ...resetPage });
+				}}
+				rangeByOptions={["createdAt"] as const}
+				rangeByLabels={userRangeByLabels}
+			/>
+
+			<div className="grid grid-cols-2 gap-3">
+				<MinCountField
+					label="Min XP"
+					value={params.minXp}
+					onChange={(minXp) => {
+						void setParams({ minXp, ...resetPage });
+					}}
+				/>
+				<MinCountField
+					label="Min RP"
+					value={params.minRp}
+					onChange={(minRp) => {
+						void setParams({ minRp, ...resetPage });
+					}}
+				/>
+				<MinCountField
+					label="Min posts"
+					value={params.minPosts}
+					onChange={(minPosts) => {
+						void setParams({ minPosts, ...resetPage });
+					}}
+				/>
+				<MinCountField
+					label="Min comments"
+					value={params.minComments}
+					onChange={(minComments) => {
+						void setParams({ minComments, ...resetPage });
+					}}
+				/>
+				<MinCountField
+					label="Min likes"
+					value={params.minLikes}
+					onChange={(minLikes) => {
+						void setParams({ minLikes, ...resetPage });
+					}}
+				/>
+				<MinCountField
+					label="Min feedbacks"
+					value={params.minFeedbacks}
+					onChange={(minFeedbacks) => {
+						void setParams({ minFeedbacks, ...resetPage });
+					}}
+				/>
+				<MinCountField
+					label="Min sittings"
+					value={params.minParticipations}
+					onChange={(minParticipations) => {
+						void setParams({ minParticipations, ...resetPage });
+					}}
+				/>
+				<MinCountField
+					label="Min favorites"
+					value={params.minFavorites}
+					onChange={(minFavorites) => {
+						void setParams({ minFavorites, ...resetPage });
+					}}
+				/>
+				<MinCountField
+					label="Min shelves"
+					value={params.minShelves}
+					onChange={(minShelves) => {
+						void setParams({ minShelves, ...resetPage });
+					}}
+				/>
+				<MinCountField
+					label="Min documents"
+					value={params.minDocuments}
+					onChange={(minDocuments) => {
+						void setParams({ minDocuments, ...resetPage });
+					}}
+				/>
+				<MinCountField
+					label="Min book requests"
+					value={params.minBookRequests}
+					onChange={(minBookRequests) => {
+						void setParams({ minBookRequests, ...resetPage });
+					}}
+				/>
+				<MinCountField
+					label="Min fact views"
+					value={params.minFactImpressions}
+					onChange={(minFactImpressions) => {
+						void setParams({ minFactImpressions, ...resetPage });
+					}}
+				/>
+			</div>
+		</ListingFiltersSheet>
 	);
 }

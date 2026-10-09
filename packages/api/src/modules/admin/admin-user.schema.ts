@@ -93,17 +93,25 @@ export const AdminUserListItemSchema = UserSchema.pick({
 	telegramUsername: zod.string().nullable(),
 });
 
+const adminUserListQueryRefine = (
+	value: {
+		rangeMin?: Date;
+		rangeMax?: Date;
+	},
+	ctx: z.RefinementCtx,
+) => {
+	refineRangingBounds(
+		{ rangeMin: value.rangeMin, rangeMax: value.rangeMax },
+		ctx,
+	);
+};
+
 export const ListAdminUsersInputSchema = adminUserListFiltersSchema
 	.extend(OffsetPaginationInputSchema.shape)
 	.extend(adminUserListSorting.inputSchema.shape)
 	.extend(adminUserListRanging.inputSchema.shape)
 	.extend(adminUserListSearching.inputSchema.shape)
-	.superRefine((value, ctx) => {
-		refineRangingBounds(
-			{ rangeMin: value.rangeMin, rangeMax: value.rangeMax },
-			ctx,
-		);
-	});
+	.superRefine(adminUserListQueryRefine);
 
 export const ListAdminUsersOutputSchema = OffsetPaginationOutputSchema(
 	AdminUserListItemSchema,
@@ -111,6 +119,17 @@ export const ListAdminUsersOutputSchema = OffsetPaginationOutputSchema(
 
 export type ListAdminUsersInput = z.infer<typeof ListAdminUsersInputSchema>;
 export type ListAdminUsersOutput = z.infer<typeof ListAdminUsersOutputSchema>;
+
+export const GetAdminUserOverviewInputSchema = adminUserListFiltersSchema
+	.extend(adminUserListRanging.inputSchema.shape)
+	.extend(adminUserListSearching.inputSchema.shape)
+	.partial()
+	.superRefine(adminUserListQueryRefine)
+	.default({});
+
+export type GetAdminUserOverviewInput = z.infer<
+	typeof GetAdminUserOverviewInputSchema
+>;
 
 export const GetAdminUserStatsInputSchema = zod
 	.object({

@@ -1,4 +1,4 @@
-import type { Database } from "@bbrc/db";
+import type { Database, Prisma } from "@bbrc/db";
 import type { z } from "zod";
 import type { AdminUserRankingItemSchema } from "./admin-user.schema";
 
@@ -28,8 +28,12 @@ function mapUserRow(row: {
 	};
 }
 
-async function topUsersByXp(db: Database): Promise<UserRankingItem[]> {
+async function topUsersByXp(
+	db: Database,
+	where: Prisma.UserWhereInput,
+): Promise<UserRankingItem[]> {
 	const rows = await db.user.findMany({
+		where,
 		orderBy: { xp: "desc" },
 		take: RANKING_LIMIT,
 		select: { ...userRankingSelect, xp: true },
@@ -45,8 +49,12 @@ async function topUsersByXp(db: Database): Promise<UserRankingItem[]> {
 	);
 }
 
-async function topUsersByRp(db: Database): Promise<UserRankingItem[]> {
+async function topUsersByRp(
+	db: Database,
+	where: Prisma.UserWhereInput,
+): Promise<UserRankingItem[]> {
 	const rows = await db.user.findMany({
+		where,
 		orderBy: { rp: "desc" },
 		take: RANKING_LIMIT,
 		select: { ...userRankingSelect, rp: true },
@@ -64,6 +72,7 @@ async function topUsersByRp(db: Database): Promise<UserRankingItem[]> {
 
 async function topUsersByRelationCount(
 	db: Database,
+	where: Prisma.UserWhereInput,
 	relation:
 		| "posts"
 		| "comments"
@@ -75,6 +84,7 @@ async function topUsersByRelationCount(
 		| "bookRequests",
 ): Promise<UserRankingItem[]> {
 	const rows = await db.user.findMany({
+		where,
 		orderBy: { [relation]: { _count: "desc" } },
 		take: RANKING_LIMIT,
 		select: {
@@ -110,8 +120,12 @@ async function topUsersByRelationCount(
 	});
 }
 
-async function newestMembers(db: Database): Promise<UserRankingItem[]> {
+async function newestMembers(
+	db: Database,
+	where: Prisma.UserWhereInput,
+): Promise<UserRankingItem[]> {
 	const rows = await db.user.findMany({
+		where,
 		orderBy: { createdAt: "desc" },
 		take: RANKING_LIMIT,
 		select: { ...userRankingSelect, createdAt: true },
@@ -127,7 +141,26 @@ async function newestMembers(db: Database): Promise<UserRankingItem[]> {
 	);
 }
 
-export async function loadAdminUserRankings(db: Database) {
+export function emptyAdminUserRankings() {
+	return {
+		mostXp: [] as UserRankingItem[],
+		mostRp: [] as UserRankingItem[],
+		mostPosts: [] as UserRankingItem[],
+		mostComments: [] as UserRankingItem[],
+		mostLikes: [] as UserRankingItem[],
+		mostFeedbacks: [] as UserRankingItem[],
+		mostParticipations: [] as UserRankingItem[],
+		mostFavorites: [] as UserRankingItem[],
+		mostShelves: [] as UserRankingItem[],
+		mostBookRequests: [] as UserRankingItem[],
+		newestMembers: [] as UserRankingItem[],
+	};
+}
+
+export async function loadAdminUserRankings(
+	db: Database,
+	where: Prisma.UserWhereInput = {},
+) {
 	const [
 		mostXp,
 		mostRp,
@@ -141,17 +174,17 @@ export async function loadAdminUserRankings(db: Database) {
 		mostBookRequests,
 		newestMembersList,
 	] = await Promise.all([
-		topUsersByXp(db),
-		topUsersByRp(db),
-		topUsersByRelationCount(db, "posts"),
-		topUsersByRelationCount(db, "comments"),
-		topUsersByRelationCount(db, "likes"),
-		topUsersByRelationCount(db, "feedbacks"),
-		topUsersByRelationCount(db, "participations"),
-		topUsersByRelationCount(db, "favorites"),
-		topUsersByRelationCount(db, "shelves"),
-		topUsersByRelationCount(db, "bookRequests"),
-		newestMembers(db),
+		topUsersByXp(db, where),
+		topUsersByRp(db, where),
+		topUsersByRelationCount(db, where, "posts"),
+		topUsersByRelationCount(db, where, "comments"),
+		topUsersByRelationCount(db, where, "likes"),
+		topUsersByRelationCount(db, where, "feedbacks"),
+		topUsersByRelationCount(db, where, "participations"),
+		topUsersByRelationCount(db, where, "favorites"),
+		topUsersByRelationCount(db, where, "shelves"),
+		topUsersByRelationCount(db, where, "bookRequests"),
+		newestMembers(db, where),
 	]);
 
 	return {

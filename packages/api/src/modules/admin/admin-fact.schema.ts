@@ -3,6 +3,7 @@ import {
 	OffsetPaginationOutputSchema,
 } from "@bbrc/schemas";
 import { z } from "zod";
+import { adminFactListSorting } from "./admin-fact.listing";
 
 export const FactCategorySchema = z.enum([
 	"general",
@@ -145,7 +146,7 @@ export const CreateAdminFactOutputSchema = AdminFactRecordSchema;
 
 export const ListAdminFactsInputSchema = OffsetPaginationInputSchema.extend({
 	status: z.enum(["all", "draft", "published"]).default("all"),
-});
+}).extend(adminFactListSorting.inputSchema.shape);
 
 export type ListAdminFactsInput = z.infer<typeof ListAdminFactsInputSchema>;
 

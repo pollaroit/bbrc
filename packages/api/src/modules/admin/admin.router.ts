@@ -1,6 +1,7 @@
 import { adminProcedure } from "../../procedures";
 import {
 	AdminBookOverviewOutputSchema,
+	GetAdminBookOverviewInputSchema,
 	GetAdminBookStatsInputSchema,
 	GetAdminBookStatsOutputSchema,
 	ListAdminBooksInputSchema,
@@ -50,6 +51,7 @@ import {
 	AdminUpdateUserStatusOutputSchema,
 	AdminUserOverviewOutputSchema,
 	AdminUserStatsOutputSchema,
+	GetAdminUserOverviewInputSchema,
 	GetAdminUserStatsInputSchema,
 	ListAdminUsersInputSchema,
 	ListAdminUsersOutputSchema,
@@ -67,8 +69,11 @@ import {
 
 export const adminRouter = {
 	getBookOverview: adminProcedure
+		.input(GetAdminBookOverviewInputSchema)
 		.output(AdminBookOverviewOutputSchema)
-		.handler(async ({ context }) => getAdminBookOverview(context.db)),
+		.handler(async ({ input, context }) =>
+			getAdminBookOverview(input, context.db),
+		),
 	listBooks: adminProcedure
 		.input(ListAdminBooksInputSchema)
 		.output(ListAdminBooksOutputSchema)
@@ -80,8 +85,11 @@ export const adminRouter = {
 			getAdminBookStats(input, context.db),
 		),
 	getUserOverview: adminProcedure
+		.input(GetAdminUserOverviewInputSchema)
 		.output(AdminUserOverviewOutputSchema)
-		.handler(async ({ context }) => getAdminUserOverview(context.db)),
+		.handler(async ({ input, context }) =>
+			getAdminUserOverview(input, context.db),
+		),
 	getUserStats: adminProcedure
 		.input(GetAdminUserStatsInputSchema)
 		.output(AdminUserStatsOutputSchema)

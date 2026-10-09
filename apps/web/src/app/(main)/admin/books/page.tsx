@@ -1,11 +1,13 @@
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { AdminBooksOverview } from "@/components/blocks/admin-books-overview";
 import {
 	AdminResourceShell,
 	adminBookTabs,
 } from "@/components/blocks/admin-resource-shell";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 
@@ -32,7 +34,11 @@ export default async function AdminBooksOverviewPage() {
 			tabs={[...adminBookTabs]}
 			activeHref="/admin/books"
 		>
-			<AdminBooksOverview />
+			<ListingSearchParamsBoundary>
+				<Suspense fallback={null}>
+					<AdminBooksOverview />
+				</Suspense>
+			</ListingSearchParamsBoundary>
 		</AdminResourceShell>
 	);
 }

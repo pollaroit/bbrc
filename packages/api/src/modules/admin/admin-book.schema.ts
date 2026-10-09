@@ -75,39 +75,76 @@ export const adminBookListQueryShape = adminBookListFiltersSchema
 	.extend(adminBookListRanging.inputSchema.shape)
 	.extend(adminBookListSearching.inputSchema.shape);
 
+const adminBookListQueryRefine = (
+	value: {
+		rangeMin?: Date;
+		rangeMax?: Date;
+		minOpenLibraryRating?: number;
+		maxOpenLibraryRating?: number;
+		minAverageRating?: number;
+		maxAverageRating?: number;
+		minPages?: number;
+		maxPages?: number;
+	},
+	ctx: z.RefinementCtx,
+) => {
+	refineRangingBounds(
+		{ rangeMin: value.rangeMin, rangeMax: value.rangeMax },
+		ctx,
+	);
+
+	if (
+		value.maxOpenLibraryRating != null &&
+		value.minOpenLibraryRating != null &&
+		value.maxOpenLibraryRating < value.minOpenLibraryRating
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message:
+				"Maximum Open Library rating must be greater than or equal to minimum",
+			path: ["maxOpenLibraryRating"],
+		});
+	}
+
+	if (
+		value.maxPages != null &&
+		value.minPages != null &&
+		value.maxPages < value.minPages
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Maximum pages must be greater than or equal to minimum",
+			path: ["maxPages"],
+		});
+	}
+
+	if (
+		value.maxAverageRating != null &&
+		value.minAverageRating != null &&
+		value.maxAverageRating < value.minAverageRating
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Maximum club rating must be greater than or equal to minimum",
+			path: ["maxAverageRating"],
+		});
+	}
+};
+
+export const GetAdminBookOverviewInputSchema = adminBookListFiltersSchema
+	.extend(adminBookListRanging.inputSchema.shape)
+	.extend(adminBookListSearching.inputSchema.shape)
+	.partial()
+	.superRefine(adminBookListQueryRefine)
+	.default({});
+
+export type GetAdminBookOverviewInput = z.infer<
+	typeof GetAdminBookOverviewInputSchema
+>;
+
 export const ListAdminBooksInputSchema = adminBookListQueryShape
 	.extend(OffsetPaginationInputSchema.shape)
-	.superRefine((value, ctx) => {
-		refineRangingBounds(
-			{ rangeMin: value.rangeMin, rangeMax: value.rangeMax },
-			ctx,
-		);
-
-		if (
-			value.maxOpenLibraryRating != null &&
-			value.minOpenLibraryRating != null &&
-			value.maxOpenLibraryRating < value.minOpenLibraryRating
-		) {
-			ctx.addIssue({
-				code: "custom",
-				message:
-					"Maximum Open Library rating must be greater than or equal to minimum",
-				path: ["maxOpenLibraryRating"],
-			});
-		}
-
-		if (
-			value.maxPages != null &&
-			value.minPages != null &&
-			value.maxPages < value.minPages
-		) {
-			ctx.addIssue({
-				code: "custom",
-				message: "Maximum pages must be greater than or equal to minimum",
-				path: ["maxPages"],
-			});
-		}
-	});
+	.superRefine(adminBookListQueryRefine);
 
 export const AdminBookListCountsSchema = z.object({
 	favorites: z.number().int().min(0),

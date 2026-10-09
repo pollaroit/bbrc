@@ -1,5 +1,6 @@
 "use client";
 
+import { adminFactSortableFields } from "@bbrc/api/modules/admin/admin-fact.listing";
 import type { AdminFactRecord } from "@bbrc/api/modules/admin/admin-fact.schema";
 import { Button } from "@bbrc/ui/components/button";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
@@ -18,7 +19,9 @@ import { toast } from "sonner";
 import { AdminFactEngagementDialog } from "@/components/blocks/admin-fact-engagement-dialog";
 import { FactCategoryBadge } from "@/components/blocks/fact-category-badge";
 import { FactStatusBadge } from "@/components/blocks/fact-status-badge";
+import { ListingSort } from "@/components/listing/listing-sort";
 import {
+	adminFactSortByLabels,
 	buildAdminFactsListInput,
 	useAdminFactsListingSearchParams,
 } from "@/lib/listing/admin-facts-listing";
@@ -104,24 +107,38 @@ export function AdminFactsInventory() {
 						</p>
 					) : null}
 				</div>
-				<Select
-					value={listStatus}
-					onValueChange={(value) => {
-						void setParams({
-							status: value as typeof listStatus,
-							page: 1,
-						});
-					}}
-				>
-					<SelectTrigger className="w-full md:w-44">
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="all">All facts</SelectItem>
-						<SelectItem value="draft">Drafts only</SelectItem>
-						<SelectItem value="published">Live only</SelectItem>
-					</SelectContent>
-				</Select>
+				<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center md:w-auto">
+					<ListingSort
+						sortBy={params.sortBy}
+						sortDirection={params.sortDirection}
+						sortByOptions={adminFactSortableFields}
+						sortByLabels={adminFactSortByLabels}
+						onSortByChange={(sortBy) => {
+							void setParams({ sortBy, page: 1 });
+						}}
+						onSortDirectionChange={(sortDirection) => {
+							void setParams({ sortDirection, page: 1 });
+						}}
+					/>
+					<Select
+						value={listStatus}
+						onValueChange={(value) => {
+							void setParams({
+								status: value as typeof listStatus,
+								page: 1,
+							});
+						}}
+					>
+						<SelectTrigger className="w-full sm:w-44">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">All facts</SelectItem>
+							<SelectItem value="draft">Drafts only</SelectItem>
+							<SelectItem value="published">Live only</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
 			</div>
 
 			{listQuery.isPending ? (

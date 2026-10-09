@@ -21,12 +21,16 @@ import type {
 	AdminUpdateUserStatusOutput,
 	AdminUserOverviewOutput,
 	AdminUserStatsOutput,
+	GetAdminUserOverviewInput,
 	GetAdminUserStatsInput,
 	ListAdminUsersInput,
 	ListAdminUsersOutput,
 } from "./admin-user.schema";
 import { adminUserListSelect } from "./admin-user.schema";
-import { loadAdminUserRankings } from "./admin-user-rankings";
+import {
+	emptyAdminUserRankings,
+	loadAdminUserRankings,
+} from "./admin-user-rankings";
 
 type AdminUserListRow = Prisma.UserGetPayload<{
 	select: typeof adminUserListSelect;
@@ -120,7 +124,10 @@ async function userIdsWithMinRelationCount(
 		| "feedbacks"
 		| "participations"
 		| "favorites"
-		| "shelves",
+		| "shelves"
+		| "documents"
+		| "bookRequests"
+		| "factImpressions",
 	min: number,
 ): Promise<string[]> {
 	if (min <= 0) {
@@ -184,6 +191,30 @@ async function userIdsWithMinRelationCount(
 			});
 			return rows.map((row) => row.userId);
 		}
+		case "documents": {
+			const rows = await db.document.groupBy({
+				by: ["userId"],
+				_count: { _all: true },
+				having: { userId: { _count: { gte: min } } },
+			});
+			return rows.map((row) => row.userId);
+		}
+		case "bookRequests": {
+			const rows = await db.bookRequest.groupBy({
+				by: ["userId"],
+				_count: { _all: true },
+				having: { userId: { _count: { gte: min } } },
+			});
+			return rows.map((row) => row.userId);
+		}
+		case "factImpressions": {
+			const rows = await db.factImpression.groupBy({
+				by: ["userId"],
+				_count: { _all: true },
+				having: { userId: { _count: { gte: min } } },
+			});
+			return rows.map((row) => row.userId);
+		}
 	}
 }
 
@@ -213,6 +244,9 @@ async function resolveMinCountUserIds(
 		{ key: "minParticipations", relation: "participations" },
 		{ key: "minFavorites", relation: "favorites" },
 		{ key: "minShelves", relation: "shelves" },
+		{ key: "minDocuments", relation: "documents" },
+		{ key: "minBookRequests", relation: "bookRequests" },
+		{ key: "minFactImpressions", relation: "factImpressions" },
 	];
 
 	let ids: string[] | null = null;
@@ -237,19 +271,21 @@ async function resolveMinCountUserIds(
 	return ids;
 }
 
-export async function listAdminUsers(
-	input: ListAdminUsersInput,
+type AdminUserListQueryInput = GetAdminUserOverviewInput | ListAdminUsersInput;
+
+export async function buildAdminUserListWhere(
 	db: Database,
-): Promise<ListAdminUsersOutput> {
-	const pagination = definePagination.offset(input);
-	const sorting = adminUserListSorting.from(input);
+	input: AdminUserListQueryInput,
+): Promise<{ where: Prisma.UserWhereInput; empty: boolean }> {
 	const ranging = adminUserListRanging.from(input);
 	const searching = adminUserListSearching.from(input);
-
-	const minCountIds = await resolveMinCountUserIds(db, input);
+	const minCountIds = await resolveMinCountUserIds(
+		db,
+		input as ListAdminUsersInput,
+	);
 
 	if (minCountIds?.length === 0) {
-		return pagination.paginate([], 0);
+		return { where: {}, empty: true };
 	}
 
 	const where = mergeWhereFragments<Prisma.UserWhereInput>(
@@ -263,6 +299,45 @@ export async function listAdminUsers(
 			rp: input.minRp != null ? { gte: input.minRp } : undefined,
 		},
 	);
+
+	return { where, empty: false };
+}
+
+function emptyAdminUserOverview(
+	pendingBookRequests: number,
+): AdminUserOverviewOutput {
+	return {
+		kpis: {
+			totalMembers: 0,
+			admins: 0,
+			active: 0,
+			warned: 0,
+			banned: 0,
+			averageXp: 0,
+			averageRp: 0,
+			totalXp: 0,
+			totalRp: 0,
+			joinedLast7Days: 0,
+			joinedLast30Days: 0,
+			unverifiedEmail: 0,
+			pendingBookRequests,
+		},
+		signupsByDay: buildSignupsByDay([], 30),
+		rankings: emptyAdminUserRankings(),
+	};
+}
+
+export async function listAdminUsers(
+	input: ListAdminUsersInput,
+	db: Database,
+): Promise<ListAdminUsersOutput> {
+	const pagination = definePagination.offset(input);
+	const sorting = adminUserListSorting.from(input);
+	const { where, empty } = await buildAdminUserListWhere(db, input);
+
+	if (empty) {
+		return pagination.paginate([], 0);
+	}
 
 	const [total, rows] = await Promise.all([
 		db.user.count({ where }),
@@ -278,6 +353,7 @@ export async function listAdminUsers(
 }
 
 export async function getAdminUserOverview(
+	input: GetAdminUserOverviewInput,
 	db: Database,
 ): Promise<AdminUserOverviewOutput> {
 	const now = new Date();
@@ -288,6 +364,26 @@ export async function getAdminUserOverview(
 	const chartSince = new Date(now);
 	chartSince.setUTCDate(now.getUTCDate() - 29);
 	chartSince.setUTCHours(0, 0, 0, 0);
+
+	const pendingBookRequestsPromise = db.bookRequest.count({
+		where: { status: "pending" },
+	});
+
+	const { where, empty } = await buildAdminUserListWhere(db, input);
+	if (empty) {
+		const pendingBookRequests = await pendingBookRequestsPromise;
+		return emptyAdminUserOverview(pendingBookRequests);
+	}
+
+	const chartWhere = mergeWhereFragments(where, {
+		createdAt: { gte: chartSince },
+	});
+	const joined7Where = mergeWhereFragments(where, {
+		createdAt: { gte: sevenDaysAgo },
+	});
+	const joined30Where = mergeWhereFragments(where, {
+		createdAt: { gte: thirtyDaysAgo },
+	});
 
 	const [
 		totalMembers,
@@ -304,23 +400,33 @@ export async function getAdminUserOverview(
 		recentUsers,
 		rankings,
 	] = await Promise.all([
-		db.user.count(),
-		db.user.count({ where: { isAdmin: true } }),
-		db.user.count({ where: { status: "active" } }),
-		db.user.count({ where: { status: "warned" } }),
-		db.user.count({ where: { status: "banned" } }),
-		db.user.aggregate({ _avg: { xp: true }, _sum: { xp: true } }),
-		db.user.aggregate({ _avg: { rp: true }, _sum: { rp: true } }),
-		db.user.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
-		db.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
-		db.user.count({ where: { emailVerified: false } }),
-		db.bookRequest.count({ where: { status: "pending" } }),
+		db.user.count({ where }),
+		db.user.count({
+			where: mergeWhereFragments(where, { isAdmin: true }),
+		}),
+		db.user.count({
+			where: mergeWhereFragments(where, { status: "active" }),
+		}),
+		db.user.count({
+			where: mergeWhereFragments(where, { status: "warned" }),
+		}),
+		db.user.count({
+			where: mergeWhereFragments(where, { status: "banned" }),
+		}),
+		db.user.aggregate({ where, _avg: { xp: true }, _sum: { xp: true } }),
+		db.user.aggregate({ where, _avg: { rp: true }, _sum: { rp: true } }),
+		db.user.count({ where: joined7Where }),
+		db.user.count({ where: joined30Where }),
+		db.user.count({
+			where: mergeWhereFragments(where, { emailVerified: false }),
+		}),
+		pendingBookRequestsPromise,
 		db.user.findMany({
-			where: { createdAt: { gte: chartSince } },
+			where: chartWhere,
 			select: { createdAt: true },
 			orderBy: { createdAt: "asc" },
 		}),
-		loadAdminUserRankings(db),
+		loadAdminUserRankings(db, where),
 	]);
 
 	return {

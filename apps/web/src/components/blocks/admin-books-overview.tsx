@@ -18,9 +18,14 @@ import { useQuery } from "@tanstack/react-query";
 import { BookPlus, Download, ShieldBan } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { AdminBookRankingLists } from "@/components/blocks/admin-book-ranking-lists";
+import { AdminBooksToolbar } from "@/components/blocks/admin-books-toolbar";
+import {
+	toAdminBooksOverviewCallInput,
+	useAdminBooksListingSearchParams,
+} from "@/lib/listing/admin-books-listing";
 import { orpc } from "@/utils/orpc";
 
 const additionsChartConfig = {
@@ -53,8 +58,11 @@ function StatCard({
 }
 
 export function AdminBooksOverview() {
+	const [params] = useAdminBooksListingSearchParams();
+	const overviewInput = toAdminBooksOverviewCallInput(params);
+
 	const { data, isPending, isError } = useQuery(
-		orpc.admin.getBookOverview.queryOptions(),
+		orpc.admin.getBookOverview.queryOptions({ input: overviewInput }),
 	);
 
 	const chartData = useMemo(() => {
@@ -71,10 +79,11 @@ export function AdminBooksOverview() {
 		}));
 	}, [data]);
 
+	let body: ReactNode;
+
 	if (isPending) {
-		return (
+		body = (
 			<div className="flex flex-col gap-6">
-				<Skeleton className="h-10 w-full max-w-2xl" />
 				<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 					{Array.from({ length: 8 }, (_, i) => (
 						<Skeleton key={i} className="h-24 w-full" />
@@ -84,110 +93,120 @@ export function AdminBooksOverview() {
 				<Skeleton className="h-96 w-full" />
 			</div>
 		);
-	}
-
-	if (isError || !data) {
-		return (
+	} else if (isError || !data) {
+		body = (
 			<p className="text-muted-foreground text-sm">
 				Could not load book overview.
 			</p>
 		);
-	}
-
-	const { kpis } = data;
-
-	return (
-		<div className="flex flex-col gap-8">
-			<div className="flex flex-wrap gap-2">
-				<Button
-					render={<Link href={"/books/new" as Route} />}
-					nativeButton={false}
-					size="sm"
-				>
-					<BookPlus data-icon="inline-start" />
-					Add book
-				</Button>
-				<Button
-					render={<Link href={"/books" as Route} />}
-					nativeButton={false}
-					variant="outline"
-					size="sm"
-				>
-					<Download data-icon="inline-start" />
-					Public catalog & export
-				</Button>
-				<Button
-					render={<Link href={"/books/blocked" as Route} />}
-					nativeButton={false}
-					variant="outline"
-					size="sm"
-				>
-					<ShieldBan data-icon="inline-start" />
-					Blocked works ({kpis.blockedOpenLibraryWorks})
-				</Button>
-				{kpis.pendingBookRequests > 0 ? (
+	} else {
+		const { kpis } = data;
+		body = (
+			<div className="flex flex-col gap-8">
+				<div className="flex flex-wrap gap-2">
 					<Button
 						render={<Link href={"/books/new" as Route} />}
+						nativeButton={false}
+						size="sm"
+					>
+						<BookPlus data-icon="inline-start" />
+						Add book
+					</Button>
+					<Button
+						render={<Link href={"/books" as Route} />}
 						nativeButton={false}
 						variant="outline"
 						size="sm"
 					>
-						Pending requests ({kpis.pendingBookRequests})
+						<Download data-icon="inline-start" />
+						Public catalog & export
 					</Button>
-				) : null}
+					<Button
+						render={<Link href={"/books/blocked" as Route} />}
+						nativeButton={false}
+						variant="outline"
+						size="sm"
+					>
+						<ShieldBan data-icon="inline-start" />
+						Blocked works ({kpis.blockedOpenLibraryWorks})
+					</Button>
+					{kpis.pendingBookRequests > 0 ? (
+						<Button
+							render={<Link href={"/books/new" as Route} />}
+							nativeButton={false}
+							variant="outline"
+							size="sm"
+						>
+							Pending requests ({kpis.pendingBookRequests})
+						</Button>
+					) : null}
+				</div>
+
+				<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+					<StatCard label="Total books" value={kpis.totalBooks} />
+					<StatCard label="Distinct authors" value={kpis.distinctAuthors} />
+					<StatCard
+						label="Average / Total pages"
+						value={`${kpis.averagePages} / ${kpis.totalPages}`}
+					/>
+					<StatCard
+						label="Added (7d / 30d)"
+						value={`${kpis.addedLast7Days} / ${kpis.addedLast30Days}`}
+					/>
+					<StatCard label="Completed" value={kpis.statusCounts.completed} />
+					<StatCard label="Reading" value={kpis.statusCounts.reading} />
+					<StatCard label="Wishlist" value={kpis.statusCounts.wishlist} />
+					<StatCard label="Pending requests" value={kpis.pendingBookRequests} />
+				</div>
+
+				<Card size="sm">
+					<CardHeader>
+						<CardTitle>Catalog growth</CardTitle>
+						<CardDescription>Books added — last 30 days</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<ChartContainer
+							config={additionsChartConfig}
+							className="h-52 w-full"
+						>
+							<AreaChart
+								data={chartData}
+								margin={{ left: 0, right: 8, top: 8 }}
+							>
+								<CartesianGrid vertical={false} />
+								<XAxis
+									dataKey="label"
+									tickLine={false}
+									axisLine={false}
+									interval="preserveStartEnd"
+									minTickGap={24}
+								/>
+								<YAxis allowDecimals={false} width={28} tickLine={false} />
+								<ChartTooltip content={<ChartTooltipContent />} />
+								<Area
+									type="monotone"
+									dataKey="count"
+									stroke="var(--color-count)"
+									fill="var(--color-count)"
+									fillOpacity={0.2}
+								/>
+							</AreaChart>
+						</ChartContainer>
+					</CardContent>
+				</Card>
+
+				<section className="flex flex-col gap-4">
+					<h2 className="font-semibold text-lg tracking-tight">Rankings</h2>
+					<AdminBookRankingLists rankings={data.rankings} />
+				</section>
 			</div>
+		);
+	}
 
-			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-				<StatCard label="Total books" value={kpis.totalBooks} />
-				<StatCard label="Distinct authors" value={kpis.distinctAuthors} />
-				<StatCard
-					label="Average / Total pages"
-					value={`${kpis.averagePages} / ${kpis.totalPages}`}
-				/>
-				<StatCard
-					label="Added (7d / 30d)"
-					value={`${kpis.addedLast7Days} / ${kpis.addedLast30Days}`}
-				/>
-				<StatCard label="Completed" value={kpis.statusCounts.completed} />
-				<StatCard label="Reading" value={kpis.statusCounts.reading} />
-				<StatCard label="Wishlist" value={kpis.statusCounts.wishlist} />
-				<StatCard label="Pending requests" value={kpis.pendingBookRequests} />
-			</div>
-
-			<Card size="sm">
-				<CardHeader>
-					<CardTitle>Catalog growth</CardTitle>
-					<CardDescription>Books added — last 30 days</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<ChartContainer config={additionsChartConfig} className="h-52 w-full">
-						<AreaChart data={chartData} margin={{ left: 0, right: 8, top: 8 }}>
-							<CartesianGrid vertical={false} />
-							<XAxis
-								dataKey="label"
-								tickLine={false}
-								axisLine={false}
-								interval="preserveStartEnd"
-								minTickGap={24}
-							/>
-							<YAxis allowDecimals={false} width={28} tickLine={false} />
-							<ChartTooltip content={<ChartTooltipContent />} />
-							<Area
-								type="monotone"
-								dataKey="count"
-								stroke="var(--color-count)"
-								fill="var(--color-count)"
-								fillOpacity={0.2}
-							/>
-						</AreaChart>
-					</ChartContainer>
-				</CardContent>
-			</Card>
-
-			<section className="flex flex-col gap-4">
-				<h2 className="font-semibold text-lg tracking-tight">Rankings</h2>
-				<AdminBookRankingLists rankings={data.rankings} />
-			</section>
+	return (
+		<div className="flex flex-col gap-8">
+			<AdminBooksToolbar variant="overview" />
+			{body}
 		</div>
 	);
 }

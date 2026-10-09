@@ -12,13 +12,17 @@ import {
 } from "./admin-book.listing";
 import type {
 	AdminBookOverviewOutput,
+	GetAdminBookOverviewInput,
 	GetAdminBookStatsInput,
 	GetAdminBookStatsOutput,
 	ListAdminBooksInput,
 	ListAdminBooksOutput,
 } from "./admin-book.schema";
 import { adminBookListSelect } from "./admin-book.schema";
-import { loadAdminBookRankings } from "./admin-book-rankings";
+import {
+	emptyAdminBookRankings,
+	loadAdminBookRankings,
+} from "./admin-book-rankings";
 
 type AdminBookListRow = Prisma.BookGetPayload<{
 	select: typeof adminBookListSelect;
@@ -175,16 +179,244 @@ function mapAdminBookListRow(
 	};
 }
 
-function adminExtraWhere(input: ListAdminBooksInput): Prisma.BookWhereInput {
+function adminExtraWhere(
+	input: GetAdminBookOverviewInput | ListAdminBooksInput,
+): Prisma.BookWhereInput {
+	const clubRatingRange =
+		input.minAverageRating == null && input.maxAverageRating == null
+			? undefined
+			: {
+					gte: input.minAverageRating ?? undefined,
+					lte: input.maxAverageRating ?? undefined,
+				};
+
 	return mergeWhereFragments({
-		averageRating: input.missingClubRating ? { equals: null } : undefined,
+		averageRating: input.missingClubRating ? { equals: null } : clubRatingRange,
 		openLibraryRating: input.missingOpenLibraryRating
 			? { equals: null }
 			: undefined,
 	});
 }
 
+function intersectBookIds(
+	current: string[] | null,
+	next: string[],
+): string[] | null {
+	if (current === null) {
+		return next;
+	}
+	const nextSet = new Set(next);
+	return current.filter((id) => nextSet.has(id));
+}
+
+async function bookIdsWithMinRelationCount(
+	db: Database,
+	relation: "feedbacks" | "favorites" | "postAttachments" | "polls",
+	min: number,
+): Promise<string[]> {
+	if (min <= 0) {
+		return [];
+	}
+
+	switch (relation) {
+		case "feedbacks": {
+			const rows = await db.feedback.groupBy({
+				by: ["bookId"],
+				_count: { _all: true },
+				having: { bookId: { _count: { gte: min } } },
+			});
+			return rows.map((row) => row.bookId);
+		}
+		case "favorites": {
+			const rows = await db.favorite.groupBy({
+				by: ["bookId"],
+				_count: { _all: true },
+				having: { bookId: { _count: { gte: min } } },
+			});
+			return rows.map((row) => row.bookId);
+		}
+		case "postAttachments": {
+			const rows = await db.postAttachment.groupBy({
+				by: ["bookId"],
+				where: { bookId: { not: null } },
+				_count: { _all: true },
+				having: { bookId: { _count: { gte: min } } },
+			});
+			return rows.flatMap((row) => (row.bookId ? [row.bookId] : []));
+		}
+		case "polls": {
+			const rows = await db.pollOption.groupBy({
+				by: ["bookId"],
+				_count: { _all: true },
+				having: { bookId: { _count: { gte: min } } },
+			});
+			return rows.map((row) => row.bookId);
+		}
+	}
+}
+
+async function bookIdsWithMinPollVotes(
+	db: Database,
+	min: number,
+): Promise<string[]> {
+	if (min <= 0) {
+		return [];
+	}
+
+	const options = await db.pollOption.findMany({
+		select: { bookId: true, _count: { select: { votes: true } } },
+	});
+
+	const votesByBook = new Map<string, number>();
+	for (const option of options) {
+		votesByBook.set(
+			option.bookId,
+			(votesByBook.get(option.bookId) ?? 0) + option._count.votes,
+		);
+	}
+
+	return [...votesByBook.entries()]
+		.filter(([, votes]) => votes >= min)
+		.map(([bookId]) => bookId);
+}
+
+type AdminBookMinCountInput = Pick<
+	AdminBookListQueryInput,
+	| "minFeedbacks"
+	| "minFavorites"
+	| "minPostAttachments"
+	| "minPollOptions"
+	| "minPollVotes"
+>;
+
+async function resolveMinCountBookIds(
+	db: Database,
+	input: AdminBookMinCountInput,
+): Promise<string[] | null> {
+	const filters: Array<{
+		key: keyof AdminBookMinCountInput;
+		resolve: () => Promise<string[]>;
+	}> = [
+		{
+			key: "minFeedbacks",
+			resolve: () =>
+				bookIdsWithMinRelationCount(db, "feedbacks", input.minFeedbacks ?? 0),
+		},
+		{
+			key: "minFavorites",
+			resolve: () =>
+				bookIdsWithMinRelationCount(db, "favorites", input.minFavorites ?? 0),
+		},
+		{
+			key: "minPostAttachments",
+			resolve: () =>
+				bookIdsWithMinRelationCount(
+					db,
+					"postAttachments",
+					input.minPostAttachments ?? 0,
+				),
+		},
+		{
+			key: "minPollOptions",
+			resolve: () =>
+				bookIdsWithMinRelationCount(db, "polls", input.minPollOptions ?? 0),
+		},
+		{
+			key: "minPollVotes",
+			resolve: () => bookIdsWithMinPollVotes(db, input.minPollVotes ?? 0),
+		},
+	];
+
+	let ids: string[] | null = null;
+
+	for (const filter of filters) {
+		const min = input[filter.key];
+		if (typeof min !== "number" || min <= 0) {
+			continue;
+		}
+
+		const matched = await filter.resolve();
+		if (matched.length === 0) {
+			return [];
+		}
+
+		ids = intersectBookIds(ids, matched);
+		if (ids?.length === 0) {
+			return [];
+		}
+	}
+
+	return ids;
+}
+
+type AdminBookListQueryInput = GetAdminBookOverviewInput | ListAdminBooksInput;
+
+export async function buildAdminBookListWhere(
+	input: AdminBookListQueryInput,
+	db: Database,
+): Promise<{ where: Prisma.BookWhereInput | null; empty: boolean }> {
+	const ranging = adminBookListRanging.from(input);
+	const searching = adminBookListSearching.from(input);
+
+	const {
+		page: _page,
+		limit: _limit,
+		sortBy: _sortBy,
+		sortDirection: _sortDirection,
+		missingClubRating: _missingClubRating,
+		missingOpenLibraryRating: _missingOpenLibraryRating,
+		...listQuery
+	} = input as ListAdminBooksInput;
+
+	const minCountIds = await resolveMinCountBookIds(db, input);
+	if (minCountIds?.length === 0) {
+		return { where: null, empty: true };
+	}
+
+	const baseWhere = await buildBookListWhereWithAuthors(
+		listQuery as BookListQueryInput,
+		db,
+	);
+	if (baseWhere === null) {
+		return { where: null, empty: true };
+	}
+
+	const where = mergeWhereFragments<Prisma.BookWhereInput>(
+		baseWhere,
+		ranging.use(),
+		searching.use(),
+		adminExtraWhere(input),
+		{
+			id: minCountIds ? { in: minCountIds } : undefined,
+		},
+	);
+
+	return { where, empty: false };
+}
+
+function emptyAdminBookOverview(
+	pendingBookRequests: number,
+	blockedOpenLibraryWorks: number,
+): AdminBookOverviewOutput {
+	return {
+		kpis: {
+			totalBooks: 0,
+			distinctAuthors: 0,
+			averagePages: 0,
+			totalPages: 0,
+			statusCounts: { completed: 0, reading: 0, wishlist: 0 },
+			addedLast7Days: 0,
+			addedLast30Days: 0,
+			pendingBookRequests,
+			blockedOpenLibraryWorks,
+		},
+		additionsByDay: buildAdditionsByDay([], 30),
+		rankings: emptyAdminBookRankings(),
+	};
+}
+
 export async function getAdminBookOverview(
+	input: GetAdminBookOverviewInput,
 	db: Database,
 ): Promise<AdminBookOverviewOutput> {
 	const now = new Date();
@@ -196,6 +428,30 @@ export async function getAdminBookOverview(
 	const chartSince = new Date(now);
 	chartSince.setUTCDate(now.getUTCDate() - 29);
 	chartSince.setUTCHours(0, 0, 0, 0);
+
+	const pendingBookRequestsPromise = db.bookRequest.count({
+		where: { status: "pending" },
+	});
+	const blockedOpenLibraryWorksPromise = db.blockedOpenLibraryWork.count();
+
+	const { where, empty } = await buildAdminBookListWhere(input, db);
+	if (empty || where === null) {
+		const [pendingBookRequests, blockedOpenLibraryWorks] = await Promise.all([
+			pendingBookRequestsPromise,
+			blockedOpenLibraryWorksPromise,
+		]);
+		return emptyAdminBookOverview(pendingBookRequests, blockedOpenLibraryWorks);
+	}
+
+	const chartWhere = mergeWhereFragments(where, {
+		createdAt: { gte: chartSince },
+	});
+	const added7Where = mergeWhereFragments(where, {
+		createdAt: { gte: sevenDaysAgo },
+	});
+	const added30Where = mergeWhereFragments(where, {
+		createdAt: { gte: thirtyDaysAgo },
+	});
 
 	const [
 		totalBooks,
@@ -210,21 +466,21 @@ export async function getAdminBookOverview(
 		recentBooks,
 		rankings,
 	] = await Promise.all([
-		db.book.count(),
-		db.book.groupBy({ by: ["status"], _count: { _all: true } }),
-		db.book.aggregate({ _sum: { pages: true } }),
-		db.book.aggregate({ _avg: { pages: true } }),
-		db.book.findMany({ select: { authors: true } }),
-		db.book.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
-		db.book.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
-		db.bookRequest.count({ where: { status: "pending" } }),
-		db.blockedOpenLibraryWork.count(),
+		db.book.count({ where }),
+		db.book.groupBy({ by: ["status"], where, _count: { _all: true } }),
+		db.book.aggregate({ where, _sum: { pages: true } }),
+		db.book.aggregate({ where, _avg: { pages: true } }),
+		db.book.findMany({ where, select: { authors: true } }),
+		db.book.count({ where: added7Where }),
+		db.book.count({ where: added30Where }),
+		pendingBookRequestsPromise,
+		blockedOpenLibraryWorksPromise,
 		db.book.findMany({
-			where: { createdAt: { gte: chartSince } },
+			where: chartWhere,
 			select: { createdAt: true },
 			orderBy: { createdAt: "asc" },
 		}),
-		loadAdminBookRankings(db),
+		loadAdminBookRankings(db, where),
 	]);
 
 	const statusCounts = {
@@ -253,6 +509,78 @@ export async function getAdminBookOverview(
 	};
 }
 
+async function listAdminBooksSortedByPollVotes(
+	input: ListAdminBooksInput,
+	db: Database,
+	where: Prisma.BookWhereInput,
+): Promise<ListAdminBooksOutput> {
+	const pagination = definePagination.offset({
+		page: input.page ?? 1,
+		limit: input.limit ?? 20,
+	});
+	const sorting = adminBookListSorting.from(input);
+	const direction = sorting.sortDirection;
+
+	const matching = await db.book.findMany({ where, select: { id: true } });
+	const total = matching.length;
+	if (total === 0) {
+		return pagination.paginate([], 0);
+	}
+
+	const options = await db.pollOption.findMany({
+		where: { bookId: { in: matching.map((row) => row.id) } },
+		select: { bookId: true, _count: { select: { votes: true } } },
+	});
+
+	const votesByBook = new Map<string, number>();
+	for (const option of options) {
+		votesByBook.set(
+			option.bookId,
+			(votesByBook.get(option.bookId) ?? 0) + option._count.votes,
+		);
+	}
+
+	const sortedIds = matching
+		.map((row) => row.id)
+		.toSorted((a, b) => {
+			const diff = (votesByBook.get(a) ?? 0) - (votesByBook.get(b) ?? 0);
+			if (diff !== 0) {
+				return direction === "asc" ? diff : -diff;
+			}
+			return direction === "asc" ? a.localeCompare(b) : b.localeCompare(a);
+		});
+
+	const { skip, take } = pagination.use();
+	const pageIds = sortedIds.slice(skip, skip + take);
+
+	const rows = await db.book.findMany({
+		where: { id: { in: pageIds } },
+		select: adminBookListSelect,
+	});
+	const rowById = new Map(rows.map((row) => [row.id, row]));
+	const orderedRows = pageIds.flatMap((id) => {
+		const row = rowById.get(id);
+		return row ? [row] : [];
+	});
+
+	const bookIds = orderedRows.map((row) => row.id);
+	const [pollVoteMap, sittingSlugMap] = await Promise.all([
+		pollVoteCountsByBookId(db, bookIds),
+		resolveLatestSittingSlugs(db, bookIds),
+	]);
+
+	return pagination.paginate(
+		orderedRows.map((row) =>
+			mapAdminBookListRow(
+				row,
+				pollVoteMap.get(row.id) ?? 0,
+				sittingSlugMap.get(row.id) ?? null,
+			),
+		),
+		total,
+	);
+}
+
 export async function listAdminBooks(
 	input: ListAdminBooksInput,
 	db: Database,
@@ -262,30 +590,15 @@ export async function listAdminBooks(
 		limit: input.limit ?? 20,
 	});
 	const sorting = adminBookListSorting.from(input);
-	const ranging = adminBookListRanging.from(input);
-	const searching = adminBookListSearching.from(input);
 
-	const {
-		page: _page,
-		limit: _limit,
-		missingClubRating: _missingClubRating,
-		missingOpenLibraryRating: _missingOpenLibraryRating,
-		...listQuery
-	} = input;
-	const baseWhere = await buildBookListWhereWithAuthors(
-		listQuery as BookListQueryInput,
-		db,
-	);
-	if (baseWhere === null) {
+	const { where, empty } = await buildAdminBookListWhere(input, db);
+	if (empty || where === null) {
 		return pagination.paginate([], 0);
 	}
 
-	const where = mergeWhereFragments<Prisma.BookWhereInput>(
-		baseWhere,
-		ranging.use(),
-		searching.use(),
-		adminExtraWhere(input),
-	);
+	if (sorting.sortBy === "pollVotes") {
+		return listAdminBooksSortedByPollVotes(input, db, where);
+	}
 
 	const [total, rows] = await Promise.all([
 		db.book.count({ where }),

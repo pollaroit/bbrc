@@ -1,7 +1,11 @@
 import { adminBookSortableFields } from "@bbrc/api/modules/admin/admin-book.listing";
-import type { ListAdminBooksInput } from "@bbrc/api/modules/admin/admin-book.schema";
+import type {
+	GetAdminBookOverviewInput,
+	ListAdminBooksInput,
+} from "@bbrc/api/modules/admin/admin-book.schema";
 import {
 	parseAsArrayOf,
+	parseAsFloat,
 	parseAsInteger,
 	parseAsStringLiteral,
 	useQueryStates,
@@ -32,7 +36,16 @@ export const adminBookSortByLabels = {
 	"shelfBooks._count": "Shelf adds",
 	"postAttachments._count": "Post attachments",
 	"polls._count": "Poll options",
+	pollVotes: "Poll votes",
 } as const satisfies FieldLabels<(typeof adminBookSortableFields)[number]>;
+
+const adminBookMinCountParams = {
+	minFeedbacks: parseAsInteger.withOptions({ shallow: false }),
+	minFavorites: parseAsInteger.withOptions({ shallow: false }),
+	minPostAttachments: parseAsInteger.withOptions({ shallow: false }),
+	minPollOptions: parseAsInteger.withOptions({ shallow: false }),
+	minPollVotes: parseAsInteger.withOptions({ shallow: false }),
+} as const;
 
 export const adminBooksListingSearchParams = {
 	search: searchParser.withOptions({ shallow: false, throttleMs: 400 }),
@@ -50,12 +63,15 @@ export const adminBooksListingSearchParams = {
 	statuses: parseAsArrayOf(parseAsStringLiteral(bookStatuses)).withOptions({
 		shallow: false,
 	}),
-	minOpenLibraryRating: parseAsInteger.withOptions({ shallow: false }),
-	maxOpenLibraryRating: parseAsInteger.withOptions({ shallow: false }),
+	minOpenLibraryRating: parseAsFloat.withOptions({ shallow: false }),
+	maxOpenLibraryRating: parseAsFloat.withOptions({ shallow: false }),
+	minAverageRating: parseAsFloat.withOptions({ shallow: false }),
+	maxAverageRating: parseAsFloat.withOptions({ shallow: false }),
 	minPages: parseAsInteger.withOptions({ shallow: false }),
 	maxPages: parseAsInteger.withOptions({ shallow: false }),
 	missingClubRating: booleanFilterParser.withOptions({ shallow: false }),
 	missingOpenLibraryRating: booleanFilterParser.withOptions({ shallow: false }),
+	...adminBookMinCountParams,
 };
 
 export function useAdminBooksListingSearchParams() {
@@ -66,24 +82,45 @@ export type AdminBooksListingSearchParams = ReturnType<
 	typeof useAdminBooksListingSearchParams
 >[0];
 
-export function toAdminBooksListCallInput(
-	params: AdminBooksListingSearchParams,
-): ListAdminBooksInput {
-	return buildListCallInput({
+function buildAdminBookFilterCallInput(params: AdminBooksListingSearchParams) {
+	return {
 		search: params.search,
-		page: params.page,
-		limit: params.limit,
-		sortBy: params.sortBy,
-		sortDirection: params.sortDirection,
 		rangeBy: params.rangeBy,
 		rangeMin: params.rangeMin,
 		rangeMax: params.rangeMax,
 		statuses: params.statuses,
 		minOpenLibraryRating: params.minOpenLibraryRating,
 		maxOpenLibraryRating: params.maxOpenLibraryRating,
+		minAverageRating: params.minAverageRating,
+		maxAverageRating: params.maxAverageRating,
 		minPages: params.minPages,
 		maxPages: params.maxPages,
 		missingClubRating: params.missingClubRating,
 		missingOpenLibraryRating: params.missingOpenLibraryRating,
+		minFeedbacks: params.minFeedbacks,
+		minFavorites: params.minFavorites,
+		minPostAttachments: params.minPostAttachments,
+		minPollOptions: params.minPollOptions,
+		minPollVotes: params.minPollVotes,
+	};
+}
+
+export function toAdminBooksOverviewCallInput(
+	params: AdminBooksListingSearchParams,
+): GetAdminBookOverviewInput {
+	return buildListCallInput(
+		buildAdminBookFilterCallInput(params),
+	) as GetAdminBookOverviewInput;
+}
+
+export function toAdminBooksListCallInput(
+	params: AdminBooksListingSearchParams,
+): ListAdminBooksInput {
+	return buildListCallInput({
+		...buildAdminBookFilterCallInput(params),
+		page: params.page,
+		limit: params.limit,
+		sortBy: params.sortBy,
+		sortDirection: params.sortDirection,
 	}) as ListAdminBooksInput;
 }

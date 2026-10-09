@@ -1,5 +1,8 @@
 import { adminUserSortableFields } from "@bbrc/api/modules/admin/admin-user.listing";
-import type { ListAdminUsersInput } from "@bbrc/api/modules/admin/admin-user.schema";
+import type {
+	GetAdminUserOverviewInput,
+	ListAdminUsersInput,
+} from "@bbrc/api/modules/admin/admin-user.schema";
 import {
 	parseAsArrayOf,
 	parseAsInteger,
@@ -32,7 +35,25 @@ export const adminUserSortByLabels = {
 	"participations._count": "Sittings",
 	"favorites._count": "Favorites",
 	"shelves._count": "Shelves",
+	"documents._count": "Documents",
+	"bookRequests._count": "Book requests",
+	"factImpressions._count": "Fact views",
 } as const satisfies FieldLabels<(typeof adminUserSortableFields)[number]>;
+
+const adminUserMinCountParams = {
+	minXp: parseAsInteger.withOptions({ shallow: false }),
+	minRp: parseAsInteger.withOptions({ shallow: false }),
+	minPosts: parseAsInteger.withOptions({ shallow: false }),
+	minComments: parseAsInteger.withOptions({ shallow: false }),
+	minLikes: parseAsInteger.withOptions({ shallow: false }),
+	minFeedbacks: parseAsInteger.withOptions({ shallow: false }),
+	minParticipations: parseAsInteger.withOptions({ shallow: false }),
+	minFavorites: parseAsInteger.withOptions({ shallow: false }),
+	minShelves: parseAsInteger.withOptions({ shallow: false }),
+	minDocuments: parseAsInteger.withOptions({ shallow: false }),
+	minBookRequests: parseAsInteger.withOptions({ shallow: false }),
+	minFactImpressions: parseAsInteger.withOptions({ shallow: false }),
+} as const;
 
 export const adminUserListingSearchParams = {
 	search: searchParser.withOptions({ shallow: false, throttleMs: 400 }),
@@ -51,15 +72,7 @@ export const adminUserListingSearchParams = {
 		shallow: false,
 	}),
 	isAdmin: booleanFilterParser.withOptions({ shallow: false }),
-	minXp: parseAsInteger.withOptions({ shallow: false }),
-	minRp: parseAsInteger.withOptions({ shallow: false }),
-	minPosts: parseAsInteger.withOptions({ shallow: false }),
-	minComments: parseAsInteger.withOptions({ shallow: false }),
-	minLikes: parseAsInteger.withOptions({ shallow: false }),
-	minFeedbacks: parseAsInteger.withOptions({ shallow: false }),
-	minParticipations: parseAsInteger.withOptions({ shallow: false }),
-	minFavorites: parseAsInteger.withOptions({ shallow: false }),
-	minShelves: parseAsInteger.withOptions({ shallow: false }),
+	...adminUserMinCountParams,
 };
 
 export function useAdminUsersListingSearchParams() {
@@ -70,15 +83,9 @@ export type AdminUsersListingSearchParams = ReturnType<
 	typeof useAdminUsersListingSearchParams
 >[0];
 
-export function toAdminUsersListCallInput(
-	params: AdminUsersListingSearchParams,
-): ListAdminUsersInput {
-	return buildListCallInput({
+function buildAdminUserFilterCallInput(params: AdminUsersListingSearchParams) {
+	return {
 		search: params.search,
-		page: params.page,
-		limit: params.limit,
-		sortBy: params.sortBy,
-		sortDirection: params.sortDirection,
 		rangeBy: params.rangeBy,
 		rangeMin: params.rangeMin,
 		rangeMax: params.rangeMax,
@@ -93,5 +100,28 @@ export function toAdminUsersListCallInput(
 		minParticipations: params.minParticipations,
 		minFavorites: params.minFavorites,
 		minShelves: params.minShelves,
+		minDocuments: params.minDocuments,
+		minBookRequests: params.minBookRequests,
+		minFactImpressions: params.minFactImpressions,
+	};
+}
+
+export function toAdminUsersOverviewCallInput(
+	params: AdminUsersListingSearchParams,
+): GetAdminUserOverviewInput {
+	return buildListCallInput(
+		buildAdminUserFilterCallInput(params),
+	) as GetAdminUserOverviewInput;
+}
+
+export function toAdminUsersListCallInput(
+	params: AdminUsersListingSearchParams,
+): ListAdminUsersInput {
+	return buildListCallInput({
+		...buildAdminUserFilterCallInput(params),
+		page: params.page,
+		limit: params.limit,
+		sortBy: params.sortBy,
+		sortDirection: params.sortDirection,
 	}) as ListAdminUsersInput;
 }

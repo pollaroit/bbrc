@@ -14,6 +14,7 @@ export const adminBookSortableFields = [
 	"shelfBooks._count",
 	"postAttachments._count",
 	"polls._count",
+	"pollVotes",
 ] as const;
 
 export const adminBookListSorting = defineSorting<
@@ -49,6 +50,8 @@ export const adminBookListFiltersSchema = z
 		statuses: z.array(BookStatusSchema),
 		minOpenLibraryRating: z.number().min(0).max(5),
 		maxOpenLibraryRating: z.number().min(0).max(5),
+		minAverageRating: z.number().min(0).max(5),
+		maxAverageRating: z.number().min(0).max(5),
 		minPages: z.number().int().min(1),
 		maxPages: z.number().int().min(1),
 		authors: z.array(
@@ -56,5 +59,10 @@ export const adminBookListFiltersSchema = z
 		),
 		missingClubRating: z.boolean(),
 		missingOpenLibraryRating: z.boolean(),
+		minFeedbacks: z.number().int().min(0),
+		minFavorites: z.number().int().min(0),
+		minPostAttachments: z.number().int().min(0),
+		minPollOptions: z.number().int().min(0),
+		minPollVotes: z.number().int().min(0),
 	})
 	.partial();

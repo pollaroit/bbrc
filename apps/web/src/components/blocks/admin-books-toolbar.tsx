@@ -8,6 +8,7 @@ import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet"
 import { ListingRangeFields } from "@/components/listing/listing-range-fields";
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
+import { OverviewFiltersPin } from "@/components/listing/overview-filters-pin";
 import {
 	adminBookSortByLabels,
 	useAdminBooksListingSearchParams,
@@ -17,6 +18,7 @@ import {
 	bookStatuses,
 	bookStatusFilterLabels,
 } from "@/lib/listing/books-listing";
+import { cn } from "@/lib/utils";
 
 const bookRangeByOptions = ["createdAt", "updatedAt"] as const;
 
@@ -53,7 +55,18 @@ function countAdminBookSheetFilters(
 		params.minPages != null ||
 		params.maxPages != null ||
 		params.minOpenLibraryRating != null ||
-		params.maxOpenLibraryRating != null
+		params.maxOpenLibraryRating != null ||
+		params.minAverageRating != null ||
+		params.maxAverageRating != null
+	) {
+		count += 1;
+	}
+	if (
+		params.minFeedbacks != null ||
+		params.minFavorites != null ||
+		params.minPostAttachments != null ||
+		params.minPollOptions != null ||
+		params.minPollVotes != null
 	) {
 		count += 1;
 	}
@@ -62,9 +75,16 @@ function countAdminBookSheetFilters(
 	return count;
 }
 
-export function AdminBooksToolbar() {
+type AdminBooksToolbarProps = {
+	variant?: "list" | "overview";
+};
+
+export function AdminBooksToolbar({
+	variant = "list",
+}: AdminBooksToolbarProps) {
 	const [params, setParams] = useAdminBooksListingSearchParams();
 	const sheetFilterCount = countAdminBookSheetFilters(params);
+	const resetPage = variant === "list" ? { page: 1 as const } : {};
 
 	const toggleStatus = (status: BookListingStatus, checked: boolean) => {
 		const current = params.statuses ?? [];
@@ -74,177 +94,343 @@ export function AdminBooksToolbar() {
 
 		void setParams({
 			statuses: next.length > 0 ? next : null,
-			page: 1,
+			...resetPage,
 		});
 	};
 
 	return (
-		<div className="flex flex-col gap-3">
-			<div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+		<div className="flex w-full flex-col gap-3">
+			<div
+				className={cn(
+					"flex w-full flex-col gap-3",
+					variant === "list" && "lg:flex-row lg:items-end lg:justify-between",
+				)}
+			>
 				<ListingSearch
 					value={params.search ?? ""}
 					onChange={(search) => {
-						void setParams({ search: search || null, page: 1 });
+						void setParams({ search: search || null, ...resetPage });
 					}}
 					placeholder="Search title or slug…"
-					className="max-w-md"
+					className={variant === "overview" ? "w-full max-w-2xl" : "max-w-md"}
 				/>
-				<div className="flex flex-wrap items-center gap-2">
-					<ListingSort
-						sortBy={params.sortBy}
-						sortDirection={params.sortDirection}
-						sortByOptions={adminBookSortableFields}
-						sortByLabels={adminBookSortByLabels}
-						onSortByChange={(sortBy) => {
-							void setParams({ sortBy, page: 1 });
-						}}
-						onSortDirectionChange={(sortDirection) => {
-							void setParams({ sortDirection, page: 1 });
-						}}
-					/>
-					<ListingFiltersSheet
-						title="Book filters"
-						description="Status, dates, pages, and ratings."
-						activeFilterCount={sheetFilterCount}
-						onClear={() => {
-							void setParams({
-								statuses: null,
-								rangeBy: null,
-								rangeMin: null,
-								rangeMax: null,
-								minPages: null,
-								maxPages: null,
-								minOpenLibraryRating: null,
-								maxOpenLibraryRating: null,
-								missingClubRating: null,
-								missingOpenLibraryRating: null,
-								page: 1,
-							});
-						}}
-					>
-						<ListingCheckboxList
-							legend="Status"
-							options={bookStatuses.map((status) => ({
-								id: status,
-								label: bookStatusFilterLabels[status],
-								checked: params.statuses?.includes(status) ?? false,
-								onCheckedChange: (checked) => {
-									toggleStatus(status, checked);
-								},
-							}))}
-						/>
-						<ListingRangeFields
-							rangeBy={params.rangeBy}
-							rangeMin={params.rangeMin}
-							rangeMax={params.rangeMax}
-							rangeByOptions={bookRangeByOptions}
-							rangeByLabels={bookRangeByLabels}
-							onRangeByChange={(rangeBy) => {
-								void setParams({ rangeBy, page: 1 });
+				<div
+					className={cn(
+						"flex flex-wrap items-center gap-2",
+						variant === "overview" && "w-full",
+					)}
+				>
+					{variant === "list" ? (
+						<ListingSort
+							sortBy={params.sortBy}
+							sortDirection={params.sortDirection}
+							sortByOptions={adminBookSortableFields}
+							sortByLabels={adminBookSortByLabels}
+							onSortByChange={(sortBy) => {
+								void setParams({ sortBy, page: 1 });
 							}}
-							onRangeMinChange={(rangeMin) => {
-								void setParams({ rangeMin, page: 1 });
-							}}
-							onRangeMaxChange={(rangeMax) => {
-								void setParams({ rangeMax, page: 1 });
+							onSortDirectionChange={(sortDirection) => {
+								void setParams({ sortDirection, page: 1 });
 							}}
 						/>
-						<div className="grid gap-3 sm:grid-cols-2">
-							<Field>
-								<FieldLabel>Min pages</FieldLabel>
-								<Input
-									type="number"
-									min={1}
-									placeholder="Any"
-									value={params.minPages ?? ""}
-									onChange={(e) => {
-										void setParams({
-											minPages: parseOptionalInt(e.target.value),
-											page: 1,
-										});
-									}}
-								/>
-							</Field>
-							<Field>
-								<FieldLabel>Max pages</FieldLabel>
-								<Input
-									type="number"
-									min={1}
-									placeholder="Any"
-									value={params.maxPages ?? ""}
-									onChange={(e) => {
-										void setParams({
-											maxPages: parseOptionalInt(e.target.value),
-											page: 1,
-										});
-									}}
-								/>
-							</Field>
-							<Field>
-								<FieldLabel>Min OL rating</FieldLabel>
-								<Input
-									type="number"
-									min={0}
-									max={5}
-									step={0.1}
-									placeholder="Any"
-									value={params.minOpenLibraryRating ?? ""}
-									onChange={(e) => {
-										void setParams({
-											minOpenLibraryRating: parseOptionalRating(e.target.value),
-											page: 1,
-										});
-									}}
-								/>
-							</Field>
-							<Field>
-								<FieldLabel>Max OL rating</FieldLabel>
-								<Input
-									type="number"
-									min={0}
-									max={5}
-									step={0.1}
-									placeholder="Any"
-									value={params.maxOpenLibraryRating ?? ""}
-									onChange={(e) => {
-										void setParams({
-											maxOpenLibraryRating: parseOptionalRating(e.target.value),
-											page: 1,
-										});
-									}}
-								/>
-							</Field>
-						</div>
-						<ListingCheckboxList
-							legend="Missing ratings"
-							options={[
-								{
-									id: "missingClub",
-									label: "No club rating",
-									checked: params.missingClubRating === true,
-									onCheckedChange: (checked) => {
-										void setParams({
-											missingClubRating: checked ? true : null,
-											page: 1,
-										});
-									},
-								},
-								{
-									id: "missingOl",
-									label: "No OL rating",
-									checked: params.missingOpenLibraryRating === true,
-									onCheckedChange: (checked) => {
-										void setParams({
-											missingOpenLibraryRating: checked ? true : null,
-											page: 1,
-										});
-									},
-								},
-							]}
+					) : null}
+					{variant === "overview" ? (
+						<OverviewFiltersPin>
+							<BookFiltersSheet
+								params={params}
+								setParams={setParams}
+								resetPage={resetPage}
+								sheetFilterCount={sheetFilterCount}
+								toggleStatus={toggleStatus}
+							/>
+						</OverviewFiltersPin>
+					) : (
+						<BookFiltersSheet
+							params={params}
+							setParams={setParams}
+							resetPage={resetPage}
+							sheetFilterCount={sheetFilterCount}
+							toggleStatus={toggleStatus}
 						/>
-					</ListingFiltersSheet>
+					)}
 				</div>
 			</div>
 		</div>
+	);
+}
+
+function BookFiltersSheet({
+	params,
+	setParams,
+	resetPage,
+	sheetFilterCount,
+	toggleStatus,
+}: {
+	params: ReturnType<typeof useAdminBooksListingSearchParams>[0];
+	setParams: ReturnType<typeof useAdminBooksListingSearchParams>[1];
+	resetPage: { page?: 1 };
+	sheetFilterCount: number;
+	toggleStatus: (status: BookListingStatus, checked: boolean) => void;
+}) {
+	return (
+		<ListingFiltersSheet
+			title="Book filters"
+			description="Status, dates, pages, and ratings."
+			activeFilterCount={sheetFilterCount}
+			onClear={() => {
+				void setParams({
+					statuses: null,
+					rangeBy: null,
+					rangeMin: null,
+					rangeMax: null,
+					minPages: null,
+					maxPages: null,
+					minOpenLibraryRating: null,
+					maxOpenLibraryRating: null,
+					minAverageRating: null,
+					maxAverageRating: null,
+					minFeedbacks: null,
+					minFavorites: null,
+					minPostAttachments: null,
+					minPollOptions: null,
+					minPollVotes: null,
+					missingClubRating: null,
+					missingOpenLibraryRating: null,
+					...resetPage,
+				});
+			}}
+		>
+			<ListingCheckboxList
+				legend="Status"
+				options={bookStatuses.map((status) => ({
+					id: status,
+					label: bookStatusFilterLabels[status],
+					checked: params.statuses?.includes(status) ?? false,
+					onCheckedChange: (checked) => {
+						toggleStatus(status, checked);
+					},
+				}))}
+			/>
+			<ListingRangeFields
+				rangeBy={params.rangeBy}
+				rangeMin={params.rangeMin}
+				rangeMax={params.rangeMax}
+				rangeByOptions={bookRangeByOptions}
+				rangeByLabels={bookRangeByLabels}
+				onRangeByChange={(rangeBy) => {
+					void setParams({ rangeBy, ...resetPage });
+				}}
+				onRangeMinChange={(rangeMin) => {
+					void setParams({ rangeMin, ...resetPage });
+				}}
+				onRangeMaxChange={(rangeMax) => {
+					void setParams({ rangeMax, ...resetPage });
+				}}
+			/>
+			<div className="grid gap-3 sm:grid-cols-2">
+				<Field>
+					<FieldLabel>Min pages</FieldLabel>
+					<Input
+						type="number"
+						min={1}
+						placeholder="Any"
+						value={params.minPages ?? ""}
+						onChange={(e) => {
+							void setParams({
+								minPages: parseOptionalInt(e.target.value),
+								...resetPage,
+							});
+						}}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel>Max pages</FieldLabel>
+					<Input
+						type="number"
+						min={1}
+						placeholder="Any"
+						value={params.maxPages ?? ""}
+						onChange={(e) => {
+							void setParams({
+								maxPages: parseOptionalInt(e.target.value),
+								...resetPage,
+							});
+						}}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel>Min OL rating</FieldLabel>
+					<Input
+						type="number"
+						min={0}
+						max={5}
+						step={0.1}
+						placeholder="Any"
+						value={params.minOpenLibraryRating ?? ""}
+						onChange={(e) => {
+							void setParams({
+								minOpenLibraryRating: parseOptionalRating(e.target.value),
+								...resetPage,
+							});
+						}}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel>Max OL rating</FieldLabel>
+					<Input
+						type="number"
+						min={0}
+						max={5}
+						step={0.1}
+						placeholder="Any"
+						value={params.maxOpenLibraryRating ?? ""}
+						onChange={(e) => {
+							void setParams({
+								maxOpenLibraryRating: parseOptionalRating(e.target.value),
+								...resetPage,
+							});
+						}}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel>Min club rating</FieldLabel>
+					<Input
+						type="number"
+						min={0}
+						max={5}
+						step={0.1}
+						placeholder="Any"
+						value={params.minAverageRating ?? ""}
+						onChange={(e) => {
+							void setParams({
+								minAverageRating: parseOptionalRating(e.target.value),
+								...resetPage,
+							});
+						}}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel>Max club rating</FieldLabel>
+					<Input
+						type="number"
+						min={0}
+						max={5}
+						step={0.1}
+						placeholder="Any"
+						value={params.maxAverageRating ?? ""}
+						onChange={(e) => {
+							void setParams({
+								maxAverageRating: parseOptionalRating(e.target.value),
+								...resetPage,
+							});
+						}}
+					/>
+				</Field>
+			</div>
+			<div className="grid gap-3 sm:grid-cols-2">
+				<Field>
+					<FieldLabel>Min feedbacks</FieldLabel>
+					<Input
+						type="number"
+						min={0}
+						placeholder="Any"
+						value={params.minFeedbacks ?? ""}
+						onChange={(e) => {
+							void setParams({
+								minFeedbacks: parseOptionalInt(e.target.value),
+								...resetPage,
+							});
+						}}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel>Min favorites</FieldLabel>
+					<Input
+						type="number"
+						min={0}
+						placeholder="Any"
+						value={params.minFavorites ?? ""}
+						onChange={(e) => {
+							void setParams({
+								minFavorites: parseOptionalInt(e.target.value),
+								...resetPage,
+							});
+						}}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel>Min post attachments</FieldLabel>
+					<Input
+						type="number"
+						min={0}
+						placeholder="Any"
+						value={params.minPostAttachments ?? ""}
+						onChange={(e) => {
+							void setParams({
+								minPostAttachments: parseOptionalInt(e.target.value),
+								...resetPage,
+							});
+						}}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel>Min poll options</FieldLabel>
+					<Input
+						type="number"
+						min={0}
+						placeholder="Any"
+						value={params.minPollOptions ?? ""}
+						onChange={(e) => {
+							void setParams({
+								minPollOptions: parseOptionalInt(e.target.value),
+								...resetPage,
+							});
+						}}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel>Min poll votes</FieldLabel>
+					<Input
+						type="number"
+						min={0}
+						placeholder="Any"
+						value={params.minPollVotes ?? ""}
+						onChange={(e) => {
+							void setParams({
+								minPollVotes: parseOptionalInt(e.target.value),
+								...resetPage,
+							});
+						}}
+					/>
+				</Field>
+			</div>
+			<ListingCheckboxList
+				legend="Missing ratings"
+				options={[
+					{
+						id: "missingClub",
+						label: "No club rating",
+						checked: params.missingClubRating === true,
+						onCheckedChange: (checked) => {
+							void setParams({
+								missingClubRating: checked ? true : null,
+								...resetPage,
+							});
+						},
+					},
+					{
+						id: "missingOl",
+						label: "No OL rating",
+						checked: params.missingOpenLibraryRating === true,
+						onCheckedChange: (checked) => {
+							void setParams({
+								missingOpenLibraryRating: checked ? true : null,
+								...resetPage,
+							});
+						},
+					},
+				]}
+			/>
+		</ListingFiltersSheet>
 	);
 }

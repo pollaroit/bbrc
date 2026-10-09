@@ -4,6 +4,7 @@ import { assertHttpsUrl, assertOptionalFactImageUrl } from "../../lib/fact-url";
 import { getGeminiConfig } from "../../lib/gemini/config";
 import { geminiGenerateJson } from "../../lib/gemini/generate-json";
 import { definePagination } from "../../utils/pagination";
+import { adminFactListSorting } from "./admin-fact.listing";
 import {
 	ADMIN_FACT_SYSTEM_PROMPT,
 	buildAdminFactUserPrompt,
@@ -302,24 +303,109 @@ export async function batchCreateAdminFacts(
 	return { created };
 }
 
+function adminFactsListWhere(
+	input: ListAdminFactsInput,
+): Prisma.FactWhereInput {
+	if (input.status === "draft") {
+		return { publishedAt: null };
+	}
+	if (input.status === "published") {
+		return { publishedAt: { not: null } };
+	}
+	return {};
+}
+
+function stableFactIdOrder(
+	direction: "asc" | "desc",
+): Prisma.FactOrderByWithRelationInput {
+	return { id: direction };
+}
+
+async function listAdminFactsSortedByVoteCount(
+	input: ListAdminFactsInput,
+	db: Database,
+	where: Prisma.FactWhereInput,
+	voteValue: "up" | "down",
+): Promise<ListAdminFactsOutput> {
+	const pagination = definePagination.offset(input);
+	const sorting = adminFactListSorting.from(input);
+	const direction = sorting.sortDirection;
+
+	const matching = await db.fact.findMany({ where, select: { id: true } });
+	const total = matching.length;
+	if (total === 0) {
+		const page = pagination.paginate([], 0);
+		return { items: [], metadata: page.metadata };
+	}
+
+	const counts = await db.factVote.groupBy({
+		by: ["factId"],
+		where: {
+			value: voteValue,
+			factId: { in: matching.map((row) => row.id) },
+		},
+		_count: { _all: true },
+	});
+	const countByFactId = new Map(
+		counts.map((row) => [row.factId, row._count._all]),
+	);
+
+	const sortedIds = matching
+		.map((row) => row.id)
+		.toSorted((a, b) => {
+			const diff = (countByFactId.get(a) ?? 0) - (countByFactId.get(b) ?? 0);
+			if (diff !== 0) {
+				return direction === "asc" ? diff : -diff;
+			}
+			return direction === "asc" ? a.localeCompare(b) : b.localeCompare(a);
+		});
+
+	const { skip, take } = pagination.use();
+	const pageIds = sortedIds.slice(skip, skip + take);
+
+	const rows = await db.fact.findMany({
+		where: { id: { in: pageIds } },
+		select: adminFactSelect,
+	});
+	const rowById = new Map(rows.map((row) => [row.id, row]));
+	const orderedRows = pageIds.flatMap((id) => {
+		const row = rowById.get(id);
+		return row ? [row] : [];
+	});
+
+	const page = pagination.paginate(orderedRows, total);
+	return {
+		items: page.items.map(mapAdminFact),
+		metadata: page.metadata,
+	};
+}
+
 export async function listAdminFacts(
 	input: ListAdminFactsInput,
 	db: Database,
 ): Promise<ListAdminFactsOutput> {
 	const pagination = definePagination.offset(input);
+	const sorting = adminFactListSorting.from(input);
+	const where = adminFactsListWhere(input);
 
-	const where: Prisma.FactWhereInput =
-		input.status === "draft"
-			? { publishedAt: null }
-			: input.status === "published"
-				? { publishedAt: { not: null } }
-				: {};
+	if (sorting.sortBy === "upvoteCount") {
+		return listAdminFactsSortedByVoteCount(input, db, where, "up");
+	}
+	if (sorting.sortBy === "downvoteCount") {
+		return listAdminFactsSortedByVoteCount(input, db, where, "down");
+	}
+
+	const primaryOrder = sorting.use();
+	const orderBy: Prisma.FactOrderByWithRelationInput[] = [
+		primaryOrder,
+		stableFactIdOrder(sorting.sortDirection),
+	];
 
 	const [rows, total] = await Promise.all([
 		db.fact.findMany({
 			...pagination.use(),
 			where,
-			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+			orderBy,
 			select: adminFactSelect,
 		}),
 		db.fact.count({ where }),
