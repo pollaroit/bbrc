@@ -31,11 +31,6 @@ const resources = [
 		description: "Catalog overview, rankings, list, and stats.",
 	},
 	{
-		href: "/admin/facts" as Route,
-		title: "Fact reels",
-		description: "AI-assisted drafts and published reel inventory.",
-	},
-	{
 		href: "/admin/sittings" as Route,
 		title: "Sittings",
 		description: "Reading cycles, polls, participation, and timelines.",
@@ -44,6 +39,11 @@ const resources = [
 		href: "/admin/feedbacks" as Route,
 		title: "Feedbacks",
 		description: "Club reviews, ratings, likes, and discussion depth.",
+	},
+	{
+		href: "/admin/facts/create" as Route,
+		title: "Fact reels",
+		description: "AI-assisted drafts and published reel inventory.",
 	},
 ] as const;
 

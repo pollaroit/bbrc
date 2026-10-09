@@ -11,6 +11,9 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
+	SidebarMenuSub,
+	SidebarMenuSubButton,
+	SidebarMenuSubItem,
 	SidebarProvider,
 	SidebarRail,
 	SidebarSeparator,
@@ -29,44 +32,191 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const mainNav = [
+type AdminNavChild = {
+	href: Route;
+	label: string;
+	isActive: (pathname: string) => boolean;
+};
+
+type AdminNavSection = {
+	id: string;
+	label: string;
+	icon: typeof LayoutDashboard;
+	sectionActive: (pathname: string) => boolean;
+	defaultHref: Route;
+	children: AdminNavChild[];
+};
+
+const adminNavSections: AdminNavSection[] = [
 	{
-		href: "/admin",
+		id: "overview",
 		label: "Overview",
 		icon: LayoutDashboard,
-		match: (pathname: string) => pathname === "/admin",
+		defaultHref: "/admin" as Route,
+		sectionActive: (pathname) => pathname === "/admin",
+		children: [
+			{
+				href: "/admin" as Route,
+				label: "Dashboard",
+				isActive: (pathname) => pathname === "/admin",
+			},
+		],
 	},
 	{
-		href: "/admin/users",
+		id: "members",
 		label: "Members",
 		icon: Users,
-		match: (pathname: string) => pathname.startsWith("/admin/users"),
+		defaultHref: "/admin/users" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/users"),
+		children: [
+			{
+				href: "/admin/users" as Route,
+				label: "Overview",
+				isActive: (pathname) => pathname === "/admin/users",
+			},
+			{
+				href: "/admin/users/list" as Route,
+				label: "List",
+				isActive: (pathname) => pathname.startsWith("/admin/users/list"),
+			},
+			{
+				href: "/admin/users/stats" as Route,
+				label: "Stats",
+				isActive: (pathname) => pathname.startsWith("/admin/users/stats"),
+			},
+		],
 	},
 	{
-		href: "/admin/books",
+		id: "books",
 		label: "Books",
 		icon: BookOpen,
-		match: (pathname: string) => pathname.startsWith("/admin/books"),
+		defaultHref: "/admin/books" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/books"),
+		children: [
+			{
+				href: "/admin/books" as Route,
+				label: "Overview",
+				isActive: (pathname) => pathname === "/admin/books",
+			},
+			{
+				href: "/admin/books/list" as Route,
+				label: "List",
+				isActive: (pathname) => pathname.startsWith("/admin/books/list"),
+			},
+			{
+				href: "/admin/books/stats" as Route,
+				label: "Stats",
+				isActive: (pathname) => pathname.startsWith("/admin/books/stats"),
+			},
+		],
 	},
 	{
-		href: "/admin/facts",
-		label: "Facts",
-		icon: Sparkles,
-		match: (pathname: string) => pathname.startsWith("/admin/facts"),
-	},
-	{
-		href: "/admin/sittings",
+		id: "sittings",
 		label: "Sittings",
 		icon: UsersRound,
-		match: (pathname: string) => pathname.startsWith("/admin/sittings"),
+		defaultHref: "/admin/sittings" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/sittings"),
+		children: [
+			{
+				href: "/admin/sittings" as Route,
+				label: "Overview",
+				isActive: (pathname) => pathname === "/admin/sittings",
+			},
+			{
+				href: "/admin/sittings/list" as Route,
+				label: "List",
+				isActive: (pathname) => pathname.startsWith("/admin/sittings/list"),
+			},
+			{
+				href: "/admin/sittings/stats" as Route,
+				label: "Stats",
+				isActive: (pathname) => pathname.startsWith("/admin/sittings/stats"),
+			},
+		],
 	},
 	{
-		href: "/admin/feedbacks",
+		id: "feedbacks",
 		label: "Feedbacks",
 		icon: MessageSquareQuote,
-		match: (pathname: string) => pathname.startsWith("/admin/feedbacks"),
+		defaultHref: "/admin/feedbacks" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/feedbacks"),
+		children: [
+			{
+				href: "/admin/feedbacks" as Route,
+				label: "Overview",
+				isActive: (pathname) => pathname === "/admin/feedbacks",
+			},
+			{
+				href: "/admin/feedbacks/list" as Route,
+				label: "List",
+				isActive: (pathname) => pathname.startsWith("/admin/feedbacks/list"),
+			},
+			{
+				href: "/admin/feedbacks/stats" as Route,
+				label: "Stats",
+				isActive: (pathname) => pathname.startsWith("/admin/feedbacks/stats"),
+			},
+		],
 	},
-] as const;
+	{
+		id: "facts",
+		label: "Facts",
+		icon: Sparkles,
+		defaultHref: "/admin/facts/create" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/facts"),
+		children: [
+			{
+				href: "/admin/facts/create" as Route,
+				label: "Create",
+				isActive: (pathname) => pathname.startsWith("/admin/facts/create"),
+			},
+			{
+				href: "/admin/facts/inventory" as Route,
+				label: "Inventory",
+				isActive: (pathname) => pathname.startsWith("/admin/facts/inventory"),
+			},
+		],
+	},
+];
+
+function AdminSidebarNavItem({
+	section,
+	pathname,
+}: {
+	section: AdminNavSection;
+	pathname: string;
+}) {
+	const sectionIsActive = section.sectionActive(pathname);
+
+	const showSubMenu = section.children.length > 1;
+
+	return (
+		<SidebarMenuItem>
+			<SidebarMenuButton
+				render={<Link href={section.defaultHref} />}
+				isActive={sectionIsActive}
+				tooltip={section.label}
+			>
+				<section.icon />
+				<span>{section.label}</span>
+			</SidebarMenuButton>
+			{showSubMenu ? (
+				<SidebarMenuSub>
+					{section.children.map((child) => (
+						<SidebarMenuSubItem key={child.href}>
+							<SidebarMenuSubButton
+								render={<Link href={child.href} />}
+								isActive={child.isActive(pathname)}
+							>
+								<span>{child.label}</span>
+							</SidebarMenuSubButton>
+						</SidebarMenuSubItem>
+					))}
+				</SidebarMenuSub>
+			) : null}
+		</SidebarMenuItem>
+	);
+}
 
 export function AdminAppShell({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
@@ -83,17 +233,12 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
 						<SidebarGroupLabel>Resources</SidebarGroupLabel>
 						<SidebarGroupContent>
 							<SidebarMenu>
-								{mainNav.map((item) => (
-									<SidebarMenuItem key={item.href}>
-										<SidebarMenuButton
-											render={<Link href={item.href as Route} />}
-											isActive={item.match(pathname)}
-											tooltip={item.label}
-										>
-											<item.icon />
-											<span>{item.label}</span>
-										</SidebarMenuButton>
-									</SidebarMenuItem>
+								{adminNavSections.map((section) => (
+									<AdminSidebarNavItem
+										key={section.id}
+										section={section}
+										pathname={pathname}
+									/>
 								))}
 							</SidebarMenu>
 						</SidebarGroupContent>

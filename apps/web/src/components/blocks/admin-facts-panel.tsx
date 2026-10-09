@@ -10,7 +10,6 @@ import { useMutation } from "@tanstack/react-query";
 import { Sparkles, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
-import { AdminFactsInventory } from "@/components/blocks/admin-facts-inventory";
 import { FactCategoryBadge } from "@/components/blocks/fact-category-badge";
 import { consumeAdminFactDraftsStream } from "@/lib/admin-fact-drafts-stream";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -304,8 +303,6 @@ export function AdminFactsPanel() {
 					</ul>
 				)}
 			</section>
-
-			<AdminFactsInventory />
 		</div>
 	);
 }
