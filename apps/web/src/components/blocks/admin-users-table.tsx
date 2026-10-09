@@ -73,6 +73,9 @@ export function AdminUsersTable() {
 								<TableRow>
 									<TableHead>Member</TableHead>
 									<TableHead>Status</TableHead>
+									<TableHead className="hidden md:table-cell">
+										Telegram
+									</TableHead>
 									<TableHead className="text-right tabular-nums">XP</TableHead>
 									<TableHead className="text-right tabular-nums">RP</TableHead>
 									<TableHead className="hidden text-right tabular-nums lg:table-cell">
@@ -147,6 +150,19 @@ export function AdminUsersTable() {
 													</Badge>
 												) : null}
 											</div>
+										</TableCell>
+										<TableCell className="hidden max-w-32 md:table-cell">
+											{user.telegramUserId ? (
+												<p className="truncate text-sm">
+													{user.telegramUsername
+														? `@${user.telegramUsername}`
+														: "Linked"}
+												</p>
+											) : (
+												<p className="truncate text-muted-foreground text-sm">
+													Not linked
+												</p>
+											)}
 										</TableCell>
 										<TableCell className="text-right tabular-nums">
 											{user.xp}

@@ -89,6 +89,8 @@ export const AdminUserListItemSchema = UserSchema.pick({
 	updatedAt: true,
 }).extend({
 	counts: AdminUserCountsSchema,
+	telegramUserId: zod.string().nullable(),
+	telegramUsername: zod.string().nullable(),
 });
 
 export const ListAdminUsersInputSchema = adminUserListFiltersSchema
@@ -250,6 +252,8 @@ export const adminUserListSelect = {
 	xp: true,
 	rp: true,
 	emailVerified: true,
+	telegramUserId: true,
+	telegramUsername: true,
 	createdAt: true,
 	updatedAt: true,
 	_count: {
