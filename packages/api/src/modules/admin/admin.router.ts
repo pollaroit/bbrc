@@ -39,6 +39,32 @@ import {
 	publishAdminFact,
 } from "./admin-fact.service";
 import {
+	AdminFeedbackOverviewOutputSchema,
+	GetAdminFeedbackOverviewInputSchema,
+	GetAdminFeedbackStatsInputSchema,
+	GetAdminFeedbackStatsOutputSchema,
+	ListAdminFeedbacksInputSchema,
+	ListAdminFeedbacksOutputSchema,
+} from "./admin-feedback.schema";
+import {
+	getAdminFeedbackOverview,
+	getAdminFeedbackStats,
+	listAdminFeedbacks,
+} from "./admin-feedback.service";
+import {
+	AdminSittingOverviewOutputSchema,
+	GetAdminSittingOverviewInputSchema,
+	GetAdminSittingStatsInputSchema,
+	GetAdminSittingStatsOutputSchema,
+	ListAdminSittingsInputSchema,
+	ListAdminSittingsOutputSchema,
+} from "./admin-sitting.schema";
+import {
+	getAdminSittingOverview,
+	getAdminSittingStats,
+	listAdminSittings,
+} from "./admin-sitting.service";
+import {
 	AdminDeleteUserInputSchema,
 	AdminDeleteUserOutputSchema,
 	AdminSetUserPasswordInputSchema,
@@ -170,4 +196,40 @@ export const adminRouter = {
 		.input(AdminFactIdInputSchema)
 		.output(DeleteAdminFactOutputSchema)
 		.handler(async ({ input, context }) => deleteAdminFact(input, context.db)),
+	getSittingOverview: adminProcedure
+		.input(GetAdminSittingOverviewInputSchema)
+		.output(AdminSittingOverviewOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminSittingOverview(input, context.db),
+		),
+	listSittings: adminProcedure
+		.input(ListAdminSittingsInputSchema)
+		.output(ListAdminSittingsOutputSchema)
+		.handler(async ({ input, context }) =>
+			listAdminSittings(input, context.db),
+		),
+	getSittingStats: adminProcedure
+		.input(GetAdminSittingStatsInputSchema)
+		.output(GetAdminSittingStatsOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminSittingStats(input, context.db),
+		),
+	getFeedbackOverview: adminProcedure
+		.input(GetAdminFeedbackOverviewInputSchema)
+		.output(AdminFeedbackOverviewOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminFeedbackOverview(input, context.db),
+		),
+	listFeedbacks: adminProcedure
+		.input(ListAdminFeedbacksInputSchema)
+		.output(ListAdminFeedbacksOutputSchema)
+		.handler(async ({ input, context }) =>
+			listAdminFeedbacks(input, context.db),
+		),
+	getFeedbackStats: adminProcedure
+		.input(GetAdminFeedbackStatsInputSchema)
+		.output(GetAdminFeedbackStatsOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminFeedbackStats(input, context.db),
+		),
 };

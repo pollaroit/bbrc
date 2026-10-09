@@ -65,3 +65,15 @@ export const adminMemberTabs = [
 	{ href: "/admin/users/list" as Route, label: "List" },
 	{ href: "/admin/users/stats" as Route, label: "Stats" },
 ] as const;
+
+export const adminSittingTabs = [
+	{ href: "/admin/sittings" as Route, label: "Overview" },
+	{ href: "/admin/sittings/list" as Route, label: "List" },
+	{ href: "/admin/sittings/stats" as Route, label: "Stats" },
+] as const;
+
+export const adminFeedbackTabs = [
+	{ href: "/admin/feedbacks" as Route, label: "Overview" },
+	{ href: "/admin/feedbacks/list" as Route, label: "List" },
+	{ href: "/admin/feedbacks/stats" as Route, label: "Stats" },
+] as const;

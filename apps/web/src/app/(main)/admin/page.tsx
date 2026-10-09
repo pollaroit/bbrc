@@ -35,6 +35,16 @@ const resources = [
 		title: "Fact reels",
 		description: "AI-assisted drafts and published reel inventory.",
 	},
+	{
+		href: "/admin/sittings" as Route,
+		title: "Sittings",
+		description: "Reading cycles, polls, participation, and timelines.",
+	},
+	{
+		href: "/admin/feedbacks" as Route,
+		title: "Feedbacks",
+		description: "Club reviews, ratings, likes, and discussion depth.",
+	},
 ] as const;
 
 export default async function AdminHubPage() {

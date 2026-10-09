@@ -25,8 +25,8 @@ import {
 } from "./sitting.listing";
 
 /** Deadlines read from the DB (create/update inputs still use Prisma “future” refines). */
-const SittingStoredDeadlineSchema = zod.coerce.date();
-const PollStoredDeadlineSchema = zod.coerce.date();
+export const SittingStoredDeadlineSchema = zod.coerce.date();
+export const PollStoredDeadlineSchema = zod.coerce.date();
 
 export {
 	sittingListRanging,
