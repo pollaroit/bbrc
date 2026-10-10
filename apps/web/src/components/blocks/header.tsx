@@ -15,10 +15,10 @@ import { authClient } from "@/lib/auth-client";
 import { useLiveUserImage } from "@/lib/user-avatar-broadcast";
 
 const navLinks = [
-	{ label: "Home", href: "/" },
 	{ label: "Library", href: "/books" },
 	{ label: "Shelves", href: "/shelves" },
 	{ label: "Sittings", href: "/sittings" },
+	{ label: "Leaderboard", href: "/leaderboard/overview" },
 ];
 
 export default function Header() {

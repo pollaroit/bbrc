@@ -9,6 +9,7 @@ import { factRouter } from "./modules/fact/fact.router";
 import { favoriteRouter } from "./modules/favorite/favorite.router";
 import { feedbackRouter } from "./modules/feedback/feedback.router";
 import { healthRouter } from "./modules/health/health.router";
+import { leaderboardRouter } from "./modules/leaderboard/leaderboard.router";
 import { likeRouter } from "./modules/like/like.router";
 import { notificationRouter } from "./modules/notification/notification.router";
 import { postRouter } from "./modules/post/post.router";
@@ -24,6 +25,7 @@ import { xpRouter } from "./modules/xp/xp.router";
 export const appRouter = {
 	admin: adminRouter,
 	health: healthRouter,
+	leaderboard: leaderboardRouter,
 	book: bookRouter,
 	bookRequest: bookRequestRouter,
 	comment: commentRouter,

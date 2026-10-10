@@ -3,6 +3,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { GlobalSearchMobileTrigger } from "@/components/blocks/global-search-trigger";
+import { LeaderboardMobileNavTrigger } from "@/components/blocks/leaderboard-nav-trigger";
 import { Logo } from "@/components/blocks/logo";
 import { MobileReadSittingsControl } from "@/components/blocks/mobile-read-sittings-control";
 import {
@@ -38,6 +39,7 @@ export function MobileTopBar() {
 				</Link>
 				<div className="flex items-center justify-end gap-0.5">
 					<GlobalSearchMobileTrigger />
+					<LeaderboardMobileNavTrigger />
 					<ModeToggle />
 					{!isPending && session ? <NotificationBell /> : null}
 				</div>

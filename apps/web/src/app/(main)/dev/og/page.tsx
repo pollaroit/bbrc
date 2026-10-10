@@ -54,6 +54,21 @@ export default async function OgDevPage() {
 		{ label: "Add book", path: "/books/new" },
 		{ label: "Request book", path: "/books/request" },
 		{ label: "Shelves", path: "/shelves" },
+		{ label: "Leaderboard overview", path: "/leaderboard/overview" },
+		{
+			label: "Leaderboard overview · All time",
+			path: "/leaderboard/overview/all",
+		},
+		{ label: "Leaderboard · XP · Week", path: "/leaderboard/xp/week" },
+		{ label: "Leaderboard · XP · All time", path: "/leaderboard/xp/all" },
+		{ label: "Leaderboard · XP", path: "/leaderboard/xp" },
+		{ label: "Leaderboard · RP", path: "/leaderboard/rp" },
+		{ label: "Leaderboard · Reads", path: "/leaderboard/reads" },
+		{ label: "Leaderboard · Posts", path: "/leaderboard/posts" },
+		{
+			label: "Leaderboard · Participations",
+			path: "/leaderboard/participations",
+		},
 		...(user?.username
 			? [
 					{

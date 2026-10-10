@@ -1,12 +1,20 @@
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
 import { getFeedbackBySlug } from "@bbrc/api/modules/feedback/feedback.service";
+import {
+	LEADERBOARD_KIND_META,
+	LEADERBOARD_PERIOD_META,
+	type LeaderboardKind,
+	type LeaderboardPeriod,
+} from "@bbrc/api/modules/leaderboard/leaderboard.schema";
+import { getLeaderboardOgSnapshot } from "@bbrc/api/modules/leaderboard/leaderboard.service";
 import { getPostBySlug } from "@bbrc/api/modules/post/post.service";
 import { getShelfBySlug } from "@bbrc/api/modules/shelf/shelf.service";
 import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.schema";
 import { getSittingBySlug } from "@bbrc/api/modules/sitting/sitting.service";
 import { getUserByUsername } from "@bbrc/api/modules/user/user.service";
 import { formatBookAuthors } from "@/lib/book-cover";
+import { parseLeaderboardPathname } from "@/lib/leaderboard/paths";
 import { postAttachmentLabel } from "@/lib/post-attachment-label";
 import { truncateDescription } from "@/lib/seo/metadata";
 import { DEFAULT_DESCRIPTION } from "@/lib/seo/site";
@@ -181,6 +189,46 @@ async function resolveSittingsListOg(): Promise<OgImageContent> {
 	};
 }
 
+async function resolveLeaderboardHubOg(
+	period: LeaderboardPeriod = "month",
+): Promise<OgImageContent> {
+	const snapshot = await getLeaderboardOgSnapshot("xp", db, period);
+	const periodLabel = LEADERBOARD_PERIOD_META[period].label;
+
+	return {
+		kind: "Leaderboard",
+		title: `Leaderboard overview · ${periodLabel}`,
+		description: `${snapshot.memberCount} members ranked · ${periodLabel.toLowerCase()} · XP, RP, reads, posts, sittings`,
+		highlights: [
+			snapshot.leaderMetric > 0
+				? `Top XP: ${snapshot.leaderName} (${snapshot.leaderMetric})`
+				: "Ties share the same place",
+			"Five boards",
+		],
+	};
+}
+
+async function resolveLeaderboardKindOg(
+	kind: LeaderboardKind,
+	period: LeaderboardPeriod = "month",
+): Promise<OgImageContent> {
+	const meta = LEADERBOARD_KIND_META[kind];
+	const periodLabel = LEADERBOARD_PERIOD_META[period].label;
+	const snapshot = await getLeaderboardOgSnapshot(kind, db, period);
+
+	return {
+		kind: "Leaderboard",
+		title: `${meta.title} · ${periodLabel}`,
+		description: `${meta.description} ${periodLabel} rankings.`,
+		highlights: [
+			formatCount("member", snapshot.memberCount),
+			snapshot.leaderMetric > 0
+				? `Leader: ${snapshot.leaderName} · ${snapshot.leaderMetric} ${meta.metricLabel}`
+				: "No scores yet",
+		],
+	};
+}
+
 async function resolveMembersListOg(): Promise<OgImageContent> {
 	const [memberCount, adminCount] = await Promise.all([
 		db.user.count(),
@@ -231,6 +279,13 @@ export async function resolveOgImageContent(
 	}
 	if (staticKey === "users") {
 		return resolveMembersListOg();
+	}
+	if (staticKey === "leaderboard" || staticKey.startsWith("leaderboard/")) {
+		const route = parseLeaderboardPathname(`/${staticKey}`);
+		if (route.kind == null) {
+			return resolveLeaderboardHubOg(route.period);
+		}
+		return resolveLeaderboardKindOg(route.kind, route.period);
 	}
 
 	const staticPage = STATIC_PAGES[staticKey];

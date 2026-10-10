@@ -32,6 +32,25 @@ const r2Pattern = r2ImageRemotePattern();
 const nextConfig: NextConfig = {
 	typedRoutes: true,
 	reactCompiler: true,
+	async redirects() {
+		return [
+			{
+				source: "/leaderboard/all",
+				destination: "/leaderboard/overview/all",
+				permanent: true,
+			},
+			{
+				source: "/leaderboard/year",
+				destination: "/leaderboard/overview/year",
+				permanent: true,
+			},
+			{
+				source: "/leaderboard/week",
+				destination: "/leaderboard/overview/week",
+				permanent: true,
+			},
+		];
+	},
 	async rewrites() {
 		return [
 			{ source: "/feed/posts.xml", destination: "/feed/posts" },
