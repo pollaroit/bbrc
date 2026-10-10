@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { UserXpHistory } from "@/components/blocks/user-xp-history";
 import {
-	loadUserByUsernameForIsr,
-	loadXpChartForIsr,
-	loadXpEventListForIsr,
-} from "@/lib/isr-data";
+	loadUserByUsernameForPage,
+	loadXpChartForPage,
+	loadXpEventListForPage,
+} from "@/lib/member-profile-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({
@@ -14,7 +14,7 @@ export async function generateMetadata({
 	const { username } = await params;
 
 	try {
-		const user = await loadUserByUsernameForIsr(username);
+		const user = await loadUserByUsernameForPage(username);
 
 		return buildPageMetadata({
 			title: `${user.name} · XP history`,
@@ -33,9 +33,9 @@ export default async function UserXpHistoryPage({
 
 	try {
 		const [user, chart, initialEvents] = await Promise.all([
-			loadUserByUsernameForIsr(username),
-			loadXpChartForIsr(username),
-			loadXpEventListForIsr(username),
+			loadUserByUsernameForPage(username),
+			loadXpChartForPage(username),
+			loadXpEventListForPage(username),
 		]);
 
 		return (

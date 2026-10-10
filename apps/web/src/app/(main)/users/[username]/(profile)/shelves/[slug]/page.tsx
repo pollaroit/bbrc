@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { MemberShelfDetail } from "@/components/blocks/member-shelf-detail";
 import {
-	loadShelfBySlugForIsr,
-	loadUserByUsernameForIsr,
-} from "@/lib/isr-data";
+	loadShelfBySlugForPage,
+	loadUserByUsernameForPage,
+} from "@/lib/member-profile-data";
 import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
@@ -19,12 +18,9 @@ export async function generateMetadata({
 	const { username, slug: shelfSlug } = await params;
 
 	try {
-		const session = await auth.api.getSession({
-			headers: await headers(),
-		});
 		const [user, shelf] = await Promise.all([
-			loadUserByUsernameForIsr(username),
-			loadShelfBySlugForIsr(username, shelfSlug, session?.user?.id),
+			loadUserByUsernameForPage(username),
+			loadShelfBySlugForPage(username, shelfSlug),
 		]);
 
 		const description =

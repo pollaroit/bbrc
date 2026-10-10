@@ -4,6 +4,7 @@ import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
 import { notifyReactionOnYourPost } from "../notification/notification-triggers";
+import { loadActorSocialGate } from "../user/user-visibility";
 import {
 	likeListRanging,
 	likeListSearching,
@@ -257,6 +258,8 @@ export async function toggleLike(
 	userId: string,
 	db: Database,
 ): Promise<ToggleLikeOutput> {
+	await loadActorSocialGate(userId, db);
+
 	const target = await resolveLikeTarget(input, db);
 
 	const result = await db.$transaction(async (tx) => {

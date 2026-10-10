@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EditShelfForm } from "@/components/blocks/edit-shelf-form";
-import { loadUserByUsernameForIsr } from "@/lib/isr-data";
+import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { auth } from "@/services";
 
@@ -15,7 +15,7 @@ export async function generateMetadata({
 	const { username, slug } = await params;
 
 	try {
-		const user = await loadUserByUsernameForIsr(username);
+		const user = await loadUserByUsernameForPage(username);
 
 		return buildPageMetadata({
 			title: `Edit shelf · ${user.name}`,

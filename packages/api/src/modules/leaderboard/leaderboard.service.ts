@@ -18,6 +18,7 @@ const HUB_WINDOW = 5;
 
 const memberWhere = {
 	status: { in: ["active", "warned", "banned"] as const },
+	isHidden: false,
 } satisfies Prisma.UserWhereInput;
 
 const memberProfileSelect = {

@@ -34,14 +34,15 @@ export const userRouter = {
 		.input(GetUserByUsernameInputSchema)
 		.output(GetUserByUsernameOutputSchema)
 		.handler(
-			async ({ input, context }) => await getUserByUsername(input, context.db),
+			async ({ input, context }) =>
+				await getUserByUsername(input, context.db, context.session),
 		),
 	getUserParticipationList: publicProcedure
 		.input(GetUserParticipationListInputSchema)
 		.output(GetUserParticipationListOutputSchema)
 		.handler(
 			async ({ input, context }) =>
-				await getUserParticipationList(input, context.db),
+				await getUserParticipationList(input, context.db, context.session),
 		),
 	getTelegramLinkStatus: protectedProcedure
 		.output(GetTelegramLinkStatusOutputSchema)

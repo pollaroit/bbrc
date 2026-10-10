@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { CreateShelfForm } from "@/components/blocks/create-shelf-form";
 import { CreateShelfPageHeader } from "@/components/blocks/create-shelf-page-header";
-import { loadUserByUsernameForIsr } from "@/lib/isr-data";
+import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { auth } from "@/services";
 
@@ -13,7 +13,7 @@ export async function generateMetadata({
 	const { username } = await params;
 
 	try {
-		const user = await loadUserByUsernameForIsr(username);
+		const user = await loadUserByUsernameForPage(username);
 
 		return buildPageMetadata({
 			title: `New shelf · ${user.name}`,

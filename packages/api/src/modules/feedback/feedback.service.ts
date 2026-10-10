@@ -8,6 +8,12 @@ import {
 	userCompletedClubRead,
 } from "../book/book-read-eligibility";
 import { notifyMemberFeedbackOnBook } from "../notification/notification-triggers";
+import {
+	assertContentNotVisible,
+	loadActorSocialGate,
+	viewerFromSession,
+	visibleOnSiteUserWhere,
+} from "../user/user-visibility";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardFeedbackXp } from "../xp/xp.service";
 import type {
@@ -82,6 +88,7 @@ export async function getBookFeedbackList(
 	const feedbacks = await db.feedback.findMany({
 		where: {
 			bookId: book.id,
+			author: visibleOnSiteUserWhere,
 			...(input.minRating !== undefined
 				? { rating: { gte: input.minRating } }
 				: {}),
@@ -170,6 +177,18 @@ export async function getFeedbackBySlug(
 			data: { slug },
 		});
 	}
+
+	const author = await db.user.findUnique({
+		where: { id: feedback.authorId },
+		select: { id: true, isHidden: true },
+	});
+
+	assertContentNotVisible(
+		author ?? { id: feedback.authorId, isHidden: true },
+		viewerFromSession(session),
+		"Feedback not found",
+		{ slug },
+	);
 
 	const userId = session?.user.id ?? null;
 	const likedFeedbackIds = await loadLikedFeedbackIdsForViewer(
@@ -311,6 +330,8 @@ export async function createFeedback(
 	userId: string,
 	db: Database,
 ): Promise<CreateFeedbackOutput> {
+	await loadActorSocialGate(userId, db);
+
 	const book = await loadBookBySlug(input.bookSlug, db);
 
 	const existing = await db.feedback.findUnique({

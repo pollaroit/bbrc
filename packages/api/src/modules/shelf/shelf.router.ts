@@ -7,6 +7,7 @@ import {
 	revalidateBookIsr,
 	revalidateUserShelvesIsr,
 } from "../../revalidate-isr";
+import { viewerFromSession } from "../user/user-visibility";
 import {
 	AddBookToShelfInputSchema,
 	AddBookToShelfOutputSchema,
@@ -56,7 +57,7 @@ export const shelfRouter = {
 			listShelvesByUsername(
 				input.username,
 				input.status,
-				context.session?.user?.id,
+				viewerFromSession(context.session),
 				context.db,
 			),
 		),
@@ -67,7 +68,7 @@ export const shelfRouter = {
 			getShelfBySlug(
 				input.username,
 				input.shelfSlug,
-				context.session?.user?.id,
+				viewerFromSession(context.session),
 				context.db,
 			),
 		),

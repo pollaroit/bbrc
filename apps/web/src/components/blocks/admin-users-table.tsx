@@ -12,7 +12,7 @@ import {
 	TableRow,
 } from "@bbrc/ui/components/table";
 import { useQuery } from "@tanstack/react-query";
-import { Crown } from "lucide-react";
+import { CircleAlert, Crown } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
@@ -140,6 +140,12 @@ export function AdminUsersTable() {
 														className="flex min-w-0 items-center gap-1.5 font-medium hover:underline"
 													>
 														<span className="truncate">{user.name}</span>
+														{user.isHidden ? (
+															<CircleAlert
+																className="size-3.5 shrink-0 text-destructive"
+																aria-label="Hidden member"
+															/>
+														) : null}
 														{user.isAdmin ? (
 															<Crown
 																className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"

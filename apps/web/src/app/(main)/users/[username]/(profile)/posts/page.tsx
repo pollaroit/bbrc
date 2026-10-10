@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PostFeed } from "@/components/blocks/post-feed";
-import { loadUserByUsernameForIsr } from "@/lib/isr-data";
+import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({
@@ -9,7 +9,7 @@ export async function generateMetadata({
 	const { username } = await params;
 
 	try {
-		const user = await loadUserByUsernameForIsr(username);
+		const user = await loadUserByUsernameForPage(username);
 
 		return buildPageMetadata({
 			title: `${user.name} · Feed`,

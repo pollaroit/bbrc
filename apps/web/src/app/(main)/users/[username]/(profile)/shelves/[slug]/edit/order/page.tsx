@@ -2,7 +2,7 @@ import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ShelfReorderEditor } from "@/components/blocks/shelf-reorder-editor";
-import { loadUserByUsernameForIsr } from "@/lib/isr-data";
+import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { auth } from "@/services";
 
@@ -12,7 +12,7 @@ export async function generateMetadata({
 	const { username, slug } = await params;
 
 	try {
-		const user = await loadUserByUsernameForIsr(username);
+		const user = await loadUserByUsernameForPage(username);
 
 		return buildPageMetadata({
 			title: `Reorder shelf · ${user.name}`,

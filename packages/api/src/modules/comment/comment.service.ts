@@ -10,6 +10,12 @@ import {
 	notifyReplyToYourComment,
 } from "../notification/notification-triggers";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
+import {
+	assertContentNotVisible,
+	loadActorSocialGate,
+	viewerFromSession,
+	visibleOnSiteUserWhere,
+} from "../user/user-visibility";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardCommentXp } from "../xp/xp.service";
 import {
@@ -214,6 +220,7 @@ export async function getCommentList(
 		input.authorUsername
 			? commentAuthorUsernameWhere(input.authorUsername)
 			: {},
+		{ author: visibleOnSiteUserWhere },
 	);
 
 	const rows = await db.comment.findMany({
@@ -253,6 +260,18 @@ export async function getCommentBySlug(
 		});
 	}
 
+	const author = await db.user.findUnique({
+		where: { id: comment.authorId },
+		select: { id: true, isHidden: true },
+	});
+
+	assertContentNotVisible(
+		author ?? { id: comment.authorId, isHidden: true },
+		viewerFromSession(session),
+		"Comment not found",
+		{ slug },
+	);
+
 	const likedCommentIds = await loadLikedCommentIds(
 		[comment.id],
 		viewerUserId(session),
@@ -267,6 +286,8 @@ export async function createComment(
 	userId: string,
 	db: Database,
 ): Promise<CreateCommentOutput> {
+	await loadActorSocialGate(userId, db);
+
 	const postId = input.postSlug
 		? await loadPostIdBySlug(input.postSlug, db)
 		: null;

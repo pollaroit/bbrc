@@ -12,10 +12,14 @@ export const xpRouter = {
 		.input(GetXpEventListInputSchema)
 		.output(GetXpEventListOutputSchema)
 		.handler(
-			async ({ input, context }) => await getXpEventList(input, context.db),
+			async ({ input, context }) =>
+				await getXpEventList(input, context.db, context.session),
 		),
 	getXpChart: publicProcedure
 		.input(GetXpChartInputSchema)
 		.output(GetXpChartOutputSchema)
-		.handler(async ({ input, context }) => await getXpChart(input, context.db)),
+		.handler(
+			async ({ input, context }) =>
+				await getXpChart(input, context.db, context.session),
+		),
 };

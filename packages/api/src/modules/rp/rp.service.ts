@@ -1,3 +1,4 @@
+import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
@@ -7,6 +8,10 @@ import {
 } from "../points/points-history";
 import type { ParticipationProgress } from "../sitting/participation-progress";
 import { progressAffectsUserStatus } from "../sitting/participation-progress";
+import {
+	assertMemberVisible,
+	viewerFromSession,
+} from "../user/user-visibility";
 import {
 	type ApplyRpForFinishedSittingInput,
 	type GetRpChartInput,
@@ -153,18 +158,17 @@ export async function revertRpForDeletedSitting(
 	}
 }
 
-async function loadRpUser(username: string, db: Database) {
+async function loadRpUser(
+	username: string,
+	db: Database,
+	session: Session | null,
+) {
 	const user = await db.user.findUnique({
 		where: { username },
-		select: { id: true, rp: true, createdAt: true },
+		select: { id: true, rp: true, createdAt: true, isHidden: true },
 	});
 
-	if (!user) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
-			data: { username },
-		});
-	}
+	assertMemberVisible(user, viewerFromSession(session));
 
 	return user;
 }
@@ -172,8 +176,9 @@ async function loadRpUser(username: string, db: Database) {
 export async function getRpChart(
 	input: GetRpChartInput,
 	db: Database,
+	session: Session | null = null,
 ): Promise<GetRpChartOutput> {
-	const user = await loadRpUser(input.username, db);
+	const user = await loadRpUser(input.username, db, session);
 
 	const eventsAsc = await db.rPEvent.findMany({
 		where: { userId: user.id },
@@ -190,8 +195,9 @@ export async function getRpChart(
 export async function getRpEventList(
 	input: GetRpEventListInput,
 	db: Database,
+	session: Session | null = null,
 ): Promise<GetRpEventListOutput> {
-	const user = await loadRpUser(input.username, db);
+	const user = await loadRpUser(input.username, db, session);
 
 	const balanceEvents = await db.rPEvent.findMany({
 		where: { userId: user.id },

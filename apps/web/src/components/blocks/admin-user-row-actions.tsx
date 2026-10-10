@@ -40,7 +40,14 @@ import { orpc, queryClient } from "@/utils/orpc";
 
 type AdminUserRow = z.infer<typeof AdminUserListItemSchema>;
 
-type DialogKind = "name" | "password" | "role" | "status" | "delete" | null;
+type DialogKind =
+	| "name"
+	| "password"
+	| "role"
+	| "status"
+	| "hidden"
+	| "delete"
+	| null;
 
 async function invalidateAdminUsers() {
 	await Promise.all([
@@ -68,6 +75,7 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 	const [password, setPassword] = useState("");
 	const [isAdmin, setIsAdmin] = useState(user.isAdmin);
 	const [status, setStatus] = useState(user.status);
+	const [hiddenConfirmUsername, setHiddenConfirmUsername] = useState("");
 
 	const updateName = useMutation(
 		orpc.admin.updateUserName.mutationOptions({
@@ -113,6 +121,20 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 		}),
 	);
 
+	const updateHidden = useMutation(
+		orpc.admin.updateUserHidden.mutationOptions({
+			onSuccess: async () => {
+				toast.success(
+					user.isHidden ? "Member is visible again." : "Member is now hidden.",
+				);
+				setHiddenConfirmUsername("");
+				setDialog(null);
+				await invalidateAdminUsers();
+			},
+			onError: (error) => toast.error(error.message),
+		}),
+	);
+
 	const deleteUser = useMutation(
 		orpc.admin.deleteUser.mutationOptions({
 			onSuccess: async () => {
@@ -129,8 +151,12 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 		setIsAdmin(user.isAdmin);
 		setStatus(user.status);
 		setPassword("");
+		setHiddenConfirmUsername("");
 		setDialog(kind);
 	};
+
+	const nextHidden = !user.isHidden;
+	const hiddenConfirmMatches = hiddenConfirmUsername.trim() === user.username;
 
 	return (
 		<>
@@ -166,6 +192,9 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={() => openDialog("status")}>
 						Update status
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={() => openDialog("hidden")}>
+						{user.isHidden ? "Remove hidden" : "Set hidden"}
 					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
@@ -354,6 +383,59 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+
+			<DestructiveConfirmDialog
+				open={dialog === "hidden"}
+				onOpenChange={(open) => {
+					if (!open) {
+						setHiddenConfirmUsername("");
+						setDialog(null);
+					}
+				}}
+				title={nextHidden ? "Hide member?" : "Remove hidden status?"}
+				description={
+					nextHidden ? (
+						<>
+							<strong>@{user.username}</strong> will disappear from search,
+							leaderboards, and public profile URLs. They can still sign in and
+							read or favorite books privately.
+						</>
+					) : (
+						<>
+							<strong>@{user.username}</strong> will be visible on the site
+							again (lists, search, profile, and social actions allowed by their
+							status).
+						</>
+					)
+				}
+				confirmLabel={nextHidden ? "Set hidden" : "Remove hidden"}
+				loading={updateHidden.isPending}
+				confirmDisabled={!hiddenConfirmMatches}
+				onConfirm={() => {
+					updateHidden.mutate({
+						username: user.username,
+						isHidden: nextHidden,
+					});
+				}}
+			>
+				<Field>
+					<FieldLabel htmlFor={`hidden-confirm-${user.id}`}>
+						Type <span className="font-mono">{user.username}</span> to confirm
+					</FieldLabel>
+					<Input
+						id={`hidden-confirm-${user.id}`}
+						value={hiddenConfirmUsername}
+						onChange={(event) => setHiddenConfirmUsername(event.target.value)}
+						autoComplete="off"
+						spellCheck={false}
+					/>
+				</Field>
+				{updateHidden.isPending || hiddenConfirmMatches ? null : (
+					<p className="text-muted-foreground text-xs">
+						Confirmation must match the username exactly.
+					</p>
+				)}
+			</DestructiveConfirmDialog>
 
 			<DestructiveConfirmDialog
 				open={dialog === "delete"}

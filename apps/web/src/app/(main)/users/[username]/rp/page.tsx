@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { UserRpHistory } from "@/components/blocks/user-rp-history";
 import {
-	loadRpChartForIsr,
-	loadRpEventListForIsr,
-	loadUserByUsernameForIsr,
-} from "@/lib/isr-data";
+	loadRpChartForPage,
+	loadRpEventListForPage,
+	loadUserByUsernameForPage,
+} from "@/lib/member-profile-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({
@@ -14,7 +14,7 @@ export async function generateMetadata({
 	const { username } = await params;
 
 	try {
-		const user = await loadUserByUsernameForIsr(username);
+		const user = await loadUserByUsernameForPage(username);
 
 		return buildPageMetadata({
 			title: `${user.name} · RP history`,
@@ -33,9 +33,9 @@ export default async function UserRpHistoryPage({
 
 	try {
 		const [user, chart, initialEvents] = await Promise.all([
-			loadUserByUsernameForIsr(username),
-			loadRpChartForIsr(username),
-			loadRpEventListForIsr(username),
+			loadUserByUsernameForPage(username),
+			loadRpChartForPage(username),
+			loadRpEventListForPage(username),
 		]);
 
 		return (

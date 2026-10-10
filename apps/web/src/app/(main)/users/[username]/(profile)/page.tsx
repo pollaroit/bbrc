@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { UserReadingsFeed } from "@/components/blocks/user-readings-feed";
-import { loadUserByUsernameForIsr } from "@/lib/isr-data";
+import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
+	NO_INDEX_ROBOTS,
 	usernameStaticParams,
 } from "@/lib/seo";
 import { db } from "@/services";
@@ -22,12 +23,13 @@ export async function generateMetadata({
 	const { username } = await params;
 
 	try {
-		const user = await loadUserByUsernameForIsr(username);
+		const user = await loadUserByUsernameForPage(username);
 
 		return buildPageMetadata({
 			title: `${user.name} (@${user.username})`,
 			description: `${user.name}'s club sittings, reads, posts, and feedback on BBRC.`,
 			path: `/users/${user.username}`,
+			robots: user.indexable ? undefined : NO_INDEX_ROBOTS,
 			openGraph: { type: "profile" },
 		});
 	} catch {

@@ -20,6 +20,7 @@ model User {
   emailVerified Boolean    @default(false) @map("email_verified")
   image         String?
   isAdmin       Boolean    @default(false) @map("is_admin")
+  isHidden      Boolean    @default(false) @map("is_hidden")
   status        UserStatus @default(active)
 
   /// @zod.min(0, "XP must be a non-negative number")

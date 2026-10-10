@@ -16,6 +16,9 @@ export async function sittingSlugStaticParams(db: Database) {
 }
 
 export async function usernameStaticParams(db: Database) {
-	const rows = await db.user.findMany({ select: { username: true } });
+	const rows = await db.user.findMany({
+		where: { isHidden: false },
+		select: { username: true },
+	});
 	return rows.map(({ username }) => ({ username }));
 }

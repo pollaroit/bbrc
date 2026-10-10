@@ -8,6 +8,10 @@ type ShelfStatus = z.infer<typeof ShelfStatusSchema>;
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
+import {
+	assertMemberVisible,
+	type ViewerContext,
+} from "../user/user-visibility";
 import { awardShelfXp } from "../xp/xp.service";
 import { shelfListSorting } from "./shelf.listing";
 import type {
@@ -85,18 +89,17 @@ async function loadCoverPreviewMap(
 	return map;
 }
 
-async function loadUserByUsername(username: string, db: Database) {
+async function loadUserByUsername(
+	username: string,
+	viewer: ViewerContext,
+	db: Database,
+) {
 	const user = await db.user.findUnique({
 		where: { username },
-		select: { id: true, username: true },
+		select: { id: true, username: true, isHidden: true },
 	});
 
-	if (!user) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Member not found",
-			data: { username },
-		});
-	}
+	assertMemberVisible(user, viewer);
 
 	return user;
 }
@@ -173,10 +176,11 @@ function assertCanViewShelf(
 export async function listShelvesByUsername(
 	username: string,
 	status: ShelfStatus | undefined,
-	viewerUserId: string | undefined,
+	viewer: ViewerContext,
 	db: Database,
 ): Promise<ListShelvesByUsernameOutput> {
-	const user = await loadUserByUsername(username, db);
+	const user = await loadUserByUsername(username, viewer, db);
+	const viewerUserId = viewer?.userId;
 	const isOwner = viewerIsOwner(viewerUserId, user.id);
 
 	let statusFilter: ShelfStatus | undefined;
@@ -212,10 +216,11 @@ export async function listShelvesByUsername(
 export async function getShelfBySlug(
 	username: string,
 	shelfSlug: string,
-	viewerUserId: string | undefined,
+	viewer: ViewerContext,
 	db: Database,
 ): Promise<GetShelfBySlugOutput> {
-	const user = await loadUserByUsername(username, db);
+	const user = await loadUserByUsername(username, viewer, db);
+	const viewerUserId = viewer?.userId;
 
 	const shelf = await db.shelf.findFirst({
 		where: { userId: user.id, slug: shelfSlug },
@@ -581,7 +586,7 @@ export async function listShelvesForBook(
 		where: {
 			books: { some: { bookId: book.id } },
 			OR: [
-				{ status: "active" },
+				{ status: "active", user: { isHidden: false } },
 				...(viewerUserId ? [{ userId: viewerUserId }] : []),
 			],
 		},

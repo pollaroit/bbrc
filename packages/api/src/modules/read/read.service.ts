@@ -13,6 +13,7 @@ import {
 } from "../../lib/open-library/work-editions";
 import { definePagination } from "../../utils/pagination";
 import { activeParticipationWhere } from "../sitting/participation-active";
+import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type {
 	GetBookReadStateOutput,
 	ListBookReadsInput,
@@ -279,10 +280,12 @@ export async function listBookReads(
 	const book = await loadBookBySlug(input.bookSlug, db);
 	const limit = input.limit ?? 100;
 
+	const readWhere = { bookId: book.id, user: visibleOnSiteUserWhere };
+
 	const [total, rows] = await Promise.all([
-		db.read.count({ where: { bookId: book.id } }),
+		db.read.count({ where: readWhere }),
 		db.read.findMany({
-			where: { bookId: book.id },
+			where: readWhere,
 			orderBy: { createdAt: "desc" },
 			take: limit,
 			select: {

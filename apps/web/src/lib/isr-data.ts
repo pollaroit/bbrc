@@ -57,8 +57,8 @@ export const loadUserByUsernameForIsr = cache((username: string) =>
 );
 
 export const loadShelfBySlugForIsr = cache(
-	(username: string, shelfSlug: string, viewerUserId?: string) =>
-		getShelfBySlug(username, shelfSlug, viewerUserId, db),
+	(username: string, shelfSlug: string) =>
+		getShelfBySlug(username, shelfSlug, null, db),
 );
 
 export const loadOngoingSittingForIsr = cache(() => getOngoingSitting(db));

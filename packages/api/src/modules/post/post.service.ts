@@ -13,6 +13,12 @@ import { ORPCError } from "@orpc/server";
 import { mergeWhereFragments } from "../../utils/searching";
 import { notifyMemberPosted } from "../notification/notification-triggers";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
+import {
+	assertContentNotVisible,
+	loadActorSocialGate,
+	viewerFromSession,
+	visibleOnSiteUserWhere,
+} from "../user/user-visibility";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardPostXp } from "../xp/xp.service";
 import {
@@ -353,6 +359,7 @@ export async function getPostList(
 		input.hasAttachedBook != null
 			? postAttachedBookWhere(input.hasAttachedBook)
 			: {},
+		{ author: visibleOnSiteUserWhere },
 	);
 
 	if (feedSort === "hot" || feedSort === "top") {
@@ -445,6 +452,18 @@ export async function getPostBySlug(
 		});
 	}
 
+	const author = await db.user.findUnique({
+		where: { id: post.authorId },
+		select: { id: true, isHidden: true },
+	});
+
+	assertContentNotVisible(
+		author ?? { id: post.authorId, isHidden: true },
+		viewerFromSession(session),
+		"Post not found",
+		{ slug },
+	);
+
 	return mapPostDetailRow(post, viewerUserId(session), db);
 }
 
@@ -465,6 +484,8 @@ export async function createPost(
 	userId: string,
 	db: Database,
 ): Promise<CreatePostOutput> {
+	await loadActorSocialGate(userId, db);
+
 	const attachmentInput = resolveCreateAttachment(input);
 
 	const result = await db.$transaction(async (tx) => {

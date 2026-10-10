@@ -1,3 +1,4 @@
+import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import { formatSittingDisplayName } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
@@ -21,6 +22,11 @@ import {
 	type UpdateUserStatusInput,
 	type UpdateUserStatusOutput,
 } from "./user.schema";
+import {
+	assertMemberVisible,
+	viewerFromSession,
+	visibleOnSiteUserWhere,
+} from "./user-visibility";
 
 type UserListRow = Prisma.UserGetPayload<{ select: typeof getUserListFields }>;
 
@@ -57,20 +63,26 @@ function withStableUsernameOrderBy(
 export async function getUserByUsername(
 	input: GetUserByUsernameInput,
 	db: Database,
+	session: Session | null = null,
 ): Promise<GetUserByUsernameOutput> {
+	const viewer = viewerFromSession(session);
 	const user = await db.user.findUnique({
 		where: { username: input.username },
-		select: getUserByUsernameFields,
+		select: { ...getUserByUsernameFields, id: true, isHidden: true },
 	});
 
-	if (!user) {
-		throw new ORPCError("NOT_FOUND", {
-			message: `User with ${input.username} username not found. Please check the username and try again.`,
-			data: { username: input.username },
-		});
-	}
+	assertMemberVisible(user, viewer);
 
-	return user;
+	return {
+		username: user.username,
+		name: user.name,
+		image: user.image,
+		isAdmin: user.isAdmin,
+		rp: user.rp,
+		xp: user.xp,
+		status: user.status,
+		indexable: !user.isHidden,
+	};
 }
 
 export async function getUserList(
@@ -85,6 +97,7 @@ export async function getUserList(
 	const where = mergeWhereFragments<Prisma.UserWhereInput>(
 		ranging.use(),
 		searching.use(),
+		visibleOnSiteUserWhere,
 		{
 			status: input.statuses ? { in: input.statuses } : undefined,
 			isAdmin: input.isAdmin === undefined ? undefined : input.isAdmin,
@@ -104,18 +117,14 @@ export async function getUserList(
 export async function getUserParticipationList(
 	input: GetUserParticipationListInput,
 	db: Database,
+	session: Session | null = null,
 ): Promise<GetUserParticipationListOutput> {
-	const user = await db.user.findUnique({
+	const profileUser = await db.user.findUnique({
 		where: { username: input.username },
-		select: { id: true },
+		select: { id: true, isHidden: true, username: true },
 	});
 
-	if (!user) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
-			data: { username: input.username },
-		});
-	}
+	assertMemberVisible(profileUser, viewerFromSession(session));
 
 	const pagination = definePagination.cursor(
 		input,
@@ -124,7 +133,7 @@ export async function getUserParticipationList(
 
 	const rows = await db.participation.findMany({
 		...pagination.use(),
-		where: { userId: user.id },
+		where: { userId: profileUser.id },
 		orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
 		select: getUserParticipationListFields,
 	});

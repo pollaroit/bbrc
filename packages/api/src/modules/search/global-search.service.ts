@@ -106,6 +106,7 @@ async function searchUsers(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.user.findMany({
 		where: {
 			status: { in: ["active", "warned"] },
+			isHidden: false,
 			OR: [
 				{ name: containsQuery(ctx.query) },
 				{ username: containsQuery(ctx.query) },
@@ -130,6 +131,7 @@ async function searchUsers(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 async function searchPosts(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.post.findMany({
 		where: {
+			author: { isHidden: false },
 			OR: [
 				{ content: containsQuery(ctx.query) },
 				{ slug: containsQuery(ctx.query) },
@@ -156,6 +158,7 @@ async function searchPosts(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 async function searchFeedbacks(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.feedback.findMany({
 		where: {
+			author: { isHidden: false },
 			review: containsQuery(ctx.query),
 		},
 		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
@@ -195,6 +198,7 @@ function commentHref(row: {
 async function searchComments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.comment.findMany({
 		where: {
+			author: { isHidden: false },
 			OR: [
 				{ content: containsQuery(ctx.query) },
 				{ slug: containsQuery(ctx.query) },
@@ -238,6 +242,7 @@ async function searchShelves(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.shelf.findMany({
 		where: {
 			status: "active",
+			user: { isHidden: false },
 			OR: [
 				{ title: containsQuery(ctx.query) },
 				{ slug: containsQuery(ctx.query) },

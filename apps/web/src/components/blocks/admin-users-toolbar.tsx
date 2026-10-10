@@ -36,6 +36,7 @@ function countAdminSheetFilters(
 	let count = 0;
 	if (params.statuses?.length) count += 1;
 	if (params.isAdmin != null) count += 1;
+	if (params.isHidden != null) count += 1;
 	if (params.rangeMin != null || params.rangeMax != null) count += 1;
 	if (
 		params.minXp != null ||
@@ -191,6 +192,7 @@ function MemberFiltersSheet({
 				void setParams({
 					statuses: null,
 					isAdmin: null,
+					isHidden: null,
 					rangeBy: null,
 					rangeMin: null,
 					rangeMax: null,
@@ -234,6 +236,23 @@ function MemberFiltersSheet({
 						onCheckedChange: (checked) => {
 							void setParams({
 								isAdmin: checked ? true : null,
+								...resetPage,
+							});
+						},
+					},
+				]}
+			/>
+
+			<ListingCheckboxList
+				legend="Visibility"
+				options={[
+					{
+						id: "hidden",
+						label: "Hidden (ghost) only",
+						checked: params.isHidden === true,
+						onCheckedChange: (checked) => {
+							void setParams({
+								isHidden: checked ? true : null,
 								...resetPage,
 							});
 						},

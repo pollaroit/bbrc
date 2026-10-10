@@ -38,7 +38,7 @@ function buildRankedWhere(
 	authorUsername: string | undefined,
 	cursor: Extract<PostFeedCursor, { kind: "top" | "hot" }> | null,
 ): Prisma.Sql {
-	const parts: Prisma.Sql[] = [Prisma.sql`TRUE`];
+	const parts: Prisma.Sql[] = [Prisma.sql`u.is_hidden = false`];
 
 	if (rangeMin) {
 		parts.push(Prisma.sql`p.created_at >= ${rangeMin}`);

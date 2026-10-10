@@ -632,7 +632,7 @@ export async function resolveOgImageContent(
 			const shelfSlug = shelfSegments[0];
 			if (shelfSegments[1] === "edit") {
 				try {
-					const shelf = await getShelfBySlug(slug, shelfSlug, undefined, db);
+					const shelf = await getShelfBySlug(slug, shelfSlug, null, db);
 					return {
 						kind: "Shelf",
 						title: `Edit · ${shelf.title}`,
@@ -651,7 +651,7 @@ export async function resolveOgImageContent(
 			try {
 				const [user, shelf] = await Promise.all([
 					getUserByUsername({ username: slug }, db),
-					getShelfBySlug(slug, shelfSlug, undefined, db),
+					getShelfBySlug(slug, shelfSlug, null, db),
 				]);
 
 				const highlights = [

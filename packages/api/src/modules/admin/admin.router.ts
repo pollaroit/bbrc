@@ -121,6 +121,8 @@ import {
 	AdminDeleteUserOutputSchema,
 	AdminSetUserPasswordInputSchema,
 	AdminSetUserPasswordOutputSchema,
+	AdminUpdateUserHiddenInputSchema,
+	AdminUpdateUserHiddenOutputSchema,
 	AdminUpdateUserNameInputSchema,
 	AdminUpdateUserNameOutputSchema,
 	AdminUpdateUserRoleInputSchema,
@@ -137,6 +139,7 @@ import {
 import {
 	adminDeleteUser,
 	adminSetUserPassword,
+	adminUpdateUserHidden,
 	adminUpdateUserName,
 	adminUpdateUserRole,
 	adminUpdateUserStatus,
@@ -195,6 +198,12 @@ export const adminRouter = {
 		.output(AdminUpdateUserStatusOutputSchema)
 		.handler(async ({ input, context }) =>
 			adminUpdateUserStatus(input, context.db),
+		),
+	updateUserHidden: adminProcedure
+		.input(AdminUpdateUserHiddenInputSchema)
+		.output(AdminUpdateUserHiddenOutputSchema)
+		.handler(async ({ input, context }) =>
+			adminUpdateUserHidden(input, context.db),
 		),
 	deleteUser: adminProcedure
 		.input(AdminDeleteUserInputSchema)

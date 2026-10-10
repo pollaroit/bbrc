@@ -66,7 +66,9 @@ export const GetUserByUsernameInputSchema = UserSchema.pick({
 
 export const GetUserByUsernameOutputSchema = UserSchema.pick(
 	getUserByUsernameFields,
-);
+).extend({
+	indexable: zod.boolean(),
+});
 
 export type GetUserByUsernameInput = z.infer<
 	typeof GetUserByUsernameInputSchema

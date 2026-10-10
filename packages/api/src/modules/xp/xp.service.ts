@@ -1,10 +1,14 @@
+import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
-import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import {
 	buildPointsChartSeries,
 	buildRunningBalanceLookup,
 } from "../points/points-history";
+import {
+	assertMemberVisible,
+	viewerFromSession,
+} from "../user/user-visibility";
 import {
 	type AwardCommentXpInput,
 	type AwardFeedbackXpInput,
@@ -188,18 +192,17 @@ export async function awardShelfXp(
 	);
 }
 
-async function loadXpUser(username: string, db: Database) {
+async function loadXpUser(
+	username: string,
+	db: Database,
+	session: Session | null,
+) {
 	const user = await db.user.findUnique({
 		where: { username },
-		select: { id: true, xp: true, createdAt: true },
+		select: { id: true, xp: true, createdAt: true, isHidden: true },
 	});
 
-	if (!user) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
-			data: { username },
-		});
-	}
+	assertMemberVisible(user, viewerFromSession(session));
 
 	return user;
 }
@@ -207,8 +210,9 @@ async function loadXpUser(username: string, db: Database) {
 export async function getXpChart(
 	input: GetXpChartInput,
 	db: Database,
+	session: Session | null = null,
 ): Promise<GetXpChartOutput> {
-	const user = await loadXpUser(input.username, db);
+	const user = await loadXpUser(input.username, db, session);
 
 	const eventsAsc = await db.xPEvent.findMany({
 		where: { userId: user.id },
@@ -225,8 +229,9 @@ export async function getXpChart(
 export async function getXpEventList(
 	input: GetXpEventListInput,
 	db: Database,
+	session: Session | null = null,
 ): Promise<GetXpEventListOutput> {
-	const user = await loadXpUser(input.username, db);
+	const user = await loadXpUser(input.username, db, session);
 
 	const balanceEvents = await db.xPEvent.findMany({
 		where: {

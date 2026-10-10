@@ -35,6 +35,7 @@ import {
 	syncParticipationWithExistingReadsForSelectedBook,
 } from "../read/read.service";
 import { calculateRpPointsDelta } from "../rp/rp.service";
+import { loadActorSocialGate } from "../user/user-visibility";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardParticipationXp, awardPollVoteXp } from "../xp/xp.service";
 import {
@@ -454,7 +455,12 @@ export async function getSittingBySlug(
 			? await loadMyPollVoteOptionIds(sitting.poll.id, userId, db)
 			: [];
 
-	const participantUserIds = sitting.participants.map(
+	const visibleParticipants = sitting.participants.filter(
+		(participant) => !participant.user.isHidden,
+	);
+	const sittingForDetail = { ...sitting, participants: visibleParticipants };
+
+	const participantUserIds = visibleParticipants.map(
 		(participant) => participant.userId,
 	);
 
@@ -533,7 +539,7 @@ export async function getSittingBySlug(
 	}
 
 	return mapSittingDetail(
-		sitting,
+		sittingForDetail,
 		myVoteOptionIds,
 		reviews,
 		pollVoterCount,
@@ -783,6 +789,8 @@ export async function submitPollVotes(
 	userId: string,
 	db: Database,
 ): Promise<SubmitPollVotesOutput> {
+	await loadActorSocialGate(userId, db);
+
 	const sitting = await db.sitting.findUnique({
 		where: { slug: input.sittingSlug },
 		select: {
@@ -1420,11 +1428,17 @@ export async function addSittingParticipant(
 
 	const user = await db.user.findUnique({
 		where: { id: input.userId },
-		select: { id: true, status: true },
+		select: { id: true, status: true, isHidden: true },
 	});
 
 	if (!user) {
-		throw new ORPCError("BAD_REQUEST", {
+		throw new ORPCError("NOT_FOUND", {
+			message: "User not found",
+		});
+	}
+
+	if (user.isHidden) {
+		throw new ORPCError("NOT_FOUND", {
 			message: "User not found",
 		});
 	}
@@ -1672,15 +1686,18 @@ async function loadPollOptionReadersForParticipants(
 					name: true,
 					image: true,
 					status: true,
+					isHidden: true,
 				},
 			},
 		},
 	});
 
+	const visibleReads = reads.filter((read) => !read.user.isHidden);
+
 	return {
 		bookTitle,
 		participantCount: uniqueParticipantIds.length,
-		readers: reads.map((read) => ({
+		readers: visibleReads.map((read) => ({
 			user: read.user,
 			readRecordedAt: read.updatedAt,
 		})),

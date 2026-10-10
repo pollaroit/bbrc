@@ -21,6 +21,7 @@ type DestructiveConfirmDialogProps = {
 	cancelLabel?: string;
 	onConfirm: () => void;
 	loading?: boolean;
+	confirmDisabled?: boolean;
 	children?: ReactNode;
 	contentClassName?: string;
 };
@@ -34,6 +35,7 @@ export function DestructiveConfirmDialog({
 	cancelLabel = "Cancel",
 	onConfirm,
 	loading = false,
+	confirmDisabled = false,
 	children,
 	contentClassName,
 }: DestructiveConfirmDialogProps) {
@@ -59,6 +61,7 @@ export function DestructiveConfirmDialog({
 						type="button"
 						variant="destructive"
 						loading={loading}
+						disabled={confirmDisabled}
 						onClick={onConfirm}
 					>
 						{confirmLabel}
