@@ -1,14 +1,17 @@
 import type { Database, Prisma } from "@bbrc/db";
-import { authorNameToSlug } from "@bbrc/shared";
+import { authorNameToSlug, getBookCountryName } from "@bbrc/shared";
 import type { z } from "zod";
 import { mergeWhereFragments } from "../../utils/searching";
+import { aggregateCountryBookCounts } from "../book/book-country-filter";
 import type {
 	AdminAuthorRankingItemSchema,
 	AdminBookRankingItemSchema,
+	AdminCountryRankingItemSchema,
 } from "./admin-book.schema";
 
 type BookRankingItem = z.infer<typeof AdminBookRankingItemSchema>;
 type AuthorRankingItem = z.infer<typeof AdminAuthorRankingItemSchema>;
+type CountryRankingItem = z.infer<typeof AdminCountryRankingItemSchema>;
 
 const RANKING_LIMIT = 5;
 
@@ -248,6 +251,32 @@ async function topBooksByPollVotes(
 	});
 }
 
+async function topCountriesByCatalogSize(
+	db: Database,
+	where: Prisma.BookWhereInput,
+): Promise<CountryRankingItem[]> {
+	const rows = await db.book.findMany({
+		where,
+		select: { countries: true },
+	});
+
+	const counts = aggregateCountryBookCounts(rows);
+
+	return [...counts.entries()]
+		.map(([alpha2, bookCount]) => ({
+			alpha2,
+			name: getBookCountryName(alpha2) ?? alpha2,
+			bookCount,
+		}))
+		.toSorted((a, b) => {
+			if (b.bookCount !== a.bookCount) {
+				return b.bookCount - a.bookCount;
+			}
+			return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+		})
+		.slice(0, RANKING_LIMIT);
+}
+
 export function emptyAdminBookRankings() {
 	return {
 		mostFavorited: [] as BookRankingItem[],
@@ -256,6 +285,7 @@ export function emptyAdminBookRankings() {
 		earliestPublished: [] as BookRankingItem[],
 		newestPublished: [] as BookRankingItem[],
 		authorsByCatalogSize: [] as AuthorRankingItem[],
+		countriesByCatalogSize: [] as CountryRankingItem[],
 		openLibraryRating: [] as BookRankingItem[],
 		clubAverageRating: [] as BookRankingItem[],
 		mostShelved: [] as BookRankingItem[],
@@ -277,6 +307,7 @@ export async function loadAdminBookRankings(
 		earliestPublished,
 		newestPublished,
 		authorsByCatalogSize,
+		countriesByCatalogSize,
 		openLibraryRating,
 		clubAverageRating,
 		mostShelved,
@@ -291,6 +322,7 @@ export async function loadAdminBookRankings(
 		topBooksByPublishedIn(db, where, "asc"),
 		topBooksByPublishedIn(db, where, "desc"),
 		topAuthorsByCatalogSize(db, where),
+		topCountriesByCatalogSize(db, where),
 		topBooksByRating(db, where, "openLibraryRating"),
 		topBooksByRating(db, where, "averageRating"),
 		topBooksByRelationCount(db, where, "shelfBooks"),
@@ -307,6 +339,7 @@ export async function loadAdminBookRankings(
 		earliestPublished,
 		newestPublished,
 		authorsByCatalogSize,
+		countriesByCatalogSize,
 		openLibraryRating,
 		clubAverageRating,
 		mostShelved,

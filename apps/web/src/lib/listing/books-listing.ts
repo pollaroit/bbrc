@@ -4,9 +4,10 @@ import {
 } from "@bbrc/api/modules/book/book.listing";
 import type {
 	GetBookListAuthorFacetsInput,
+	GetBookListCountryFacetsInput,
 	GetBookListInput,
 } from "@bbrc/api/modules/book/book.schema";
-import { isAuthorSlug } from "@bbrc/shared";
+import { bookCountryCodeSchema, isAuthorSlug } from "@bbrc/shared";
 import {
 	parseAsArrayOf,
 	parseAsFloat,
@@ -80,6 +81,7 @@ export const bookListingSearchParams = {
 	minReads: parseAsInteger.withOptions({ shallow: false }),
 	maxReads: parseAsInteger.withOptions({ shallow: false }),
 	authors: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
+	countries: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
 	viewerRead: parseAsStringLiteral(viewerReadFilterValues).withOptions({
 		shallow: false,
 	}),
@@ -112,6 +114,21 @@ function normalizeAuthorSlugs(
 	return slugs.length > 0 ? slugs : undefined;
 }
 
+function normalizeCountryCodes(
+	countries: string[] | null | undefined,
+): string[] | undefined {
+	if (!countries || countries.length === 0) {
+		return undefined;
+	}
+
+	const codes = countries.flatMap((code) => {
+		const parsed = bookCountryCodeSchema.safeParse(code);
+		return parsed.success ? [parsed.data] : [];
+	});
+
+	return codes.length > 0 ? codes : undefined;
+}
+
 export function toBookListCallInput(
 	params: BookListingSearchParams,
 ): Partial<GetBookListInput> {
@@ -130,6 +147,7 @@ export function toBookListCallInput(
 		minReads: params.minReads,
 		maxReads: params.maxReads,
 		authors: normalizeAuthorSlugs(params.authors),
+		countries: normalizeCountryCodes(params.countries),
 		viewerRead: params.viewerRead ?? undefined,
 		viewerFavorite: params.viewerFavorite === true ? true : undefined,
 		viewerReviewed: params.viewerReviewed === true ? true : undefined,
@@ -143,6 +161,7 @@ export function toBookListAuthorFacetsInput(
 	const listInput = toBookListCallInput(params);
 	const {
 		authors: selectedAuthors,
+		countries: _countries,
 		limit: _limit,
 		cursor: _cursor,
 		...rest
@@ -152,6 +171,23 @@ export function toBookListAuthorFacetsInput(
 		...rest,
 		pinnedAuthorSlugs: selectedAuthors,
 	}) as Partial<GetBookListAuthorFacetsInput>;
+}
+
+export function toBookListCountryFacetsInput(
+	params: BookListingSearchParams,
+): Partial<GetBookListCountryFacetsInput> {
+	const listInput = toBookListCallInput(params);
+	const {
+		countries: selectedCountries,
+		limit: _limit,
+		cursor: _cursor,
+		...rest
+	} = listInput;
+
+	return buildListCallInput({
+		...rest,
+		pinnedCountryCodes: selectedCountries,
+	}) as Partial<GetBookListCountryFacetsInput>;
 }
 
 export function toBookExportCallInput(
@@ -188,6 +224,10 @@ export function countBookSheetFilters(params: BookListingSearchParams): number {
 		count += 1;
 	}
 
+	if (params.countries && params.countries.length > 0) {
+		count += 1;
+	}
+
 	if (params.rangeMin != null || params.rangeMax != null) {
 		count += 1;
 	}
@@ -219,6 +259,7 @@ export function clearBookSheetFilters(
 		minReads: null,
 		maxReads: null,
 		authors: null,
+		countries: null,
 		rangeBy: null,
 		rangeMin: null,
 		rangeMax: null,

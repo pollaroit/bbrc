@@ -7,6 +7,8 @@ import {
 	GetBookBySlugOutputSchema,
 	GetBookListAuthorFacetsInputSchema,
 	GetBookListAuthorFacetsOutputSchema,
+	GetBookListCountryFacetsInputSchema,
+	GetBookListCountryFacetsOutputSchema,
 	GetBookListInputSchema,
 	GetBookListOutputSchema,
 	UpdateBookInputSchema,
@@ -17,6 +19,7 @@ import {
 	getBookBySlug,
 	getBookList,
 	getBookListAuthorFacets,
+	getBookListCountryFacets,
 	removeBook,
 	updateBook,
 } from "./book.service";
@@ -25,6 +28,11 @@ import {
 	ExportBookListOutputSchema,
 } from "./book-export.schema";
 import { exportBookList } from "./book-export.service";
+import {
+	SuggestBookOriginCountriesInputSchema,
+	SuggestBookOriginCountriesOutputSchema,
+} from "./book-origin.schema";
+import { suggestBookOriginCountries } from "./book-origin.service";
 import {
 	ListCatalogOlidsOutputSchema,
 	RecommendOpenLibraryBooksOutputSchema,
@@ -68,6 +76,17 @@ export const bookRouter = {
 					context.session?.user?.id,
 				),
 		),
+	getBookListCountryFacets: publicProcedure
+		.input(GetBookListCountryFacetsInputSchema)
+		.output(GetBookListCountryFacetsOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await getBookListCountryFacets(
+					input,
+					context.db,
+					context.session?.user?.id,
+				),
+		),
 	exportBookList: publicProcedure
 		.input(ExportBookListInputSchema)
 		.output(ExportBookListOutputSchema)
@@ -81,6 +100,10 @@ export const bookRouter = {
 		.handler(
 			async ({ input, context }) => await getBookBySlug(input, context.db),
 		),
+	suggestOriginCountries: adminProcedure
+		.input(SuggestBookOriginCountriesInputSchema)
+		.output(SuggestBookOriginCountriesOutputSchema)
+		.handler(async ({ input }) => suggestBookOriginCountries(input)),
 	addBook: adminProcedure
 		.input(AddBookInputSchema)
 		.output(AddBookOutputSchema)

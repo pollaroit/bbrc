@@ -28,6 +28,12 @@ export const AdminAuthorRankingItemSchema = z.object({
 	bookCount: z.number().int().min(0),
 });
 
+export const AdminCountryRankingItemSchema = z.object({
+	alpha2: z.string(),
+	name: z.string(),
+	bookCount: z.number().int().min(0),
+});
+
 export const AdminBookOverviewOutputSchema = z.object({
 	kpis: z.object({
 		totalBooks: z.number().int().min(0),
@@ -57,6 +63,7 @@ export const AdminBookOverviewOutputSchema = z.object({
 		earliestPublished: z.array(AdminBookRankingItemSchema),
 		newestPublished: z.array(AdminBookRankingItemSchema),
 		authorsByCatalogSize: z.array(AdminAuthorRankingItemSchema),
+		countriesByCatalogSize: z.array(AdminCountryRankingItemSchema),
 		openLibraryRating: z.array(AdminBookRankingItemSchema),
 		clubAverageRating: z.array(AdminBookRankingItemSchema),
 		mostShelved: z.array(AdminBookRankingItemSchema),
@@ -176,6 +183,7 @@ export const AdminBookListItemSchema = BookSchema.pick({
 	slug: true,
 	title: true,
 	authors: true,
+	countries: true,
 	pages: true,
 	status: true,
 	openLibraryRating: true,
@@ -204,6 +212,7 @@ export const GetAdminBookStatsInputSchema = z
 	.object({
 		statuses: z.array(BookStatusSchema).optional(),
 		authors: adminBookListFiltersSchema.shape.authors,
+		countries: adminBookListFiltersSchema.shape.countries,
 		rangeMin: z.coerce.date().optional(),
 		rangeMax: z.coerce.date().optional(),
 	})
@@ -249,6 +258,13 @@ export const GetAdminBookStatsOutputSchema = z.object({
 			count: z.number().int().min(0),
 		}),
 	),
+	countryBookCounts: z.array(
+		z.object({
+			alpha2: z.string(),
+			name: z.string(),
+			bookCount: z.number().int().min(0),
+		}),
+	),
 });
 
 export type GetAdminBookStatsInput = z.infer<
@@ -263,6 +279,7 @@ export const adminBookListSelect = {
 	slug: true,
 	title: true,
 	authors: true,
+	countries: true,
 	pages: true,
 	status: true,
 	openLibraryRating: true,

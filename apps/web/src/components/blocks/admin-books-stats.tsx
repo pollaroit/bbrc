@@ -27,6 +27,7 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { AdminBooksWorldMap } from "@/components/blocks/admin-books-world-map";
 import { bookStatusFilterLabels } from "@/lib/listing/books-listing";
 import { orpc } from "@/utils/orpc";
 
@@ -89,6 +90,19 @@ export function AdminBooksStats() {
 
 	return (
 		<div className="flex flex-col gap-6">
+			<Card size="sm">
+				<CardHeader>
+					<CardTitle>Literary origin (world)</CardTitle>
+					<CardDescription>
+						Catalog books by country of origin — a title can count toward
+						multiple countries
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<AdminBooksWorldMap countryBookCounts={data.countryBookCounts} />
+				</CardContent>
+			</Card>
+
 			<div className="grid gap-4 lg:grid-cols-2">
 				<Card size="sm">
 					<CardHeader>

@@ -17,6 +17,7 @@ export const EditBookFormSchema = z.object({
 	averageRating: z.number().min(0).max(5).nullable(),
 	status: BookStatusSchema,
 	readAfterBookSlugs: z.array(z.string()).max(20),
+	countries: z.array(z.string()).max(8),
 });
 
 export type EditBookFormValues = z.infer<typeof EditBookFormSchema>;
@@ -35,6 +36,7 @@ export function bookToEditFormValues(
 		averageRating: book.averageRating ?? null,
 		status: book.status,
 		readAfterBookSlugs: book.readAfterBooks.map((item) => item.slug),
+		countries: book.countries ?? [],
 	};
 }
 
@@ -51,5 +53,6 @@ export function toUpdateBookInput(slug: string, values: EditBookFormValues) {
 		averageRating: values.averageRating ?? undefined,
 		status: values.status,
 		readAfterBookSlugs: values.readAfterBookSlugs,
+		countries: values.countries,
 	});
 }

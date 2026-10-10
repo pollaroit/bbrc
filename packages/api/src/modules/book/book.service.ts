@@ -6,6 +6,8 @@ import { bookListSorting } from "./book.listing";
 import {
 	type GetBookListAuthorFacetsInput,
 	type GetBookListAuthorFacetsOutput,
+	type GetBookListCountryFacetsInput,
+	type GetBookListCountryFacetsOutput,
 	type GetBookListInput,
 	type GetBookListOutput,
 	getBookListFields,
@@ -15,6 +17,7 @@ import {
 	type TUpdateBookOutputSchema,
 } from "./book.schema";
 import { listAuthorFacetsForBooks } from "./book-author-filter";
+import { listCountryFacetsForBooks } from "./book-country-filter";
 import { buildBookListWhereWithAuthors } from "./book-list-where";
 import {
 	mapReadAfterBooks,
@@ -136,6 +139,36 @@ export async function getBookListAuthorFacets(
 	return { authors };
 }
 
+export async function getBookListCountryFacets(
+	input: GetBookListCountryFacetsInput,
+	db: Database,
+	viewerUserId?: string,
+): Promise<GetBookListCountryFacetsOutput> {
+	const {
+		pinnedCountryCodes,
+		countries: _selectedCountries,
+		...listInput
+	} = input;
+
+	const where = await buildBookListWhereWithAuthors(
+		listInput,
+		db,
+		viewerUserId,
+	);
+
+	if (where == null) {
+		return { countries: [] };
+	}
+
+	const countries = await listCountryFacetsForBooks(
+		db,
+		where,
+		pinnedCountryCodes ?? [],
+	);
+
+	return { countries };
+}
+
 export async function getBookBySlug(
 	slug: string,
 	db: Database,
@@ -184,6 +217,7 @@ function normalizeBookRecord<T extends TGetBookBySlugOutputSchema>(book: T): T {
 		subjectPeople: book.subjectPeople ?? [],
 		subjectTimes: book.subjectTimes ?? [],
 		subjects: book.subjects ?? [],
+		countries: book.countries ?? [],
 	};
 }
 
@@ -222,6 +256,7 @@ export async function addBook(
 				subjectPeople: bookInput.subjectPeople ?? [],
 				subjectTimes: bookInput.subjectTimes ?? [],
 				subjects: bookInput.subjects ?? [],
+				countries: bookInput.countries ?? [],
 				slug,
 				approvedById: adminUserId,
 				requestedById: pendingRequest?.userId ?? null,

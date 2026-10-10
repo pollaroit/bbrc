@@ -16,6 +16,7 @@ export const AddNewBookFormSchema = z.object({
 	subjectTimes: stringArrayField,
 	subjects: stringArrayField,
 	readAfterBookSlugs: z.array(z.string()).max(20),
+	countries: z.array(z.string()).max(8),
 });
 
 export type AddNewBookFormValues = z.infer<typeof AddNewBookFormSchema>;
@@ -46,6 +47,7 @@ export function toAddBookInput(values: AddNewBookFormValues) {
 			values.readAfterBookSlugs.length > 0
 				? values.readAfterBookSlugs
 				: undefined,
+		countries: values.countries.length > 0 ? values.countries : undefined,
 	});
 }
 

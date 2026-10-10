@@ -39,6 +39,8 @@ model Book {
   subjectPeople String[] @default([]) @map("subject_people")
   subjectTimes  String[] @default([]) @map("subject_times")
   subjects      String[] @default([])
+  /// Literary origin: modern sovereign states (ISO 3166-1 alpha-2), not story setting.
+  countries     String[] @default([])
 
   feedbacks Feedback[]
   polls     PollOption[]

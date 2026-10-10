@@ -3,10 +3,13 @@ import type {
 	GetAdminBookOverviewInput,
 	ListAdminBooksInput,
 } from "@bbrc/api/modules/admin/admin-book.schema";
+import type { GetBookListCountryFacetsInput } from "@bbrc/api/modules/book/book.schema";
+import { bookCountryCodeSchema } from "@bbrc/shared";
 import {
 	parseAsArrayOf,
 	parseAsFloat,
 	parseAsInteger,
+	parseAsString,
 	parseAsStringLiteral,
 	useQueryStates,
 } from "nuqs";
@@ -74,8 +77,24 @@ export const adminBooksListingSearchParams = {
 	maxPages: parseAsInteger.withOptions({ shallow: false }),
 	missingClubRating: booleanFilterParser.withOptions({ shallow: false }),
 	missingOpenLibraryRating: booleanFilterParser.withOptions({ shallow: false }),
+	countries: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
 	...adminBookMinCountParams,
 };
+
+function normalizeCountryCodes(
+	countries: string[] | null | undefined,
+): string[] | undefined {
+	if (!countries || countries.length === 0) {
+		return undefined;
+	}
+
+	const codes = countries.flatMap((code) => {
+		const parsed = bookCountryCodeSchema.safeParse(code);
+		return parsed.success ? [parsed.data] : [];
+	});
+
+	return codes.length > 0 ? codes : undefined;
+}
 
 export function useAdminBooksListingSearchParams() {
 	return useQueryStates(adminBooksListingSearchParams, { shallow: false });
@@ -107,7 +126,20 @@ function buildAdminBookFilterCallInput(params: AdminBooksListingSearchParams) {
 		minPollVotes: params.minPollVotes,
 		minReads: params.minReads,
 		maxReads: params.maxReads,
+		countries: normalizeCountryCodes(params.countries),
 	};
+}
+
+export function toAdminBooksCountryFacetsInput(
+	params: AdminBooksListingSearchParams,
+): Partial<GetBookListCountryFacetsInput> {
+	const overview = toAdminBooksOverviewCallInput(params);
+	const { countries: _selected, ...rest } = overview;
+
+	return buildListCallInput({
+		...rest,
+		pinnedCountryCodes: normalizeCountryCodes(params.countries),
+	}) as Partial<GetBookListCountryFacetsInput>;
 }
 
 export function toAdminBooksOverviewCallInput(

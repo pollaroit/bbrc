@@ -22,7 +22,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { parseAsBoolean, parseAsString, useQueryState } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useController } from "react-hook-form";
 import { toast } from "sonner";
+import { BookOriginCountriesField } from "@/components/blocks/book-origin-countries-field";
 import {
 	BookReadAfterPicker,
 	type ReadAfterBookSelection,
@@ -34,6 +36,7 @@ import {
 	AddNewBookFormSchema,
 	type AddNewBookFormValues,
 	authorsToText,
+	parseAuthorsText,
 	toAddBookInput,
 } from "@/lib/add-book-form";
 import {
@@ -68,6 +71,7 @@ function workToFormValues(work: OpenLibrarySearchWork): AddNewBookFormValues {
 		subjectTimes: [],
 		subjects: [],
 		readAfterBookSlugs: [],
+		countries: [],
 	};
 }
 
@@ -103,8 +107,15 @@ function AddBookDetailsForm({
 	const [readAfterBooks, setReadAfterBooks] = useState<
 		ReadAfterBookSelection[]
 	>([]);
+	const [countriesTouched, setCountriesTouched] = useState(false);
+	const countriesTouchedRef = useRef(false);
 
 	const form = useAppForm(AddNewBookFormSchema, initialValues);
+	const countriesField = useController({
+		name: "countries",
+		control: form.control,
+		defaultValue: initialValues.countries,
+	});
 
 	const { data: pendingRequests } = useQuery({
 		...orpc.bookRequest.listPending.queryOptions(),
@@ -155,6 +166,67 @@ function AddBookDetailsForm({
 	}, [editionHints, form, work.description]);
 
 	const title = form.watch("title");
+	const authorsText = form.watch("authorsText");
+	const publishedIn = form.watch("publishedIn");
+	const excerptForOrigin = form.watch("excerpt");
+
+	const debouncedOriginInput = useDebouncedValue(
+		{
+			title,
+			authorsText,
+			publishedIn,
+			excerpt: excerptForOrigin,
+		},
+		700,
+	);
+
+	const originAuthors = useMemo(
+		() => parseAuthorsText(debouncedOriginInput.authorsText),
+		[debouncedOriginInput.authorsText],
+	);
+
+	const canSuggestOrigin =
+		debouncedOriginInput.title.trim().length >= 2 && originAuthors.length > 0;
+
+	const { data: originSuggestion, isFetching: isSuggestingOrigin } = useQuery({
+		...orpc.book.suggestOriginCountries.queryOptions({
+			input: {
+				title: debouncedOriginInput.title.trim(),
+				authors: originAuthors,
+				publishedIn: debouncedOriginInput.publishedIn,
+				excerpt: debouncedOriginInput.excerpt?.trim() || undefined,
+			},
+		}),
+		enabled: canSuggestOrigin,
+		staleTime: Number.POSITIVE_INFINITY,
+		retry: false,
+	});
+
+	const suggestedCountriesKey = originSuggestion?.countries?.join("\0") ?? "";
+
+	useEffect(() => {
+		if (countriesTouchedRef.current || !suggestedCountriesKey) {
+			return;
+		}
+		const next = originSuggestion?.countries;
+		if (!next?.length) {
+			return;
+		}
+		const current = form.getValues("countries");
+		if (
+			current.length === next.length &&
+			current.every((code, index) => code === next[index])
+		) {
+			return;
+		}
+		form.setValue("countries", next, { shouldDirty: false });
+	}, [form, suggestedCountriesKey, originSuggestion]);
+
+	const markCountriesTouched = () => {
+		countriesTouchedRef.current = true;
+		setCountriesTouched(true);
+	};
+
 	const slugPreview = useMemo(
 		() => (title.trim() ? generateSlug(title) : ""),
 		[title],
@@ -449,6 +521,16 @@ function AddBookDetailsForm({
 						/>
 					</div>
 				</FieldGroup>
+
+				<BookOriginCountriesField
+					value={countriesField.field.value}
+					isSuggesting={isSuggestingOrigin && !countriesTouched}
+					onTouched={markCountriesTouched}
+					onChange={(next) => {
+						markCountriesTouched();
+						countriesField.field.onChange(next);
+					}}
+				/>
 
 				<BookReadAfterPicker
 					selected={readAfterBooks}

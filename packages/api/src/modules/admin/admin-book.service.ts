@@ -1,6 +1,8 @@
 import type { Database, Prisma } from "@bbrc/db";
+import { getBookCountryName } from "@bbrc/shared";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
+import { aggregateCountryBookCounts } from "../book/book-country-filter";
 import {
 	type BookListQueryInput,
 	buildBookListWhereWithAuthors,
@@ -153,6 +155,7 @@ function mapAdminBookListRow(
 		slug: row.slug,
 		title: row.title,
 		authors: row.authors,
+		countries: row.countries ?? [],
 		pages: row.pages,
 		status: row.status,
 		openLibraryRating: row.openLibraryRating,
@@ -677,6 +680,7 @@ export async function getAdminBookStats(
 		sortDirection: "desc" as const,
 		statuses: input.statuses,
 		authors: input.authors,
+		countries: input.countries,
 		...(hasRange
 			? {
 					rangeBy: "createdAt" as const,
@@ -701,6 +705,7 @@ export async function getAdminBookStats(
 			openLibraryRating: true,
 			averageRating: true,
 			createdAt: true,
+			countries: true,
 			_count: {
 				select: {
 					favorites: true,
@@ -811,6 +816,20 @@ export async function getAdminBookStats(
 			{ kind: "Selected for sitting", count: selectedCount },
 			{ kind: "Poll option only", count: pollOnly },
 		],
+		countryBookCounts: [...aggregateCountryBookCounts(books).entries()]
+			.map(([alpha2, bookCount]) => ({
+				alpha2,
+				name: getBookCountryName(alpha2) ?? alpha2,
+				bookCount,
+			}))
+			.toSorted((a, b) => {
+				if (b.bookCount !== a.bookCount) {
+					return b.bookCount - a.bookCount;
+				}
+				return a.name.localeCompare(b.name, undefined, {
+					sensitivity: "base",
+				});
+			}),
 	};
 }
 
@@ -836,5 +855,6 @@ function emptyBookStats(): GetAdminBookStatsOutput {
 			{ kind: "Selected for sitting", count: 0 },
 			{ kind: "Poll option only", count: 0 },
 		],
+		countryBookCounts: [],
 	};
 }

@@ -28,9 +28,24 @@
 			"!**/.source",
 			"!**/convex/_generated",
 			"!**/env.ts",
-			"!**/schemas/src/generated"
+			"!**/schemas/src/generated",
+			"!packages/ui/src/components/shadcnmaps/map-data"
 		]
 	},
+	"overrides": [
+		{
+			"includes": ["packages/ui/src/components/shadcnmaps/**"],
+			"linter": {
+				"rules": {
+					"a11y": {
+						"noSvgWithoutTitle": "off",
+						"useSemanticElements": "off",
+						"noAriaHiddenOnFocusable": "off"
+					}
+				}
+			}
+		}
+	],
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab"

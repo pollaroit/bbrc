@@ -8,6 +8,7 @@
 		"check-types": "tsc --noEmit"
 	},
 	"dependencies": {
+		"country-data-list": "^1.6.3",
 		"zod": "catalog:"
 	},
 	"devDependencies": {

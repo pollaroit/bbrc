@@ -11,6 +11,7 @@ import {
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { CountryLabel } from "@/components/blocks/country-dropdown";
 import { bookCoverUrl } from "@/lib/book-cover";
 
 type BookRankingItem =
@@ -155,6 +156,42 @@ export function AdminBookRankingLists({
 										<Link
 											href={
 												`/books?authors=${encodeURIComponent(author.authorSlug)}` as Route
+											}
+											className="text-foreground text-xs underline"
+										>
+											View books
+										</Link>
+									</div>
+								</li>
+							))}
+						</ul>
+					)}
+				</CardContent>
+			</Card>
+			<Card size="sm">
+				<CardHeader className="pb-2">
+					<CardTitle className="text-sm">Countries by catalog size</CardTitle>
+				</CardHeader>
+				<CardContent>
+					{rankings.countriesByCatalogSize.length === 0 ? (
+						<p className="text-muted-foreground text-xs">No data yet.</p>
+					) : (
+						<ul>
+							{rankings.countriesByCatalogSize.map((country) => (
+								<li
+									key={country.alpha2}
+									className="flex flex-wrap items-center justify-between gap-2 border-border border-b py-2 last:border-0"
+								>
+									<CountryLabel
+										alpha2={country.alpha2}
+										name={country.name}
+										className="font-medium text-sm"
+									/>
+									<div className="flex items-center gap-2">
+										<Badge variant="secondary">{country.bookCount} books</Badge>
+										<Link
+											href={
+												`/books?countries=${encodeURIComponent(country.alpha2)}` as Route
 											}
 											className="text-foreground text-xs underline"
 										>

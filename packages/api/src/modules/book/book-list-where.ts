@@ -80,6 +80,10 @@ export function buildBookListWhere(
 				options?.resolvedAuthorNames && options.resolvedAuthorNames.length > 0
 					? { hasSome: options.resolvedAuthorNames }
 					: undefined,
+			countries:
+				input.countries && input.countries.length > 0
+					? { hasSome: input.countries }
+					: undefined,
 		},
 		...viewerFragments,
 	);

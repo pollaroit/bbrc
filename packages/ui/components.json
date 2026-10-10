@@ -22,7 +22,8 @@
 	"menuAccent": "subtle",
 	"registries": {
 		"@7ovr": "https://7ovr.com/r/{name}.json",
-		"@reui": "https://reui.io/r/{style}/{name}.json"
+		"@reui": "https://reui.io/r/{style}/{name}.json",
+		"@shadcnmaps": "https://shadcnmaps.com/r/{name}.json"
 	},
 	"rtl": false
 }

@@ -3,7 +3,9 @@
 import { adminBookSortableFields } from "@bbrc/api/modules/admin/admin-book.listing";
 import { Field, FieldLabel } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
+import { useMemo } from "react";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
+import { ListingCountryMultiSelect } from "@/components/listing/listing-country-multi-select";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
 import { ListingRangeFields } from "@/components/listing/listing-range-fields";
 import { ListingSearch } from "@/components/listing/listing-search";
@@ -11,6 +13,7 @@ import { ListingSort } from "@/components/listing/listing-sort";
 import { OverviewFiltersPin } from "@/components/listing/overview-filters-pin";
 import {
 	adminBookSortByLabels,
+	toAdminBooksCountryFacetsInput,
 	useAdminBooksListingSearchParams,
 } from "@/lib/listing/admin-books-listing";
 import {
@@ -74,6 +77,7 @@ function countAdminBookSheetFilters(
 	}
 	if (params.missingClubRating != null) count += 1;
 	if (params.missingOpenLibraryRating != null) count += 1;
+	if (params.countries?.length) count += 1;
 	return count;
 }
 
@@ -87,6 +91,10 @@ export function AdminBooksToolbar({
 	const [params, setParams] = useAdminBooksListingSearchParams();
 	const sheetFilterCount = countAdminBookSheetFilters(params);
 	const resetPage = variant === "list" ? { page: 1 as const } : {};
+	const countryFacetsInput = useMemo(
+		() => toAdminBooksCountryFacetsInput(params),
+		[params],
+	);
 
 	const toggleStatus = (status: BookListingStatus, checked: boolean) => {
 		const current = params.statuses ?? [];
@@ -144,6 +152,7 @@ export function AdminBooksToolbar({
 								resetPage={resetPage}
 								sheetFilterCount={sheetFilterCount}
 								toggleStatus={toggleStatus}
+								countryFacetsInput={countryFacetsInput}
 							/>
 						</OverviewFiltersPin>
 					) : (
@@ -153,6 +162,7 @@ export function AdminBooksToolbar({
 							resetPage={resetPage}
 							sheetFilterCount={sheetFilterCount}
 							toggleStatus={toggleStatus}
+							countryFacetsInput={countryFacetsInput}
 						/>
 					)}
 				</div>
@@ -167,17 +177,19 @@ function BookFiltersSheet({
 	resetPage,
 	sheetFilterCount,
 	toggleStatus,
+	countryFacetsInput,
 }: {
 	params: ReturnType<typeof useAdminBooksListingSearchParams>[0];
 	setParams: ReturnType<typeof useAdminBooksListingSearchParams>[1];
 	resetPage: { page?: 1 };
 	sheetFilterCount: number;
 	toggleStatus: (status: BookListingStatus, checked: boolean) => void;
+	countryFacetsInput: ReturnType<typeof toAdminBooksCountryFacetsInput>;
 }) {
 	return (
 		<ListingFiltersSheet
 			title="Book filters"
-			description="Status, dates, pages, and ratings."
+			description="Status, countries, dates, pages, and ratings."
 			activeFilterCount={sheetFilterCount}
 			onClear={() => {
 				void setParams({
@@ -200,10 +212,21 @@ function BookFiltersSheet({
 					maxReads: null,
 					missingClubRating: null,
 					missingOpenLibraryRating: null,
+					countries: null,
 					...resetPage,
 				});
 			}}
 		>
+			<ListingCountryMultiSelect
+				selectedAlpha2={params.countries ?? []}
+				onSelectedAlpha2Change={(countries) => {
+					void setParams({
+						countries: countries.length > 0 ? countries : null,
+						...resetPage,
+					});
+				}}
+				facetInput={countryFacetsInput}
+			/>
 			<ListingCheckboxList
 				legend="Status"
 				options={bookStatuses.map((status) => ({

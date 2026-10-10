@@ -23,7 +23,9 @@ import type { Route } from "next";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useController } from "react-hook-form";
 import { toast } from "sonner";
+import { BookOriginCountriesField } from "@/components/blocks/book-origin-countries-field";
 import {
 	BookReadAfterPicker,
 	type ReadAfterBookSelection,
@@ -50,6 +52,11 @@ export function EditBookForm({ book }: EditBookFormProps) {
 	const router = useRouter();
 	const initialValues = useMemo(() => bookToEditFormValues(book), [book]);
 	const form = useAppForm(EditBookFormSchema, initialValues);
+	const countriesField = useController({
+		name: "countries",
+		control: form.control,
+		defaultValue: initialValues.countries,
+	});
 	const [readAfterBooks, setReadAfterBooks] = useState<
 		ReadAfterBookSelection[]
 	>(() =>
@@ -333,6 +340,11 @@ export function EditBookForm({ book }: EditBookFormProps) {
 								</SelectContent>
 							</Select>
 						)}
+					/>
+
+					<BookOriginCountriesField
+						value={countriesField.field.value}
+						onChange={countriesField.field.onChange}
 					/>
 
 					<BookReadAfterPicker

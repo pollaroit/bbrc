@@ -5,7 +5,7 @@ import {
 	UserSchema,
 } from "@bbrc/schemas";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
-import { isAuthorSlug } from "@bbrc/shared";
+import { bookCountriesSchema, isAuthorSlug } from "@bbrc/shared";
 import { z } from "zod";
 import {
 	bookListFiltersSchema,
@@ -166,6 +166,29 @@ export type GetBookListAuthorFacetsOutput = z.infer<
 	typeof GetBookListAuthorFacetsOutputSchema
 >;
 
+export const BookListCountryFacetSchema = z.object({
+	alpha2: z.string(),
+	name: z.string().min(1),
+	bookCount: z.number().int().min(0),
+});
+
+export const GetBookListCountryFacetsInputSchema = bookListQueryInputShape
+	.extend({
+		pinnedCountryCodes: z.array(bookCountriesSchema.element).optional(),
+	})
+	.superRefine(refineBookListQueryInput);
+
+export const GetBookListCountryFacetsOutputSchema = z.object({
+	countries: z.array(BookListCountryFacetSchema),
+});
+
+export type GetBookListCountryFacetsInput = z.infer<
+	typeof GetBookListCountryFacetsInputSchema
+>;
+export type GetBookListCountryFacetsOutput = z.infer<
+	typeof GetBookListCountryFacetsOutputSchema
+>;
+
 /** @deprecated Use `GetBookListInput` */
 export type TGetBookListInputSchema = GetBookListInput;
 /** @deprecated Use `GetBookListOutput` */
@@ -191,6 +214,7 @@ export const AddBookInputSchema = BookSchema.pick({
 		.max(200, "Acceptance notes must be at most 200 characters long")
 		.optional(),
 	readAfterBookSlugs: z.array(BookSchema.shape.slug).max(20).optional(),
+	countries: bookCountriesSchema.optional(),
 });
 
 export const AddBookOutputSchema = BookSchema.pick({
@@ -239,6 +263,7 @@ export const UpdateBookInputSchema = BookSchema.pick({
 	.required({ slug: true })
 	.extend({
 		readAfterBookSlugs: z.array(BookSchema.shape.slug).max(20).optional(),
+		countries: bookCountriesSchema.optional(),
 	});
 
 export const UpdateBookOutputSchema = BookSchema.pick({

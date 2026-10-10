@@ -1,6 +1,6 @@
 import type { Prisma } from "@bbrc/db";
 import { BookStatusSchema } from "@bbrc/schemas";
-import { isAuthorSlug } from "@bbrc/shared";
+import { bookCountryCodeSchema, isAuthorSlug } from "@bbrc/shared";
 import z from "zod";
 import { defineSorting } from "../../utils/sorting";
 import {
@@ -61,6 +61,7 @@ export const adminBookListFiltersSchema = z
 		authors: z.array(
 			z.string().refine(isAuthorSlug, { message: "Invalid author slug" }),
 		),
+		countries: z.array(bookCountryCodeSchema),
 		missingClubRating: z.boolean(),
 		missingOpenLibraryRating: z.boolean(),
 		minFeedbacks: z.number().int().min(0),

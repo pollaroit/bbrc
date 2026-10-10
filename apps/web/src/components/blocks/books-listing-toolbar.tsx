@@ -17,6 +17,7 @@ import { useMemo } from "react";
 import { BooksListExportMenu } from "@/components/blocks/books-list-export-menu";
 import { ListingAuthorMultiSelect } from "@/components/listing/listing-author-multi-select";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
+import { ListingCountryMultiSelect } from "@/components/listing/listing-country-multi-select";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
 import { ListingIntegerRangeFields } from "@/components/listing/listing-integer-range-fields";
 import { ListingRangeFields } from "@/components/listing/listing-range-fields";
@@ -33,6 +34,7 @@ import {
 	clearBookSheetFilters,
 	countBookSheetFilters,
 	toBookListAuthorFacetsInput,
+	toBookListCountryFacetsInput,
 	useBookListingSearchParams,
 	type ViewerReadFilter,
 	viewerBookFilterLabels,
@@ -47,6 +49,10 @@ export function BooksListingToolbar() {
 	const sheetFilterCount = countBookSheetFilters(params);
 	const authorFacetsInput = useMemo(
 		() => toBookListAuthorFacetsInput(params),
+		[params],
+	);
+	const countryFacetsInput = useMemo(
+		() => toBookListCountryFacetsInput(params),
 		[params],
 	);
 
@@ -211,6 +217,16 @@ export function BooksListingToolbar() {
 							});
 						}}
 						facetInput={authorFacetsInput}
+					/>
+
+					<ListingCountryMultiSelect
+						selectedAlpha2={params.countries ?? []}
+						onSelectedAlpha2Change={(countries) => {
+							void setParams({
+								countries: countries.length > 0 ? countries : null,
+							});
+						}}
+						facetInput={countryFacetsInput}
 					/>
 
 					<ListingRangeFields

@@ -5,6 +5,7 @@ import {
 	CardTitle,
 } from "@bbrc/ui/components/card";
 import type { Metadata } from "next";
+import { BookLiteraryOrigin } from "@/components/blocks/book-literary-origin";
 import { BookSubjectGroup } from "@/components/blocks/book-subject-group";
 import { loadBookBySlugForIsr } from "@/lib/isr-data";
 import {
@@ -35,6 +36,7 @@ export default async function BookAboutPage({
 	const { slug } = await params;
 	const book = await loadBookBySlugForIsr(slug);
 
+	const literaryCountries = book.countries ?? [];
 	const subjectPeople = book.subjectPeople ?? [];
 	const subjectTimes = book.subjectTimes ?? [];
 	const subjects = book.subjects ?? [];
@@ -55,6 +57,8 @@ export default async function BookAboutPage({
 					No excerpt is stored for this title yet.
 				</p>
 			)}
+
+			<BookLiteraryOrigin countries={literaryCountries} />
 
 			{hasOpenLibrarySubjects ? (
 				<section className="flex flex-col gap-4">

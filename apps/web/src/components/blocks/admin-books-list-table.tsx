@@ -20,6 +20,7 @@ import {
 	ADMIN_TABLE_MOBILE_MIN_WIDTH,
 	AdminListTableScroll,
 } from "@/components/blocks/admin-list-table-scroll";
+import { BookCountriesSummary } from "@/components/blocks/book-countries-summary";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { adminBooksExportConfig } from "@/lib/admin-table-export/configs";
 import { formatBookAuthors } from "@/lib/book-cover";
@@ -90,6 +91,9 @@ export function AdminBooksListTable() {
 									<TableHead className="hidden md:table-cell">
 										Authors
 									</TableHead>
+									<TableHead className="hidden lg:table-cell">
+										Countries
+									</TableHead>
 									<TableHead className="text-right tabular-nums">
 										Pages
 									</TableHead>
@@ -138,6 +142,9 @@ export function AdminBooksListTable() {
 										</TableCell>
 										<TableCell className="hidden max-w-48 truncate md:table-cell">
 											{formatBookAuthors(book.authors)}
+										</TableCell>
+										<TableCell className="hidden lg:table-cell">
+											<BookCountriesSummary countries={book.countries} />
 										</TableCell>
 										<TableCell className="text-right tabular-nums">
 											{book.pages}
