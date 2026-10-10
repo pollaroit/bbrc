@@ -6,9 +6,14 @@ import type { ListAdminPostsOutput } from "@bbrc/api/modules/admin/admin-post.sc
 import type { ListAdminShelvesOutput } from "@bbrc/api/modules/admin/admin-shelf.schema";
 import type { ListAdminSittingsOutput } from "@bbrc/api/modules/admin/admin-sitting.schema";
 import type { ListAdminUsersOutput } from "@bbrc/api/modules/admin/admin-user.schema";
+import { getBookCountryName } from "@bbrc/shared";
 import { formatBookAuthors } from "@/lib/book-cover";
 import { client } from "@/utils/orpc";
 import type { AdminTableExportField, AdminTableExportResource } from "./types";
+
+function formatBookCountries(codes: string[]): string {
+	return codes.map((code) => getBookCountryName(code) ?? code).join("; ");
+}
 
 type UserItem = ListAdminUsersOutput["items"][number];
 type BookItem = ListAdminBooksOutput["items"][number];
@@ -93,6 +98,11 @@ export const adminBooksExportFields: AdminTableExportField<BookItem>[] = [
 		key: "authors",
 		label: "Authors",
 		getValue: (r) => formatBookAuthors(r.authors),
+	},
+	{
+		key: "countries",
+		label: "Countries",
+		getValue: (r) => formatBookCountries(r.countries),
 	},
 	{ key: "status", label: "Status", getValue: (r) => r.status },
 	{ key: "pages", label: "Pages", getValue: (r) => r.pages },
