@@ -1,0 +1,21 @@
+/// Club reading order: a book stays off sitting polls until every listed
+/// prerequisite has catalog status `completed`.
+model BookReadingPrerequisite {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// @zod.uuid("Invalid UUID")
+  bookId String @map("book_id")
+  book   Book   @relation("BookReadAfter", fields: [bookId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid UUID")
+  prerequisiteBookId String @map("prerequisite_book_id")
+  prerequisiteBook   Book   @relation("BookPrerequisiteFor", fields: [prerequisiteBookId], references: [id], onDelete: Cascade)
+
+  position Int @default(0)
+
+  @@unique([bookId, prerequisiteBookId])
+  @@index([bookId, position])
+  @@map("book_reading_prerequisite")
+}

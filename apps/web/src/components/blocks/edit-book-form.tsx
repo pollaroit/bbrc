@@ -22,8 +22,12 @@ import { useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+	BookReadAfterPicker,
+	type ReadAfterBookSelection,
+} from "@/components/blocks/book-read-after-picker";
 import { useAppForm } from "@/hooks/use-app-form";
 import { bookCoverUrl } from "@/lib/book-cover";
 import {
@@ -46,6 +50,14 @@ export function EditBookForm({ book }: EditBookFormProps) {
 	const router = useRouter();
 	const initialValues = useMemo(() => bookToEditFormValues(book), [book]);
 	const form = useAppForm(EditBookFormSchema, initialValues);
+	const [readAfterBooks, setReadAfterBooks] = useState<
+		ReadAfterBookSelection[]
+	>(() =>
+		book.readAfterBooks.map((item) => ({
+			...item,
+			coverId: item.coverId ?? null,
+		})),
+	);
 
 	const coverId = form.watch("coverId");
 	const coverSrc = bookCoverUrl(coverId);
@@ -68,9 +80,23 @@ export function EditBookForm({ book }: EditBookFormProps) {
 		}),
 	);
 
+	const onReadAfterChange = (books: ReadAfterBookSelection[]) => {
+		setReadAfterBooks(books);
+		form.setValue(
+			"readAfterBookSlugs",
+			books.map((item) => item.slug),
+			{ shouldDirty: true },
+		);
+	};
+
 	const onSubmit = form.handleSubmit(
 		(values) => {
-			updateBookMutation.mutate(toUpdateBookInput(book.slug, values));
+			updateBookMutation.mutate(
+				toUpdateBookInput(book.slug, {
+					...values,
+					readAfterBookSlugs: readAfterBooks.map((item) => item.slug),
+				}),
+			);
 		},
 		() => {
 			toast.error("Fix the highlighted fields and try again.");
@@ -307,6 +333,12 @@ export function EditBookForm({ book }: EditBookFormProps) {
 								</SelectContent>
 							</Select>
 						)}
+					/>
+
+					<BookReadAfterPicker
+						selected={readAfterBooks}
+						onChange={onReadAfterChange}
+						excludeSlug={book.slug}
 					/>
 				</FieldGroup>
 			</FieldSet>

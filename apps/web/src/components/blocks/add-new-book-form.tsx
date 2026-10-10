@@ -23,6 +23,10 @@ import { useRouter } from "next/navigation";
 import { parseAsBoolean, parseAsString, useQueryState } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+	BookReadAfterPicker,
+	type ReadAfterBookSelection,
+} from "@/components/blocks/book-read-after-picker";
 import { OpenLibraryWorkResults } from "@/components/blocks/open-library-work-results";
 import { useAppForm } from "@/hooks/use-app-form";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -63,6 +67,7 @@ function workToFormValues(work: OpenLibrarySearchWork): AddNewBookFormValues {
 		subjectPeople: [],
 		subjectTimes: [],
 		subjects: [],
+		readAfterBookSlugs: [],
 	};
 }
 
@@ -95,6 +100,9 @@ function AddBookDetailsForm({
 	const initialValues = useMemo(() => workToFormValues(work), [work]);
 	const workOlid = useMemo(() => requireWorkOlid(work), [work]);
 	const [acceptanceNotes, setAcceptanceNotes] = useState("");
+	const [readAfterBooks, setReadAfterBooks] = useState<
+		ReadAfterBookSelection[]
+	>([]);
 
 	const form = useAppForm(AddNewBookFormSchema, initialValues);
 
@@ -230,9 +238,21 @@ function AddBookDetailsForm({
 		}),
 	);
 
+	const onReadAfterChange = (books: ReadAfterBookSelection[]) => {
+		setReadAfterBooks(books);
+		form.setValue(
+			"readAfterBookSlugs",
+			books.map((book) => book.slug),
+			{ shouldDirty: true },
+		);
+	};
+
 	const onSubmit = form.handleSubmit(
 		(values) => {
-			const parsed = toAddBookInput(values);
+			const parsed = toAddBookInput({
+				...values,
+				readAfterBookSlugs: readAfterBooks.map((book) => book.slug),
+			});
 
 			if (parsed.pages < 1) {
 				form.setError("pages", { message: "Pages is required" });
@@ -429,6 +449,11 @@ function AddBookDetailsForm({
 						/>
 					</div>
 				</FieldGroup>
+
+				<BookReadAfterPicker
+					selected={readAfterBooks}
+					onChange={onReadAfterChange}
+				/>
 			</FieldSet>
 
 			{hasPendingMemberRequest ? (

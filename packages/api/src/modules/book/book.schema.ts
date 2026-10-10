@@ -190,6 +190,7 @@ export const AddBookInputSchema = BookSchema.pick({
 		.trim()
 		.max(200, "Acceptance notes must be at most 200 characters long")
 		.optional(),
+	readAfterBookSlugs: z.array(BookSchema.shape.slug).max(20).optional(),
 });
 
 export const AddBookOutputSchema = BookSchema.pick({
@@ -207,6 +208,14 @@ export const GetBookBySlugOutputSchema = BookSchema.omit({
 	approvedById: true,
 }).extend({
 	requestedBy: BookRequestedBySchema.nullable(),
+	readAfterBooks: z.array(
+		z.object({
+			slug: BookSchema.shape.slug,
+			title: BookSchema.shape.title,
+			authors: BookSchema.shape.authors,
+			coverId: BookSchema.shape.coverId,
+		}),
+	),
 });
 
 export type TGetBookBySlugOutputSchema = z.infer<
@@ -227,7 +236,10 @@ export const UpdateBookInputSchema = BookSchema.pick({
 	slug: true,
 })
 	.partial()
-	.required({ slug: true });
+	.required({ slug: true })
+	.extend({
+		readAfterBookSlugs: z.array(BookSchema.shape.slug).max(20).optional(),
+	});
 
 export const UpdateBookOutputSchema = BookSchema.pick({
 	slug: true,

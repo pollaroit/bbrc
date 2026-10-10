@@ -1,6 +1,7 @@
 import type { Database, Prisma } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
 import { getBookPollSelect } from "../book/book.schema";
+import { prerequisitesSatisfiedForPoll } from "../book/book-reading-prerequisites";
 import type {
 	CreateSittingPollInput,
 	PreviewSittingPollOptionsOutput,
@@ -69,17 +70,32 @@ export async function loadPollDrawContext(
 
 	const wishlistBooks = await db.book.findMany({
 		where: bookWhere,
-		select: { id: true },
+		select: {
+			id: true,
+			readAfterPrerequisites: {
+				select: {
+					prerequisiteBook: {
+						select: { status: true },
+					},
+				},
+			},
+		},
 	});
 
-	if (wishlistBooks.length < take) {
+	const eligibleWishlistBooks = wishlistBooks.filter((book) =>
+		prerequisitesSatisfiedForPoll(
+			book.readAfterPrerequisites.map((row) => row.prerequisiteBook),
+		),
+	);
+
+	if (eligibleWishlistBooks.length < take) {
 		throw new ORPCError("BAD_REQUEST", {
 			message: `Not enough wishlist books match the poll filters (need at least ${take})`,
-			data: { available: wishlistBooks.length, take },
+			data: { available: eligibleWishlistBooks.length, take },
 		});
 	}
 
-	const eligibleBookIds = wishlistBooks.map((book) => book.id);
+	const eligibleBookIds = eligibleWishlistBooks.map((book) => book.id);
 	const readCountByBookId = await loadParticipantReadCountsByBookId(
 		participantIds,
 		eligibleBookIds,

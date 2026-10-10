@@ -16,6 +16,11 @@ import {
 } from "./book.schema";
 import { listAuthorFacetsForBooks } from "./book-author-filter";
 import { buildBookListWhereWithAuthors } from "./book-list-where";
+import {
+	mapReadAfterBooks,
+	readAfterBookInclude,
+	syncBookReadAfterPrerequisites,
+} from "./book-reading-prerequisites";
 import { generateBookSlug } from "./book-slug";
 
 const bookListSelect = {
@@ -152,6 +157,7 @@ export async function getBookBySlug(
 					name: true,
 				},
 			},
+			readAfterPrerequisites: readAfterBookInclude,
 		},
 	});
 
@@ -164,7 +170,12 @@ export async function getBookBySlug(
 		});
 	}
 
-	return normalizeBookRecord(book);
+	const { readAfterPrerequisites, ...rest } = book;
+
+	return normalizeBookRecord({
+		...rest,
+		readAfterBooks: mapReadAfterBooks(readAfterPrerequisites),
+	});
 }
 
 function normalizeBookRecord<T extends TGetBookBySlugOutputSchema>(book: T): T {
@@ -181,7 +192,7 @@ export async function addBook(
 	db: Database,
 	adminUserId: string,
 ) {
-	const { acceptanceNotes, ...bookInput } = input;
+	const { acceptanceNotes, readAfterBookSlugs, ...bookInput } = input;
 	const trimmedAcceptanceNotes = acceptanceNotes?.trim() || null;
 
 	const book = await db.$transaction(async (tx) => {
@@ -216,9 +227,14 @@ export async function addBook(
 				requestedById: pendingRequest?.userId ?? null,
 			},
 			select: {
+				id: true,
 				slug: true,
 			},
 		});
+
+		if (readAfterBookSlugs && readAfterBookSlugs.length > 0) {
+			await syncBookReadAfterPrerequisites(book.id, readAfterBookSlugs, tx);
+		}
 
 		await tx.bookRequest.updateMany({
 			where: { olid: bookInput.olid, status: "pending" },
@@ -256,12 +272,16 @@ export async function updateBook(
 	}
 
 	return await db.$transaction(async (tx) => {
-		const { slug, ...data } = input;
+		const { slug, readAfterBookSlugs, ...data } = input;
 
 		await tx.book.update({
 			where: { id: book.id },
 			data,
 		});
+
+		if (readAfterBookSlugs !== undefined) {
+			await syncBookReadAfterPrerequisites(book.id, readAfterBookSlugs, tx);
+		}
 
 		return { slug };
 	});

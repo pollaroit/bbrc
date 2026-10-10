@@ -11,6 +11,7 @@ import { BookEditLink } from "@/components/blocks/book-edit-link";
 import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
 import { BookHeaderWriteFeedback } from "@/components/blocks/book-header-write-feedback";
 import { BookMarkReadButton } from "@/components/blocks/book-mark-read-button";
+import { BookReadAfterLinks } from "@/components/blocks/book-read-after-links";
 import { BookRequestedByLine } from "@/components/blocks/book-requested-by";
 import { BookStatusBanner } from "@/components/blocks/book-status-badge";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
@@ -117,6 +118,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 								{book.title}
 							</h1>
 							<AuthorLinks authors={book.authors} />
+							<BookReadAfterLinks readAfterBooks={book.readAfterBooks} />
 							{book.requestedBy ? (
 								<BookRequestedByLine requestedBy={book.requestedBy} />
 							) : null}
