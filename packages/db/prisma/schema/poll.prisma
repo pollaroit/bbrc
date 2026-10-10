@@ -18,6 +18,20 @@ model Poll {
   minPages Int? @map("min_pages")
   /// @zod.min(0, "Max pages must be a non-negative number")
   maxPages Int? @map("max_pages")
+  /// @zod.min(0, "Min publish year must be a non-negative number")
+  minPublishedIn Int? @map("min_published_in")
+  /// @zod.min(0, "Max publish year must be a non-negative number")
+  maxPublishedIn Int? @map("max_published_in")
+  /// @zod.min(0, "Minimum Open Library rating must be a non-negative number").max(5, "Minimum Open Library rating must be at most 5")
+  minOpenLibraryRating Float? @map("min_open_library_rating")
+  /// @zod.min(0, "Min reads must be a non-negative number")
+  minReads Int? @map("min_reads")
+  /// @zod.min(0, "Max reads must be a non-negative number")
+  maxReads Int? @map("max_reads")
+  /// Wishlist pool: literary origin (ISO 3166-1 alpha-2), same as book.countries.
+  filterCountries String[] @default([]) @map("filter_countries")
+  /// Wishlist pool: author slugs (see @bbrc/shared isAuthorSlug).
+  filterAuthorSlugs String[] @default([]) @map("filter_author_slugs")
   /// @zod.min(2, "Take must be at least 2").max(12, "Take must be at most 12")
   take     Int  @default(10)
 

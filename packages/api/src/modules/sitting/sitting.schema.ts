@@ -9,7 +9,12 @@ import {
 	UserSchema,
 } from "@bbrc/schemas";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
-import { isSlug, SLUG_MAX_LENGTH } from "@bbrc/shared";
+import {
+	bookCountryCodeSchema,
+	isAuthorSlug,
+	isSlug,
+	SLUG_MAX_LENGTH,
+} from "@bbrc/shared";
 import type { z } from "zod";
 import zod from "zod";
 import {
@@ -68,6 +73,17 @@ export const CreateSittingPollInputSchema = zod
 	.object({
 		minPages: PollSchema.shape.minPages,
 		maxPages: PollSchema.shape.maxPages,
+		minPublishedIn: PollSchema.shape.minPublishedIn,
+		maxPublishedIn: PollSchema.shape.maxPublishedIn,
+		minOpenLibraryRating: PollSchema.shape.minOpenLibraryRating,
+		minReads: PollSchema.shape.minReads,
+		maxReads: PollSchema.shape.maxReads,
+		countries: zod.array(bookCountryCodeSchema).optional(),
+		authors: zod
+			.array(
+				zod.string().refine(isAuthorSlug, { message: "Invalid author slug" }),
+			)
+			.optional(),
 		take: PollSchema.shape.take.optional(),
 		minChoices: PollSchema.shape.minChoices.optional(),
 		maxChoices: PollSchema.shape.maxChoices,
@@ -82,6 +98,10 @@ function refinePollConfig(
 	value: {
 		minPages?: number | null;
 		maxPages?: number | null;
+		minPublishedIn?: number | null;
+		maxPublishedIn?: number | null;
+		minReads?: number | null;
+		maxReads?: number | null;
 		take?: number;
 		minChoices?: number;
 		maxChoices?: number | null;
@@ -102,6 +122,31 @@ function refinePollConfig(
 			code: "custom",
 			message: "Maximum pages must be greater than or equal to minimum pages",
 			path: [...pathPrefix, "maxPages"],
+		});
+	}
+
+	if (
+		value.minPublishedIn != null &&
+		value.maxPublishedIn != null &&
+		value.maxPublishedIn < value.minPublishedIn
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message:
+				"Maximum publish year must be greater than or equal to minimum publish year",
+			path: [...pathPrefix, "maxPublishedIn"],
+		});
+	}
+
+	if (
+		value.minReads != null &&
+		value.maxReads != null &&
+		value.maxReads < value.minReads
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Maximum reads must be greater than or equal to minimum reads",
+			path: [...pathPrefix, "maxReads"],
 		});
 	}
 
@@ -211,11 +256,20 @@ export const SittingPollSummarySchema = PollSchema.pick({
 	slug: true,
 	minPages: true,
 	maxPages: true,
+	minPublishedIn: true,
+	maxPublishedIn: true,
+	minOpenLibraryRating: true,
+	minReads: true,
+	maxReads: true,
 	take: true,
 	minChoices: true,
 	maxChoices: true,
 }).extend({
 	deadline: PollStoredDeadlineSchema,
+	countries: zod.array(bookCountryCodeSchema),
+	authors: zod.array(
+		zod.string().refine(isAuthorSlug, { message: "Invalid author slug" }),
+	),
 });
 
 export const SittingPollOptionBookSchema = BookWithRequestedBySchema.extend({
@@ -336,6 +390,13 @@ export const getSittingBySlugFields = {
 			deadline: true,
 			minPages: true,
 			maxPages: true,
+			minPublishedIn: true,
+			maxPublishedIn: true,
+			minOpenLibraryRating: true,
+			minReads: true,
+			maxReads: true,
+			filterCountries: true,
+			filterAuthorSlugs: true,
 			take: true,
 			minChoices: true,
 			maxChoices: true,

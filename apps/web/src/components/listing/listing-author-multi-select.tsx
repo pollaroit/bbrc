@@ -17,7 +17,8 @@ import { Separator } from "@bbrc/ui/components/separator";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { useFacetOptionsStale } from "@/lib/listing/use-facet-options-stale";
 import { orpc } from "@/utils/orpc";
 
 type ListingAuthorMultiSelectProps = {
@@ -35,13 +36,42 @@ export function ListingAuthorMultiSelect({
 }: ListingAuthorMultiSelectProps) {
 	const [search, setSearch] = useState("");
 
+	const facetInputKey = useMemo(() => JSON.stringify(facetInput), [facetInput]);
+
 	const facetsQuery = useQuery({
 		...orpc.book.getBookListAuthorFacets.queryOptions({
 			input: facetInput,
 		}),
 	});
 
-	const authors = facetsQuery.data?.authors ?? [];
+	const optionsStale = useFacetOptionsStale(
+		facetInputKey,
+		facetsQuery.isFetching,
+	);
+
+	const authors =
+		optionsStale || facetsQuery.isPending
+			? []
+			: (facetsQuery.data?.authors ?? []);
+
+	useEffect(() => {
+		if (optionsStale || !facetsQuery.data?.authors) {
+			return;
+		}
+
+		const allowed = new Set(
+			facetsQuery.data.authors.map((author) => author.slug),
+		);
+		const pruned = selectedSlugs.filter((slug) => allowed.has(slug));
+		if (pruned.length !== selectedSlugs.length) {
+			onSelectedSlugsChange(pruned);
+		}
+	}, [
+		facetsQuery.data?.authors,
+		onSelectedSlugsChange,
+		optionsStale,
+		selectedSlugs,
+	]);
 
 	const filteredAuthors = useMemo(() => {
 		const query = search.trim().toLowerCase();
@@ -110,7 +140,7 @@ export function ListingAuthorMultiSelect({
 			</div>
 			<Card className="w-full p-0">
 				<ScrollArea className="h-48">
-					{facetsQuery.isPending ? (
+					{facetsQuery.isPending || optionsStale ? (
 						<div className="flex flex-col gap-2 p-3" aria-hidden>
 							{Array.from({ length: 5 }, (_, index) => (
 								<Skeleton key={index} className="h-8 w-full" />

@@ -84,6 +84,13 @@ export function buildBookListWhere(
 				input.countries && input.countries.length > 0
 					? { hasSome: input.countries }
 					: undefined,
+			publishedIn:
+				input.minPublishedIn == null && input.maxPublishedIn == null
+					? undefined
+					: {
+							gte: input.minPublishedIn ?? undefined,
+							lte: input.maxPublishedIn ?? undefined,
+						},
 		},
 		...viewerFragments,
 	);

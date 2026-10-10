@@ -73,6 +73,19 @@ export function refineBookListQueryInput(
 			path: ["maxReads"],
 		});
 	}
+
+	if (
+		value.maxPublishedIn != null &&
+		value.minPublishedIn != null &&
+		value.maxPublishedIn < value.minPublishedIn
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message:
+				"Maximum publish year must be greater than or equal to minimum publish year",
+			path: ["maxPublishedIn"],
+		});
+	}
 }
 
 /** Filters, sort, range, and search — no pagination cursor. */

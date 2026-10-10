@@ -99,6 +99,7 @@ import {
 	loadPollDrawContext,
 	loadPollPreviewBooks,
 } from "./sitting-poll-pool";
+import { createPollInputToStoredFilters } from "./sitting-poll-stored-filters";
 import {
 	cancelSittingReadingTelegramJobs,
 	syncSittingReadingTelegramJobs,
@@ -262,6 +263,13 @@ function mapSittingDetail(
 					deadline: row.poll.deadline,
 					minPages: row.poll.minPages,
 					maxPages: row.poll.maxPages,
+					minPublishedIn: row.poll.minPublishedIn,
+					maxPublishedIn: row.poll.maxPublishedIn,
+					minOpenLibraryRating: row.poll.minOpenLibraryRating,
+					minReads: row.poll.minReads,
+					maxReads: row.poll.maxReads,
+					countries: row.poll.filterCountries,
+					authors: row.poll.filterAuthorSlugs,
 					take: row.poll.take,
 					minChoices: row.poll.minChoices,
 					maxChoices: row.poll.maxChoices,
@@ -722,13 +730,22 @@ export async function createSitting(
 			select: { id: true, slug: true },
 		});
 
+		const storedFilters = createPollInputToStoredFilters(input.poll);
+
 		await tx.poll.create({
 			data: {
 				slug: pollSlug,
 				sittingId: sitting.id,
 				deadline: pollDeadline,
-				minPages: input.poll.minPages ?? undefined,
-				maxPages: input.poll.maxPages ?? undefined,
+				minPages: storedFilters.minPages ?? undefined,
+				maxPages: storedFilters.maxPages ?? undefined,
+				minPublishedIn: storedFilters.minPublishedIn ?? undefined,
+				maxPublishedIn: storedFilters.maxPublishedIn ?? undefined,
+				minOpenLibraryRating: storedFilters.minOpenLibraryRating ?? undefined,
+				minReads: storedFilters.minReads ?? undefined,
+				maxReads: storedFilters.maxReads ?? undefined,
+				filterCountries: storedFilters.filterCountries,
+				filterAuthorSlugs: storedFilters.filterAuthorSlugs,
 				take,
 				minChoices,
 				maxChoices,

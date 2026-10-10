@@ -2,18 +2,20 @@
 
 import type { PreviewSittingPollOptionsOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { Button } from "@bbrc/ui/components/button";
-import { Card, CardContent } from "@bbrc/ui/components/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@bbrc/ui/components/card";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
 	Field,
-	FieldDescription,
 	FieldGroup,
 	FieldLegend,
 	FieldSet,
 } from "@bbrc/ui/components/field";
-import { Input } from "@bbrc/ui/components/input";
-import { Label } from "@bbrc/ui/components/label";
-import { Separator } from "@bbrc/ui/components/separator";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
@@ -21,6 +23,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { CreateSittingPollFilters } from "@/components/blocks/create-sitting-poll-filters";
 import { CreateSittingPollReview } from "@/components/blocks/create-sitting-poll-review";
 import { SittingDeadlinePicker } from "@/components/blocks/sitting-deadline-picker";
 import { UserPanel } from "@/components/blocks/user-panel";
@@ -165,9 +168,11 @@ export function CreateSittingForm() {
 		form.setValue("participantUserIds", next, { shouldValidate: true });
 	}
 
+	const selectedCount = selectedIds.length;
+
 	return (
 		<form
-			className="flex max-w-2xl flex-col gap-8"
+			className="flex flex-col gap-8"
 			onSubmit={form.handleSubmit((values) => {
 				setConfigureValues(values);
 				previewMutation.mutate(toPreviewSittingPollOptionsInput(values), {
@@ -182,210 +187,120 @@ export function CreateSittingForm() {
 				});
 			})}
 		>
-			<FieldSet>
-				<FieldLegend>Poll schedule</FieldLegend>
-				<FieldDescription>
-					Pick the calendar day when voting closes (deadline snaps to 14:00,
-					17:00, 20:00, or 23:00 club time; default is about 12 hours ahead).
-					The reading deadline is calculated from the chosen book&apos;s page
-					count when reading starts.
-				</FieldDescription>
-				<FieldGroup>
-					<form.Input
-						name="pollDeadline"
-						render={(field, fieldState) => (
-							<SittingDeadlinePicker
-								id={field.name}
-								label="Poll deadline"
-								value={field.value}
-								onChange={field.onChange}
-								invalid={fieldState.invalid}
-								errorMessage={fieldState.error?.message}
-							/>
-						)}
-					/>
-				</FieldGroup>
-			</FieldSet>
-
-			<Separator />
-
-			<FieldSet>
-				<FieldLegend>Poll configuration</FieldLegend>
-				<FieldDescription>
-					Wishlist books matching the page filters are chosen at random for the
-					poll.
-				</FieldDescription>
-				<FieldGroup className="grid gap-4 sm:grid-cols-2">
-					<form.Input
-						name="poll.minPages"
-						label="Minimum pages"
-						render={(field, fieldState) => (
-							<Input
-								id={field.name}
-								type="number"
-								min={0}
-								aria-invalid={fieldState.invalid}
-								value={field.value ?? ""}
-								onChange={field.onChange}
-								onBlur={field.onBlur}
-								name={field.name}
-								ref={field.ref}
-							/>
-						)}
-					/>
-					<form.Input
-						name="poll.maxPages"
-						label="Maximum pages"
-						render={(field, fieldState) => (
-							<Input
-								id={field.name}
-								type="number"
-								min={0}
-								aria-invalid={fieldState.invalid}
-								value={field.value ?? ""}
-								onChange={field.onChange}
-								onBlur={field.onBlur}
-								name={field.name}
-								ref={field.ref}
-							/>
-						)}
-					/>
-					<form.Input
-						name="poll.take"
-						label="Number of options"
-						render={(field, fieldState) => (
-							<>
-								<Input
-									id={field.name}
-									type="number"
-									min={2}
-									max={12}
-									aria-invalid={fieldState.invalid}
-									value={field.value}
-									onChange={field.onChange}
-									onBlur={field.onBlur}
-									name={field.name}
-									ref={field.ref}
+			<div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)] xl:items-start">
+				<div className="flex min-w-0 flex-col gap-6">
+					<Card>
+						<CardHeader className="border-border border-b pb-4">
+							<CardTitle className="text-base">Voting deadline</CardTitle>
+							<CardDescription>
+								When the book poll closes. Times snap to 14:00, 17:00, 20:00, or
+								23:00 club time (default is about 12 hours ahead). Reading
+								deadline is set from the winning book when reading starts.
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="pt-6">
+							<FieldGroup>
+								<form.Input
+									name="pollDeadline"
+									render={(field, fieldState) => (
+										<SittingDeadlinePicker
+											mode="poll"
+											id={field.name}
+											label="Poll deadline"
+											value={field.value}
+											onChange={field.onChange}
+											invalid={fieldState.invalid}
+											errorMessage={fieldState.error?.message}
+										/>
+									)}
 								/>
-								<FieldDescription>Between 2 and 12.</FieldDescription>
-							</>
-						)}
-					/>
-					<form.Input
-						name="poll.minChoices"
-						label="Minimum choices per voter"
-						render={(field, fieldState) => (
-							<Input
-								id={field.name}
-								type="number"
-								min={1}
-								max={12}
-								aria-invalid={fieldState.invalid}
-								value={field.value}
-								onChange={field.onChange}
-								onBlur={field.onBlur}
-								name={field.name}
-								ref={field.ref}
-							/>
-						)}
-					/>
-					<form.Input
-						name="poll.maxChoices"
-						label="Maximum choices per voter"
-						render={(field, fieldState) => (
-							<Input
-								id={field.name}
-								type="number"
-								min={1}
-								max={12}
-								aria-invalid={fieldState.invalid}
-								value={field.value}
-								onChange={field.onChange}
-								onBlur={field.onBlur}
-								name={field.name}
-								ref={field.ref}
-							/>
-						)}
-					/>
-				</FieldGroup>
-			</FieldSet>
+							</FieldGroup>
+						</CardContent>
+					</Card>
 
-			<Separator />
+					<CreateSittingPollFilters form={form} />
+				</div>
 
-			<FieldSet>
-				<FieldLegend>Participants</FieldLegend>
-				<FieldDescription>
-					All members are listed. Banned members appear muted but can still be
-					included if you select them.
-				</FieldDescription>
-
-				{isLoadingUsers ? (
-					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-						{Array.from({ length: 4 }, (_, index) => (
-							<Skeleton key={index} className="h-20 w-full" />
-						))}
-					</div>
-				) : isError ? (
-					<Field>
-						<p className="text-destructive text-sm">Could not load members.</p>
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							onClick={() => {
-								void refetch();
-							}}
-						>
-							Retry
-						</Button>
-					</Field>
-				) : (
-					<ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-						{users.map((user) => {
-							const checked = selectedIds.includes(user.id);
-							const isBanned = user.status === "banned";
-
-							return (
-								<li key={user.id}>
-									<Label
-										className={cn(
-											"block cursor-pointer",
-											isBanned && "opacity-60",
-										)}
+				<aside className="flex flex-col gap-4 xl:sticky xl:top-6">
+					<Card>
+						<CardHeader className="border-border border-b pb-4">
+							<CardTitle className="text-base">Participants</CardTitle>
+							<CardDescription>
+								{selectedCount} selected
+								{users.length > 0 ? ` of ${users.length} members` : ""}. Banned
+								members stay muted but can be included if you check them.
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="max-h-[min(70vh,36rem)] overflow-y-auto pt-4">
+							{isLoadingUsers ? (
+								<ul className="flex flex-col gap-2">
+									{Array.from({ length: 5 }, (_, index) => (
+										<Skeleton key={index} className="h-16 w-full" />
+									))}
+								</ul>
+							) : isError ? (
+								<Field>
+									<p className="text-destructive text-sm">
+										Could not load members.
+									</p>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() => {
+											void refetch();
+										}}
 									>
-										<Card
-											size="sm"
-											className="transition-colors hover:bg-muted/40"
-										>
-											<CardContent className="flex items-start gap-3">
-												<Checkbox
-													checked={checked}
-													onCheckedChange={(value) => {
-														toggleParticipant(user.id, value === true);
-													}}
-													className="mt-0.5"
-												/>
-												<div className="flex min-w-0 flex-1 flex-col gap-2">
-													<UserPanel user={user} />
-													<UserStatusBadge status={user.status} />
-												</div>
-											</CardContent>
-										</Card>
-									</Label>
-								</li>
-							);
-						})}
-					</ul>
-				)}
+										Retry
+									</Button>
+								</Field>
+							) : (
+								<FieldSet>
+									<FieldLegend className="sr-only">Member list</FieldLegend>
+									<ul className="flex flex-col gap-1">
+										{users.map((user) => {
+											const checked = selectedIds.includes(user.id);
+											const isBanned = user.status === "banned";
 
-				{form.formState.errors.participantUserIds ? (
-					<p className="text-destructive text-sm">
-						{form.formState.errors.participantUserIds.message}
-					</p>
-				) : null}
-			</FieldSet>
+											return (
+												<li key={user.id}>
+													<div
+														className={cn(
+															"flex items-start gap-3 border border-transparent px-2 py-2 transition-colors hover:bg-muted/40",
+															isBanned && "opacity-60",
+														)}
+													>
+														<Checkbox
+															checked={checked}
+															onCheckedChange={(value) => {
+																toggleParticipant(user.id, value === true);
+															}}
+															className="mt-1"
+															aria-label={`Include ${user.name}`}
+														/>
+														<div className="flex min-w-0 flex-1 flex-col gap-1.5">
+															<UserPanel user={user} />
+															<UserStatusBadge status={user.status} />
+														</div>
+													</div>
+												</li>
+											);
+										})}
+									</ul>
+								</FieldSet>
+							)}
 
-			<div className="flex flex-wrap gap-2">
+							{form.formState.errors.participantUserIds ? (
+								<p className="mt-3 text-destructive text-sm">
+									{form.formState.errors.participantUserIds.message}
+								</p>
+							) : null}
+						</CardContent>
+					</Card>
+				</aside>
+			</div>
+
+			<div className="flex flex-wrap items-center gap-2 border-border border-t pt-6">
 				<form.Submit loading={previewMutation.isPending}>
 					Continue to review
 				</form.Submit>

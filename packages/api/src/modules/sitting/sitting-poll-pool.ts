@@ -1,4 +1,4 @@
-import type { Database, Prisma } from "@bbrc/db";
+import type { Database } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
 import { getBookPollSelect } from "../book/book.schema";
 import { prerequisitesSatisfiedForPoll } from "../book/book-reading-prerequisites";
@@ -6,6 +6,7 @@ import type {
 	CreateSittingPollInput,
 	PreviewSittingPollOptionsOutput,
 } from "./sitting.schema";
+import { resolveWishlistPollBookWhere } from "./sitting-poll-book-where";
 import {
 	pickOneWeightedPollBookId,
 	pickWeightedPollBookIds,
@@ -20,23 +21,6 @@ export type PollDrawContext = {
 
 export function resolvePollTake(poll: CreateSittingPollInput): number {
 	return poll.take ?? 10;
-}
-
-export function buildWishlistPollBookWhere(
-	poll: CreateSittingPollInput,
-): Prisma.BookWhereInput {
-	const bookWhere: Prisma.BookWhereInput = {
-		status: "wishlist",
-	};
-
-	if (poll.minPages != null || poll.maxPages != null) {
-		bookWhere.pages = {
-			gte: poll.minPages ?? undefined,
-			lte: poll.maxPages ?? undefined,
-		};
-	}
-
-	return bookWhere;
 }
 
 export async function assertParticipantsExist(
@@ -66,7 +50,14 @@ export async function loadPollDrawContext(
 ): Promise<PollDrawContext> {
 	const participantIds = await assertParticipantsExist(participantUserIds, db);
 	const take = resolvePollTake(poll);
-	const bookWhere = buildWishlistPollBookWhere(poll);
+	const bookWhere = await resolveWishlistPollBookWhere(poll, db);
+
+	if (bookWhere == null) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "No wishlist books match the poll filters",
+			data: { available: 0, take },
+		});
+	}
 
 	const wishlistBooks = await db.book.findMany({
 		where: bookWhere,

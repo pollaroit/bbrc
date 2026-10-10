@@ -166,6 +166,7 @@ export function SittingAdminDeadlines({ sitting }: SittingAdminDeadlinesProps) {
 					<div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 py-4">
 						{sitting.status === "voting" && sitting.poll ? (
 							<SittingDeadlinePicker
+								mode="poll"
 								label="Poll deadline"
 								value={pollDeadline}
 								onChange={setPollDeadline}
@@ -177,6 +178,7 @@ export function SittingAdminDeadlines({ sitting }: SittingAdminDeadlinesProps) {
 							</p>
 						) : null}
 						<SittingDeadlinePicker
+							mode="reading"
 							label="Reading deadline"
 							value={sittingDeadline}
 							onChange={(value) => {

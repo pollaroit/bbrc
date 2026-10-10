@@ -16,8 +16,9 @@ import { Separator } from "@bbrc/ui/components/separator";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { CountryLabel } from "@/components/blocks/country-dropdown";
+import { useFacetOptionsStale } from "@/lib/listing/use-facet-options-stale";
 import { orpc } from "@/utils/orpc";
 
 type ListingCountryMultiSelectProps = {
@@ -35,13 +36,44 @@ export function ListingCountryMultiSelect({
 }: ListingCountryMultiSelectProps) {
 	const [search, setSearch] = useState("");
 
+	const facetInputKey = useMemo(() => JSON.stringify(facetInput), [facetInput]);
+
 	const facetsQuery = useQuery({
 		...orpc.book.getBookListCountryFacets.queryOptions({
 			input: facetInput,
 		}),
 	});
 
-	const countries = facetsQuery.data?.countries ?? [];
+	const optionsStale = useFacetOptionsStale(
+		facetInputKey,
+		facetsQuery.isFetching,
+	);
+
+	const countries =
+		optionsStale || facetsQuery.isPending
+			? []
+			: (facetsQuery.data?.countries ?? []);
+
+	useEffect(() => {
+		if (optionsStale || !facetsQuery.data?.countries) {
+			return;
+		}
+
+		const allowed = new Set(
+			facetsQuery.data.countries.map((country) => country.alpha2.toUpperCase()),
+		);
+		const pruned = selectedAlpha2.filter((code) =>
+			allowed.has(code.toUpperCase()),
+		);
+		if (pruned.length !== selectedAlpha2.length) {
+			onSelectedAlpha2Change(pruned);
+		}
+	}, [
+		facetsQuery.data?.countries,
+		onSelectedAlpha2Change,
+		optionsStale,
+		selectedAlpha2,
+	]);
 
 	const filteredCountries = useMemo(() => {
 		const query = search.trim().toLowerCase();
@@ -104,7 +136,7 @@ export function ListingCountryMultiSelect({
 				</div>
 			</Field>
 
-			{facetsQuery.isPending ? (
+			{facetsQuery.isPending || optionsStale ? (
 				<Skeleton className="h-40 w-full" />
 			) : filteredCountries.length === 0 ? (
 				<p className="text-muted-foreground text-xs">

@@ -69,5 +69,7 @@ export const bookListFiltersSchema = z
 		viewerReviewed: z.boolean(),
 		minReads: z.number().int().min(0),
 		maxReads: z.number().int().min(0),
+		minPublishedIn: z.number().int().min(0),
+		maxPublishedIn: z.number().int().min(0),
 	})
 	.partial();

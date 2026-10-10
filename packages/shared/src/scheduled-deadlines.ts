@@ -86,6 +86,22 @@ export function defaultPollDeadline(
 	return best;
 }
 
+/** Poll deadline on a calendar day at a club-local hot hour (14/17/20/23). */
+export function pollDeadlineAtClubLocal(
+	referenceDay: Date,
+	hour: (typeof POLL_DEADLINE_HOURS)[number],
+	timeZone = resolveClubTimeZone(),
+): Date {
+	const { year, month, day } = getZonedParts(referenceDay, timeZone);
+	return clubDeadlineInstant(year, month, day, hour, timeZone);
+}
+
+export function isPollDeadlineClubHour(
+	hour: number,
+): hour is (typeof POLL_DEADLINE_HOURS)[number] {
+	return (POLL_DEADLINE_HOURS as readonly number[]).includes(hour);
+}
+
 /** Snap an admin-chosen time to the next hot hour club-local (same instant if already valid). */
 export function snapPollDeadlineOnOrAfter(
 	reference: Date,

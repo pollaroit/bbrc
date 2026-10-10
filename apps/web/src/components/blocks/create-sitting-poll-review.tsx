@@ -87,7 +87,7 @@ export function CreateSittingPollReview({
 	}
 
 	return (
-		<div className="flex max-w-2xl flex-col gap-6">
+		<div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
 			<div>
 				<h2 className="font-semibold text-lg">Review poll options</h2>
 				<p className="text-muted-foreground text-sm">
