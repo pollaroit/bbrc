@@ -78,6 +78,50 @@ export type GetUserByUsernameOutput = z.infer<
 	typeof GetUserByUsernameOutputSchema
 >;
 
+/** Profile card snapshot for the member profile dialog. */
+export const ProfileCardBookSchema = BookSchema.pick({
+	slug: true,
+	title: true,
+	coverId: true,
+});
+
+export const ProfileCardFavoriteItemSchema = zod.object({
+	id: zod.string().uuid(),
+	book: ProfileCardBookSchema,
+});
+
+export const ProfileCardReadItemSchema = zod.object({
+	book: ProfileCardBookSchema,
+});
+
+export const ProfileCardStatsSchema = zod.object({
+	readsCount: zod.number().int().min(0),
+	feedbacksCount: zod.number().int().min(0),
+	participationsCount: zod.number().int().min(0),
+	shelvesCount: zod.number().int().min(0),
+});
+
+export const GetUserProfileCardInputSchema = UserSchema.pick({
+	username: true,
+});
+
+export const GetUserProfileCardOutputSchema =
+	GetUserByUsernameOutputSchema.omit({
+		indexable: true,
+	}).extend({
+		favorites: zod.array(ProfileCardFavoriteItemSchema),
+		recentReads: zod.array(ProfileCardReadItemSchema),
+		stats: ProfileCardStatsSchema,
+		generatedAt: zod.coerce.date(),
+	});
+
+export type GetUserProfileCardInput = z.infer<
+	typeof GetUserProfileCardInputSchema
+>;
+export type GetUserProfileCardOutput = z.infer<
+	typeof GetUserProfileCardOutputSchema
+>;
+
 export const UpdateUserStatusInputSchema = zod.object({
 	username: UserSchema.shape.username,
 	status: UserSchema.shape.status,

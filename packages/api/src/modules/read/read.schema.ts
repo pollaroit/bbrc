@@ -3,9 +3,16 @@ import {
 	CursorPaginationInputSchema,
 	CursorPaginationMetadataSchema,
 } from "@bbrc/schemas/listing/pagination";
+import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import { ReadDateFieldSchema } from "@bbrc/schemas/read-dates";
 import { openLibraryEditionKeyToOlid } from "@bbrc/shared";
 import { z } from "zod";
+import { bookListFiltersSchema } from "../book/book.listing";
+import {
+	userReadListRanging,
+	userReadListSearching,
+	userReadListSorting,
+} from "./read.listing";
 
 export const ReadEditionIdSchema = z.string().transform((value, ctx) => {
 	const olid = openLibraryEditionKeyToOlid(value);
@@ -139,9 +146,81 @@ export const UserReadListItemSchema = z.object({
 	book: UserReadBookSummarySchema,
 });
 
-export const ListUserReadsInputSchema = CursorPaginationInputSchema.extend({
-	username: UserSchema.shape.username,
-});
+const userReadListQueryInputShape = bookListFiltersSchema
+	.omit({
+		viewerRead: true,
+		viewerFavorite: true,
+		viewerReviewed: true,
+	})
+	.extend(userReadListSorting.inputSchema.shape)
+	.extend(userReadListRanging.inputSchema.shape)
+	.extend(userReadListSearching.inputSchema.shape);
+
+function refineUserReadListQueryInput(
+	value: z.infer<typeof userReadListQueryInputShape>,
+	ctx: z.RefinementCtx,
+) {
+	refineRangingBounds(
+		{ rangeMin: value.rangeMin, rangeMax: value.rangeMax },
+		ctx,
+	);
+
+	if (
+		value.maxOpenLibraryRating != null &&
+		value.minOpenLibraryRating != null &&
+		value.maxOpenLibraryRating < value.minOpenLibraryRating
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message:
+				"Maximum Open Library rating must be greater than or equal to minimum",
+			path: ["maxOpenLibraryRating"],
+		});
+	}
+
+	if (
+		value.maxPages != null &&
+		value.minPages != null &&
+		value.maxPages < value.minPages
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Maximum pages must be greater than or equal to minimum",
+			path: ["maxPages"],
+		});
+	}
+
+	if (
+		value.maxReads != null &&
+		value.minReads != null &&
+		value.maxReads < value.minReads
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Maximum reads must be greater than or equal to minimum",
+			path: ["maxReads"],
+		});
+	}
+}
+
+export const ListUserReadsQueryInputSchema =
+	userReadListQueryInputShape.superRefine(refineUserReadListQueryInput);
+
+export const ListUserReadsInputSchema = userReadListQueryInputShape
+	.extend({
+		username: UserSchema.shape.username,
+	})
+	.extend(CursorPaginationInputSchema.shape)
+	.superRefine(refineUserReadListQueryInput);
+
+export {
+	userReadListRanging,
+	userReadListSearching,
+	userReadListSorting,
+	userReadRangeableFields,
+	userReadSearchableFields,
+	userReadSortableFields,
+} from "./read.listing";
 
 export const ListUserReadsMetadataSchema =
 	CursorPaginationMetadataSchema.extend({

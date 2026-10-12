@@ -1,6 +1,6 @@
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { UserFactReplaysGrid } from "@/components/blocks/user-fact-replays-grid";
 import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
@@ -43,7 +43,7 @@ export default async function UserFactReplaysPage({
 	});
 
 	if (!member) {
-		redirect("/users" as Route);
+		notFound();
 	}
 
 	if (session.user.username !== member.username) {

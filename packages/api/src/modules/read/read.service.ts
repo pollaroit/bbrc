@@ -12,8 +12,13 @@ import {
 	type OpenLibraryEditionLanguage,
 } from "../../lib/open-library/work-editions";
 import { definePagination } from "../../utils/pagination";
+import {
+	type BookListQueryInput,
+	buildBookListWhereWithAuthors,
+} from "../book/book-list-where";
 import { activeParticipationWhere } from "../sitting/participation-active";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
+import { userReadListSorting, withStableUserReadOrderBy } from "./read.listing";
 import type {
 	GetBookReadStateOutput,
 	ListBookReadsInput,
@@ -343,6 +348,29 @@ export async function listUserReads(
 		});
 	}
 
+	const bookWhere = await buildBookListWhereWithAuthors(
+		input as BookListQueryInput,
+		db,
+	);
+
+	if (bookWhere == null) {
+		return {
+			items: [],
+			metadata: {
+				limit: input.limit ?? 12,
+				hasNextPage: false,
+				hasPreviousPage: input.cursor != null,
+				nextCursor: null,
+				total: 0,
+			},
+		};
+	}
+
+	const readWhere = {
+		userId: user.id,
+		book: bookWhere,
+	};
+
 	const cursorCodec = {
 		decode(cursor: string): {
 			userId_bookId: { userId: string; bookId: string };
@@ -357,18 +385,19 @@ export async function listUserReads(
 	};
 
 	const pagination = definePagination.cursor(input, cursorCodec);
+	const sorting = userReadListSorting.from(input);
 
 	const isFirstPage = input.cursor == null;
 
 	const [rows, total] = await Promise.all([
 		db.read.findMany({
 			...pagination.use(),
-			where: { userId: user.id },
-			orderBy: [{ createdAt: "desc" }, { bookId: "desc" }],
+			where: readWhere,
+			orderBy: withStableUserReadOrderBy(sorting.use(), sorting.sortDirection),
 			select: userReadListSelect,
 		}),
 		isFirstPage
-			? db.read.count({ where: { userId: user.id } })
+			? db.read.count({ where: readWhere })
 			: Promise.resolve(undefined),
 	]);
 

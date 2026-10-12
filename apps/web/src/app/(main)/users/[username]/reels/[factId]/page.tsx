@@ -1,6 +1,6 @@
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { FactReelsViewer } from "@/components/blocks/fact-reels-viewer";
 import { buildPageMetadata } from "@/lib/seo";
 import { auth, db } from "@/services";
@@ -39,7 +39,7 @@ export default async function UserFactReplayViewerPage({
 	});
 
 	if (!member) {
-		redirect("/users" as Route);
+		notFound();
 	}
 
 	if (session.user.username !== member.username) {

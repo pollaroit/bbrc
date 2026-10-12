@@ -16,11 +16,14 @@ import {
 	GetUserListOutputSchema,
 	GetUserParticipationListInputSchema,
 	GetUserParticipationListOutputSchema,
+	GetUserProfileCardInputSchema,
+	GetUserProfileCardOutputSchema,
 } from "./user.schema";
 import {
 	getUserByUsername,
 	getUserList,
 	getUserParticipationList,
+	getUserProfileCard,
 } from "./user.service";
 
 export const userRouter = {
@@ -36,6 +39,13 @@ export const userRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await getUserByUsername(input, context.db, context.session),
+		),
+	getUserProfileCard: publicProcedure
+		.input(GetUserProfileCardInputSchema)
+		.output(GetUserProfileCardOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await getUserProfileCard(input, context.db, context.session),
 		),
 	getUserParticipationList: publicProcedure
 		.input(GetUserParticipationListInputSchema)

@@ -4,6 +4,8 @@ import { formatSittingDisplayName } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
+import { favoriteItemSelect } from "../favorite/favorite.schema";
+import { userReadListSelect } from "../read/read.schema";
 import {
 	userListRanging,
 	userListSearching,
@@ -16,6 +18,8 @@ import {
 	type GetUserListOutput,
 	type GetUserParticipationListInput,
 	type GetUserParticipationListOutput,
+	type GetUserProfileCardInput,
+	type GetUserProfileCardOutput,
 	getUserByUsernameFields,
 	getUserListFields,
 	getUserParticipationListFields,
@@ -112,6 +116,80 @@ export async function getUserList(
 	});
 
 	return pagination.paginate(rows);
+}
+
+const PROFILE_CARD_BOOK_LIMIT = 4;
+
+export async function getUserProfileCard(
+	input: GetUserProfileCardInput,
+	db: Database,
+	session: Session | null = null,
+): Promise<GetUserProfileCardOutput> {
+	const viewer = viewerFromSession(session);
+	const user = await db.user.findUnique({
+		where: { username: input.username },
+		select: { ...getUserByUsernameFields, id: true, isHidden: true },
+	});
+
+	assertMemberVisible(user, viewer);
+
+	const [
+		favorites,
+		recentReads,
+		readsCount,
+		feedbacksCount,
+		participationsCount,
+		shelvesCount,
+	] = await Promise.all([
+		db.favorite.findMany({
+			where: { userId: user.id },
+			orderBy: { createdAt: "asc" },
+			take: PROFILE_CARD_BOOK_LIMIT,
+			select: favoriteItemSelect,
+		}),
+		db.read.findMany({
+			where: { userId: user.id },
+			orderBy: [{ createdAt: "desc" }, { bookId: "desc" }],
+			take: PROFILE_CARD_BOOK_LIMIT,
+			select: userReadListSelect,
+		}),
+		db.read.count({ where: { userId: user.id } }),
+		db.feedback.count({ where: { authorId: user.id } }),
+		db.participation.count({ where: { userId: user.id } }),
+		db.shelf.count({ where: { userId: user.id } }),
+	]);
+
+	return {
+		username: user.username,
+		name: user.name,
+		image: user.image,
+		isAdmin: user.isAdmin,
+		rp: user.rp,
+		xp: user.xp,
+		status: user.status,
+		favorites: favorites.map((row) => ({
+			id: row.id,
+			book: {
+				slug: row.book.slug,
+				title: row.book.title,
+				coverId: row.book.coverId,
+			},
+		})),
+		recentReads: recentReads.map((row) => ({
+			book: {
+				slug: row.book.slug,
+				title: row.book.title,
+				coverId: row.book.coverId,
+			},
+		})),
+		stats: {
+			readsCount,
+			feedbacksCount,
+			participationsCount,
+			shelvesCount,
+		},
+		generatedAt: new Date(),
+	};
 }
 
 export async function getUserParticipationList(

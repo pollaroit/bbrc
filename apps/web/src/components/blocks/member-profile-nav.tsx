@@ -56,9 +56,15 @@ export function MemberProfileNav({
 	const current = activeTab(pathname, username);
 
 	return (
-		<nav aria-label="Member profile sections">
+		<nav
+			aria-label="Member profile sections"
+			className="sticky top-14 z-20 border border-border bg-background/95 px-1 py-1 backdrop-blur-sm supports-backdrop-filter:bg-background/80"
+		>
 			<Tabs value={current}>
-				<TabsList variant="line" className="h-auto w-full justify-start gap-0">
+				<TabsList
+					variant="line"
+					className="h-auto w-full justify-start gap-0 overflow-x-auto"
+				>
 					<TabsTrigger
 						value="sittings"
 						nativeButton={false}

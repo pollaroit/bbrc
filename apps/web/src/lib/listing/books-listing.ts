@@ -103,7 +103,7 @@ export type BookListingSearchParams = ReturnType<
 	typeof useBookListingSearchParams
 >[0];
 
-function normalizeAuthorSlugs(
+export function normalizeAuthorSlugs(
 	authors: string[] | null | undefined,
 ): string[] | undefined {
 	if (!authors || authors.length === 0) {
@@ -114,7 +114,7 @@ function normalizeAuthorSlugs(
 	return slugs.length > 0 ? slugs : undefined;
 }
 
-function normalizeCountryCodes(
+export function normalizeCountryCodes(
 	countries: string[] | null | undefined,
 ): string[] | undefined {
 	if (!countries || countries.length === 0) {

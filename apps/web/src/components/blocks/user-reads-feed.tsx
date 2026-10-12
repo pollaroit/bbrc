@@ -3,7 +3,12 @@
 import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { UserMemberReadCard } from "@/components/blocks/user-member-read-card";
+import {
+	toUserReadsListCallInput,
+	useUserReadsListingSearchParams,
+} from "@/lib/listing/user-reads-listing";
 import { orpc } from "@/utils/orpc";
 
 const PAGE_LIMIT = 12;
@@ -23,6 +28,9 @@ type UserReadsFeedProps = {
 };
 
 export function UserReadsFeed({ username }: UserReadsFeedProps) {
+	const [params] = useUserReadsListingSearchParams();
+	const listInput = useMemo(() => toUserReadsListCallInput(params), [params]);
+
 	const {
 		data,
 		error,
@@ -38,6 +46,7 @@ export function UserReadsFeed({ username }: UserReadsFeedProps) {
 			getNextPageParam: (lastPage) => lastPage.metadata.nextCursor ?? undefined,
 			input: (pageCursor) => ({
 				username,
+				...listInput,
 				limit: PAGE_LIMIT,
 				...(pageCursor != null ? { cursor: pageCursor } : {}),
 			}),
@@ -69,8 +78,8 @@ export function UserReadsFeed({ username }: UserReadsFeedProps) {
 					void refetch();
 				}}
 				isEmpty={items.length === 0}
-				emptyTitle="No books marked read yet"
-				emptyDescription="When this member marks books as read, they appear here with read dates."
+				emptyTitle="No books match these filters"
+				emptyDescription="Try clearing filters or search. When this member marks books as read, they appear here."
 				loadingContent={<UserReadsFeedSkeleton />}
 				endMessage="End of read list."
 			>
