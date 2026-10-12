@@ -61,6 +61,8 @@ const nextConfig: NextConfig = {
 		"/og/[[...path]]": ["./src/lib/seo/og/fonts/**/*"],
 	},
 	images: {
+		// Serve R2 / Open Library URLs directly — avoids Vercel Image Optimization quotas.
+		unoptimized: true,
 		remotePatterns: [
 			{
 				protocol: "https",
