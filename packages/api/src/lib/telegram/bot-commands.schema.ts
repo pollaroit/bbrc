@@ -19,9 +19,17 @@ const TelegramMessageSchema = zod.object({
 	from: TelegramUserSchema.optional(),
 });
 
+const TelegramCallbackQuerySchema = zod.object({
+	id: zod.string(),
+	data: zod.string().optional(),
+	from: TelegramUserSchema,
+	message: TelegramMessageSchema.optional(),
+});
+
 export const TelegramUpdateSchema = zod.object({
 	update_id: zod.number(),
 	message: TelegramMessageSchema.optional(),
+	callback_query: TelegramCallbackQuerySchema.optional(),
 });
 
 export type TelegramUpdate = zod.infer<typeof TelegramUpdateSchema>;

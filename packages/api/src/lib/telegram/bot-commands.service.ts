@@ -7,6 +7,10 @@ import { sendTelegramReply } from "./client";
 import { escapeTelegramHtml } from "./escape-html";
 import { formatReadingDeadlineTelegramLine } from "./format-reading-deadline-line";
 import { resolvePublicAppOrigin } from "./public-app-origin";
+import {
+	handleSetprogressCallback,
+	handleSetprogressCommand,
+} from "./setprogress-command";
 import { handleTelegramAccountLinkMessage } from "./telegram-account-link";
 
 const PARTICIPANT_LIST_LIMIT = 40;
@@ -122,6 +126,7 @@ function buildHelpReply(): string {
 		"/book — Current book",
 		"/who — Members not finished reading",
 		"/participants — Sitting roster",
+		"/setprogress — Update your progress on the current reading sitting",
 		"Link BBRC account: Settings → Account connections on the site",
 		`<a href="${origin}">Open BBRC</a>`,
 	].join("\n");
@@ -294,6 +299,21 @@ export async function handleTelegramBotUpdate(
 	db: Database,
 	update: TelegramUpdate,
 ): Promise<TelegramBotCommandResult> {
+	const callbackQuery = update.callback_query;
+	if (callbackQuery?.data?.startsWith("sp:")) {
+		const chatId = callbackQuery.message?.chat.id;
+		if (chatId != null) {
+			await handleSetprogressCallback(db, {
+				callbackQueryId: callbackQuery.id,
+				telegramUserId: callbackQuery.from.id,
+				chatId,
+				messageId: callbackQuery.message?.message_id,
+				data: callbackQuery.data,
+			});
+		}
+		return { handled: true, command: "setprogress_callback" };
+	}
+
 	const message = update.message;
 	if (!message?.text) {
 		return { handled: false };
@@ -348,6 +368,13 @@ export async function handleTelegramBotUpdate(
 		case "/participants":
 			replyText = await buildParticipantsReply(db);
 			break;
+		case "/setprogress":
+			await handleSetprogressCommand(db, {
+				chatId: message.chat.id,
+				telegramUserId: message.from?.id,
+				replyToMessageId: message.message_id,
+			});
+			return { handled: true, command };
 		default:
 			return { handled: false, command };
 	}

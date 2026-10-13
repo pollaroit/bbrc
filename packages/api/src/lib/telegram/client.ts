@@ -14,11 +14,18 @@ export type SendTelegramPollInput = {
 	explanation?: string;
 };
 
+export type TelegramInlineKeyboardMarkup = {
+	inline_keyboard: { text: string; callback_data: string }[][];
+};
+
 async function postTelegramSendMessage(
 	botToken: string,
 	chatId: string | number,
 	input: SendTelegramMessageInput,
-	options?: { replyToMessageId?: number },
+	options?: {
+		replyToMessageId?: number;
+		replyMarkup?: TelegramInlineKeyboardMarkup;
+	},
 ): Promise<boolean> {
 	const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
 
@@ -34,6 +41,7 @@ async function postTelegramSendMessage(
 				...(options?.replyToMessageId != null
 					? { reply_parameters: { message_id: options.replyToMessageId } }
 					: {}),
+				...(options?.replyMarkup ? { reply_markup: options.replyMarkup } : {}),
 			}),
 		});
 
@@ -66,6 +74,7 @@ export async function sendTelegramMessage(
 export type SendTelegramReplyInput = SendTelegramMessageInput & {
 	chatId: string | number;
 	replyToMessageId?: number;
+	replyMarkup?: TelegramInlineKeyboardMarkup;
 };
 
 /** Reply in any chat (group DMs, supergroup) — only requires bot token. */
@@ -79,7 +88,50 @@ export async function sendTelegramReply(
 
 	return postTelegramSendMessage(botToken, input.chatId, input, {
 		replyToMessageId: input.replyToMessageId,
+		replyMarkup: input.replyMarkup,
 	});
+}
+
+export type AnswerTelegramCallbackQueryInput = {
+	callbackQueryId: string;
+	text?: string;
+	showAlert?: boolean;
+};
+
+export async function answerTelegramCallbackQuery(
+	input: AnswerTelegramCallbackQueryInput,
+): Promise<boolean> {
+	const botToken = resolveTelegramBotToken();
+	if (!botToken) {
+		return false;
+	}
+
+	const url = `https://api.telegram.org/bot${botToken}/answerCallbackQuery`;
+
+	try {
+		const response = await fetch(url, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				callback_query_id: input.callbackQueryId,
+				...(input.text ? { text: input.text } : {}),
+				...(input.showAlert ? { show_alert: true } : {}),
+			}),
+		});
+
+		if (!response.ok) {
+			const body = await response.text().catch(() => "");
+			console.error(
+				`telegram answerCallbackQuery failed (${response.status}): ${body.slice(0, 200)}`,
+			);
+			return false;
+		}
+
+		return true;
+	} catch (error) {
+		console.error("telegram answerCallbackQuery error", error);
+		return false;
+	}
 }
 
 export async function sendTelegramPoll(
