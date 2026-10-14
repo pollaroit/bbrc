@@ -7,6 +7,10 @@ import { updateMyParticipationProgress } from "../../modules/sitting/sitting.ser
 import { answerTelegramCallbackQuery, sendTelegramReply } from "./client";
 import { escapeTelegramHtml } from "./escape-html";
 import { resolvePublicAppOrigin } from "./public-app-origin";
+import {
+	buildLinkAccountReply,
+	loadLinkedUserByTelegramId,
+} from "./telegram-linked-user";
 
 type Progress = z.infer<typeof ProgressSchema>;
 
@@ -46,16 +50,6 @@ function buildSetprogressCallbackData(progress: Progress): string {
 	return `${SETPROGRESS_CALLBACK_PREFIX}${progress}`;
 }
 
-async function loadLinkedUserByTelegramId(
-	db: Database,
-	telegramUserId: number,
-) {
-	return db.user.findUnique({
-		where: { telegramUserId: String(telegramUserId) },
-		select: { id: true, username: true, name: true },
-	});
-}
-
 async function loadReadingParticipation(db: Database, userId: string) {
 	return db.sitting.findFirst({
 		where: { status: "reading" },
@@ -71,15 +65,6 @@ async function loadReadingParticipation(db: Database, userId: string) {
 			},
 		},
 	});
-}
-
-function buildLinkAccountReply(): string {
-	const origin = resolvePublicAppOrigin();
-	return [
-		"Link your BBRC account first.",
-		"On the site: Settings → Account connections, then open the bot in a private chat to finish linking.",
-		`<a href="${origin}/settings/accounts">Account connections</a>`,
-	].join("\n");
 }
 
 function buildSetprogressKeyboard() {
