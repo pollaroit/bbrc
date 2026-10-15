@@ -1,5 +1,6 @@
 import {
 	openLibraryEditionKeyToOlid,
+	openLibraryEditionPageUrl,
 	openLibraryWorkKeyToOlid,
 } from "@bbrc/shared";
 
@@ -15,12 +16,35 @@ const LANGUAGE_PATH: Record<
 	rus: "/languages/rus",
 };
 
+const LANGUAGE_LABELS: Record<string, string> = {
+	"/languages/eng": "English",
+	"/languages/tur": "Turkish",
+	"/languages/aze": "Azerbaijani",
+	"/languages/rus": "Russian",
+	"/languages/urd": "Urdu",
+	"/languages/fre": "French",
+	"/languages/ger": "German",
+	"/languages/spa": "Spanish",
+	"/languages/ita": "Italian",
+	"/languages/por": "Portuguese",
+	"/languages/dut": "Dutch",
+	"/languages/pol": "Polish",
+	"/languages/jpn": "Japanese",
+	"/languages/chi": "Chinese",
+	"/languages/ara": "Arabic",
+};
+
 type EditionListEntry = {
 	key?: string;
 	title?: string;
 	number_of_pages?: number;
 	publish_date?: string;
 	covers?: number[];
+	publishers?: string[];
+	publish_places?: string[];
+	physical_format?: string;
+	edition_name?: string;
+	isbn_13?: string[];
 	languages?: Array<string | { key?: string }>;
 };
 
@@ -30,6 +54,13 @@ type EditionJson = {
 	publish_date?: string;
 	covers?: number[];
 };
+
+type EditionsListPayload = {
+	entries?: EditionListEntry[];
+	size?: number;
+};
+
+const EDITIONS_BATCH_SIZE = 100;
 
 async function fetchJson<T>(url: string): Promise<T | null> {
 	try {
@@ -59,6 +90,25 @@ function editionLanguageKeys(edition: EditionListEntry): string[] {
 		.filter(Boolean);
 }
 
+export function openLibraryLanguageLabels(languageKeys: string[]): string[] {
+	const seen = new Set<string>();
+	const labels: string[] = [];
+
+	for (const key of languageKeys) {
+		const label =
+			LANGUAGE_LABELS[key] ??
+			(key.split("/").pop()?.toUpperCase() || key.trim());
+		const dedupe = label.toLowerCase();
+		if (!dedupe || seen.has(dedupe)) {
+			continue;
+		}
+		seen.add(dedupe);
+		labels.push(label);
+	}
+
+	return labels;
+}
+
 function editionMatchesLanguage(
 	edition: EditionListEntry,
 	language: OpenLibraryEditionLanguage,
@@ -71,7 +121,44 @@ function editionMatchesLanguage(
 	return editionLanguageKeys(edition).some((key) => key.includes(needle));
 }
 
-function normalizeEditionRow(entry: EditionListEntry) {
+export type WorkEditionListItem = {
+	editionId: string;
+	title: string;
+	pages: number | null;
+	publishDate: string | null;
+	coverId: number | null;
+	languageKeys: string[];
+	languages: string[];
+	publishers: string[];
+	publishPlaces: string[];
+	physicalFormat: string | null;
+	isbn13: string | null;
+	openLibraryUrl: string;
+	isbnUrl: string | null;
+};
+
+function editionMatchesQuery(
+	entry: EditionListEntry,
+	row: WorkEditionListItem,
+	query: string,
+): boolean {
+	const haystack = [
+		row.title,
+		...row.publishers,
+		...row.publishPlaces,
+		row.physicalFormat ?? "",
+		row.isbn13 ?? "",
+		entry.edition_name ?? "",
+	]
+		.join(" ")
+		.toLowerCase();
+
+	return haystack.includes(query);
+}
+
+function normalizeEditionRow(
+	entry: EditionListEntry,
+): WorkEditionListItem | null {
 	const olid = entry.key ? openLibraryEditionKeyToOlid(entry.key) : null;
 	if (!olid) {
 		return null;
@@ -79,6 +166,11 @@ function normalizeEditionRow(entry: EditionListEntry) {
 
 	const coverId =
 		entry.covers?.find((id) => id > 0) ?? entry.covers?.[0] ?? null;
+
+	const languageKeys = editionLanguageKeys(entry);
+	const openLibraryUrl = openLibraryEditionPageUrl(olid) ?? "";
+	const isbn13 =
+		entry.isbn_13?.find((value) => value.trim().length > 0)?.trim() ?? null;
 
 	return {
 		editionId: olid,
@@ -89,13 +181,194 @@ function normalizeEditionRow(entry: EditionListEntry) {
 				: null,
 		publishDate: entry.publish_date?.trim() || null,
 		coverId,
-		languageKeys: editionLanguageKeys(entry),
+		languageKeys,
+		languages: openLibraryLanguageLabels(languageKeys),
+		publishers: (entry.publishers ?? [])
+			.map((name) => name.trim())
+			.filter(Boolean),
+		publishPlaces: (entry.publish_places ?? [])
+			.map((place) => place.trim())
+			.filter(Boolean),
+		physicalFormat: entry.physical_format?.trim() || null,
+		isbn13,
+		openLibraryUrl,
+		isbnUrl: isbn13 ? `https://openlibrary.org/isbn/${isbn13}` : null,
 	};
 }
 
-export type WorkEditionSummary = NonNullable<
-	ReturnType<typeof normalizeEditionRow>
+/** @deprecated alias for read flows that only need a short list */
+export type WorkEditionSummary = Pick<
+	WorkEditionListItem,
+	"editionId" | "title" | "pages" | "publishDate" | "coverId" | "languageKeys"
 >;
+
+async function fetchEditionEntriesPage(
+	workOlid: string,
+	limit: number,
+	offset: number,
+): Promise<EditionsListPayload | null> {
+	return fetchJson<EditionsListPayload>(
+		`https://openlibrary.org/works/${workOlid}/editions.json?limit=${limit}&offset=${offset}`,
+	);
+}
+
+async function fetchAllEditionEntries(
+	workOlid: string,
+): Promise<EditionListEntry[]> {
+	const all: EditionListEntry[] = [];
+	let offset = 0;
+	let total: number | null = null;
+
+	while (total === null || offset < total) {
+		const payload = await fetchEditionEntriesPage(
+			workOlid,
+			EDITIONS_BATCH_SIZE,
+			offset,
+		);
+		const entries = payload?.entries ?? [];
+		if (entries.length === 0) {
+			break;
+		}
+
+		if (total === null) {
+			total = payload?.size ?? entries.length;
+		}
+
+		all.push(...entries);
+		offset += entries.length;
+
+		if (entries.length < EDITIONS_BATCH_SIZE) {
+			break;
+		}
+	}
+
+	return all;
+}
+
+function filterEditionRows(
+	entries: EditionListEntry[],
+	options: {
+		query?: string;
+		language?: OpenLibraryEditionLanguage;
+	},
+): WorkEditionListItem[] {
+	const language = options.language ?? "any";
+	const query = options.query?.trim().toLowerCase() ?? "";
+	const rows: WorkEditionListItem[] = [];
+
+	for (const entry of entries) {
+		if (!editionMatchesLanguage(entry, language)) {
+			continue;
+		}
+
+		const row = normalizeEditionRow(entry);
+		if (!row) {
+			continue;
+		}
+
+		if (query && !editionMatchesQuery(entry, row, query)) {
+			continue;
+		}
+
+		rows.push(row);
+	}
+
+	return rows;
+}
+
+export type ListWorkEditionsResult = {
+	items: WorkEditionListItem[];
+	total: number;
+	page: number;
+	limit: number;
+	totalPages: number;
+	hasNextPage: boolean;
+};
+
+/** Total edition count for a work from Open Library (`size` on the editions feed). */
+export async function fetchWorkEditionTotalCount(
+	workOlid: string,
+): Promise<number | null> {
+	const olid = openLibraryWorkKeyToOlid(workOlid);
+	if (!olid) {
+		return null;
+	}
+
+	const payload = await fetchJson<{ size?: number }>(
+		`https://openlibrary.org/works/${olid}/editions.json?limit=1`,
+	);
+
+	return payload?.size ?? null;
+}
+
+export async function listWorkEditions(
+	workOlid: string,
+	options: {
+		page?: number;
+		limit?: number;
+		query?: string;
+		language?: OpenLibraryEditionLanguage;
+	} = {},
+): Promise<ListWorkEditionsResult> {
+	const olid = openLibraryWorkKeyToOlid(workOlid);
+	const empty: ListWorkEditionsResult = {
+		items: [],
+		total: 0,
+		page: 1,
+		limit: options.limit ?? 12,
+		totalPages: 0,
+		hasNextPage: false,
+	};
+
+	if (!olid) {
+		return empty;
+	}
+
+	const limit = options.limit ?? 12;
+	const page = Math.max(1, options.page ?? 1);
+	const language = options.language ?? "any";
+	const query = options.query?.trim() ?? "";
+	const hasFilters = language !== "any" || query.length > 0;
+
+	if (!hasFilters) {
+		const offset = (page - 1) * limit;
+		const payload = await fetchEditionEntriesPage(workOlid, limit, offset);
+		if (!payload) {
+			return empty;
+		}
+
+		const total = payload.size ?? payload.entries?.length ?? 0;
+		const items = (payload.entries ?? [])
+			.map((entry) => normalizeEditionRow(entry))
+			.filter((row): row is WorkEditionListItem => row != null);
+
+		const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
+
+		return {
+			items,
+			total,
+			page,
+			limit,
+			totalPages,
+			hasNextPage: offset + items.length < total,
+		};
+	}
+
+	const entries = await fetchAllEditionEntries(olid);
+	const filtered = filterEditionRows(entries, { query, language });
+	const total = filtered.length;
+	const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
+	const start = (page - 1) * limit;
+
+	return {
+		items: filtered.slice(start, start + limit),
+		total,
+		page,
+		limit,
+		totalPages,
+		hasNextPage: start + limit < total,
+	};
+}
 
 export async function fetchWorkEditionSummaries(
 	workOlid: string,
@@ -105,36 +378,23 @@ export async function fetchWorkEditionSummaries(
 		limit?: number;
 	} = {},
 ): Promise<WorkEditionSummary[]> {
-	const olid = openLibraryWorkKeyToOlid(workOlid);
-	if (!olid) {
-		return [];
-	}
+	const result = await listWorkEditions(workOlid, {
+		page: 1,
+		limit: options.limit ?? 5,
+		query: options.query,
+		language: options.language,
+	});
 
-	const limit = options.limit ?? 5;
-	const language = options.language ?? "any";
-	const q = options.query?.trim().toLowerCase() ?? "";
-
-	const payload = await fetchJson<{ entries?: EditionListEntry[] }>(
-		`https://openlibrary.org/works/${olid}/editions.json?limit=100`,
+	return result.items.map(
+		({ editionId, title, pages, publishDate, coverId, languageKeys }) => ({
+			editionId,
+			title,
+			pages,
+			publishDate,
+			coverId,
+			languageKeys,
+		}),
 	);
-
-	const normalized: WorkEditionSummary[] = [];
-
-	for (const entry of payload?.entries ?? []) {
-		const row = normalizeEditionRow(entry);
-		if (!row) {
-			continue;
-		}
-		if (!editionMatchesLanguage(entry, language)) {
-			continue;
-		}
-		if (q && !row.title.toLowerCase().includes(q)) {
-			continue;
-		}
-		normalized.push(row);
-	}
-
-	return normalized.slice(0, limit);
 }
 
 export type EditionDetailSummary = {

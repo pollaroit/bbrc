@@ -10,6 +10,7 @@ const LEADERBOARD_SITEMAP_ROUTES = leaderboardSitemapPaths().map((path) => ({
 export const STATIC_APP_ROUTES = [
 	{ path: "/", changeFrequency: "daily" as const, priority: 1 },
 	{ path: "/books", changeFrequency: "daily" as const, priority: 0.9 },
+	{ path: "/series", changeFrequency: "daily" as const, priority: 0.88 },
 	{ path: "/shelves", changeFrequency: "daily" as const, priority: 0.85 },
 	{ path: "/sittings", changeFrequency: "daily" as const, priority: 0.9 },
 	{ path: "/users", changeFrequency: "weekly" as const, priority: 0.8 },

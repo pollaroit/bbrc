@@ -9,6 +9,7 @@ import {
 	buildPageMetadata,
 	truncateDescription,
 } from "@/lib/seo";
+import { openGraphImageForPath } from "@/lib/seo/og/url";
 
 export async function generateMetadata({
 	params,
@@ -21,10 +22,22 @@ export async function generateMetadata({
 			series.description?.trim() ||
 			`${series.bookCount} books in ${series.title}, in reading order.`;
 
+		const firstTitle = series.books[0]?.book.title;
+		const pagePath = `/series/${series.slug}`;
+
 		return buildPageMetadata({
 			title: series.title,
 			description: truncateDescription(description),
-			path: `/series/${series.slug}`,
+			path: pagePath,
+			openGraph: {
+				type: "website",
+				images: [
+					openGraphImageForPath(
+						pagePath,
+						`${series.title} · ${series.bookCount} ${series.bookCount === 1 ? "book" : "books"} in reading order${firstTitle ? ` · starts with ${firstTitle}` : ""}`,
+					),
+				],
+			},
 		});
 	} catch {
 		return buildNotFoundMetadata("Series");

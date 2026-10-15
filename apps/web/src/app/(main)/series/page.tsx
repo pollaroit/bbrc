@@ -2,14 +2,26 @@ import type { Metadata } from "next";
 import { SeriesList } from "@/components/blocks/series-list";
 import { SeriesListingToolbar } from "@/components/blocks/series-listing-toolbar";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
-import { buildPageMetadata } from "@/lib/seo";
+import { buildPageMetadata, truncateDescription } from "@/lib/seo";
+import { db } from "@/services";
 
-export const metadata: Metadata = buildPageMetadata({
-	title: "Series",
-	description:
-		"Reading order for multi-book series in the BBRC catalog — follow the club’s numbered lists.",
-	path: "/series",
-});
+export async function generateMetadata(): Promise<Metadata> {
+	const [seriesCount, volumeCount] = await Promise.all([
+		db.series.count(),
+		db.seriesBook.count(),
+	]);
+
+	const description =
+		seriesCount > 0
+			? `${seriesCount} curated ${seriesCount === 1 ? "list" : "lists"} · ${volumeCount} catalog ${volumeCount === 1 ? "volume" : "volumes"} in numbered reading order.`
+			: "Reading order for multi-book series in the BBRC catalog — follow the club’s numbered lists.";
+
+	return buildPageMetadata({
+		title: "Series",
+		description: truncateDescription(description),
+		path: "/series",
+	});
+}
 
 export default function SeriesIndexPage() {
 	return (

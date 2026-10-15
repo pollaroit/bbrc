@@ -1,3 +1,4 @@
+import { fetchWorkEditionTotalCount } from "@bbrc/api/lib/open-library/work-editions";
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
 import { getFeedbackBySlug } from "@bbrc/api/modules/feedback/feedback.service";
@@ -9,6 +10,7 @@ import {
 } from "@bbrc/api/modules/leaderboard/leaderboard.schema";
 import { getLeaderboardOgSnapshot } from "@bbrc/api/modules/leaderboard/leaderboard.service";
 import { getPostBySlug } from "@bbrc/api/modules/post/post.service";
+import { getSeriesBySlug } from "@bbrc/api/modules/series/series.service";
 import { getShelfBySlug } from "@bbrc/api/modules/shelf/shelf.service";
 import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.schema";
 import { getSittingBySlug } from "@bbrc/api/modules/sitting/sitting.service";
@@ -229,6 +231,52 @@ async function resolveLeaderboardKindOg(
 	};
 }
 
+async function resolveSeriesListOg(): Promise<OgImageContent> {
+	const [seriesCount, volumeCount] = await Promise.all([
+		db.series.count(),
+		db.seriesBook.count(),
+	]);
+
+	return {
+		kind: "Series",
+		title: "Reading series",
+		description:
+			"Club-curated reading order for multi-volume works — numbered start to finish.",
+		highlights: [
+			formatCount("series", seriesCount),
+			formatCount("catalog volume", volumeCount),
+			"Reading order",
+		],
+	};
+}
+
+async function resolveSeriesDetailOg(slug: string): Promise<OgImageContent> {
+	const series = await getSeriesBySlug(slug, db);
+	const first = series.books[0]?.book;
+	const highlights = [
+		formatCount("book", series.bookCount),
+		"Club reading order",
+	];
+
+	if (first) {
+		highlights.push(formatBookAuthors(first.authors));
+		if (first.publishedIn != null) {
+			highlights.push(`Vol. 1 · ${first.publishedIn}`);
+		}
+	}
+
+	return {
+		kind: "Series",
+		title: series.title,
+		description: truncateOgLine(
+			series.description?.trim() ||
+				`${series.bookCount} ${series.bookCount === 1 ? "book" : "books"} in numbered club order.`,
+			140,
+		),
+		highlights,
+	};
+}
+
 async function resolveMembersListOg(): Promise<OgImageContent> {
 	const [memberCount, adminCount] = await Promise.all([
 		db.user.count(),
@@ -277,6 +325,9 @@ export async function resolveOgImageContent(
 	if (staticKey === "sittings") {
 		return resolveSittingsListOg();
 	}
+	if (staticKey === "series") {
+		return resolveSeriesListOg();
+	}
 	if (staticKey === "users") {
 		return resolveMembersListOg();
 	}
@@ -302,6 +353,18 @@ export async function resolveOgImageContent(
 				description: DEFAULT_DESCRIPTION,
 			}
 		);
+	}
+
+	if (section === "series" && rest.length === 0) {
+		try {
+			return await resolveSeriesDetailOg(slug);
+		} catch {
+			return {
+				kind: "Series",
+				title: "Series not found",
+				description: DEFAULT_DESCRIPTION,
+			};
+		}
 	}
 
 	if (
@@ -429,6 +492,11 @@ export async function resolveOgImageContent(
 				description: (title) =>
 					`Members who finished ${title} and the editions they read.`,
 			},
+			editions: {
+				label: "Editions",
+				description: (title) =>
+					`Open Library editions for ${title} — covers, publishers, and dates.`,
+			},
 		};
 
 		try {
@@ -457,11 +525,24 @@ export async function resolveOgImageContent(
 
 			const tabMeta = bookTab ? BOOK_TAB_OG[bookTab] : undefined;
 			if (tabMeta && rest.length === 1) {
+				const tabHighlights = [...highlights];
+				if (bookTab === "editions") {
+					tabHighlights.unshift("Open Library");
+					if (book.olid) {
+						const editionCount = await fetchWorkEditionTotalCount(book.olid);
+						if (editionCount != null && editionCount > 0) {
+							tabHighlights.push(formatCount("edition", editionCount));
+						}
+					} else {
+						tabHighlights.push("No work OLID");
+					}
+				}
+
 				return {
 					kind: "Book",
 					title: `${book.title} · ${tabMeta.label}`,
 					description: truncateDescription(tabMeta.description(book.title)),
-					highlights,
+					highlights: tabHighlights,
 				};
 			}
 

@@ -8,6 +8,7 @@ type OgDevPreviewProps = {
 	staticPaths: { label: string; path: string }[];
 	samples: {
 		bookSlug?: string;
+		seriesSlug?: string;
 		postSlug?: string;
 		commentSlug?: string;
 		feedbackSlug?: string;
@@ -80,6 +81,7 @@ function SocialCardPreview({
 
 export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 	const [bookSlug, setBookSlug] = useState(samples.bookSlug ?? "");
+	const [seriesSlug, setSeriesSlug] = useState(samples.seriesSlug ?? "");
 	const [postSlug, setPostSlug] = useState(samples.postSlug ?? "");
 	const [commentSlug, setCommentSlug] = useState(samples.commentSlug ?? "");
 	const [feedbackSlug, setFeedbackSlug] = useState(samples.feedbackSlug ?? "");
@@ -125,7 +127,19 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 					path: `/books/${book}/reads`,
 					description: "Book reads tab OG.",
 				},
+				{
+					label: "Book editions",
+					path: `/books/${book}/editions`,
+					description: "Open Library editions tab OG.",
+				},
 			);
+		}
+		if (seriesSlug.trim()) {
+			entries.push({
+				label: "Series detail",
+				path: `/series/${seriesSlug.trim()}`,
+				description: "Series reading order OG.",
+			});
 		}
 		if (postSlug.trim()) {
 			const post = postSlug.trim();
@@ -222,6 +236,7 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 		commentSlug,
 		feedbackSlug,
 		postSlug,
+		seriesSlug,
 		shelfSlug,
 		shelfUsername,
 		sittingSlug,
@@ -257,6 +272,15 @@ export function OgDevPreview({ staticPaths, samples }: OgDevPreviewProps) {
 						value={bookSlug}
 						onChange={(e) => setBookSlug(e.target.value)}
 						placeholder="e.g. dune"
+					/>
+				</label>
+				<label className="flex flex-col gap-1 text-sm">
+					<span className="font-medium">Series slug</span>
+					<input
+						className="border border-input bg-background px-3 py-2"
+						value={seriesSlug}
+						onChange={(e) => setSeriesSlug(e.target.value)}
+						placeholder="e.g. the-wheel-of-time"
 					/>
 				</label>
 				<label className="flex flex-col gap-1 text-sm">

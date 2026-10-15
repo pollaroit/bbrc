@@ -10,10 +10,14 @@ export default async function OgDevPage() {
 		notFound();
 	}
 
-	const [book, post, comment, feedback, sitting, user, shelf] =
+	const [book, series, post, comment, feedback, sitting, user, shelf] =
 		await Promise.all([
 			db.book.findFirst({
 				orderBy: { createdAt: "desc" },
+				select: { slug: true },
+			}),
+			db.series.findFirst({
+				orderBy: { updatedAt: "desc" },
 				select: { slug: true },
 			}),
 			db.post.findFirst({
@@ -54,6 +58,7 @@ export default async function OgDevPage() {
 		{ label: "Add book", path: "/books/new" },
 		{ label: "Request book", path: "/books/request" },
 		{ label: "Shelves", path: "/shelves" },
+		{ label: "Series", path: "/series" },
 		{ label: "Leaderboard overview", path: "/leaderboard/overview" },
 		{
 			label: "Leaderboard overview · All time",
@@ -92,6 +97,7 @@ export default async function OgDevPage() {
 			staticPaths={staticPaths}
 			samples={{
 				bookSlug: book?.slug,
+				seriesSlug: series?.slug,
 				postSlug: post?.slug,
 				commentSlug: comment?.slug,
 				feedbackSlug: feedback?.slug,

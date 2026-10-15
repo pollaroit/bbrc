@@ -77,7 +77,8 @@ export const SearchWorkEditionsInputSchema = z.object({
 	bookSlug: BookSchema.shape.slug,
 	query: z.string().max(200).optional(),
 	language: OpenLibraryEditionLanguageSchema.optional(),
-	limit: z.number().int().min(1).max(25).optional(),
+	page: z.number().int().min(1).optional(),
+	limit: z.number().int().min(1).max(24).optional(),
 });
 
 export type SearchWorkEditionsInput = z.infer<
@@ -93,8 +94,23 @@ export const WorkEditionSummarySchema = z.object({
 	languageKeys: z.array(z.string()),
 });
 
+export const WorkEditionListItemSchema = WorkEditionSummarySchema.extend({
+	languages: z.array(z.string()),
+	publishers: z.array(z.string()),
+	publishPlaces: z.array(z.string()),
+	physicalFormat: z.string().nullable(),
+	isbn13: z.string().nullable(),
+	openLibraryUrl: z.string().url(),
+	isbnUrl: z.string().url().nullable(),
+});
+
 export const SearchWorkEditionsOutputSchema = z.object({
-	items: z.array(WorkEditionSummarySchema),
+	items: z.array(WorkEditionListItemSchema),
+	total: z.number().int().nonnegative(),
+	page: z.number().int().positive(),
+	limit: z.number().int().positive(),
+	totalPages: z.number().int().nonnegative(),
+	hasNextPage: z.boolean(),
 });
 
 export type SearchWorkEditionsOutput = z.infer<

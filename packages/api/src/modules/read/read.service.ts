@@ -8,7 +8,7 @@ import {
 import { ORPCError } from "@orpc/server";
 import {
 	fetchEditionDetailSummaries,
-	fetchWorkEditionSummaries,
+	listWorkEditions,
 	type OpenLibraryEditionLanguage,
 } from "../../lib/open-library/work-editions";
 import { definePagination } from "../../utils/pagination";
@@ -441,16 +441,22 @@ export async function searchWorkEditionsForBook(
 	const book = await loadBookBySlug(input.bookSlug, db);
 
 	if (!book.olid) {
-		return { items: [] };
+		return {
+			items: [],
+			total: 0,
+			page: 1,
+			limit: input.limit ?? 12,
+			totalPages: 0,
+			hasNextPage: false,
+		};
 	}
 
-	const items = await fetchWorkEditionSummaries(book.olid, {
+	return listWorkEditions(book.olid, {
 		query: input.query,
 		language: (input.language ?? "any") as OpenLibraryEditionLanguage,
-		limit: input.limit ?? 5,
+		page: input.page ?? 1,
+		limit: input.limit ?? 12,
 	});
-
-	return { items };
 }
 
 export { fetchEditionDetailSummaries, parseReadDateField, ReadDateFieldSchema };

@@ -3,6 +3,7 @@ import type { Route } from "next";
 export type BookDetailTabId =
 	| "overview"
 	| "about"
+	| "editions"
 	| "documents"
 	| "shelves"
 	| "reviews"
@@ -24,6 +25,11 @@ export const BOOK_DETAIL_TABS: BookDetailTab[] = [
 		id: "about",
 		label: "About",
 		href: (slug) => `/books/${slug}/about` as Route,
+	},
+	{
+		id: "editions",
+		label: "Editions",
+		href: (slug) => `/books/${slug}/editions` as Route,
 	},
 	{
 		id: "documents",
