@@ -61,3 +61,54 @@ export function formatReadingDeadlineTelegramLine(
 	const relative = formatApproxDurationUntil(deadline, now);
 	return `${when} - ${relative}`;
 }
+
+const MS_PER_DAY = 86_400_000;
+
+/** Whole days until deadline (minimum 1 when still in the future). */
+export function wholeDaysUntilDeadline(
+	deadline: Date,
+	now = new Date(),
+): number {
+	const ms = deadline.getTime() - now.getTime();
+	if (ms <= 0) {
+		return 0;
+	}
+	return Math.max(1, Math.ceil(ms / MS_PER_DAY));
+}
+
+export function formatPagesPerDayLine(
+	pageCount: number,
+	deadline: Date,
+	mode: "start_today" | "stay_on_pace",
+	now = new Date(),
+): string | null {
+	if (!Number.isFinite(pageCount) || pageCount < 1) {
+		return null;
+	}
+
+	const days = wholeDaysUntilDeadline(deadline, now);
+	if (days === 0) {
+		return null;
+	}
+
+	const pagesPerDay = Math.ceil(pageCount / days);
+	const pagesLabel =
+		pagesPerDay === 1
+			? "1 page"
+			: `${pagesPerDay.toLocaleString("en-US")} pages`;
+
+	if (mode === "start_today") {
+		return `If you start today, plan for about ${pagesLabel} per day.`;
+	}
+
+	return `To finish by the deadline, aim for about ${pagesLabel} per day.`;
+}
+
+export function isWithinHoursOfDeadline(
+	deadline: Date,
+	hours: number,
+	now = new Date(),
+): boolean {
+	const ms = deadline.getTime() - now.getTime();
+	return ms > 0 && ms <= hours * 60 * 60 * 1000;
+}

@@ -1,11 +1,16 @@
 import type { Database } from "@bbrc/db";
 import { transitionSitting } from "./sitting.service";
 import { pickPollWinningOptionId } from "./sitting-poll-winner";
+import {
+	runSittingReadingDmReminders,
+	type SittingReadingDmReminderResult,
+} from "./sitting-reading-dm-reminder.service";
 
 export type SittingDeadlineCronResult = {
 	pollsClosed: string[];
 	sittingsFinished: string[];
 	errors: { slug: string; step: "poll" | "finish"; message: string }[];
+	readingDmReminders: SittingReadingDmReminderResult;
 };
 
 export async function runSittingDeadlineCron(
@@ -16,6 +21,7 @@ export async function runSittingDeadlineCron(
 		pollsClosed: [],
 		sittingsFinished: [],
 		errors: [],
+		readingDmReminders: { skipped: true, reason: "not_club_hour" },
 	};
 
 	const duePolls = await db.sitting.findMany({
@@ -81,6 +87,8 @@ export async function runSittingDeadlineCron(
 			});
 		}
 	}
+
+	result.readingDmReminders = await runSittingReadingDmReminders(db, now);
 
 	return result;
 }

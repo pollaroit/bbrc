@@ -21,6 +21,15 @@ type ZonedParts = {
 	minute: number;
 };
 
+/** True when `date` falls on the given club-local clock hour (0–23). */
+export function isClubLocalHour(
+	date: Date,
+	hour: number,
+	timeZone = resolveClubTimeZone(),
+): boolean {
+	return getZonedParts(date, timeZone).hour === hour;
+}
+
 export function getZonedParts(date: Date, timeZone: string): ZonedParts {
 	const formatter = new Intl.DateTimeFormat("en-US", {
 		timeZone,

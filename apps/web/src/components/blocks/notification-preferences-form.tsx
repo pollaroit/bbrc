@@ -110,6 +110,7 @@ export function NotificationPreferencesForm() {
 	const [draft, setDraft] = useState<
 		Map<NotificationKind, { inAppEnabled: boolean; pushEnabled: boolean }>
 	>(new Map());
+	const [telegramReadingReminder, setTelegramReadingReminder] = useState(true);
 
 	useEffect(() => {
 		if (!preferencesQuery.data) {
@@ -125,6 +126,9 @@ export function NotificationPreferencesForm() {
 					},
 				]),
 			),
+		);
+		setTelegramReadingReminder(
+			preferencesQuery.data.telegram.sittingReadingReminderEnabled,
 		);
 	}, [preferencesQuery.data]);
 
@@ -162,7 +166,7 @@ export function NotificationPreferencesForm() {
 		);
 	}
 
-	const { ntfy } = preferencesQuery.data;
+	const { ntfy, telegram } = preferencesQuery.data;
 	const hasAdminTopic = ntfy.adminTopic != null;
 
 	return (
@@ -175,9 +179,45 @@ export function NotificationPreferencesForm() {
 					inAppEnabled: values.inAppEnabled,
 					pushEnabled: values.pushEnabled,
 				}));
-				saveMutation.mutate({ preferences });
+				saveMutation.mutate({
+					preferences,
+					telegramSittingReadingReminderEnabled: telegramReadingReminder,
+				});
 			}}
 		>
+			{telegram.linked ? (
+				<Card>
+					<CardHeader>
+						<CardTitle className="text-base">Telegram DM</CardTitle>
+						<CardDescription>
+							Private messages from the BBRC bot while a sitting is in the
+							reading phase (not the club group).
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="flex flex-col gap-4">
+						<p className="text-muted-foreground text-sm leading-relaxed">
+							Each day at <strong className="text-foreground">14:00</strong>{" "}
+							club time, if you are still reading or have not started, the bot
+							sends a short reminder with the deadline, how many members have
+							finished, and a suggested daily page count when we know the book
+							length. Use the buttons in the message to update your progress.
+						</p>
+						<Field orientation="horizontal">
+							<Checkbox
+								id="telegram-reading-reminder"
+								checked={telegramReadingReminder}
+								onCheckedChange={(checked) => {
+									setTelegramReadingReminder(checked === true);
+								}}
+							/>
+							<FieldLabel htmlFor="telegram-reading-reminder">
+								Daily reading reminders
+							</FieldLabel>
+						</Field>
+					</CardContent>
+				</Card>
+			) : null}
+
 			<Card>
 				<CardHeader>
 					<CardTitle className="text-base">Phone push (ntfy)</CardTitle>

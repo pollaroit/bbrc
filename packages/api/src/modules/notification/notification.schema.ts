@@ -57,6 +57,10 @@ export const NotificationPreferenceItemSchema = zod.object({
 
 export const GetNotificationPreferencesOutputSchema = zod.object({
 	preferences: zod.array(NotificationPreferenceItemSchema),
+	telegram: zod.object({
+		linked: zod.boolean(),
+		sittingReadingReminderEnabled: zod.boolean(),
+	}),
 	ntfy: zod.object({
 		baseUrl: zod.string(),
 		userTopic: zod.string(),
@@ -82,6 +86,7 @@ export const UpdateNotificationPreferenceItemSchema = zod.object({
 
 export const UpdateNotificationPreferencesInputSchema = zod.object({
 	preferences: zod.array(UpdateNotificationPreferenceItemSchema),
+	telegramSittingReadingReminderEnabled: zod.boolean().optional(),
 });
 
 export const UpdateNotificationPreferencesOutputSchema = zod.object({

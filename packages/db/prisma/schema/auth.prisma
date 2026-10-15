@@ -31,6 +31,8 @@ model User {
   /// Telegram user id from Login Widget / bot (string for JSON-safe ids).
   telegramUserId   String? @unique @map("telegram_user_id")
   telegramUsername String? @map("telegram_username")
+  /// Daily 14:00 club-time DM nudge while a sitting is in reading (requires Telegram link + bot /start).
+  telegramSittingReadingReminderEnabled Boolean @default(true) @map("telegram_sitting_reading_reminder_enabled")
 
   sessions       Session[]
   accounts       Account[]

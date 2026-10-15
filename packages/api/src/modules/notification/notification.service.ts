@@ -91,10 +91,19 @@ export async function getNotificationPreferences(
 ): Promise<GetNotificationPreferencesOutput> {
 	await ensureNotificationPreferences(userId, db);
 
-	const rows = await db.notificationPreference.findMany({
-		where: { userId },
-		orderBy: { kind: "asc" },
-	});
+	const [rows, user] = await Promise.all([
+		db.notificationPreference.findMany({
+			where: { userId },
+			orderBy: { kind: "asc" },
+		}),
+		db.user.findUnique({
+			where: { id: userId },
+			select: {
+				telegramUserId: true,
+				telegramSittingReadingReminderEnabled: true,
+			},
+		}),
+	]);
 
 	const participations = await db.participation.findMany({
 		where: {
@@ -123,6 +132,11 @@ export async function getNotificationPreferences(
 
 	return {
 		preferences,
+		telegram: {
+			linked: user?.telegramUserId != null,
+			sittingReadingReminderEnabled:
+				user?.telegramSittingReadingReminderEnabled ?? true,
+		},
 		ntfy: {
 			baseUrl,
 			userTopic: ntfyUserTopic(prefix, userId),
@@ -155,6 +169,16 @@ export async function updateNotificationPreferences(
 			data: {
 				inAppEnabled: pref.inAppEnabled,
 				pushEnabled: pref.pushEnabled,
+			},
+		});
+	}
+
+	if (input.telegramSittingReadingReminderEnabled !== undefined) {
+		await db.user.update({
+			where: { id: userId },
+			data: {
+				telegramSittingReadingReminderEnabled:
+					input.telegramSittingReadingReminderEnabled,
 			},
 		});
 	}

@@ -16,6 +16,9 @@ export const SITTING_DEADLINE_HOUR = CLUB_DEADLINE_HOUR;
 /** Club-local hours when polls may close and cron may run (ascending). */
 export const POLL_DEADLINE_HOURS = [14, 17, 20, 23] as const;
 
+/** Daily Telegram DM reading reminder (club local). */
+export const SITTING_READING_DM_REMINDER_CLUB_HOUR = POLL_DEADLINE_HOURS[0];
+
 const MS_PER_MINUTE = 60_000;
 
 function clubDeadlineInstant(
