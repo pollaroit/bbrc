@@ -86,6 +86,8 @@ export const bookListingSearchParams = {
 	maxOpenLibraryRating: parseAsFloat.withOptions({ shallow: false }),
 	minPages: parseAsInteger.withOptions({ shallow: false }),
 	maxPages: parseAsInteger.withOptions({ shallow: false }),
+	minPublishedIn: parseAsInteger.withOptions({ shallow: false }),
+	maxPublishedIn: parseAsInteger.withOptions({ shallow: false }),
 	minReads: parseAsInteger.withOptions({ shallow: false }),
 	maxReads: parseAsInteger.withOptions({ shallow: false }),
 	authors: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
@@ -167,6 +169,8 @@ export function toBookListCallInput(
 		maxOpenLibraryRating: params.maxOpenLibraryRating,
 		minPages: params.minPages,
 		maxPages: params.maxPages,
+		minPublishedIn: params.minPublishedIn,
+		maxPublishedIn: params.maxPublishedIn,
 		minReads: params.minReads,
 		maxReads: params.maxReads,
 		authors: normalizeAuthorSlugs(params.authors),
@@ -244,6 +248,10 @@ export function countBookSheetFilters(params: BookListingSearchParams): number {
 		count += 1;
 	}
 
+	if (params.minPublishedIn != null || params.maxPublishedIn != null) {
+		count += 1;
+	}
+
 	if (params.minReads != null || params.maxReads != null) {
 		count += 1;
 	}
@@ -292,6 +300,8 @@ export function clearBookSheetFilters(
 		maxOpenLibraryRating: null,
 		minPages: null,
 		maxPages: null,
+		minPublishedIn: null,
+		maxPublishedIn: null,
 		minReads: null,
 		maxReads: null,
 		authors: null,

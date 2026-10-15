@@ -53,18 +53,37 @@ function StatCell({
 	label,
 	value,
 	hint,
+	href,
 }: {
 	label: string;
 	value: React.ReactNode;
 	hint?: string;
+	href?: Route;
 }) {
-	return (
-		<div className="flex min-w-0 flex-col gap-0.5 border border-border bg-card px-3 py-2">
+	const body = (
+		<>
 			<span className="text-muted-foreground text-xs">{label}</span>
 			<span className="font-medium tabular-nums leading-tight">{value}</span>
 			{hint ? (
 				<span className="text-muted-foreground text-xs">{hint}</span>
 			) : null}
+		</>
+	);
+
+	if (href) {
+		return (
+			<Link
+				href={href}
+				className="flex min-w-0 flex-col gap-0.5 border border-border bg-card px-3 py-2 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+			>
+				{body}
+			</Link>
+		);
+	}
+
+	return (
+		<div className="flex min-w-0 flex-col gap-0.5 border border-border bg-card px-3 py-2">
+			{body}
 		</div>
 	);
 }
@@ -144,7 +163,15 @@ export function BookHeader({ book }: BookHeaderProps) {
 					</div>
 
 					<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-						<StatCell label="Published" value={book.publishedIn ?? "—"} />
+						<StatCell
+							label="Published"
+							value={book.publishedIn ?? "—"}
+							href={
+								book.publishedIn != null
+									? (`/books?minPublishedIn=${book.publishedIn}&maxPublishedIn=${book.publishedIn}` as Route)
+									: undefined
+							}
+						/>
 						<StatCell label="Pages" value={book.pages ?? "—"} />
 						<StatCell
 							label="Open Library"

@@ -209,6 +209,23 @@ export function BooksListingToolbar() {
 					/>
 
 					<ListingIntegerRangeFields
+						legend="First published (year)"
+						minId="book-filter-min-published"
+						maxId="book-filter-max-published"
+						min={params.minPublishedIn}
+						max={params.maxPublishedIn}
+						inputMin={0}
+						placeholderMin="e.g. 1900"
+						placeholderMax={`e.g. ${new Date().getFullYear()}`}
+						onMinChange={(minPublishedIn) => {
+							void setParams({ minPublishedIn });
+						}}
+						onMaxChange={(maxPublishedIn) => {
+							void setParams({ maxPublishedIn });
+						}}
+					/>
+
+					<ListingIntegerRangeFields
 						legend="Member reads"
 						minId="book-filter-min-reads"
 						maxId="book-filter-max-reads"

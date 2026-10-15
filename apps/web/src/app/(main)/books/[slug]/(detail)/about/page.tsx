@@ -57,7 +57,7 @@ export default async function BookAboutPage({
 				</p>
 			)}
 
-			<BookLiteraryOrigin countries={literaryCountries} />
+			<BookLiteraryOrigin countries={literaryCountries} linkable />
 
 			{hasOpenLibrarySubjects ? (
 				<section className="flex flex-col gap-4">
@@ -79,6 +79,7 @@ export default async function BookAboutPage({
 						<p className="font-medium tabular-nums">
 							{new Intl.DateTimeFormat(undefined, {
 								dateStyle: "medium",
+								timeStyle: "short",
 							}).format(book.createdAt)}
 						</p>
 					</CardContent>

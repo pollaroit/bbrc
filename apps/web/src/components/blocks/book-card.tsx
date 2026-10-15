@@ -1,6 +1,4 @@
 import type { GetBookListOutput } from "@bbrc/api/modules/book/book.schema";
-import { Badge } from "@bbrc/ui/components/badge";
-import { FileText } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -112,16 +110,6 @@ export function BookCard({
 						</dl>
 
 						<div className="pointer-events-auto flex shrink-0 items-center gap-0.5">
-							{book.approvedDocumentCount > 0 ? (
-								<Badge
-									variant="outline"
-									className="gap-0.5 px-1.5 font-normal"
-									title="Has club documents"
-								>
-									<FileText className="size-3.5 shrink-0" aria-hidden />
-									<span className="hidden sm:inline">Docs</span>
-								</Badge>
-							) : null}
 							<BookMarkReadButton
 								bookSlug={book.slug}
 								bookTitle={book.title}
