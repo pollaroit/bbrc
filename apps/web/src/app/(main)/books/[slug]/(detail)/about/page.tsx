@@ -5,6 +5,7 @@ import {
 	CardTitle,
 } from "@bbrc/ui/components/card";
 import type { Metadata } from "next";
+import { BookExcerptMarkdown } from "@/components/blocks/book-excerpt-markdown";
 import { BookLiteraryOrigin } from "@/components/blocks/book-literary-origin";
 import { BookSubjectGroup } from "@/components/blocks/book-subject-group";
 import { loadBookBySlugForIsr } from "@/lib/isr-data";
@@ -48,9 +49,7 @@ export default async function BookAboutPage({
 			{book.excerpt ? (
 				<section className="flex flex-col gap-3">
 					<h2 className="font-semibold text-lg">Excerpt</h2>
-					<p className="whitespace-pre-wrap text-muted-foreground text-sm leading-relaxed">
-						{book.excerpt}
-					</p>
+					<BookExcerptMarkdown excerpt={book.excerpt} />
 				</section>
 			) : (
 				<p className="text-muted-foreground text-sm">

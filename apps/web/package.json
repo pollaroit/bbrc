@@ -45,6 +45,7 @@
 		"react-dom": "catalog:",
 		"react-hook-form": "^7.89.0",
 		"react-image-crop": "^11.1.2",
+		"react-markdown": "^10.1.0",
 		"recharts": "3.8.0",
 		"sonner": "catalog:",
 		"varlock": "catalog:",

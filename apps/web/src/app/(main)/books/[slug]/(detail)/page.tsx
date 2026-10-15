@@ -1,6 +1,8 @@
 import type { Metadata, Route } from "next";
 import Link from "next/link";
+import { BookExcerptMarkdown } from "@/components/blocks/book-excerpt-markdown";
 import { FeedbackReviewList } from "@/components/blocks/feedback-review-list";
+import { truncateBookExcerptMarkdown } from "@/lib/books/excerpt-markdown";
 import {
 	loadBookBySlugForIsr,
 	loadBookFeedbackListForIsr,
@@ -43,10 +45,10 @@ export default async function BookOverviewPage({
 	]);
 
 	const excerpt = book.excerpt?.trim() ?? "";
-	const truncated =
-		excerpt.length > OVERVIEW_EXCERPT_MAX
-			? `${excerpt.slice(0, OVERVIEW_EXCERPT_MAX).trimEnd()}…`
-			: excerpt;
+	const { content: excerptPreview, isTruncated: excerptIsTruncated } =
+		excerpt.length > 0
+			? truncateBookExcerptMarkdown(excerpt, OVERVIEW_EXCERPT_MAX)
+			: { content: "", isTruncated: false };
 	const topReviews = initialReviews.slice(0, 3);
 	const topShelves = shelves.items.slice(0, 5);
 
@@ -54,13 +56,11 @@ export default async function BookOverviewPage({
 		<>
 			<JsonLd data={bookJsonLd(book)} />
 			<div className="flex flex-col gap-10">
-				{truncated ? (
+				{excerptPreview ? (
 					<section className="flex max-w-3xl flex-col gap-3">
 						<h2 className="font-semibold text-lg">From the catalog</h2>
-						<p className="whitespace-pre-wrap text-muted-foreground text-sm leading-relaxed">
-							{truncated}
-						</p>
-						{excerpt.length > OVERVIEW_EXCERPT_MAX ? (
+						<BookExcerptMarkdown excerpt={excerptPreview} />
+						{excerptIsTruncated ? (
 							<Link
 								href={`/books/${slug}/about` as Route}
 								className="w-fit text-primary text-sm underline-offset-4 hover:underline"
