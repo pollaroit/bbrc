@@ -4,6 +4,7 @@ import { bookListRanging, bookListSearching } from "./book.listing";
 import type { GetBookListInput } from "./book.schema";
 import { resolveAuthorSlugsToNames } from "./book-author-filter";
 import { bookIdsWithReadsCountBounds } from "./book-read-count-filter";
+import { resolveSubjectSlugsToNames } from "./book-subject-filter";
 
 export type BookListQueryInput = Omit<GetBookListInput, "cursor" | "limit"> & {
 	limit?: number;
@@ -11,6 +12,7 @@ export type BookListQueryInput = Omit<GetBookListInput, "cursor" | "limit"> & {
 
 export type BuildBookListWhereOptions = {
 	resolvedAuthorNames?: string[];
+	resolvedSubjectNames?: string[];
 };
 
 export function buildBookListWhere(
@@ -80,6 +82,12 @@ export function buildBookListWhere(
 				options?.resolvedAuthorNames && options.resolvedAuthorNames.length > 0
 					? { hasSome: options.resolvedAuthorNames }
 					: undefined,
+			subjects:
+				options?.resolvedSubjectNames && options.resolvedSubjectNames.length > 0
+					? input.subjectsMatch === "all"
+						? { hasEvery: options.resolvedSubjectNames }
+						: { hasSome: options.resolvedSubjectNames }
+					: undefined,
 			countries:
 				input.countries && input.countries.length > 0
 					? { hasSome: input.countries }
@@ -103,10 +111,18 @@ export async function buildBookListWhereWithAuthors(
 	viewerUserId?: string,
 ): Promise<Prisma.BookWhereInput | null> {
 	let resolvedAuthorNames: string[] | undefined;
+	let resolvedSubjectNames: string[] | undefined;
 
 	if (input.authors && input.authors.length > 0) {
 		resolvedAuthorNames = await resolveAuthorSlugsToNames(input.authors, db);
 		if (resolvedAuthorNames.length === 0) {
+			return null;
+		}
+	}
+
+	if (input.subjects && input.subjects.length > 0) {
+		resolvedSubjectNames = await resolveSubjectSlugsToNames(input.subjects, db);
+		if (resolvedSubjectNames.length === 0) {
 			return null;
 		}
 	}
@@ -123,6 +139,7 @@ export async function buildBookListWhereWithAuthors(
 
 	const baseWhere = buildBookListWhere(input, viewerUserId, {
 		resolvedAuthorNames,
+		resolvedSubjectNames,
 	});
 
 	if (readsCountIds == null) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { subjectNameToSlug } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import {
 	Dialog,
@@ -7,6 +8,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
+import type { Route } from "next";
+import Link from "next/link";
 import { useState } from "react";
 
 const SUBJECT_PREVIEW_LIMIT = 10;
@@ -14,23 +17,57 @@ const SUBJECT_PREVIEW_LIMIT = 10;
 type BookSubjectGroupProps = {
 	label: string;
 	items: string[];
+	/** When true, each badge links to the books catalog filtered by that subject. */
+	linkable?: boolean;
 };
 
-function SubjectBadgeList({ items }: { items: string[] }) {
+function SubjectBadge({ item, linkable }: { item: string; linkable: boolean }) {
+	const badge = (
+		<Badge variant="secondary" className="font-normal">
+			{item}
+		</Badge>
+	);
+
+	if (!linkable) {
+		return badge;
+	}
+
+	const slug = subjectNameToSlug(item);
+	const href = `/books?subjects=${encodeURIComponent(slug)}` as Route;
+
+	return (
+		<Link
+			href={href}
+			className="rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+		>
+			{badge}
+		</Link>
+	);
+}
+
+function SubjectBadgeList({
+	items,
+	linkable,
+}: {
+	items: string[];
+	linkable: boolean;
+}) {
 	return (
 		<ul className="flex flex-wrap gap-1.5">
 			{items.map((item) => (
 				<li key={item}>
-					<Badge variant="secondary" className="font-normal">
-						{item}
-					</Badge>
+					<SubjectBadge item={item} linkable={linkable} />
 				</li>
 			))}
 		</ul>
 	);
 }
 
-export function BookSubjectGroup({ label, items }: BookSubjectGroupProps) {
+export function BookSubjectGroup({
+	label,
+	items,
+	linkable = false,
+}: BookSubjectGroupProps) {
 	const [dialogOpen, setDialogOpen] = useState(false);
 
 	if (items.length === 0) {
@@ -47,9 +84,7 @@ export function BookSubjectGroup({ label, items }: BookSubjectGroupProps) {
 				<ul className="flex flex-wrap gap-1.5">
 					{preview.map((item) => (
 						<li key={item}>
-							<Badge variant="secondary" className="font-normal">
-								{item}
-							</Badge>
+							<SubjectBadge item={item} linkable={linkable} />
 						</li>
 					))}
 					{hiddenCount > 0 ? (
@@ -74,7 +109,7 @@ export function BookSubjectGroup({ label, items }: BookSubjectGroupProps) {
 						<DialogTitle>{label}</DialogTitle>
 					</DialogHeader>
 					<div className="-mx-1 overflow-y-auto px-1">
-						<SubjectBadgeList items={items} />
+						<SubjectBadgeList items={items} linkable={linkable} />
 					</div>
 				</DialogContent>
 			</Dialog>

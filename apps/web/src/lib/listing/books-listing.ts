@@ -7,7 +7,11 @@ import type {
 	GetBookListCountryFacetsInput,
 	GetBookListInput,
 } from "@bbrc/api/modules/book/book.schema";
-import { bookCountryCodeSchema, isAuthorSlug } from "@bbrc/shared";
+import {
+	bookCountryCodeSchema,
+	isAuthorSlug,
+	isSubjectSlug,
+} from "@bbrc/shared";
 import {
 	parseAsArrayOf,
 	parseAsFloat,
@@ -31,6 +35,10 @@ import {
 export const bookStatuses = ["completed", "reading", "wishlist"] as const;
 
 export const viewerReadFilterValues = ["read", "unread"] as const;
+
+export const subjectMatchValues = ["any", "all"] as const;
+
+export type SubjectMatchMode = (typeof subjectMatchValues)[number];
 
 export type ViewerReadFilter = (typeof viewerReadFilterValues)[number];
 
@@ -81,6 +89,10 @@ export const bookListingSearchParams = {
 	minReads: parseAsInteger.withOptions({ shallow: false }),
 	maxReads: parseAsInteger.withOptions({ shallow: false }),
 	authors: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
+	subjects: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
+	subjectsMatch: parseAsStringLiteral(subjectMatchValues).withOptions({
+		shallow: false,
+	}),
 	countries: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
 	viewerRead: parseAsStringLiteral(viewerReadFilterValues).withOptions({
 		shallow: false,
@@ -111,6 +123,17 @@ export function normalizeAuthorSlugs(
 	}
 
 	const slugs = authors.filter(isAuthorSlug);
+	return slugs.length > 0 ? slugs : undefined;
+}
+
+export function normalizeSubjectSlugs(
+	subjects: string[] | null | undefined,
+): string[] | undefined {
+	if (!subjects || subjects.length === 0) {
+		return undefined;
+	}
+
+	const slugs = subjects.filter(isSubjectSlug);
 	return slugs.length > 0 ? slugs : undefined;
 }
 
@@ -147,6 +170,11 @@ export function toBookListCallInput(
 		minReads: params.minReads,
 		maxReads: params.maxReads,
 		authors: normalizeAuthorSlugs(params.authors),
+		subjects: normalizeSubjectSlugs(params.subjects),
+		subjectsMatch:
+			params.subjects && params.subjects.length > 1
+				? (params.subjectsMatch ?? "any")
+				: undefined,
 		countries: normalizeCountryCodes(params.countries),
 		viewerRead: params.viewerRead ?? undefined,
 		viewerFavorite: params.viewerFavorite === true ? true : undefined,
@@ -224,6 +252,14 @@ export function countBookSheetFilters(params: BookListingSearchParams): number {
 		count += 1;
 	}
 
+	if (params.subjects && params.subjects.length > 0) {
+		count += 1;
+	}
+
+	if (params.subjectsMatch === "all") {
+		count += 1;
+	}
+
 	if (params.countries && params.countries.length > 0) {
 		count += 1;
 	}
@@ -259,6 +295,8 @@ export function clearBookSheetFilters(
 		minReads: null,
 		maxReads: null,
 		authors: null,
+		subjects: null,
+		subjectsMatch: null,
 		countries: null,
 		rangeBy: null,
 		rangeMin: null,

@@ -1,6 +1,10 @@
 import type { Prisma } from "@bbrc/db";
 import { BookStatusSchema } from "@bbrc/schemas";
-import { bookCountryCodeSchema, isAuthorSlug } from "@bbrc/shared";
+import {
+	bookCountryCodeSchema,
+	isAuthorSlug,
+	isSubjectSlug,
+} from "@bbrc/shared";
 import z from "zod";
 import { defineRanging } from "../../utils/ranging";
 import { defineSearching } from "../../utils/searching";
@@ -59,6 +63,11 @@ export const bookListFiltersSchema = z
 		authors: z.array(
 			z.string().refine(isAuthorSlug, { message: "Invalid author slug" }),
 		),
+		subjects: z.array(
+			z.string().refine(isSubjectSlug, { message: "Invalid subject slug" }),
+		),
+		/** With multiple subjects: match any (OR) vs all (AND). Defaults to any. */
+		subjectsMatch: z.enum(["any", "all"]),
 		countries: z.array(bookCountryCodeSchema),
 		statuses: z.array(BookStatusSchema),
 		/** Personal read state for the authenticated viewer. */

@@ -15,6 +15,7 @@ import {
 } from "@bbrc/ui/components/select";
 import { useMemo } from "react";
 import { BooksListExportMenu } from "@/components/blocks/books-list-export-menu";
+import { BooksListingSubjectSearch } from "@/components/blocks/books-listing-subject-search";
 import { ListingAuthorMultiSelect } from "@/components/listing/listing-author-multi-select";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
 import { ListingCountryMultiSelect } from "@/components/listing/listing-country-multi-select";
@@ -22,7 +23,6 @@ import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet"
 import { ListingIntegerRangeFields } from "@/components/listing/listing-integer-range-fields";
 import { ListingRangeFields } from "@/components/listing/listing-range-fields";
 import { ListingRatingRangeFields } from "@/components/listing/listing-rating-range-fields";
-import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
 import { authClient } from "@/lib/auth-client";
 import {
@@ -78,12 +78,25 @@ export function BooksListingToolbar() {
 
 	return (
 		<div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-			<ListingSearch
-				value={params.search ?? ""}
-				onChange={(search) => {
+			<BooksListingSubjectSearch
+				search={params.search}
+				subjects={params.subjects ?? []}
+				subjectsMatch={params.subjectsMatch}
+				onSearchChange={(search) => {
 					void setParams({ search });
 				}}
-				placeholder="Search by title or slug…"
+				onSubjectsChange={(subjects) => {
+					void setParams({
+						subjects,
+						subjectsMatch:
+							subjects != null && subjects.length > 1
+								? (params.subjectsMatch ?? "any")
+								: null,
+					});
+				}}
+				onSubjectsMatchChange={(subjectsMatch) => {
+					void setParams({ subjectsMatch });
+				}}
 			/>
 
 			<div className="flex flex-wrap items-center gap-2 lg:shrink-0">

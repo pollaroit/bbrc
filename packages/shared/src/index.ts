@@ -14,4 +14,5 @@ export * from "./scheduled-deadlines";
 export * from "./shelves";
 export * from "./sitting-display";
 export * from "./slug";
+export * from "./subject-slug";
 export * from "./username";

@@ -64,7 +64,7 @@ export default async function BookAboutPage({
 				<section className="flex flex-col gap-4">
 					<h2 className="font-semibold text-lg">Topics from Open Library</h2>
 					<div className="grid gap-4 sm:grid-cols-2">
-						<BookSubjectGroup label="Subjects" items={subjects} />
+						<BookSubjectGroup label="Subjects" items={subjects} linkable />
 						<BookSubjectGroup label="People" items={subjectPeople} />
 						<BookSubjectGroup label="Times & places" items={subjectTimes} />
 					</div>
