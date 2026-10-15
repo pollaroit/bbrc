@@ -1,7 +1,10 @@
 import type { Database } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
 import { getBookPollSelect } from "../book/book.schema";
-import { prerequisitesSatisfiedForPoll } from "../book/book-reading-prerequisites";
+import {
+	loadSeriesBooksStatusBySeriesId,
+	wishlistBookEligibleForPoll,
+} from "../series/series-poll-eligibility";
 import type {
 	CreateSittingPollInput,
 	PreviewSittingPollOptionsOutput,
@@ -70,13 +73,30 @@ export async function loadPollDrawContext(
 					},
 				},
 			},
+			seriesMembership: {
+				select: {
+					position: true,
+					seriesId: true,
+				},
+			},
 		},
 	});
 
-	const eligibleWishlistBooks = wishlistBooks.filter((book) =>
-		prerequisitesSatisfiedForPoll(
-			book.readAfterPrerequisites.map((row) => row.prerequisiteBook),
+	const seriesIds = [
+		...new Set(
+			wishlistBooks.flatMap((book) =>
+				book.seriesMembership ? [book.seriesMembership.seriesId] : [],
+			),
 		),
+	];
+
+	const seriesBooksBySeriesId = await loadSeriesBooksStatusBySeriesId(
+		seriesIds,
+		db,
+	);
+
+	const eligibleWishlistBooks = wishlistBooks.filter((book) =>
+		wishlistBookEligibleForPoll(book, seriesBooksBySeriesId),
 	);
 
 	if (eligibleWishlistBooks.length < take) {

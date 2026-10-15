@@ -127,8 +127,9 @@ export function CreateSittingPollFilters({
 				<CardHeader className="border-border border-b pb-4">
 					<CardTitle className="text-base">Wishlist pool</CardTitle>
 					<CardDescription>
-						Only wishlist titles that pass read-after rules and match every
-						filter below can appear on the poll.
+						Only wishlist titles that pass read-after rules, earlier books in
+						the same series (catalog completed), and every filter below can
+						appear on the poll.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-6 pt-6">
