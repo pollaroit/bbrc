@@ -2,6 +2,8 @@ import type { IsrRevalidator } from "@bbrc/api/isr-revalidation";
 import {
 	bookDetailIsrPath,
 	postDetailIsrPath,
+	seriesDetailIsrPath,
+	seriesListIsrPath,
 	sittingDetailIsrPath,
 	sittingVoteIsrPath,
 	userProfileIsrPath,
@@ -45,6 +47,13 @@ export function createIsrRevalidator(): IsrRevalidator {
 			revalidatePath("/feed");
 			revalidatePath("/feed/posts");
 			revalidatePath("/feed/books");
+		},
+		revalidateSeries(slug) {
+			revalidatePageAndLayout(seriesListIsrPath());
+			revalidatePageAndLayout(seriesDetailIsrPath(slug));
+		},
+		revalidateBooksCatalog() {
+			revalidatePath("/books");
 		},
 	};
 }

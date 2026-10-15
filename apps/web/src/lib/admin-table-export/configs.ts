@@ -3,6 +3,7 @@ import type { ListAdminCommentsOutput } from "@bbrc/api/modules/admin/admin-comm
 import type { ListAdminDocumentsOutput } from "@bbrc/api/modules/admin/admin-document.schema";
 import type { ListAdminFeedbacksOutput } from "@bbrc/api/modules/admin/admin-feedback.schema";
 import type { ListAdminPostsOutput } from "@bbrc/api/modules/admin/admin-post.schema";
+import type { ListAdminSeriesOutput } from "@bbrc/api/modules/admin/admin-series.schema";
 import type { ListAdminShelvesOutput } from "@bbrc/api/modules/admin/admin-shelf.schema";
 import type { ListAdminSittingsOutput } from "@bbrc/api/modules/admin/admin-sitting.schema";
 import type { ListAdminUsersOutput } from "@bbrc/api/modules/admin/admin-user.schema";
@@ -20,6 +21,7 @@ type BookItem = ListAdminBooksOutput["items"][number];
 type SittingItem = ListAdminSittingsOutput["items"][number];
 type FeedbackItem = ListAdminFeedbacksOutput["items"][number];
 type ShelfItem = ListAdminShelvesOutput["items"][number];
+type SeriesItem = ListAdminSeriesOutput["items"][number];
 type PostItem = ListAdminPostsOutput["items"][number];
 type CommentItem = ListAdminCommentsOutput["items"][number];
 type DocumentItem = ListAdminDocumentsOutput["items"][number];
@@ -403,6 +405,25 @@ export const adminShelvesExportConfig: AdminTableExportConfig<ShelfItem> = {
 	resource: "shelves",
 	fields: adminShelvesExportFields,
 	fetchPage: (input) => client.admin.listShelves(input),
+};
+
+export const adminSeriesExportFields: AdminTableExportField<SeriesItem>[] = [
+	{ key: "slug", label: "Slug", getValue: (r) => r.slug },
+	{ key: "title", label: "Title", getValue: (r) => r.title },
+	{
+		key: "description",
+		label: "Description",
+		getValue: (r) => r.description,
+	},
+	{ key: "bookCount", label: "Books", getValue: (r) => r.bookCount },
+	{ key: "createdAt", label: "Created", getValue: (r) => r.createdAt },
+	{ key: "updatedAt", label: "Updated", getValue: (r) => r.updatedAt },
+];
+
+export const adminSeriesExportConfig: AdminTableExportConfig<SeriesItem> = {
+	resource: "series",
+	fields: adminSeriesExportFields,
+	fetchPage: (input) => client.admin.listSeries(input),
 };
 
 export const adminPostsExportConfig: AdminTableExportConfig<PostItem> = {

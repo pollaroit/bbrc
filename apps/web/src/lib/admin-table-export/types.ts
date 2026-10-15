@@ -6,7 +6,8 @@ export type AdminTableExportResource =
 	| "shelves"
 	| "posts"
 	| "comments"
-	| "documents";
+	| "documents"
+	| "series";
 
 export type AdminTableExportFormat = "json" | "csv";
 

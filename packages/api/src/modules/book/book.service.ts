@@ -2,6 +2,7 @@ import type { Database, Prisma } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { notifyBookAddedToLibrary } from "../notification/notification-triggers";
+import { mapBookSeriesSummary } from "../series/series.service";
 import { bookListSorting } from "./book.listing";
 import {
 	type GetBookListAuthorFacetsInput,
@@ -28,6 +29,12 @@ import { generateBookSlug } from "./book-slug";
 
 const bookListSelect = {
 	...getBookListFields,
+	seriesMembership: {
+		select: {
+			position: true,
+			series: { select: { slug: true, title: true } },
+		},
+	},
 	_count: {
 		select: {
 			documents: { where: { status: "approved" as const } },
@@ -94,18 +101,15 @@ export async function getBookList(
 	const page = pagination.paginate(rows);
 
 	return {
-		items: page.items.map((row) => ({
-			slug: row.slug,
-			title: row.title,
-			authors: row.authors,
-			coverId: row.coverId,
-			openLibraryRating: row.openLibraryRating,
-			pages: row.pages,
-			publishedIn: row.publishedIn,
-			status: row.status,
-			approvedDocumentCount: row._count.documents,
-			readCount: row._count.reads,
-		})),
+		items: page.items.map((row) => {
+			const { seriesMembership, _count, ...fields } = row;
+			return {
+				...fields,
+				approvedDocumentCount: _count.documents,
+				readCount: _count.reads,
+				series: mapBookSeriesSummary(seriesMembership),
+			};
+		}),
 		metadata: {
 			...page.metadata,
 			...(total != null ? { total } : {}),
@@ -191,6 +195,12 @@ export async function getBookBySlug(
 				},
 			},
 			readAfterPrerequisites: readAfterBookInclude,
+			seriesMembership: {
+				select: {
+					position: true,
+					series: { select: { slug: true, title: true } },
+				},
+			},
 		},
 	});
 
@@ -203,11 +213,12 @@ export async function getBookBySlug(
 		});
 	}
 
-	const { readAfterPrerequisites, ...rest } = book;
+	const { readAfterPrerequisites, seriesMembership, ...rest } = book;
 
 	return normalizeBookRecord({
 		...rest,
 		readAfterBooks: mapReadAfterBooks(readAfterPrerequisites),
+		series: mapBookSeriesSummary(seriesMembership),
 	});
 }
 

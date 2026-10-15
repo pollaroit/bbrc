@@ -4,6 +4,7 @@ import { getBookFeedbackList } from "@bbrc/api/modules/feedback/feedback.service
 import { getPostBySlug } from "@bbrc/api/modules/post/post.service";
 import { listBookReads } from "@bbrc/api/modules/read/read.service";
 import { getRpChart, getRpEventList } from "@bbrc/api/modules/rp/rp.service";
+import { getSeriesBySlug } from "@bbrc/api/modules/series/series.service";
 import {
 	getShelfBySlug,
 	listShelvesForBook,
@@ -42,6 +43,10 @@ export const loadBookReadsForIsr = cache((slug: string) =>
 
 export const loadBookShelvesForIsr = cache((slug: string) =>
 	listShelvesForBook(slug, undefined, db),
+);
+
+export const loadSeriesBySlugForIsr = cache((slug: string) =>
+	getSeriesBySlug(slug, db),
 );
 
 export const loadPostBySlugForIsr = cache((slug: string) =>

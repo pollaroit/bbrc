@@ -80,6 +80,17 @@ export function BookCard({
 					<p className="text-muted-foreground text-xs">
 						{formatBookStatusLabel(book.status)}
 					</p>
+					{book.series ? (
+						<p className="pointer-events-auto relative z-2 mt-0.5 line-clamp-1 text-muted-foreground text-xs">
+							<Link
+								href={`/series/${book.series.slug}` as Route}
+								className="underline-offset-4 hover:text-primary hover:underline"
+								onClick={(event) => event.stopPropagation()}
+							>
+								{book.series.title} · #{book.series.position}
+							</Link>
+						</p>
+					) : null}
 					<h2 className="mt-0.5 line-clamp-2 font-semibold text-base leading-snug tracking-tight">
 						{book.title}
 					</h2>

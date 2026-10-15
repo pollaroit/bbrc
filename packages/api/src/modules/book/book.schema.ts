@@ -7,6 +7,7 @@ import {
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import { bookCountriesSchema, isAuthorSlug } from "@bbrc/shared";
 import { z } from "zod";
+import { BookSeriesSummarySchema } from "../series/series.schema";
 import {
 	bookListFiltersSchema,
 	bookListRanging,
@@ -138,6 +139,7 @@ export const BookWithRequestedBySchema = BookSchema.pick(
 export const BookListItemSchema = BookSchema.pick(getBookListFields).extend({
 	approvedDocumentCount: z.number().int().min(0),
 	readCount: z.number().int().min(0),
+	series: BookSeriesSummarySchema.nullable(),
 });
 
 export const BookListMetadataSchema = CursorPaginationMetadataSchema.extend({
@@ -253,6 +255,7 @@ export const GetBookBySlugOutputSchema = BookSchema.omit({
 			coverId: BookSchema.shape.coverId,
 		}),
 	),
+	series: BookSeriesSummarySchema.nullable(),
 });
 
 export type TGetBookBySlugOutputSchema = z.infer<

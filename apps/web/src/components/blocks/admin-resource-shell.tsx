@@ -84,6 +84,12 @@ export const adminShelfTabs = [
 	{ href: "/admin/shelves/stats" as Route, label: "Stats" },
 ] as const;
 
+export const adminSeriesTabs = [
+	{ href: "/admin/series" as Route, label: "Overview" },
+	{ href: "/admin/series/list" as Route, label: "List" },
+	{ href: "/admin/series/stats" as Route, label: "Stats" },
+] as const;
+
 export const adminPostTabs = [
 	{ href: "/admin/posts" as Route, label: "Overview" },
 	{ href: "/admin/posts/list" as Route, label: "List" },

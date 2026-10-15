@@ -91,6 +91,19 @@ import {
 	listAdminPosts,
 } from "./admin-post.service";
 import {
+	AdminSeriesOverviewOutputSchema,
+	GetAdminSeriesOverviewInputSchema,
+	GetAdminSeriesStatsInputSchema,
+	GetAdminSeriesStatsOutputSchema,
+	ListAdminSeriesInputSchema,
+	ListAdminSeriesOutputSchema,
+} from "./admin-series.schema";
+import {
+	getAdminSeriesOverview,
+	getAdminSeriesStats,
+	listAdminSeries,
+} from "./admin-series.service";
+import {
 	AdminShelfOverviewOutputSchema,
 	GetAdminShelfOverviewInputSchema,
 	GetAdminShelfStatsInputSchema,
@@ -360,5 +373,21 @@ export const adminRouter = {
 		.output(GetAdminDocumentStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminDocumentStats(input, context.db),
+		),
+	getSeriesOverview: adminProcedure
+		.input(GetAdminSeriesOverviewInputSchema)
+		.output(AdminSeriesOverviewOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminSeriesOverview(input, context.db),
+		),
+	listSeries: adminProcedure
+		.input(ListAdminSeriesInputSchema)
+		.output(ListAdminSeriesOutputSchema)
+		.handler(async ({ input, context }) => listAdminSeries(input, context.db)),
+	getSeriesStats: adminProcedure
+		.input(GetAdminSeriesStatsInputSchema)
+		.output(GetAdminSeriesStatsOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminSeriesStats(input, context.db),
 		),
 };

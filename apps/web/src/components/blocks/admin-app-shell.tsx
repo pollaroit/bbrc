@@ -27,6 +27,7 @@ import {
 	Home,
 	LayoutDashboard,
 	Library,
+	ListOrdered,
 	MessageCircle,
 	MessageSquareQuote,
 	Sparkles,
@@ -144,6 +145,35 @@ const adminNavSections: AdminNavSection[] = [
 				href: "/admin/books/stats" as Route,
 				label: "Stats",
 				isActive: (pathname) => pathname.startsWith("/admin/books/stats"),
+			},
+		],
+	},
+	{
+		id: "series",
+		label: "Series",
+		icon: ListOrdered,
+		defaultHref: "/admin/series" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/series"),
+		children: [
+			{
+				href: "/admin/series" as Route,
+				label: "Overview",
+				isActive: (pathname) => pathname === "/admin/series",
+			},
+			{
+				href: "/admin/series/list" as Route,
+				label: "List",
+				isActive: (pathname) =>
+					pathname.startsWith("/admin/series/list") ||
+					pathname.startsWith("/admin/series/new") ||
+					(/^\/admin\/series\/[^/]+$/.test(pathname) &&
+						!pathname.startsWith("/admin/series/list") &&
+						!pathname.startsWith("/admin/series/stats")),
+			},
+			{
+				href: "/admin/series/stats" as Route,
+				label: "Stats",
+				isActive: (pathname) => pathname.startsWith("/admin/series/stats"),
 			},
 		],
 	},

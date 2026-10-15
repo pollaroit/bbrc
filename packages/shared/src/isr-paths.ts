@@ -26,3 +26,11 @@ export function userShelvesListIsrPath(username: string) {
 export function userShelfDetailIsrPath(username: string, shelfSlug: string) {
 	return `/users/${username}/shelves/${shelfSlug}`;
 }
+
+export function seriesListIsrPath() {
+	return "/series";
+}
+
+export function seriesDetailIsrPath(slug: string) {
+	return `/series/${slug}`;
+}

@@ -1,0 +1,44 @@
+model Series {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
+  /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
+  slug String @unique
+
+  /// @zod.min(1, "Title is required").max(120, "Title must be at most 120 characters long")
+  title String
+
+  /// @zod.max(2000, "Description must be at most 2000 characters long").nullish()
+  description String? @db.Text
+
+  books SeriesBook[]
+
+  @@index([title])
+  @@map("series")
+}
+
+model SeriesBook {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.uuid("Invalid series id")
+  seriesId String @map("series_id")
+  series   Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid book id")
+  bookId String @unique @map("book_id")
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  /// 1-based order within the series.
+  /// @zod.int().min(1)
+  position Int
+
+  @@unique([seriesId, position])
+  @@index([seriesId, position])
+  @@map("series_book")
+}

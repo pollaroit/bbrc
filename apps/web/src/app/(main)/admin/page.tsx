@@ -31,6 +31,11 @@ const resources = [
 		description: "Catalog overview, rankings, list, and stats.",
 	},
 	{
+		href: "/admin/series" as Route,
+		title: "Series",
+		description: "Multi-book reading order and list badges.",
+	},
+	{
 		href: "/admin/sittings" as Route,
 		title: "Sittings",
 		description: "Reading cycles, polls, participation, and timelines.",

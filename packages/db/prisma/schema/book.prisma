@@ -54,6 +54,7 @@ model Book {
 
   readAfterPrerequisites BookReadingPrerequisite[] @relation("BookReadAfter")
   prerequisiteForBooks   BookReadingPrerequisite[] @relation("BookPrerequisiteFor")
+  seriesMembership       SeriesBook?
 
   /// @zod.uuid("Invalid UUID")
   requestedById String? @map("requested_by_id")

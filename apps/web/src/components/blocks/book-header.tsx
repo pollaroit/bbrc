@@ -136,6 +136,18 @@ export function BookHeader({ book }: BookHeaderProps) {
 							<h1 className="font-bold text-2xl tracking-tight sm:text-3xl">
 								{book.title}
 							</h1>
+							{book.series ? (
+								<p className="text-muted-foreground text-sm">
+									<span className="tabular-nums">#{book.series.position}</span>{" "}
+									in{" "}
+									<Link
+										href={`/series/${book.series.slug}` as Route}
+										className="text-foreground underline-offset-4 hover:underline"
+									>
+										{book.series.title}
+									</Link>
+								</p>
+							) : null}
 							<AuthorLinks authors={book.authors} />
 							<BookReadAfterLinks readAfterBooks={book.readAfterBooks} />
 							{book.requestedBy ? (

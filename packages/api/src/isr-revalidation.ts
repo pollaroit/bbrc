@@ -7,4 +7,6 @@ export type IsrRevalidator = {
 	revalidateUserShelves: (username: string, shelfSlug?: string) => void;
 	revalidateHome: () => void;
 	revalidateFeeds: () => void;
+	revalidateSeries: (slug: string) => void;
+	revalidateBooksCatalog: () => void;
 };

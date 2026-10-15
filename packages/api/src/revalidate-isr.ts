@@ -34,6 +34,14 @@ export function revalidateFeedsIsr(context: Context) {
 	context.revalidateIsr?.revalidateFeeds();
 }
 
+export function revalidateSeriesIsr(context: Context, slug: string) {
+	context.revalidateIsr?.revalidateSeries(slug);
+}
+
+export function revalidateBooksCatalogIsr(context: Context) {
+	context.revalidateIsr?.revalidateBooksCatalog();
+}
+
 export async function revalidateCommentIsr(
 	context: Context,
 	db: Database,
