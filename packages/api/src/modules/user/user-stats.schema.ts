@@ -159,6 +159,8 @@ export const GetUserStatsOutputSchema = zod.object({
 
 	topAuthors: zod.array(AuthorCountryRowSchema),
 	topCountries: zod.array(AuthorCountryRowSchema),
+	topAuthorsByRating: zod.array(AuthorCountryRowSchema),
+	topCountriesByRating: zod.array(AuthorCountryRowSchema),
 
 	ratedHigherThanClub: zod.array(RatingCompareBookSchema),
 	ratedLowerThanClub: zod.array(RatingCompareBookSchema),

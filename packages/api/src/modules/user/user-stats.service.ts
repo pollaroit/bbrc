@@ -275,9 +275,9 @@ export async function getUserStats(
 				...(activityRange ? { createdAt: activityRange } : {}),
 			},
 		}),
-		db.book.count({ where: { status: "completed" } }),
+		db.book.count(),
 		loadMemberReadCountsForPeriod(db, period, bounds),
-		loadClubReadCountsByBook(db, period, bounds),
+		loadClubReadCountsByBook(db),
 		db.feedback.findMany({
 			where: {
 				authorId: userId,
@@ -301,9 +301,7 @@ export async function getUserStats(
 		...memberReadCounts.values(),
 	]);
 
-	const catalogBooksRead = readsInPeriod.filter(
-		(read) => read.book.status === "completed",
-	).length;
+	const catalogBooksRead = readsInPeriod.length;
 	const catalogCoveragePercent =
 		catalogBookCount > 0
 			? Math.min(
@@ -343,28 +341,13 @@ export async function getUserStats(
 		bounds,
 	);
 
-	const paceBounds =
-		datedForAnalytics.length > 0
-			? {
-					start: datedForAnalytics.reduce(
-						(min, row) =>
-							compareMonths(row.finish, min) < 0 ? row.finish : min,
-						datedForAnalytics[0]!.finish,
-					),
-					end: datedForAnalytics.reduce(
-						(max, row) =>
-							compareMonths(row.finish, max) > 0 ? row.finish : max,
-						datedForAnalytics[0]!.finish,
-					),
-				}
-			: bounds;
-
 	const readingPace =
 		datedForAnalytics.length > 0
 			? computeReadingPace(
 					datedForAnalytics.length,
 					datedForAnalytics.reduce((sum, row) => sum + row.pages, 0),
-					paceBounds,
+					bounds,
+					period,
 				)
 			: null;
 
@@ -426,6 +409,8 @@ export async function getUserStats(
 		"countries",
 		feedbackByBookId,
 	);
+	const topAuthorsByRating = sortAuthorCountryByRating(topAuthors);
+	const topCountriesByRating = sortAuthorCountryByRating(topCountries);
 
 	const ratedCompare = buildRatingCompare(datedForAnalytics, feedbackByBookId);
 
@@ -539,6 +524,8 @@ export async function getUserStats(
 		})),
 		topAuthors,
 		topCountries,
+		topAuthorsByRating,
+		topCountriesByRating,
 		ratedHigherThanClub: ratedCompare.higher,
 		ratedLowerThanClub: ratedCompare.lower,
 		topReviews,
@@ -578,15 +565,28 @@ async function loadMemberReadCountsForPeriod(
 
 async function loadClubReadCountsByBook(
 	db: Database,
-	period: ReturnType<typeof parseUserStatsPeriod>,
-	bounds: { start: UserStatsMonth; end: UserStatsMonth },
 ): Promise<Map<string, number>> {
 	const groups = await db.read.groupBy({
 		by: ["bookId"],
-		where: readWhereForStatsPeriod(period, bounds),
+		where: {
+			user: visibleOnSiteUserWhere,
+		},
 		_count: { _all: true },
 	});
 	return new Map(groups.map((row) => [row.bookId, row._count._all]));
+}
+
+function sortAuthorCountryByRating<
+	TRow extends { userAverageRating: number | null; bookCount: number },
+>(rows: TRow[]): TRow[] {
+	return [...rows]
+		.filter((row) => row.userAverageRating != null)
+		.sort(
+			(a, b) =>
+				(b.userAverageRating ?? 0) - (a.userAverageRating ?? 0) ||
+				b.bookCount - a.bookCount,
+		)
+		.slice(0, 5);
 }
 
 function buildAuthorCountryRows(

@@ -15,12 +15,14 @@ import {
 	ChartTooltip,
 	ChartTooltipContent,
 } from "@bbrc/ui/components/chart";
+import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
+import { Label } from "@bbrc/ui/components/label";
 import {
 	Select,
 	SelectContent,
@@ -95,7 +97,7 @@ export function UserStatsPage({ username, displayName }: UserStatsPageProps) {
 	const [allReadsOpen, setAllReadsOpen] = useState(false);
 	const [publicationMode, setPublicationMode] = useState<
 		"year" | "decade" | "century"
-	>("year");
+	>("decade");
 	const [cumulativeMetric, setCumulativeMetric] = useState<
 		"books" | "pages" | "authors"
 	>("books");
@@ -279,8 +281,18 @@ export function UserStatsPage({ username, displayName }: UserStatsPageProps) {
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="grid gap-6 sm:grid-cols-2">
-						<PaceBlock title="Books" pace={data.readingPace} mode="books" />
-						<PaceBlock title="Pages" pace={data.readingPace} mode="pages" />
+						<PaceBlock
+							title="Books"
+							pace={data.readingPace}
+							mode="books"
+							periodType={data.periodType}
+						/>
+						<PaceBlock
+							title="Pages"
+							pace={data.readingPace}
+							mode="pages"
+							periodType={data.periodType}
+						/>
 					</CardContent>
 				</Card>
 			) : null}
@@ -318,7 +330,7 @@ export function UserStatsPage({ username, displayName }: UserStatsPageProps) {
 			<div className="grid gap-4 lg:grid-cols-2">
 				<HistogramCard
 					title="Subject breakdown"
-					description="Top subjects among dated reads"
+					description="Grouped from Open Library subject tags (similar labels merged)"
 				>
 					<ul className="flex flex-col gap-2">
 						{data.subjectBreakdown.length === 0 ? (
@@ -399,13 +411,15 @@ export function UserStatsPage({ username, displayName }: UserStatsPageProps) {
 			</div>
 
 			<TopAuthorsCountries
-				title="Most read authors"
-				rows={data.topAuthors}
+				title="Authors"
+				rowsByCount={data.topAuthors}
+				rowsByRating={data.topAuthorsByRating}
 				mode="authors"
 			/>
 			<TopAuthorsCountries
-				title="Most read countries"
-				rows={data.topCountries}
+				title="Countries"
+				rowsByCount={data.topCountries}
+				rowsByRating={data.topCountriesByRating}
 				mode="countries"
 			/>
 
@@ -586,26 +600,40 @@ function PaceBlock({
 	title,
 	pace,
 	mode,
+	periodType,
 }: {
 	title: string;
 	pace: NonNullable<GetUserStatsOutput["readingPace"]>;
 	mode: "books" | "pages";
+	periodType: GetUserStatsOutput["periodType"];
 }) {
 	const perYear = mode === "books" ? pace.booksPerYear : pace.pagesPerYear;
 	const perMonth = mode === "books" ? pace.booksPerMonth : pace.pagesPerMonth;
 	const perWeek = mode === "books" ? pace.booksPerWeek : pace.pagesPerWeek;
 	const perDay = mode === "books" ? pace.booksPerDay : pace.pagesPerDay;
+	const yearLabel =
+		periodType === "year"
+			? mode === "books"
+				? "Books in year"
+				: "Pages in year"
+			: mode === "books"
+				? "Per year"
+				: "Per year";
 
 	return (
 		<div className="flex flex-col gap-2 text-sm">
 			<p className="font-medium">{title}</p>
 			<dl className="grid grid-cols-2 gap-x-4 gap-y-1 tabular-nums">
+				{periodType !== "month" ? (
+					<div className="flex justify-between gap-2">
+						<dt className="text-muted-foreground">{yearLabel}</dt>
+						<dd>{formatPace(perYear)}</dd>
+					</div>
+				) : null}
 				<div className="flex justify-between gap-2">
-					<dt className="text-muted-foreground">Per year</dt>
-					<dd>{formatPace(perYear)}</dd>
-				</div>
-				<div className="flex justify-between gap-2">
-					<dt className="text-muted-foreground">Per month</dt>
+					<dt className="text-muted-foreground">
+						{periodType === "month" ? "In month" : "Per month"}
+					</dt>
 					<dd>{formatPace(perMonth)}</dd>
 				</div>
 				<div className="flex justify-between gap-2">
@@ -687,21 +715,47 @@ function BarHistogram({
 
 function TopAuthorsCountries({
 	title,
-	rows,
+	rowsByCount,
+	rowsByRating,
 	mode,
 }: {
 	title: string;
-	rows: GetUserStatsOutput["topAuthors"];
+	rowsByCount: GetUserStatsOutput["topAuthors"];
+	rowsByRating: GetUserStatsOutput["topAuthorsByRating"];
 	mode: "authors" | "countries";
 }) {
+	const [showMostRated, setShowMostRated] = useState(false);
+	const rows = showMostRated ? rowsByRating : rowsByCount;
+	const toggleId =
+		mode === "authors"
+			? "user-stats-authors-rated"
+			: "user-stats-countries-rated";
+
 	return (
 		<Card size="sm">
-			<CardHeader>
+			<CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
 				<CardTitle>{title}</CardTitle>
+				<div className="flex items-center gap-2">
+					<Checkbox
+						id={toggleId}
+						checked={showMostRated}
+						onCheckedChange={(checked) => setShowMostRated(checked === true)}
+					/>
+					<Label
+						htmlFor={toggleId}
+						className="cursor-pointer font-normal text-sm"
+					>
+						Show most rated
+					</Label>
+				</div>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
 				{rows.length === 0 ? (
-					<p className="text-muted-foreground text-sm">No data yet.</p>
+					<p className="text-muted-foreground text-sm">
+						{showMostRated
+							? "Rate books in this period to see top averages."
+							: "No data yet."}
+					</p>
 				) : (
 					rows.map((row) => (
 						<div
@@ -800,7 +854,9 @@ function PopularReads({
 		<Card size="sm">
 			<CardHeader>
 				<CardTitle>{title}</CardTitle>
-				<CardDescription>Club-wide read counts in this period</CardDescription>
+				<CardDescription>
+					Your reads in this period; club totals are all-time
+				</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<ul className="flex flex-col gap-2">

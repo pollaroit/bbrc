@@ -1,6 +1,11 @@
 import { FEEDBACK_RATING_STEPS } from "../feedback-rating";
-import type { UserStatsMonth, UserStatsPeriodBounds } from "./period";
+import type {
+	UserStatsMonth,
+	UserStatsPeriod,
+	UserStatsPeriodBounds,
+} from "./period";
 import { enumerateMonthsInBounds, monthSortKey } from "./period";
+import { canonicalSubjectKey, canonicalSubjectLabel } from "./subjects";
 
 export const USER_STATS_PAGE_BUCKETS = [
 	"1-100",
@@ -63,6 +68,7 @@ export function computeReadingPace(
 	datedReadCount: number,
 	totalPages: number,
 	bounds: UserStatsPeriodBounds,
+	period?: UserStatsPeriod,
 ): {
 	booksPerYear: number;
 	booksPerMonth: number;
@@ -80,6 +86,32 @@ export function computeReadingPace(
 	const years = monthSpan / 12;
 	const weeks = (monthSpan * 30.437) / 7;
 	const days = monthSpan * 30.437;
+
+	if (period?.type === "year") {
+		return {
+			booksPerYear: datedReadCount,
+			booksPerMonth: datedReadCount / monthSpan,
+			booksPerWeek: datedReadCount / weeks,
+			booksPerDay: datedReadCount / days,
+			pagesPerYear: totalPages,
+			pagesPerMonth: totalPages / monthSpan,
+			pagesPerWeek: totalPages / weeks,
+			pagesPerDay: totalPages / days,
+		};
+	}
+
+	if (period?.type === "month") {
+		return {
+			booksPerYear: datedReadCount * 12,
+			booksPerMonth: datedReadCount,
+			booksPerWeek: datedReadCount / weeks,
+			booksPerDay: datedReadCount / days,
+			pagesPerYear: totalPages * 12,
+			pagesPerMonth: totalPages,
+			pagesPerWeek: totalPages / weeks,
+			pagesPerDay: totalPages / days,
+		};
+	}
 
 	const booksPerYear = datedReadCount / years;
 	const pagesPerYear = totalPages / years;
@@ -232,7 +264,9 @@ export function subjectBreakdown(
 	for (const subjects of subjectLists) {
 		const seen = new Set<string>();
 		for (const subject of subjects) {
-			const key = subject.trim();
+			const raw = subject.trim();
+			if (!raw) continue;
+			const key = canonicalSubjectKey(raw);
 			if (!key || seen.has(key)) continue;
 			seen.add(key);
 			map.set(key, (map.get(key) ?? 0) + 1);
@@ -245,8 +279,8 @@ export function subjectBreakdown(
 	return [...map.entries()]
 		.sort((a, b) => b[1] - a[1])
 		.slice(0, limit)
-		.map(([subject, count]) => ({
-			subject,
+		.map(([key, count]) => ({
+			subject: canonicalSubjectLabel(key),
 			count,
 			percentage: Math.round((count / total) * 1000) / 10,
 		}));
