@@ -6,6 +6,7 @@ import type { ListUserReadsInput } from "@bbrc/api/modules/read/read.schema";
 import { userReadSortableFields } from "@bbrc/api/modules/read/read.schema";
 import {
 	parseAsArrayOf,
+	parseAsBoolean,
 	parseAsFloat,
 	parseAsInteger,
 	parseAsString,
@@ -68,6 +69,7 @@ export const userReadListingSearchParams = {
 	maxReads: parseAsInteger.withOptions({ shallow: false }),
 	authors: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
 	countries: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
+	mutualOnly: parseAsBoolean.withDefault(false).withOptions({ shallow: false }),
 };
 
 export function useUserReadsListingSearchParams() {
@@ -97,6 +99,7 @@ export function toUserReadsListCallInput(
 		maxReads: params.maxReads,
 		authors: normalizeAuthorSlugs(params.authors),
 		countries: normalizeCountryCodes(params.countries),
+		mutualOnly: params.mutualOnly ? true : undefined,
 		limit: 12,
 	}) as Partial<ListUserReadsInput>;
 }
@@ -172,6 +175,10 @@ export function countUserReadsSheetFilters(
 		count += 1;
 	}
 
+	if (params.mutualOnly) {
+		count += 1;
+	}
+
 	return count;
 }
 
@@ -191,6 +198,7 @@ export function clearUserReadsSheetFilters(
 		rangeBy: null,
 		rangeMin: null,
 		rangeMax: null,
+		mutualOnly: false,
 	});
 }
 

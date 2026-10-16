@@ -4,6 +4,8 @@ import {
 	userReadRangeableFields,
 	userReadSortableFields,
 } from "@bbrc/api/modules/read/read.schema";
+import { Checkbox } from "@bbrc/ui/components/checkbox";
+import { Label } from "@bbrc/ui/components/label";
 import { useMemo } from "react";
 import { ListingAuthorMultiSelect } from "@/components/listing/listing-author-multi-select";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
@@ -14,6 +16,7 @@ import { ListingRangeFields } from "@/components/listing/listing-range-fields";
 import { ListingRatingRangeFields } from "@/components/listing/listing-rating-range-fields";
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
+import { authClient } from "@/lib/auth-client";
 import {
 	bookStatuses,
 	bookStatusFilterLabels,
@@ -28,6 +31,7 @@ import {
 } from "@/lib/listing/user-reads-listing";
 
 export function UserReadsListingToolbar() {
+	const { data: session } = authClient.useSession();
 	const [params, setParams] = useUserReadsListingSearchParams();
 	const sheetFilterCount = countUserReadsSheetFilters(params);
 	const authorFacetsInput = useMemo(
@@ -50,6 +54,24 @@ export function UserReadsListingToolbar() {
 			/>
 
 			<div className="flex flex-wrap items-center gap-2 lg:shrink-0">
+				{session?.user ? (
+					<div className="flex items-center gap-2 border border-border px-3 py-2">
+						<Checkbox
+							id="user-reads-mutual-only"
+							checked={params.mutualOnly}
+							onCheckedChange={(checked) => {
+								void setParams({ mutualOnly: checked === true });
+							}}
+						/>
+						<Label
+							htmlFor="user-reads-mutual-only"
+							className="cursor-pointer font-normal text-sm"
+						>
+							Only mutuals
+						</Label>
+					</div>
+				) : null}
+
 				<ListingSort
 					sortBy={params.sortBy}
 					sortDirection={params.sortDirection}

@@ -20,4 +20,5 @@ export * from "./sitting-display";
 export * from "./slug";
 export * from "./spoiler-reveal";
 export * from "./subject-slug";
+export * from "./user-stats";
 export * from "./username";

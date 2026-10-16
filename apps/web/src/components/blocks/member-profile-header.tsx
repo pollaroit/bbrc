@@ -73,6 +73,16 @@ export function MemberProfileHeader({
 								size="md"
 							/>
 							<MemberProfileCardDialog user={user} />
+							<Button
+								variant="outline"
+								size="sm"
+								nativeButton={false}
+								render={
+									<Link href={`/users/${user.username}/stats` as Route} />
+								}
+							>
+								Stats
+							</Button>
 						</div>
 					</div>
 				</div>

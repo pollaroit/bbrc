@@ -1,3 +1,4 @@
+import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import {
 	contentPlainText,
@@ -404,6 +405,7 @@ type UserReadListRow = Prisma.ReadGetPayload<{
 export async function listUserReads(
 	input: ListUserReadsInput,
 	db: Database,
+	session: Session | null = null,
 ): Promise<ListUserReadsOutput> {
 	const user = await db.user.findUnique({
 		where: { username: input.username },
@@ -435,9 +437,32 @@ export async function listUserReads(
 		};
 	}
 
+	const viewerId = session?.user?.id;
+	const mutualOnly = Boolean(input.mutualOnly && viewerId);
+
+	if (input.mutualOnly && !viewerId) {
+		throw new ORPCError("UNAUTHORIZED", {
+			message: "Sign in to filter by mutual reads.",
+		});
+	}
+
+	const bookFilter: Prisma.BookWhereInput =
+		mutualOnly && viewerId
+			? {
+					AND: [
+						bookWhere,
+						{
+							reads: {
+								some: { userId: viewerId },
+							},
+						},
+					],
+				}
+			: bookWhere;
+
 	const readWhere = {
 		userId: user.id,
-		book: bookWhere,
+		book: bookFilter,
 	};
 
 	const cursorCodec = {

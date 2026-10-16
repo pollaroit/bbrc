@@ -241,6 +241,7 @@ export const ListUserReadsQueryInputSchema =
 export const ListUserReadsInputSchema = userReadListQueryInputShape
 	.extend({
 		username: UserSchema.shape.username,
+		mutualOnly: z.boolean().optional(),
 	})
 	.extend(CursorPaginationInputSchema.shape)
 	.superRefine(refineUserReadListQueryInput);

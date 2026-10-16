@@ -30,7 +30,9 @@ export const readRouter = {
 	listForUser: publicProcedure
 		.input(ListUserReadsInputSchema)
 		.output(ListUserReadsOutputSchema)
-		.handler(({ context, input }) => listUserReads(input, context.db)),
+		.handler(({ context, input }) =>
+			listUserReads(input, context.db, context.session),
+		),
 
 	searchEditions: publicProcedure
 		.input(SearchWorkEditionsInputSchema)

@@ -25,6 +25,11 @@ import {
 	getUserParticipationList,
 	getUserProfileCard,
 } from "./user.service";
+import {
+	GetUserStatsInputSchema,
+	GetUserStatsOutputSchema,
+} from "./user-stats.schema";
+import { getUserStats } from "./user-stats.service";
 
 export const userRouter = {
 	getUserList: publicProcedure
@@ -53,6 +58,13 @@ export const userRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await getUserParticipationList(input, context.db, context.session),
+		),
+	getUserStats: publicProcedure
+		.input(GetUserStatsInputSchema)
+		.output(GetUserStatsOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await getUserStats(input, context.db, context.session),
 		),
 	getTelegramLinkStatus: protectedProcedure
 		.output(GetTelegramLinkStatusOutputSchema)
