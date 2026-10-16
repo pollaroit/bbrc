@@ -1,5 +1,5 @@
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
-import { formatSittingDisplayName } from "@bbrc/shared";
+import { contentPlainText, formatSittingDisplayName } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import {
 	POST_ATTACHMENT_TRUNCATE,
@@ -21,7 +21,7 @@ export function truncateAttachmentText(
 	text: string,
 	max = POST_ATTACHMENT_TRUNCATE,
 ): string {
-	const trimmed = text.trim();
+	const trimmed = contentPlainText(text).trim();
 	if (trimmed.length <= max) {
 		return trimmed;
 	}

@@ -1,5 +1,6 @@
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import {
+	contentPlainText,
 	readFinishedMonthFromClubNow,
 	resolveClubTimeZone,
 } from "@bbrc/shared";
@@ -234,9 +235,9 @@ async function maybeCreateFeedbackFromSetRead(
 	db: Database,
 ): Promise<void> {
 	const rating = input.feedbackRating;
-	const review = input.feedbackReview?.trim() ?? "";
+	const reviewRaw = input.feedbackReview?.trim() ?? "";
 	const hasRating = rating != null;
-	const hasReview = review.length > 0;
+	const hasReview = contentPlainText(reviewRaw).trim().length > 0;
 
 	if (!hasRating && !hasReview) {
 		return;
@@ -250,7 +251,7 @@ async function maybeCreateFeedbackFromSetRead(
 		{
 			bookSlug: input.bookSlug,
 			rating,
-			review: hasReview ? review : "—",
+			review: hasReview ? reviewRaw : "—",
 		},
 		userId,
 		db,

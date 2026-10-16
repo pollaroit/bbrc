@@ -1,6 +1,10 @@
 "use client";
 
-import { type FeedbackRatingStep, isFeedbackRatingStep } from "@bbrc/shared";
+import {
+	contentPlainText,
+	type FeedbackRatingStep,
+	isFeedbackRatingStep,
+} from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
@@ -24,8 +28,8 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
 import { FeedbackHalfStarRating } from "@/components/blocks/feedback-half-star-rating";
+import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
 import { invalidateReadQueries } from "@/lib/invalidate-read-queries";
 import {
@@ -163,10 +167,10 @@ export function BookMarkReadDialog({
 			return;
 		}
 
-		const reviewTrimmed = feedbackReview.trim();
+		const reviewPlain = contentPlainText(feedbackReview).trim();
 		const hasRating =
 			feedbackRating != null && isFeedbackRatingStep(feedbackRating);
-		const hasReview = reviewTrimmed.length > 0;
+		const hasReview = reviewPlain.length > 0;
 
 		if (includeFeedback && !hasRating && !hasReview) {
 			toast.error("Add a rating or review, or skip this step");
@@ -177,7 +181,10 @@ export function BookMarkReadDialog({
 			bookSlug,
 			...finish,
 			...(includeFeedback && hasRating
-				? { feedbackRating, feedbackReview: reviewTrimmed || undefined }
+				? {
+						feedbackRating,
+						feedbackReview: hasReview ? feedbackReview : undefined,
+					}
 				: {}),
 		});
 	}
@@ -268,12 +275,13 @@ export function BookMarkReadDialog({
 							<FieldLabel htmlFor="mark-read-feedback-review">
 								Review
 							</FieldLabel>
-							<AutoGrowTextarea
+							<RichTextEditor
+								instanceKey={`mark-read-${bookSlug}-step-${step}`}
 								id="mark-read-feedback-review"
 								value={feedbackReview}
-								onChange={(event) => setFeedbackReview(event.target.value)}
-								maxLength={500}
-								rows={4}
+								onChange={setFeedbackReview}
+								maxPlainLength={500}
+								minHeightClassName="min-h-[6rem]"
 								placeholder="Optional thoughts for the club"
 								disabled={saveMutation.isPending}
 							/>

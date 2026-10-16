@@ -1,5 +1,6 @@
 "use client";
 
+import { contentPlainText } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import {
@@ -158,9 +159,14 @@ export function AdminFeedbacksTable() {
 											<TableCell className="hidden max-w-md md:table-cell">
 												<Link href={href} className="block hover:underline">
 													<p className="line-clamp-2 text-sm">
-														{feedback.review?.trim()
-															? feedback.review
-															: "No written review"}
+														{(() => {
+															const reviewText = contentPlainText(
+																feedback.review ?? "",
+															);
+															return reviewText.trim()
+																? reviewText
+																: "No written review";
+														})()}
 													</p>
 													<p className="mt-0.5 text-muted-foreground text-xs tabular-nums">
 														{feedback.reviewLength} chars · {feedback.slug}

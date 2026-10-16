@@ -1,7 +1,11 @@
 "use client";
 
-import { FeedbackSchema } from "@bbrc/schemas";
-import { type FeedbackRatingStep, isFeedbackRatingStep } from "@bbrc/shared";
+import {
+	contentPlainText,
+	type FeedbackRatingStep,
+	isFeedbackRatingStep,
+} from "@bbrc/shared";
+import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -22,11 +26,13 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
 import { FeedbackHalfStarRating } from "@/components/blocks/feedback-half-star-rating";
+import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
 import { orpc } from "@/utils/orpc";
+
+const FEEDBACK_REVIEW_MAX_PLAIN = 500;
 
 type FeedbackFormDialogProps = {
 	bookSlug: string;
@@ -45,11 +51,13 @@ export function FeedbackFormDialog({
 	const router = useRouter();
 	const [rating, setRating] = useState<FeedbackRatingStep>(4);
 	const [review, setReview] = useState("");
+	const [isSpoiler, setIsSpoiler] = useState(false);
 
 	useEffect(() => {
 		if (!open) {
 			setRating(4);
 			setReview("");
+			setIsSpoiler(false);
 		}
 	}, [open]);
 
@@ -74,11 +82,14 @@ export function FeedbackFormDialog({
 	);
 
 	function handleSubmit() {
-		const parsedReview = FeedbackSchema.shape.review.safeParse(review.trim());
-		if (!parsedReview.success) {
+		const plain = contentPlainText(review).trim();
+		if (plain.length < 1) {
+			toast.error("Review must be at least 1 character long");
+			return;
+		}
+		if (plain.length > FEEDBACK_REVIEW_MAX_PLAIN) {
 			toast.error(
-				parsedReview.error.issues[0]?.message ??
-					"Review must be between 1 and 500 characters",
+				`Review must be at most ${FEEDBACK_REVIEW_MAX_PLAIN} characters`,
 			);
 			return;
 		}
@@ -91,9 +102,12 @@ export function FeedbackFormDialog({
 		createMutation.mutate({
 			bookSlug,
 			rating,
-			review: parsedReview.data,
+			review,
+			isSpoiler,
 		});
 	}
+
+	const plainLength = contentPlainText(review).trim().length;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,24 +130,38 @@ export function FeedbackFormDialog({
 					</Field>
 					<Field>
 						<FieldLabel htmlFor="feedback-dialog-review">Review</FieldLabel>
-						<AutoGrowTextarea
+						<RichTextEditor
+							instanceKey={open ? "feedback-open" : "feedback-closed"}
 							id="feedback-dialog-review"
 							value={review}
-							onChange={(event) => setReview(event.target.value)}
-							maxLength={500}
-							rows={4}
+							onChange={setReview}
+							maxPlainLength={FEEDBACK_REVIEW_MAX_PLAIN}
+							minHeightClassName="min-h-[6rem]"
 							placeholder="What did you think of the book?"
 							disabled={createMutation.isPending}
 						/>
 						<FieldDescription>
-							Required — between 1 and 500 characters.
+							Required — between 1 and {FEEDBACK_REVIEW_MAX_PLAIN} characters.
 						</FieldDescription>
+					</Field>
+					<Field>
+						<div className="flex items-center gap-2">
+							<Checkbox
+								id="feedback-dialog-spoiler"
+								checked={isSpoiler}
+								onCheckedChange={(checked) => setIsSpoiler(checked === true)}
+								disabled={createMutation.isPending}
+							/>
+							<FieldLabel htmlFor="feedback-dialog-spoiler" className="mb-0">
+								Mark entire review as spoiler
+							</FieldLabel>
+						</div>
 					</Field>
 				</FieldGroup>
 				<DialogFooter>
 					<LoadingButton
 						type="button"
-						disabled={createMutation.isPending || review.trim().length < 1}
+						disabled={createMutation.isPending || plainLength < 1}
 						loading={createMutation.isPending}
 						onClick={handleSubmit}
 					>

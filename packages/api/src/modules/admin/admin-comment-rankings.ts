@@ -1,4 +1,5 @@
 import type { Database, Prisma } from "@bbrc/db";
+import { richContentPreview } from "@bbrc/shared";
 import type { z } from "zod";
 import type {
 	AdminCommentOverviewOutput,
@@ -24,14 +25,6 @@ const rankingSelect = {
 	_count: { select: { likes: true, replies: true } },
 } as const;
 
-function preview(content: string): string {
-	const trimmed = content.trim();
-	if (trimmed.length <= 120) {
-		return trimmed;
-	}
-	return `${trimmed.slice(0, 117)}…`;
-}
-
 function contextMeta(
 	row: Prisma.CommentGetPayload<{ select: typeof rankingSelect }>,
 ): Pick<CommentRankingItem, "context" | "contextLabel"> {
@@ -56,7 +49,7 @@ function mapCommentRow(
 	return {
 		slug: row.slug,
 		authorUsername: row.author.username,
-		contentPreview: preview(row.content),
+		contentPreview: richContentPreview(row.content),
 		context: ctx.context,
 		contextLabel: ctx.contextLabel,
 		metric,

@@ -1,7 +1,7 @@
 import type { PostAttachmentOutput } from "@bbrc/api/modules/post/post-attachment.schema";
 import { shelfTypeFilterLabels } from "@bbrc/api/modules/shelf/shelf.listing";
 import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.listing";
-import { formatFeedbackRating } from "@bbrc/shared";
+import { contentPlainText, formatFeedbackRating } from "@bbrc/shared";
 import {
 	Attachment,
 	AttachmentContent,
@@ -240,7 +240,7 @@ function PostAttachmentFeedbackCard({
 					{feedback.author.name} · {formatFeedbackRating(feedback.rating)} / 5
 				</AttachmentDescription>
 				<p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground leading-snug">
-					{feedback.review}
+					{contentPlainText(feedback.review)}
 				</p>
 				<div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground tabular-nums">
 					<span className="inline-flex items-center gap-0.5">

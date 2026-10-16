@@ -1,4 +1,5 @@
 import type { Database, Prisma } from "@bbrc/db";
+import { contentPlainText } from "@bbrc/shared";
 import type { z } from "zod";
 import type {
 	AdminFeedbackOverviewOutput,
@@ -104,7 +105,7 @@ async function reviewsByLength(
 			mapFeedbackRow({
 				slug: row.slug,
 				rating: row.rating,
-				metric: row.review.trim().length,
+				metric: contentPlainText(row.review).trim().length,
 				bookTitle: row.book.title,
 				authorUsername: row.author.username,
 			}),

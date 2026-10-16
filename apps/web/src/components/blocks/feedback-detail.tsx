@@ -10,6 +10,7 @@ import { FeedbackCommentsSection } from "@/components/blocks/feedback-comments-s
 import { FeedbackLikeEngagement } from "@/components/blocks/feedback-like-engagement";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
+import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { shareSnippet } from "@/lib/share-snippet";
 
@@ -68,9 +69,13 @@ export function FeedbackDetail({
 					</div>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-4 pt-4">
-					<p className="whitespace-pre-wrap text-sm leading-relaxed">
-						{feedback.review}
-					</p>
+					<SocialContentBody
+						content={feedback.review}
+						isSpoiler={feedback.isSpoiler}
+						kind="feedback"
+						identifier={feedback.slug}
+						interactiveLinks
+					/>
 					<div className="flex flex-wrap items-center gap-4 border-t pt-4 text-muted-foreground text-sm">
 						<FeedbackLikeEngagement
 							feedbackSlug={feedback.slug}

@@ -3,6 +3,7 @@ import type { Database, Prisma } from "@bbrc/db";
 import { LikeSourceSchema } from "@bbrc/schemas";
 import { MAX_COMMENT_DEPTH } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import { assertNormalizedSocialContent } from "../../lib/rich-content";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
 import {
@@ -116,6 +117,7 @@ function mapCommentListRow(
 		slug: row.slug,
 		content: row.content,
 		imageUrl: row.imageUrl,
+		isSpoiler: row.isSpoiler,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		depth: row.depth,
@@ -135,6 +137,7 @@ function mapCommentDetailRow(
 		slug: row.slug,
 		content: row.content,
 		imageUrl: row.imageUrl,
+		isSpoiler: row.isSpoiler,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		depth: row.depth,
@@ -336,13 +339,16 @@ export async function createComment(
 		parent = row;
 	}
 
+	const content = assertNormalizedSocialContent(input.content);
+
 	return db
 		.$transaction(async (tx) => {
-			const slug = await generateCommentSlug(input.content, tx);
+			const slug = await generateCommentSlug(content, tx);
 
 			const comment = await tx.comment.create({
 				data: {
-					content: input.content.trim(),
+					content,
+					isSpoiler: input.isSpoiler ?? false,
 					slug,
 					authorId: userId,
 					postId,
@@ -404,13 +410,18 @@ export async function updateComment(
 
 	assertCommentAuthor(comment, userId);
 
-	const content = input.content?.trim();
-	const contentChanged = content != null && content !== comment.content;
+	const normalizedContent =
+		input.content != null
+			? assertNormalizedSocialContent(input.content)
+			: undefined;
+	const contentChanged =
+		normalizedContent != null && normalizedContent !== comment.content;
 
 	await db.comment.update({
 		where: { id: comment.id },
 		data: {
-			...(content != null ? { content } : {}),
+			...(normalizedContent != null ? { content: normalizedContent } : {}),
+			...(input.isSpoiler !== undefined ? { isSpoiler: input.isSpoiler } : {}),
 			...(contentChanged ? { editedAt: new Date() } : {}),
 		},
 		select: { slug: true },

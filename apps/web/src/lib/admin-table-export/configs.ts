@@ -7,7 +7,7 @@ import type { ListAdminSeriesOutput } from "@bbrc/api/modules/admin/admin-series
 import type { ListAdminShelvesOutput } from "@bbrc/api/modules/admin/admin-shelf.schema";
 import type { ListAdminSittingsOutput } from "@bbrc/api/modules/admin/admin-sitting.schema";
 import type { ListAdminUsersOutput } from "@bbrc/api/modules/admin/admin-user.schema";
-import { getBookCountryName } from "@bbrc/shared";
+import { contentPlainText, getBookCountryName } from "@bbrc/shared";
 import { formatBookAuthors } from "@/lib/book-cover";
 import { client } from "@/utils/orpc";
 import type { AdminTableExportField, AdminTableExportResource } from "./types";
@@ -258,7 +258,11 @@ export const adminFeedbacksExportFields: AdminTableExportField<FeedbackItem>[] =
 	[
 		{ key: "slug", label: "Feedback slug", getValue: (r) => r.slug },
 		{ key: "rating", label: "Rating", getValue: (r) => r.rating },
-		{ key: "review", label: "Review", getValue: (r) => r.review },
+		{
+			key: "review",
+			label: "Review",
+			getValue: (r) => contentPlainText(r.review),
+		},
 		{
 			key: "reviewLength",
 			label: "Review length",
@@ -360,7 +364,11 @@ export const adminShelvesExportFields: AdminTableExportField<ShelfItem>[] = [
 
 export const adminPostsExportFields: AdminTableExportField<PostItem>[] = [
 	{ key: "slug", label: "Slug", getValue: (r) => r.slug },
-	{ key: "content", label: "Content", getValue: (r) => r.content },
+	{
+		key: "content",
+		label: "Content",
+		getValue: (r) => contentPlainText(r.content),
+	},
 	{
 		key: "contentLength",
 		label: "Content length",
@@ -434,7 +442,11 @@ export const adminPostsExportConfig: AdminTableExportConfig<PostItem> = {
 
 export const adminCommentsExportFields: AdminTableExportField<CommentItem>[] = [
 	{ key: "slug", label: "Slug", getValue: (r) => r.slug },
-	{ key: "content", label: "Content", getValue: (r) => r.content },
+	{
+		key: "content",
+		label: "Content",
+		getValue: (r) => contentPlainText(r.content),
+	},
 	{
 		key: "contentLength",
 		label: "Content length",

@@ -1,5 +1,5 @@
 import type { DatabaseTransaction } from "@bbrc/db";
-import { generateUniqueSlug } from "@bbrc/shared";
+import { contentPlainText, generateUniqueSlug } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 
 const COMMENT_SLUG_MIN_LENGTH = 3;
@@ -12,7 +12,11 @@ async function isCommentSlugAvailable(
 }
 
 function commentSlugSeedFromContent(content: string): string {
-	const line = content.trim().split(/\s+/).slice(0, 8).join(" ");
+	const line = contentPlainText(content)
+		.trim()
+		.split(/\s+/)
+		.slice(0, 8)
+		.join(" ");
 
 	if (line.length >= COMMENT_SLUG_MIN_LENGTH) {
 		return line;

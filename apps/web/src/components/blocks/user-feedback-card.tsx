@@ -10,6 +10,7 @@ import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
+import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
 import { shareSnippet } from "@/lib/share-snippet";
@@ -57,12 +58,22 @@ export function UserFeedbackCard({ item }: UserFeedbackCardProps) {
 					<p className="text-muted-foreground text-sm">
 						{formatBookAuthors(item.book.authors)}
 					</p>
-					<Link
-						href={feedbackHref}
-						className="text-sm leading-relaxed transition-colors hover:text-foreground/90"
-					>
-						{item.review}
-					</Link>
+					<div className="relative">
+						<Link
+							href={feedbackHref}
+							className="absolute inset-0 z-0"
+							aria-label={`Open review for ${item.book.title}`}
+						/>
+						<div className="pointer-events-none relative z-[1] [&_*]:pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto">
+							<SocialContentBody
+								content={item.review}
+								isSpoiler={item.isSpoiler}
+								kind="feedback"
+								identifier={item.slug}
+								interactiveLinks
+							/>
+						</div>
+					</div>
 					<div className="flex flex-wrap items-center gap-3">
 						<p className="text-muted-foreground text-xs">
 							{formatDateTime(item.createdAt)}

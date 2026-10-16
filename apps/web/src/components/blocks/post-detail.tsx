@@ -1,4 +1,5 @@
 import type { GetPostBySlugOutput } from "@bbrc/api/modules/post/post.schema";
+import { contentPlainText } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
 import { ArrowLeft, MessageCircle } from "lucide-react";
@@ -12,6 +13,7 @@ import { PostEditLink } from "@/components/blocks/post-edit-link";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
+import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { shareSnippet } from "@/lib/share-snippet";
 
@@ -63,9 +65,13 @@ export function PostDetail({
 				</CardHeader>
 
 				<CardContent className="flex flex-col gap-4">
-					<p className="whitespace-pre-wrap text-sm leading-relaxed">
-						{post.content}
-					</p>
+					<SocialContentBody
+						content={post.content}
+						isSpoiler={post.isSpoiler}
+						kind="post"
+						identifier={post.slug}
+						interactiveLinks
+					/>
 
 					{post.imageUrl ? (
 						<PostAttachedImage
@@ -98,7 +104,7 @@ export function PostDetail({
 						</Link>
 						<ResourceShareMenu
 							path={`/posts/${post.slug}`}
-							shareText={shareSnippet(post.content)}
+							shareText={shareSnippet(contentPlainText(post.content))}
 							label="Share post"
 							shareInPost={{ kind: "post", slug: post.slug }}
 							size="md"

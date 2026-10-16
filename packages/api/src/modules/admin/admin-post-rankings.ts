@@ -1,4 +1,5 @@
 import type { Database, Prisma } from "@bbrc/db";
+import { richContentPreview } from "@bbrc/shared";
 import type { z } from "zod";
 import type {
 	AdminPostOverviewOutput,
@@ -17,14 +18,6 @@ const rankingSelect = {
 	_count: { select: { likes: true, comments: true } },
 } as const;
 
-function preview(content: string): string {
-	const trimmed = content.trim();
-	if (trimmed.length <= 120) {
-		return trimmed;
-	}
-	return `${trimmed.slice(0, 117)}…`;
-}
-
 function mapPostRow(
 	row: Prisma.PostGetPayload<{ select: typeof rankingSelect }>,
 	metric: number,
@@ -33,7 +26,7 @@ function mapPostRow(
 	return {
 		slug: row.slug,
 		authorUsername: row.author.username,
-		contentPreview: preview(row.content),
+		contentPreview: richContentPreview(row.content),
 		metric,
 		secondaryMetric,
 	};

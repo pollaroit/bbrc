@@ -56,6 +56,7 @@ export const PostCommentPreviewSchema = zod.object({
 	slug: CommentSchema.shape.slug,
 	content: CommentSchema.shape.content,
 	imageUrl: CommentSchema.shape.imageUrl,
+	isSpoiler: CommentSchema.shape.isSpoiler,
 	createdAt: zod.coerce.date(),
 	author: PostAuthorSchema,
 	likeCount: zod.number().int().min(0),
@@ -66,6 +67,7 @@ export const PostListItemSchema = PostSchema.pick({
 	slug: true,
 	content: true,
 	imageUrl: true,
+	isSpoiler: true,
 	createdAt: true,
 	editedAt: true,
 }).extend({
@@ -94,6 +96,7 @@ export const getPostListFields = {
 	slug: true,
 	content: true,
 	imageUrl: true,
+	isSpoiler: true,
 	createdAt: true,
 	editedAt: true,
 	author: {
@@ -125,6 +128,7 @@ export const CreatePostInputSchema = PostSchema.pick({
 	content: true,
 })
 	.extend({
+		isSpoiler: PostSchema.shape.isSpoiler.optional(),
 		attachedBookSlug: BookSchema.shape.slug.optional(),
 	})
 	.extend({
@@ -163,8 +167,9 @@ export type GetPostBySlugOutput = z.infer<typeof GetPostBySlugOutputSchema>;
 export const UpdatePostInputSchema = PostSchema.pick({
 	slug: true,
 	content: true,
+	isSpoiler: true,
 })
-	.partial({ content: true })
+	.partial({ content: true, isSpoiler: true })
 	.extend({
 		/** Omit to leave unchanged; pass `null` to detach the book. */
 		attachedBookSlug: BookSchema.shape.slug.nullish(),
@@ -209,6 +214,7 @@ export const getPostBySlugFields = {
 	slug: true,
 	content: true,
 	imageUrl: true,
+	isSpoiler: true,
 	createdAt: true,
 	updatedAt: true,
 	editedAt: true,

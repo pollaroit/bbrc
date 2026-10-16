@@ -10,6 +10,7 @@ import {
 	postFeedRangeMin,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import { assertNormalizedSocialContent } from "../../lib/rich-content";
 import { mergeWhereFragments } from "../../utils/searching";
 import { notifyMemberPosted } from "../notification/notification-triggers";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
@@ -76,6 +77,7 @@ const topCommentSelect = {
 	slug: true,
 	content: true,
 	imageUrl: true,
+	isSpoiler: true,
 	createdAt: true,
 	postId: true,
 	author: {
@@ -199,6 +201,7 @@ async function loadTopCommentsByPostId(
 				slug: row.slug,
 				content: row.content,
 				imageUrl: row.imageUrl,
+				isSpoiler: row.isSpoiler,
 				createdAt: row.createdAt,
 				author: row.author,
 				likeCount: row._count.likes,
@@ -219,6 +222,7 @@ function mapPostListRow(
 		slug: row.slug,
 		content: row.content,
 		imageUrl: row.imageUrl,
+		isSpoiler: row.isSpoiler,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -244,6 +248,7 @@ async function mapPostDetailRow(
 		slug: row.slug,
 		content: row.content,
 		imageUrl: row.imageUrl,
+		isSpoiler: row.isSpoiler,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -486,14 +491,16 @@ export async function createPost(
 ): Promise<CreatePostOutput> {
 	await loadActorSocialGate(userId, db);
 
+	const content = assertNormalizedSocialContent(input.content);
 	const attachmentInput = resolveCreateAttachment(input);
 
 	const result = await db.$transaction(async (tx) => {
-		const slug = await generatePostSlug(input.content, tx);
+		const slug = await generatePostSlug(content, tx);
 
 		const post = await tx.post.create({
 			data: {
-				content: input.content.trim(),
+				content,
+				isSpoiler: input.isSpoiler ?? false,
 				slug,
 				authorId: userId,
 				attachedBookId: null,
@@ -542,8 +549,12 @@ export async function updatePost(
 
 	assertPostAuthor(post, userId);
 
-	const content = input.content?.trim();
-	const contentChanged = content != null && content !== post.content;
+	const normalizedContent =
+		input.content != null
+			? assertNormalizedSocialContent(input.content)
+			: undefined;
+	const contentChanged =
+		normalizedContent != null && normalizedContent !== post.content;
 
 	let attachmentPatch: CreatePostInput["attachment"] | null | undefined;
 	if (input.attachment !== undefined) {
@@ -564,7 +575,10 @@ export async function updatePost(
 		await tx.post.update({
 			where: { id: post.id },
 			data: {
-				...(content != null ? { content } : {}),
+				...(normalizedContent != null ? { content: normalizedContent } : {}),
+				...(input.isSpoiler !== undefined
+					? { isSpoiler: input.isSpoiler }
+					: {}),
 				...(contentChanged ? { editedAt: new Date() } : {}),
 				...(attachedBookId !== undefined
 					? { attachedBookId: attachedBookId ?? null }

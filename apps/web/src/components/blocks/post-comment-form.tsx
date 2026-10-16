@@ -1,19 +1,21 @@
 "use client";
 
-import { CommentSchema } from "@bbrc/schemas";
+import { contentPlainText } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
+import { Checkbox } from "@bbrc/ui/components/checkbox";
 import { Field, FieldLabel } from "@bbrc/ui/components/field";
+import { Label } from "@bbrc/ui/components/label";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
 	PendingImageAttachment,
 	usePendingImageInput,
 } from "@/components/blocks/pending-image-attachment";
+import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { SignInLink } from "@/components/blocks/sign-in-link";
 import { uploadImageForEntity } from "@/components/blocks/single-image-upload-field";
-import { TextareaWithImageAttach } from "@/components/blocks/textarea-with-image-attach";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -56,26 +58,25 @@ export function PostCommentForm({
 }: PostCommentFormProps) {
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [content, setContent] = useState("");
+	const [isSpoiler, setIsSpoiler] = useState(false);
 	const [imageFile, setImageFile] = useState<File | null>(null);
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const [composerOpen, setComposerOpen] = useState(
+		Boolean(parentSlug || replyToUsername || autoFocus),
+	);
+	const [editorEpoch, setEditorEpoch] = useState(0);
 	const fieldId = parentSlug
 		? `comment-reply-${parentSlug}`
 		: feedbackSlug
 			? `feedback-comment-${feedbackSlug}`
 			: "post-comment-content";
 
-	useEffect(() => {
-		if (!autoFocus) {
-			return;
-		}
-		const node = textareaRef.current;
-		if (!node) {
-			return;
-		}
-		node.focus({ preventScroll: true });
-	}, [autoFocus]);
-
 	const imageInput = usePendingImageInput(setImageFile, { variant: "comment" });
+
+	useEffect(() => {
+		if (parentSlug || replyToUsername || autoFocus) {
+			setComposerOpen(true);
+		}
+	}, [parentSlug, replyToUsername, autoFocus]);
 
 	const createMutation = useMutation(
 		orpc.comment.create.mutationOptions({
@@ -107,6 +108,11 @@ export function PostCommentForm({
 						: "Comment posted.",
 				);
 				setContent("");
+				setIsSpoiler(false);
+				setEditorEpoch((epoch) => epoch + 1);
+				if (!parentSlug && !replyToUsername) {
+					setComposerOpen(false);
+				}
 				await invalidateCommentQueries();
 				onCommentCreated?.();
 			},
@@ -131,26 +137,46 @@ export function PostCommentForm({
 		);
 	}
 
+	const placeholder = replyToUsername
+		? "Write a reply…"
+		: "Share your thoughts…";
+
+	if (!composerOpen) {
+		return (
+			<button
+				type="button"
+				className={cn(
+					"w-full border border-border bg-background px-3 py-2 text-left text-muted-foreground text-sm",
+					"transition-colors hover:border-foreground/20 hover:text-foreground",
+				)}
+				onClick={() => setComposerOpen(true)}
+			>
+				{replyToUsername ? `Reply to @${replyToUsername}` : "Write a comment…"}
+			</button>
+		);
+	}
+
 	return (
 		<form
 			className={cn("flex min-w-0 flex-col", compact ? "gap-2" : "gap-3")}
 			onSubmit={(event) => {
 				event.preventDefault();
 
-				const parsed = CommentSchema.shape.content.safeParse(content.trim());
-
-				if (!parsed.success) {
-					toast.error(
-						parsed.error.issues[0]?.message ??
-							"Comment must be between 1 and 5000 characters",
-					);
+				const plain = contentPlainText(content).trim();
+				if (plain.length < 1) {
+					toast.error("Comment must be at least 1 character long");
+					return;
+				}
+				if (plain.length > 5000) {
+					toast.error("Comment must be at most 5000 characters");
 					return;
 				}
 
 				createMutation.mutate({
 					...(postSlug ? { postSlug } : {}),
 					...(feedbackSlug ? { feedbackSlug } : {}),
-					content: parsed.data,
+					content,
+					isSpoiler,
 					...(parentSlug ? { parentSlug } : {}),
 				});
 			}}
@@ -164,20 +190,28 @@ export function PostCommentForm({
 				>
 					{replyToUsername ? `Reply to @${replyToUsername}` : "Add a comment"}
 				</FieldLabel>
-				<TextareaWithImageAttach
-					ref={textareaRef}
+				<RichTextEditor
 					id={fieldId}
+					instanceKey={`${fieldId}-${editorEpoch}`}
 					value={content}
-					onChange={(event) => setContent(event.target.value)}
-					maxLength={5000}
-					placeholder={
-						replyToUsername ? "Write a reply…" : "Share your thoughts…"
-					}
-					onAttachClick={imageInput.openPicker}
-					attachDisabled={isPending}
-					hasPhoto={imageFile !== null}
+					onChange={setContent}
+					disabled={isPending}
+					placeholder={placeholder}
+					minHeightClassName={compact ? "min-h-[5rem]" : "min-h-[8rem]"}
 				/>
 			</Field>
+
+			<div className="flex items-center gap-2">
+				<Checkbox
+					id={`${fieldId}-spoiler`}
+					checked={isSpoiler}
+					onCheckedChange={(checked) => setIsSpoiler(checked === true)}
+					disabled={isPending}
+				/>
+				<Label htmlFor={`${fieldId}-spoiler`} className="text-sm">
+					Mark as spoiler
+				</Label>
+			</div>
 
 			<PendingImageAttachment
 				variant="comment"
@@ -193,7 +227,7 @@ export function PostCommentForm({
 					size={compact ? "sm" : "default"}
 					className="w-fit"
 					loading={isPending}
-					disabled={content.trim().length < 1}
+					disabled={contentPlainText(content).trim().length < 1}
 				>
 					{parentSlug ? "Post reply" : "Post comment"}
 				</LoadingButton>
@@ -207,6 +241,21 @@ export function PostCommentForm({
 						onClick={onCancelReply}
 					>
 						Cancel
+					</Button>
+				) : !parentSlug && !replyToUsername ? (
+					<Button
+						type="button"
+						variant="ghost"
+						size={compact ? "sm" : "default"}
+						className="w-fit"
+						disabled={isPending}
+						onClick={() => {
+							setContent("");
+							setIsSpoiler(false);
+							setComposerOpen(false);
+						}}
+					>
+						Collapse
 					</Button>
 				) : null}
 			</div>

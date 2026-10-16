@@ -1,5 +1,6 @@
 "use client";
 
+import { contentPlainText } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
@@ -129,9 +130,9 @@ export function AdminPostsTable() {
 												<Link
 													href={`/posts/${post.slug}` as Route}
 													className="line-clamp-3 block text-sm hover:underline"
-													title={post.content.trim()}
+													title={contentPlainText(post.content)}
 												>
-													{post.content.trim()}
+													{contentPlainText(post.content)}
 												</Link>
 												<p
 													className="line-clamp-1 font-mono text-muted-foreground text-xs [overflow-wrap:anywhere]"

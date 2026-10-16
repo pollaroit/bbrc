@@ -1,4 +1,5 @@
 import type { GetPostListOutput } from "@bbrc/api/modules/post/post.schema";
+import { contentPlainText } from "@bbrc/shared";
 import {
 	Card,
 	CardContent,
@@ -14,6 +15,7 @@ import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
+import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { shareSnippet } from "@/lib/share-snippet";
 import { cn } from "@/lib/utils";
@@ -49,16 +51,24 @@ export function PostCard({ post, className }: PostCardProps) {
 				</div>
 			</CardHeader>
 
-			<CardContent className="flex flex-col gap-3">
+			<CardContent className="relative flex flex-col gap-3">
 				<Link
 					href={postHref}
-					className="block whitespace-pre-wrap text-sm leading-relaxed transition-colors hover:text-foreground/90"
-				>
-					{post.content}
-				</Link>
+					className="absolute inset-0 z-0"
+					aria-label={`Open post by ${post.author.name}`}
+				/>
+				<div className="pointer-events-none relative z-[1] [&_*]:pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto">
+					<SocialContentBody
+						content={post.content}
+						isSpoiler={post.isSpoiler}
+						kind="post"
+						identifier={post.slug}
+						interactiveLinks
+					/>
+				</div>
 
 				{post.imageUrl ? (
-					<Link href={postHref} className="block">
+					<Link href={postHref} className="relative z-[1] block">
 						<PostAttachedImage
 							src={post.imageUrl}
 							alt=""
@@ -70,7 +80,12 @@ export function PostCard({ post, className }: PostCardProps) {
 				) : null}
 
 				{post.attachment ? (
-					<PostAttachmentCard attachment={post.attachment} className="w-full" />
+					<div className="pointer-events-none relative z-[1] [&_*]:pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto">
+						<PostAttachmentCard
+							attachment={post.attachment}
+							className="w-full"
+						/>
+					</div>
 				) : null}
 			</CardContent>
 
@@ -90,7 +105,7 @@ export function PostCard({ post, className }: PostCardProps) {
 					</Link>
 					<ResourceShareMenu
 						path={`/posts/${post.slug}`}
-						shareText={shareSnippet(post.content)}
+						shareText={shareSnippet(contentPlainText(post.content))}
 						label="Share post"
 						shareInPost={{ kind: "post", slug: post.slug }}
 					/>
@@ -106,7 +121,6 @@ export function PostCard({ post, className }: PostCardProps) {
 										variant="compact"
 										layout="thread"
 										postSlug={post.slug}
-										threadHref={`${postHref}#comment-${comment.slug}` as Route}
 									/>
 								</li>
 							))}

@@ -1,5 +1,5 @@
 import type { Database } from "@bbrc/db";
-import { authorNameToSlug } from "@bbrc/shared";
+import { authorNameToSlug, richContentPreview } from "@bbrc/shared";
 import type {
 	GlobalSearchHit,
 	GlobalSearchInput,
@@ -149,7 +149,7 @@ async function searchPosts(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 
 	return rows.map((row) => ({
 		type: "post" as const,
-		title: previewText(row.content, 80),
+		title: richContentPreview(row.content, 80),
 		description: `@${row.author.username}`,
 		href: `/posts/${row.slug}`,
 	}));
@@ -174,7 +174,7 @@ async function searchFeedbacks(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	return rows.map((row) => ({
 		type: "feedback" as const,
 		title: row.book.title,
-		description: `${previewText(row.review, 80)} · @${row.author.username}`,
+		description: `${richContentPreview(row.review, 80)} · @${row.author.username}`,
 		href: `/books/${row.book.slug}/feedbacks/${row.slug}`,
 	}));
 }
@@ -230,7 +230,7 @@ async function searchComments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 		return [
 			{
 				type: "comment" as const,
-				title: previewText(row.content, 80),
+				title: richContentPreview(row.content, 80),
 				description: `@${row.author.username}`,
 				href,
 			},

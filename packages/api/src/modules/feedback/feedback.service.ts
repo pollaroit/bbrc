@@ -2,6 +2,10 @@ import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import { LikeSourceSchema } from "@bbrc/schemas";
 import { ORPCError } from "@orpc/server";
+import {
+	assertNormalizedSocialContent,
+	contentPlainText,
+} from "../../lib/rich-content";
 import { definePagination } from "../../utils/pagination";
 import {
 	clubReadEligibilityHint,
@@ -99,6 +103,7 @@ export async function getBookFeedbackList(
 			slug: true,
 			rating: true,
 			review: true,
+			isSpoiler: true,
 			createdAt: true,
 			authorId: true,
 			author: {
@@ -131,6 +136,7 @@ export async function getBookFeedbackList(
 		image: feedback.author.image,
 		rating: feedback.rating,
 		review: feedback.review,
+		isSpoiler: feedback.isSpoiler,
 		createdAt: feedback.createdAt,
 		likeCount: feedback._count.likes,
 		likedByMe: likedFeedbackIds.has(feedback.id),
@@ -206,6 +212,7 @@ export async function getFeedbackBySlug(
 	return {
 		slug: feedback.slug,
 		review: feedback.review,
+		isSpoiler: feedback.isSpoiler,
 		rating: feedback.rating,
 		createdAt: feedback.createdAt,
 		bookSlug: feedback.book.slug,
@@ -359,9 +366,16 @@ export async function createFeedback(
 		});
 	}
 
+	const review = assertNormalizedSocialContent(input.review);
+	if (contentPlainText(review).length > 500) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Review must be at most 500 characters",
+		});
+	}
+
 	return db
 		.$transaction(async (tx) => {
-			const feedbackSlug = await generateFeedbackSlug(input.review, tx);
+			const feedbackSlug = await generateFeedbackSlug(review, tx);
 
 			const feedback = await tx.feedback.create({
 				data: {
@@ -369,7 +383,8 @@ export async function createFeedback(
 					authorId: userId,
 					bookId: book.id,
 					rating: input.rating,
-					review: input.review.trim(),
+					review,
+					isSpoiler: input.isSpoiler ?? false,
 				},
 				select: { id: true, slug: true },
 			});

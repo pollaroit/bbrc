@@ -35,6 +35,7 @@ export const CommentListItemSchema = CommentSchema.pick({
 	slug: true,
 	content: true,
 	imageUrl: true,
+	isSpoiler: true,
 	createdAt: true,
 	editedAt: true,
 	depth: true,
@@ -64,6 +65,7 @@ export const getCommentListFields = {
 	slug: true,
 	content: true,
 	imageUrl: true,
+	isSpoiler: true,
 	createdAt: true,
 	editedAt: true,
 	depth: true,
@@ -120,6 +122,7 @@ export const CreateCommentInputSchema = zod
 		postSlug: PostSchema.shape.slug.optional(),
 		feedbackSlug: FeedbackSchema.shape.slug.optional(),
 		content: CommentSchema.shape.content,
+		isSpoiler: CommentSchema.shape.isSpoiler.optional(),
 		parentSlug: CommentSchema.shape.slug.optional(),
 	})
 	.superRefine((value, ctx) => {
@@ -164,8 +167,9 @@ export type GetCommentBySlugOutput = z.infer<
 export const UpdateCommentInputSchema = CommentSchema.pick({
 	slug: true,
 	content: true,
+	isSpoiler: true,
 })
-	.partial({ content: true })
+	.partial({ content: true, isSpoiler: true })
 	.required({ slug: true });
 
 export const UpdateCommentOutputSchema = CommentSchema.pick({
@@ -194,6 +198,7 @@ export const getCommentBySlugFields = {
 	slug: true,
 	content: true,
 	imageUrl: true,
+	isSpoiler: true,
 	createdAt: true,
 	updatedAt: true,
 	editedAt: true,

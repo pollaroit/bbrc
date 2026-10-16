@@ -1,5 +1,6 @@
 "use client";
 
+import { contentPlainText } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
@@ -17,7 +18,7 @@ import { useMemo, useState } from "react";
 import { orpc } from "@/utils/orpc";
 
 function previewReview(review: string, max = 100) {
-	const trimmed = review.trim();
+	const trimmed = contentPlainText(review).trim();
 	if (trimmed.length <= max) {
 		return trimmed;
 	}

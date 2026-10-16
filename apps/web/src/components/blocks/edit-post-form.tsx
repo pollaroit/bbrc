@@ -1,7 +1,7 @@
 "use client";
 
 import type { GetPostBySlugOutput } from "@bbrc/api/modules/post/post.schema";
-import { PostSchema } from "@bbrc/schemas";
+import { contentPlainText } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import { Field, FieldGroup, FieldLabel } from "@bbrc/ui/components/field";
@@ -12,8 +12,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
 import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
+import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { postAttachmentLabel } from "@/lib/post-attachment-label";
@@ -26,6 +26,7 @@ type EditPostFormProps = {
 export function EditPostForm({ post }: EditPostFormProps) {
 	const router = useRouter();
 	const [content, setContent] = useState(post.content);
+	const [isSpoiler, setIsSpoiler] = useState(post.isSpoiler);
 	const [detachAttachment, setDetachAttachment] = useState(false);
 	const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -67,21 +68,20 @@ export function EditPostForm({ post }: EditPostFormProps) {
 			onSubmit={(event) => {
 				event.preventDefault();
 
-				const parsedContent = PostSchema.shape.content.safeParse(
-					content.trim(),
-				);
-
-				if (!parsedContent.success) {
-					toast.error(
-						parsedContent.error.issues[0]?.message ??
-							"Content must be between 1 and 5000 characters",
-					);
+				const plain = contentPlainText(content).trim();
+				if (plain.length < 1) {
+					toast.error("Content must be at least 1 character long");
+					return;
+				}
+				if (plain.length > 5000) {
+					toast.error("Content must be at most 5000 characters");
 					return;
 				}
 
 				updateMutation.mutate({
 					slug: post.slug,
-					content: parsedContent.data,
+					content,
+					isSpoiler,
 					...(detachAttachment ? { attachment: null } : {}),
 				});
 			}}
@@ -89,13 +89,27 @@ export function EditPostForm({ post }: EditPostFormProps) {
 			<FieldGroup>
 				<Field>
 					<FieldLabel htmlFor="edit-post-content">Content</FieldLabel>
-					<AutoGrowTextarea
+					<RichTextEditor
 						id="edit-post-content"
+						instanceKey={post.slug}
 						value={content}
-						onChange={(event) => setContent(event.target.value)}
-						maxLength={5000}
-						required
+						onChange={setContent}
+						disabled={updateMutation.isPending}
 					/>
+				</Field>
+
+				<Field>
+					<div className="flex items-center gap-2">
+						<Checkbox
+							id="edit-post-spoiler"
+							checked={isSpoiler}
+							onCheckedChange={(checked) => setIsSpoiler(checked === true)}
+							disabled={updateMutation.isPending}
+						/>
+						<FieldLabel htmlFor="edit-post-spoiler" className="mb-0">
+							Mark entire post as spoiler
+						</FieldLabel>
+					</div>
 				</Field>
 
 				<SingleImageUploadField

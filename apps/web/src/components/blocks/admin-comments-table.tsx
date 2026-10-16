@@ -1,6 +1,7 @@
 "use client";
 
 import type { ListAdminCommentsOutput } from "@bbrc/api/modules/admin/admin-comment.schema";
+import { contentPlainText } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
@@ -138,16 +139,16 @@ export function AdminCommentsTable() {
 														<Link
 															href={href}
 															className="block truncate text-sm hover:underline"
-															title={comment.content.trim()}
+															title={contentPlainText(comment.content)}
 														>
-															{comment.content.trim()}
+															{contentPlainText(comment.content)}
 														</Link>
 													) : (
 														<p
 															className="truncate text-sm"
-															title={comment.content.trim()}
+															title={contentPlainText(comment.content)}
 														>
-															{comment.content.trim()}
+															{contentPlainText(comment.content)}
 														</p>
 													)}
 													<p

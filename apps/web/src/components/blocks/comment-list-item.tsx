@@ -2,7 +2,7 @@
 
 import type { CommentListItem } from "@bbrc/api/modules/comment/comment.schema";
 import type { PostListItem } from "@bbrc/api/modules/post/post.schema";
-import { CommentSchema } from "@bbrc/schemas";
+import { contentPlainText } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
@@ -12,7 +12,6 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
-import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
 import { CommentLikeEngagement } from "@/components/blocks/comment-like-engagement";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { RelativeTime } from "@/components/blocks/relative-time";
@@ -20,7 +19,9 @@ import {
 	commentSharePath,
 	ResourceShareMenu,
 } from "@/components/blocks/resource-share-menu";
+import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
+import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
@@ -39,6 +40,8 @@ type CommentListItemProps = {
 	layout?: "card" | "thread";
 	/** When set (compact feed previews), links comment text to the post thread. */
 	threadHref?: Route;
+	/** Show “View in thread” (post detail only — hidden on feed previews). */
+	showThreadLink?: boolean;
 	/** Required on post detail for author edit/delete. */
 	postSlug?: string;
 	bookSlug?: string;
@@ -152,27 +155,27 @@ function CommentEditForm({
 			onSubmit={(event) => {
 				event.preventDefault();
 
-				const parsed = CommentSchema.shape.content.safeParse(draft.trim());
-
-				if (!parsed.success) {
-					toast.error(
-						parsed.error.issues[0]?.message ??
-							"Comment must be between 1 and 5000 characters",
-					);
+				const plain = contentPlainText(draft).trim();
+				if (plain.length < 1) {
+					toast.error("Comment must be at least 1 character long");
+					return;
+				}
+				if (plain.length > 5000) {
+					toast.error("Comment must be at most 5000 characters");
 					return;
 				}
 
 				updateMutation.mutate({
 					slug: comment.slug,
-					content: parsed.data,
+					content: draft,
 				});
 			}}
 		>
-			<AutoGrowTextarea
+			<RichTextEditor
+				instanceKey={comment.slug}
 				value={draft}
-				onChange={(event) => setDraft(event.target.value)}
-				maxLength={5000}
-				aria-label="Edit comment"
+				onChange={setDraft}
+				disabled={updateMutation.isPending}
 			/>
 			<SingleImageUploadField
 				label="Comment image"
@@ -195,7 +198,7 @@ function CommentEditForm({
 					type="submit"
 					size="sm"
 					loading={updateMutation.isPending}
-					disabled={draft.trim().length < 1}
+					disabled={contentPlainText(draft).trim().length < 1}
 				>
 					Save
 				</LoadingButton>
@@ -218,6 +221,7 @@ export function CommentListItemView({
 	variant = "full",
 	layout = "card",
 	threadHref,
+	showThreadLink = false,
 	postSlug,
 	bookSlug,
 	feedbackContextSlug,
@@ -244,17 +248,24 @@ export function CommentListItemView({
 
 	const commentImageUrl = "imageUrl" in comment ? comment.imageUrl : null;
 
-	const contentInner = (
-		<>
-			<p
+	const commentIsSpoiler =
+		"isSpoiler" in comment ? Boolean(comment.isSpoiler) : false;
+	const commentKind = feedbackContextSlug ? "feedback" : "comment";
+	const commentIdentifier = comment.slug;
+
+	const content = (
+		<div className="flex flex-col gap-2">
+			<SocialContentBody
+				content={comment.content}
+				isSpoiler={commentIsSpoiler}
+				kind={commentKind}
+				identifier={commentIdentifier}
+				interactiveLinks
 				className={cn(
-					"whitespace-pre-wrap text-sm leading-relaxed",
-					isCompact && "line-clamp-3",
-					threadHref && "transition-colors hover:text-foreground/90",
+					isCompact &&
+						"max-h-[4.75rem] overflow-hidden [mask-image:linear-gradient(180deg,#000_70%,transparent)]",
 				)}
-			>
-				{comment.content}
-			</p>
+			/>
 			{commentImageUrl ? (
 				<PostAttachedImage
 					src={commentImageUrl}
@@ -263,18 +274,14 @@ export function CommentListItemView({
 					className={cn(isCompact ? "max-w-full" : "max-w-md")}
 				/>
 			) : null}
-		</>
-	);
-
-	const content = (
-		<div className="flex flex-col gap-2">
-			{threadHref && isThread ? (
-				<Link href={threadHref} className="block outline-offset-2">
-					{contentInner}
+			{showThreadLink && threadHref && isThread ? (
+				<Link
+					href={threadHref}
+					className="text-muted-foreground text-xs hover:text-foreground"
+				>
+					Jump to comment on post
 				</Link>
-			) : (
-				contentInner
-			)}
+			) : null}
 		</div>
 	);
 
@@ -342,7 +349,7 @@ export function CommentListItemView({
 							{commentShare ? (
 								<ResourceShareMenu
 									path={commentShare}
-									shareText={shareSnippet(comment.content)}
+									shareText={shareSnippet(contentPlainText(comment.content))}
 									label="Share comment"
 									shareInPost={{ kind: "comment", slug: comment.slug }}
 								/>
@@ -413,7 +420,7 @@ export function CommentListItemView({
 					{commentShare ? (
 						<ResourceShareMenu
 							path={commentShare}
-							shareText={shareSnippet(comment.content)}
+							shareText={shareSnippet(contentPlainText(comment.content))}
 							label="Share comment"
 							shareInPost={{ kind: "comment", slug: comment.slug }}
 						/>

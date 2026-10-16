@@ -14,6 +14,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { FeedbackLikeEngagement } from "@/components/blocks/feedback-like-engagement";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
+import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
@@ -97,12 +98,22 @@ export function FeedbackReviewList({
 											</p>
 										</div>
 									</div>
-									<Link
-										href={feedbackHref}
-										className="text-sm leading-relaxed transition-colors hover:text-foreground/90"
-									>
-										{entry.review}
-									</Link>
+									<div className="relative">
+										<Link
+											href={feedbackHref}
+											className="absolute inset-0 z-0"
+											aria-label={`Open review by ${entry.name}`}
+										/>
+										<div className="pointer-events-none relative z-[1] [&_*]:pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto">
+											<SocialContentBody
+												content={entry.review}
+												isSpoiler={entry.isSpoiler}
+												kind="feedback"
+												identifier={entry.slug}
+												interactiveLinks
+											/>
+										</div>
+									</div>
 									<div className="flex flex-wrap items-center gap-4 border-t pt-3 text-muted-foreground text-sm">
 										<FeedbackLikeEngagement
 											feedbackSlug={entry.slug}

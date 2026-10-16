@@ -1,8 +1,9 @@
 "use client";
 
 import type { PostAttachmentInput } from "@bbrc/api/modules/post/post-attachment.schema";
-import { PostSchema } from "@bbrc/schemas";
+import { contentPlainText } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
+import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -12,6 +13,7 @@ import {
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
 import { Field, FieldLabel } from "@bbrc/ui/components/field";
+import { Label } from "@bbrc/ui/components/label";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
@@ -28,8 +30,8 @@ import {
 	PostAttachmentComposePicker,
 	type PostAttachmentComposeValue,
 } from "@/components/blocks/post-attachment-compose-picker";
+import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { uploadImageForEntity } from "@/components/blocks/single-image-upload-field";
-import { TextareaWithImageAttach } from "@/components/blocks/textarea-with-image-attach";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -38,10 +40,12 @@ function resetComposeForm(
 	setContent: (value: string) => void,
 	setAttachment: (value: PostAttachmentComposeValue) => void,
 	setImageFile: (value: File | null) => void,
+	setIsSpoiler: (value: boolean) => void,
 ) {
 	setContent("");
 	setAttachment(null);
 	setImageFile(null);
+	setIsSpoiler(false);
 }
 
 type ComposePostDialogProps = {
@@ -59,6 +63,7 @@ export function ComposePostDialog({
 }: ComposePostDialogProps) {
 	const router = useRouter();
 	const [content, setContent] = useState("");
+	const [isSpoiler, setIsSpoiler] = useState(false);
 	const [attachment, setAttachment] =
 		useState<PostAttachmentComposeValue>(null);
 	const [imageFile, setImageFile] = useState<File | null>(null);
@@ -94,7 +99,7 @@ export function ComposePostDialog({
 				toast.success(
 					xpAwarded > 0 ? `Post shared (+${xpAwarded} XP)` : "Post shared.",
 				);
-				resetComposeForm(setContent, setAttachment, setImageFile);
+				resetComposeForm(setContent, setAttachment, setImageFile, setIsSpoiler);
 				onOpenChange(false);
 				await queryClient.invalidateQueries({
 					queryKey: orpc.post.getPostList.key(),
@@ -112,7 +117,12 @@ export function ComposePostDialog({
 			onOpenChange={(nextOpen) => {
 				onOpenChange(nextOpen);
 				if (!nextOpen) {
-					resetComposeForm(setContent, setAttachment, setImageFile);
+					resetComposeForm(
+						setContent,
+						setAttachment,
+						setImageFile,
+						setIsSpoiler,
+					);
 					onClosed?.();
 					if (imageInput.inputRef.current) {
 						imageInput.inputRef.current.value = "";
@@ -134,18 +144,19 @@ export function ComposePostDialog({
 					onSubmit={(event) => {
 						event.preventDefault();
 
-						const parsed = PostSchema.shape.content.safeParse(content.trim());
-
-						if (!parsed.success) {
-							toast.error(
-								parsed.error.issues[0]?.message ??
-									"Content must be between 1 and 5000 characters",
-							);
+						const plain = contentPlainText(content).trim();
+						if (plain.length < 1) {
+							toast.error("Content must be at least 1 character long");
+							return;
+						}
+						if (plain.length > 5000) {
+							toast.error("Content must be at most 5000 characters");
 							return;
 						}
 
 						createMutation.mutate({
-							content: parsed.data,
+							content,
+							isSpoiler,
 							...(attachment ? { attachment } : {}),
 						});
 					}}
@@ -154,17 +165,38 @@ export function ComposePostDialog({
 					{imageInput.cropDialog}
 					<Field>
 						<FieldLabel htmlFor="compose-post-content">Post</FieldLabel>
-						<TextareaWithImageAttach
+						<RichTextEditor
+							instanceKey={open ? "compose-open" : "compose-closed"}
 							id="compose-post-content"
 							value={content}
-							onChange={(event) => setContent(event.target.value)}
-							maxLength={5000}
+							onChange={setContent}
+							disabled={createMutation.isPending}
 							placeholder="What are you reading or thinking about?"
-							onAttachClick={imageInput.openPicker}
-							attachDisabled={createMutation.isPending}
-							hasPhoto={imageFile !== null}
 						/>
+						<div className="mt-2">
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								disabled={createMutation.isPending}
+								onClick={imageInput.openPicker}
+							>
+								{imageFile ? "Change photo" : "Add photo"}
+							</Button>
+						</div>
 					</Field>
+
+					<div className="flex items-center gap-2">
+						<Checkbox
+							id="compose-post-spoiler"
+							checked={isSpoiler}
+							onCheckedChange={(checked) => setIsSpoiler(checked === true)}
+							disabled={createMutation.isPending}
+						/>
+						<Label htmlFor="compose-post-spoiler" className="text-sm">
+							Mark entire post as spoiler
+						</Label>
+					</div>
 
 					<Field>
 						<FieldLabel>Attachment</FieldLabel>
@@ -189,7 +221,7 @@ export function ComposePostDialog({
 						<LoadingButton
 							type="submit"
 							loading={createMutation.isPending}
-							disabled={content.trim().length < 1}
+							disabled={contentPlainText(content).trim().length < 1}
 						>
 							Post
 						</LoadingButton>
