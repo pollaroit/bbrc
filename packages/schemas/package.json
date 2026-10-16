@@ -8,7 +8,8 @@
 		"./enums": "./src/generated/schemas/enums/index.ts",
 		"./enums/*": "./src/generated/schemas/enums/*.schema.ts",
 		"./listing/*": "./src/listing/*.ts",
-		"./read-dates": "./src/read-dates.ts"
+		"./read-dates": "./src/read-dates.ts",
+		"./read-finished-month": "./src/read-finished-month.ts"
 	},
 	"scripts": {
 		"check-types": "tsc --noEmit",

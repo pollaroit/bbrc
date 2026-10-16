@@ -10,7 +10,7 @@ import {
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { UserPanel } from "@/components/blocks/user-panel";
-import { formatReadPeriod } from "@/lib/format-read-date";
+import { formatReadFinishedMonthField } from "@/lib/format-read-date";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -45,7 +45,7 @@ function BookReadsGrid({ data }: { data: ListBookReadsOutput }) {
 				>
 					<UserPanel user={item.user} />
 					<p className="text-muted-foreground text-sm">
-						{formatReadPeriod(item.readStart, item.readEnd)}
+						{formatReadFinishedMonthField(item.readEndYear, item.readEndMonth)}
 					</p>
 				</li>
 			))}

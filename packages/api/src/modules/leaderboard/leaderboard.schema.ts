@@ -6,8 +6,12 @@ export {
 	LEADERBOARD_PERIOD_META,
 	type LeaderboardPeriod,
 	type LeaderboardPeriodSlug,
+	type LeaderboardReadsPeriod,
 	leaderboardPeriodSlugs,
 	leaderboardPeriods,
+	leaderboardPeriodsForKind,
+	leaderboardReadsPeriods,
+	normalizeLeaderboardPeriodForKind,
 	periodFromSlug,
 	slugFromPeriod,
 } from "./leaderboard-period";

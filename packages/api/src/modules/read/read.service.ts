@@ -1,10 +1,8 @@
-import { type Database, type DatabaseTransaction, Prisma } from "@bbrc/db";
+import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import {
-	parseReadDateField,
-	parseReadDateFields,
-	type ReadDateField,
-	ReadDateFieldSchema,
-} from "@bbrc/schemas/read-dates";
+	readFinishedMonthFromClubNow,
+	resolveClubTimeZone,
+} from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import {
 	fetchEditionDetailSummaries,
@@ -16,6 +14,7 @@ import {
 	type BookListQueryInput,
 	buildBookListWhereWithAuthors,
 } from "../book/book-list-where";
+import { createFeedback } from "../feedback/feedback.service";
 import { activeParticipationWhere } from "../sitting/participation-active";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import { userReadListSorting, withStableUserReadOrderBy } from "./read.listing";
@@ -48,13 +47,42 @@ async function loadBookBySlug(slug: string, db: Database) {
 	return book;
 }
 
-function jsonDateField(
-	value: ReadDateField,
-): Prisma.InputJsonValue | typeof Prisma.DbNull {
-	if (value == null) {
-		return Prisma.DbNull;
+function resolveFinishMonthFields(input: {
+	readEndYear?: number | null;
+	readEndMonth?: number | null;
+}): { readEndYear: number | null; readEndMonth: number | null } | undefined {
+	if (input.readEndYear === undefined && input.readEndMonth === undefined) {
+		return undefined;
 	}
-	return value;
+	if (input.readEndYear == null && input.readEndMonth == null) {
+		return { readEndYear: null, readEndMonth: null };
+	}
+	if (input.readEndYear == null || input.readEndMonth == null) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Finish month and year must be set together",
+		});
+	}
+	return {
+		readEndYear: input.readEndYear,
+		readEndMonth: input.readEndMonth,
+	};
+}
+
+function mapReadRowToState(
+	row: {
+		readEndYear: number | null;
+		readEndMonth: number | null;
+		editionId: string | null;
+	},
+	hasFeedback: boolean,
+): GetBookReadStateOutput {
+	return {
+		hasRead: true,
+		hasFeedback,
+		readEndYear: row.readEndYear,
+		readEndMonth: row.readEndMonth,
+		editionId: row.editionId,
+	};
 }
 
 export async function userHasReadBook(
@@ -72,17 +100,36 @@ export async function userHasReadBook(
 	return row != null;
 }
 
+export async function deleteReadForUserBook(
+	userId: string,
+	bookId: string,
+	db: Database | DatabaseTransaction,
+): Promise<void> {
+	await db.read.deleteMany({
+		where: { userId, bookId },
+	});
+}
+
 export async function ensureUserReadBook(
 	userId: string,
 	bookId: string,
 	db: Database,
+	finishMonth = readFinishedMonthFromClubNow(new Date(), resolveClubTimeZone()),
 ): Promise<void> {
 	await db.read.upsert({
 		where: {
 			userId_bookId: { userId, bookId },
 		},
-		create: { userId, bookId },
-		update: {},
+		create: {
+			userId,
+			bookId,
+			readEndYear: finishMonth.year,
+			readEndMonth: finishMonth.month,
+		},
+		update: {
+			readEndYear: finishMonth.year,
+			readEndMonth: finishMonth.month,
+		},
 	});
 }
 
@@ -149,37 +196,65 @@ export async function getBookReadState(
 ): Promise<GetBookReadStateOutput> {
 	const book = await loadBookBySlug(bookSlug, db);
 
-	const row = await db.read.findUnique({
-		where: {
-			userId_bookId: { userId, bookId: book.id },
-		},
-		select: {
-			readStart: true,
-			readEnd: true,
-			editionId: true,
-		},
-	});
+	const [row, existingFeedback] = await Promise.all([
+		db.read.findUnique({
+			where: {
+				userId_bookId: { userId, bookId: book.id },
+			},
+			select: {
+				readEndYear: true,
+				readEndMonth: true,
+				editionId: true,
+			},
+		}),
+		db.feedback.findFirst({
+			where: { authorId: userId, bookId: book.id },
+			select: { id: true },
+		}),
+	]);
+
+	const hasFeedback = existingFeedback != null;
 
 	if (!row) {
 		return {
 			hasRead: false,
-			readStart: null,
-			readEnd: null,
+			hasFeedback,
+			readEndYear: null,
+			readEndMonth: null,
 			editionId: null,
 		};
 	}
 
-	const dates = parseReadDateFields({
-		readStart: row.readStart,
-		readEnd: row.readEnd,
-	});
+	return mapReadRowToState(row, hasFeedback);
+}
 
-	return {
-		hasRead: true,
-		readStart: dates.readStart,
-		readEnd: dates.readEnd,
-		editionId: row.editionId,
-	};
+async function maybeCreateFeedbackFromSetRead(
+	input: SetReadInput,
+	userId: string,
+	db: Database,
+): Promise<void> {
+	const rating = input.feedbackRating;
+	const review = input.feedbackReview?.trim() ?? "";
+	const hasRating = rating != null;
+	const hasReview = review.length > 0;
+
+	if (!hasRating && !hasReview) {
+		return;
+	}
+
+	if (!hasRating) {
+		return;
+	}
+
+	await createFeedback(
+		{
+			bookSlug: input.bookSlug,
+			rating,
+			review: hasReview ? review : "—",
+		},
+		userId,
+		db,
+	);
 }
 
 export async function setRead(
@@ -189,10 +264,7 @@ export async function setRead(
 ): Promise<GetBookReadStateOutput> {
 	const book = await loadBookBySlug(input.bookSlug, db);
 
-	const readStart =
-		input.readStart === undefined ? undefined : jsonDateField(input.readStart);
-	const readEnd =
-		input.readEnd === undefined ? undefined : jsonDateField(input.readEnd);
+	const finishFields = resolveFinishMonthFields(input);
 	const editionId = input.editionId === undefined ? undefined : input.editionId;
 
 	const row = await db.$transaction(async (tx) => {
@@ -203,18 +275,26 @@ export async function setRead(
 			create: {
 				userId,
 				bookId: book.id,
-				...(readStart !== undefined ? { readStart } : {}),
-				...(readEnd !== undefined ? { readEnd } : {}),
+				...(finishFields !== undefined
+					? {
+							readEndYear: finishFields.readEndYear,
+							readEndMonth: finishFields.readEndMonth,
+						}
+					: {}),
 				...(editionId !== undefined ? { editionId } : {}),
 			},
 			update: {
-				...(readStart !== undefined ? { readStart } : {}),
-				...(readEnd !== undefined ? { readEnd } : {}),
+				...(finishFields !== undefined
+					? {
+							readEndYear: finishFields.readEndYear,
+							readEndMonth: finishFields.readEndMonth,
+						}
+					: {}),
 				...(editionId !== undefined ? { editionId } : {}),
 			},
 			select: {
-				readStart: true,
-				readEnd: true,
+				readEndYear: true,
+				readEndMonth: true,
 				editionId: true,
 			},
 		});
@@ -235,17 +315,15 @@ export async function setRead(
 		return saved;
 	});
 
-	const dates = parseReadDateFields({
-		readStart: row.readStart,
-		readEnd: row.readEnd,
-	});
+	await maybeCreateFeedbackFromSetRead(input, userId, db);
 
-	return {
-		hasRead: true,
-		readStart: dates.readStart,
-		readEnd: dates.readEnd,
-		editionId: row.editionId,
-	};
+	const hasFeedback =
+		(await db.feedback.findFirst({
+			where: { authorId: userId, bookId: book.id },
+			select: { id: true },
+		})) != null;
+
+	return mapReadRowToState(row, hasFeedback);
 }
 
 export async function removeRead(
@@ -271,13 +349,6 @@ export async function removeRead(
 	return { removed: true };
 }
 
-export function formatReadDateFieldsForOutput(row: {
-	readStart: unknown;
-	readEnd: unknown;
-}): { readStart: ReadDateField; readEnd: ReadDateField } {
-	return parseReadDateFields(row);
-}
-
 export async function listBookReads(
 	input: ListBookReadsInput,
 	db: Database,
@@ -291,11 +362,15 @@ export async function listBookReads(
 		db.read.count({ where: readWhere }),
 		db.read.findMany({
 			where: readWhere,
-			orderBy: { createdAt: "desc" },
+			orderBy: [
+				{ readEndYear: "desc" },
+				{ readEndMonth: "desc" },
+				{ createdAt: "desc" },
+			],
 			take: limit,
 			select: {
-				readStart: true,
-				readEnd: true,
+				readEndYear: true,
+				readEndMonth: true,
 				editionId: true,
 				createdAt: true,
 				user: {
@@ -311,20 +386,13 @@ export async function listBookReads(
 
 	return {
 		total,
-		items: rows.map((row) => {
-			const dates = parseReadDateFields({
-				readStart: row.readStart,
-				readEnd: row.readEnd,
-			});
-
-			return {
-				readStart: dates.readStart,
-				readEnd: dates.readEnd,
-				editionId: row.editionId,
-				recordedAt: row.createdAt,
-				user: row.user,
-			};
-		}),
+		items: rows.map((row) => ({
+			readEndYear: row.readEndYear,
+			readEndMonth: row.readEndMonth,
+			editionId: row.editionId,
+			recordedAt: row.createdAt,
+			user: row.user,
+		})),
 	};
 }
 
@@ -404,29 +472,22 @@ export async function listUserReads(
 	const page = pagination.paginate(rows);
 
 	return {
-		items: page.items.map((row) => {
-			const dates = parseReadDateFields({
-				readStart: row.readStart,
-				readEnd: row.readEnd,
-			});
-
-			return {
-				readStart: dates.readStart,
-				readEnd: dates.readEnd,
-				editionId: row.editionId,
-				recordedAt: row.createdAt,
-				book: {
-					slug: row.book.slug,
-					title: row.book.title,
-					authors: row.book.authors,
-					coverId: row.book.coverId,
-					status: row.book.status,
-					pages: row.book.pages,
-					publishedIn: row.book.publishedIn,
-					readCount: row.book._count.reads,
-				},
-			};
-		}),
+		items: page.items.map((row) => ({
+			readEndYear: row.readEndYear,
+			readEndMonth: row.readEndMonth,
+			editionId: row.editionId,
+			recordedAt: row.createdAt,
+			book: {
+				slug: row.book.slug,
+				title: row.book.title,
+				authors: row.book.authors,
+				coverId: row.book.coverId,
+				status: row.book.status,
+				pages: row.book.pages,
+				publishedIn: row.book.publishedIn,
+				readCount: row.book._count.reads,
+			},
+		})),
 		metadata: {
 			...page.metadata,
 			...(total != null ? { total } : {}),
@@ -459,4 +520,4 @@ export async function searchWorkEditionsForBook(
 	});
 }
 
-export { fetchEditionDetailSummaries, parseReadDateField, ReadDateFieldSchema };
+export { fetchEditionDetailSummaries };

@@ -9,10 +9,8 @@ import {
 } from "../book/book.listing";
 
 export const userReadSortableFields = [
+	"readEndMonth",
 	"recordedAt",
-	"readEnd",
-	"createdAt",
-	"updatedAt",
 	"title",
 	"pages",
 	"averageRating",
@@ -28,10 +26,13 @@ export type UserReadSortableField = (typeof userReadSortableFields)[number];
 export const userReadListSorting = defineSorting<
 	typeof userReadSortableFields,
 	Prisma.ReadOrderByWithRelationInput
->(userReadSortableFields, "recordedAt", "desc", {
+>(userReadSortableFields, "readEndMonth", "desc", {
 	orderBy: {
 		recordedAt: (direction) => ({ createdAt: direction }),
-		readEnd: (direction) => ({ readEnd: direction }),
+		readEndMonth: (direction) => ({
+			readEndYear: direction,
+			readEndMonth: direction,
+		}),
 		title: (direction) => ({ book: { title: direction } }),
 		pages: (direction) => ({ book: { pages: direction } }),
 		averageRating: (direction) => ({ book: { averageRating: direction } }),
@@ -39,8 +40,6 @@ export const userReadListSorting = defineSorting<
 			book: { openLibraryRating: direction },
 		}),
 		publishedIn: (direction) => ({ book: { publishedIn: direction } }),
-		createdAt: (direction) => ({ book: { createdAt: direction } }),
-		updatedAt: (direction) => ({ book: { updatedAt: direction } }),
 		"feedbacks._count": (direction) => ({
 			book: { feedbacks: { _count: direction } },
 		}),
@@ -61,9 +60,35 @@ export {
 	bookSortableFields,
 };
 
+function finishMonthOrderBy(
+	direction: "asc" | "desc",
+): Prisma.ReadOrderByWithRelationInput[] {
+	// Undated reads stay at the bottom; dated rows sort by year then month.
+	const nulls = "last" as const;
+	return [
+		{ readEndYear: { sort: direction, nulls } },
+		{ readEndMonth: { sort: direction, nulls } },
+	];
+}
+
+function expandReadOrderBy(
+	orderBy: Prisma.ReadOrderByWithRelationInput,
+): Prisma.ReadOrderByWithRelationInput[] {
+	const keys = Object.keys(orderBy);
+	if (
+		keys.length === 2 &&
+		"readEndYear" in orderBy &&
+		"readEndMonth" in orderBy
+	) {
+		const direction = orderBy.readEndYear as "asc" | "desc";
+		return finishMonthOrderBy(direction);
+	}
+	return [orderBy];
+}
+
 export function withStableUserReadOrderBy(
 	orderBy: Prisma.ReadOrderByWithRelationInput,
 	sortDirection: "asc" | "desc",
 ): Prisma.ReadOrderByWithRelationInput[] {
-	return [orderBy, { bookId: sortDirection }];
+	return [...expandReadOrderBy(orderBy), { bookId: sortDirection }];
 }

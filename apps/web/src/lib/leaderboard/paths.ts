@@ -8,6 +8,8 @@ import {
 	leaderboardKinds,
 	leaderboardPeriodSlugs,
 	leaderboardPeriods,
+	leaderboardPeriodsForKind,
+	normalizeLeaderboardPeriodForKind,
 	periodFromSlug,
 	slugFromPeriod,
 } from "@bbrc/api/modules/leaderboard/leaderboard.schema";
@@ -50,6 +52,15 @@ export const LEADERBOARD_PERIOD_OPTIONS = (
 	period,
 	...LEADERBOARD_PERIOD_META[period],
 }));
+
+export function leaderboardPeriodOptionsForKind(kind: LeaderboardKind | null) {
+	const periods =
+		kind == null ? leaderboardPeriods : leaderboardPeriodsForKind(kind);
+	return periods.map((period) => ({
+		period,
+		...LEADERBOARD_PERIOD_META[period],
+	}));
+}
 
 export type LeaderboardRouteContext = {
 	kind: LeaderboardKind | null;
@@ -120,7 +131,7 @@ export function parseLeaderboardPathname(
 		};
 	}
 
-	const period =
+	let period =
 		periodParam != null && isLeaderboardPeriodSlug(periodParam)
 			? periodFromSlug(periodParam)
 			: DEFAULT_LEADERBOARD_PERIOD;
@@ -128,6 +139,8 @@ export function parseLeaderboardPathname(
 	if (segment === LEADERBOARD_OVERVIEW_SEGMENT) {
 		return { kind: null, period, segment };
 	}
+
+	period = normalizeLeaderboardPeriodForKind(segment, period);
 
 	return { kind: segment, period, segment };
 }

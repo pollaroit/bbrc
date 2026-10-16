@@ -4,8 +4,11 @@ import {
 	CursorPaginationMetadataSchema,
 } from "@bbrc/schemas/listing/pagination";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
-import { ReadDateFieldSchema } from "@bbrc/schemas/read-dates";
-import { openLibraryEditionKeyToOlid } from "@bbrc/shared";
+import { ReadFinishedMonthInputSchema } from "@bbrc/schemas/read-finished-month";
+import {
+	isFeedbackRatingStep,
+	openLibraryEditionKeyToOlid,
+} from "@bbrc/shared";
 import { z } from "zod";
 import { bookListFiltersSchema } from "../book/book.listing";
 import {
@@ -28,17 +31,28 @@ export const ReadEditionIdSchema = z.string().transform((value, ctx) => {
 
 export const ReadEditionIdFieldSchema = ReadEditionIdSchema.nullable();
 
+const OptionalFeedbackOnSetReadSchema = z.object({
+	feedbackRating: z
+		.number()
+		.refine(isFeedbackRatingStep, {
+			message: "Rating must be in half-star steps from 0 to 5",
+		})
+		.optional(),
+	feedbackReview: z.string().max(500).optional(),
+});
+
 export const GetBookReadStateInputSchema = z.object({
 	bookSlug: BookSchema.shape.slug,
 });
 
-export const SetReadInputSchema = z.object({
-	bookSlug: BookSchema.shape.slug,
-	readStart: ReadDateFieldSchema.optional(),
-	readEnd: ReadDateFieldSchema.optional(),
-	/** Edition OLID or `/books/OL…M` key; pass `null` to clear. */
-	editionId: ReadEditionIdFieldSchema.optional(),
-});
+export const SetReadInputSchema = z
+	.object({
+		bookSlug: BookSchema.shape.slug,
+		/** Edition OLID or `/books/OL…M` key; pass `null` to clear. */
+		editionId: ReadEditionIdFieldSchema.optional(),
+	})
+	.merge(OptionalFeedbackOnSetReadSchema)
+	.and(ReadFinishedMonthInputSchema);
 
 export type SetReadInput = z.infer<typeof SetReadInputSchema>;
 
@@ -56,8 +70,10 @@ export type RemoveReadOutput = z.infer<typeof RemoveReadOutputSchema>;
 
 export const GetBookReadStateOutputSchema = z.object({
 	hasRead: z.boolean(),
-	readStart: ReadDateFieldSchema.nullable(),
-	readEnd: ReadDateFieldSchema.nullable(),
+	/** Whether the viewer already left club feedback on this book. */
+	hasFeedback: z.boolean(),
+	readEndYear: z.number().int().nullable(),
+	readEndMonth: z.number().int().nullable(),
 	editionId: ReadEditionIdFieldSchema,
 });
 
@@ -125,8 +141,8 @@ export const ListBookReadsInputSchema = z.object({
 export type ListBookReadsInput = z.infer<typeof ListBookReadsInputSchema>;
 
 export const BookReadListItemSchema = z.object({
-	readStart: ReadDateFieldSchema.nullable(),
-	readEnd: ReadDateFieldSchema.nullable(),
+	readEndYear: z.number().int().nullable(),
+	readEndMonth: z.number().int().nullable(),
 	editionId: ReadEditionIdFieldSchema,
 	recordedAt: z.coerce.date(),
 	user: z.object({
@@ -155,8 +171,8 @@ const UserReadBookSummarySchema = z.object({
 });
 
 export const UserReadListItemSchema = z.object({
-	readStart: ReadDateFieldSchema.nullable(),
-	readEnd: ReadDateFieldSchema.nullable(),
+	readEndYear: z.number().int().nullable(),
+	readEndMonth: z.number().int().nullable(),
 	editionId: ReadEditionIdFieldSchema,
 	recordedAt: z.coerce.date(),
 	book: UserReadBookSummarySchema,
@@ -252,8 +268,8 @@ export type ListUserReadsInput = z.infer<typeof ListUserReadsInputSchema>;
 export type ListUserReadsOutput = z.infer<typeof ListUserReadsOutputSchema>;
 
 export const userReadListSelect = {
-	readStart: true,
-	readEnd: true,
+	readEndYear: true,
+	readEndMonth: true,
 	editionId: true,
 	createdAt: true,
 	book: {

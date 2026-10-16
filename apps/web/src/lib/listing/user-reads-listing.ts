@@ -32,10 +32,8 @@ import {
 } from "@/lib/listing/parsers";
 
 export const userReadSortByLabels = {
-	recordedAt: "Date marked read",
-	readEnd: "Finish date",
-	createdAt: "Date added",
-	updatedAt: "Last updated",
+	readEndMonth: "Finish month",
+	recordedAt: "Logged in app",
 	title: "Title",
 	pages: "Page count",
 	averageRating: "Club rating",
@@ -48,10 +46,12 @@ export const userReadSortByLabels = {
 
 export const userReadListingSearchParams = {
 	search: searchParser.withOptions({ shallow: false, throttleMs: 400 }),
-	sortBy: createSortByParser(userReadSortableFields).withOptions({
-		shallow: false,
-	}),
-	sortDirection: sortDirectionParser.withOptions({ shallow: false }),
+	sortBy: createSortByParser(userReadSortableFields)
+		.withDefault("readEndMonth")
+		.withOptions({ shallow: false }),
+	sortDirection: sortDirectionParser
+		.withDefault("desc")
+		.withOptions({ shallow: false }),
 	rangeBy: createRangeByParser(["createdAt", "updatedAt"] as const).withOptions(
 		{ shallow: false },
 	),

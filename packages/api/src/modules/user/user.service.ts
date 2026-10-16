@@ -148,8 +148,16 @@ export async function getUserProfileCard(
 			select: favoriteItemSelect,
 		}),
 		db.read.findMany({
-			where: { userId: user.id },
-			orderBy: [{ createdAt: "desc" }, { bookId: "desc" }],
+			where: {
+				userId: user.id,
+				readEndYear: { not: null },
+				readEndMonth: { not: null },
+			},
+			orderBy: [
+				{ readEndYear: "desc" },
+				{ readEndMonth: "desc" },
+				{ createdAt: "desc" },
+			],
 			take: PROFILE_CARD_BOOK_LIMIT,
 			select: userReadListSelect,
 		}),

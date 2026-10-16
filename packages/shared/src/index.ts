@@ -9,6 +9,7 @@ export * from "./isr-paths";
 export * from "./notifications";
 export * from "./open-library";
 export * from "./post-feed-ranking";
+export * from "./read-finished-month";
 export * from "./reading-deadline";
 export * from "./scheduled-deadlines";
 export * from "./shelves";

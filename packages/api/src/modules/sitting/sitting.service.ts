@@ -31,6 +31,7 @@ import {
 	notifySittingPollStarted,
 } from "../notification/notification-triggers";
 import {
+	deleteReadForUserBook,
 	ensureReadForSittingCompletion,
 	syncParticipationWithExistingReadsForSelectedBook,
 } from "../read/read.service";
@@ -1272,7 +1273,7 @@ export async function updateMyParticipationProgress(
 
 	if (input.progress === "completed" && previousProgress !== "completed") {
 		void notifyParticipantFinishedBook(db, input.slug, userId);
-		void ensureReadForSittingCompletion(db, sitting.id, userId);
+		await ensureReadForSittingCompletion(db, sitting.id, userId);
 	}
 
 	return updated;
@@ -1287,6 +1288,7 @@ export async function updateParticipation(
 		select: {
 			id: true,
 			status: true,
+			selectedBookId: true,
 			participants: {
 				where: { userId: input.userId },
 				select: {
@@ -1381,7 +1383,15 @@ export async function updateParticipation(
 		previousProgress !== "completed"
 	) {
 		void notifyParticipantFinishedBook(db, input.slug, input.userId);
-		void ensureReadForSittingCompletion(db, sitting.id, input.userId);
+		await ensureReadForSittingCompletion(db, sitting.id, input.userId);
+	}
+
+	if (
+		previousProgress === "completed" &&
+		input.progress !== "completed" &&
+		sitting.selectedBookId
+	) {
+		await deleteReadForUserBook(input.userId, sitting.selectedBookId, db);
 	}
 
 	return {

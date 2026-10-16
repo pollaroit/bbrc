@@ -8,6 +8,36 @@ import {
 export const leaderboardPeriods = ["month", "year", "week", "all"] as const;
 export type LeaderboardPeriod = (typeof leaderboardPeriods)[number];
 
+/** Reads rank by finish month — no weekly granularity. */
+export const leaderboardReadsPeriods = ["month", "year", "all"] as const;
+export type LeaderboardReadsPeriod = (typeof leaderboardReadsPeriods)[number];
+
+type LeaderboardKindForPeriod =
+	| "xp"
+	| "rp"
+	| "reads"
+	| "posts"
+	| "participations";
+
+export function leaderboardPeriodsForKind(
+	kind: LeaderboardKindForPeriod,
+): readonly LeaderboardPeriod[] {
+	if (kind === "reads") {
+		return leaderboardReadsPeriods;
+	}
+	return leaderboardPeriods;
+}
+
+export function normalizeLeaderboardPeriodForKind(
+	kind: LeaderboardKindForPeriod,
+	period: LeaderboardPeriod,
+): LeaderboardPeriod {
+	if (kind === "reads" && period === "week") {
+		return "month";
+	}
+	return period;
+}
+
 /** URL segment when not the default (`month`). */
 export const leaderboardPeriodSlugs = ["all", "year", "week"] as const;
 export type LeaderboardPeriodSlug = (typeof leaderboardPeriodSlugs)[number];

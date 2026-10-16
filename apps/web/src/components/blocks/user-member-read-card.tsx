@@ -5,7 +5,7 @@ import Link from "next/link";
 import { BookReadCount } from "@/components/blocks/book-read-count";
 import { formatBookStatusLabel } from "@/components/blocks/book-status-badge";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
-import { formatReadPeriod } from "@/lib/format-read-date";
+import { formatReadFinishedMonthField } from "@/lib/format-read-date";
 import { cn } from "@/lib/utils";
 
 type UserMemberReadCardProps = {
@@ -66,7 +66,7 @@ export function UserMemberReadCard({
 					{formatBookAuthors(book.authors)}
 				</p>
 				<p className="text-muted-foreground text-sm">
-					{formatReadPeriod(item.readStart, item.readEnd)}
+					{formatReadFinishedMonthField(item.readEndYear, item.readEndMonth)}
 				</p>
 				<div className="mt-auto pt-1">
 					<BookReadCount count={item.book.readCount} className="text-xs" />

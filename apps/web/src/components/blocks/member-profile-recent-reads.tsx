@@ -15,13 +15,13 @@ export function MemberProfileRecentReads({
 	embedded = false,
 }: MemberProfileRecentReadsProps) {
 	const { data, isPending, isError } = useQuery(
-		orpc.read.listForUser.queryOptions({
-			input: { username, limit: 4 },
+		orpc.user.getUserProfileCard.queryOptions({
+			input: { username },
 		}),
 	);
 
 	const items =
-		data?.items.map((item) => ({
+		data?.recentReads.map((item) => ({
 			id: item.book.slug,
 			title: item.book.title,
 			slug: item.book.slug,

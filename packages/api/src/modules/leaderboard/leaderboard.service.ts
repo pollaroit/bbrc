@@ -1,4 +1,5 @@
 import type { Database, Prisma } from "@bbrc/db";
+import { getZonedParts, resolveClubTimeZone } from "@bbrc/shared";
 import type {
 	GetLeaderboardHubInput,
 	GetLeaderboardHubOutput,
@@ -12,6 +13,7 @@ import {
 	getLeaderboardPeriodRange,
 	LEADERBOARD_PERIOD_META,
 	type LeaderboardPeriod,
+	normalizeLeaderboardPeriodForKind,
 } from "./leaderboard-period";
 
 const HUB_WINDOW = 5;
@@ -215,19 +217,42 @@ async function loadRpMetricsForRange(
 	return new Map(groups.map((group) => [group.userId, group._sum.points ?? 0]));
 }
 
-async function loadReadMetricsForRange(
+async function loadReadMetricsForPeriod(
 	db: Database,
-	range: { gte: Date; lt: Date } | null,
+	period: LeaderboardPeriod,
+	reference = new Date(),
 ): Promise<Map<string, number>> {
-	const createdAt =
-		range != null ? { gte: range.gte, lt: range.lt } : undefined;
+	if (period === "all") {
+		const groups = await db.read.groupBy({
+			by: ["userId"],
+			where: { user: memberWhere },
+			_count: { _all: true },
+		});
+
+		return new Map(groups.map((group) => [group.userId, group._count._all]));
+	}
+
+	const timeZone = resolveClubTimeZone();
+	const parts = getZonedParts(reference, timeZone);
+
+	const datedWhere: Prisma.ReadWhereInput = {
+		user: memberWhere,
+		readEndYear: { not: null },
+		readEndMonth: { not: null },
+	};
+
+	if (period === "year") {
+		datedWhere.readEndYear = parts.year;
+	} else if (period === "month") {
+		datedWhere.readEndYear = parts.year;
+		datedWhere.readEndMonth = parts.month;
+	} else {
+		return new Map();
+	}
 
 	const groups = await db.read.groupBy({
 		by: ["userId"],
-		where: {
-			...(createdAt ? { createdAt } : {}),
-			user: memberWhere,
-		},
+		where: datedWhere,
 		_count: { _all: true },
 	});
 
@@ -289,7 +314,7 @@ async function loadMetricsByKind(
 				? loadAllTimeRpMetrics(db)
 				: loadRpMetricsForRange(db, range);
 		case "reads":
-			return loadReadMetricsForRange(db, range);
+			return loadReadMetricsForPeriod(db, period);
 		case "posts":
 			return loadPostMetricsForRange(db, range);
 		case "participations":
@@ -344,14 +369,10 @@ export async function getLeaderboard(
 	db: Database,
 	viewerUsername?: string,
 ): Promise<GetLeaderboardOutput> {
-	const entries = await loadRankedEntriesForKind(db, input.kind, input.period);
+	const period = normalizeLeaderboardPeriodForKind(input.kind, input.period);
+	const entries = await loadRankedEntriesForKind(db, input.kind, period);
 
-	return buildLeaderboardOutput(
-		input.kind,
-		input.period,
-		entries,
-		viewerUsername,
-	);
+	return buildLeaderboardOutput(input.kind, period, entries, viewerUsername);
 }
 
 export async function getLeaderboardHub(
@@ -363,7 +384,8 @@ export async function getLeaderboardHub(
 
 	const categories = await Promise.all(
 		leaderboardKinds.map(async (kind) => {
-			const entries = await loadRankedEntriesForKind(db, kind, input.period);
+			const period = normalizeLeaderboardPeriodForKind(kind, input.period);
+			const entries = await loadRankedEntriesForKind(db, kind, period);
 			const meta = LEADERBOARD_KIND_META[kind];
 			const items = viewerUsername
 				? sliceWindowAroundUsername(entries, viewerUsername, HUB_WINDOW)
@@ -372,7 +394,7 @@ export async function getLeaderboardHub(
 			return {
 				kind,
 				title: meta.title,
-				description: `${meta.description} ${periodDescriptionSuffix(input.period)}`,
+				description: `${meta.description} ${periodDescriptionSuffix(period)}`,
 				metricLabel: meta.metricLabel,
 				totalMembers: entries.length,
 				items,

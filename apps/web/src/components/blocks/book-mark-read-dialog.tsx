@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReadDatePart } from "@bbrc/schemas/read-dates";
+import { type FeedbackRatingStep, isFeedbackRatingStep } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
@@ -22,8 +22,11 @@ import {
 	SelectValue,
 } from "@bbrc/ui/components/select";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { AutoGrowTextarea } from "@/components/blocks/auto-grow-textarea";
+import { FeedbackHalfStarRating } from "@/components/blocks/feedback-half-star-rating";
+import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
 import { invalidateReadQueries } from "@/lib/invalidate-read-queries";
 import {
 	READ_DATE_MONTH_UNSET,
@@ -48,35 +51,8 @@ function parseOptionalInt(value: string): number | undefined {
 	return Number.isFinite(n) ? n : undefined;
 }
 
-function buildDatePart(
-	year: string,
-	month: string,
-	day: string,
-): ReadDatePart | null {
-	const y = parseOptionalInt(year);
-	if (y == null) {
-		return null;
-	}
-	const m = parseOptionalInt(month);
-	const d = parseOptionalInt(day);
-	if (m == null && d == null) {
-		return { year: y };
-	}
-	if (m == null) {
-		return null;
-	}
-	if (d == null) {
-		return { year: y, month: m };
-	}
-	return { year: y, month: m, day: d };
-}
-
-function partToFields(part: ReadDatePart | null | undefined) {
-	return {
-		year: part?.year != null ? String(part.year) : "",
-		month: part?.month != null ? String(part.month) : "",
-		day: part?.day != null ? String(part.day) : "",
-	};
+function clampDigits(value: string, maxLength: number) {
+	return value.replace(/\D/g, "").slice(0, maxLength);
 }
 
 export function BookMarkReadDialog({
@@ -85,12 +61,12 @@ export function BookMarkReadDialog({
 	open,
 	onOpenChange,
 }: BookMarkReadDialogProps) {
-	const [startYear, setStartYear] = useState("");
-	const [startMonth, setStartMonth] = useState("");
-	const [startDay, setStartDay] = useState("");
+	const [step, setStep] = useState<1 | 2>(1);
 	const [endYear, setEndYear] = useState("");
 	const [endMonth, setEndMonth] = useState("");
-	const [endDay, setEndDay] = useState("");
+	const [feedbackRating, setFeedbackRating] =
+		useState<FeedbackRatingStep | null>(null);
+	const [feedbackReview, setFeedbackReview] = useState("");
 
 	const stateQuery = useQuery({
 		...orpc.read.getBookReadState.queryOptions({
@@ -100,17 +76,25 @@ export function BookMarkReadDialog({
 	});
 
 	useEffect(() => {
-		if (!open || !stateQuery.data) {
+		if (!open) {
+			setStep(1);
+			setFeedbackRating(null);
+			setFeedbackReview("");
 			return;
 		}
-		const start = partToFields(stateQuery.data.readStart);
-		const end = partToFields(stateQuery.data.readEnd);
-		setStartYear(start.year);
-		setStartMonth(start.month);
-		setStartDay(start.day);
-		setEndYear(end.year);
-		setEndMonth(end.month);
-		setEndDay(end.day);
+		if (!stateQuery.data) {
+			return;
+		}
+		setEndYear(
+			stateQuery.data.readEndYear != null
+				? String(stateQuery.data.readEndYear)
+				: "",
+		);
+		setEndMonth(
+			stateQuery.data.readEndMonth != null
+				? String(stateQuery.data.readEndMonth)
+				: "",
+		);
 	}, [open, stateQuery.data]);
 
 	const saveMutation = useMutation(
@@ -118,6 +102,7 @@ export function BookMarkReadDialog({
 			onSuccess: async () => {
 				toast.success("Saved your read");
 				await invalidateReadQueries(bookSlug);
+				await invalidateFeedbackQueries();
 				onOpenChange(false);
 			},
 			onError: (error) => {
@@ -140,58 +125,164 @@ export function BookMarkReadDialog({
 	);
 
 	const hasRead = stateQuery.data?.hasRead ?? false;
+	const hasFeedback = stateQuery.data?.hasFeedback ?? false;
+	/** Step 2 when marking read, or editing a read that still has no club feedback. */
+	const offerFeedbackStep = !hasFeedback;
 
-	const readStart = useMemo(
-		() => buildDatePart(startYear, startMonth, startDay),
-		[startYear, startMonth, startDay],
-	);
-	const readEnd = useMemo(
-		() => buildDatePart(endYear, endMonth, endDay),
-		[endYear, endMonth, endDay],
-	);
+	function buildFinishMonthPayload():
+		| { readEndYear: number; readEndMonth: number }
+		| { readEndYear: null; readEndMonth: null }
+		| undefined {
+		const y = parseOptionalInt(endYear);
+		const m = parseOptionalInt(endMonth);
+		if (y == null && m == null) {
+			return { readEndYear: null, readEndMonth: null };
+		}
+		if (y == null || m == null) {
+			toast.error("Choose both finish month and year, or leave both empty");
+			return undefined;
+		}
+		if (m < 1 || m > 12) {
+			toast.error("Month must be between 1 and 12");
+			return undefined;
+		}
+		return { readEndYear: y, readEndMonth: m };
+	}
 
-	function handleSave() {
+	function handleContinueToFeedback() {
+		const payload = buildFinishMonthPayload();
+		if (payload === undefined) {
+			return;
+		}
+		setStep(2);
+	}
+
+	function submitRead(includeFeedback: boolean) {
+		const finish = buildFinishMonthPayload();
+		if (finish === undefined) {
+			return;
+		}
+
+		const reviewTrimmed = feedbackReview.trim();
+		const hasRating =
+			feedbackRating != null && isFeedbackRatingStep(feedbackRating);
+		const hasReview = reviewTrimmed.length > 0;
+
+		if (includeFeedback && !hasRating && !hasReview) {
+			toast.error("Add a rating or review, or skip this step");
+			return;
+		}
+
 		saveMutation.mutate({
 			bookSlug,
-			readStart: readStart ?? undefined,
-			readEnd: readEnd ?? undefined,
+			...finish,
+			...(includeFeedback && hasRating
+				? { feedbackRating, feedbackReview: reviewTrimmed || undefined }
+				: {}),
 		});
 	}
+
+	const monthValue = endMonth.length > 0 ? endMonth : READ_DATE_MONTH_UNSET;
+	const monthDisplayLabel = readDateMonthLabel(endMonth);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
-					<DialogTitle>Mark as read</DialogTitle>
+					<DialogTitle>
+						{step === 1
+							? hasRead
+								? "Edit read"
+								: "Mark as read"
+							: "Optional review"}
+					</DialogTitle>
 					<DialogDescription>
-						Record when you read {bookTitle}. Dates can be as precise as you
-						remember.
+						{step === 1
+							? `When did you finish ${bookTitle}? Month and year are optional.`
+							: "Rate or review the book now, or skip and add feedback later."}
 					</DialogDescription>
 				</DialogHeader>
 
-				<FieldGroup>
-					<FieldSetDates
-						label="Started"
-						year={startYear}
-						month={startMonth}
-						day={startDay}
-						onYear={setStartYear}
-						onMonth={setStartMonth}
-						onDay={setStartDay}
-					/>
-					<FieldSetDates
-						label="Finished"
-						year={endYear}
-						month={endMonth}
-						day={endDay}
-						onYear={setEndYear}
-						onMonth={setEndMonth}
-						onDay={setEndDay}
-					/>
-				</FieldGroup>
+				{step === 1 ? (
+					<FieldGroup>
+						<Field>
+							<FieldLabel>Finished (month & year)</FieldLabel>
+							<div className="flex w-full gap-2">
+								<Input
+									type="number"
+									inputMode="numeric"
+									min={1000}
+									max={2100}
+									placeholder="Year"
+									value={endYear}
+									onChange={(event) =>
+										setEndYear(clampDigits(event.target.value, 4))
+									}
+									aria-label="Finish year"
+									className="w-[5.5rem] shrink-0"
+								/>
+								<Select
+									value={monthValue}
+									onValueChange={(value) => {
+										if (value == null) {
+											return;
+										}
+										setEndMonth(value === READ_DATE_MONTH_UNSET ? "" : value);
+									}}
+								>
+									<SelectTrigger
+										className="min-w-0 flex-1"
+										aria-label="Finish month"
+									>
+										<SelectValue placeholder="Month">
+											{monthDisplayLabel ?? "Month"}
+										</SelectValue>
+									</SelectTrigger>
+									<SelectContent alignItemWithTrigger={false}>
+										<SelectGroup>
+											<SelectItem value={READ_DATE_MONTH_UNSET}>
+												Month
+											</SelectItem>
+											{READ_DATE_MONTHS.map((entry) => (
+												<SelectItem key={entry.value} value={entry.value}>
+													{entry.label}
+												</SelectItem>
+											))}
+										</SelectGroup>
+									</SelectContent>
+								</Select>
+							</div>
+						</Field>
+					</FieldGroup>
+				) : (
+					<FieldGroup>
+						<Field>
+							<FieldLabel>Rating</FieldLabel>
+							<FeedbackHalfStarRating
+								value={feedbackRating ?? 0}
+								onChange={(value) => setFeedbackRating(value)}
+								disabled={saveMutation.isPending}
+							/>
+						</Field>
+						<Field>
+							<FieldLabel htmlFor="mark-read-feedback-review">
+								Review
+							</FieldLabel>
+							<AutoGrowTextarea
+								id="mark-read-feedback-review"
+								value={feedbackReview}
+								onChange={(event) => setFeedbackReview(event.target.value)}
+								maxLength={500}
+								rows={4}
+								placeholder="Optional thoughts for the club"
+								disabled={saveMutation.isPending}
+							/>
+						</Field>
+					</FieldGroup>
+				)}
 
 				<DialogFooter className="gap-2 sm:justify-between">
-					{hasRead ? (
+					{step === 1 && hasRead ? (
 						<Button
 							type="button"
 							variant="ghost"
@@ -199,6 +290,15 @@ export function BookMarkReadDialog({
 							onClick={() => removeMutation.mutate({ bookSlug })}
 						>
 							Remove read
+						</Button>
+					) : step === 2 ? (
+						<Button
+							type="button"
+							variant="ghost"
+							onClick={() => setStep(1)}
+							disabled={saveMutation.isPending}
+						>
+							Back
 						</Button>
 					) : (
 						<span />
@@ -211,101 +311,42 @@ export function BookMarkReadDialog({
 						>
 							Cancel
 						</Button>
-						<LoadingButton
-							type="button"
-							loading={saveMutation.isPending}
-							onClick={handleSave}
-						>
-							Save
-						</LoadingButton>
+						{step === 1 ? (
+							offerFeedbackStep ? (
+								<Button type="button" onClick={handleContinueToFeedback}>
+									Next
+								</Button>
+							) : (
+								<LoadingButton
+									type="button"
+									loading={saveMutation.isPending}
+									onClick={() => submitRead(false)}
+								>
+									Save
+								</LoadingButton>
+							)
+						) : (
+							<>
+								<LoadingButton
+									type="button"
+									variant="outline"
+									loading={saveMutation.isPending}
+									onClick={() => submitRead(false)}
+								>
+									Skip review
+								</LoadingButton>
+								<LoadingButton
+									type="button"
+									loading={saveMutation.isPending}
+									onClick={() => submitRead(true)}
+								>
+									Save
+								</LoadingButton>
+							</>
+						)}
 					</div>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
-	);
-}
-
-type FieldSetDatesProps = {
-	label: string;
-	year: string;
-	month: string;
-	day: string;
-	onYear: (value: string) => void;
-	onMonth: (value: string) => void;
-	onDay: (value: string) => void;
-};
-
-function clampDigits(value: string, maxLength: number) {
-	return value.replace(/\D/g, "").slice(0, maxLength);
-}
-
-function FieldSetDates({
-	label,
-	year,
-	month,
-	day,
-	onYear,
-	onMonth,
-	onDay,
-}: FieldSetDatesProps) {
-	const monthValue = month.length > 0 ? month : READ_DATE_MONTH_UNSET;
-	const monthDisplayLabel = readDateMonthLabel(month);
-
-	return (
-		<Field>
-			<FieldLabel>{label}</FieldLabel>
-			<div className="flex w-full gap-2">
-				<Input
-					type="number"
-					inputMode="numeric"
-					min={1000}
-					max={2100}
-					placeholder="Year"
-					value={year}
-					onChange={(event) => onYear(clampDigits(event.target.value, 4))}
-					aria-label={`${label} year`}
-					className="w-[5.5rem] shrink-0"
-				/>
-				<Select
-					value={monthValue}
-					onValueChange={(value) => {
-						if (value == null) {
-							return;
-						}
-						onMonth(value === READ_DATE_MONTH_UNSET ? "" : value);
-					}}
-				>
-					<SelectTrigger
-						className="min-w-0 flex-1"
-						aria-label={`${label} month`}
-					>
-						<SelectValue placeholder="Month">
-							{monthDisplayLabel ?? "Month"}
-						</SelectValue>
-					</SelectTrigger>
-					<SelectContent alignItemWithTrigger={false}>
-						<SelectGroup>
-							<SelectItem value={READ_DATE_MONTH_UNSET}>Month</SelectItem>
-							{READ_DATE_MONTHS.map((entry) => (
-								<SelectItem key={entry.value} value={entry.value}>
-									{entry.label}
-								</SelectItem>
-							))}
-						</SelectGroup>
-					</SelectContent>
-				</Select>
-				<Input
-					type="number"
-					inputMode="numeric"
-					min={1}
-					max={31}
-					placeholder="Day"
-					value={day}
-					onChange={(event) => onDay(clampDigits(event.target.value, 2))}
-					aria-label={`${label} day`}
-					className="w-[4.5rem] shrink-0"
-				/>
-			</div>
-		</Field>
 	);
 }

@@ -11,9 +11,11 @@ model Read {
   bookId String @map("book_id")
   book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
-  /// Flexible partial dates (year / month / day). Validated in app via Zod.
-  readStart Json? @map("read_start")
-  readEnd   Json? @map("read_end")
+  /// Finish month (both null = unknown). Month is calendar 1–12.
+  /// @zod.min(1).max(12)
+  readEndMonth Int? @map("read_end_month")
+  /// @zod.min(1000).max(2100)
+  readEndYear  Int? @map("read_end_year")
 
   /// Open Library edition OLID (e.g. `OL123456M`), optional.
   /// @zod.import(["import { isOpenLibraryEditionOlid } from '@bbrc/shared'"])
@@ -23,6 +25,7 @@ model Read {
   @@id([userId, bookId])
   @@index([bookId])
   @@index([userId])
+  @@index([userId, readEndYear, readEndMonth])
   @@index([editionId])
   @@map("member_read")
 }
