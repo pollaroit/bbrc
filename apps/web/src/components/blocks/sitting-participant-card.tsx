@@ -58,6 +58,9 @@ export function SittingParticipantCard({
 						<UserStatusBadge status={participant.status} className="shrink-0" />
 					</div>
 					<div className="mt-auto flex flex-col gap-1.5">
+						<p className="text-muted-foreground text-xs">
+							{participant.xpLevel.label} · {participant.rpLevel.label}
+						</p>
 						{sittingStatus === "finished" && participant.rpChange != null ? (
 							<p
 								className={cn(

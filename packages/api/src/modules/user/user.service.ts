@@ -6,6 +6,8 @@ import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
 import { favoriteItemSelect } from "../favorite/favorite.schema";
 import { userReadListSelect } from "../read/read.schema";
+import { userMemberLevelsFromPoints } from "./member-levels";
+import { loadReadingStreakForUser } from "./reading-streak";
 import {
 	userListRanging,
 	userListSearching,
@@ -77,6 +79,11 @@ export async function getUserByUsername(
 
 	assertMemberVisible(user, viewer);
 
+	const [readingStreak, levels] = await Promise.all([
+		loadReadingStreakForUser(user.id, db),
+		Promise.resolve(userMemberLevelsFromPoints(user.xp, user.rp)),
+	]);
+
 	return {
 		username: user.username,
 		name: user.name,
@@ -86,6 +93,9 @@ export async function getUserByUsername(
 		xp: user.xp,
 		status: user.status,
 		indexable: !user.isHidden,
+		xpLevel: levels.xpLevel,
+		rpLevel: levels.rpLevel,
+		readingStreak,
 	};
 }
 
@@ -115,7 +125,19 @@ export async function getUserList(
 		select: getUserListFields,
 	});
 
-	return pagination.paginate(rows);
+	const page = pagination.paginate(rows);
+
+	return {
+		items: page.items.map((row) => {
+			const levels = userMemberLevelsFromPoints(row.xp, row.rp);
+			return {
+				...row,
+				xpLevel: levels.xpLevel,
+				rpLevel: levels.rpLevel,
+			};
+		}),
+		metadata: page.metadata,
+	};
 }
 
 const PROFILE_CARD_BOOK_LIMIT = 4;
@@ -133,6 +155,8 @@ export async function getUserProfileCard(
 
 	assertMemberVisible(user, viewer);
 
+	const levels = userMemberLevelsFromPoints(user.xp, user.rp);
+
 	const [
 		favorites,
 		recentReads,
@@ -140,6 +164,7 @@ export async function getUserProfileCard(
 		feedbacksCount,
 		participationsCount,
 		shelvesCount,
+		readingStreak,
 	] = await Promise.all([
 		db.favorite.findMany({
 			where: { userId: user.id },
@@ -165,6 +190,7 @@ export async function getUserProfileCard(
 		db.feedback.count({ where: { authorId: user.id } }),
 		db.participation.count({ where: { userId: user.id } }),
 		db.shelf.count({ where: { userId: user.id } }),
+		loadReadingStreakForUser(user.id, db),
 	]);
 
 	return {
@@ -175,6 +201,9 @@ export async function getUserProfileCard(
 		rp: user.rp,
 		xp: user.xp,
 		status: user.status,
+		xpLevel: levels.xpLevel,
+		rpLevel: levels.rpLevel,
+		readingStreak,
 		favorites: favorites.map((row) => ({
 			id: row.id,
 			book: {

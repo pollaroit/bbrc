@@ -18,6 +18,7 @@ import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { MemberLevelsInfoDialog } from "@/components/blocks/member-levels-info-dialog";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { bookCoverUrl } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
@@ -130,14 +131,30 @@ function statCell(label: string, value: number) {
 	);
 }
 
-function PointsMetric({ label, value }: { label: string; value: number }) {
+function PointsMetric({
+	label,
+	value,
+	levelLabel,
+	kind,
+}: {
+	label: string;
+	value: number;
+	levelLabel: string;
+	kind: "xp" | "rp";
+}) {
 	return (
 		<div className="flex min-w-0 flex-col gap-1 bg-background px-4 py-3.5 sm:px-5 sm:py-4">
-			<span className="text-muted-foreground text-xs leading-none sm:text-sm">
-				{label}
-			</span>
+			<div className="flex items-center gap-1">
+				<span className="text-muted-foreground text-xs leading-none sm:text-sm">
+					{label}
+				</span>
+				<MemberLevelsInfoDialog kind={kind} currentPoints={value} />
+			</div>
 			<span className="font-medium text-3xl tabular-nums tracking-tight sm:text-4xl">
 				{value}
+			</span>
+			<span className="text-muted-foreground text-xs sm:text-sm">
+				{levelLabel}
 			</span>
 		</div>
 	);
@@ -219,8 +236,18 @@ export function MemberProfileCardDialog({
 							/>
 
 							<div className="grid grid-cols-2 gap-px border border-border bg-border">
-								<PointsMetric label="Experience points" value={card.xp} />
-								<PointsMetric label="Reading points" value={card.rp} />
+								<PointsMetric
+									label="Experience points"
+									value={card.xp}
+									levelLabel={card.xpLevel.label}
+									kind="xp"
+								/>
+								<PointsMetric
+									label="Reading points"
+									value={card.rp}
+									levelLabel={card.rpLevel.label}
+									kind="rp"
+								/>
 							</div>
 
 							<div className="grid grid-cols-2 gap-3 sm:gap-4">

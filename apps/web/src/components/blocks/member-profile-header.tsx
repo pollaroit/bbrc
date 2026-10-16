@@ -3,7 +3,9 @@ import { Button } from "@bbrc/ui/components/button";
 import { Crown } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { MemberLevelsInfoDialog } from "@/components/blocks/member-levels-info-dialog";
 import { MemberProfileCardDialog } from "@/components/blocks/member-profile-card-dialog";
+import { ReadingStreakBadge } from "@/components/blocks/reading-streak-badge";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
@@ -59,16 +61,19 @@ export function MemberProfileHeader({
 							</span>
 						)}
 					/>
-					<div className="flex flex-wrap items-center gap-2 sm:justify-end">
-						<UserStatusBadge status={user.status} />
-						<ResourceShareMenu
-							path={`/users/${user.username}`}
-							shareText={user.name}
-							label="Share member profile"
-							shareInPost={{ kind: "user", username: user.username }}
-							size="md"
-						/>
-						<MemberProfileCardDialog user={user} />
+					<div className="flex flex-col gap-2 sm:items-end">
+						<ReadingStreakBadge streak={user.readingStreak} />
+						<div className="flex flex-wrap items-center gap-2 sm:justify-end">
+							<UserStatusBadge status={user.status} />
+							<ResourceShareMenu
+								path={`/users/${user.username}`}
+								shareText={user.name}
+								label="Share member profile"
+								shareInPost={{ kind: "user", username: user.username }}
+								size="md"
+							/>
+							<MemberProfileCardDialog user={user} />
+						</div>
 					</div>
 				</div>
 
@@ -80,9 +85,15 @@ export function MemberProfileHeader({
 						Member stats and library highlights
 					</h2>
 					<ProfileGridCell>
-						<p className="text-muted-foreground text-sm">Experience points</p>
+						<div className="flex items-center gap-1">
+							<p className="text-muted-foreground text-sm">Experience points</p>
+							<MemberLevelsInfoDialog kind="xp" currentPoints={user.xp} />
+						</div>
 						<p className="font-medium text-3xl tabular-nums tracking-tight">
 							{user.xp}
+						</p>
+						<p className="text-muted-foreground text-sm">
+							{user.xpLevel.label}
 						</p>
 						<Button
 							variant="outline"
@@ -95,9 +106,15 @@ export function MemberProfileHeader({
 						</Button>
 					</ProfileGridCell>
 					<ProfileGridCell>
-						<p className="text-muted-foreground text-sm">Reading points</p>
+						<div className="flex items-center gap-1">
+							<p className="text-muted-foreground text-sm">Reading points</p>
+							<MemberLevelsInfoDialog kind="rp" currentPoints={user.rp} />
+						</div>
 						<p className="font-medium text-3xl tabular-nums tracking-tight">
 							{user.rp}
+						</p>
+						<p className="text-muted-foreground text-sm">
+							{user.rpLevel.label}
 						</p>
 						<Button
 							variant="outline"

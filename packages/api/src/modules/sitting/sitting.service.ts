@@ -36,6 +36,7 @@ import {
 	syncParticipationWithExistingReadsForSelectedBook,
 } from "../read/read.service";
 import { calculateRpPointsDelta } from "../rp/rp.service";
+import { userMemberLevelsFromPoints } from "../user/member-levels";
 import { loadActorSocialGate } from "../user/user-visibility";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardParticipationXp, awardPollVoteXp } from "../xp/xp.service";
@@ -299,12 +300,21 @@ function mapSittingDetail(
 				rpChange = calculateRpPointsDelta(participation.progress, bookPages);
 			}
 
+			const levels = userMemberLevelsFromPoints(
+				participation.user.xp,
+				participation.user.rp,
+			);
+
 			return {
 				userId: participation.userId,
 				username: participation.user.username,
 				name: participation.user.name,
 				image: participation.user.image,
 				status: participation.user.status,
+				xp: participation.user.xp,
+				rp: participation.user.rp,
+				xpLevel: levels.xpLevel,
+				rpLevel: levels.rpLevel,
 				progress: participation.progress,
 				rpChange,
 			};
@@ -524,6 +534,8 @@ export async function getSittingBySlug(
 				return [];
 			}
 
+			const levels = userMemberLevelsFromPoints(row.user.xp, row.user.rp);
+
 			return [
 				{
 					userId: row.userId,
@@ -531,6 +543,10 @@ export async function getSittingBySlug(
 					name: row.user.name,
 					image: row.user.image,
 					status: row.user.status,
+					xp: row.user.xp,
+					rp: row.user.rp,
+					xpLevel: levels.xpLevel,
+					rpLevel: levels.rpLevel,
 					progress: row.progress,
 					rpChange: null,
 					removedAt: row.removedAt,
@@ -1344,6 +1360,8 @@ export async function updateParticipation(
 						name: true,
 						image: true,
 						status: true,
+						xp: true,
+						rp: true,
 					},
 				},
 			},
@@ -1366,11 +1384,13 @@ export async function updateParticipation(
 					name: true,
 					image: true,
 					status: true,
+					xp: true,
+					rp: true,
 				},
 			});
 
 			if (refreshedUser) {
-				row.user.status = refreshedUser.status;
+				row.user = refreshedUser;
 			}
 		}
 
@@ -1394,12 +1414,18 @@ export async function updateParticipation(
 		await deleteReadForUserBook(input.userId, sitting.selectedBookId, db);
 	}
 
+	const levels = userMemberLevelsFromPoints(updated.user.xp, updated.user.rp);
+
 	return {
 		userId: updated.userId,
 		username: updated.user.username,
 		name: updated.user.name,
 		image: updated.user.image,
 		status: updated.user.status,
+		xp: updated.user.xp,
+		rp: updated.user.rp,
+		xpLevel: levels.xpLevel,
+		rpLevel: levels.rpLevel,
 		progress: updated.progress,
 		rpChange: null,
 	};

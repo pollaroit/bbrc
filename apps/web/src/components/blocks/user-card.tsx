@@ -42,11 +42,15 @@ export function UserCard({ user, className }: UserCardProps) {
 						<dl className="flex shrink-0 flex-col items-end gap-0.5 text-muted-foreground text-xs tabular-nums">
 							<div>
 								<dt className="sr-only">Experience points</dt>
-								<dd>{user.xp} XP</dd>
+								<dd>
+									{user.xpLevel.label} · {user.xp} XP
+								</dd>
 							</div>
 							<div>
 								<dt className="sr-only">Reading points</dt>
-								<dd>{user.rp} RP</dd>
+								<dd>
+									{user.rpLevel.label} · {user.rp} RP
+								</dd>
 							</div>
 						</dl>
 					</div>

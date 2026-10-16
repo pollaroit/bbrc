@@ -22,6 +22,7 @@ import {
 	getBookListFields,
 	getBookPollSelect,
 } from "../book/book.schema";
+import { MemberLevelSchema } from "../user/user.schema";
 import {
 	sittingListFiltersSchema,
 	sittingListRanging,
@@ -348,6 +349,10 @@ export const SittingParticipantSummarySchema = zod.object({
 	name: UserSchema.shape.name,
 	image: UserSchema.shape.image,
 	status: UserSchema.shape.status,
+	xp: UserSchema.shape.xp,
+	rp: UserSchema.shape.rp,
+	xpLevel: MemberLevelSchema,
+	rpLevel: MemberLevelSchema,
 	progress: ProgressSchema,
 	rpChange: zod.number().int().nullable(),
 });
@@ -428,6 +433,8 @@ export const getSittingBySlugFields = {
 					image: true,
 					status: true,
 					isHidden: true,
+					xp: true,
+					rp: true,
 				},
 			},
 		},
@@ -444,6 +451,8 @@ export const getSittingRemovedParticipantFields = {
 			name: true,
 			image: true,
 			status: true,
+			xp: true,
+			rp: true,
 		},
 	},
 } as const;

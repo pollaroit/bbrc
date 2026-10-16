@@ -30,6 +30,28 @@ export const GetUserListInputSchema = userListFiltersSchema
 		);
 	});
 
+export const MemberLevelSchema = zod.object({
+	label: zod.string(),
+	minInclusive: zod.number().int(),
+	maxExclusive: zod.number().int().nullable(),
+});
+
+export const ReadingStreakSittingSchema = zod.object({
+	slug: SittingSchema.shape.slug,
+	displayName: zod.string().min(1),
+	deadline: zod.coerce.date(),
+	progress: ProgressSchema,
+	inCurrentStreak: zod.boolean(),
+	inBestStreak: zod.boolean(),
+});
+
+export const ReadingStreakSchema = zod.object({
+	current: zod.number().int().min(0),
+	best: zod.number().int().min(0),
+	asOfSittingSlug: zod.string().nullable(),
+	sittings: zod.array(ReadingStreakSittingSchema),
+});
+
 export const getUserListFields = {
 	id: true,
 	username: true,
@@ -41,9 +63,13 @@ export const getUserListFields = {
 	status: true,
 } as const;
 
-export const GetUserListOutputSchema = CursorPaginationOutputSchema(
-	UserSchema.pick(getUserListFields),
-);
+const UserListItemSchema = UserSchema.pick(getUserListFields).extend({
+	xpLevel: MemberLevelSchema,
+	rpLevel: MemberLevelSchema,
+});
+
+export const GetUserListOutputSchema =
+	CursorPaginationOutputSchema(UserListItemSchema);
 
 export type GetUserListInput = z.infer<typeof GetUserListInputSchema>;
 export type GetUserListOutput = z.infer<typeof GetUserListOutputSchema>;
@@ -68,6 +94,9 @@ export const GetUserByUsernameOutputSchema = UserSchema.pick(
 	getUserByUsernameFields,
 ).extend({
 	indexable: zod.boolean(),
+	xpLevel: MemberLevelSchema,
+	rpLevel: MemberLevelSchema,
+	readingStreak: ReadingStreakSchema,
 });
 
 export type GetUserByUsernameInput = z.infer<
