@@ -1,10 +1,12 @@
 import type { Metadata, Route } from "next";
 import Link from "next/link";
+import { BookDiscoverySection } from "@/components/blocks/book-discovery-section";
 import { BookExcerptMarkdown } from "@/components/blocks/book-excerpt-markdown";
 import { FeedbackReviewList } from "@/components/blocks/feedback-review-list";
 import { truncateBookExcerptMarkdown } from "@/lib/books/excerpt-markdown";
 import {
 	loadBookBySlugForIsr,
+	loadBookCatalogDiscoveryForIsr,
 	loadBookFeedbackListForIsr,
 	loadBookShelvesForIsr,
 } from "@/lib/isr-data";
@@ -38,10 +40,11 @@ export default async function BookOverviewPage({
 	params,
 }: PageProps<"/books/[slug]">) {
 	const { slug } = await params;
-	const [book, initialReviews, shelves] = await Promise.all([
+	const [book, initialReviews, shelves, discovery] = await Promise.all([
 		loadBookBySlugForIsr(slug),
 		loadBookFeedbackListForIsr(slug),
 		loadBookShelvesForIsr(slug),
+		loadBookCatalogDiscoveryForIsr(slug),
 	]);
 
 	const excerpt = book.excerpt?.trim() ?? "";
@@ -132,6 +135,11 @@ export default async function BookOverviewPage({
 						</p>
 					)}
 				</section>
+
+				<BookDiscoverySection
+					section={discovery.similar}
+					seeAllHref={`/books/${slug}/more` as Route}
+				/>
 			</div>
 		</>
 	);

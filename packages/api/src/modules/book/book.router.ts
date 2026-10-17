@@ -24,6 +24,11 @@ import {
 	updateBook,
 } from "./book.service";
 import {
+	GetBookCatalogDiscoveryInputSchema,
+	GetBookCatalogDiscoveryOutputSchema,
+} from "./book-catalog-discovery.schema";
+import { getBookCatalogDiscovery } from "./book-catalog-discovery.service";
+import {
 	ExportBookListInputSchema,
 	ExportBookListOutputSchema,
 } from "./book-export.schema";
@@ -99,6 +104,12 @@ export const bookRouter = {
 		.output(GetBookBySlugOutputSchema)
 		.handler(
 			async ({ input, context }) => await getBookBySlug(input, context.db),
+		),
+	getCatalogDiscovery: publicProcedure
+		.input(GetBookCatalogDiscoveryInputSchema)
+		.output(GetBookCatalogDiscoveryOutputSchema)
+		.handler(async ({ input, context }) =>
+			getBookCatalogDiscovery(input.bookSlug, context.db),
 		),
 	suggestOriginCountries: adminProcedure
 		.input(SuggestBookOriginCountriesInputSchema)

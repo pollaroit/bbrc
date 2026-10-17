@@ -1,4 +1,5 @@
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
+import { getBookCatalogDiscovery } from "@bbrc/api/modules/book/book-catalog-discovery.service";
 import { listApprovedDocumentsByBook } from "@bbrc/api/modules/document/document.service";
 import { getBookFeedbackList } from "@bbrc/api/modules/feedback/feedback.service";
 import { getPostBySlug } from "@bbrc/api/modules/post/post.service";
@@ -27,6 +28,10 @@ const anonymousSession = null;
 
 export const loadBookBySlugForIsr = cache((slug: string) =>
 	getBookBySlug(slug, db),
+);
+
+export const loadBookCatalogDiscoveryForIsr = cache((slug: string) =>
+	getBookCatalogDiscovery(slug, db),
 );
 
 export const loadBookFeedbackListForIsr = cache((slug: string) =>

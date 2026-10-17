@@ -498,6 +498,11 @@ export async function resolveOgImageContent(
 				description: (title) =>
 					`Open Library editions for ${title} — covers, publishers, and dates.`,
 			},
+			more: {
+				label: "More to read",
+				description: (title) =>
+					`Similar books, same author, country, era, and length near ${title}.`,
+			},
 		};
 
 		try {
