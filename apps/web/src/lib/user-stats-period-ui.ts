@@ -5,6 +5,7 @@ export const USER_STATS_PERIOD_TYPE_LABELS: Record<
 	string
 > = {
 	life: "All time",
+	none: "All books",
 	year: "Year",
 	month: "Month",
 	custom: "Custom range",
@@ -66,7 +67,9 @@ export function isUserStatsQueryReady(params: {
 	period_start: string | null;
 	period_end: string | null;
 }): boolean {
-	if (params.period_type === "life") return true;
+	if (params.period_type === "life" || params.period_type === "none") {
+		return true;
+	}
 	if (params.period_type === "year") {
 		return /^\d{4}$/.test(params.period?.trim() ?? "");
 	}

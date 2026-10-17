@@ -75,7 +75,7 @@ export function UserStatsPeriodControls({
 		if (!value) return;
 		const type = value as typeof params.period_type;
 		const ym = formatYearMonth(currentYear, currentMonth);
-		if (type === "life") {
+		if (type === "life" || type === "none") {
 			void setParams({
 				period_type: type,
 				period: null,
@@ -120,6 +120,7 @@ export function UserStatsPeriodControls({
 						</SelectTrigger>
 						<SelectContent>
 							<SelectItem value="life">All time</SelectItem>
+							<SelectItem value="none">All books</SelectItem>
 							<SelectItem value="year">Year</SelectItem>
 							<SelectItem value="month">Month</SelectItem>
 							<SelectItem value="custom">Custom range</SelectItem>

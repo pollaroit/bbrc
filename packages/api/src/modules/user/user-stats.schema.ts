@@ -2,6 +2,7 @@ import zod from "zod";
 
 export const UserStatsPeriodTypeSchema = zod.enum([
 	"life",
+	"none",
 	"year",
 	"month",
 	"custom",

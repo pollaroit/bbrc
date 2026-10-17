@@ -160,7 +160,10 @@ export function UserStatsPage({ username, displayName }: UserStatsPageProps) {
 						{data.catalogBooksTotal > 0 ? (
 							<span>
 								{data.catalogBooksRead} of {data.catalogBooksTotal} catalog
-								books read in this period
+								books read
+								{data.periodType === "none"
+									? " in their library"
+									: " in this period"}
 								{data.catalogCoveragePercent != null
 									? ` (${data.catalogCoveragePercent}%)`
 									: ""}
@@ -213,64 +216,66 @@ export function UserStatsPage({ username, displayName }: UserStatsPageProps) {
 
 			<ReadCoverGrid data={data} onViewAll={() => setAllReadsOpen(true)} />
 
-			<Card size="sm">
-				<CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
-					<div>
-						<CardTitle>Reading progress over time</CardTitle>
-						<CardDescription>
-							Cumulative total by month in this period
-						</CardDescription>
-					</div>
-					<Select
-						value={cumulativeMetric}
-						onValueChange={(value) =>
-							setCumulativeMetric(value as typeof cumulativeMetric)
-						}
-					>
-						<SelectTrigger className="h-8 w-[140px]">
-							<span>{cumulativeChartConfig[cumulativeMetric].label}</span>
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="books">Books</SelectItem>
-							<SelectItem value="pages">Pages</SelectItem>
-							<SelectItem value="authors">Authors</SelectItem>
-						</SelectContent>
-					</Select>
-				</CardHeader>
-				<CardContent>
-					<ChartContainer
-						config={cumulativeChartConfig}
-						className="h-72 w-full"
-					>
-						<LineChart
-							data={data.cumulativeSeries}
-							margin={{ left: 0, right: 8, top: 8, bottom: 0 }}
+			{data.periodType !== "none" ? (
+				<Card size="sm">
+					<CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
+						<div>
+							<CardTitle>Reading progress over time</CardTitle>
+							<CardDescription>
+								Cumulative total by month in this period
+							</CardDescription>
+						</div>
+						<Select
+							value={cumulativeMetric}
+							onValueChange={(value) =>
+								setCumulativeMetric(value as typeof cumulativeMetric)
+							}
 						>
-							<CartesianGrid vertical={false} />
-							<XAxis
-								dataKey="label"
-								tickLine={false}
-								axisLine={false}
-								interval="preserveStartEnd"
-							/>
-							<YAxis
-								tickLine={false}
-								axisLine={false}
-								width={48}
-								tickMargin={4}
-							/>
-							<ChartTooltip content={<ChartTooltipContent />} />
-							<Line
-								type="monotone"
-								dataKey={cumulativeMetric}
-								stroke={`var(--color-${cumulativeMetric})`}
-								strokeWidth={2}
-								dot={false}
-							/>
-						</LineChart>
-					</ChartContainer>
-				</CardContent>
-			</Card>
+							<SelectTrigger className="h-8 w-[140px]">
+								<span>{cumulativeChartConfig[cumulativeMetric].label}</span>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="books">Books</SelectItem>
+								<SelectItem value="pages">Pages</SelectItem>
+								<SelectItem value="authors">Authors</SelectItem>
+							</SelectContent>
+						</Select>
+					</CardHeader>
+					<CardContent>
+						<ChartContainer
+							config={cumulativeChartConfig}
+							className="h-72 w-full"
+						>
+							<LineChart
+								data={data.cumulativeSeries}
+								margin={{ left: 0, right: 8, top: 8, bottom: 0 }}
+							>
+								<CartesianGrid vertical={false} />
+								<XAxis
+									dataKey="label"
+									tickLine={false}
+									axisLine={false}
+									interval="preserveStartEnd"
+								/>
+								<YAxis
+									tickLine={false}
+									axisLine={false}
+									width={48}
+									tickMargin={4}
+								/>
+								<ChartTooltip content={<ChartTooltipContent />} />
+								<Line
+									type="monotone"
+									dataKey={cumulativeMetric}
+									stroke={`var(--color-${cumulativeMetric})`}
+									strokeWidth={2}
+									dot={false}
+								/>
+							</LineChart>
+						</ChartContainer>
+					</CardContent>
+				</Card>
+			) : null}
 
 			{data.readingPace ? (
 				<Card size="sm">

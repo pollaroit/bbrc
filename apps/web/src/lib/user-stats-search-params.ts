@@ -2,6 +2,7 @@ import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 
 export const userStatsPeriodTypes = [
 	"life",
+	"none",
 	"year",
 	"month",
 	"custom",

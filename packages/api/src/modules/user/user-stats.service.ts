@@ -183,7 +183,9 @@ export async function getUserStats(
 
 	const bounds = resolveUserStatsPeriodBounds(period, { firstDatedRead });
 	const activityRange =
-		period.type === "life" ? null : createdAtRangeForBounds(bounds);
+		period.type === "life" || period.type === "none"
+			? null
+			: createdAtRangeForBounds(bounds);
 
 	const readsInPeriod = allReads.filter((read) => {
 		const gate = readCountsForPeriod(read, period, bounds);
@@ -276,7 +278,9 @@ export async function getUserStats(
 			},
 		}),
 		db.book.count(),
-		loadMemberReadCountsForPeriod(db, period, bounds),
+		period.type === "none"
+			? Promise.resolve(new Map<string, number>())
+			: loadMemberReadCountsForPeriod(db, period, bounds),
 		loadClubReadCountsByBook(db),
 		db.feedback.findMany({
 			where: {
@@ -297,9 +301,12 @@ export async function getUserStats(
 		period.type === "life"
 			? allReads.filter((read) => readHasFinishMonth(read)).length
 			: datedReadsInPeriod.length;
-	const readerPercentileData = percentileRankBetterThan(userDatedCount, [
-		...memberReadCounts.values(),
-	]);
+	const readerPercentileData =
+		period.type === "none"
+			? null
+			: percentileRankBetterThan(userDatedCount, [
+					...memberReadCounts.values(),
+				]);
 
 	const catalogBooksRead = readsInPeriod.length;
 	const catalogCoveragePercent =
@@ -326,6 +333,14 @@ export async function getUserStats(
 		.map((read) => mapStatsBook(read.book));
 	const totalInPeriod = sortedReads.length;
 
+	const analyticsReads =
+		period.type === "none" ? readsInPeriod : datedReadsInPeriod;
+	const analyticsRows = analyticsReads.map((read) => ({
+		pages: read.book.pages,
+		authorKeys: read.book.authors.map((a) => a.trim().toLowerCase()),
+		book: read.book,
+	}));
+
 	const datedForAnalytics = datedReadsInPeriod.map((read) => {
 		const finish = readFinishMonth(read)!;
 		return {
@@ -336,63 +351,65 @@ export async function getUserStats(
 		};
 	});
 
-	const cumulativeSeries = computeCumulativeReadSeries(
-		datedForAnalytics,
-		bounds,
-	);
-
-	const readingPace =
-		datedForAnalytics.length > 0
-			? computeReadingPace(
-					datedForAnalytics.length,
-					datedForAnalytics.reduce((sum, row) => sum + row.pages, 0),
-					bounds,
-					period,
-				)
-			: null;
-
+	let cumulativeSeries: ReturnType<typeof computeCumulativeReadSeries> = [];
+	let readingPace: ReturnType<typeof computeReadingPace> | null = null;
 	let readsTimelineMode: "year" | "month" | "hidden" = "hidden";
 	let readsTimelinePoints: { label: string; count: number }[] = [];
-	if (period.type === "month") {
-		readsTimelineMode = "hidden";
-	} else if (period.type === "year") {
-		readsTimelineMode = "month";
-		readsTimelinePoints = readsByMonthHistogram(
-			datedForAnalytics.map((row) => ({ finish: row.finish })),
-		);
-	} else if (
-		period.type === "life" ||
-		(period.type === "custom" && bounds.start.year !== bounds.end.year)
-	) {
-		readsTimelineMode = "year";
-		readsTimelinePoints = readsByYearHistogram(
-			datedForAnalytics.map((row) => ({ finish: row.finish })),
-		);
-	} else if (period.type === "custom") {
-		readsTimelineMode = "month";
-		readsTimelinePoints = readsByMonthHistogram(
-			datedForAnalytics.map((row) => ({ finish: row.finish })),
-		);
+
+	if (period.type !== "none") {
+		cumulativeSeries = computeCumulativeReadSeries(datedForAnalytics, bounds);
+
+		readingPace =
+			datedForAnalytics.length > 0
+				? computeReadingPace(
+						datedForAnalytics.length,
+						datedForAnalytics.reduce((sum, row) => sum + row.pages, 0),
+						bounds,
+						period,
+					)
+				: null;
+
+		if (period.type === "month") {
+			readsTimelineMode = "hidden";
+		} else if (period.type === "year") {
+			readsTimelineMode = "month";
+			readsTimelinePoints = readsByMonthHistogram(
+				datedForAnalytics.map((row) => ({ finish: row.finish })),
+			);
+		} else if (
+			period.type === "life" ||
+			(period.type === "custom" && bounds.start.year !== bounds.end.year)
+		) {
+			readsTimelineMode = "year";
+			readsTimelinePoints = readsByYearHistogram(
+				datedForAnalytics.map((row) => ({ finish: row.finish })),
+			);
+		} else if (period.type === "custom") {
+			readsTimelineMode = "month";
+			readsTimelinePoints = readsByMonthHistogram(
+				datedForAnalytics.map((row) => ({ finish: row.finish })),
+			);
+		}
 	}
 
 	const subjects = subjectBreakdown(
-		datedForAnalytics.map((row) => row.book.subjects),
+		analyticsRows.map((row) => row.book.subjects),
 	);
 
-	const clubRatings = datedForAnalytics.map((row) => row.book.averageRating);
+	const clubRatings = analyticsRows.map((row) => row.book.averageRating);
 	const ratingPoints = ratingHistogramForClubAverage(clubRatings).filter(
 		(row) => row.label !== "unrated",
 	);
 
 	const pagesPoints = histogramFromValues(
-		datedForAnalytics.map((row) => pagesBucketLabel(row.book.pages)),
+		analyticsRows.map((row) => pagesBucketLabel(row.book.pages)),
 		USER_STATS_PAGE_BUCKETS,
 	);
 
-	const publishYears = datedForAnalytics.map((row) => row.book.publishedIn);
+	const publishYears = analyticsRows.map((row) => row.book.publishedIn);
 
 	const countryMap = aggregateCountryBookCounts(
-		datedForAnalytics.map((row) => ({ countries: row.book.countries })),
+		analyticsRows.map((row) => ({ countries: row.book.countries })),
 	);
 
 	const feedbackByBookId = new Map(
@@ -400,19 +417,19 @@ export async function getUserStats(
 	);
 
 	const topAuthors = buildAuthorCountryRows(
-		datedForAnalytics,
+		analyticsRows,
 		"authors",
 		feedbackByBookId,
 	);
 	const topCountries = buildAuthorCountryRows(
-		datedForAnalytics,
+		analyticsRows,
 		"countries",
 		feedbackByBookId,
 	);
 	const topAuthorsByRating = sortAuthorCountryByRating(topAuthors);
 	const topCountriesByRating = sortAuthorCountryByRating(topCountries);
 
-	const ratedCompare = buildRatingCompare(datedForAnalytics, feedbackByBookId);
+	const ratedCompare = buildRatingCompare(analyticsRows, feedbackByBookId);
 
 	const topReviews = [...userFeedbacksInPeriod]
 		.map((feedback) => ({
@@ -426,10 +443,10 @@ export async function getUserStats(
 		.sort((a, b) => b.engagement - a.engagement)
 		.slice(0, 5);
 
-	const bookIdsInPeriod = new Set(datedForAnalytics.map((row) => row.book.id));
+	const bookIdsInPeriod = new Set(analyticsRows.map((row) => row.book.id));
 	const popularRows = [...bookIdsInPeriod]
 		.map((bookId) => {
-			const read = datedForAnalytics.find((row) => row.book.id === bookId)!;
+			const read = analyticsRows.find((row) => row.book.id === bookId)!;
 			return {
 				...mapStatsBook(read.book),
 				clubReadCount: clubReadCountsByBook.get(bookId) ?? 0,
@@ -442,7 +459,7 @@ export async function getUserStats(
 		.sort((a, b) => a.clubReadCount - b.clubReadCount)
 		.slice(0, 10);
 
-	const topSeries = buildSeriesRows(datedForAnalytics);
+	const topSeries = buildSeriesRows(analyticsRows);
 
 	const title = formatUserStatsPeriodTitle(user.name, period);
 	const periodLabel =
@@ -591,7 +608,6 @@ function sortAuthorCountryByRating<
 
 function buildAuthorCountryRows(
 	reads: {
-		finish: UserStatsMonth;
 		book: {
 			id: string;
 			slug: string;

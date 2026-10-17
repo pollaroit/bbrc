@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import { computeReadingPace, subjectBreakdown } from "./compute";
+import {
+	parseUserStatsPeriod,
+	readCountsForPeriod,
+	resolveUserStatsPeriodBounds,
+} from "./period";
 import { canonicalSubjectKey } from "./subjects";
 
 describe("user stats subjects", () => {
@@ -19,6 +24,23 @@ describe("user stats subjects", () => {
 		expect(rows[0]?.count).toBe(2);
 		expect(rows[1]?.subject).toBe("Fantasy");
 		expect(rows[1]?.count).toBe(1);
+	});
+});
+
+describe("user stats period none", () => {
+	it("parses none without extra params", () => {
+		expect(parseUserStatsPeriod({ periodType: "none" })).toEqual({
+			type: "none",
+		});
+	});
+
+	it("includes every read for none", () => {
+		const period = { type: "none" as const };
+		const bounds = resolveUserStatsPeriodBounds(period, {});
+		const undated = { readEndYear: null, readEndMonth: null };
+		const dated = { readEndYear: 2020, readEndMonth: 6 };
+		expect(readCountsForPeriod(undated, period, bounds).inPeriod).toBe(true);
+		expect(readCountsForPeriod(dated, period, bounds).inPeriod).toBe(true);
 	});
 });
 

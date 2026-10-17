@@ -1,11 +1,12 @@
 import { getZonedParts, resolveClubTimeZone } from "../club-timezone";
 
-export type UserStatsPeriodType = "life" | "year" | "month" | "custom";
+export type UserStatsPeriodType = "life" | "none" | "year" | "month" | "custom";
 
 export type UserStatsMonth = { year: number; month: number };
 
 export type UserStatsPeriod =
 	| { type: "life" }
+	| { type: "none" }
 	| { type: "year"; year: number }
 	| { type: "month"; year: number; month: number }
 	| {
@@ -66,6 +67,10 @@ export function parseUserStatsPeriod(input: {
 		return { type: "life" };
 	}
 
+	if (type === "none") {
+		return { type: "none" };
+	}
+
 	if (type === "year") {
 		const raw = input.period?.trim() ?? "";
 		const match = YEAR_PERIOD_RE.exec(raw);
@@ -111,7 +116,8 @@ export function resolveUserStatsPeriodBounds(
 	};
 
 	switch (period.type) {
-		case "life": {
+		case "life":
+		case "none": {
 			const start = options.firstDatedRead ?? nowMonth;
 			return { start, end: nowMonth };
 		}
@@ -141,6 +147,10 @@ export function formatUserStatsPeriodTitle(
 
 	if (period.type === "life") {
 		return `${possessive} Life in Books`;
+	}
+
+	if (period.type === "none") {
+		return `${possessive} Books Read`;
 	}
 
 	if (period.type === "year") {
@@ -186,7 +196,7 @@ export function readFinishMonth(read: {
 	return { year: read.readEndYear, month: read.readEndMonth };
 }
 
-/** Dated reads in period; undated reads only when period is life (for totals). */
+/** Dated reads in period; undated reads for life/none (library-wide totals). */
 export function readCountsForPeriod(
 	read: {
 		readEndYear: number | null;
@@ -195,6 +205,10 @@ export function readCountsForPeriod(
 	period: UserStatsPeriod,
 	bounds: UserStatsPeriodBounds,
 ): { inPeriod: boolean; includeUndatedInTotals: boolean } {
+	if (period.type === "none") {
+		return { inPeriod: true, includeUndatedInTotals: true };
+	}
+
 	const finish = readFinishMonth(read);
 	if (!finish) {
 		return {
@@ -211,7 +225,7 @@ export function activityCreatedInPeriod(
 	period: UserStatsPeriod,
 	bounds: UserStatsPeriodBounds,
 ): boolean {
-	if (period.type === "life") {
+	if (period.type === "life" || period.type === "none") {
 		return true;
 	}
 	const month = monthFromDateUtc(createdAt);
