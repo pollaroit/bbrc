@@ -8,6 +8,7 @@ import { documentRouter } from "./modules/document/document.router";
 import { factRouter } from "./modules/fact/fact.router";
 import { favoriteRouter } from "./modules/favorite/favorite.router";
 import { feedbackRouter } from "./modules/feedback/feedback.router";
+import { goalRouter } from "./modules/goal/goal.router";
 import { healthRouter } from "./modules/health/health.router";
 import { leaderboardRouter } from "./modules/leaderboard/leaderboard.router";
 import { likeRouter } from "./modules/like/like.router";
@@ -34,6 +35,7 @@ export const appRouter = {
 	fact: factRouter,
 	favorite: favoriteRouter,
 	feedback: feedbackRouter,
+	goal: goalRouter,
 	globalSearch: globalSearchRouter,
 	like: likeRouter,
 	notification: notificationRouter,

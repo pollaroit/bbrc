@@ -2,6 +2,7 @@ import { fetchWorkEditionTotalCount } from "@bbrc/api/lib/open-library/work-edit
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
 import { getFeedbackBySlug } from "@bbrc/api/modules/feedback/feedback.service";
+import { getGoalBySlug } from "@bbrc/api/modules/goal/goal.service";
 import {
 	LEADERBOARD_KIND_META,
 	LEADERBOARD_PERIOD_META,
@@ -804,6 +805,112 @@ export async function resolveOgImageContent(
 				return {
 					kind: "Feedbacks",
 					title: "Member not found",
+					description: DEFAULT_DESCRIPTION,
+				};
+			}
+		}
+
+		if (rest[0] === "stats") {
+			try {
+				const user = await getUserByUsername({ username: slug }, db);
+				const [datedReads, totalReads] = await Promise.all([
+					db.read.count({
+						where: {
+							user: { username: slug },
+							readEndMonth: { not: null },
+							readEndYear: { not: null },
+						},
+					}),
+					db.read.count({ where: { user: { username: slug } } }),
+				]);
+
+				const highlights = [
+					`@${user.username}`,
+					formatCount("dated read", datedReads),
+				];
+				if (totalReads > datedReads) {
+					highlights.push(formatCount("read", totalReads));
+				}
+
+				return {
+					kind: "Reading stats",
+					title: `${user.name} · Stats`,
+					description: truncateOgLine(
+						"Books read, pace, ratings, subjects, world map, and club activity",
+						140,
+					),
+					highlights,
+				};
+			} catch {
+				return {
+					kind: "Reading stats",
+					title: "Reading stats",
+					description: DEFAULT_DESCRIPTION,
+				};
+			}
+		}
+
+		if (rest[0] === "goals") {
+			const goalSlug = rest[1];
+
+			if (!goalSlug) {
+				try {
+					const user = await getUserByUsername({ username: slug }, db);
+					const goalCount = await db.goal.count({
+						where: { user: { username: slug } },
+					});
+
+					return {
+						kind: "Goals",
+						title: `${user.name} · Reading goals`,
+						description: truncateOgLine(
+							goalCount > 0
+								? `${formatCount("yearly goal", goalCount)} · progress from finished reads`
+								: "Yearly reading targets on BBRC",
+							140,
+						),
+						highlights: [`@${user.username}`],
+					};
+				} catch {
+					return {
+						kind: "Goals",
+						title: "Reading goals",
+						description: DEFAULT_DESCRIPTION,
+					};
+				}
+			}
+
+			try {
+				const [user, goal] = await Promise.all([
+					getUserByUsername({ username: slug }, db),
+					getGoalBySlug(slug, goalSlug, null, db),
+				]);
+
+				const highlights = [
+					`@${user.username}`,
+					`${goal.current}/${goal.target} books`,
+					String(goal.year),
+				];
+				if (goal.isComplete) {
+					highlights.push("Complete");
+				} else if (goal.isExpired) {
+					highlights.push("Expired");
+				}
+
+				return {
+					kind: "Goal",
+					title: goal.title,
+					description: truncateOgLine(
+						goal.description?.trim() ||
+							`${goal.current} of ${goal.target} books in ${goal.year}`,
+						140,
+					),
+					highlights,
+				};
+			} catch {
+				return {
+					kind: "Goal",
+					title: "Goal not found",
 					description: DEFAULT_DESCRIPTION,
 				};
 			}

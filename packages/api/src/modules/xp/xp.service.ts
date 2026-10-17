@@ -192,6 +192,21 @@ export async function awardShelfXp(
 	);
 }
 
+export async function awardGoalXp(
+	input: { userId: string; goalId: string },
+	tx: DatabaseTransaction,
+): Promise<boolean> {
+	return tryAwardXp(
+		{
+			userId: input.userId,
+			reason: "goal",
+			entityId: input.goalId,
+			points: XP_AWARD.goal,
+		},
+		tx,
+	);
+}
+
 async function loadXpUser(
 	username: string,
 	db: Database,

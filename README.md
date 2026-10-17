@@ -53,6 +53,7 @@ XP (Experience Points) can be earned with these:
 - When they share a post - `xp += 4` (see `XP_AWARD.post` in `packages/api/src/modules/xp/xp.schema.ts`)
 - When they comment - `xp += 1`
 - When they request a book addition - `xp += 1`
+- When they create a reading goal - `xp += 3` (see `XP_AWARD.goal`)
 
 ### RP
 

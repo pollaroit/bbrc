@@ -1,0 +1,67 @@
+import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { revalidateUserIsr } from "../../revalidate-isr";
+import { viewerFromSession } from "../user/user-visibility";
+import {
+	CreateGoalInputSchema,
+	CreateGoalOutputSchema,
+	GetGoalBySlugInputSchema,
+	GetGoalBySlugOutputSchema,
+	ListGoalsByUsernameInputSchema,
+	ListGoalsByUsernameOutputSchema,
+	UpdateGoalInputSchema,
+	UpdateGoalOutputSchema,
+} from "./goal.schema";
+import {
+	createGoal,
+	getGoalBySlug,
+	listGoalsByUsername,
+	updateGoal,
+} from "./goal.service";
+
+export const goalRouter = {
+	listByUsername: publicProcedure
+		.input(ListGoalsByUsernameInputSchema)
+		.output(ListGoalsByUsernameOutputSchema)
+		.handler(async ({ input, context }) =>
+			listGoalsByUsername(
+				input.username,
+				viewerFromSession(context.session),
+				context.db,
+			),
+		),
+	getBySlug: publicProcedure
+		.input(GetGoalBySlugInputSchema)
+		.output(GetGoalBySlugOutputSchema)
+		.handler(async ({ input, context }) =>
+			getGoalBySlug(
+				input.username,
+				input.goalSlug,
+				viewerFromSession(context.session),
+				context.db,
+			),
+		),
+	create: notBannedProcedure
+		.input(CreateGoalInputSchema)
+		.output(CreateGoalOutputSchema)
+		.handler(async ({ input, context }) => {
+			const result = await createGoal(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			revalidateUserIsr(context, context.session.user.username);
+			return result;
+		}),
+	update: notBannedProcedure
+		.input(UpdateGoalInputSchema)
+		.output(UpdateGoalOutputSchema)
+		.handler(async ({ input, context }) => {
+			const result = await updateGoal(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			revalidateUserIsr(context, context.session.user.username);
+			return result;
+		}),
+};

@@ -1,3 +1,4 @@
+import { getGoalBySlug } from "@bbrc/api/modules/goal/goal.service";
 import { getRpChart, getRpEventList } from "@bbrc/api/modules/rp/rp.service";
 import { getShelfBySlug } from "@bbrc/api/modules/shelf/shelf.service";
 import { getUserByUsername } from "@bbrc/api/modules/user/user.service";
@@ -13,6 +14,17 @@ export async function loadUserByUsernameForPage(username: string) {
 	});
 
 	return getUserByUsername({ username }, db, session);
+}
+
+export async function loadGoalBySlugForPage(
+	username: string,
+	goalSlug: string,
+) {
+	const session = await auth.api.getSession({
+		headers: await headers(),
+	});
+
+	return getGoalBySlug(username, goalSlug, viewerFromSession(session), db);
 }
 
 export async function loadShelfBySlugForPage(

@@ -16,6 +16,7 @@ type ProfileSegment =
 	| "posts"
 	| "feedbacks"
 	| "shelves"
+	| "goals"
 	| "reels";
 
 function profileTabHref(username: string, segment: ProfileSegment) {
@@ -41,6 +42,9 @@ function activeTab(pathname: string, username: string): string {
 	}
 	if (pathname.startsWith(`${base}/shelves`)) {
 		return "shelves";
+	}
+	if (pathname.startsWith(`${base}/goals`)) {
+		return "goals";
 	}
 	if (pathname.startsWith(`${base}/reels`)) {
 		return "reels";
@@ -99,6 +103,13 @@ export function MemberProfileNav({
 						render={<Link href={profileTabHref(username, "shelves")} />}
 					>
 						Shelves
+					</TabsTrigger>
+					<TabsTrigger
+						value="goals"
+						nativeButton={false}
+						render={<Link href={profileTabHref(username, "goals")} />}
+					>
+						Goals
 					</TabsTrigger>
 					{isOwnProfile ? (
 						<TabsTrigger

@@ -6,6 +6,7 @@ enum XPEventReason {
   comment // -> Comment
   request // -> BookRequest
   shelf // -> Shelf (created)
+  goal // -> Goal (created)
 }
 
 model XPEvent {

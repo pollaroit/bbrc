@@ -8,6 +8,7 @@ import {
 	DropdownMenuTrigger,
 } from "@bbrc/ui/components/dropdown-menu";
 import {
+	BarChart3,
 	BookCheck,
 	BookOpen,
 	LayoutList,
@@ -15,6 +16,7 @@ import {
 	MessageSquare,
 	Settings,
 	Shield,
+	Target,
 	User,
 } from "lucide-react";
 import type { Route } from "next";
@@ -94,6 +96,22 @@ export function UserMenu({ ...props }: Props) {
 					}
 				>
 					<LayoutList /> My shelves
+				</DropdownMenuItem>
+				<DropdownMenuItem
+					className="cursor-pointer"
+					render={
+						<Link href={`/users/${props.user.username}/goals` as Route} />
+					}
+				>
+					<Target /> My goals
+				</DropdownMenuItem>
+				<DropdownMenuItem
+					className="cursor-pointer"
+					render={
+						<Link href={`/users/${props.user.username}/stats` as Route} />
+					}
+				>
+					<BarChart3 /> My stats
 				</DropdownMenuItem>
 				<DropdownMenuItem
 					className="cursor-pointer"

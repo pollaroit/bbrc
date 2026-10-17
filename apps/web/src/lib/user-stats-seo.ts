@@ -1,4 +1,5 @@
 import { formatUserStatsPeriodTitle, parseUserStatsPeriod } from "@bbrc/shared";
+import { truncateDescription } from "@/lib/seo";
 
 export function userStatsMetadataFromSearchParams(
 	displayName: string,
@@ -24,7 +25,11 @@ export function userStatsMetadataFromSearchParams(
 	}
 
 	const title = `${periodTitle} · ${displayName}`;
-	const description = `${periodTitle} on BBRC: books and pages read, reading pace, ratings, subjects, and club activity for @${username}.`;
+	const description = `${periodTitle} on BBRC for @${username}: books and pages read, reading pace, ratings, publication years, top authors and countries, world map, and club activity (posts, feedback, shelves, sittings).`;
 
-	return { title, description, periodTitle };
+	return {
+		title,
+		description: truncateDescription(description),
+		periodTitle,
+	};
 }

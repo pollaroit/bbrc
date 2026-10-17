@@ -2,10 +2,19 @@
 
 import { DropdownMenuItem } from "@bbrc/ui/components/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
-import { BookMarked, BookPlus, LayoutList, PenLine, Sofa } from "lucide-react";
+import {
+	BookMarked,
+	BookPlus,
+	Layers,
+	LayoutList,
+	PenLine,
+	Sofa,
+	Target,
+} from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useComposePost } from "@/components/blocks/compose-post-provider";
+import { useCreateGoal } from "@/components/blocks/create-goal-provider";
 import { authClient } from "@/lib/auth-client";
 import { orpc } from "@/utils/orpc";
 
@@ -20,6 +29,7 @@ export function CreateMenuItems({ onNavigate }: CreateMenuItemsProps) {
 		enabled: session?.user.isAdmin === true,
 	});
 	const { openCompose } = useComposePost();
+	const { openCreateGoal } = useCreateGoal();
 
 	if (!session?.user) {
 		return null;
@@ -47,14 +57,34 @@ export function CreateMenuItems({ onNavigate }: CreateMenuItemsProps) {
 				<LayoutList className="size-4" aria-hidden="true" />
 				Create shelf
 			</DropdownMenuItem>
+			<DropdownMenuItem
+				onClick={() => {
+					onNavigate?.();
+					openCreateGoal();
+				}}
+			>
+				<Target className="size-4" aria-hidden="true" />
+				Add goal
+			</DropdownMenuItem>
 			{isAdmin ? (
-				<DropdownMenuItem
-					render={<Link href={"/books/new" as Route} onClick={onNavigate} />}
-					nativeButton={false}
-				>
-					<BookPlus className="size-4" aria-hidden="true" />
-					Add book
-				</DropdownMenuItem>
+				<>
+					<DropdownMenuItem
+						render={<Link href={"/books/new" as Route} onClick={onNavigate} />}
+						nativeButton={false}
+					>
+						<BookPlus className="size-4" aria-hidden="true" />
+						Add book
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						render={
+							<Link href={"/admin/series/new" as Route} onClick={onNavigate} />
+						}
+						nativeButton={false}
+					>
+						<Layers className="size-4" aria-hidden="true" />
+						Add series
+					</DropdownMenuItem>
+				</>
 			) : (
 				<DropdownMenuItem
 					render={

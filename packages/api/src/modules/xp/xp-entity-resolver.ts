@@ -20,6 +20,7 @@ const REASON_FALLBACK_LABEL: Record<
 	comment: "Comment",
 	request: "Book request",
 	shelf: "Shelf created",
+	goal: "Goal created",
 };
 
 export async function resolveXpEntitySources(
@@ -42,6 +43,7 @@ export async function resolveXpEntitySources(
 	const commentIds = new Set<string>();
 	const bookRequestIds = new Set<string>();
 	const shelfIds = new Set<string>();
+	const goalIds = new Set<string>();
 
 	for (const event of events) {
 		if (event.reason === "participation") {
@@ -58,76 +60,97 @@ export async function resolveXpEntitySources(
 			bookRequestIds.add(event.entityId);
 		} else if (event.reason === "shelf") {
 			shelfIds.add(event.entityId);
+		} else if (event.reason === "goal") {
+			goalIds.add(event.entityId);
 		}
 	}
 
-	const [sittings, polls, feedbacks, posts, comments, bookRequests, shelves] =
-		await Promise.all([
-			sittingIds.size > 0
-				? db.sitting.findMany({
-						where: { id: { in: [...sittingIds] } },
-						select: { id: true, slug: true },
-					})
-				: Promise.resolve([]),
-			pollIds.size > 0
-				? db.poll.findMany({
-						where: { id: { in: [...pollIds] } },
-						select: {
-							id: true,
-							sitting: { select: { slug: true } },
-						},
-					})
-				: Promise.resolve([]),
-			feedbackIds.size > 0
-				? db.feedback.findMany({
-						where: { id: { in: [...feedbackIds] } },
-						select: {
-							id: true,
-							slug: true,
-							book: { select: { slug: true, title: true } },
-						},
-					})
-				: Promise.resolve([]),
-			postIds.size > 0
-				? db.post.findMany({
-						where: { id: { in: [...postIds] } },
-						select: { id: true, slug: true },
-					})
-				: Promise.resolve([]),
-			commentIds.size > 0
-				? db.comment.findMany({
-						where: { id: { in: [...commentIds] } },
-						select: {
-							id: true,
-							slug: true,
-							post: { select: { slug: true } },
-							feedback: {
-								select: {
-									slug: true,
-									book: { select: { slug: true } },
-								},
+	const [
+		sittings,
+		polls,
+		feedbacks,
+		posts,
+		comments,
+		bookRequests,
+		shelves,
+		goals,
+	] = await Promise.all([
+		sittingIds.size > 0
+			? db.sitting.findMany({
+					where: { id: { in: [...sittingIds] } },
+					select: { id: true, slug: true },
+				})
+			: Promise.resolve([]),
+		pollIds.size > 0
+			? db.poll.findMany({
+					where: { id: { in: [...pollIds] } },
+					select: {
+						id: true,
+						sitting: { select: { slug: true } },
+					},
+				})
+			: Promise.resolve([]),
+		feedbackIds.size > 0
+			? db.feedback.findMany({
+					where: { id: { in: [...feedbackIds] } },
+					select: {
+						id: true,
+						slug: true,
+						book: { select: { slug: true, title: true } },
+					},
+				})
+			: Promise.resolve([]),
+		postIds.size > 0
+			? db.post.findMany({
+					where: { id: { in: [...postIds] } },
+					select: { id: true, slug: true },
+				})
+			: Promise.resolve([]),
+		commentIds.size > 0
+			? db.comment.findMany({
+					where: { id: { in: [...commentIds] } },
+					select: {
+						id: true,
+						slug: true,
+						post: { select: { slug: true } },
+						feedback: {
+							select: {
+								slug: true,
+								book: { select: { slug: true } },
 							},
 						},
-					})
-				: Promise.resolve([]),
-			bookRequestIds.size > 0
-				? db.bookRequest.findMany({
-						where: { id: { in: [...bookRequestIds] } },
-						select: { id: true, olid: true },
-					})
-				: Promise.resolve([]),
-			shelfIds.size > 0
-				? db.shelf.findMany({
-						where: { id: { in: [...shelfIds] } },
-						select: {
-							id: true,
-							slug: true,
-							title: true,
-							user: { select: { username: true } },
-						},
-					})
-				: Promise.resolve([]),
-		]);
+					},
+				})
+			: Promise.resolve([]),
+		bookRequestIds.size > 0
+			? db.bookRequest.findMany({
+					where: { id: { in: [...bookRequestIds] } },
+					select: { id: true, olid: true },
+				})
+			: Promise.resolve([]),
+		shelfIds.size > 0
+			? db.shelf.findMany({
+					where: { id: { in: [...shelfIds] } },
+					select: {
+						id: true,
+						slug: true,
+						title: true,
+						user: { select: { username: true } },
+					},
+				})
+			: Promise.resolve([]),
+		goalIds.size > 0
+			? db.goal.findMany({
+					where: { id: { in: [...goalIds] } },
+					select: {
+						id: true,
+						slug: true,
+						title: true,
+						user: { select: { username: true } },
+					},
+				})
+			: Promise.resolve([]),
+	]);
 
 	const sittingById = new Map(sittings.map((row) => [row.id, row]));
 	const pollById = new Map(polls.map((row) => [row.id, row]));
@@ -136,6 +159,7 @@ export async function resolveXpEntitySources(
 	const commentById = new Map(comments.map((row) => [row.id, row]));
 	const bookRequestById = new Map(bookRequests.map((row) => [row.id, row]));
 	const shelfById = new Map(shelves.map((row) => [row.id, row]));
+	const goalById = new Map(goals.map((row) => [row.id, row]));
 
 	for (const event of events) {
 		const key = sourceKey(event.reason, event.entityId);
@@ -222,6 +246,16 @@ export async function resolveXpEntitySources(
 				label: shelf?.title ?? "Shelf",
 				href:
 					shelf && username ? `/users/${username}/shelves/${shelf.slug}` : null,
+			});
+			continue;
+		}
+
+		if (event.reason === "goal") {
+			const goal = goalById.get(event.entityId);
+			const username = goal?.user.username;
+			result.set(key, {
+				label: goal?.title ?? "Reading goal",
+				href: goal && username ? `/users/${username}/goals/${goal.slug}` : null,
 			});
 			continue;
 		}

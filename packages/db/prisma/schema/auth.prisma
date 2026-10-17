@@ -59,6 +59,7 @@ model User {
   factVotes                 FactVote[]
   factImpressions           FactImpression[]
   reads                     Read[]
+  goals                     Goal[]
 
   @@map("user")
 }

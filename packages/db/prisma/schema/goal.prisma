@@ -1,0 +1,45 @@
+enum GoalScopeKind {
+  none
+  authors
+  countries
+}
+
+model Goal {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Calendar year this goal tracks (finished reads with `readEndYear` equal to this value).
+  /// @zod.min(1000).max(2100)
+  year Int
+
+  /// @zod.min(1, "Title is required").max(120, "Title must be at most 120 characters long")
+  title String
+
+  /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
+  /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
+  slug String
+
+  /// @zod.max(2000, "Description must be at most 2000 characters long").nullish()
+  description String? @db.Text
+
+  /// @zod.min(1, "Target must be at least 1").max(10000, "Target is too large")
+  target Int
+
+  scopeKind GoalScopeKind @default(none) @map("scope_kind")
+
+  /// Author slugs when `scopeKind` is `authors`.
+  scopeAuthors String[] @default([]) @map("scope_authors")
+
+  /// ISO 3166-1 alpha-2 codes when `scopeKind` is `countries`.
+  scopeCountries String[] @default([]) @map("scope_countries")
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, slug])
+  @@index([userId, year])
+  @@map("goal")
+}
