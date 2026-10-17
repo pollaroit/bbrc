@@ -104,8 +104,7 @@ export function ComposePostDialog({
 				await queryClient.invalidateQueries({
 					queryKey: orpc.post.getPostList.key(),
 				});
-				router.push(`/posts/${slug}` as Route);
-				router.refresh();
+				router.replace(`/posts/${slug}` as Route);
 			},
 			onError: (error) => toast.error(error.message),
 		}),

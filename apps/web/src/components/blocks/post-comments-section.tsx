@@ -2,7 +2,6 @@
 
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CommentThreadList } from "@/components/blocks/comment-thread-list";
 import { PostCommentForm } from "@/components/blocks/post-comment-form";
@@ -26,7 +25,6 @@ function CommentsListSkeleton() {
 }
 
 export function PostCommentsSection({ postSlug }: PostCommentsSectionProps) {
-	const router = useRouter();
 	const [replyingToSlug, setReplyingToSlug] = useState<string | null>(null);
 
 	const query = useInfiniteQuery(
@@ -62,7 +60,6 @@ export function PostCommentsSection({ postSlug }: PostCommentsSectionProps) {
 
 	const refreshComments = () => {
 		void query.refetch();
-		router.refresh();
 	};
 
 	return (

@@ -2,7 +2,6 @@
 
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CommentThreadList } from "@/components/blocks/comment-thread-list";
 import { extractCommentSubtree } from "@/lib/build-comment-tree";
@@ -19,7 +18,6 @@ export function PostCommentFocusSection({
 	postSlug,
 	focusCommentSlug,
 }: PostCommentFocusSectionProps) {
-	const router = useRouter();
 	const [replyingToSlug, setReplyingToSlug] = useState<string | null>(null);
 
 	const query = useInfiniteQuery(
@@ -54,7 +52,6 @@ export function PostCommentFocusSection({
 
 	const refreshComments = () => {
 		void query.refetch();
-		router.refresh();
 	};
 
 	const focused =

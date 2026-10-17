@@ -1,8 +1,13 @@
 import type { DatabaseTransaction } from "@bbrc/db";
-import { contentPlainText, generateUniqueSlug } from "@bbrc/shared";
+import {
+	contentPlainText,
+	generateSlug,
+	generateUniqueSlug,
+} from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 
 const FEEDBACK_SLUG_MIN_LENGTH = 3;
+const EMPTY_REVIEW_SLUG_ATTEMPTS = 40;
 
 async function isFeedbackSlugAvailable(
 	slug: string,
@@ -11,7 +16,7 @@ async function isFeedbackSlugAvailable(
 	return (await db.feedback.findUnique({ where: { slug } })) == null;
 }
 
-function feedbackSlugSeedFromReview(review: string): string {
+function feedbackSlugSeedFromReview(review: string): string | null {
 	const line = contentPlainText(review)
 		.trim()
 		.split(/\s+/)
@@ -22,28 +27,53 @@ function feedbackSlugSeedFromReview(review: string): string {
 		return line;
 	}
 
-	return "club-review";
+	return null;
+}
+
+function randomEmptyReviewSlugSeed(): string {
+	const suffix = Math.floor(Math.random() * 1_000_000_000_000)
+		.toString()
+		.padStart(12, "0");
+	return `club-review-${suffix}`;
+}
+
+async function generateEmptyReviewFeedbackSlug(
+	db: DatabaseTransaction,
+): Promise<string> {
+	for (let attempt = 0; attempt < EMPTY_REVIEW_SLUG_ATTEMPTS; attempt++) {
+		const candidate = generateSlug(randomEmptyReviewSlugSeed());
+		if (
+			candidate.length >= FEEDBACK_SLUG_MIN_LENGTH &&
+			(await isFeedbackSlugAvailable(candidate, db))
+		) {
+			return candidate;
+		}
+	}
+
+	throw new ORPCError("CONFLICT", {
+		message: "Failed to generate feedback slug",
+	});
 }
 
 export async function generateFeedbackSlug(
 	review: string,
 	db: DatabaseTransaction,
 ): Promise<string> {
-	const seeds = [feedbackSlugSeedFromReview(review), "club-review"];
+	const textSeed = feedbackSlugSeedFromReview(review);
 
-	for (const seed of seeds) {
+	if (textSeed) {
 		try {
-			const slug = await generateUniqueSlug(seed, (candidate) =>
+			const slug = await generateUniqueSlug(textSeed, (candidate) =>
 				isFeedbackSlugAvailable(candidate, db),
 			);
 
 			if (slug.length >= FEEDBACK_SLUG_MIN_LENGTH) {
 				return slug;
 			}
-		} catch {}
+		} catch {
+			// fall through to random empty-review slugs
+		}
 	}
 
-	throw new ORPCError("CONFLICT", {
-		message: "Failed to generate feedback slug",
-	});
+	return generateEmptyReviewFeedbackSlug(db);
 }

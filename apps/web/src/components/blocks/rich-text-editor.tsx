@@ -36,6 +36,7 @@ type RichTextEditorProps = {
 	maxPlainLength?: number;
 	className?: string;
 	minHeightClassName?: string;
+	autoFocus?: boolean;
 };
 
 function initialEditorDoc(stored: string) {
@@ -91,6 +92,7 @@ export function RichTextEditor({
 	maxPlainLength = RICH_CONTENT_MAX_PLAIN_CHARS,
 	className,
 	minHeightClassName = "min-h-[8rem]",
+	autoFocus = false,
 }: RichTextEditorProps) {
 	const [linkDialogOpen, setLinkDialogOpen] = useState(false);
 	const openLinkDialogRef = useRef<() => void>(() => {});
@@ -156,6 +158,16 @@ export function RichTextEditor({
 		}
 		editor.setEditable(!disabled);
 	}, [editor, disabled]);
+
+	useEffect(() => {
+		if (!editor || !autoFocus || disabled) {
+			return;
+		}
+		const frame = requestAnimationFrame(() => {
+			editor.commands.focus("end");
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [editor, autoFocus, disabled, instanceKey]);
 
 	useEffect(() => {
 		if (!editor) {

@@ -64,6 +64,9 @@ export function PostCommentForm({
 		Boolean(parentSlug || replyToUsername || autoFocus),
 	);
 	const [editorEpoch, setEditorEpoch] = useState(0);
+	const [shouldFocusEditor, setShouldFocusEditor] = useState(
+		Boolean(parentSlug || replyToUsername || autoFocus),
+	);
 	const fieldId = parentSlug
 		? `comment-reply-${parentSlug}`
 		: feedbackSlug
@@ -75,6 +78,7 @@ export function PostCommentForm({
 	useEffect(() => {
 		if (parentSlug || replyToUsername || autoFocus) {
 			setComposerOpen(true);
+			setShouldFocusEditor(true);
 		}
 	}, [parentSlug, replyToUsername, autoFocus]);
 
@@ -149,7 +153,11 @@ export function PostCommentForm({
 					"w-full border border-border bg-background px-3 py-2 text-left text-muted-foreground text-sm",
 					"transition-colors hover:border-foreground/20 hover:text-foreground",
 				)}
-				onClick={() => setComposerOpen(true)}
+				onClick={() => {
+					setComposerOpen(true);
+					setShouldFocusEditor(true);
+					setEditorEpoch((epoch) => epoch + 1);
+				}}
 			>
 				{replyToUsername ? `Reply to @${replyToUsername}` : "Write a comment…"}
 			</button>
@@ -198,6 +206,7 @@ export function PostCommentForm({
 					disabled={isPending}
 					placeholder={placeholder}
 					minHeightClassName={compact ? "min-h-[5rem]" : "min-h-[8rem]"}
+					autoFocus={shouldFocusEditor}
 				/>
 			</Field>
 
@@ -253,6 +262,7 @@ export function PostCommentForm({
 							setContent("");
 							setIsSpoiler(false);
 							setComposerOpen(false);
+							setShouldFocusEditor(false);
 						}}
 					>
 						Collapse

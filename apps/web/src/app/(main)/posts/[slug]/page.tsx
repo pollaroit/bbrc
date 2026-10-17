@@ -1,3 +1,4 @@
+import { contentPlainText } from "@bbrc/shared";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PostDetail } from "@/components/blocks/post-detail";
@@ -26,7 +27,7 @@ export async function generateMetadata({
 
 	try {
 		const post = await loadPostBySlugForIsr(slug);
-		const excerpt = post.content.trim().slice(0, 160);
+		const excerpt = contentPlainText(post.content).trim().slice(0, 160);
 
 		return buildPageMetadata({
 			title: `Post by ${post.author.name}`,
@@ -50,7 +51,7 @@ export default async function PostPage({ params }: PageProps<"/posts/[slug]">) {
 				<JsonLd
 					data={blogPostingJsonLd({
 						slug: post.slug,
-						content: post.content,
+						content: contentPlainText(post.content),
 						authorName: post.author.name,
 						createdAt: post.createdAt,
 					})}
