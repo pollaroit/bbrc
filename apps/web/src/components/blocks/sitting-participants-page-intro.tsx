@@ -80,6 +80,16 @@ export function SittingParticipantsPageIntro({
 						<dt className="text-muted-foreground text-xs">Phase</dt>
 						<dd className="font-medium text-sm capitalize">{sitting.status}</dd>
 					</div>
+					{sitting.status === "voting" ? (
+						<div className="col-span-2 border border-border/60 bg-background/80 px-3 py-2 sm:col-span-3">
+							<dt className="text-muted-foreground text-xs">Poll chip ranks</dt>
+							<dd className="mt-0.5 text-sm leading-snug">
+								Rank 1 (highest RP at voting start) gets Golden and Silver
+								chips; rank 2 gets Silver only. RP and rank are shown on each
+								card.
+							</dd>
+						</div>
+					) : null}
 					{sitting.removedParticipants.length > 0 ? (
 						<div className="border border-border/60 bg-background/80 px-3 py-2">
 							<dt className="text-muted-foreground text-xs">Removed</dt>

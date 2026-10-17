@@ -39,6 +39,7 @@ model User {
   participations Participation[]
   feedbacks      Feedback[]
   votes          PollVote[]
+  pollChipGrants PollChipGrant[]
 
   xpEvents     XPEvent[]
   rpEvents     RPEvent[]

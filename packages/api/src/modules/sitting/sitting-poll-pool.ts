@@ -193,6 +193,65 @@ export function drawReplacementPollBookId(
 	return { bookId, usedUniformFallback };
 }
 
+export function shuffleUnlockedPollPreviewBookIds(
+	context: PollDrawContext,
+	currentOptionBookIds: string[],
+	lockedBookIds: string[],
+): {
+	bookIds: string[];
+	usedUniformFallback: boolean;
+	partialShuffle: boolean;
+} {
+	const lockedSet = new Set(lockedBookIds);
+	for (const bookId of lockedBookIds) {
+		if (!currentOptionBookIds.includes(bookId)) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "Locked book is not in the current option list",
+			});
+		}
+	}
+
+	if (new Set(lockedBookIds).size !== lockedBookIds.length) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Duplicate locked books are not allowed",
+		});
+	}
+
+	const bookIds = [...currentOptionBookIds];
+	let usedUniformFallback = false;
+	let partialShuffle = false;
+
+	for (let index = 0; index < bookIds.length; index++) {
+		const currentBookId = bookIds[index];
+		if (currentBookId == null || lockedSet.has(currentBookId)) {
+			continue;
+		}
+
+		const exclude = new Set(bookIds);
+		exclude.delete(currentBookId);
+
+		const result = pickOneWeightedPollBookId(
+			context.eligibleBookIds,
+			exclude,
+			context.readCountByBookId,
+			context.participantIds.length,
+		);
+
+		if (result.usedUniformFallback) {
+			usedUniformFallback = true;
+		}
+
+		if (!result.bookId) {
+			partialShuffle = true;
+			continue;
+		}
+
+		bookIds[index] = result.bookId;
+	}
+
+	return { bookIds, usedUniformFallback, partialShuffle };
+}
+
 type PollPreviewOption = PreviewSittingPollOptionsOutput["options"][number];
 
 export async function loadPollPreviewBooks(

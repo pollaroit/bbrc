@@ -32,7 +32,7 @@ model Poll {
   filterCountries String[] @default([]) @map("filter_countries")
   /// Wishlist pool: author slugs (see @bbrc/shared isAuthorSlug).
   filterAuthorSlugs String[] @default([]) @map("filter_author_slugs")
-  /// @zod.min(2, "Take must be at least 2").max(12, "Take must be at most 12")
+  /// @zod.min(3, "Take must be at least 3").max(12, "Take must be at most 12")
   take     Int  @default(10)
 
   /// @zod.min(1, "Min choices must be at least 1").max(12, "Min choices must be at most 12")
@@ -40,7 +40,8 @@ model Poll {
   /// @zod.min(1, "Max choices must be at least 1").max(12, "Max choices must be at most 12")
   maxChoices Int? @map("max_choices")
 
-  options PollOption[]
+  options    PollOption[]
+  chipGrants PollChipGrant[]
 
   @@index([sittingId])
   @@index([slug])
@@ -82,6 +83,30 @@ model PollVote {
   optionId String     @map("option_id")
   option   PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
 
+  /// @zod.min(1, "Points must be at least 1").max(3, "Points must be at most 3")
+  points Int @default(1)
+
   @@unique([userId, optionId])
   @@map("poll_vote")
+}
+
+model PollChipGrant {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// @zod.uuid("Invalid poll id")
+  pollId String @map("poll_id")
+  poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  canUseGolden Boolean @default(false) @map("can_use_golden")
+  canUseSilver Boolean @default(false) @map("can_use_silver")
+
+  @@unique([pollId, userId])
+  @@index([pollId])
+  @@map("poll_chip_grant")
 }

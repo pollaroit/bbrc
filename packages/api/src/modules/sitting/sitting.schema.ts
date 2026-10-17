@@ -277,9 +277,28 @@ export const SittingPollOptionBookSchema = BookWithRequestedBySchema.extend({
 	id: BookSchema.shape.id,
 });
 
+export const PollVotePointsSchema = zod.union([
+	zod.literal(1),
+	zod.literal(2),
+	zod.literal(3),
+]);
+
+export const PollVoteSelectionSchema = zod.object({
+	optionId: zod.uuid(),
+	points: PollVotePointsSchema.default(1),
+});
+
+export const PollChipGrantSchema = zod.object({
+	canUseGolden: zod.boolean(),
+	canUseSilver: zod.boolean(),
+});
+
 export const SittingPollOptionSchema = zod.object({
 	id: zod.uuid(),
+	/** Number of voters who selected this option. */
 	voteCount: zod.number().int().min(0),
+	/** Sum of vote points (1/2/3 chips). Hidden from non-admins during voting. */
+	pointTotal: zod.number().int().min(0),
 	/** Participants (active on this sitting) who marked this book read. */
 	participantReadCount: zod.number().int().min(0),
 	/** Signed-in viewer has marked this book read (false when anonymous). */
@@ -318,12 +337,36 @@ export const ReplaceSittingPollPreviewOptionInputSchema = zod
 	.object({
 		participantUserIds: CreateSittingInputSchema.shape.participantUserIds,
 		poll: CreateSittingPollInputSchema.default({}),
-		currentOptionBookIds: zod.array(BookSchema.shape.id).min(2),
+		currentOptionBookIds: zod.array(BookSchema.shape.id).min(3),
 		replaceBookId: BookSchema.shape.id,
 	})
 	.superRefine((value, ctx) => {
 		refinePollConfig(value.poll, ctx, ["poll"]);
 	});
+
+export const ShuffleSittingPollPreviewOptionsInputSchema = zod
+	.object({
+		participantUserIds: CreateSittingInputSchema.shape.participantUserIds,
+		poll: CreateSittingPollInputSchema.default({}),
+		currentOptionBookIds: zod.array(BookSchema.shape.id).min(3),
+		lockedBookIds: zod.array(BookSchema.shape.id).default([]),
+	})
+	.superRefine((value, ctx) => {
+		refinePollConfig(value.poll, ctx, ["poll"]);
+	});
+
+export const ShuffleSittingPollPreviewOptionsOutputSchema = zod.object({
+	options: zod.array(SittingPollPreviewOptionSchema),
+	usedUniformFallback: zod.boolean(),
+	partialShuffle: zod.boolean(),
+});
+
+export type ShuffleSittingPollPreviewOptionsInput = z.infer<
+	typeof ShuffleSittingPollPreviewOptionsInputSchema
+>;
+export type ShuffleSittingPollPreviewOptionsOutput = z.infer<
+	typeof ShuffleSittingPollPreviewOptionsOutputSchema
+>;
 
 export const ReplaceSittingPollPreviewOptionOutputSchema = zod.object({
 	option: SittingPollPreviewOptionSchema,
@@ -340,6 +383,8 @@ export type ReplaceSittingPollPreviewOptionOutput = z.infer<
 export const SittingPollDetailSchema = SittingPollSummarySchema.extend({
 	options: zod.array(SittingPollOptionSchema),
 	myVoteOptionIds: zod.array(zod.uuid()),
+	myVotes: zod.array(PollVoteSelectionSchema),
+	myChipGrants: PollChipGrantSchema,
 	voterCount: zod.number().int().min(0),
 });
 
@@ -355,6 +400,8 @@ export const SittingParticipantSummarySchema = zod.object({
 	rpLevel: MemberLevelSchema,
 	progress: ProgressSchema,
 	rpChange: zod.number().int().nullable(),
+	/** Poll chip tier at voting start (1 = Golden+Silver, 2 = Silver only). */
+	pollChipRank: zod.union([zod.literal(1), zod.literal(2)]).nullable(),
 });
 
 export const SittingRemovedParticipantSchema =
@@ -499,11 +546,13 @@ export type GetOngoingSittingOutput = z.infer<
 
 export const SubmitPollVotesInputSchema = zod.object({
 	sittingSlug: SittingSchema.shape.slug,
-	optionIds: zod.array(zod.uuid()).min(1),
+	votes: zod.array(PollVoteSelectionSchema),
 });
 
 export const SubmitPollVotesOutputSchema = zod.object({
 	myVoteOptionIds: zod.array(zod.uuid()),
+	myVotes: zod.array(PollVoteSelectionSchema),
+	myChipGrants: PollChipGrantSchema,
 	xpAwarded: zod.number().int().min(0).nullable(),
 });
 
@@ -522,6 +571,7 @@ export const PollOptionVoterSchema = zod.object({
 		status: true,
 	}),
 	votedAt: zod.coerce.date(),
+	points: PollVotePointsSchema,
 	totalSelections: zod.number().int().min(1),
 	maxChoices: zod.number().int().min(1),
 });
@@ -582,6 +632,7 @@ export const GetPollVotesByUserInputSchema = zod.object({
 export const PollVoteByUserChoiceSchema = zod.object({
 	pollOptionId: zod.uuid(),
 	bookTitle: zod.string(),
+	points: PollVotePointsSchema,
 	votedAt: zod.coerce.date(),
 });
 

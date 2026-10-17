@@ -9,11 +9,11 @@ import {
 	TooltipTrigger,
 } from "@bbrc/ui/components/tooltip";
 import { useMutation } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
+import { Lock, RefreshCw, Shuffle } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PollOptionReadersDialog } from "@/components/blocks/poll-option-readers-dialog";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
@@ -51,15 +51,26 @@ export function CreateSittingPollReview({
 	const [usedUniformFallback, setUsedUniformFallback] = useState(
 		initialUsedUniformFallback,
 	);
+	const [lockedBookIds, setLockedBookIds] = useState<string[]>([]);
 	const [replacingBookId, setReplacingBookId] = useState<string | null>(null);
+	const [shuffling, setShuffling] = useState(false);
 	const [readersBookId, setReadersBookId] = useState<string | null>(null);
 	const [readersBookCount, setReadersBookCount] = useState(0);
 
 	const previewBase = toPreviewSittingPollOptionsInput(formValues);
+	const lockedSet = useMemo(() => new Set(lockedBookIds), [lockedBookIds]);
+	const unlockedCount = options.filter(
+		(option) => !lockedSet.has(option.book.id),
+	).length;
 
 	const replaceMutation = useMutation(
 		orpc.sitting.replaceSittingPollPreviewOption.mutationOptions(),
 	);
+	const shuffleMutation = useMutation(
+		orpc.sitting.shuffleSittingPollPreviewOptions.mutationOptions(),
+	);
+
+	const previewBusy = replacingBookId != null || shuffling;
 
 	async function replaceOption(replaceBookId: string) {
 		setReplacingBookId(replaceBookId);
@@ -86,13 +97,47 @@ export function CreateSittingPollReview({
 		}
 	}
 
+	async function shuffleOptions() {
+		setShuffling(true);
+		try {
+			const result = await shuffleMutation.mutateAsync({
+				...previewBase,
+				currentOptionBookIds: options.map((option) => option.book.id),
+				lockedBookIds,
+			});
+			setOptions(result.options);
+			if (result.usedUniformFallback) {
+				setUsedUniformFallback(true);
+			}
+			if (result.partialShuffle) {
+				toast.warning(
+					"Some unlocked slots could not be redrawn — not enough eligible books left.",
+				);
+			}
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Could not shuffle options",
+			);
+		} finally {
+			setShuffling(false);
+		}
+	}
+
+	function toggleLock(bookId: string) {
+		setLockedBookIds((current) =>
+			current.includes(bookId)
+				? current.filter((id) => id !== bookId)
+				: [...current, bookId],
+		);
+	}
+
 	return (
 		<div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
 			<div>
 				<h2 className="font-semibold text-lg">Review poll options</h2>
 				<p className="text-muted-foreground text-sm">
-					These wishlist books were drawn for the poll. Replace any option to
-					reroll one eligible book before voting starts.{" "}
+					These wishlist books were drawn for the poll. Replace one slot, lock
+					books you want to keep, or shuffle all unlocked slots.{" "}
 					<span className="text-foreground">
 						{eligiblePoolSize} books match your filters.
 					</span>
@@ -110,6 +155,23 @@ export function CreateSittingPollReview({
 				</Alert>
 			) : null}
 
+			<div className="flex flex-wrap gap-2">
+				<Button
+					type="button"
+					variant="outline"
+					disabled={previewBusy || unlockedCount === 0 || confirmLoading}
+					onClick={() => {
+						void shuffleOptions();
+					}}
+				>
+					<Shuffle
+						className={cn("size-4", shuffling && "animate-pulse")}
+						aria-hidden
+					/>
+					Shuffle unlocked
+				</Button>
+			</div>
+
 			<ul className="flex flex-col gap-3">
 				{options.map((option) => {
 					const coverSrc = bookCoverUrl(option.book.coverId);
@@ -120,12 +182,16 @@ export function CreateSittingPollReview({
 							? `${readCount} of ${participantCount} participants read`
 							: `${readCount} read`;
 					const isReplacing = replacingBookId === option.book.id;
+					const isLocked = lockedSet.has(option.book.id);
 
 					return (
 						<li key={option.book.id}>
 							<div className="relative flex items-stretch gap-3 border border-border p-4 pl-5">
 								<div
-									className="pointer-events-none absolute inset-y-0 left-0 w-0.5 bg-border"
+									className={cn(
+										"pointer-events-none absolute inset-y-0 left-0 w-0.5",
+										isLocked ? "bg-primary" : "bg-border",
+									)}
 									aria-hidden
 								/>
 								<Link
@@ -178,7 +244,33 @@ export function CreateSittingPollReview({
 									</p>
 								</div>
 
-								<div className="flex shrink-0 items-start">
+								<div className="flex shrink-0 items-start gap-1">
+									<Tooltip>
+										<TooltipTrigger
+											render={
+												<Button
+													type="button"
+													variant={isLocked ? "secondary" : "outline"}
+													size="icon-sm"
+													disabled={previewBusy}
+													aria-label={
+														isLocked
+															? "Unlock this book during shuffle"
+															: "Lock this book during shuffle"
+													}
+													aria-pressed={isLocked}
+													onClick={() => {
+														toggleLock(option.book.id);
+													}}
+												>
+													<Lock className="size-4" aria-hidden />
+												</Button>
+											}
+										/>
+										<TooltipContent>
+											{isLocked ? "Unlock for shuffle" : "Lock during shuffle"}
+										</TooltipContent>
+									</Tooltip>
 									<Tooltip>
 										<TooltipTrigger
 											render={
@@ -186,7 +278,7 @@ export function CreateSittingPollReview({
 													type="button"
 													variant="outline"
 													size="icon-sm"
-													disabled={replacingBookId != null && !isReplacing}
+													disabled={previewBusy && !isReplacing}
 													aria-label="Replace with another random book"
 													onClick={() => {
 														void replaceOption(option.book.id);
@@ -223,7 +315,7 @@ export function CreateSittingPollReview({
 			<div className="flex flex-wrap gap-2">
 				<Button
 					type="button"
-					disabled={confirmLoading || replacingBookId != null}
+					disabled={confirmLoading || previewBusy}
 					onClick={() => {
 						onConfirm(options.map((option) => option.book.id));
 					}}
@@ -233,7 +325,7 @@ export function CreateSittingPollReview({
 				<Button
 					type="button"
 					variant="outline"
-					disabled={confirmLoading || replacingBookId != null}
+					disabled={confirmLoading || previewBusy}
 					onClick={onBack}
 				>
 					Back to configuration

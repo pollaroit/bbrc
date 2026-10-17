@@ -20,10 +20,10 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@bbrc/ui/components/sheet";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { BarChart3Icon, BookOpenIcon, FlagIcon, SendIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
@@ -40,16 +40,69 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 	const [startConfirmOpen, setStartConfirmOpen] = useState(false);
 	const [finishOpen, setFinishOpen] = useState(false);
 	const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+	const [showAllPollOptions, setShowAllPollOptions] = useState(false);
+
+	const isAdmin = session?.user.isAdmin === true;
+
+	const liveSittingQuery = useQuery({
+		...orpc.sitting.getSittingBySlug.queryOptions({ input: sitting.slug }),
+		enabled: isAdmin && sitting.status === "voting",
+	});
 
 	const pollOptions = useMemo(() => {
-		if (!sitting.poll?.options) return [];
-		return [...sitting.poll.options].sort((a, b) => b.voteCount - a.voteCount);
-	}, [sitting.poll?.options]);
+		const poll = liveSittingQuery.data?.poll ?? sitting.poll;
+		if (!poll?.options) {
+			return [];
+		}
+
+		return [...poll.options].toSorted((a, b) => {
+			if (b.pointTotal !== a.pointTotal) {
+				return b.pointTotal - a.pointTotal;
+			}
+
+			return a.book.title.localeCompare(b.book.title);
+		});
+	}, [liveSittingQuery.data?.poll, sitting.poll]);
+
+	const pollLeaders = useMemo(() => {
+		if (pollOptions.length === 0) {
+			return [];
+		}
+
+		const maxPoints = pollOptions[0]?.pointTotal ?? 0;
+		return pollOptions.filter((option) => option.pointTotal === maxPoints);
+	}, [pollOptions]);
+
+	const pollOptionsInSheet = showAllPollOptions ? pollOptions : pollLeaders;
 
 	const selectedPollOption = useMemo(
 		() => pollOptions.find((option) => option.id === selectedOptionId) ?? null,
 		[pollOptions, selectedOptionId],
 	);
+
+	useEffect(() => {
+		if (!startOpen || showAllPollOptions || pollLeaders.length === 0) {
+			return;
+		}
+
+		setSelectedOptionId((current) => {
+			if (
+				current != null &&
+				pollLeaders.some((option) => option.id === current)
+			) {
+				return current;
+			}
+
+			return pollLeaders[0]?.id ?? null;
+		});
+	}, [startOpen, showAllPollOptions, pollLeaders]);
+
+	function openStartReadingSheet() {
+		setShowAllPollOptions(false);
+		setSelectedOptionId(pollLeaders[0]?.id ?? pollOptions[0]?.id ?? null);
+		setStartOpen(true);
+		void liveSittingQuery.refetch();
+	}
 
 	const startReading = useMutation(
 		orpc.sitting.transitionSitting.mutationOptions({
@@ -143,14 +196,7 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 						<SendIcon data-icon="inline-start" />
 						Announce poll on Telegram
 					</LoadingButton>
-					<Button
-						type="button"
-						size="sm"
-						onClick={() => {
-							setSelectedOptionId(pollOptions[0]?.id ?? null);
-							setStartOpen(true);
-						}}
-					>
+					<Button type="button" size="sm" onClick={openStartReadingSheet}>
 						<BookOpenIcon data-icon="inline-start" />
 						Close poll & start reading
 					</Button>
@@ -161,6 +207,7 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 							setStartOpen(next);
 							if (!next) {
 								setStartConfirmOpen(false);
+								setShowAllPollOptions(false);
 							}
 						}}
 					>
@@ -176,9 +223,57 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 								</SheetDescription>
 							</SheetHeader>
 							<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+								{liveSittingQuery.isFetching &&
+								pollOptions.every((o) => o.pointTotal === 0) ? (
+									<p className="mb-3 text-muted-foreground text-xs">
+										Loading live vote totals…
+									</p>
+								) : null}
+								{!showAllPollOptions && pollLeaders.length > 0 ? (
+									<p className="mb-3 text-muted-foreground text-sm leading-relaxed">
+										{pollLeaders.length === 1
+											? "Highest score on the poll. Confirm or pick another title."
+											: `${pollLeaders.length} books tied for the lead.`}
+									</p>
+								) : null}
+								{!showAllPollOptions &&
+								pollOptions.length > pollLeaders.length ? (
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										className="mb-3 w-fit"
+										onClick={() => {
+											setShowAllPollOptions(true);
+										}}
+									>
+										Select other book…
+									</Button>
+								) : null}
+								{showAllPollOptions ? (
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										className="mb-3 w-fit"
+										onClick={() => {
+											setShowAllPollOptions(false);
+											if (
+												selectedOptionId != null &&
+												!pollLeaders.some(
+													(option) => option.id === selectedOptionId,
+												)
+											) {
+												setSelectedOptionId(pollLeaders[0]?.id ?? null);
+											}
+										}}
+									>
+										Show leaders only
+									</Button>
+								) : null}
 								<fieldset className="flex flex-col gap-2">
 									<legend className="sr-only">Winning poll option</legend>
-									{pollOptions.map((option) => (
+									{pollOptionsInSheet.map((option) => (
 										<label
 											key={option.id}
 											className="flex cursor-pointer items-start gap-3 border border-border p-3 has-checked:border-primary has-checked:bg-primary/5"
@@ -195,8 +290,8 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 													{option.book.title}
 												</span>
 												<span className="text-muted-foreground text-xs">
-													{option.voteCount} vote
-													{option.voteCount === 1 ? "" : "s"}
+													{option.pointTotal} pts · {option.voteCount}{" "}
+													{option.voteCount === 1 ? "voter" : "voters"}
 												</span>
 											</span>
 										</label>

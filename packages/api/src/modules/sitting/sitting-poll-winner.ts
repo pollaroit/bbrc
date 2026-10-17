@@ -6,24 +6,43 @@ export async function pickPollWinningOptionId(
 ): Promise<string> {
 	const options = await db.pollOption.findMany({
 		where: { pollId },
-		select: {
-			id: true,
-			_count: { select: { votes: true } },
-		},
+		select: { id: true },
 	});
 
 	if (options.length === 0) {
 		throw new Error("Poll has no options");
 	}
 
-	const maxVotes = Math.max(...options.map((option) => option._count.votes));
-	const leaders = options.filter((option) => option._count.votes === maxVotes);
-	const index = Math.floor(Math.random() * leaders.length);
-	const winner = leaders[index];
+	const optionIds = options.map((option) => option.id);
 
-	if (!winner) {
+	const pointTotals = await db.pollVote.groupBy({
+		by: ["optionId"],
+		where: { optionId: { in: optionIds } },
+		_sum: { points: true },
+	});
+
+	const pointsByOptionId = new Map(
+		pointTotals.map((row) => [row.optionId, row._sum.points ?? 0]),
+	);
+
+	let maxPoints = 0;
+	for (const optionId of optionIds) {
+		const points = pointsByOptionId.get(optionId) ?? 0;
+		if (points > maxPoints) {
+			maxPoints = points;
+		}
+	}
+
+	const leaders = optionIds.filter(
+		(optionId) => (pointsByOptionId.get(optionId) ?? 0) === maxPoints,
+	);
+
+	const index = Math.floor(Math.random() * leaders.length);
+	const winnerId = leaders[index];
+
+	if (!winnerId) {
 		throw new Error("Could not pick a poll winner");
 	}
 
-	return winner.id;
+	return winnerId;
 }

@@ -41,7 +41,7 @@ export function PollOptionVotersDialog({
 
 	const query = useQuery({
 		...orpc.sitting.getPollOptionVotes.queryOptions({
-			input: { pollOptionId: pollOptionId! },
+			input: { pollOptionId: pollOptionId ?? "" },
 		}),
 		enabled: open,
 	});
@@ -98,6 +98,12 @@ export function PollOptionVotersDialog({
 												{formatDateTime(entry.votedAt)}
 											</span>
 											<span className="text-muted-foreground text-xs">
+												{entry.points === 3
+													? "Golden chip (3 pts)"
+													: entry.points === 2
+														? "Silver chip (2 pts)"
+														: "1 pt"}{" "}
+												·{" "}
 												{formatBallotSummary(
 													entry.totalSelections,
 													entry.maxChoices,

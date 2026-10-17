@@ -8,6 +8,7 @@ import {
 } from "@/components/blocks/sitting-participation-progress";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
+import { formatPollChipRankLabel } from "@/lib/poll-chip-rank-label";
 import { cn } from "@/lib/utils";
 
 type Participant = GetSittingBySlugOutput["participants"][number];
@@ -30,6 +31,10 @@ export function SittingParticipantCard({
 	const progressAccentClass = showReadingProgress
 		? progressCardAccentClassName[participant.progress]
 		: null;
+
+	const showPollChipRank =
+		sittingStatus === "voting" && participant.pollChipRank != null;
+	const pollChipRankLabel = formatPollChipRankLabel(participant.pollChipRank);
 
 	return (
 		<Link
@@ -58,9 +63,15 @@ export function SittingParticipantCard({
 						<UserStatusBadge status={participant.status} className="shrink-0" />
 					</div>
 					<div className="mt-auto flex flex-col gap-1.5">
-						<p className="text-muted-foreground text-xs">
-							{participant.xpLevel.label} · {participant.rpLevel.label}
+						<p className="text-muted-foreground text-xs tabular-nums">
+							{participant.rp.toLocaleString()} RP · {participant.xpLevel.label}{" "}
+							· {participant.rpLevel.label}
 						</p>
+						{showPollChipRank && pollChipRankLabel ? (
+							<p className="font-medium text-foreground text-xs">
+								{pollChipRankLabel}
+							</p>
+						) : null}
 						{sittingStatus === "finished" && participant.rpChange != null ? (
 							<p
 								className={cn(

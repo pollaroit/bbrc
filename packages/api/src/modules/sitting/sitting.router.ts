@@ -27,6 +27,8 @@ import {
 	ResendSittingTelegramPollOpenOutputSchema,
 	SendSittingTelegramProgressPollInputSchema,
 	SendSittingTelegramProgressPollOutputSchema,
+	ShuffleSittingPollPreviewOptionsInputSchema,
+	ShuffleSittingPollPreviewOptionsOutputSchema,
 	SittingParticipantMutationInputSchema,
 	SittingParticipantMutationOutputSchema,
 	SubmitPollVotesInputSchema,
@@ -55,6 +57,7 @@ import {
 	replaceSittingPollPreviewOption,
 	resendSittingTelegramPollOpen,
 	sendSittingTelegramProgressPoll,
+	shuffleSittingPollPreviewOptions,
 	submitPollVotes,
 	transitionSitting,
 	updateMyParticipationProgress,
@@ -95,6 +98,13 @@ export const sittingRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await replaceSittingPollPreviewOption(input, context.db),
+		),
+	shuffleSittingPollPreviewOptions: adminProcedure
+		.input(ShuffleSittingPollPreviewOptionsInputSchema)
+		.output(ShuffleSittingPollPreviewOptionsOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await shuffleSittingPollPreviewOptions(input, context.db),
 		),
 	createSitting: adminProcedure
 		.input(CreateSittingInputSchema)

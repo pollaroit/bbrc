@@ -275,7 +275,7 @@ export function CreateSittingPollFilters({
 									<Input
 										id={field.name}
 										type="number"
-										min={2}
+										min={3}
 										max={12}
 										inputMode="numeric"
 										aria-invalid={fieldState.invalid}
@@ -288,7 +288,7 @@ export function CreateSittingPollFilters({
 										ref={field.ref}
 										className="max-w-xs"
 									/>
-									<FieldDescription>Between 2 and 12.</FieldDescription>
+									<FieldDescription>Between 3 and 12.</FieldDescription>
 								</>
 							)}
 						/>

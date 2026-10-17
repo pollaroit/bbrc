@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import { PollConfigurationDialog } from "@/components/blocks/poll-configuration-dialog";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
+import { authClient } from "@/lib/auth-client";
 import { formatDateTime } from "@/lib/format-datetime";
 import { orpc } from "@/utils/orpc";
 
@@ -47,6 +48,7 @@ export function SittingVotePageIntro({
 	participantCount,
 }: SittingVotePageIntroProps) {
 	const [configOpen, setConfigOpen] = useState(false);
+	const { data: session } = authClient.useSession();
 
 	const { data: sitting } = useQuery({
 		...orpc.sitting.getSittingBySlug.queryOptions({ input: sittingSlug }),
@@ -57,11 +59,13 @@ export function SittingVotePageIntro({
 	const participants = sitting?.participants.length ?? participantCount;
 
 	const maxChoices = poll.maxChoices ?? poll.take;
-	const totalVotes = poll.options.reduce(
-		(sum, option) => sum + option.voteCount,
+	const isOpen = status === "voting";
+	const isAdmin = session?.user.isAdmin === true;
+	const showLiveTotals = !isOpen || isAdmin;
+	const totalPoints = poll.options.reduce(
+		(sum, option) => sum + option.pointTotal,
 		0,
 	);
-	const isOpen = status === "voting";
 	const ballotLabel =
 		poll.minChoices === maxChoices
 			? `${maxChoices} book${maxChoices === 1 ? "" : "s"}`
@@ -111,24 +115,34 @@ export function SittingVotePageIntro({
 							value={participants}
 							className="col-span-2 lg:col-span-1"
 						/>
-						<div className="col-span-2 border border-border bg-muted/15 lg:col-span-1">
-							<div className="grid h-full min-h-[3.25rem] grid-cols-2 divide-x divide-border">
-								<div className="px-3 py-2.5">
-									<p className="text-muted-foreground text-xs">Ballots cast</p>
-									<p className="mt-0.5 font-medium text-sm tabular-nums">
-										{poll.voterCount}
-									</p>
-								</div>
-								<div className="px-3 py-2.5">
-									<p className="text-muted-foreground text-xs">
-										Total selections
-									</p>
-									<p className="mt-0.5 font-medium text-sm tabular-nums">
-										{totalVotes}
-									</p>
+						{showLiveTotals ? (
+							<div className="col-span-2 border border-border bg-muted/15 lg:col-span-1">
+								<div className="grid h-full min-h-[3.25rem] grid-cols-2 divide-x divide-border">
+									<div className="px-3 py-2.5">
+										<p className="text-muted-foreground text-xs">
+											Ballots cast
+										</p>
+										<p className="mt-0.5 font-medium text-sm tabular-nums">
+											{poll.voterCount}
+										</p>
+									</div>
+									<div className="px-3 py-2.5">
+										<p className="text-muted-foreground text-xs">
+											Total points
+										</p>
+										<p className="mt-0.5 font-medium text-sm tabular-nums">
+											{totalPoints}
+										</p>
+									</div>
 								</div>
 							</div>
-						</div>
+						) : (
+							<IntroStat
+								label="Live totals"
+								value="Hidden until voting ends"
+								className="col-span-2 lg:col-span-1"
+							/>
+						)}
 					</dl>
 				</div>
 

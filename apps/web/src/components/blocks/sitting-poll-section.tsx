@@ -34,6 +34,90 @@ import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type SittingPoll = NonNullable<GetSittingBySlugOutput["poll"]>;
+type VoteDraft = SittingPoll["myVotes"][number];
+
+function voteDraftsFromPoll(poll: SittingPoll): VoteDraft[] {
+	if (poll.myVotes.length > 0) {
+		return poll.myVotes;
+	}
+
+	return poll.myVoteOptionIds.map((optionId) => ({
+		optionId,
+		points: 1 as const,
+	}));
+}
+
+function optionScore(option: SittingPoll["options"][number], isAdmin: boolean) {
+	return isAdmin ? option.pointTotal : option.voteCount;
+}
+
+function votePointsLabel(points: 1 | 2 | 3): string {
+	if (points === 3) {
+		return "Golden · 3 pts";
+	}
+
+	if (points === 2) {
+		return "Silver · 2 pts";
+	}
+
+	return "Standard · 1 pt";
+}
+
+function votePointsAccentClass(points: 1 | 2 | 3, fallback: string): string {
+	if (points === 3) {
+		return "bg-amber-600 dark:bg-amber-500";
+	}
+
+	if (points === 2) {
+		return "bg-slate-500 dark:bg-slate-400";
+	}
+
+	return fallback;
+}
+
+function votePointsRowTintClass(points: 1 | 2 | 3, active: boolean): string {
+	if (!active) {
+		return "";
+	}
+
+	if (points === 3) {
+		return "bg-amber-50/80 dark:bg-amber-950/25";
+	}
+
+	if (points === 2) {
+		return "bg-slate-100/90 dark:bg-slate-900/40";
+	}
+
+	return "bg-muted/25";
+}
+
+function votePointsBadgeClass(points: 1 | 2 | 3): string {
+	if (points === 3) {
+		return "border-amber-600/60 bg-amber-100 text-amber-950 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-50";
+	}
+
+	if (points === 2) {
+		return "border-slate-500/60 bg-slate-200 text-slate-900 dark:border-slate-400/50 dark:bg-slate-800 dark:text-slate-100";
+	}
+
+	return "";
+}
+
+function voteChipButtonClass(selected: boolean, points: 1 | 2 | 3): string {
+	if (!selected) {
+		return "border-border bg-background text-muted-foreground hover:bg-muted/40";
+	}
+
+	if (points === 3) {
+		return "border-amber-600 bg-amber-100 font-semibold text-amber-950 ring-2 ring-amber-600/70 dark:border-amber-500 dark:bg-amber-950/50 dark:text-amber-50 dark:ring-amber-500/60";
+	}
+
+	if (points === 2) {
+		return "border-slate-500 bg-slate-200 font-semibold text-slate-900 ring-2 ring-slate-500/70 dark:border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-400/60";
+	}
+
+	return "border-primary bg-primary/15 font-semibold text-foreground ring-2 ring-primary/70";
+}
 
 type SittingPollSectionProps = {
 	sittingSlug: string;
@@ -72,21 +156,36 @@ export function SittingPollSection({
 
 	const poll = sittingData?.poll ?? initialPoll;
 	const maxChoices = poll.maxChoices ?? poll.take;
+	const isAdmin = session?.user.isAdmin === true;
+
 	const sortedOptions = useMemo(() => {
-		if (!readonly && !showVoteShare) {
+		const hideLiveRanking =
+			sittingStatus === "voting" && !isAdmin && !readonly && !showVoteShare;
+
+		if (hideLiveRanking) {
 			return poll.options;
 		}
 
-		return [...poll.options].sort((a, b) => b.voteCount - a.voteCount);
-	}, [poll.options, readonly, showVoteShare]);
+		if (!readonly && !showVoteShare && sittingStatus === "voting" && !isAdmin) {
+			return poll.options;
+		}
+
+		return [...poll.options].sort(
+			(a, b) => optionScore(b, isAdmin) - optionScore(a, isAdmin),
+		);
+	}, [poll.options, readonly, showVoteShare, sittingStatus, isAdmin]);
 
 	const maxVoteCount = useMemo(
-		() => Math.max(1, ...poll.options.map((option) => option.voteCount)),
-		[poll.options],
+		() =>
+			Math.max(
+				1,
+				...poll.options.map((option) => optionScore(option, isAdmin)),
+			),
+		[poll.options, isAdmin],
 	);
 
-	const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>(
-		() => poll.myVoteOptionIds,
+	const [voteDrafts, setVoteDrafts] = useState<VoteDraft[]>(() =>
+		voteDraftsFromPoll(poll),
 	);
 	const [isEditingVotes, setIsEditingVotes] = useState(
 		() => poll.myVoteOptionIds.length === 0,
@@ -98,14 +197,12 @@ export function SittingPollSection({
 	const [readersOptionId, setReadersOptionId] = useState<string | null>(null);
 	const [readersOptionCount, setReadersOptionCount] = useState(0);
 
-	const isAdmin = session?.user.isAdmin === true;
-
 	useEffect(() => {
-		setSelectedOptionIds(poll.myVoteOptionIds);
+		setVoteDrafts(voteDraftsFromPoll(poll));
 		if (poll.myVoteOptionIds.length > 0) {
 			setIsEditingVotes(false);
 		}
-	}, [poll.myVoteOptionIds]);
+	}, [poll]);
 
 	const effectiveParticipantUserIds = useMemo(() => {
 		if (sittingData?.participants) {
@@ -139,7 +236,7 @@ export function SittingPollSection({
 	const submitVotesMutation = useMutation(
 		orpc.sitting.submitPollVotes.mutationOptions({
 			onSuccess: async (result) => {
-				setSelectedOptionIds(result.myVoteOptionIds);
+				setVoteDrafts(result.myVotes);
 				setIsEditingVotes(false);
 				await queryClient.invalidateQueries({
 					queryKey: orpc.sitting.getSittingBySlug.key(),
@@ -163,9 +260,9 @@ export function SittingPollSection({
 			return;
 		}
 
-		setSelectedOptionIds((current) => {
+		setVoteDrafts((current) => {
 			if (checked) {
-				if (current.includes(optionId)) {
+				if (current.some((vote) => vote.optionId === optionId)) {
 					return current;
 				}
 
@@ -174,17 +271,51 @@ export function SittingPollSection({
 					return current;
 				}
 
-				return [...current, optionId];
+				return [...current, { optionId, points: 1 as const }];
 			}
 
-			return current.filter((id) => id !== optionId);
+			return current.filter((vote) => vote.optionId !== optionId);
+		});
+	}
+
+	function setOptionPoints(optionId: string, points: 1 | 2 | 3) {
+		if (!canEditSelection) {
+			return;
+		}
+
+		setVoteDrafts((current) => {
+			const selected = current.some((vote) => vote.optionId === optionId);
+			if (!selected) {
+				return current;
+			}
+
+			return current.map((vote) => {
+				if (vote.optionId === optionId) {
+					return { optionId, points };
+				}
+
+				if (points === 3 && vote.points === 3) {
+					return { ...vote, points: 1 as const };
+				}
+
+				if (points === 2 && vote.points === 2) {
+					return { ...vote, points: 1 as const };
+				}
+
+				return vote;
+			});
 		});
 	}
 
 	const showVoteBars =
 		showVoteShare ||
 		readonly ||
+		(isAdmin && sittingStatus === "voting") ||
 		(sittingStatus !== "voting" && !canEditSelection);
+
+	const chipGrants = poll.myChipGrants;
+	const showChipControls =
+		canEditSelection && (chipGrants.canUseGolden || chipGrants.canUseSilver);
 
 	const header =
 		layout === "page" ? null : (
@@ -233,8 +364,9 @@ export function SittingPollSection({
 			) : canEditSelection ? (
 				<p className="text-muted-foreground text-sm">
 					Select between {poll.minChoices} and {maxChoices} books, then save
-					your ballot. Tap a row to toggle a choice; open a cover or title to
-					view the book.
+					your ballot. Golden and Silver chips are optional extra weight on one
+					book each. Tap a row to toggle a choice; open a cover or title to view
+					the book.
 				</p>
 			) : hasSavedVotes && canVoteBase ? (
 				<p className="text-muted-foreground text-sm">
@@ -259,19 +391,26 @@ export function SittingPollSection({
 			>
 				{sortedOptions.map((option) => {
 					const coverSrc = bookCoverUrl(option.book.coverId);
-					const checked = selectedOptionIds.includes(option.id);
+					const draftVote = voteDrafts.find(
+						(vote) => vote.optionId === option.id,
+					);
+					const savedVote = poll.myVotes.find(
+						(vote) => vote.optionId === option.id,
+					);
+					const checked = draftVote != null;
+					const draftPoints = draftVote?.points ?? 1;
 					const href = `/books/${option.book.slug}` as Route;
 					const showAsVoted =
 						poll.myVoteOptionIds.includes(option.id) &&
 						(readonly || hasSavedVotes);
+					const savedPoints = savedVote?.points ?? 1;
 					const isClubPick =
 						readonly &&
 						selectedBookSlug != null &&
 						option.book.slug === selectedBookSlug;
+					const optionPoints = optionScore(option, isAdmin);
 					const voteShare =
-						showVoteBars && option.voteCount > 0
-							? option.voteCount / maxVoteCount
-							: 0;
+						showVoteBars && optionPoints > 0 ? optionPoints / maxVoteCount : 0;
 					const readCount = option.participantReadCount;
 					const readLabel =
 						participantCount > 0
@@ -304,15 +443,27 @@ export function SittingPollSection({
 									"relative flex items-stretch gap-3 overflow-hidden border border-border p-3 pl-4 transition-colors",
 									layout === "page" && "p-4 pl-5 sm:gap-4",
 									canEditSelection && "cursor-pointer hover:bg-muted/30",
-									(checked || showAsVoted || isClubPick) && "bg-muted/25",
+									canEditSelection && checked
+										? votePointsRowTintClass(draftPoints, true)
+										: (checked || showAsVoted || isClubPick) && "bg-muted/25",
+									canEditSelection &&
+										checked &&
+										draftPoints === 3 &&
+										"border-amber-600/40 dark:border-amber-500/35",
+									canEditSelection &&
+										checked &&
+										draftPoints === 2 &&
+										"border-slate-500/40 dark:border-slate-400/35",
 								)}
 							>
 								<div
 									className={cn(
-										"pointer-events-none absolute inset-y-0 left-0 w-0.5",
-										checked || showAsVoted || isClubPick
-											? "bg-primary"
-											: "bg-border",
+										"pointer-events-none absolute inset-y-0 left-0 w-1",
+										canEditSelection && checked
+											? votePointsAccentClass(draftPoints, "bg-primary")
+											: checked || showAsVoted || isClubPick
+												? "bg-primary"
+												: "bg-border",
 									)}
 									aria-hidden
 								/>
@@ -383,8 +534,20 @@ export function SittingPollSection({
 											{isClubPick ? (
 												<Badge variant="secondary">Club pick</Badge>
 											) : null}
-											{showAsVoted ? (
-												<Badge variant="outline">Your vote</Badge>
+											{canEditSelection && checked ? (
+												<Badge
+													variant="outline"
+													className={votePointsBadgeClass(draftPoints)}
+												>
+													{votePointsLabel(draftPoints)}
+												</Badge>
+											) : showAsVoted ? (
+												<Badge
+													variant="outline"
+													className={votePointsBadgeClass(savedPoints)}
+												>
+													{votePointsLabel(savedPoints)}
+												</Badge>
 											) : null}
 										</div>
 										<p className="truncate text-muted-foreground text-xs">
@@ -397,6 +560,68 @@ export function SittingPollSection({
 										) : null}
 									</div>
 									<div className="mt-auto flex flex-wrap items-end justify-between gap-3">
+										{showChipControls && checked ? (
+											<div className="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto">
+												<fieldset
+													className="flex min-w-0 flex-col gap-1.5 border-0 p-0"
+													onClick={(event) => {
+														event.stopPropagation();
+													}}
+													onKeyDown={(event) => {
+														event.stopPropagation();
+													}}
+												>
+													<legend className="font-medium text-foreground text-xs">
+														Weight for this book
+													</legend>
+													<div className="flex flex-wrap gap-1 border border-border bg-muted/20 p-1">
+														<button
+															type="button"
+															aria-pressed={draftPoints === 1}
+															className={cn(
+																"min-w-[4.5rem] border px-2.5 py-1.5 text-xs transition-colors",
+																voteChipButtonClass(draftPoints === 1, 1),
+															)}
+															onClick={() => {
+																setOptionPoints(option.id, 1);
+															}}
+														>
+															1 pt
+														</button>
+														{chipGrants.canUseSilver ? (
+															<button
+																type="button"
+																aria-pressed={draftPoints === 2}
+																className={cn(
+																	"min-w-[4.5rem] border px-2.5 py-1.5 text-xs transition-colors",
+																	voteChipButtonClass(draftPoints === 2, 2),
+																)}
+																onClick={() => {
+																	setOptionPoints(option.id, 2);
+																}}
+															>
+																Silver · 2
+															</button>
+														) : null}
+														{chipGrants.canUseGolden ? (
+															<button
+																type="button"
+																aria-pressed={draftPoints === 3}
+																className={cn(
+																	"min-w-[4.5rem] border px-2.5 py-1.5 text-xs transition-colors",
+																	voteChipButtonClass(draftPoints === 3, 3),
+																)}
+																onClick={() => {
+																	setOptionPoints(option.id, 3);
+																}}
+															>
+																Golden · 3
+															</button>
+														) : null}
+													</div>
+												</fieldset>
+											</div>
+										) : null}
 										<div className="flex flex-wrap items-center gap-2">
 											<BookStatusBadge status={option.book.status} />
 											<span className="text-muted-foreground text-xs tabular-nums">
@@ -424,27 +649,26 @@ export function SittingPollSection({
 													{readLabel}
 												</span>
 											) : null}
-											<span className="text-muted-foreground">
-												{isAdmin && option.voteCount > 0 ? (
-													<button
-														type="button"
-														className="text-foreground underline-offset-2 hover:underline"
-														onClick={(event) => {
-															event.stopPropagation();
-															setAdminVotersOptionCount(option.voteCount);
-															setAdminVotersOptionId(option.id);
-														}}
-													>
-														{option.voteCount}{" "}
-														{option.voteCount === 1 ? "vote" : "votes"}
-													</button>
-												) : (
-													<>
-														{option.voteCount}{" "}
-														{option.voteCount === 1 ? "vote" : "votes"}
-													</>
-												)}
-											</span>
+											{isAdmin && showVoteBars ? (
+												<span className="text-muted-foreground">
+													{optionPoints > 0 ? (
+														<button
+															type="button"
+															className="text-foreground underline-offset-2 hover:underline"
+															onClick={(event) => {
+																event.stopPropagation();
+																setAdminVotersOptionCount(option.voteCount);
+																setAdminVotersOptionId(option.id);
+															}}
+														>
+															{optionPoints} pts · {option.voteCount}{" "}
+															{option.voteCount === 1 ? "voter" : "voters"}
+														</button>
+													) : (
+														<span>0 pts</span>
+													)}
+												</span>
+											) : null}
 										</div>
 									</div>
 								</div>
@@ -463,30 +687,30 @@ export function SittingPollSection({
 					)}
 				>
 					<p className="w-full text-muted-foreground text-xs sm:w-auto sm:flex-1">
-						{selectedOptionIds.length} of {maxChoices} selected
-						{selectedOptionIds.length < poll.minChoices
+						{voteDrafts.length} of {maxChoices} selected
+						{voteDrafts.length < poll.minChoices
 							? ` · pick at least ${poll.minChoices}`
 							: null}
 					</p>
 					<LoadingButton
 						type="button"
 						loading={submitVotesMutation.isPending}
-						disabled={selectedOptionIds.length < poll.minChoices}
+						disabled={voteDrafts.length < poll.minChoices}
 						onClick={() => {
 							submitVotesMutation.mutate({
 								sittingSlug,
-								optionIds: selectedOptionIds,
+								votes: voteDrafts,
 							});
 						}}
 					>
 						Save votes
 					</LoadingButton>
-					{selectedOptionIds.length > 0 ? (
+					{voteDrafts.length > 0 ? (
 						<Button
 							type="button"
 							variant="outline"
 							onClick={() => {
-								setSelectedOptionIds([]);
+								setVoteDrafts([]);
 							}}
 						>
 							Clear selection
@@ -499,7 +723,7 @@ export function SittingPollSection({
 					variant="outline"
 					onClick={() => {
 						setIsEditingVotes(true);
-						setSelectedOptionIds(poll.myVoteOptionIds);
+						setVoteDrafts(voteDraftsFromPoll(poll));
 					}}
 				>
 					Edit votes

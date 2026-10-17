@@ -41,7 +41,7 @@ export const CreateSittingFormSchema = zod
 			authors: zod.array(zod.string()).default([]),
 			take: zod.preprocess(
 				emptyToUndefined,
-				zod.coerce.number().int().min(2).max(12),
+				zod.coerce.number().int().min(3).max(12),
 			),
 			minChoices: zod.preprocess(
 				emptyToUndefined,

@@ -100,6 +100,16 @@ export function PollVotesByVoterSection({
 											>
 												<span className="min-w-0 font-medium">
 													{choice.bookTitle}
+													<span className="font-normal text-muted-foreground">
+														{" "}
+														(
+														{choice.points === 3
+															? "Golden · 3 pts"
+															: choice.points === 2
+																? "Silver · 2 pts"
+																: "1 pt"}
+														)
+													</span>
 												</span>
 												<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
 													{formatDateTime(choice.votedAt)}

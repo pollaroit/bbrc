@@ -5,13 +5,16 @@ import {
 	calculateSittingReadingDeadline,
 	clampSittingDeadlineToClubEnd,
 	computeMidtermAt,
+	computePollChipGrants,
 	defaultPollDeadline,
 	formatSittingDisplayName,
 	generateSlug,
 	generateUniqueSlug,
+	pollChipRankFromGrants,
 	resolveClubTimeZone,
 	sittingReadingDeadlinePlaceholder,
 	snapPollDeadlineOnOrAfter,
+	validatePollVoteSubmission,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import {
@@ -80,6 +83,8 @@ import {
 	type ResendSittingTelegramPollOpenOutput,
 	type SendSittingTelegramProgressPollInput,
 	type SendSittingTelegramProgressPollOutput,
+	type ShuffleSittingPollPreviewOptionsInput,
+	type ShuffleSittingPollPreviewOptionsOutput,
 	type SittingParticipantMutationInput,
 	type SittingParticipantMutationOutput,
 	type SubmitPollVotesInput,
@@ -94,6 +99,7 @@ import {
 	type UpdateSittingDeadlinesOutput,
 } from "./sitting.schema";
 import { applyFinishedSittingParticipantEffects } from "./sitting-finish-participant-effects";
+import { insertPollChipGrantsForParticipants } from "./sitting-poll-chip-grants";
 import {
 	assertParticipantsExist,
 	assertValidPollOptionBookIds,
@@ -101,6 +107,7 @@ import {
 	drawReplacementPollBookId,
 	loadPollDrawContext,
 	loadPollPreviewBooks,
+	shuffleUnlockedPollPreviewBookIds,
 } from "./sitting-poll-pool";
 import { createPollInputToStoredFilters } from "./sitting-poll-stored-filters";
 import {
@@ -238,15 +245,24 @@ function mapSittingListRow(row: SittingListRow) {
 	};
 }
 
+const emptyChipGrants = { canUseGolden: false, canUseSilver: false };
+
 function mapSittingDetail(
 	row: SittingDetailRow,
-	myVoteOptionIds: string[],
+	myVotes: GetSittingBySlugOutput["poll"] extends null
+		? never
+		: NonNullable<GetSittingBySlugOutput["poll"]>["myVotes"],
+	myChipGrants: NonNullable<GetSittingBySlugOutput["poll"]>["myChipGrants"],
 	reviews: GetSittingBySlugOutput["reviews"],
 	pollVoterCount: number,
 	removedParticipants: GetSittingBySlugOutput["removedParticipants"],
 	participantReadCountByBookId: Map<string, number>,
 	viewerReadBookIds: ReadonlySet<string>,
+	optionAggregatesById: Map<string, { voteCount: number; pointTotal: number }>,
+	hidePollAggregates: boolean,
+	pollChipRankByUserId: Map<string, 1 | 2 | null>,
 ): GetSittingBySlugOutput {
+	const myVoteOptionIds = myVotes.map((vote) => vote.optionId);
 	const bookPages = row.selectedBook?.pages ?? null;
 
 	return {
@@ -276,16 +292,26 @@ function mapSittingDetail(
 					take: row.poll.take,
 					minChoices: row.poll.minChoices,
 					maxChoices: row.poll.maxChoices,
-					options: row.poll.options.map((option) => ({
-						id: option.id,
-						voteCount: option._count.votes,
-						participantReadCount:
-							participantReadCountByBookId.get(option.book.id) ?? 0,
-						viewerHasRead: viewerReadBookIds.has(option.book.id),
-						book: option.book,
-					})),
+					options: row.poll.options.map((option) => {
+						const aggregates = optionAggregatesById.get(option.id) ?? {
+							voteCount: 0,
+							pointTotal: 0,
+						};
+
+						return {
+							id: option.id,
+							voteCount: hidePollAggregates ? 0 : aggregates.voteCount,
+							pointTotal: hidePollAggregates ? 0 : aggregates.pointTotal,
+							participantReadCount:
+								participantReadCountByBookId.get(option.book.id) ?? 0,
+							viewerHasRead: viewerReadBookIds.has(option.book.id),
+							book: option.book,
+						};
+					}),
 					myVoteOptionIds,
-					voterCount: pollVoterCount,
+					myVotes,
+					myChipGrants,
+					voterCount: hidePollAggregates ? 0 : pollVoterCount,
 				}
 			: null,
 		reviews,
@@ -317,6 +343,7 @@ function mapSittingDetail(
 				rpLevel: levels.rpLevel,
 				progress: participation.progress,
 				rpChange,
+				pollChipRank: pollChipRankByUserId.get(participation.userId) ?? null,
 			};
 		}),
 		removedParticipants,
@@ -385,20 +412,104 @@ async function loadSittingReviews(
 	}));
 }
 
-async function loadMyPollVoteOptionIds(
+async function loadMyPollVotes(
 	pollId: string,
 	userId: string,
 	db: Database,
-): Promise<string[]> {
+): Promise<NonNullable<GetSittingBySlugOutput["poll"]>["myVotes"]> {
 	const votes = await db.pollVote.findMany({
 		where: {
 			userId,
 			option: { pollId },
 		},
-		select: { optionId: true },
+		select: { optionId: true, points: true },
+		orderBy: { createdAt: "asc" },
 	});
 
-	return votes.map((vote) => vote.optionId);
+	return votes.map((vote) => ({
+		optionId: vote.optionId,
+		points: vote.points as 1 | 2 | 3,
+	}));
+}
+
+async function loadMyPollChipGrants(
+	pollId: string,
+	userId: string,
+	db: Database,
+): Promise<NonNullable<GetSittingBySlugOutput["poll"]>["myChipGrants"]> {
+	const grant = await db.pollChipGrant.findUnique({
+		where: {
+			pollId_userId: { pollId, userId },
+		},
+		select: {
+			canUseGolden: true,
+			canUseSilver: true,
+		},
+	});
+
+	return grant ?? emptyChipGrants;
+}
+
+async function loadPollChipRankByUserId(
+	pollId: string,
+	participants: { userId: string; rp: number }[],
+	db: Database,
+): Promise<Map<string, 1 | 2 | null>> {
+	const stored = await db.pollChipGrant.findMany({
+		where: { pollId },
+		select: {
+			userId: true,
+			canUseGolden: true,
+			canUseSilver: true,
+		},
+	});
+
+	const grantsByUserId =
+		stored.length > 0
+			? new Map(
+					stored.map((row) => [
+						row.userId,
+						{
+							canUseGolden: row.canUseGolden,
+							canUseSilver: row.canUseSilver,
+						},
+					]),
+				)
+			: computePollChipGrants(participants);
+
+	const rankByUserId = new Map<string, 1 | 2 | null>();
+
+	for (const participant of participants) {
+		const flags = grantsByUserId.get(participant.userId) ?? {
+			canUseGolden: false,
+			canUseSilver: false,
+		};
+		rankByUserId.set(participant.userId, pollChipRankFromGrants(flags));
+	}
+
+	return rankByUserId;
+}
+
+async function loadPollOptionAggregates(
+	pollId: string,
+	db: Database,
+): Promise<Map<string, { voteCount: number; pointTotal: number }>> {
+	const rows = await db.pollVote.groupBy({
+		by: ["optionId"],
+		where: { option: { pollId } },
+		_count: { _all: true },
+		_sum: { points: true },
+	});
+
+	return new Map(
+		rows.map((row) => [
+			row.optionId,
+			{
+				voteCount: row._count._all,
+				pointTotal: row._sum.points ?? 0,
+			},
+		]),
+	);
 }
 
 export async function getSittingList(
@@ -463,10 +574,14 @@ export async function getSittingBySlug(
 	}
 
 	const userId = session?.user.id;
-	const myVoteOptionIds =
+	const myVotes =
 		userId && sitting.poll
-			? await loadMyPollVoteOptionIds(sitting.poll.id, userId, db)
+			? await loadMyPollVotes(sitting.poll.id, userId, db)
 			: [];
+	const myChipGrants =
+		userId && sitting.poll
+			? await loadMyPollChipGrants(sitting.poll.id, userId, db)
+			: emptyChipGrants;
 
 	const visibleParticipants = sitting.participants.filter(
 		(participant) => !participant.user.isHidden,
@@ -487,6 +602,11 @@ export async function getSittingBySlug(
 				)
 			: [];
 
+	const optionAggregatesById =
+		sitting.poll != null
+			? await loadPollOptionAggregates(sitting.poll.id, db)
+			: new Map();
+
 	const pollVoterCount =
 		sitting.poll != null
 			? (
@@ -496,6 +616,21 @@ export async function getSittingBySlug(
 					})
 				).length
 			: 0;
+
+	const hidePollAggregates =
+		sitting.status === "voting" && session?.user.isAdmin !== true;
+
+	const pollChipRankByUserId =
+		sitting.poll != null
+			? await loadPollChipRankByUserId(
+					sitting.poll.id,
+					visibleParticipants.map((participant) => ({
+						userId: participant.userId,
+						rp: participant.user.rp,
+					})),
+					db,
+				)
+			: new Map<string, 1 | 2 | null>();
 
 	const pollBookIds =
 		sitting.poll?.options.map((option) => option.book.id) ?? [];
@@ -551,6 +686,7 @@ export async function getSittingBySlug(
 					rpLevel: levels.rpLevel,
 					progress: row.progress,
 					rpChange: null,
+					pollChipRank: null,
 					removedAt: row.removedAt,
 				},
 			];
@@ -559,12 +695,16 @@ export async function getSittingBySlug(
 
 	return mapSittingDetail(
 		sittingForDetail,
-		myVoteOptionIds,
+		myVotes,
+		myChipGrants,
 		reviews,
 		pollVoterCount,
 		removedParticipants,
 		participantReadCountByBookId,
 		viewerReadBookIds,
+		optionAggregatesById,
+		hidePollAggregates,
+		pollChipRankByUserId,
 	);
 }
 
@@ -702,6 +842,38 @@ export async function replaceSittingPollPreviewOption(
 	return { option, usedUniformFallback };
 }
 
+export async function shuffleSittingPollPreviewOptions(
+	input: ShuffleSittingPollPreviewOptionsInput,
+	db: Database,
+): Promise<ShuffleSittingPollPreviewOptionsOutput> {
+	const context = await loadPollDrawContext(
+		input.participantUserIds,
+		input.poll,
+		db,
+	);
+
+	if (input.currentOptionBookIds.length !== context.take) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: `Expected ${context.take} current poll options`,
+		});
+	}
+
+	const { bookIds, usedUniformFallback, partialShuffle } =
+		shuffleUnlockedPollPreviewBookIds(
+			context,
+			input.currentOptionBookIds,
+			input.lockedBookIds,
+		);
+
+	const options = await loadPollPreviewBooks(
+		bookIds,
+		context.readCountByBookId,
+		db,
+	);
+
+	return { options, usedUniformFallback, partialShuffle };
+}
+
 export async function createSitting(
 	input: CreateSittingInput,
 	db: Database,
@@ -757,7 +929,7 @@ export async function createSitting(
 
 		const storedFilters = createPollInputToStoredFilters(input.poll);
 
-		await tx.poll.create({
+		const poll = await tx.poll.create({
 			data: {
 				slug: pollSlug,
 				sittingId: sitting.id,
@@ -778,7 +950,14 @@ export async function createSitting(
 					create: pollBookIds.map((bookId) => ({ bookId })),
 				},
 			},
+			select: { id: true },
 		});
+
+		await insertPollChipGrantsForParticipants(
+			poll.id,
+			uniqueParticipantIds,
+			tx,
+		);
 
 		await tx.participation.createMany({
 			data: uniqueParticipantIds.map((userId) => ({
@@ -861,35 +1040,27 @@ export async function submitPollVotes(
 
 	const poll = sitting.poll;
 	const allowedOptionIds = new Set(poll.options.map((option) => option.id));
-	const uniqueOptionIds = [...new Set(input.optionIds)];
-
-	if (uniqueOptionIds.length !== input.optionIds.length) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Duplicate poll options are not allowed",
-		});
-	}
-
-	if (uniqueOptionIds.some((optionId) => !allowedOptionIds.has(optionId))) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "One or more selected options are not on this poll",
-		});
-	}
-
 	const minChoices = poll.minChoices;
 	const maxChoices = poll.maxChoices ?? poll.take;
-	const choiceCount = uniqueOptionIds.length;
 
-	if (choiceCount < minChoices) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `Select at least ${minChoices} ${minChoices === 1 ? "book" : "books"}`,
-			data: { minChoices, choiceCount },
-		});
-	}
+	const grants = await loadMyPollChipGrants(poll.id, userId, db);
 
-	if (choiceCount > maxChoices) {
+	const normalizedVotes = input.votes.map((vote) => ({
+		optionId: vote.optionId,
+		points: vote.points as 1 | 2 | 3,
+	}));
+
+	const validation = validatePollVoteSubmission({
+		votes: normalizedVotes,
+		grants,
+		minChoices,
+		maxChoices,
+		allowedOptionIds,
+	});
+
+	if (!validation.ok) {
 		throw new ORPCError("BAD_REQUEST", {
-			message: `Select at most ${maxChoices} ${maxChoices === 1 ? "book" : "books"}`,
-			data: { maxChoices, choiceCount },
+			message: validation.message,
 		});
 	}
 
@@ -903,11 +1074,12 @@ export async function submitPollVotes(
 			},
 		});
 
-		if (uniqueOptionIds.length > 0) {
+		if (normalizedVotes.length > 0) {
 			await tx.pollVote.createMany({
-				data: uniqueOptionIds.map((optionId) => ({
+				data: normalizedVotes.map((vote) => ({
 					userId,
-					optionId,
+					optionId: vote.optionId,
+					points: vote.points,
 				})),
 			});
 		}
@@ -920,7 +1092,9 @@ export async function submitPollVotes(
 	});
 
 	return {
-		myVoteOptionIds: uniqueOptionIds,
+		myVoteOptionIds: normalizedVotes.map((vote) => vote.optionId),
+		myVotes: normalizedVotes,
+		myChipGrants: grants,
 		xpAwarded,
 	};
 }
@@ -1430,6 +1604,7 @@ export async function updateParticipation(
 		rpLevel: levels.rpLevel,
 		progress: updated.progress,
 		rpChange: null,
+		pollChipRank: null,
 	};
 }
 
@@ -1651,6 +1826,7 @@ export async function getPollOptionVotes(
 		select: {
 			createdAt: true,
 			userId: true,
+			points: true,
 			user: {
 				select: {
 					username: true,
@@ -1688,6 +1864,7 @@ export async function getPollOptionVotes(
 		voters: votes.map((vote) => ({
 			user: vote.user,
 			votedAt: vote.createdAt,
+			points: vote.points as 1 | 2 | 3,
 			totalSelections: selectionsByUserId.get(vote.userId) ?? 1,
 			maxChoices,
 		})),
@@ -1857,6 +2034,7 @@ export async function getPollVotesByUser(
 			userId: true,
 			createdAt: true,
 			optionId: true,
+			points: true,
 			user: {
 				select: {
 					username: true,
@@ -1882,6 +2060,7 @@ export async function getPollVotesByUser(
 		const choice = {
 			pollOptionId: vote.optionId,
 			bookTitle: vote.option.book.title,
+			points: vote.points as 1 | 2 | 3,
 			votedAt: vote.createdAt,
 		};
 

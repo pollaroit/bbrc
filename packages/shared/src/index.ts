@@ -11,6 +11,7 @@ export * from "./isr-paths";
 export * from "./member-levels";
 export * from "./notifications";
 export * from "./open-library";
+export * from "./poll-chip-grants";
 export * from "./post-feed-ranking";
 export * from "./read-finished-month";
 export * from "./reading-deadline";
