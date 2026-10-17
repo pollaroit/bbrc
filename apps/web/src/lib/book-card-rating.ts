@@ -1,5 +1,5 @@
 /** Minimum club feedback count before we show club average instead of Open Library. */
-export const MIN_CLUB_RATINGS_FOR_CARD = 2;
+export const MIN_CLUB_RATINGS_FOR_CARD = 1;
 
 type BookCardRatingSource = {
 	openLibraryRating?: number | null;
