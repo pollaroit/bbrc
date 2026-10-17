@@ -43,7 +43,14 @@ import {
 
 const viewerFilterKeys = ["viewerFavorite", "viewerReviewed"] as const;
 
-export function BooksListingToolbar() {
+type BooksListingToolbarProps = {
+	/** Author profile: no author or country filters in the sheet. */
+	variant?: "library" | "author";
+};
+
+export function BooksListingToolbar({
+	variant = "library",
+}: BooksListingToolbarProps) {
 	const [params, setParams] = useBookListingSearchParams();
 	const { data: session } = authClient.useSession();
 	const sheetFilterCount = countBookSheetFilters(params);
@@ -239,25 +246,29 @@ export function BooksListingToolbar() {
 						}}
 					/>
 
-					<ListingAuthorMultiSelect
-						selectedSlugs={params.authors ?? []}
-						onSelectedSlugsChange={(authors) => {
-							void setParams({
-								authors: authors.length > 0 ? authors : null,
-							});
-						}}
-						facetInput={authorFacetsInput}
-					/>
+					{variant === "library" ? (
+						<>
+							<ListingAuthorMultiSelect
+								selectedSlugs={params.authors ?? []}
+								onSelectedSlugsChange={(authors) => {
+									void setParams({
+										authors: authors.length > 0 ? authors : null,
+									});
+								}}
+								facetInput={authorFacetsInput}
+							/>
 
-					<ListingCountryMultiSelect
-						selectedAlpha2={params.countries ?? []}
-						onSelectedAlpha2Change={(countries) => {
-							void setParams({
-								countries: countries.length > 0 ? countries : null,
-							});
-						}}
-						facetInput={countryFacetsInput}
-					/>
+							<ListingCountryMultiSelect
+								selectedAlpha2={params.countries ?? []}
+								onSelectedAlpha2Change={(countries) => {
+									void setParams({
+										countries: countries.length > 0 ? countries : null,
+									});
+								}}
+								facetInput={countryFacetsInput}
+							/>
+						</>
+					) : null}
 
 					<ListingRangeFields
 						rangeBy={params.rangeBy}

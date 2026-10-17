@@ -28,6 +28,7 @@ type BookFavoriteButtonProps = {
 	/** Overlay on book cards; inline on detail header. */
 	variant?: "overlay" | "inline";
 	className?: string;
+	tooltipSide?: "top" | "right" | "bottom" | "left";
 	/**
 	 * Library grid: pass engagement from `getViewerLibraryEngagement`.
 	 * `null` while loading (render nothing). Omit on book detail (per-book fetch).
@@ -61,6 +62,7 @@ export function BookFavoriteButton({
 	bookTitle,
 	variant = "inline",
 	className,
+	tooltipSide = "top",
 	listEngagement,
 }: BookFavoriteButtonProps) {
 	const { data: session, isPending: sessionPending } = authClient.useSession();
@@ -210,7 +212,7 @@ export function BookFavoriteButton({
 			{hint && !isFavorite && !state.canFavorite ? (
 				<Tooltip>
 					<TooltipTrigger render={button} />
-					<TooltipContent side="top" className="max-w-xs">
+					<TooltipContent side={tooltipSide} className="max-w-xs">
 						{hint}
 					</TooltipContent>
 				</Tooltip>

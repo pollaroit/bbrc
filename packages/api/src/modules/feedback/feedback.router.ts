@@ -17,6 +17,8 @@ import {
 	GetFeedbackBySlugOutputSchema,
 	GetUserFeedbackListInputSchema,
 	GetUserFeedbackListOutputSchema,
+	UpdateFeedbackInputSchema,
+	UpdateFeedbackOutputSchema,
 } from "./feedback.schema";
 import {
 	createFeedback,
@@ -25,6 +27,7 @@ import {
 	getBookFeedbackState,
 	getFeedbackBySlug,
 	getUserFeedbackList,
+	updateFeedback,
 } from "./feedback.service";
 
 export const feedbackRouter = {
@@ -63,6 +66,18 @@ export const feedbackRouter = {
 			);
 			revalidateBookIsr(context, input.bookSlug);
 			return feedback;
+		}),
+	update: notBannedProcedure
+		.input(UpdateFeedbackInputSchema)
+		.output(UpdateFeedbackOutputSchema)
+		.handler(async ({ input, context }) => {
+			const result = await updateFeedback(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			revalidateBookIsr(context, input.bookSlug);
+			return result;
 		}),
 	delete: notBannedProcedure
 		.input(DeleteFeedbackInputSchema)

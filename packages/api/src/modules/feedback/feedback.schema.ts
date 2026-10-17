@@ -30,9 +30,15 @@ const FeedbackRatingStepSchema = FeedbackSchema.shape.rating.refine(
 	{ message: "Rating must be in half-star steps from 0 to 5" },
 );
 
+export const FeedbackListSortBySchema = zod.enum(["createdAt", "rating"]);
+
+export const FeedbackListSortDirectionSchema = zod.enum(["asc", "desc"]);
+
 export const GetBookFeedbackListInputSchema = zod.object({
 	bookSlug: BookSchema.shape.slug,
 	minRating: FeedbackRatingStepSchema.optional(),
+	sortBy: FeedbackListSortBySchema.optional(),
+	sortDirection: FeedbackListSortDirectionSchema.optional(),
 });
 
 export const GetBookFeedbackListOutputSchema = zod.array(
@@ -52,6 +58,7 @@ export const GetBookFeedbackStateOutputSchema = zod.object({
 			slug: FeedbackSchema.shape.slug,
 			rating: FeedbackSchema.shape.rating,
 			review: FeedbackSchema.shape.review,
+			isSpoiler: FeedbackSchema.shape.isSpoiler,
 			createdAt: zod.coerce.date(),
 		})
 		.nullable(),
@@ -65,7 +72,7 @@ export type GetBookFeedbackStateOutput = z.infer<
 export const CreateFeedbackInputSchema = zod.object({
 	bookSlug: BookSchema.shape.slug,
 	rating: FeedbackRatingStepSchema,
-	review: FeedbackSchema.shape.review,
+	review: zod.string(),
 	isSpoiler: FeedbackSchema.shape.isSpoiler.optional(),
 });
 
@@ -86,6 +93,15 @@ export const DeleteFeedbackOutputSchema = zod.object({
 export type DeleteFeedbackInput = z.infer<typeof DeleteFeedbackInputSchema>;
 export type DeleteFeedbackOutput = z.infer<typeof DeleteFeedbackOutputSchema>;
 
+export const UpdateFeedbackInputSchema = CreateFeedbackInputSchema;
+
+export const UpdateFeedbackOutputSchema = zod.object({
+	slug: FeedbackSchema.shape.slug,
+});
+
+export type UpdateFeedbackInput = z.infer<typeof UpdateFeedbackInputSchema>;
+export type UpdateFeedbackOutput = z.infer<typeof UpdateFeedbackOutputSchema>;
+
 export const UserFeedbackBookSchema = BookSchema.pick({
 	slug: true,
 	title: true,
@@ -105,6 +121,8 @@ export const UserFeedbackListItemSchema = zod.object({
 export const GetUserFeedbackListInputSchema =
 	CursorPaginationInputSchema.extend({
 		username: UserSchema.shape.username,
+		sortBy: FeedbackListSortBySchema.optional(),
+		sortDirection: FeedbackListSortDirectionSchema.optional(),
 	});
 
 export const GetUserFeedbackListOutputSchema = CursorPaginationOutputSchema(

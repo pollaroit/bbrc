@@ -5,12 +5,17 @@ import { formatFeedbackRating } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { FeedbackFormDialog } from "@/components/blocks/feedback-form-dialog";
+import { FeedbackListSort } from "@/components/blocks/feedback-list-sort";
 import { FeedbackRatingFilterSelect } from "@/components/blocks/feedback-rating-filter-select";
 import { FeedbackReviewList } from "@/components/blocks/feedback-review-list";
 import { authClient } from "@/lib/auth-client";
-import { parseFeedbackMinRatingFilter } from "@/lib/feedback/rating-filter";
+import {
+	feedbackListParamsToQuery,
+	isDefaultFeedbackListParams,
+	useFeedbackListSearchParams,
+} from "@/lib/feedback/feedback-list-search-params";
 import { orpc } from "@/utils/orpc";
 
 type BookFeedbackSectionProps = {
@@ -23,19 +28,28 @@ export function BookFeedbackSection({
 	initialReviews,
 }: BookFeedbackSectionProps) {
 	const { data: session, isPending: sessionPending } = authClient.useSession();
-	const [minRatingFilter, setMinRatingFilter] = useState("all");
+	const [searchParams, setSearchParams] = useFeedbackListSearchParams();
 	const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
 
-	const minRating = useMemo(
-		() => parseFeedbackMinRatingFilter(minRatingFilter),
-		[minRatingFilter],
-	);
+	const { minRating, minRatingFilter, sortBy, sortDirection } =
+		feedbackListParamsToQuery({
+			feedbackMinRating: searchParams.feedbackMinRating,
+			sortBy: searchParams.sortBy,
+			sortDirection: searchParams.sortDirection,
+		});
 
 	const listQuery = useQuery({
 		...orpc.feedback.getBookFeedbackList.queryOptions({
-			input: { bookSlug, minRating },
+			input: { bookSlug, minRating, sortBy, sortDirection },
 		}),
-		initialData: minRating === undefined ? initialReviews : undefined,
+		initialData: isDefaultFeedbackListParams({
+			minRating,
+			minRatingFilter,
+			sortBy,
+			sortDirection,
+		})
+			? initialReviews
+			: undefined,
 	});
 
 	const stateQuery = useQuery({
@@ -84,9 +98,19 @@ export function BookFeedbackSection({
 					</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
+					<FeedbackListSort
+						sortBy={sortBy}
+						sortDirection={sortDirection}
+						onSortByChange={(value) => setSearchParams({ sortBy: value })}
+						onSortDirectionChange={(value) =>
+							setSearchParams({ sortDirection: value })
+						}
+					/>
 					<FeedbackRatingFilterSelect
 						value={minRatingFilter}
-						onValueChange={setMinRatingFilter}
+						onValueChange={(value) =>
+							setSearchParams({ feedbackMinRating: value })
+						}
 					/>
 					{showWriteButton ? (
 						<Button

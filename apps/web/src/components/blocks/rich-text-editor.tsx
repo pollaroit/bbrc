@@ -170,10 +170,19 @@ export function RichTextEditor({
 	}, [editor, autoFocus, disabled, instanceKey]);
 
 	useEffect(() => {
-		if (!editor) {
+		if (!editor || editor.isDestroyed) {
 			return;
 		}
+
+		const dom = editor.view?.dom;
+		if (!dom) {
+			return;
+		}
+
 		const onKeyDown = (event: KeyboardEvent) => {
+			if (editor.isDestroyed) {
+				return;
+			}
 			const mod = event.metaKey || event.ctrlKey;
 			if (!mod) {
 				return;
@@ -198,8 +207,17 @@ export function RichTextEditor({
 				editor.chain().focus().toggleBlockquote().run();
 			}
 		};
-		editor.view.dom.addEventListener("keydown", onKeyDown);
-		return () => editor.view.dom.removeEventListener("keydown", onKeyDown);
+
+		dom.addEventListener("keydown", onKeyDown);
+		return () => {
+			if (editor.isDestroyed) {
+				return;
+			}
+			const cleanupDom = editor.view?.dom;
+			if (cleanupDom) {
+				cleanupDom.removeEventListener("keydown", onKeyDown);
+			}
+		};
 	}, [editor]);
 
 	useEffect(() => {

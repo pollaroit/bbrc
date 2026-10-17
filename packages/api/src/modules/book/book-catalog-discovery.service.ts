@@ -34,6 +34,7 @@ const discoverySelect = {
 		select: {
 			documents: { where: { status: "approved" as const } },
 			reads: true,
+			feedbacks: true,
 		},
 	},
 } satisfies Prisma.BookSelect;
@@ -48,6 +49,7 @@ function mapDiscoveryRow(
 		...fields,
 		approvedDocumentCount: _count.documents,
 		readCount: _count.reads,
+		feedbackCount: _count.feedbacks,
 		series: mapBookSeriesSummary(seriesMembership),
 	};
 }

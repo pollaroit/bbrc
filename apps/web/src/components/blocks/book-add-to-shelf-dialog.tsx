@@ -10,7 +10,13 @@ import {
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@bbrc/ui/components/tooltip";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Library } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
@@ -21,11 +27,17 @@ import { orpc, queryClient } from "@/utils/orpc";
 type BookAddToShelfDialogProps = {
 	bookSlug: string;
 	username: string;
+	trigger?: "button" | "icon";
+	className?: string;
+	tooltipSide?: "top" | "right" | "bottom" | "left";
 };
 
 export function BookAddToShelfDialog({
 	bookSlug,
 	username,
+	trigger = "button",
+	className,
+	tooltipSide = "top",
 }: BookAddToShelfDialogProps) {
 	const [open, setOpen] = useState(false);
 	const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
@@ -65,16 +77,40 @@ export function BookAddToShelfDialog({
 	const newShelfHref =
 		`/users/${username}/shelves/new?addBookSlug=${encodeURIComponent(bookSlug)}&returnTo=${encodeURIComponent(`/books/${bookSlug}`)}` as Route;
 
-	return (
-		<Dialog open={open} onOpenChange={setOpen}>
-			<Button
-				type="button"
-				variant="outline"
-				size="sm"
-				onClick={() => setOpen(true)}
-			>
+	const openDialog = () => setOpen(true);
+
+	const triggerNode =
+		trigger === "icon" ? (
+			<Tooltip>
+				<TooltipTrigger
+					render={
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							className={cn("size-8 shrink-0", className)}
+							onClick={(event) => {
+								event.preventDefault();
+								event.stopPropagation();
+								openDialog();
+							}}
+							aria-label="Add to shelf"
+						/>
+					}
+				>
+					<Library className="size-4" aria-hidden />
+				</TooltipTrigger>
+				<TooltipContent side={tooltipSide}>Add to shelf</TooltipContent>
+			</Tooltip>
+		) : (
+			<Button type="button" variant="outline" size="sm" onClick={openDialog}>
 				Add to shelf
 			</Button>
+		);
+
+	return (
+		<Dialog open={open} onOpenChange={setOpen}>
+			{triggerNode}
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
 					<DialogTitle>Add to shelf</DialogTitle>

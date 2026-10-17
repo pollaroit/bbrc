@@ -26,9 +26,19 @@ function BooksListSkeleton() {
 	);
 }
 
-export function BooksList() {
+type BooksListProps = {
+	/** Locks the list to one author (author profile page). */
+	fixedAuthorSlug?: string;
+};
+
+export function BooksList(
+	{ fixedAuthorSlug }: BooksListProps = {} as BooksListProps,
+) {
 	const [params] = useBookListingSearchParams();
-	const listInput = toBookListCallInput(params);
+	const listInput = {
+		...toBookListCallInput(params),
+		...(fixedAuthorSlug ? { authors: [fixedAuthorSlug] } : {}),
+	};
 	const { data: session } = authClient.useSession();
 
 	const engagementQuery = useQuery({
@@ -44,6 +54,11 @@ export function BooksList() {
 	const favoriteSlugSet = useMemo(
 		() => new Set(engagementQuery.data?.favoriteSlugs ?? []),
 		[engagementQuery.data?.favoriteSlugs],
+	);
+
+	const feedbackBookSlugSet = useMemo(
+		() => new Set(engagementQuery.data?.feedbackBookSlugs ?? []),
+		[engagementQuery.data?.feedbackBookSlugs],
 	);
 
 	const slotsUsed = engagementQuery.data?.slotsUsed ?? 0;
@@ -127,12 +142,19 @@ export function BooksList() {
 							? null
 							: readSlugSet.has(book.slug);
 
+					const feedbackBookSlugs = !session?.user
+						? undefined
+						: engagementLoading
+							? null
+							: feedbackBookSlugSet;
+
 					return (
 						<li key={book.slug} className="min-h-0">
 							<BookCard
 								book={book}
 								listEngagement={listEngagement}
 								viewerHasRead={viewerHasRead}
+								feedbackBookSlugs={feedbackBookSlugs}
 							/>
 						</li>
 					);

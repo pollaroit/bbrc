@@ -1,5 +1,6 @@
 "use client";
 
+import { isFeedbackRatingStep } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -28,19 +29,34 @@ export function BookHeaderWriteFeedback({
 		return null;
 	}
 
-	if (!stateQuery.data?.canSubmit) {
+	const myFeedback = stateQuery.data?.myFeedback;
+	const canSubmit = stateQuery.data?.canSubmit;
+
+	if (!myFeedback && !canSubmit) {
 		return null;
 	}
+
+	const isEdit = myFeedback != null;
+	const initialValues =
+		isEdit && myFeedback != null && isFeedbackRatingStep(myFeedback.rating)
+			? {
+					rating: myFeedback.rating,
+					review: myFeedback.review,
+					isSpoiler: myFeedback.isSpoiler,
+				}
+			: undefined;
 
 	return (
 		<>
 			<Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
-				Write feedback
+				{isEdit ? "Edit feedback" : "Write feedback"}
 			</Button>
 			<FeedbackFormDialog
 				bookSlug={bookSlug}
 				open={dialogOpen}
 				onOpenChange={setDialogOpen}
+				mode={isEdit ? "edit" : "create"}
+				initialValues={initialValues}
 				navigateToReview={false}
 			/>
 		</>

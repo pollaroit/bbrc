@@ -8,8 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { BookDeleteButton } from "@/components/blocks/book-delete-button";
 import { BookEditLink } from "@/components/blocks/book-edit-link";
-import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
-import { BookHeaderWriteFeedback } from "@/components/blocks/book-header-write-feedback";
+import { BookHeaderActions } from "@/components/blocks/book-header-actions";
 import { BookMarkReadButton } from "@/components/blocks/book-mark-read-button";
 import { BookReadAfterLinks } from "@/components/blocks/book-read-after-links";
 import { BookRequestedByLine } from "@/components/blocks/book-requested-by";
@@ -31,7 +30,7 @@ function AuthorLinks({ authors }: { authors: string[] }) {
 		<p className="text-muted-foreground text-sm leading-relaxed">
 			{authors.map((name, index) => {
 				const slug = authorNameToSlug(name);
-				const href = `/books?authors=${encodeURIComponent(slug)}` as Route;
+				const href = `/authors/${slug}` as Route;
 
 				return (
 					<span key={`${slug}-${index}`}>
@@ -155,7 +154,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 							) : null}
 						</div>
 						<div className="flex shrink-0 flex-wrap items-center gap-1">
-							<BookHeaderWriteFeedback bookSlug={book.slug} />
+							<BookHeaderActions bookSlug={book.slug} bookTitle={book.title} />
 							<ResourceShareMenu
 								path={`/books/${book.slug}`}
 								shareText={book.title}
@@ -163,11 +162,6 @@ export function BookHeader({ book }: BookHeaderProps) {
 								storyBookSlug={book.slug}
 								shareInPost={{ kind: "book", slug: book.slug }}
 								size="md"
-							/>
-							<BookFavoriteButton
-								bookSlug={book.slug}
-								bookTitle={book.title}
-								variant="inline"
 							/>
 							<BookEditLink slug={book.slug} />
 							<BookDeleteButton slug={book.slug} title={book.title} />

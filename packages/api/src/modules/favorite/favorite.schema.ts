@@ -69,6 +69,7 @@ export type RemoveFavoriteInput = z.infer<typeof RemoveFavoriteInputSchema>;
 export const GetViewerLibraryEngagementOutputSchema = zod.object({
 	readSlugs: zod.array(BookSchema.shape.slug),
 	favoriteSlugs: zod.array(BookSchema.shape.slug),
+	feedbackBookSlugs: zod.array(BookSchema.shape.slug),
 	slotsUsed: zod.number().int().min(0).max(MAX_FAVORITES_PER_USER),
 	maxSlots: zod.literal(MAX_FAVORITES_PER_USER),
 });

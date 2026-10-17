@@ -1,4 +1,5 @@
 import { fetchWorkEditionTotalCount } from "@bbrc/api/lib/open-library/work-editions";
+import { getAuthorPage } from "@bbrc/api/modules/author/author.service";
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
 import { getFeedbackBySlug } from "@bbrc/api/modules/feedback/feedback.service";
@@ -251,6 +252,36 @@ async function resolveSeriesListOg(): Promise<OgImageContent> {
 	};
 }
 
+async function resolveAuthorDetailOg(slug: string): Promise<OgImageContent> {
+	const author = await getAuthorPage(slug, db);
+
+	const highlights = [
+		formatCount("catalog book", author.bookCount),
+		"Club library",
+	];
+
+	const topFan = author.biggestFans[0];
+	if (topFan) {
+		highlights.push(`${topFan.averageRating.toFixed(1)} avg from top fan`);
+	}
+
+	if (author.similarAuthors.length > 0) {
+		highlights.push(
+			formatCount("similar author", author.similarAuthors.length),
+		);
+	}
+
+	return {
+		kind: "Author",
+		title: author.name,
+		description: truncateOgLine(
+			`${author.bookCount} ${author.bookCount === 1 ? "book" : "books"} in the BBRC catalog · reads, reviews, and related authors.`,
+			140,
+		),
+		highlights,
+	};
+}
+
 async function resolveSeriesDetailOg(slug: string): Promise<OgImageContent> {
 	const series = await getSeriesBySlug(slug, db);
 	const first = series.books[0]?.book;
@@ -363,6 +394,18 @@ export async function resolveOgImageContent(
 			return {
 				kind: "Series",
 				title: "Series not found",
+				description: DEFAULT_DESCRIPTION,
+			};
+		}
+	}
+
+	if (section === "authors" && rest.length === 0) {
+		try {
+			return await resolveAuthorDetailOg(slug);
+		} catch {
+			return {
+				kind: "Author",
+				title: "Author not found",
 				description: DEFAULT_DESCRIPTION,
 			};
 		}

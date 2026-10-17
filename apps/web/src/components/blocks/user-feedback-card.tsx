@@ -1,4 +1,5 @@
 import type { GetUserFeedbackListOutput } from "@bbrc/api/modules/feedback/feedback.schema";
+import { contentPlainText } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import {
 	Card,
@@ -9,6 +10,7 @@ import {
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { FeedbackEditIconButton } from "@/components/blocks/feedback-edit-icon-button";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
@@ -17,9 +19,13 @@ import { shareSnippet } from "@/lib/share-snippet";
 
 type UserFeedbackCardProps = {
 	item: GetUserFeedbackListOutput["items"][number];
+	showEdit?: boolean;
 };
 
-export function UserFeedbackCard({ item }: UserFeedbackCardProps) {
+export function UserFeedbackCard({
+	item,
+	showEdit = false,
+}: UserFeedbackCardProps) {
 	const bookHref = `/books/${item.book.slug}` as Route;
 	const feedbackHref =
 		`/books/${item.book.slug}/feedbacks/${item.slug}` as Route;
@@ -65,19 +71,33 @@ export function UserFeedbackCard({ item }: UserFeedbackCardProps) {
 							aria-label={`Open review for ${item.book.title}`}
 						/>
 						<div className="pointer-events-none relative z-[1] [&_*]:pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto">
-							<SocialContentBody
-								content={item.review}
-								isSpoiler={item.isSpoiler}
-								kind="feedback"
-								identifier={item.slug}
-								interactiveLinks
-							/>
+							{contentPlainText(item.review).trim().length > 0 ? (
+								<SocialContentBody
+									content={item.review}
+									isSpoiler={item.isSpoiler}
+									kind="feedback"
+									identifier={item.slug}
+									interactiveLinks
+								/>
+							) : (
+								<p className="text-muted-foreground text-sm italic">
+									Rating only — no written review.
+								</p>
+							)}
 						</div>
 					</div>
 					<div className="flex flex-wrap items-center gap-3">
 						<p className="text-muted-foreground text-xs">
 							{formatDateTime(item.createdAt)}
 						</p>
+						{showEdit ? (
+							<FeedbackEditIconButton
+								bookSlug={item.book.slug}
+								rating={item.rating}
+								review={item.review}
+								isSpoiler={item.isSpoiler}
+							/>
+						) : null}
 						<ResourceShareMenu
 							path={`/books/${item.book.slug}/feedbacks/${item.slug}`}
 							shareText={`${item.book.title} · ${shareSnippet(item.review)}`}

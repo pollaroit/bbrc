@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { UserFeedbacksFeed } from "@/components/blocks/user-feedbacks-feed";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 
@@ -27,5 +28,9 @@ export default async function UserFeedbacksPage({
 }: PageProps<"/users/[username]/feedbacks">) {
 	const { username } = await params;
 
-	return <UserFeedbacksFeed username={username} />;
+	return (
+		<ListingSearchParamsBoundary>
+			<UserFeedbacksFeed username={username} />
+		</ListingSearchParamsBoundary>
+	);
 }

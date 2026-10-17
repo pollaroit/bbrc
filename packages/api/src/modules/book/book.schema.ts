@@ -105,6 +105,7 @@ export const getBookListFields = {
 	authors: true,
 	coverId: true,
 	openLibraryRating: true,
+	averageRating: true,
 	pages: true,
 	publishedIn: true,
 	status: true,
@@ -139,6 +140,7 @@ export const BookWithRequestedBySchema = BookSchema.pick(
 export const BookListItemSchema = BookSchema.pick(getBookListFields).extend({
 	approvedDocumentCount: z.number().int().min(0),
 	readCount: z.number().int().min(0),
+	feedbackCount: z.number().int().min(0),
 	series: BookSeriesSummarySchema.nullable(),
 });
 

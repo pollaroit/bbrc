@@ -2,10 +2,7 @@ import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import { LikeSourceSchema } from "@bbrc/schemas";
 import { ORPCError } from "@orpc/server";
-import {
-	assertNormalizedSocialContent,
-	contentPlainText,
-} from "../../lib/rich-content";
+import { normalizeFeedbackReview } from "../../lib/feedback-review";
 import { definePagination } from "../../utils/pagination";
 import {
 	clubReadEligibilityHint,
@@ -30,6 +27,8 @@ import type {
 	GetFeedbackBySlugOutput,
 	GetUserFeedbackListInput,
 	GetUserFeedbackListOutput,
+	UpdateFeedbackInput,
+	UpdateFeedbackOutput,
 } from "./feedback.schema";
 import {
 	getFeedbackBySlugFields,
@@ -81,8 +80,27 @@ function viewerUserId(session: Session | null): string | null {
 	return session?.user.id ?? null;
 }
 
+function feedbackListOrderBy(
+	sortBy: "createdAt" | "rating" | undefined,
+	sortDirection: "asc" | "desc" | undefined,
+): Prisma.FeedbackOrderByWithRelationInput[] {
+	const field = sortBy ?? "createdAt";
+	const direction = sortDirection ?? "desc";
+
+	if (field === "rating") {
+		return [{ rating: direction }, { createdAt: "desc" }, { id: "desc" }];
+	}
+
+	return [{ createdAt: direction }, { id: direction }];
+}
+
 export async function getBookFeedbackList(
-	input: { bookSlug: string; minRating?: number },
+	input: {
+		bookSlug: string;
+		minRating?: number;
+		sortBy?: "createdAt" | "rating";
+		sortDirection?: "asc" | "desc";
+	},
 	db: Database,
 	session: Session | null,
 ): Promise<GetBookFeedbackListOutput> {
@@ -97,7 +115,7 @@ export async function getBookFeedbackList(
 				? { rating: { gte: input.minRating } }
 				: {}),
 		},
-		orderBy: { createdAt: "desc" },
+		orderBy: feedbackListOrderBy(input.sortBy, input.sortDirection),
 		select: {
 			id: true,
 			slug: true,
@@ -262,7 +280,7 @@ export async function getUserFeedbackList(
 	const rows = await db.feedback.findMany({
 		...pagination.use(),
 		where: { authorId: user.id },
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		orderBy: feedbackListOrderBy(input.sortBy, input.sortDirection),
 		select: getUserFeedbackListFields,
 	});
 
@@ -287,6 +305,7 @@ export async function getBookFeedbackState(
 			slug: true,
 			rating: true,
 			review: true,
+			isSpoiler: true,
 			createdAt: true,
 		},
 	});
@@ -366,12 +385,7 @@ export async function createFeedback(
 		});
 	}
 
-	const review = assertNormalizedSocialContent(input.review);
-	if (contentPlainText(review).length > 500) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Review must be at most 500 characters",
-		});
-	}
+	const review = normalizeFeedbackReview(input.review);
 
 	return db
 		.$transaction(async (tx) => {
@@ -404,6 +418,49 @@ export async function createFeedback(
 			void notifyMemberFeedbackOnBook(db, input.bookSlug, userId);
 			return result;
 		});
+}
+
+export async function updateFeedback(
+	input: UpdateFeedbackInput,
+	userId: string,
+	db: Database,
+): Promise<UpdateFeedbackOutput> {
+	await loadActorSocialGate(userId, db);
+
+	const book = await loadBookBySlug(input.bookSlug, db);
+
+	const existing = await db.feedback.findUnique({
+		where: {
+			authorId_bookId: {
+				authorId: userId,
+				bookId: book.id,
+			},
+		},
+		select: { id: true, slug: true },
+	});
+
+	if (!existing) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "You have not left feedback for this book",
+			data: { bookSlug: input.bookSlug },
+		});
+	}
+
+	const review = normalizeFeedbackReview(input.review);
+
+	await db.$transaction(async (tx) => {
+		await tx.feedback.update({
+			where: { id: existing.id },
+			data: {
+				rating: input.rating,
+				review,
+				isSpoiler: input.isSpoiler ?? false,
+			},
+		});
+		await recalculateBookAverageRating(book.id, tx);
+	});
+
+	return { slug: existing.slug };
 }
 
 export async function deleteFeedback(

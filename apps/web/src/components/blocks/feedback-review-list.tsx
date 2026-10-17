@@ -1,7 +1,7 @@
 "use client";
 
 import type { GetBookFeedbackListOutput } from "@bbrc/api/modules/feedback/feedback.schema";
-import { formatFeedbackRating } from "@bbrc/shared";
+import { contentPlainText, formatFeedbackRating } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { FeedbackEditIconButton } from "@/components/blocks/feedback-edit-icon-button";
 import { FeedbackLikeEngagement } from "@/components/blocks/feedback-like-engagement";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
@@ -105,13 +106,19 @@ export function FeedbackReviewList({
 											aria-label={`Open review by ${entry.name}`}
 										/>
 										<div className="pointer-events-none relative z-[1] [&_*]:pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto">
-											<SocialContentBody
-												content={entry.review}
-												isSpoiler={entry.isSpoiler}
-												kind="feedback"
-												identifier={entry.slug}
-												interactiveLinks
-											/>
+											{contentPlainText(entry.review).trim().length > 0 ? (
+												<SocialContentBody
+													content={entry.review}
+													isSpoiler={entry.isSpoiler}
+													kind="feedback"
+													identifier={entry.slug}
+													interactiveLinks
+												/>
+											) : (
+												<p className="text-muted-foreground text-sm italic">
+													Rating only — no written review.
+												</p>
+											)}
 										</div>
 									</div>
 									<div className="flex flex-wrap items-center gap-4 border-t pt-3 text-muted-foreground text-sm">
@@ -134,16 +141,24 @@ export function FeedbackReviewList({
 											shareInPost={{ kind: "feedback", slug: entry.slug }}
 										/>
 										{isOwner ? (
-											<LoadingButton
-												type="button"
-												variant="ghost"
-												size="sm"
-												className="h-8 px-2 text-destructive hover:text-destructive"
-												loading={deleteMutation.isPending}
-												onClick={() => setDeleteOpen(true)}
-											>
-												Delete
-											</LoadingButton>
+											<>
+												<FeedbackEditIconButton
+													bookSlug={bookSlug}
+													rating={entry.rating}
+													review={entry.review}
+													isSpoiler={entry.isSpoiler}
+												/>
+												<LoadingButton
+													type="button"
+													variant="ghost"
+													size="sm"
+													className="h-8 px-2 text-destructive hover:text-destructive"
+													loading={deleteMutation.isPending}
+													onClick={() => setDeleteOpen(true)}
+												>
+													Delete
+												</LoadingButton>
+											</>
 										) : null}
 									</div>
 								</CardContent>

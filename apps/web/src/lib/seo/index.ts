@@ -1,3 +1,7 @@
+export {
+	authorPageDescription,
+	buildAuthorPageMetadata,
+} from "./author-page-metadata";
 export { JsonLd } from "./json-ld";
 export {
 	buildNotFoundMetadata,
@@ -26,6 +30,7 @@ export {
 	STATIC_APP_ROUTES,
 } from "./static-routes";
 export {
+	authorJsonLd,
 	blogPostingJsonLd,
 	bookJsonLd,
 	organizationJsonLd,

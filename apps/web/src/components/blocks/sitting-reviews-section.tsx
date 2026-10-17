@@ -3,13 +3,16 @@
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { formatFeedbackRating } from "@bbrc/shared";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { FeedbackListSort } from "@/components/blocks/feedback-list-sort";
 import { FeedbackRatingFilterSelect } from "@/components/blocks/feedback-rating-filter-select";
 import { FeedbackReviewList } from "@/components/blocks/feedback-review-list";
 import {
-	filterReviewsByMinRating,
-	parseFeedbackMinRatingFilter,
-} from "@/lib/feedback/rating-filter";
+	feedbackListParamsToQuery,
+	useFeedbackListSearchParams,
+} from "@/lib/feedback/feedback-list-search-params";
+import { sortFeedbackListItems } from "@/lib/feedback/list-sort";
+import { filterReviewsByMinRating } from "@/lib/feedback/rating-filter";
 import { orpc } from "@/utils/orpc";
 
 type SittingReviewsSectionProps = {
@@ -26,17 +29,19 @@ export function SittingReviewsSection({ sitting }: SittingReviewsSectionProps) {
 	const participantCount = data.participants.length;
 	const bookSlug = data.selectedBook?.slug ?? "";
 
-	const [minRatingFilter, setMinRatingFilter] = useState("all");
+	const [searchParams, setSearchParams] = useFeedbackListSearchParams();
 
-	const minRating = useMemo(
-		() => parseFeedbackMinRatingFilter(minRatingFilter),
-		[minRatingFilter],
-	);
+	const { minRating, minRatingFilter, sortBy, sortDirection } =
+		feedbackListParamsToQuery({
+			feedbackMinRating: searchParams.feedbackMinRating,
+			sortBy: searchParams.sortBy,
+			sortDirection: searchParams.sortDirection,
+		});
 
-	const filteredReviews = useMemo(
-		() => filterReviewsByMinRating(reviews, minRating),
-		[reviews, minRating],
-	);
+	const filteredReviews = useMemo(() => {
+		const filtered = filterReviewsByMinRating(reviews, minRating);
+		return sortFeedbackListItems(filtered, sortBy, sortDirection);
+	}, [reviews, minRating, sortBy, sortDirection]);
 
 	const emptyMessage =
 		minRating !== undefined
@@ -59,10 +64,22 @@ export function SittingReviewsSection({ sitting }: SittingReviewsSectionProps) {
 							: ""}
 					</p>
 				</div>
-				<FeedbackRatingFilterSelect
-					value={minRatingFilter}
-					onValueChange={setMinRatingFilter}
-				/>
+				<div className="flex flex-wrap items-center gap-2">
+					<FeedbackListSort
+						sortBy={sortBy}
+						sortDirection={sortDirection}
+						onSortByChange={(value) => setSearchParams({ sortBy: value })}
+						onSortDirectionChange={(value) =>
+							setSearchParams({ sortDirection: value })
+						}
+					/>
+					<FeedbackRatingFilterSelect
+						value={minRatingFilter}
+						onValueChange={(value) =>
+							setSearchParams({ feedbackMinRating: value })
+						}
+					/>
+				</div>
 			</div>
 
 			<FeedbackReviewList

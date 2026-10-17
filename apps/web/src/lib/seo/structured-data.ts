@@ -46,6 +46,24 @@ export function bookJsonLd(book: TGetBookBySlugOutputSchema): JsonLd {
 	};
 }
 
+export function authorJsonLd(input: {
+	name: string;
+	slug: string;
+	bookCount: number;
+}): JsonLd {
+	return {
+		"@context": "https://schema.org",
+		"@type": "Person",
+		name: input.name,
+		url: absoluteUrl(`/authors/${input.slug}`),
+		...(input.bookCount > 0
+			? {
+					description: `${input.bookCount} ${input.bookCount === 1 ? "work" : "works"} in the BBRC catalog`,
+				}
+			: {}),
+	};
+}
+
 export function personJsonLd(input: {
 	name: string;
 	username: string;

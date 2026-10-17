@@ -16,4 +16,10 @@ export async function invalidateFeedbackQueries() {
 	await queryClient.invalidateQueries({
 		queryKey: orpc.feedback.getUserFeedbackList.key(),
 	});
+	await queryClient.invalidateQueries({
+		queryKey: orpc.favorite.getViewerLibraryEngagement.key(),
+	});
+	await queryClient.invalidateQueries({
+		queryKey: orpc.book.getBookList.key(),
+	});
 }

@@ -57,7 +57,7 @@ model Feedback {
   bookId String @map("book_id")
   book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
-  /// @zod.min(1, "Review must be at least 1 character long").max(500, "Review must be at most 500 characters long")
+  /// @zod.max(5000, "Review must be at most 5000 characters long")
   review String
 
   isSpoiler Boolean @default(false) @map("is_spoiler")

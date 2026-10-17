@@ -1,4 +1,5 @@
 import type { GetFeedbackBySlugOutput } from "@bbrc/api/modules/feedback/feedback.schema";
+import { contentPlainText } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
@@ -7,6 +8,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { FeedbackCommentFocusSection } from "@/components/blocks/feedback-comment-focus-section";
 import { FeedbackCommentsSection } from "@/components/blocks/feedback-comments-section";
+import { FeedbackDetailOwnerActions } from "@/components/blocks/feedback-detail-owner-actions";
 import { FeedbackLikeEngagement } from "@/components/blocks/feedback-like-engagement";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
@@ -69,14 +71,27 @@ export function FeedbackDetail({
 					</div>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-4 pt-4">
-					<SocialContentBody
-						content={feedback.review}
-						isSpoiler={feedback.isSpoiler}
-						kind="feedback"
-						identifier={feedback.slug}
-						interactiveLinks
-					/>
+					{contentPlainText(feedback.review).trim().length > 0 ? (
+						<SocialContentBody
+							content={feedback.review}
+							isSpoiler={feedback.isSpoiler}
+							kind="feedback"
+							identifier={feedback.slug}
+							interactiveLinks
+						/>
+					) : (
+						<p className="text-muted-foreground text-sm italic">
+							Rating only — no written review.
+						</p>
+					)}
 					<div className="flex flex-wrap items-center gap-4 border-t pt-4 text-muted-foreground text-sm">
+						<FeedbackDetailOwnerActions
+							bookSlug={feedback.bookSlug}
+							authorUsername={feedback.author.username}
+							rating={feedback.rating}
+							review={feedback.review}
+							isSpoiler={feedback.isSpoiler}
+						/>
 						<FeedbackLikeEngagement
 							feedbackSlug={feedback.slug}
 							initialLikeCount={feedback.likeCount}

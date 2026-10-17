@@ -39,6 +39,7 @@ const bookListSelect = {
 		select: {
 			documents: { where: { status: "approved" as const } },
 			reads: true,
+			feedbacks: true,
 		},
 	},
 } as const;
@@ -61,6 +62,21 @@ function withStableSlugOrderBy(
 	sortDirection: "asc" | "desc",
 ): Prisma.BookOrderByWithRelationInput[] {
 	return [orderBy, { slug: sortDirection }];
+}
+
+function expandBookListOrderBy(
+	sortBy: string,
+	sortDirection: "asc" | "desc",
+	orderBy: Prisma.BookOrderByWithRelationInput,
+): Prisma.BookOrderByWithRelationInput[] {
+	const nulls = "last" as const;
+	if (sortBy === "averageRating") {
+		return [
+			{ averageRating: { sort: sortDirection, nulls } },
+			{ slug: sortDirection },
+		];
+	}
+	return withStableSlugOrderBy(orderBy, sortDirection);
 }
 
 export async function getBookList(
@@ -92,7 +108,11 @@ export async function getBookList(
 		db.book.findMany({
 			...pagination.use(),
 			where,
-			orderBy: withStableSlugOrderBy(sorting.use(), sorting.sortDirection),
+			orderBy: expandBookListOrderBy(
+				sorting.sortBy,
+				sorting.sortDirection,
+				sorting.use(),
+			),
 			select: bookListSelect,
 		}),
 		isFirstPage ? db.book.count({ where }) : Promise.resolve(undefined),
@@ -107,6 +127,7 @@ export async function getBookList(
 				...fields,
 				approvedDocumentCount: _count.documents,
 				readCount: _count.reads,
+				feedbackCount: _count.feedbacks,
 				series: mapBookSeriesSummary(seriesMembership),
 			};
 		}),

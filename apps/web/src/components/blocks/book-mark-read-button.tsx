@@ -18,6 +18,7 @@ type BookMarkReadButtonProps = {
 	bookSlug: string;
 	bookTitle: string;
 	className?: string;
+	tooltipSide?: "top" | "right" | "bottom" | "left";
 	/** Full width on book detail; compact icon on library cards. */
 	variant?: "full" | "icon";
 	/**
@@ -31,6 +32,7 @@ export function BookMarkReadButton({
 	bookSlug,
 	bookTitle,
 	className,
+	tooltipSide = "top",
 	variant = "full",
 	listHasRead,
 }: BookMarkReadButtonProps) {
@@ -96,7 +98,7 @@ export function BookMarkReadButton({
 			{variant === "icon" ? (
 				<Tooltip>
 					<TooltipTrigger render={iconButton} />
-					<TooltipContent side="top">{label}</TooltipContent>
+					<TooltipContent side={tooltipSide}>{label}</TooltipContent>
 				</Tooltip>
 			) : (
 				<Button

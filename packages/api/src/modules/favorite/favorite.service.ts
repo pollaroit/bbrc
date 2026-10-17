@@ -65,7 +65,7 @@ export async function getViewerLibraryEngagement(
 	userId: string,
 	db: Database,
 ): Promise<GetViewerLibraryEngagementOutput> {
-	const [reads, favorites] = await Promise.all([
+	const [reads, favorites, feedbacks] = await Promise.all([
 		db.read.findMany({
 			where: { userId },
 			select: { book: { select: { slug: true } } },
@@ -74,15 +74,22 @@ export async function getViewerLibraryEngagement(
 			where: { userId },
 			select: { book: { select: { slug: true } } },
 		}),
+		db.feedback.findMany({
+			where: { authorId: userId },
+			select: { book: { select: { slug: true } } },
+		}),
 	]);
 
 	const readSlugs = reads.map((row) => row.book.slug);
 
 	const favoriteSlugs = favorites.map((row) => row.book.slug);
 
+	const feedbackBookSlugs = feedbacks.map((row) => row.book.slug);
+
 	return {
 		readSlugs,
 		favoriteSlugs,
+		feedbackBookSlugs,
 		slotsUsed: favorites.length,
 		maxSlots: MAX_FAVORITES_PER_USER,
 	};

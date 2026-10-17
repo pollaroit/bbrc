@@ -9,6 +9,7 @@ import { SittingReadingBook } from "@/components/blocks/sitting-reading-book";
 import { SittingReadingHero } from "@/components/blocks/sitting-reading-hero";
 import { SittingReviewsSection } from "@/components/blocks/sitting-reviews-section";
 import { SittingVotePrompt } from "@/components/blocks/sitting-vote-prompt";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 
 type SittingDetailProps = {
 	sitting: GetSittingBySlugOutput;
@@ -59,7 +60,9 @@ export function SittingDetail({ sitting }: SittingDetailProps) {
 						/>
 					) : null}
 					{sitting.selectedBook ? (
-						<SittingReviewsSection sitting={sitting} />
+						<ListingSearchParamsBoundary>
+							<SittingReviewsSection sitting={sitting} />
+						</ListingSearchParamsBoundary>
 					) : null}
 				</div>
 			) : null}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { BookFeedbackSection } from "@/components/blocks/book-feedback-section";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import {
 	loadBookBySlugForIsr,
 	loadBookFeedbackListForIsr,
@@ -33,6 +34,8 @@ export default async function BookReviewsPage({
 	const initialReviews = await loadBookFeedbackListForIsr(slug);
 
 	return (
-		<BookFeedbackSection bookSlug={slug} initialReviews={initialReviews} />
+		<ListingSearchParamsBoundary>
+			<BookFeedbackSection bookSlug={slug} initialReviews={initialReviews} />
+		</ListingSearchParamsBoundary>
 	);
 }
