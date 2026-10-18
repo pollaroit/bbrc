@@ -31,7 +31,8 @@
 			"!**/schemas/src/generated",
 			"!packages/ui/src/components/shadcnmaps/map-data",
 			"!.agents",
-			"!.claude"
+			"!.claude",
+			"!.cursor"
 		]
 	},
 	"overrides": [
