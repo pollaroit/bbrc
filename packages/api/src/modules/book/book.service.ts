@@ -157,7 +157,12 @@ export async function getBookListAuthorFacets(
 	db: Database,
 	viewerUserId?: string,
 ): Promise<GetBookListAuthorFacetsOutput> {
-	const { pinnedAuthorSlugs, authors: _selectedAuthors, ...listInput } = input;
+	const {
+		pinnedAuthorSlugs,
+		authors: _selectedAuthors,
+		countries: _countries,
+		...listInput
+	} = input;
 
 	const where = await buildBookListWhereWithAuthors(
 		listInput,

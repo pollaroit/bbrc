@@ -44,7 +44,7 @@ export function ListingIntegerRangeFields({
 	onMaxChange,
 	minId = "listing-int-min",
 	maxId = "listing-int-max",
-	legend = "Range",
+	legend,
 	minLabel = "Minimum",
 	maxLabel = "Maximum",
 	inputMin = 1,
@@ -53,7 +53,7 @@ export function ListingIntegerRangeFields({
 }: ListingIntegerRangeFieldsProps) {
 	return (
 		<FieldSet className="gap-3">
-			<FieldLegend>{legend}</FieldLegend>
+			{legend ? <FieldLegend>{legend}</FieldLegend> : null}
 			<FieldGroup className="grid grid-cols-2 gap-3">
 				<Field>
 					<Label htmlFor={minId}>{minLabel}</Label>
@@ -64,6 +64,7 @@ export function ListingIntegerRangeFields({
 						step={1}
 						inputMode="numeric"
 						placeholder={placeholderMin}
+						className="bg-background"
 						value={min ?? ""}
 						onChange={(event) => {
 							onMinChange(parseIntegerInput(event.target.value));
@@ -79,6 +80,7 @@ export function ListingIntegerRangeFields({
 						step={1}
 						inputMode="numeric"
 						placeholder={placeholderMax}
+						className="bg-background"
 						value={max ?? ""}
 						onChange={(event) => {
 							onMaxChange(parseIntegerInput(event.target.value));

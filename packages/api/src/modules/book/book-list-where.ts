@@ -1,8 +1,12 @@
 import type { Database, Prisma } from "@bbrc/db";
 import { mergeWhereFragments } from "../../utils/searching";
-import { bookListRanging, bookListSearching } from "./book.listing";
+import { bookListRanging } from "./book.listing";
 import type { GetBookListInput } from "./book.schema";
 import { resolveAuthorSlugsToNames } from "./book-author-filter";
+import {
+	buildBookTextSearchWhere,
+	findBookIdsByAuthorNameSearch,
+} from "./book-list-search";
 import { bookIdsWithReadsCountBounds } from "./book-read-count-filter";
 import { resolveSubjectSlugsToNames } from "./book-subject-filter";
 
@@ -13,6 +17,7 @@ export type BookListQueryInput = Omit<GetBookListInput, "cursor" | "limit"> & {
 export type BuildBookListWhereOptions = {
 	resolvedAuthorNames?: string[];
 	resolvedSubjectNames?: string[];
+	searchAuthorBookIds?: string[];
 };
 
 export function buildBookListWhere(
@@ -21,7 +26,10 @@ export function buildBookListWhere(
 	options?: BuildBookListWhereOptions,
 ): Prisma.BookWhereInput {
 	const ranging = bookListRanging.from(input);
-	const searching = bookListSearching.from(input);
+	const searchWhere =
+		options?.searchAuthorBookIds != null
+			? buildBookTextSearchWhere(input.search, options.searchAuthorBookIds)
+			: buildBookTextSearchWhere(input.search, []);
 
 	const viewerFragments: Prisma.BookWhereInput[] = [];
 
@@ -61,7 +69,7 @@ export function buildBookListWhere(
 
 	return mergeWhereFragments<Prisma.BookWhereInput>(
 		ranging.use(),
-		searching.use(),
+		searchWhere,
 		{
 			status: input.statuses ? { in: input.statuses } : undefined,
 			openLibraryRating:
@@ -137,9 +145,15 @@ export async function buildBookListWhereWithAuthors(
 		return null;
 	}
 
+	let searchAuthorBookIds: string[] | undefined;
+	if (input.search?.trim()) {
+		searchAuthorBookIds = await findBookIdsByAuthorNameSearch(db, input.search);
+	}
+
 	const baseWhere = buildBookListWhere(input, viewerUserId, {
 		resolvedAuthorNames,
 		resolvedSubjectNames,
+		searchAuthorBookIds,
 	});
 
 	if (readsCountIds == null) {

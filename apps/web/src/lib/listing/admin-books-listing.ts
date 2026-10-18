@@ -30,17 +30,19 @@ export const adminBookSortByLabels = {
 	createdAt: "Added",
 	updatedAt: "Updated",
 	title: "Title",
+	status: "Status",
 	pages: "Pages",
 	averageRating: "Club rating",
 	openLibraryRating: "OL rating",
 	publishedIn: "Published",
 	"feedbacks._count": "Feedbacks",
 	"favorites._count": "Favorites",
-	"shelfBooks._count": "Shelf adds",
+	"reads._count": "Reads",
+	"shelves._count": "Shelf adds",
+	"documents._count": "Documents",
 	"postAttachments._count": "Post attachments",
 	"polls._count": "Poll options",
 	pollVotes: "Poll votes",
-	"reads._count": "Reads",
 } as const satisfies FieldLabels<(typeof adminBookSortableFields)[number]>;
 
 const adminBookMinCountParams = {

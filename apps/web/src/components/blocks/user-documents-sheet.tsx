@@ -2,23 +2,28 @@
 
 import { documentLanguageLabel } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
-import {
-	Sheet,
-	SheetContent,
-	SheetDescription,
-	SheetHeader,
-	SheetTitle,
-} from "@bbrc/ui/components/sheet";
+import { Sheet, SheetContent } from "@bbrc/ui/components/sheet";
 import { useQuery } from "@tanstack/react-query";
 import { FileText } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import {
+	ListingSideSheetBody,
+	ListingSideSheetHeader,
+	listingSideSheetContentClassName,
+} from "@/components/listing/listing-side-sheet";
 import { authClient } from "@/lib/auth-client";
 import { orpc } from "@/utils/orpc";
 
-export function UserDocumentsSheet() {
+type UserDocumentsSheetProps = {
+	triggerVariant?: "outline" | "ghost";
+};
+
+export function UserDocumentsSheet({
+	triggerVariant = "outline",
+}: UserDocumentsSheetProps) {
 	const { data: session, isPending: isSessionPending } =
 		authClient.useSession();
 	const [open, setOpen] = useState(false);
@@ -42,7 +47,7 @@ export function UserDocumentsSheet() {
 		<>
 			<Button
 				type="button"
-				variant="outline"
+				variant={triggerVariant}
 				size="sm"
 				onClick={() => setOpen(true)}
 				disabled={isListPending && !data}
@@ -52,14 +57,12 @@ export function UserDocumentsSheet() {
 			</Button>
 
 			<Sheet open={open} onOpenChange={setOpen}>
-				<SheetContent side="right" className="flex flex-col gap-0 sm:max-w-md">
-					<SheetHeader>
-						<SheetTitle>Your documents</SheetTitle>
-						<SheetDescription>
-							PDFs you submitted for club books and their review status.
-						</SheetDescription>
-					</SheetHeader>
-					<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+				<SheetContent side="right" className={listingSideSheetContentClassName}>
+					<ListingSideSheetHeader
+						title="Your documents"
+						description="PDFs you submitted for club books and their review status."
+					/>
+					<ListingSideSheetBody>
 						{!data?.count ? (
 							<p className="text-muted-foreground text-sm">
 								You have not submitted any documents yet.
@@ -67,7 +70,10 @@ export function UserDocumentsSheet() {
 						) : (
 							<ul className="flex flex-col gap-3">
 								{data.items.map((item) => (
-									<li key={item.id} className="border border-border p-3">
+									<li
+										key={item.id}
+										className="border border-border bg-muted/10 p-4"
+									>
 										<p className="font-medium text-sm">{item.name}</p>
 										<p className="text-muted-foreground text-xs">
 											<Link
@@ -104,7 +110,7 @@ export function UserDocumentsSheet() {
 								))}
 							</ul>
 						)}
-					</div>
+					</ListingSideSheetBody>
 				</SheetContent>
 			</Sheet>
 		</>

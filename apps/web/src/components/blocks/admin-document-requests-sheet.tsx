@@ -12,13 +12,7 @@ import {
 } from "@bbrc/ui/components/dialog";
 import { Field, FieldDescription, FieldLabel } from "@bbrc/ui/components/field";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
-import {
-	Sheet,
-	SheetContent,
-	SheetDescription,
-	SheetHeader,
-	SheetTitle,
-} from "@bbrc/ui/components/sheet";
+import { Sheet, SheetContent } from "@bbrc/ui/components/sheet";
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FileText } from "lucide-react";
@@ -27,11 +21,17 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import {
+	ListingSideSheetBody,
+	ListingSideSheetHeader,
+	listingSideSheetContentClassName,
+} from "@/components/listing/listing-side-sheet";
 import { authClient } from "@/lib/auth-client";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type AdminDocumentRequestsSheetProps = {
 	size?: "sm" | "default";
+	triggerVariant?: "outline" | "ghost";
 };
 
 type PendingDocItem = {
@@ -257,6 +257,7 @@ function AdminDocumentRow({
 
 export function AdminDocumentRequestsSheet({
 	size = "sm",
+	triggerVariant = "outline",
 }: AdminDocumentRequestsSheetProps) {
 	const { data: session, isPending: isSessionPending } =
 		authClient.useSession();
@@ -281,7 +282,7 @@ export function AdminDocumentRequestsSheet({
 		<>
 			<Button
 				type="button"
-				variant="outline"
+				variant={triggerVariant}
 				size={size}
 				disabled={isLoading || count === 0}
 				onClick={() => setOpen(true)}
@@ -291,14 +292,12 @@ export function AdminDocumentRequestsSheet({
 			</Button>
 
 			<Sheet open={open} onOpenChange={setOpen}>
-				<SheetContent side="right" className="flex flex-col gap-0 sm:max-w-md">
-					<SheetHeader>
-						<SheetTitle>Pending documents</SheetTitle>
-						<SheetDescription>
-							Approve PDFs for club books or reject with a reason.
-						</SheetDescription>
-					</SheetHeader>
-					<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+				<SheetContent side="right" className={listingSideSheetContentClassName}>
+					<ListingSideSheetHeader
+						title="Pending documents"
+						description="Approve PDFs for club books or reject with a reason."
+					/>
+					<ListingSideSheetBody>
 						{count === 0 ? (
 							<p className="text-muted-foreground text-sm">
 								No pending documents right now.
@@ -318,7 +317,7 @@ export function AdminDocumentRequestsSheet({
 								))}
 							</ul>
 						)}
-					</div>
+					</ListingSideSheetBody>
 				</SheetContent>
 			</Sheet>
 		</>

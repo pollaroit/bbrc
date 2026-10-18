@@ -35,6 +35,7 @@ type ListingRangeFieldsProps<TRangeBy extends string> = {
 	onRangeMaxChange: (value: Date | null) => void;
 	rangeByOptions: readonly TRangeBy[];
 	rangeByLabels: FieldLabels<TRangeBy>;
+	legend?: string;
 };
 
 function toDateSelectorValue(
@@ -83,6 +84,7 @@ export function ListingRangeFields<TRangeBy extends string>({
 	onRangeMaxChange,
 	rangeByOptions,
 	rangeByLabels,
+	legend = "Date range",
 }: ListingRangeFieldsProps<TRangeBy>) {
 	const activeRangeBy = rangeBy ?? rangeByOptions[0] ?? null;
 	const currentYear = new Date().getFullYear();
@@ -116,7 +118,7 @@ export function ListingRangeFields<TRangeBy extends string>({
 
 	return (
 		<FieldSet className="gap-3">
-			<FieldLegend>Date range</FieldLegend>
+			{legend ? <FieldLegend>{legend}</FieldLegend> : null}
 			<div ref={portalContainerRef} className="relative w-full">
 				<Card className="w-full gap-0 p-0">
 					<div className="flex w-full items-stretch">

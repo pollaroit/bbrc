@@ -42,14 +42,14 @@ export function ListingRatingRangeFields({
 	onMaxChange,
 	minId = "listing-rating-min",
 	maxId = "listing-rating-max",
-	legend = "Open Library rating",
+	legend,
 	minLabel = "Minimum",
 	maxLabel = "Maximum",
 	step = 0.1,
 }: ListingRatingRangeFieldsProps) {
 	return (
 		<FieldSet className="gap-3">
-			<FieldLegend>{legend}</FieldLegend>
+			{legend ? <FieldLegend>{legend}</FieldLegend> : null}
 			<FieldGroup className="grid grid-cols-2 gap-3">
 				<Field>
 					<Label htmlFor={minId}>{minLabel}</Label>
@@ -61,6 +61,7 @@ export function ListingRatingRangeFields({
 						step={step}
 						inputMode="decimal"
 						placeholder="0"
+						className="bg-background"
 						value={min ?? ""}
 						onChange={(event) => {
 							onMinChange(parseRatingInput(event.target.value));
@@ -77,6 +78,7 @@ export function ListingRatingRangeFields({
 						step={step}
 						inputMode="decimal"
 						placeholder="5"
+						className="bg-background"
 						value={max ?? ""}
 						onChange={(event) => {
 							onMaxChange(parseRatingInput(event.target.value));

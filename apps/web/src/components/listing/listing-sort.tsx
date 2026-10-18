@@ -29,6 +29,7 @@ type ListingSortProps<TSortBy extends string> = {
 	sortByOptions: readonly TSortBy[];
 	sortByLabels: FieldLabels<TSortBy>;
 	className?: string;
+	appearance?: "default" | "library";
 };
 
 export function ListingSort<TSortBy extends string>({
@@ -39,47 +40,83 @@ export function ListingSort<TSortBy extends string>({
 	sortByOptions,
 	sortByLabels,
 	className,
+	appearance = "default",
 }: ListingSortProps<TSortBy>) {
 	const sortByLabel = sortBy ? labelForField(sortByLabels, sortBy) : "Sort by";
 	const direction = sortDirection ?? "desc";
+	const isLibrary = appearance === "library";
+
+	const sortFieldControl = (
+		<DropdownMenu>
+			<DropdownMenuTrigger
+				render={
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						className={cn(
+							"gap-1.5",
+							isLibrary && "border-0 bg-transparent shadow-none",
+						)}
+					/>
+				}
+			>
+				<ArrowDownUp data-icon="inline-start" />
+				<span className="max-w-36 truncate">{sortByLabel}</span>
+				<ChevronDown className="size-4 opacity-60" />
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="min-w-48">
+				<DropdownMenuRadioGroup
+					value={sortBy ?? ""}
+					onValueChange={(value) => {
+						onSortByChange(value === "" ? null : (value as TSortBy));
+					}}
+				>
+					{sortByOptions.map((option) => (
+						<DropdownMenuRadioItem key={option} value={option}>
+							{labelForField(sortByLabels, option)}
+						</DropdownMenuRadioItem>
+					))}
+				</DropdownMenuRadioGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+
+	const directionControl = (
+		<Button
+			type="button"
+			variant="outline"
+			size="icon-sm"
+			className={cn(isLibrary && "border-0 bg-transparent shadow-none")}
+			aria-label={sortDirectionLabels[direction]}
+			onClick={() => {
+				onSortDirectionChange(direction === "asc" ? "desc" : "asc");
+			}}
+		>
+			{direction === "asc" ? <ArrowUpWideNarrow /> : <ArrowDownWideNarrow />}
+		</Button>
+	);
+
+	if (isLibrary) {
+		return (
+			<fieldset
+				className={cn(
+					"m-0 inline-flex min-w-0 items-stretch border border-border bg-background p-0",
+					className,
+				)}
+				aria-label="Sort list"
+			>
+				{sortFieldControl}
+				<div className="w-px shrink-0 self-stretch bg-border" aria-hidden />
+				{directionControl}
+			</fieldset>
+		);
+	}
 
 	return (
 		<div className={cn("flex items-center gap-1", className)}>
-			<DropdownMenu>
-				<DropdownMenuTrigger
-					render={<Button variant="outline" size="sm" className="gap-1.5" />}
-				>
-					<ArrowDownUp />
-					<span className="max-w-32 truncate">{sortByLabel}</span>
-					<ChevronDown />
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end" className="min-w-44">
-					<DropdownMenuRadioGroup
-						value={sortBy ?? ""}
-						onValueChange={(value) => {
-							onSortByChange(value === "" ? null : (value as TSortBy));
-						}}
-					>
-						{sortByOptions.map((option) => (
-							<DropdownMenuRadioItem key={option} value={option}>
-								{labelForField(sortByLabels, option)}
-							</DropdownMenuRadioItem>
-						))}
-					</DropdownMenuRadioGroup>
-				</DropdownMenuContent>
-			</DropdownMenu>
-
-			<Button
-				type="button"
-				variant="outline"
-				size="icon-sm"
-				aria-label={sortDirectionLabels[direction]}
-				onClick={() => {
-					onSortDirectionChange(direction === "asc" ? "desc" : "asc");
-				}}
-			>
-				{direction === "asc" ? <ArrowUpWideNarrow /> : <ArrowDownWideNarrow />}
-			</Button>
+			{sortFieldControl}
+			{directionControl}
 		</div>
 	);
 }

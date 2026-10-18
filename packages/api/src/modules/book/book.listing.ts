@@ -14,6 +14,7 @@ export const bookSortableFields = [
 	"createdAt",
 	"updatedAt",
 	"title",
+	"status",
 	"pages",
 	"averageRating",
 	"openLibraryRating",
@@ -21,6 +22,8 @@ export const bookSortableFields = [
 	"feedbacks._count",
 	"favorites._count",
 	"reads._count",
+	"shelves._count",
+	"documents._count",
 ] as const;
 
 export const bookListSorting = defineSorting<
@@ -36,6 +39,12 @@ export const bookListSorting = defineSorting<
 		}),
 		"reads._count": (direction) => ({
 			reads: { _count: direction },
+		}),
+		"shelves._count": (direction) => ({
+			shelfBooks: { _count: direction },
+		}),
+		"documents._count": (direction) => ({
+			documents: { _count: direction },
 		}),
 	},
 });

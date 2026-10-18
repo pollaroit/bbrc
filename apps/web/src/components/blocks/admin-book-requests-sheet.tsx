@@ -11,13 +11,7 @@ import {
 } from "@bbrc/ui/components/dialog";
 import { Field, FieldDescription, FieldLabel } from "@bbrc/ui/components/field";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
-import {
-	Sheet,
-	SheetContent,
-	SheetDescription,
-	SheetHeader,
-	SheetTitle,
-} from "@bbrc/ui/components/sheet";
+import { Sheet, SheetContent } from "@bbrc/ui/components/sheet";
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { BookMarked } from "lucide-react";
@@ -27,11 +21,17 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { OpenLibraryWorkTitleLink } from "@/components/blocks/open-library-work-title-link";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import {
+	ListingSideSheetBody,
+	ListingSideSheetHeader,
+	listingSideSheetContentClassName,
+} from "@/components/listing/listing-side-sheet";
 import { authClient } from "@/lib/auth-client";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type AdminBookRequestsSheetProps = {
 	size?: "sm" | "default";
+	triggerVariant?: "outline" | "ghost";
 };
 
 type PendingRequestItem = {
@@ -79,7 +79,7 @@ function AdminBookRequestRow({
 	const requesterName = item.requester.name?.trim() || item.requester.username;
 
 	return (
-		<li className="flex flex-col gap-2 border border-border p-3">
+		<li className="flex flex-col gap-3 border border-border bg-muted/10 p-4">
 			<div className="space-y-0.5">
 				<OpenLibraryWorkTitleLink olid={item.olid} title={item.title} />
 				<p className="text-muted-foreground text-xs">
@@ -185,6 +185,7 @@ function AdminBookRequestRow({
 
 export function AdminBookRequestsSheet({
 	size = "sm",
+	triggerVariant = "outline",
 }: AdminBookRequestsSheetProps) {
 	const { data: session, isPending: isSessionPending } =
 		authClient.useSession();
@@ -210,7 +211,7 @@ export function AdminBookRequestsSheet({
 		<>
 			<Button
 				type="button"
-				variant="outline"
+				variant={triggerVariant}
 				size={size}
 				disabled={isLoading || count === 0}
 				onClick={() => setOpen(true)}
@@ -220,15 +221,12 @@ export function AdminBookRequestsSheet({
 			</Button>
 
 			<Sheet open={open} onOpenChange={setOpen}>
-				<SheetContent side="right" className="flex flex-col gap-0 sm:max-w-md">
-					<SheetHeader>
-						<SheetTitle>Requested books</SheetTitle>
-						<SheetDescription>
-							Add a title to the library or reject it with a note for the
-							requester.
-						</SheetDescription>
-					</SheetHeader>
-					<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+				<SheetContent side="right" className={listingSideSheetContentClassName}>
+					<ListingSideSheetHeader
+						title="Requested books"
+						description="Add a title to the library or reject it with a note for the requester."
+					/>
+					<ListingSideSheetBody>
 						{count === 0 ? (
 							<p className="text-muted-foreground text-sm">
 								No pending requests right now.
@@ -249,7 +247,7 @@ export function AdminBookRequestsSheet({
 								))}
 							</ul>
 						)}
-					</div>
+					</ListingSideSheetBody>
 				</SheetContent>
 			</Sheet>
 		</>

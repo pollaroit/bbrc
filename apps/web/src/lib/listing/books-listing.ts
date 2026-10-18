@@ -48,13 +48,16 @@ export const bookSortByLabels = {
 	createdAt: "Date added",
 	updatedAt: "Last updated",
 	title: "Title",
+	status: "Reading status",
 	pages: "Page count",
 	averageRating: "Club rating",
 	openLibraryRating: "Open Library rating",
 	publishedIn: "Publication year",
-	"feedbacks._count": "Feedbacks",
+	"feedbacks._count": "Reviews",
 	"favorites._count": "Favorites",
-	"reads._count": "Reads",
+	"reads._count": "Member reads",
+	"shelves._count": "Shelf placements",
+	"documents._count": "Documents",
 } as const satisfies FieldLabels<(typeof bookSortableFields)[number]>;
 
 export const bookRangeByLabels = {
@@ -187,38 +190,41 @@ export function toBookListCallInput(
 	}) as Partial<GetBookListInput>;
 }
 
+/** Catalog filters shared by list + facet queries (no pagination). */
+export function toBookListCatalogFilterInput(
+	params: BookListingSearchParams,
+): Partial<GetBookListInput> {
+	const listInput = toBookListCallInput(params);
+	const { limit: _limit, cursor: _cursor, ...rest } = listInput;
+	return rest;
+}
+
 export function toBookListAuthorFacetsInput(
 	params: BookListingSearchParams,
 ): Partial<GetBookListAuthorFacetsInput> {
-	const listInput = toBookListCallInput(params);
+	const catalog = toBookListCatalogFilterInput(params);
 	const {
-		authors: selectedAuthors,
+		authors: _selectedAuthors,
 		countries: _countries,
-		limit: _limit,
-		cursor: _cursor,
-		...rest
-	} = listInput;
+		...catalogWithoutPeople
+	} = catalog;
 
 	return buildListCallInput({
-		...rest,
-		pinnedAuthorSlugs: selectedAuthors,
+		...catalogWithoutPeople,
+		pinnedAuthorSlugs: normalizeAuthorSlugs(params.authors),
 	}) as Partial<GetBookListAuthorFacetsInput>;
 }
 
 export function toBookListCountryFacetsInput(
 	params: BookListingSearchParams,
 ): Partial<GetBookListCountryFacetsInput> {
-	const listInput = toBookListCallInput(params);
-	const {
-		countries: selectedCountries,
-		limit: _limit,
-		cursor: _cursor,
-		...rest
-	} = listInput;
+	const catalog = toBookListCatalogFilterInput(params);
+	const { countries: _selectedCountries, ...catalogWithoutCountries } = catalog;
 
 	return buildListCallInput({
-		...rest,
-		pinnedCountryCodes: selectedCountries,
+		...catalogWithoutCountries,
+		authors: normalizeAuthorSlugs(params.authors),
+		pinnedCountryCodes: normalizeCountryCodes(params.countries),
 	}) as Partial<GetBookListCountryFacetsInput>;
 }
 

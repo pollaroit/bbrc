@@ -1,13 +1,7 @@
 "use client";
 
 import { Button } from "@bbrc/ui/components/button";
-import {
-	Sheet,
-	SheetContent,
-	SheetDescription,
-	SheetHeader,
-	SheetTitle,
-} from "@bbrc/ui/components/sheet";
+import { Sheet, SheetContent } from "@bbrc/ui/components/sheet";
 import {
 	Tabs,
 	TabsContent,
@@ -21,6 +15,11 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { OpenLibraryWorkTitleLink } from "@/components/blocks/open-library-work-title-link";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import {
+	ListingSideSheetBody,
+	ListingSideSheetHeader,
+	listingSideSheetContentClassName,
+} from "@/components/listing/listing-side-sheet";
 import { authClient } from "@/lib/auth-client";
 import { orpc } from "@/utils/orpc";
 
@@ -52,7 +51,7 @@ function RequestListItem({
 				: null;
 
 	return (
-		<li className="flex flex-col gap-2 border border-border p-3">
+		<li className="flex flex-col gap-3 border border-border bg-muted/10 p-4">
 			<div className="space-y-1">
 				<OpenLibraryWorkTitleLink olid={item.olid} title={item.title} />
 				<p className="text-muted-foreground text-xs">
@@ -109,7 +108,13 @@ function RequestTabPanel({
 	);
 }
 
-export function UserBookRequestsSheet() {
+type UserBookRequestsSheetProps = {
+	triggerVariant?: "outline" | "ghost";
+};
+
+export function UserBookRequestsSheet({
+	triggerVariant = "outline",
+}: UserBookRequestsSheetProps) {
 	const { data: session, isPending: isSessionPending } =
 		authClient.useSession();
 	const [open, setOpen] = useState(false);
@@ -156,7 +161,7 @@ export function UserBookRequestsSheet() {
 		<>
 			<Button
 				type="button"
-				variant="outline"
+				variant={triggerVariant}
 				size="sm"
 				disabled={isLoading || totalCount === 0}
 				onClick={() => setOpen(true)}
@@ -166,14 +171,12 @@ export function UserBookRequestsSheet() {
 			</Button>
 
 			<Sheet open={open} onOpenChange={setOpen}>
-				<SheetContent side="right" className="flex flex-col gap-0 sm:max-w-md">
-					<SheetHeader>
-						<SheetTitle>Your book requests</SheetTitle>
-						<SheetDescription>
-							Titles you asked to add to the club library and their status.
-						</SheetDescription>
-					</SheetHeader>
-					<div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-4">
+				<SheetContent side="right" className={listingSideSheetContentClassName}>
+					<ListingSideSheetHeader
+						title="Your book requests"
+						description="Titles you asked to add to the club library and their status."
+					/>
+					<ListingSideSheetBody className="overflow-hidden">
 						{totalCount === 0 ? (
 							<p className="text-muted-foreground text-sm">
 								You have not requested any books yet.
@@ -222,7 +225,7 @@ export function UserBookRequestsSheet() {
 								</div>
 							</Tabs>
 						)}
-					</div>
+					</ListingSideSheetBody>
 				</SheetContent>
 			</Sheet>
 		</>

@@ -9,9 +9,18 @@ import { AdminDocumentRequestsSheet } from "@/components/blocks/admin-document-r
 import { UserBookRequestsSheet } from "@/components/blocks/user-book-requests-sheet";
 import { UserDocumentsSheet } from "@/components/blocks/user-documents-sheet";
 import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 
-export function LibraryBookActionLink() {
+type LibraryBookActionLinkProps = {
+	appearance?: "default" | "library";
+};
+
+export function LibraryBookActionLink({
+	appearance = "default",
+}: LibraryBookActionLinkProps) {
 	const { data: session, isPending } = authClient.useSession();
+	const isLibrary = appearance === "library";
+	const secondaryTrigger = isLibrary ? "ghost" : "outline";
 
 	if (isPending || !session?.user) {
 		return null;
@@ -19,15 +28,23 @@ export function LibraryBookActionLink() {
 
 	if (session.user.isAdmin) {
 		return (
-			<div className="flex flex-wrap items-center gap-2">
-				<AdminBookRequestsSheet />
-				<AdminDocumentRequestsSheet />
+			<div
+				className={cn(
+					"flex flex-wrap items-center gap-2",
+					isLibrary && "flex-col sm:items-end sm:gap-3",
+				)}
+			>
+				<div className="flex flex-wrap items-center gap-2">
+					<AdminBookRequestsSheet triggerVariant={secondaryTrigger} />
+					<AdminDocumentRequestsSheet triggerVariant={secondaryTrigger} />
+				</div>
 				<Button
 					render={<Link href={"/books/new" as Route} />}
 					nativeButton={false}
 					size="sm"
+					className={cn(isLibrary && "w-full sm:w-auto")}
 				>
-					<Plus />
+					<Plus data-icon="inline-start" />
 					Add book
 				</Button>
 			</div>
@@ -35,15 +52,23 @@ export function LibraryBookActionLink() {
 	}
 
 	return (
-		<div className="flex flex-wrap items-center gap-2">
-			<UserBookRequestsSheet />
-			<UserDocumentsSheet />
+		<div
+			className={cn(
+				"flex flex-wrap items-center gap-2",
+				isLibrary && "flex-col sm:items-end sm:gap-3",
+			)}
+		>
+			<div className="flex flex-wrap items-center gap-2">
+				<UserBookRequestsSheet triggerVariant={secondaryTrigger} />
+				<UserDocumentsSheet triggerVariant={secondaryTrigger} />
+			</div>
 			<Button
 				render={<Link href={"/books/request" as Route} />}
 				nativeButton={false}
 				size="sm"
+				className={cn(isLibrary && "w-full sm:w-auto")}
 			>
-				<BookPlus />
+				<BookPlus data-icon="inline-start" />
 				Request book
 			</Button>
 		</div>

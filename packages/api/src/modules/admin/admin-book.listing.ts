@@ -11,11 +11,9 @@ import {
 
 export const adminBookSortableFields = [
 	...bookSortableFields,
-	"shelfBooks._count",
 	"postAttachments._count",
 	"polls._count",
 	"pollVotes",
-	"reads._count",
 ] as const;
 
 export const adminBookListSorting = defineSorting<
@@ -29,8 +27,11 @@ export const adminBookListSorting = defineSorting<
 		"favorites._count": (direction) => ({
 			favorites: { _count: direction },
 		}),
-		"shelfBooks._count": (direction) => ({
+		"shelves._count": (direction) => ({
 			shelfBooks: { _count: direction },
+		}),
+		"documents._count": (direction) => ({
+			documents: { _count: direction },
 		}),
 		"postAttachments._count": (direction) => ({
 			postAttachments: { _count: direction },
