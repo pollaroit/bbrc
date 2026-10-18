@@ -1,0 +1,23 @@
+Books list — what’s new on each card
+
+Status bar (top)
+• Reading or Completed: tap the status bar to open that book’s club sitting (when we have one on record).
+• Admins: pencil on the right opens edit; after saving, you return to the books list instead of the book page.
+
+Cover area
+• Author names link to their author pages.
+• Series shows as “#3 Series name” (number first, one line).
+• Club rating when we have enough reviews; otherwise “Open Lib” instead of the longer label.
+• Your own rating appears when you’ve left club feedback on that book.
+
+Bottom stats bar
+• Spreads across the full width of the card.
+• Page count uses “p” (e.g. 320 p) plus publication year.
+• Tap reads, reviews, shelves, or documents to go straight to that section on the book page.
+• Heart shows how many members have this book in favorites (not a link).
+
+Actions (right column)
+• Same shortcuts as before — read, favorite, feedback, etc.
+
+Card click
+• Clicking the main card still opens the book; the heavy focus outline on click is gone so it feels cleaner.

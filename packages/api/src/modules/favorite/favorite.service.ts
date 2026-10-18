@@ -76,7 +76,10 @@ export async function getViewerLibraryEngagement(
 		}),
 		db.feedback.findMany({
 			where: { authorId: userId },
-			select: { book: { select: { slug: true } } },
+			select: {
+				rating: true,
+				book: { select: { slug: true } },
+			},
 		}),
 	]);
 
@@ -84,12 +87,18 @@ export async function getViewerLibraryEngagement(
 
 	const favoriteSlugs = favorites.map((row) => row.book.slug);
 
-	const feedbackBookSlugs = feedbacks.map((row) => row.book.slug);
+	const feedbackRatings = feedbacks.map((row) => ({
+		bookSlug: row.book.slug,
+		rating: row.rating,
+	}));
+
+	const feedbackBookSlugs = feedbackRatings.map((row) => row.bookSlug);
 
 	return {
 		readSlugs,
 		favoriteSlugs,
 		feedbackBookSlugs,
+		feedbackRatings,
 		slotsUsed: favorites.length,
 		maxSlots: MAX_FAVORITES_PER_USER,
 	};

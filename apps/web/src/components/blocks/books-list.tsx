@@ -61,6 +61,14 @@ export function BooksList(
 		[engagementQuery.data?.feedbackBookSlugs],
 	);
 
+	const feedbackRatingBySlug = useMemo(() => {
+		const map = new Map<string, number>();
+		for (const row of engagementQuery.data?.feedbackRatings ?? []) {
+			map.set(row.bookSlug, row.rating);
+		}
+		return map;
+	}, [engagementQuery.data?.feedbackRatings]);
+
 	const slotsUsed = engagementQuery.data?.slotsUsed ?? 0;
 	const maxSlots = engagementQuery.data?.maxSlots ?? MAX_FAVORITES_PER_USER;
 
@@ -155,6 +163,11 @@ export function BooksList(
 								listEngagement={listEngagement}
 								viewerHasRead={viewerHasRead}
 								feedbackBookSlugs={feedbackBookSlugs}
+								viewerBookRating={
+									session?.user && !engagementLoading
+										? feedbackRatingBySlug.get(book.slug)
+										: undefined
+								}
 							/>
 						</li>
 					);

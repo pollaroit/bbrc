@@ -27,3 +27,14 @@ export function formatBookAuthors(authors: string[]) {
 
 	return `${authors[0]} et al.`;
 }
+
+export function formatBookSeriesCardLabel(series: {
+	title: string;
+	position: number;
+}): string {
+	const title = series.title.trim();
+	if (!Number.isFinite(series.position) || series.position < 1) {
+		return title;
+	}
+	return `#${series.position} ${title}`;
+}

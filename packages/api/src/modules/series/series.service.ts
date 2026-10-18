@@ -515,13 +515,21 @@ export function mapBookSeriesSummary(
 		| null
 		| undefined,
 ) {
-	if (!membership) {
+	if (!membership?.series) {
+		return null;
+	}
+
+	const title = membership.series.title?.trim();
+	const slug = membership.series.slug?.trim();
+	const position = membership.position;
+
+	if (!title || !slug || !Number.isFinite(position) || position < 1) {
 		return null;
 	}
 
 	return {
-		slug: membership.series.slug,
-		title: membership.series.title,
-		position: membership.position,
+		slug,
+		title,
+		position,
 	};
 }

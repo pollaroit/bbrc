@@ -17,6 +17,7 @@ import {
 	BOOK_CATALOG_DISCOVERY_LIMIT,
 	type GetBookCatalogDiscoveryOutput,
 } from "./book-catalog-discovery.schema";
+import { resolveClubSittingSlug } from "./resolve-club-sitting-slug";
 
 const discoverySelect = {
 	...getBookListFields,
@@ -30,11 +31,18 @@ const discoverySelect = {
 			series: { select: { slug: true, title: true } },
 		},
 	},
+	sittingsSelectedFor: {
+		where: { status: { in: ["reading", "finished"] } },
+		orderBy: { updatedAt: "desc" as const },
+		select: { slug: true, status: true },
+	},
 	_count: {
 		select: {
 			documents: { where: { status: "approved" as const } },
 			reads: true,
 			feedbacks: true,
+			shelfBooks: true,
+			favorites: true,
 		},
 	},
 } satisfies Prisma.BookSelect;
@@ -44,12 +52,15 @@ type DiscoveryRow = Prisma.BookGetPayload<{ select: typeof discoverySelect }>;
 function mapDiscoveryRow(
 	row: DiscoveryRow,
 ): GetBookListOutput["items"][number] {
-	const { seriesMembership, _count, ...fields } = row;
+	const { seriesMembership, sittingsSelectedFor, _count, ...fields } = row;
 	return {
 		...fields,
 		approvedDocumentCount: _count.documents,
 		readCount: _count.reads,
 		feedbackCount: _count.feedbacks,
+		shelfCount: _count.shelfBooks,
+		favoriteCount: _count.favorites,
+		clubSittingSlug: resolveClubSittingSlug(fields.status, sittingsSelectedFor),
 		series: mapBookSeriesSummary(seriesMembership),
 	};
 }

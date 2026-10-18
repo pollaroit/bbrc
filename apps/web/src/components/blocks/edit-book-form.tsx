@@ -37,6 +37,7 @@ import {
 	EditBookFormSchema,
 	toUpdateBookInput,
 } from "@/lib/edit-book-form";
+import { useEditBookRedirect } from "@/lib/edit-book-search-params";
 import {
 	bookStatuses,
 	bookStatusFilterLabels,
@@ -50,6 +51,7 @@ type EditBookFormProps = {
 
 export function EditBookForm({ book }: EditBookFormProps) {
 	const router = useRouter();
+	const [redirectAfterSave] = useEditBookRedirect();
 	const initialValues = useMemo(() => bookToEditFormValues(book), [book]);
 	const form = useAppForm(EditBookFormSchema, initialValues);
 	const countriesField = useController({
@@ -79,6 +81,10 @@ export function EditBookForm({ book }: EditBookFormProps) {
 					queryKey: orpc.book.getBookBySlug.key(),
 				});
 				toast.success("Book updated.");
+				if (redirectAfterSave === "books") {
+					router.push("/books" as Route);
+					return;
+				}
 				router.push(`/books/${book.slug}` as Route);
 			},
 			onError: (error) => {

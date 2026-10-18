@@ -123,8 +123,8 @@ export function BookCardActionBar({
 		return (
 			<div
 				className={cn(
-					"flex w-11 shrink-0 flex-col self-stretch border-border border-l",
-					"bg-muted/5 transition-colors group-hover:bg-muted/15",
+					"flex h-full w-11 shrink-0 flex-col border-border border-l",
+					"bg-muted/10 transition-colors group-hover:bg-muted/20",
 				)}
 			>
 				<div

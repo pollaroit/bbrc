@@ -1,11 +1,12 @@
 import type { TGetBookBySlugOutputSchema } from "@bbrc/api/modules/book/book.schema";
-import { authorNameToSlug, openLibraryWorkPageUrl } from "@bbrc/shared";
+import { openLibraryWorkPageUrl } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Separator } from "@bbrc/ui/components/separator";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { BookDeleteButton } from "@/components/blocks/book-delete-button";
 import { BookEditLink } from "@/components/blocks/book-edit-link";
 import { BookHeaderActions } from "@/components/blocks/book-header-actions";
@@ -20,33 +21,6 @@ import { cn } from "@/lib/utils";
 type BookHeaderProps = {
 	book: TGetBookBySlugOutputSchema;
 };
-
-function AuthorLinks({ authors }: { authors: string[] }) {
-	if (authors.length === 0) {
-		return <span className="text-muted-foreground">Unknown author</span>;
-	}
-
-	return (
-		<p className="text-muted-foreground text-sm leading-relaxed">
-			{authors.map((name, index) => {
-				const slug = authorNameToSlug(name);
-				const href = `/authors/${slug}` as Route;
-
-				return (
-					<span key={`${slug}-${index}`}>
-						{index > 0 ? ", " : null}
-						<Link
-							href={href}
-							className="text-foreground underline-offset-4 hover:underline"
-						>
-							{name}
-						</Link>
-					</span>
-				);
-			})}
-		</p>
-	);
-}
 
 function StatCell({
 	label,
@@ -147,7 +121,10 @@ export function BookHeader({ book }: BookHeaderProps) {
 									</Link>
 								</p>
 							) : null}
-							<AuthorLinks authors={book.authors} />
+							<BookAuthorLinks
+								authors={book.authors}
+								className="text-sm leading-relaxed"
+							/>
 							<BookReadAfterLinks readAfterBooks={book.readAfterBooks} />
 							{book.requestedBy ? (
 								<BookRequestedByLine requestedBy={book.requestedBy} />

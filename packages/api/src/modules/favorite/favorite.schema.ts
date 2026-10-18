@@ -65,11 +65,17 @@ export const RemoveFavoriteOutputSchema = zod.object({
 
 export type RemoveFavoriteInput = z.infer<typeof RemoveFavoriteInputSchema>;
 
+export const ViewerFeedbackRatingSchema = zod.object({
+	bookSlug: BookSchema.shape.slug,
+	rating: zod.number(),
+});
+
 /** One query for the library grid: personal reads + favorites for the viewer. */
 export const GetViewerLibraryEngagementOutputSchema = zod.object({
 	readSlugs: zod.array(BookSchema.shape.slug),
 	favoriteSlugs: zod.array(BookSchema.shape.slug),
 	feedbackBookSlugs: zod.array(BookSchema.shape.slug),
+	feedbackRatings: zod.array(ViewerFeedbackRatingSchema),
 	slotsUsed: zod.number().int().min(0).max(MAX_FAVORITES_PER_USER),
 	maxSlots: zod.literal(MAX_FAVORITES_PER_USER),
 });

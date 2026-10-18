@@ -26,6 +26,7 @@ import {
 	syncBookReadAfterPrerequisites,
 } from "./book-reading-prerequisites";
 import { generateBookSlug } from "./book-slug";
+import { resolveClubSittingSlug } from "./resolve-club-sitting-slug";
 
 const bookListSelect = {
 	...getBookListFields,
@@ -35,14 +36,21 @@ const bookListSelect = {
 			series: { select: { slug: true, title: true } },
 		},
 	},
+	sittingsSelectedFor: {
+		where: { status: { in: ["reading", "finished"] } },
+		orderBy: { updatedAt: "desc" as const },
+		select: { slug: true, status: true },
+	},
 	_count: {
 		select: {
 			documents: { where: { status: "approved" as const } },
 			reads: true,
 			feedbacks: true,
+			shelfBooks: true,
+			favorites: true,
 		},
 	},
-} as const;
+} satisfies Prisma.BookSelect;
 
 type BookListRow = Prisma.BookGetPayload<{
 	select: typeof bookListSelect;
@@ -122,12 +130,18 @@ export async function getBookList(
 
 	return {
 		items: page.items.map((row) => {
-			const { seriesMembership, _count, ...fields } = row;
+			const { seriesMembership, sittingsSelectedFor, _count, ...fields } = row;
 			return {
 				...fields,
 				approvedDocumentCount: _count.documents,
 				readCount: _count.reads,
 				feedbackCount: _count.feedbacks,
+				shelfCount: _count.shelfBooks,
+				favoriteCount: _count.favorites,
+				clubSittingSlug: resolveClubSittingSlug(
+					fields.status,
+					sittingsSelectedFor,
+				),
 				series: mapBookSeriesSummary(seriesMembership),
 			};
 		}),
