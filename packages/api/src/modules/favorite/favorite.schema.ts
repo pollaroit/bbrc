@@ -55,6 +55,35 @@ export const AddFavoriteOutputSchema = FavoriteItemSchema;
 export type AddFavoriteInput = z.infer<typeof AddFavoriteInputSchema>;
 export type AddFavoriteOutput = z.infer<typeof AddFavoriteOutputSchema>;
 
+export const ListBookFavoritesInputSchema = zod.object({
+	bookSlug: BookSchema.shape.slug,
+	limit: zod.number().int().min(1).max(100).optional(),
+});
+
+export type ListBookFavoritesInput = zod.infer<
+	typeof ListBookFavoritesInputSchema
+>;
+
+export const BookFavoriteListItemSchema = zod.object({
+	favoritedAt: zod.coerce.date(),
+	slotsUsed: zod.number().int().min(0).max(MAX_FAVORITES_PER_USER),
+	maxSlots: zod.literal(MAX_FAVORITES_PER_USER),
+	user: zod.object({
+		username: zod.string(),
+		name: zod.string(),
+		image: zod.string().nullable(),
+	}),
+});
+
+export const ListBookFavoritesOutputSchema = zod.object({
+	total: zod.number().int().nonnegative(),
+	items: zod.array(BookFavoriteListItemSchema),
+});
+
+export type ListBookFavoritesOutput = zod.infer<
+	typeof ListBookFavoritesOutputSchema
+>;
+
 export const RemoveFavoriteInputSchema = zod.object({
 	bookSlug: BookSchema.shape.slug,
 });

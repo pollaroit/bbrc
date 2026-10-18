@@ -5,12 +5,15 @@ import {
 	clubReadEligibilityHint,
 	userCompletedClubRead,
 } from "../book/book-read-eligibility";
+import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type {
 	AddFavoriteInput,
 	AddFavoriteOutput,
 	GetBookFavoriteStateOutput,
 	GetUserFavoritesOutput,
 	GetViewerLibraryEngagementOutput,
+	ListBookFavoritesInput,
+	ListBookFavoritesOutput,
 	ListMyFavoritesOutput,
 	RemoveFavoriteInput,
 } from "./favorite.schema";
@@ -259,4 +262,51 @@ export async function removeFavorite(
 	}
 
 	return { removed: true };
+}
+
+export async function listBookFavorites(
+	input: ListBookFavoritesInput,
+	db: Database,
+): Promise<ListBookFavoritesOutput> {
+	const book = await loadBookBySlug(input.bookSlug, db);
+	const limit = input.limit ?? 100;
+
+	const favoriteWhere = {
+		bookId: book.id,
+		user: visibleOnSiteUserWhere,
+	};
+
+	const [total, rows] = await Promise.all([
+		db.favorite.count({ where: favoriteWhere }),
+		db.favorite.findMany({
+			where: favoriteWhere,
+			orderBy: { createdAt: "desc" },
+			take: limit,
+			select: {
+				createdAt: true,
+				user: {
+					select: {
+						username: true,
+						name: true,
+						image: true,
+						_count: { select: { favorites: true } },
+					},
+				},
+			},
+		}),
+	]);
+
+	return {
+		total,
+		items: rows.map((row) => ({
+			favoritedAt: row.createdAt,
+			slotsUsed: row.user._count.favorites,
+			maxSlots: MAX_FAVORITES_PER_USER,
+			user: {
+				username: row.user.username,
+				name: row.user.name,
+				image: row.user.image,
+			},
+		})),
+	};
 }

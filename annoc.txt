@@ -1,23 +1,26 @@
-Books list — what’s new on each card
+*BBRC update — books*
 
-Status bar (top)
-• Reading or Completed: tap the status bar to open that book’s club sitting (when we have one on record).
-• Admins: pencil on the right opens edit; after saving, you return to the books list instead of the book page.
+*Books list (each card)*
 
-Cover area
-• Author names link to their author pages.
-• Series shows as “#3 Series name” (number first, one line).
-• Club rating when we have enough reviews; otherwise “Open Lib” instead of the longer label.
-• Your own rating appears when you’ve left club feedback on that book.
+_Status bar_
+• *Reading* or *Completed*: tap the bar → club sitting (when we have one)
+• Admins: ✏️ on the right → edit book; after save you land back on *Books*
 
-Bottom stats bar
-• Spreads across the full width of the card.
-• Page count uses “p” (e.g. 320 p) plus publication year.
-• Tap reads, reviews, shelves, or documents to go straight to that section on the book page.
-• Heart shows how many members have this book in favorites (not a link).
+_Cover_
+• Author names → author pages
+• Series: *#3 Series name* (number first)
+• *You* rating when you reviewed the book; club or *Open Lib* average
+• Main tap still opens the book (no heavy outline on click)
 
-Actions (right column)
-• Same shortcuts as before — read, favorite, feedback, etc.
+_Bottom bar (full width)_
+• Pages & year (e.g. 320 p · 2019)
+• Tap counts → *Reads*, *Reviews*, *Shelves*, *Documents*, or *Favorites* on that book
 
-Card click
-• Clicking the main card still opens the book; the heavy focus outline on click is gone so it feels cleaner.
+_Rail_
+• Same actions as before (read, favorite, feedback, …)
+
+*Book page — new Favorites tab*
+
+• New tab *Favorites* (before *More*)
+• See who added the book to favorites, with count at the top
+• Each member: photo, name, @username, when they favorited it, and how full their favorite slots are (e.g. *2 out of 4 favs*)

@@ -116,6 +116,7 @@ function BookCardMetaStrip({ book }: { book: BookCardBook }) {
 				icon={Heart}
 				count={book.favoriteCount}
 				title={favoriteTitle}
+				href={`/books/${slug}/favorites` as Route}
 			/>
 		</div>
 	);

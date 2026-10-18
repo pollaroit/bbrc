@@ -50,6 +50,9 @@ function invalidateFavoriteQueries() {
 		queryClient.invalidateQueries({
 			queryKey: orpc.favorite.getUserFavorites.key(),
 		}),
+		queryClient.invalidateQueries({
+			queryKey: orpc.favorite.listForBook.key(),
+		}),
 	]).then(() =>
 		queryClient.invalidateQueries({
 			queryKey: orpc.book.getBookList.key(),

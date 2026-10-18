@@ -16,6 +16,7 @@ export type BookTabCounts = {
 	shelves?: number;
 	reviews?: number;
 	reads?: number;
+	favorites?: number;
 };
 
 type BookSubnavProps = {
@@ -40,7 +41,9 @@ function tabLabel(
 					? counts.reviews
 					: tab.id === "reads"
 						? counts.reads
-						: undefined;
+						: tab.id === "favorites"
+							? counts.favorites
+							: undefined;
 
 	if (count == null || count < 1) {
 		return tab.label;
@@ -59,10 +62,17 @@ export function BookSubnav({ slug, counts }: BookSubnavProps) {
 		}),
 	);
 
+	const favoritesCountQuery = useQuery(
+		orpc.favorite.listForBook.queryOptions({
+			input: { bookSlug: slug, limit: 1 },
+		}),
+	);
+
 	const effectiveCounts: BookTabCounts | undefined = counts
 		? {
 				...counts,
 				reads: readsCountQuery.data?.total ?? counts.reads,
+				favorites: favoritesCountQuery.data?.total ?? counts.favorites,
 			}
 		: undefined;
 

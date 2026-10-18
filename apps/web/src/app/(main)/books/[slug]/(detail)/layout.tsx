@@ -3,6 +3,7 @@ import { BookSubnav } from "@/components/blocks/book-subnav";
 import {
 	loadApprovedDocumentsForIsr,
 	loadBookBySlugForIsr,
+	loadBookFavoritesForIsr,
 	loadBookFeedbackListForIsr,
 	loadBookReadsForIsr,
 	loadBookShelvesForIsr,
@@ -24,13 +25,15 @@ export default async function BookDetailLayout({
 }: LayoutProps<"/books/[slug]">) {
 	const { slug } = await params;
 
-	const [book, documents, reviews, shelves, reads] = await Promise.all([
-		loadBookBySlugForIsr(slug),
-		loadApprovedDocumentsForIsr(slug),
-		loadBookFeedbackListForIsr(slug),
-		loadBookShelvesForIsr(slug),
-		loadBookReadsForIsr(slug),
-	]);
+	const [book, documents, reviews, shelves, reads, favorites] =
+		await Promise.all([
+			loadBookBySlugForIsr(slug),
+			loadApprovedDocumentsForIsr(slug),
+			loadBookFeedbackListForIsr(slug),
+			loadBookShelvesForIsr(slug),
+			loadBookReadsForIsr(slug),
+			loadBookFavoritesForIsr(slug),
+		]);
 
 	return (
 		<div className="flex flex-col gap-8">
@@ -42,6 +45,7 @@ export default async function BookDetailLayout({
 					shelves: shelves.items.length,
 					reviews: reviews.length,
 					reads: reads.total,
+					favorites: favorites.total,
 				}}
 			/>
 			{children}

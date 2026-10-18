@@ -7,6 +7,8 @@ import {
 	GetUserFavoritesInputSchema,
 	GetUserFavoritesOutputSchema,
 	GetViewerLibraryEngagementOutputSchema,
+	ListBookFavoritesInputSchema,
+	ListBookFavoritesOutputSchema,
 	ListMyFavoritesOutputSchema,
 	RemoveFavoriteInputSchema,
 	RemoveFavoriteOutputSchema,
@@ -16,11 +18,17 @@ import {
 	getBookFavoriteState,
 	getUserFavorites,
 	getViewerLibraryEngagement,
+	listBookFavorites,
 	listMyFavorites,
 	removeFavorite,
 } from "./favorite.service";
 
 export const favoriteRouter = {
+	listForBook: publicProcedure
+		.input(ListBookFavoritesInputSchema)
+		.output(ListBookFavoritesOutputSchema)
+		.handler(({ context, input }) => listBookFavorites(input, context.db)),
+
 	getUserFavorites: publicProcedure
 		.input(GetUserFavoritesInputSchema)
 		.output(GetUserFavoritesOutputSchema)
