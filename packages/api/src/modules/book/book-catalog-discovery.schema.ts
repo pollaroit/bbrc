@@ -2,7 +2,7 @@ import { BookSchema } from "@bbrc/schemas";
 import zod from "zod";
 import { BookListItemSchema } from "./book.schema";
 
-export const BOOK_CATALOG_DISCOVERY_LIMIT = 4;
+export const BOOK_CATALOG_DISCOVERY_LIMIT = 6;
 
 export const GetBookCatalogDiscoveryInputSchema = zod.object({
 	bookSlug: BookSchema.shape.slug,

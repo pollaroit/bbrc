@@ -33,7 +33,7 @@ export function BookDiscoverySection({
 					</Link>
 				) : null}
 			</div>
-			<ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+			<ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 				{section.items.map((book) => (
 					<li key={book.slug}>
 						<BookCard book={book} />
