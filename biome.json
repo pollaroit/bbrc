@@ -29,7 +29,9 @@
 			"!**/convex/_generated",
 			"!**/env.ts",
 			"!**/schemas/src/generated",
-			"!packages/ui/src/components/shadcnmaps/map-data"
+			"!packages/ui/src/components/shadcnmaps/map-data",
+			"!.agents",
+			"!.claude"
 		]
 	},
 	"overrides": [
