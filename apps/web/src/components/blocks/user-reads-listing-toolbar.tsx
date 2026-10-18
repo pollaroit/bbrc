@@ -7,6 +7,7 @@ import {
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import { Label } from "@bbrc/ui/components/label";
 import { useMemo } from "react";
+import { UserReadsExportMenu } from "@/components/blocks/user-reads-export-menu";
 import { ListingAuthorMultiSelect } from "@/components/listing/listing-author-multi-select";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
 import { ListingCountryMultiSelect } from "@/components/listing/listing-country-multi-select";
@@ -30,7 +31,15 @@ import {
 	useUserReadsListingSearchParams,
 } from "@/lib/listing/user-reads-listing";
 
-export function UserReadsListingToolbar() {
+type UserReadsListingToolbarProps = {
+	username: string;
+	isOwnProfile: boolean;
+};
+
+export function UserReadsListingToolbar({
+	username,
+	isOwnProfile,
+}: UserReadsListingToolbarProps) {
 	const { data: session } = authClient.useSession();
 	const [params, setParams] = useUserReadsListingSearchParams();
 	const sheetFilterCount = countUserReadsSheetFilters(params);
@@ -84,6 +93,8 @@ export function UserReadsListingToolbar() {
 					sortByOptions={userReadSortableFields}
 					sortByLabels={userReadSortByLabels}
 				/>
+
+				<UserReadsExportMenu username={username} isOwnProfile={isOwnProfile} />
 
 				<ListingFiltersSheet
 					title="Read list filters"

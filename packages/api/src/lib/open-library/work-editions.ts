@@ -53,6 +53,18 @@ type EditionJson = {
 	number_of_pages?: number;
 	publish_date?: string;
 	covers?: number[];
+	isbn_13?: string[];
+	isbn_10?: string[];
+	publishers?: string[];
+	physical_format?: string;
+};
+
+export type EditionExportMetadata = {
+	editionId: string;
+	isbn13: string | null;
+	isbn10: string | null;
+	publisher: string | null;
+	binding: string | null;
 };
 
 type EditionsListPayload = {
@@ -439,6 +451,62 @@ export async function fetchEditionDetailSummary(
 		publishDate: data.publish_date?.trim() || null,
 		coverId,
 	};
+}
+
+function mapEditionExportMetadata(
+	editionId: string,
+	data: EditionJson | null,
+): EditionExportMetadata {
+	const isbn13 =
+		data?.isbn_13?.find((value) => value.trim().length > 0)?.trim() ?? null;
+	const isbn10 =
+		data?.isbn_10?.find((value) => value.trim().length > 0)?.trim() ?? null;
+	const publisher =
+		data?.publishers?.find((value) => value.trim().length > 0)?.trim() ?? null;
+	const binding = data?.physical_format?.trim() || null;
+
+	return {
+		editionId,
+		isbn13,
+		isbn10,
+		publisher,
+		binding,
+	};
+}
+
+async function fetchEditionExportMetadata(
+	editionOlid: string,
+): Promise<EditionExportMetadata | null> {
+	const olid = openLibraryEditionKeyToOlid(editionOlid);
+	if (!olid) {
+		return null;
+	}
+
+	const data = await fetchJson<EditionJson>(
+		`https://openlibrary.org/books/${olid}.json`,
+	);
+
+	return mapEditionExportMetadata(olid, data);
+}
+
+export async function fetchEditionExportMetadataBatch(
+	editionOlids: string[],
+): Promise<Map<string, EditionExportMetadata>> {
+	const unique = [
+		...new Set(editionOlids.map((id) => id.trim()).filter(Boolean)),
+	];
+	const map = new Map<string, EditionExportMetadata>();
+
+	await Promise.all(
+		unique.map(async (editionId) => {
+			const metadata = await fetchEditionExportMetadata(editionId);
+			if (metadata) {
+				map.set(metadata.editionId, metadata);
+			}
+		}),
+	);
+
+	return map;
 }
 
 export async function fetchEditionDetailSummaries(

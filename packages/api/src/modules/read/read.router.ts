@@ -20,6 +20,11 @@ import {
 	searchWorkEditionsForBook,
 	setRead,
 } from "./read.service";
+import {
+	ExportUserReadsInputSchema,
+	ExportUserReadsOutputSchema,
+} from "./read-export.schema";
+import { exportUserReads } from "./read-export.service";
 
 export const readRouter = {
 	listForBook: publicProcedure
@@ -32,6 +37,13 @@ export const readRouter = {
 		.output(ListUserReadsOutputSchema)
 		.handler(({ context, input }) =>
 			listUserReads(input, context.db, context.session),
+		),
+
+	exportForUser: publicProcedure
+		.input(ExportUserReadsInputSchema)
+		.output(ExportUserReadsOutputSchema)
+		.handler(({ context, input }) =>
+			exportUserReads(input, context.db, context.session),
 		),
 
 	searchEditions: publicProcedure

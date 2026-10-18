@@ -4,6 +4,7 @@ import type {
 } from "@bbrc/api/modules/book/book.schema";
 import type { ListUserReadsInput } from "@bbrc/api/modules/read/read.schema";
 import { userReadSortableFields } from "@bbrc/api/modules/read/read.schema";
+import type { ExportUserReadsInput } from "@bbrc/api/modules/read/read-export.schema";
 import {
 	parseAsArrayOf,
 	parseAsBoolean,
@@ -102,6 +103,14 @@ export function toUserReadsListCallInput(
 		mutualOnly: params.mutualOnly ? true : undefined,
 		limit: 12,
 	}) as Partial<ListUserReadsInput>;
+}
+
+export function toUserReadsExportCallInput(
+	params: UserReadsListingSearchParams,
+): Partial<ExportUserReadsInput> {
+	const listInput = toUserReadsListCallInput(params);
+	const { limit: _limit, ...rest } = listInput;
+	return rest;
 }
 
 export function toUserReadsAuthorFacetsInput(
