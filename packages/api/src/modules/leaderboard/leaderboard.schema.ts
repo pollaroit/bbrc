@@ -36,14 +36,14 @@ export const LeaderboardEntrySchema = z.object({
 	name: z.string(),
 	image: z.string().nullable(),
 	isAdmin: z.boolean(),
-	metric: z.number().int().nonnegative(),
+	metric: z.number().int(),
 });
 
 export type LeaderboardEntry = z.infer<typeof LeaderboardEntrySchema>;
 
 export const LeaderboardViewerSchema = z.object({
 	rank: z.number().int().positive(),
-	metric: z.number().int().nonnegative(),
+	metric: z.number().int(),
 });
 
 export const GetLeaderboardInputSchema = z.object({

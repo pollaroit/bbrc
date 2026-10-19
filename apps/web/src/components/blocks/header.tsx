@@ -3,16 +3,17 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { ActiveSittingTopChip } from "@/components/blocks/active-sitting-top-chip";
 import { BrowseMenuDropdown } from "@/components/blocks/browse-menu-dropdown";
 import { CreateMenu } from "@/components/blocks/create-menu";
 import { GlobalSearchTrigger } from "@/components/blocks/global-search-trigger";
 import { HeaderAuthLinks } from "@/components/blocks/header-auth-links";
-import { HeaderOngoingReadButton } from "@/components/blocks/header-ongoing-read-button";
 import { Logo } from "@/components/blocks/logo";
 import { NotificationBell } from "@/components/blocks/notification-bell";
 import { UserMenu } from "@/components/blocks/user-menu";
 import { ModeToggle } from "@/components/mode-toggle";
 import { authClient } from "@/lib/auth-client";
+import { headerToolbarControlClass } from "@/lib/header-toolbar";
 import { useLiveUserImage } from "@/lib/user-avatar-broadcast";
 
 const navLinks = [
@@ -30,14 +31,14 @@ export default function Header() {
 
 	return (
 		<header className="sticky top-0 z-30 hidden w-full border-border border-b bg-background/80 backdrop-blur md:block">
-			<div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-6 px-6">
+			<div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-4 px-6">
 				<div className="flex shrink-0 items-center gap-2">
 					<Link href="/" className="flex items-center gap-2.5">
 						<Logo className="size-7" label="" />
 					</Link>
 				</div>
 
-				<nav className="flex items-center gap-6">
+				<nav className="flex shrink-0 items-center gap-6">
 					{navLinks.map((link) => (
 						<Link
 							key={link.label}
@@ -48,10 +49,13 @@ export default function Header() {
 						</Link>
 					))}
 					<BrowseMenuDropdown />
-					<HeaderOngoingReadButton />
 				</nav>
 
-				<div className="ml-auto flex items-center gap-2">
+				<ActiveSittingTopChip className="hidden min-w-0 max-w-md flex-1 md:flex" />
+
+				<div
+					className={`ml-auto flex items-center gap-1 ${headerToolbarControlClass}`}
+				>
 					<CreateMenu />
 					<GlobalSearchTrigger variant="desktop" />
 					<ModeToggle />

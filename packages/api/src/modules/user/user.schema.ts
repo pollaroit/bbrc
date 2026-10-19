@@ -36,6 +36,19 @@ export const MemberLevelSchema = zod.object({
 	maxExclusive: zod.number().int().nullable(),
 });
 
+/** Signed integer club points as persisted (moderation may reduce below zero). */
+export const UserPointsSchema = zod.number().int();
+
+/** Member fields as stored in DB (legacy signup values, moderated negative points). */
+export const UserMemberSnapshotSchema = zod.object({
+	username: zod.string(),
+	name: zod.string(),
+	image: UserSchema.shape.image,
+	status: UserSchema.shape.status,
+	xp: UserPointsSchema,
+	rp: UserPointsSchema,
+});
+
 export const ReadingStreakSittingSchema = zod.object({
 	slug: SittingSchema.shape.slug,
 	displayName: zod.string().min(1),
@@ -63,7 +76,9 @@ export const getUserListFields = {
 	status: true,
 } as const;
 
-const UserListItemSchema = UserSchema.pick(getUserListFields).extend({
+const UserListItemSchema = UserMemberSnapshotSchema.extend({
+	id: UserSchema.shape.id,
+	isAdmin: UserSchema.shape.isAdmin,
 	xpLevel: MemberLevelSchema,
 	rpLevel: MemberLevelSchema,
 });
@@ -90,9 +105,8 @@ export const GetUserByUsernameInputSchema = UserSchema.pick({
 	username: true,
 });
 
-export const GetUserByUsernameOutputSchema = UserSchema.pick(
-	getUserByUsernameFields,
-).extend({
+export const GetUserByUsernameOutputSchema = UserMemberSnapshotSchema.extend({
+	isAdmin: UserSchema.shape.isAdmin,
 	indexable: zod.boolean(),
 	xpLevel: MemberLevelSchema,
 	rpLevel: MemberLevelSchema,

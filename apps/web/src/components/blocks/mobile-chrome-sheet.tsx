@@ -101,9 +101,20 @@ export function MobileChromeSheetSection({
 export const mobileSheetRowClass =
 	"flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset";
 
-export function MobileSheetRowIcon({ icon: Icon }: { icon: LucideIcon }) {
+export function MobileSheetRowIcon({
+	icon: Icon,
+	compact = false,
+}: {
+	icon: LucideIcon;
+	compact?: boolean;
+}) {
 	return (
-		<span className="flex size-9 shrink-0 items-center justify-center border border-border bg-muted/20">
+		<span
+			className={cn(
+				"flex shrink-0 items-center justify-center border border-border bg-muted/20",
+				compact ? "size-8" : "size-9",
+			)}
+		>
 			<Icon className="size-4 text-foreground" aria-hidden />
 		</span>
 	);

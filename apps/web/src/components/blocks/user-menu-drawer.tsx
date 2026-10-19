@@ -18,9 +18,8 @@ export function UserMenuDrawer({
 }: UserMenuDrawerProps) {
 	return (
 		<MobileChromeSheet open={open} onOpenChange={onOpenChange} title="You">
-			<div className="border-border border-b px-4 pb-4">
-				<p className="mb-3 font-semibold text-base tracking-tight">You</p>
-				<div className="flex items-center justify-between gap-3 border border-border bg-muted/15 p-3">
+			<div className="border-border border-b px-4 pt-1 pb-2">
+				<div className="flex items-center justify-between gap-2 border border-border bg-muted/15 p-2.5">
 					<UserPanel user={user} className="min-w-0 flex-1" />
 					<UserAccountSignOutButton
 						compact

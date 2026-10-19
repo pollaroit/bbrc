@@ -22,7 +22,10 @@ import {
 	getBookListFields,
 	getBookPollSelect,
 } from "../book/book.schema";
-import { MemberLevelSchema } from "../user/user.schema";
+import {
+	MemberLevelSchema,
+	UserMemberSnapshotSchema,
+} from "../user/user.schema";
 import {
 	sittingListFiltersSchema,
 	sittingListRanging,
@@ -388,14 +391,8 @@ export const SittingPollDetailSchema = SittingPollSummarySchema.extend({
 	voterCount: zod.number().int().min(0),
 });
 
-export const SittingParticipantSummarySchema = zod.object({
+export const SittingParticipantSummarySchema = UserMemberSnapshotSchema.extend({
 	userId: UserSchema.shape.id,
-	username: UserSchema.shape.username,
-	name: UserSchema.shape.name,
-	image: UserSchema.shape.image,
-	status: UserSchema.shape.status,
-	xp: UserSchema.shape.xp,
-	rp: UserSchema.shape.rp,
 	xpLevel: MemberLevelSchema,
 	rpLevel: MemberLevelSchema,
 	progress: ProgressSchema,
@@ -414,8 +411,8 @@ export const SittingSelectedBookSchema = BookSchema.pick(getBookListFields);
 export const SittingReviewSummarySchema = zod.object({
 	slug: FeedbackSchema.shape.slug,
 	authorId: UserSchema.shape.id,
-	username: UserSchema.shape.username,
-	name: UserSchema.shape.name,
+	username: zod.string(),
+	name: zod.string(),
 	image: UserSchema.shape.image,
 	rating: zod.number().min(0).max(5),
 	review: zod.string().min(1).max(500),
@@ -524,11 +521,12 @@ export type GetSittingBySlugOutput = z.infer<
 	typeof GetSittingBySlugOutputSchema
 >;
 
-export const OngoingSittingParticipantPreviewSchema = zod.object({
-	username: UserSchema.shape.username,
-	name: UserSchema.shape.name,
-	image: UserSchema.shape.image,
-});
+export const OngoingSittingParticipantPreviewSchema =
+	UserMemberSnapshotSchema.pick({
+		username: true,
+		name: true,
+		image: true,
+	});
 
 /** ONGOING — at most one sitting in voting or reading */
 export const GetOngoingSittingOutputSchema = SittingSchema.pick({

@@ -6,7 +6,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { formatBookAuthors } from "@/lib/book-cover";
-import { formatDateTime } from "@/lib/format-datetime";
+import { formatDateTimeCompact } from "@/lib/format-datetime";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -59,7 +59,7 @@ export function ActiveSittingTopChip({ className }: { className?: string }) {
 
 	const metaLine = [
 		authorsLine,
-		phaseDeadline ? formatDateTime(phaseDeadline) : "Open sitting",
+		phaseDeadline ? formatDateTimeCompact(phaseDeadline) : "Open sitting",
 	]
 		.filter(Boolean)
 		.join(" · ");

@@ -30,12 +30,15 @@ export function SittingParticipantAvatarStack({
 
 	return (
 		<div className={cn("flex items-center", className)}>
-			<div className="flex -space-x-2">
-				{visible.map((user) => (
+			<div className="flex">
+				{visible.map((user, index) => (
 					<UserAvatar
 						key={user.username}
 						user={user}
-						className="size-7 ring-2 ring-background"
+						className={cn(
+							"size-7 ring-2 ring-background",
+							index > 0 && "-ms-2",
+						)}
 					/>
 				))}
 			</div>

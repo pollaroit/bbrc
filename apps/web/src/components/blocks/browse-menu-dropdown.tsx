@@ -4,6 +4,7 @@ import { Button } from "@bbrc/ui/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
@@ -43,7 +44,7 @@ export function BrowseMenuDropdown() {
 					/>
 				}
 			>
-				<Compass data-icon="inline-start" className="size-4" aria-hidden />
+				<Compass data-icon="inline-start" aria-hidden />
 				Browse
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="min-w-56">
@@ -56,7 +57,7 @@ export function BrowseMenuDropdown() {
 					}
 
 					return (
-						<div key={section.id}>
+						<DropdownMenuGroup key={section.id}>
 							<DropdownMenuLabel className="text-muted-foreground text-xs">
 								{section.label}
 							</DropdownMenuLabel>
@@ -66,11 +67,11 @@ export function BrowseMenuDropdown() {
 								return (
 									<DropdownMenuItem
 										key={item.href}
-										render={<Link href={item.href as Route} />}
+										render={<Link href={item.href as Route} prefetch={false} />}
 										nativeButton={false}
 										className={cn(active && "bg-muted/60")}
 									>
-										<Icon className="size-4" aria-hidden />
+										<Icon aria-hidden />
 										<span className="flex flex-col gap-0.5">
 											<span>{item.label}</span>
 											{item.description ? (
@@ -82,25 +83,27 @@ export function BrowseMenuDropdown() {
 									</DropdownMenuItem>
 								);
 							})}
-						</div>
+						</DropdownMenuGroup>
 					);
 				})}
 				<DropdownMenuSeparator />
-				<DropdownMenuLabel className="text-muted-foreground text-xs">
-					Later
-				</DropdownMenuLabel>
-				{browseNavPlaceholderItems.map((item) => {
-					const Icon = item.icon;
-					return (
-						<DropdownMenuItem key={item.label} disabled>
-							{Icon ? <Icon className="size-4 opacity-50" aria-hidden /> : null}
-							<span className="text-muted-foreground">{item.label}</span>
-							<span className="ms-auto text-muted-foreground text-xs">
-								{item.description}
-							</span>
-						</DropdownMenuItem>
-					);
-				})}
+				<DropdownMenuGroup>
+					<DropdownMenuLabel className="text-muted-foreground text-xs">
+						Later
+					</DropdownMenuLabel>
+					{browseNavPlaceholderItems.map((item) => {
+						const Icon = item.icon;
+						return (
+							<DropdownMenuItem key={item.label} disabled>
+								{Icon ? <Icon className="opacity-50" aria-hidden /> : null}
+								<span className="text-muted-foreground">{item.label}</span>
+								<span className="ms-auto text-muted-foreground text-xs">
+									{item.description}
+								</span>
+							</DropdownMenuItem>
+						);
+					})}
+				</DropdownMenuGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

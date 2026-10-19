@@ -1,5 +1,13 @@
 import type { LucideIcon } from "lucide-react";
-import { Layers, LayoutList, Sofa, Trophy, UserPen, Users } from "lucide-react";
+import {
+	Clapperboard,
+	Layers,
+	LayoutList,
+	Sofa,
+	Trophy,
+	UserPen,
+	Users,
+} from "lucide-react";
 import type { Route } from "next";
 import { isMobileNavActive } from "@/lib/mobile-nav-active";
 
@@ -47,6 +55,13 @@ export const browseNavItems: BrowseNavItem[] = [
 		description: "XP, reads, and rankings",
 		section: "club",
 	},
+	{
+		label: "Reels",
+		href: "/reels" as Route,
+		icon: Clapperboard,
+		description: "Short fact replays from the club",
+		section: "club",
+	},
 ];
 
 export type BrowseNavPlaceholderItem = {
@@ -66,7 +81,11 @@ export function isBrowseNavActive(pathname: string): boolean {
 		return true;
 	}
 
-	return pathname.startsWith("/leaderboard");
+	if (pathname.startsWith("/leaderboard") || pathname.startsWith("/reels")) {
+		return true;
+	}
+
+	return false;
 }
 
 export function isBrowseNavItemActive(pathname: string, href: Route): boolean {

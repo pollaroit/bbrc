@@ -1,5 +1,11 @@
 "use client";
 
+import {
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+} from "@bbrc/ui/components/dropdown-menu";
 import type { LucideIcon } from "lucide-react";
 import {
 	BarChart3,
@@ -30,7 +36,7 @@ type UserMenuItemsProps = {
 	user: UserMenuUser;
 	onNavigate?: () => void;
 	itemClassName?: string;
-	variant?: "default" | "drawer";
+	variant?: "default" | "drawer" | "dropdown";
 	hideSignOut?: boolean;
 };
 
@@ -40,7 +46,7 @@ type MenuEntry = {
 	icon: LucideIcon;
 };
 
-function drawerLinks(user: UserMenuUser): MenuEntry[] {
+function userMenuActivityEntries(user: UserMenuUser): MenuEntry[] {
 	const base = `/users/${user.username}` as Route;
 	return [
 		{ label: "Profile", href: base, icon: User },
@@ -54,8 +60,28 @@ function drawerLinks(user: UserMenuUser): MenuEntry[] {
 		{ label: "My shelves", href: `${base}/shelves` as Route, icon: LayoutList },
 		{ label: "My goals", href: `${base}/goals` as Route, icon: Target },
 		{ label: "My stats", href: `${base}/stats` as Route, icon: BarChart3 },
+	];
+}
+
+function userMenuAccountEntries(user: UserMenuUser): MenuEntry[] {
+	const entries: MenuEntry[] = [
 		{ label: "Settings", href: "/settings" as Route, icon: Settings },
 	];
+	if (user.isAdmin) {
+		entries.push(
+			{
+				label: "Blocked works",
+				href: "/books/blocked" as Route,
+				icon: BookOpen,
+			},
+			{ label: "Dashboard", href: "/admin" as Route, icon: Shield },
+		);
+	}
+	return entries;
+}
+
+function factReplaysHref(user: UserMenuUser): Route {
+	return `/users/${user.username}/reels` as Route;
 }
 
 export function UserMenuItems({
@@ -71,31 +97,92 @@ export function UserMenuItems({
 		itemClassName,
 	);
 
-	if (variant === "drawer") {
-		const links = drawerLinks(user);
+	const activity = userMenuActivityEntries(user);
+	const account = userMenuAccountEntries(user);
+	const reelsHref = factReplaysHref(user);
+
+	if (variant === "dropdown") {
 		return (
-			<nav className="flex flex-col pb-3">
-				<MobileChromeSheetSection title="Your activity">
+			<>
+				<DropdownMenuGroup>
+					<DropdownMenuLabel className="text-muted-foreground text-xs">
+						Your activity
+					</DropdownMenuLabel>
+					{activity.map((entry) => (
+						<DropdownMenuItem
+							key={entry.href}
+							render={
+								<Link href={entry.href} onClick={onNavigate} prefetch={false} />
+							}
+							nativeButton={false}
+						>
+							<entry.icon aria-hidden />
+							{entry.label}
+						</DropdownMenuItem>
+					))}
+					<DropdownMenuItem
+						render={
+							<Link href={reelsHref} onClick={onNavigate} prefetch={false} />
+						}
+						nativeButton={false}
+					>
+						<span className="flex size-4 shrink-0 items-center justify-center font-serif text-sm leading-none">
+							?
+						</span>
+						My fact replays
+					</DropdownMenuItem>
+				</DropdownMenuGroup>
+				<DropdownMenuSeparator />
+				<DropdownMenuGroup>
+					<DropdownMenuLabel className="text-muted-foreground text-xs">
+						Account
+					</DropdownMenuLabel>
+					{account.map((entry) => (
+						<DropdownMenuItem
+							key={entry.href}
+							render={
+								<Link href={entry.href} onClick={onNavigate} prefetch={false} />
+							}
+							nativeButton={false}
+						>
+							<entry.icon aria-hidden />
+							{entry.label}
+						</DropdownMenuItem>
+					))}
+				</DropdownMenuGroup>
+			</>
+		);
+	}
+
+	const drawerRowClass = cn(mobileSheetRowClass, "gap-2.5 py-2", itemClassName);
+
+	if (variant === "drawer") {
+		return (
+			<nav className="flex flex-col pb-2">
+				<MobileChromeSheetSection
+					title="Your activity"
+					className="[&_h3]:pt-2 [&_h3]:pb-0.5"
+				>
 					<ul>
-						{links.slice(0, 7).map((entry) => (
+						{activity.map((entry) => (
 							<li key={entry.href}>
 								<Link
 									href={entry.href}
-									className={itemClass}
+									className={drawerRowClass}
 									onClick={onNavigate}
 								>
-									<MobileSheetRowIcon icon={entry.icon} />
+									<MobileSheetRowIcon icon={entry.icon} compact />
 									<MobileSheetRowBody label={entry.label} />
 								</Link>
 							</li>
 						))}
 						<li>
 							<Link
-								href={`/users/${user.username}/reels` as Route}
-								className={itemClass}
+								href={reelsHref}
+								className={drawerRowClass}
 								onClick={onNavigate}
 							>
-								<span className="flex size-9 shrink-0 items-center justify-center border border-border bg-muted/20 font-serif text-base">
+								<span className="flex size-8 shrink-0 items-center justify-center border border-border bg-muted/20 font-serif text-sm">
 									?
 								</span>
 								<MobileSheetRowBody label="My fact replays" />
@@ -103,42 +190,23 @@ export function UserMenuItems({
 						</li>
 					</ul>
 				</MobileChromeSheetSection>
-				<MobileChromeSheetSection title="Account">
+				<MobileChromeSheetSection
+					title="Account"
+					className="[&_h3]:pt-2 [&_h3]:pb-0.5"
+				>
 					<ul>
-						<li>
-							<Link
-								href={"/settings" as Route}
-								className={itemClass}
-								onClick={onNavigate}
-							>
-								<MobileSheetRowIcon icon={Settings} />
-								<MobileSheetRowBody label="Settings" />
-							</Link>
-						</li>
-						{user.isAdmin ? (
-							<>
-								<li>
-									<Link
-										href={"/books/blocked" as Route}
-										className={itemClass}
-										onClick={onNavigate}
-									>
-										<MobileSheetRowIcon icon={BookOpen} />
-										<MobileSheetRowBody label="Blocked works" />
-									</Link>
-								</li>
-								<li>
-									<Link
-										href={"/admin" as Route}
-										className={itemClass}
-										onClick={onNavigate}
-									>
-										<MobileSheetRowIcon icon={Shield} />
-										<MobileSheetRowBody label="Dashboard" />
-									</Link>
-								</li>
-							</>
-						) : null}
+						{account.map((entry) => (
+							<li key={entry.href}>
+								<Link
+									href={entry.href}
+									className={drawerRowClass}
+									onClick={onNavigate}
+								>
+									<MobileSheetRowIcon icon={entry.icon} compact />
+									<MobileSheetRowBody label={entry.label} />
+								</Link>
+							</li>
+						))}
 					</ul>
 				</MobileChromeSheetSection>
 			</nav>
@@ -147,7 +215,7 @@ export function UserMenuItems({
 
 	return (
 		<nav className="flex flex-col">
-			{drawerLinks(user).map((entry) => (
+			{activity.map((entry) => (
 				<Link
 					key={entry.href}
 					href={entry.href}
@@ -158,36 +226,23 @@ export function UserMenuItems({
 					{entry.label}
 				</Link>
 			))}
-			<Link
-				href={`/users/${user.username}/reels` as Route}
-				className={itemClass}
-				onClick={onNavigate}
-			>
+			<Link href={reelsHref} className={itemClass} onClick={onNavigate}>
 				<span className="flex size-4 shrink-0 items-center justify-center font-serif text-sm leading-none">
 					?
 				</span>
 				My fact replays
 			</Link>
-			{user.isAdmin ? (
-				<>
-					<Link
-						href={"/books/blocked" as Route}
-						className={itemClass}
-						onClick={onNavigate}
-					>
-						<BookOpen className="size-4 shrink-0" aria-hidden="true" />
-						Blocked works
-					</Link>
-					<Link
-						href={"/admin" as Route}
-						className={itemClass}
-						onClick={onNavigate}
-					>
-						<Shield className="size-4 shrink-0" aria-hidden="true" />
-						Dashboard
-					</Link>
-				</>
-			) : null}
+			{account.map((entry) => (
+				<Link
+					key={entry.href}
+					href={entry.href}
+					className={itemClass}
+					onClick={onNavigate}
+				>
+					<entry.icon className="size-4 shrink-0" aria-hidden="true" />
+					{entry.label}
+				</Link>
+			))}
 			{hideSignOut ? null : (
 				<UserAccountSignOutButton onSignedOut={onNavigate} />
 			)}
