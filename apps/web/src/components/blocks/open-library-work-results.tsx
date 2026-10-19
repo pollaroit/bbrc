@@ -30,6 +30,8 @@ type OpenLibraryWorkResultsProps = {
 	onSelect: (work: OpenLibrarySearchWork) => void;
 	/** Work OLIDs already in the club catalog — rows are disabled with an Added badge. */
 	inCatalogOlids?: ReadonlySet<string>;
+	/** Pending member requests by work OLID → requester display name for badge. */
+	pendingRequestByOlid?: ReadonlyMap<string, string>;
 	isLoading?: boolean;
 	className?: string;
 };
@@ -39,6 +41,7 @@ export function OpenLibraryWorkResults({
 	selectedWorkKey,
 	onSelect,
 	inCatalogOlids,
+	pendingRequestByOlid,
 	isLoading = false,
 	className,
 }: OpenLibraryWorkResultsProps) {
@@ -67,6 +70,8 @@ export function OpenLibraryWorkResults({
 				const src = coverUrl(work.coverId);
 				const olid = openLibraryWorkKeyToOlid(work.workKey);
 				const inCatalog = olid != null && (inCatalogOlids?.has(olid) ?? false);
+				const requestedBy =
+					olid != null ? pendingRequestByOlid?.get(olid) : undefined;
 
 				return (
 					<li key={work.workKey}>
@@ -113,6 +118,11 @@ export function OpenLibraryWorkResults({
 										<div className="flex flex-wrap items-start gap-2">
 											{inCatalog ? (
 												<Badge variant="destructive">Added</Badge>
+											) : null}
+											{requestedBy ? (
+												<Badge variant="default">
+													Requested by {requestedBy}
+												</Badge>
 											) : null}
 											<p className="line-clamp-2 min-w-0 flex-1 font-medium text-sm leading-snug">
 												{work.title}

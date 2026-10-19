@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { AdminBookRecommendationsSheet } from "@/components/blocks/admin-book-recommendations-sheet";
+import { AdminBookRequestsSheet } from "@/components/blocks/admin-book-requests-sheet";
 
 export function AddBookPageHeader() {
 	return (
@@ -26,7 +27,10 @@ export function AddBookPageHeader() {
 						from Open Library.
 					</p>
 				</div>
-				<AdminBookRecommendationsSheet />
+				<div className="flex flex-wrap items-center gap-2">
+					<AdminBookRequestsSheet triggerVariant="outline" />
+					<AdminBookRecommendationsSheet />
+				</div>
 			</div>
 		</header>
 	);

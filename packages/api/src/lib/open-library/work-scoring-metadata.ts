@@ -1,3 +1,9 @@
+import {
+	openLibraryFetchDocumentJson,
+	openLibraryWorkJsonUrl,
+	openLibraryWorkRatingsUrl,
+} from "./fetch";
+
 function normalizeSubjectEntry(entry: unknown): string | null {
 	if (typeof entry === "string") {
 		const trimmed = entry.trim();
@@ -57,35 +63,21 @@ export type WorkScoringMetadata = {
 export async function fetchWorkScoringMetadata(
 	workKey: string,
 ): Promise<WorkScoringMetadata> {
-	const [workResponse, ratingsResponse] = await Promise.all([
-		fetch(`https://openlibrary.org${workKey}.json`, {
-			headers: { Accept: "application/json" },
-		}),
-		fetch(`https://openlibrary.org${workKey}/ratings.json`, {
-			headers: { Accept: "application/json" },
-		}),
-	]);
+	const work = await openLibraryFetchDocumentJson<WorkDocument>(
+		openLibraryWorkJsonUrl(workKey),
+	);
+	const ratings = await openLibraryFetchDocumentJson<{
+		summary?: { average?: number };
+	}>(openLibraryWorkRatingsUrl(workKey));
 
-	let subjects: string[] = [];
-	let subjectPeople: string[] = [];
-	let subjectTimes: string[] = [];
-
-	if (workResponse.ok) {
-		const work = (await workResponse.json()) as WorkDocument;
-		subjects = normalizeSubjectList(work.subjects);
-		subjectPeople = normalizeSubjectList(work.subject_people);
-		subjectTimes = normalizeSubjectList(work.subject_times);
-	}
+	const subjects = normalizeSubjectList(work?.subjects);
+	const subjectPeople = normalizeSubjectList(work?.subject_people);
+	const subjectTimes = normalizeSubjectList(work?.subject_times);
 
 	let openLibraryRating: number | null = null;
-	if (ratingsResponse.ok) {
-		const ratings = (await ratingsResponse.json()) as {
-			summary?: { average?: number };
-		};
-		const average = ratings.summary?.average;
-		if (typeof average === "number" && Number.isFinite(average)) {
-			openLibraryRating = average;
-		}
+	const average = ratings?.summary?.average;
+	if (typeof average === "number" && Number.isFinite(average)) {
+		openLibraryRating = average;
 	}
 
 	return {

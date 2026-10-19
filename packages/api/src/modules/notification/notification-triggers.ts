@@ -1,5 +1,5 @@
 import type { Database } from "@bbrc/db";
-import { fetchOpenLibraryWorkTitle } from "../../lib/open-library-work-title";
+import { fetchOpenLibraryWorkTitle } from "../../lib/open-library/work-titles";
 import {
 	dispatchNotification,
 	listActiveMemberUserIds,
@@ -177,6 +177,7 @@ export async function notifyBookRequested(
 	_requestId: string,
 	requesterUserId: string,
 	olid: string,
+	storedTitle?: string | null,
 ): Promise<void> {
 	const requester = await db.user.findUnique({
 		where: { id: requesterUserId },
@@ -187,7 +188,11 @@ export async function notifyBookRequested(
 		return;
 	}
 
-	const workTitle = await fetchOpenLibraryWorkTitle(olid);
+	const trimmedStored = storedTitle?.trim();
+	const workTitle =
+		trimmedStored && trimmedStored.length > 0
+			? trimmedStored
+			: await fetchOpenLibraryWorkTitle(olid);
 	const titleLabel = workTitle ?? olid;
 	const recipientUserIds = await listAdminUserIds(db);
 

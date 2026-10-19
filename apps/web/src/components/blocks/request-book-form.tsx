@@ -105,7 +105,11 @@ export function RequestBookForm({ canRequest }: RequestBookFormProps) {
 		}
 
 		try {
-			createRequest.mutate({ olid: requireWorkOlid(selectedWork) });
+			createRequest.mutate({
+				olid: requireWorkOlid(selectedWork),
+				title: selectedWork.title.trim(),
+				authors: selectedWork.authors,
+			});
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Could not prepare request";

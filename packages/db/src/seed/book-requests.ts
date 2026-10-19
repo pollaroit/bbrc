@@ -48,6 +48,8 @@ export async function seedBookRequests(
 			data: {
 				userId: requester.id,
 				olid: work.olid,
+				title: work.title,
+				authors: work.authors,
 				status: "pending",
 			},
 		});

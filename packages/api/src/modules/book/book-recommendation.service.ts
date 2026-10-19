@@ -1,4 +1,6 @@
 import type { Database } from "@bbrc/db";
+import { mapWithConcurrency } from "../../lib/open-library/concurrency";
+import { OPEN_LIBRARY_FETCH } from "../../lib/open-library/constants";
 import {
 	type OpenLibrarySearchHit,
 	searchOpenLibraryWorks,
@@ -366,10 +368,10 @@ async function collectCandidates(
 ): Promise<OpenLibrarySearchHit[]> {
 	const byOlid = new Map<string, OpenLibrarySearchHit>();
 
-	const resultGroups = await Promise.all(
-		queries.map((query) =>
-			searchOpenLibraryWorks(query, OPEN_LIBRARY_SEARCH_LIMIT),
-		),
+	const resultGroups = await mapWithConcurrency(
+		queries,
+		OPEN_LIBRARY_FETCH.searchConcurrency,
+		(query) => searchOpenLibraryWorks(query, OPEN_LIBRARY_SEARCH_LIMIT),
 	);
 
 	for (const hits of resultGroups) {

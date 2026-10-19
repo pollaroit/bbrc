@@ -3,6 +3,13 @@ import {
 	openLibraryEditionPageUrl,
 	openLibraryWorkKeyToOlid,
 } from "@bbrc/shared";
+import { mapWithConcurrency } from "./concurrency";
+import { OPEN_LIBRARY_FETCH } from "./constants";
+import {
+	openLibraryBookJsonUrl,
+	openLibraryFetchDocumentJson,
+	openLibraryWorkEditionsUrl,
+} from "./fetch";
 
 export type OpenLibraryEditionLanguage = "eng" | "tur" | "aze" | "rus" | "any";
 
@@ -76,15 +83,7 @@ const EDITIONS_BATCH_SIZE = 100;
 
 async function fetchJson<T>(url: string): Promise<T | null> {
 	try {
-		const response = await fetch(url, {
-			headers: { Accept: "application/json" },
-		});
-
-		if (!response.ok) {
-			return null;
-		}
-
-		return (await response.json()) as T;
+		return await openLibraryFetchDocumentJson<T>(url);
 	} catch {
 		return null;
 	}
@@ -220,7 +219,7 @@ async function fetchEditionEntriesPage(
 	offset: number,
 ): Promise<EditionsListPayload | null> {
 	return fetchJson<EditionsListPayload>(
-		`https://openlibrary.org/works/${workOlid}/editions.json?limit=${limit}&offset=${offset}`,
+		openLibraryWorkEditionsUrl(workOlid, limit, offset),
 	);
 }
 
@@ -307,7 +306,7 @@ export async function fetchWorkEditionTotalCount(
 	}
 
 	const payload = await fetchJson<{ size?: number }>(
-		`https://openlibrary.org/works/${olid}/editions.json?limit=1`,
+		openLibraryWorkEditionsUrl(olid, 1, 0),
 	);
 
 	return payload?.size ?? null;
@@ -425,9 +424,7 @@ export async function fetchEditionDetailSummary(
 		return null;
 	}
 
-	const data = await fetchJson<EditionJson>(
-		`https://openlibrary.org/books/${olid}.json`,
-	);
+	const data = await fetchJson<EditionJson>(openLibraryBookJsonUrl(olid));
 
 	if (!data) {
 		return {
@@ -482,9 +479,7 @@ async function fetchEditionExportMetadata(
 		return null;
 	}
 
-	const data = await fetchJson<EditionJson>(
-		`https://openlibrary.org/books/${olid}.json`,
-	);
+	const data = await fetchJson<EditionJson>(openLibraryBookJsonUrl(olid));
 
 	return mapEditionExportMetadata(olid, data);
 }
@@ -497,13 +492,15 @@ export async function fetchEditionExportMetadataBatch(
 	];
 	const map = new Map<string, EditionExportMetadata>();
 
-	await Promise.all(
-		unique.map(async (editionId) => {
+	await mapWithConcurrency(
+		unique,
+		OPEN_LIBRARY_FETCH.editionJsonConcurrency,
+		async (editionId) => {
 			const metadata = await fetchEditionExportMetadata(editionId);
 			if (metadata) {
 				map.set(metadata.editionId, metadata);
 			}
-		}),
+		},
 	);
 
 	return map;
@@ -517,13 +514,15 @@ export async function fetchEditionDetailSummaries(
 	];
 	const map = new Map<string, EditionDetailSummary>();
 
-	await Promise.all(
-		unique.map(async (editionId) => {
+	await mapWithConcurrency(
+		unique,
+		OPEN_LIBRARY_FETCH.editionJsonConcurrency,
+		async (editionId) => {
 			const summary = await fetchEditionDetailSummary(editionId);
 			if (summary) {
 				map.set(summary.editionId, summary);
 			}
-		}),
+		},
 	);
 
 	return map;

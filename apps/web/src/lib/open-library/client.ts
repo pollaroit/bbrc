@@ -12,7 +12,15 @@ export async function searchOpenLibraryWorks(
 	const response = await fetch(`/api/open-library/search?${params.toString()}`);
 
 	if (!response.ok) {
-		throw new Error("Could not search Open Library. Try again.");
+		const payload = (await response.json().catch(() => null)) as {
+			error?: string;
+		} | null;
+		throw new Error(
+			payload?.error ??
+				(response.status === 503
+					? "Open Library is temporarily unavailable. Try again in a moment."
+					: "Could not search Open Library. Try again."),
+		);
 	}
 
 	return (await response.json()) as OpenLibrarySearchResponse;
@@ -25,7 +33,15 @@ export async function fetchOpenLibraryEditionHints(workKey: string) {
 	);
 
 	if (!response.ok) {
-		throw new Error("Could not load edition details from Open Library.");
+		const payload = (await response.json().catch(() => null)) as {
+			error?: string;
+		} | null;
+		throw new Error(
+			payload?.error ??
+				(response.status === 503
+					? "Open Library is temporarily unavailable. Try again in a moment."
+					: "Could not load edition details from Open Library."),
+		);
 	}
 
 	return (await response.json()) as OpenLibraryEditionHints;
@@ -47,7 +63,15 @@ export async function fetchOpenLibraryWorkByOlid(
 	}
 
 	if (!response.ok) {
-		throw new Error("Could not load this Open Library work.");
+		const payload = (await response.json().catch(() => null)) as {
+			error?: string;
+		} | null;
+		throw new Error(
+			payload?.error ??
+				(response.status === 503
+					? "Open Library is temporarily unavailable. Try again in a moment."
+					: "Could not load this Open Library work."),
+		);
 	}
 
 	const data = (await response.json()) as {
