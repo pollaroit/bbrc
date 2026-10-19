@@ -1,5 +1,6 @@
 import { fetchWorkEditionTotalCount } from "@bbrc/api/lib/open-library/work-editions";
 import { getAuthorPage } from "@bbrc/api/modules/author/author.service";
+import { loadAuthorCatalog } from "@bbrc/api/modules/author/author-catalog";
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
 import { getFeedbackBySlug } from "@bbrc/api/modules/feedback/feedback.service";
@@ -309,6 +310,31 @@ async function resolveSeriesDetailOg(slug: string): Promise<OgImageContent> {
 	};
 }
 
+async function resolveAuthorsListOg(): Promise<OgImageContent> {
+	const [catalog, bookCount, reviewCount] = await Promise.all([
+		loadAuthorCatalog(db),
+		db.book.count(),
+		db.feedback.count(),
+	]);
+
+	const ratedAuthors = catalog.filter(
+		(entry) => entry.averageRating != null,
+	).length;
+
+	return {
+		kind: "Authors",
+		title: "Authors",
+		description:
+			"Browse writers in the BBRC catalog by country, reads, reviews, and club ratings.",
+		highlights: [
+			formatCount("writer", catalog.length),
+			formatCount("catalog book", bookCount),
+			reviewCount > 0 ? formatCount("member review", reviewCount) : null,
+			ratedAuthors > 0 ? `${ratedAuthors} club-rated` : null,
+		].filter((line): line is string => line != null),
+	};
+}
+
 async function resolveMembersListOg(): Promise<OgImageContent> {
 	const [memberCount, adminCount] = await Promise.all([
 		db.user.count(),
@@ -362,6 +388,9 @@ export async function resolveOgImageContent(
 	}
 	if (staticKey === "users") {
 		return resolveMembersListOg();
+	}
+	if (staticKey === "authors") {
+		return resolveAuthorsListOg();
 	}
 	if (staticKey === "leaderboard" || staticKey.startsWith("leaderboard/")) {
 		const route = parseLeaderboardPathname(`/${staticKey}`);
