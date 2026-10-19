@@ -91,6 +91,18 @@ function refineAuthorListQueryInput(
 	}
 
 	if (
+		value.maxReviews != null &&
+		value.minReviews != null &&
+		value.maxReviews < value.minReviews
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Maximum reviews must be greater than or equal to minimum",
+			path: ["maxReviews"],
+		});
+	}
+
+	if (
 		value.maxAverageRating != null &&
 		value.minAverageRating != null &&
 		value.maxAverageRating < value.minAverageRating

@@ -119,7 +119,7 @@ export async function loadAuthorCatalog(
 		}
 	}
 
-	return [...bySlug.entries()].map(([slug, accumulator]) => {
+	const entries = [...bySlug.entries()].map(([slug, accumulator]) => {
 		const averageRating =
 			accumulator.reviewCount > 0
 				? Math.round(
@@ -137,6 +137,22 @@ export async function loadAuthorCatalog(
 			countryAlpha2: pickPrimaryCountry(accumulator.countryCounts),
 		};
 	});
+
+	return dedupeAuthorCatalogEntries(entries);
+}
+
+function dedupeAuthorCatalogEntries(
+	entries: AuthorCatalogEntry[],
+): AuthorCatalogEntry[] {
+	const bySlug = new Map<string, AuthorCatalogEntry>();
+
+	for (const entry of entries) {
+		if (!bySlug.has(entry.slug)) {
+			bySlug.set(entry.slug, entry);
+		}
+	}
+
+	return [...bySlug.values()];
 }
 
 export function filterAuthorCatalog(
@@ -177,6 +193,14 @@ export function filterAuthorCatalog(
 		}
 
 		if (filters.maxReads != null && entry.readerCount > filters.maxReads) {
+			return false;
+		}
+
+		if (filters.minReviews != null && entry.reviewCount < filters.minReviews) {
+			return false;
+		}
+
+		if (filters.maxReviews != null && entry.reviewCount > filters.maxReviews) {
 			return false;
 		}
 
@@ -232,12 +256,28 @@ export function sortAuthorCatalog(
 			return a.slug.localeCompare(b.slug);
 		}
 
-		const metric =
-			sortBy === "bookCount"
-				? a.bookCount - b.bookCount
-				: a.readerCount - b.readerCount;
-		if (metric !== 0) {
-			return metric * direction;
+		if (sortBy === "bookCount") {
+			const diff = a.bookCount - b.bookCount;
+			if (diff !== 0) {
+				return diff * direction;
+			}
+			return a.slug.localeCompare(b.slug);
+		}
+
+		if (sortBy === "readerCount") {
+			const diff = a.readerCount - b.readerCount;
+			if (diff !== 0) {
+				return diff * direction;
+			}
+			return a.slug.localeCompare(b.slug);
+		}
+
+		if (sortBy === "reviewCount") {
+			const diff = a.reviewCount - b.reviewCount;
+			if (diff !== 0) {
+				return diff * direction;
+			}
+			return a.slug.localeCompare(b.slug);
 		}
 
 		return a.slug.localeCompare(b.slug);

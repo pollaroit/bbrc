@@ -275,6 +275,8 @@ function listFiltersFromInput(input: {
 	maxBooks?: number;
 	minReads?: number;
 	maxReads?: number;
+	minReviews?: number;
+	maxReviews?: number;
 	minAverageRating?: number;
 	maxAverageRating?: number;
 }) {
@@ -285,6 +287,8 @@ function listFiltersFromInput(input: {
 		maxBooks: input.maxBooks,
 		minReads: input.minReads,
 		maxReads: input.maxReads,
+		minReviews: input.minReviews,
+		maxReviews: input.maxReviews,
 		minAverageRating: input.minAverageRating,
 		maxAverageRating: input.maxAverageRating,
 	};
@@ -303,27 +307,22 @@ export async function getAuthorList(
 	const sorted = sortAuthorCatalog(filtered, sortBy, sorting.sortDirection);
 
 	const total = sorted.length;
-	let startIndex = 0;
-
-	if (input.cursor) {
-		const cursorIndex = sorted.findIndex(
-			(entry) => entry.slug === input.cursor,
-		);
-		startIndex = cursorIndex >= 0 ? cursorIndex + 1 : 0;
-	}
+	const parsedOffset = input.cursor ? Number.parseInt(input.cursor, 10) : 0;
+	const startIndex =
+		Number.isFinite(parsedOffset) && parsedOffset > 0 ? parsedOffset : 0;
 
 	const window = sorted.slice(startIndex, startIndex + limit + 1);
 	const hasNextPage = window.length > limit;
 	const pageEntries = hasNextPage ? window.slice(0, limit) : window;
-	const lastEntry = pageEntries.at(-1);
+	const nextOffset = startIndex + pageEntries.length;
 
 	return {
 		items: pageEntries.map(toAuthorListItem),
 		metadata: {
 			limit,
 			hasNextPage,
-			hasPreviousPage: input.cursor != null,
-			nextCursor: hasNextPage && lastEntry != null ? lastEntry.slug : null,
+			hasPreviousPage: startIndex > 0,
+			nextCursor: hasNextPage ? String(nextOffset) : null,
 			...(input.cursor == null ? { total } : {}),
 		},
 	};
