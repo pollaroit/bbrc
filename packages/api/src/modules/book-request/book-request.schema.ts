@@ -9,6 +9,11 @@ export const CreateBookRequestInputSchema = z.object({
 			message: "Invalid Open Library work ID",
 		})
 		.transform((value) => value.toUpperCase()),
+	title: z
+		.string()
+		.trim()
+		.min(1, "Title is required")
+		.max(500, "Title must be at most 500 characters"),
 });
 
 export const CreateBookRequestOutputSchema = z.object({

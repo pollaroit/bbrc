@@ -1,6 +1,6 @@
 import { openLibraryWorkKeyToOlid } from "@bbrc/shared";
-
-const OPEN_LIBRARY_SEARCH = "https://openlibrary.org/search.json" as const;
+import { OPEN_LIBRARY_SEARCH_URL } from "./constants";
+import { openLibraryFetchSearch } from "./fetch";
 
 type SearchDoc = {
 	key?: string;
@@ -51,7 +51,7 @@ export async function searchOpenLibraryWorks(
 		return [];
 	}
 
-	const url = new URL(OPEN_LIBRARY_SEARCH);
+	const url = new URL(OPEN_LIBRARY_SEARCH_URL);
 	url.searchParams.set("q", trimmed);
 	url.searchParams.set("limit", String(limit));
 	url.searchParams.set(
@@ -59,10 +59,7 @@ export async function searchOpenLibraryWorks(
 		"key,title,author_name,cover_i,first_publish_year",
 	);
 
-	const response = await fetch(url, {
-		headers: { Accept: "application/json" },
-	});
-
+	const response = await openLibraryFetchSearch(url.toString());
 	if (!response.ok) {
 		return [];
 	}

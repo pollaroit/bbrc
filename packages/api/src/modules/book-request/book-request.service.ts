@@ -1,6 +1,6 @@
 import type { Database } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
-import { fetchOpenLibraryWorkTitle } from "../../lib/open-library-work-title";
+import { fetchOpenLibraryWorkTitlesByOlid } from "../../lib/open-library/work-titles";
 import { notifyBookRequested } from "../notification/notification-triggers";
 import { awardBookRequestXp } from "../xp/xp.service";
 import type {
@@ -53,8 +53,9 @@ export async function createBookRequest(
 			data: {
 				userId,
 				olid: input.olid,
+				title: input.title.trim(),
 			},
-			select: { id: true, olid: true },
+			select: { id: true, olid: true, title: true },
 		});
 
 		await awardBookRequestXp({ userId, bookRequestId: created.id }, tx);
@@ -62,7 +63,7 @@ export async function createBookRequest(
 		return created;
 	});
 
-	void notifyBookRequested(db, request.id, userId, request.olid);
+	void notifyBookRequested(db, request.id, userId, request.olid, request.title);
 
 	return { id: request.id };
 }
@@ -75,6 +76,19 @@ function requesterDisplayName(user: {
 	return name && name.length > 0 ? name : user.username;
 }
 
+function resolveRequestTitle(
+	storedTitle: string | null,
+	olid: string,
+	fetchedByOlid: Map<string, string | null>,
+): string {
+	const trimmed = storedTitle?.trim();
+	if (trimmed) {
+		return trimmed;
+	}
+
+	return fetchedByOlid.get(olid) ?? olid;
+}
+
 export async function listPendingBookRequests(
 	db: Database,
 ): Promise<ListPendingBookRequestsOutput> {
@@ -84,6 +98,7 @@ export async function listPendingBookRequests(
 		select: {
 			id: true,
 			olid: true,
+			title: true,
 			createdAt: true,
 			user: {
 				select: { username: true, name: true },
@@ -91,16 +106,21 @@ export async function listPendingBookRequests(
 		},
 	});
 
-	const titles = await Promise.all(
-		rows.map((row) => fetchOpenLibraryWorkTitle(row.olid)),
-	);
+	const missingOlids = [
+		...new Set(rows.filter((row) => !row.title?.trim()).map((row) => row.olid)),
+	];
+
+	const fetchedByOlid =
+		missingOlids.length > 0
+			? await fetchOpenLibraryWorkTitlesByOlid(missingOlids)
+			: new Map<string, string | null>();
 
 	return {
 		count: rows.length,
-		items: rows.map((row, index) => ({
+		items: rows.map((row) => ({
 			id: row.id,
 			olid: row.olid,
-			title: titles[index] ?? row.olid,
+			title: resolveRequestTitle(row.title, row.olid, fetchedByOlid),
 			createdAt: row.createdAt,
 			requester: {
 				username: row.user.username,
@@ -120,6 +140,7 @@ export async function listMyBookRequests(
 		select: {
 			id: true,
 			olid: true,
+			title: true,
 			status: true,
 			createdAt: true,
 			acceptanceNotes: true,
@@ -128,17 +149,20 @@ export async function listMyBookRequests(
 	});
 
 	const olids = [...new Set(rows.map((row) => row.olid))];
-	const [titles, books] = await Promise.all([
-		Promise.all(olids.map((olid) => fetchOpenLibraryWorkTitle(olid))),
+	const missingOlids = [
+		...new Set(rows.filter((row) => !row.title?.trim()).map((row) => row.olid)),
+	];
+
+	const [fetchedByOlid, books] = await Promise.all([
+		missingOlids.length > 0
+			? fetchOpenLibraryWorkTitlesByOlid(missingOlids)
+			: Promise.resolve(new Map<string, string | null>()),
 		db.book.findMany({
 			where: { olid: { in: olids } },
 			select: { olid: true, slug: true },
 		}),
 	]);
 
-	const titleByOlid = new Map(
-		olids.map((olid, index) => [olid, titles[index] ?? olid]),
-	);
 	const slugByOlid = new Map(books.map((book) => [book.olid, book.slug]));
 
 	return {
@@ -146,7 +170,7 @@ export async function listMyBookRequests(
 		items: rows.map((row) => ({
 			id: row.id,
 			olid: row.olid,
-			title: titleByOlid.get(row.olid) ?? row.olid,
+			title: resolveRequestTitle(row.title, row.olid, fetchedByOlid),
 			status: row.status,
 			createdAt: row.createdAt,
 			acceptanceNotes: row.acceptanceNotes,

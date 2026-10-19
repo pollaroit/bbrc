@@ -18,6 +18,10 @@ model BookRequest {
   /// @zod.refine((v) => isOpenLibraryOlid(v), { message: "Invalid Open Library work ID" })
   olid String
 
+  /// Title at request time (from Open Library search); avoids live OL calls when listing.
+  /// @zod.min(1, "Title is required").max(500)
+  title String? @map("title")
+
   status          BookRequestStatus @default(pending)
   /// @zod.max(200, "Rejection reason must be at most 200 characters long")
   rejectionReason String?
