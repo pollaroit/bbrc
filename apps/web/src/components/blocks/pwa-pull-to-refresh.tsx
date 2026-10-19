@@ -11,7 +11,9 @@ import {
 	useState,
 } from "react";
 
+import { isOverlayOpen } from "@/lib/pwa/is-overlay-open";
 import { isStandalonePwa } from "@/lib/pwa/is-standalone";
+import { isTouchChainAtScrollTop } from "@/lib/pwa/scroll-at-top";
 
 const PULL_START = 12;
 const PULL_THRESHOLD = 72;
@@ -27,11 +29,18 @@ export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 
 	const [enabled, setEnabled] = useState(false);
 	const [phase, setPhase] = useState<PullPhase>("idle");
+	const phaseRef = useRef<PullPhase>("idle");
 	const [pullDistance, setPullDistance] = useState(0);
 	const pullDistanceRef = useRef(0);
 	const touchStartY = useRef<number | null>(null);
+	const touchTargetRef = useRef<EventTarget | null>(null);
 	const pulling = useRef(false);
 	const reducedMotion = useRef(false);
+
+	const setPhaseSafe = useCallback((next: PullPhase) => {
+		phaseRef.current = next;
+		setPhase(next);
+	}, []);
 
 	useEffect(() => {
 		setEnabled(isStandalonePwa());
@@ -42,25 +51,26 @@ export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 
 	const resetPull = useCallback(() => {
 		touchStartY.current = null;
+		touchTargetRef.current = null;
 		pulling.current = false;
 		pullDistanceRef.current = 0;
 		setPullDistance(0);
-		if (phase !== "refreshing") {
-			setPhase("idle");
+		if (phaseRef.current !== "refreshing") {
+			setPhaseSafe("idle");
 		}
-	}, [phase]);
+	}, [setPhaseSafe]);
 
 	const runRefresh = useCallback(() => {
-		setPhase("refreshing");
+		setPhaseSafe("refreshing");
 		pullDistanceRef.current = PULL_THRESHOLD;
 		setPullDistance(PULL_THRESHOLD);
 		router.refresh();
 		window.setTimeout(() => {
-			setPhase("idle");
+			setPhaseSafe("idle");
 			pullDistanceRef.current = 0;
 			setPullDistance(0);
 		}, 600);
-	}, [router]);
+	}, [router, setPhaseSafe]);
 
 	useEffect(() => {
 		if (!enabled) {
@@ -71,10 +81,13 @@ export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 			if (pathnameRef.current.startsWith("/reels")) {
 				return;
 			}
-			if (phase === "refreshing") {
+			if (isOverlayOpen()) {
 				return;
 			}
-			if (window.scrollY > 0) {
+			if (phaseRef.current === "refreshing") {
+				return;
+			}
+			if (!isTouchChainAtScrollTop(event.target)) {
 				return;
 			}
 			const touch = event.touches[0];
@@ -82,6 +95,7 @@ export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 				return;
 			}
 			touchStartY.current = touch.clientY;
+			touchTargetRef.current = event.target;
 			pulling.current = true;
 		};
 
@@ -89,10 +103,14 @@ export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 			if (pathnameRef.current.startsWith("/reels")) {
 				return;
 			}
+			if (isOverlayOpen()) {
+				resetPull();
+				return;
+			}
 			if (!pulling.current || touchStartY.current === null) {
 				return;
 			}
-			if (window.scrollY > 0) {
+			if (!isTouchChainAtScrollTop(touchTargetRef.current)) {
 				resetPull();
 				return;
 			}
@@ -104,14 +122,14 @@ export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 			if (delta <= PULL_START) {
 				pullDistanceRef.current = 0;
 				setPullDistance(0);
-				setPhase("idle");
+				setPhaseSafe("idle");
 				return;
 			}
 			event.preventDefault();
 			const distance = Math.min(delta, PULL_MAX);
 			pullDistanceRef.current = distance;
 			setPullDistance(distance);
-			setPhase("pulling");
+			setPhaseSafe("pulling");
 		};
 
 		const onTouchEnd = () => {
@@ -136,7 +154,7 @@ export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 			window.removeEventListener("touchend", onTouchEnd);
 			window.removeEventListener("touchcancel", resetPull);
 		};
-	}, [enabled, phase, resetPull, runRefresh]);
+	}, [enabled, resetPull, runRefresh, setPhaseSafe]);
 
 	useEffect(() => {
 		if (pathname.startsWith("/reels")) {
@@ -163,6 +181,7 @@ export function PwaPullToRefresh({ children }: { children: ReactNode }) {
 					"pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center pt-[max(0.5rem,env(safe-area-inset-top))] transition-opacity duration-150",
 					showIndicator ? "opacity-100" : "opacity-0",
 				)}
+				style={{ top: "var(--pwa-vv-top, 0px)" }}
 				aria-hidden={!showIndicator}
 			>
 				<div className="flex size-10 items-center justify-center border border-border bg-background shadow-sm">

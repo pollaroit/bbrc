@@ -1,1 +1,10 @@
 @import "@bbrc/ui/globals.css";
+
+/* Installed PWA: reduce rubber-band fighting fixed tab bar + pull-to-refresh. */
+html.standalone-pwa {
+	overscroll-behavior-y: none;
+}
+
+html.standalone-pwa body {
+	overscroll-behavior-y: none;
+}
