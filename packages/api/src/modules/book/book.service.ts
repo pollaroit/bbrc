@@ -2,7 +2,11 @@ import type { Database, Prisma } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { notifyBookAddedToLibrary } from "../notification/notification-triggers";
-import { mapBookSeriesSummary } from "../series/series.service";
+import {
+	appendBookToEndOfSeriesByBookId,
+	createSeriesRecord,
+	mapBookSeriesSummary,
+} from "../series/series.service";
 import { bookListSorting } from "./book.listing";
 import {
 	type GetBookListAuthorFacetsInput,
@@ -277,7 +281,13 @@ export async function addBook(
 	db: Database,
 	adminUserId: string,
 ) {
-	const { acceptanceNotes, readAfterBookSlugs, ...bookInput } = input;
+	const {
+		acceptanceNotes,
+		readAfterBookSlugs,
+		seriesSlug,
+		newSeries,
+		...bookInput
+	} = input;
 	const trimmedAcceptanceNotes = acceptanceNotes?.trim() || null;
 
 	const book = await db.$transaction(async (tx) => {
@@ -331,7 +341,22 @@ export async function addBook(
 			},
 		});
 
-		return book;
+		let attachedSeriesSlug: string | undefined;
+
+		if (newSeries) {
+			const created = await createSeriesRecord(newSeries, tx);
+			await appendBookToEndOfSeriesByBookId(book.id, created.slug, tx);
+			attachedSeriesSlug = created.slug;
+		} else if (seriesSlug) {
+			const attached = await appendBookToEndOfSeriesByBookId(
+				book.id,
+				seriesSlug,
+				tx,
+			);
+			attachedSeriesSlug = attached.slug;
+		}
+
+		return { ...book, seriesSlug: attachedSeriesSlug };
 	});
 
 	void notifyBookAddedToLibrary(db, book.slug);

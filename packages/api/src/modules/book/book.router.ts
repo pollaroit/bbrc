@@ -1,6 +1,10 @@
 import { BookSchema } from "@bbrc/schemas";
 import { adminProcedure, publicProcedure } from "../../procedures";
-import { revalidateBookIsr, revalidateFeedsIsr } from "../../revalidate-isr";
+import {
+	revalidateBookIsr,
+	revalidateFeedsIsr,
+	revalidateSeriesIsr,
+} from "../../revalidate-isr";
 import {
 	AddBookInputSchema,
 	AddBookOutputSchema,
@@ -122,6 +126,9 @@ export const bookRouter = {
 			const book = await addBook(input, context.db, context.session.user.id);
 			revalidateBookIsr(context, book.slug);
 			revalidateFeedsIsr(context);
+			if (book.seriesSlug) {
+				revalidateSeriesIsr(context, book.seriesSlug);
+			}
 			return book;
 		}),
 	updateBook: adminProcedure

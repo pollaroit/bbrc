@@ -7,7 +7,10 @@ import {
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import { bookCountriesSchema, isAuthorSlug } from "@bbrc/shared";
 import { z } from "zod";
-import { BookSeriesSummarySchema } from "../series/series.schema";
+import {
+	BookSeriesSummarySchema,
+	CreateSeriesInputSchema,
+} from "../series/series.schema";
 import {
 	bookListFiltersSchema,
 	bookListRanging,
@@ -228,18 +231,32 @@ export const AddBookInputSchema = BookSchema.pick({
 	subjectPeople: true,
 	subjectTimes: true,
 	subjects: true,
-}).extend({
-	acceptanceNotes: z
-		.string()
-		.trim()
-		.max(200, "Acceptance notes must be at most 200 characters long")
-		.optional(),
-	readAfterBookSlugs: z.array(BookSchema.shape.slug).max(20).optional(),
-	countries: bookCountriesSchema.optional(),
-});
+})
+	.extend({
+		acceptanceNotes: z
+			.string()
+			.trim()
+			.max(200, "Acceptance notes must be at most 200 characters long")
+			.optional(),
+		readAfterBookSlugs: z.array(BookSchema.shape.slug).max(20).optional(),
+		countries: bookCountriesSchema.optional(),
+		seriesSlug: BookSchema.shape.slug.optional(),
+		newSeries: CreateSeriesInputSchema.optional(),
+	})
+	.superRefine((value, ctx) => {
+		if (value.seriesSlug && value.newSeries) {
+			ctx.addIssue({
+				code: "custom",
+				message: "Choose either an existing series or a new series, not both.",
+				path: ["seriesSlug"],
+			});
+		}
+	});
 
 export const AddBookOutputSchema = BookSchema.pick({
 	slug: true,
+}).extend({
+	seriesSlug: z.string().optional(),
 });
 
 export type TAddBookInputSchema = z.infer<typeof AddBookInputSchema>;

@@ -261,7 +261,10 @@ export async function getSeriesBySlug(
 	};
 }
 
-export async function createSeries(input: CreateSeriesInput, db: Database) {
+export async function createSeriesRecord(
+	input: CreateSeriesInput,
+	db: Database | DatabaseTransaction,
+) {
 	const title = input.title.trim();
 	const description = input.description?.trim() || null;
 
@@ -291,6 +294,52 @@ export async function createSeries(input: CreateSeriesInput, db: Database) {
 	});
 
 	return { slug };
+}
+
+export async function createSeries(input: CreateSeriesInput, db: Database) {
+	return createSeriesRecord(input, db);
+}
+
+export async function appendBookToEndOfSeriesByBookId(
+	bookId: string,
+	seriesSlug: string,
+	db: Database | DatabaseTransaction,
+) {
+	const series = await loadSeriesBySlugOrThrow(seriesSlug, db);
+
+	await assertBookNotInAnotherSeries(bookId, series.id, db);
+
+	const existing = await db.seriesBook.findUnique({
+		where: { bookId },
+		select: { id: true, position: true, seriesId: true },
+	});
+
+	if (existing?.seriesId === series.id) {
+		return { slug: series.slug, position: existing.position };
+	}
+
+	const maxRow = await db.seriesBook.findFirst({
+		where: { seriesId: series.id },
+		orderBy: { position: "desc" },
+		select: { position: true },
+	});
+
+	const position = (maxRow?.position ?? 0) + 1;
+
+	await db.seriesBook.create({
+		data: {
+			seriesId: series.id,
+			bookId,
+			position,
+		},
+	});
+
+	await db.series.update({
+		where: { id: series.id },
+		data: { updatedAt: new Date() },
+	});
+
+	return { slug: series.slug, position };
 }
 
 export async function updateSeries(input: UpdateSeriesInput, db: Database) {
@@ -349,43 +398,15 @@ export async function addBookToSeries(
 	input: AddBookToSeriesInput,
 	db: Database,
 ) {
-	const series = await loadSeriesBySlugOrThrow(input.seriesSlug, db);
 	const book = await loadBookBySlugOrThrow(input.bookSlug, db);
 
 	return db.$transaction(async (tx) => {
-		await assertBookNotInAnotherSeries(book.id, series.id, tx);
-
-		const existing = await tx.seriesBook.findUnique({
-			where: { bookId: book.id },
-			select: { id: true, position: true, seriesId: true },
-		});
-
-		if (existing?.seriesId === series.id) {
-			return { added: true as const, position: existing.position };
-		}
-
-		const maxRow = await tx.seriesBook.findFirst({
-			where: { seriesId: series.id },
-			orderBy: { position: "desc" },
-			select: { position: true },
-		});
-
-		const position = (maxRow?.position ?? 0) + 1;
-
-		await tx.seriesBook.create({
-			data: {
-				seriesId: series.id,
-				bookId: book.id,
-				position,
-			},
-		});
-
-		await tx.series.update({
-			where: { id: series.id },
-			data: { updatedAt: new Date() },
-		});
-
-		return { added: true as const, position };
+		const result = await appendBookToEndOfSeriesByBookId(
+			book.id,
+			input.seriesSlug,
+			tx,
+		);
+		return { added: true as const, position: result.position };
 	});
 }
 

@@ -24,6 +24,10 @@ import { parseAsBoolean, parseAsString, useQueryState } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useController } from "react-hook-form";
 import { toast } from "sonner";
+import {
+	AddBookSeriesField,
+	type AddBookSeriesSelection,
+} from "@/components/blocks/add-book-series-field";
 import { BookOriginCountriesField } from "@/components/blocks/book-origin-countries-field";
 import {
 	BookReadAfterPicker,
@@ -85,6 +89,7 @@ function coverUrl(coverId: number | null) {
 
 type AddBookAddedResult = {
 	slug: string;
+	seriesSlug?: string;
 };
 
 type AfterAddBookOptions = {
@@ -126,6 +131,8 @@ function AddBookDetailsForm({
 	const [readAfterBooks, setReadAfterBooks] = useState<
 		ReadAfterBookSelection[]
 	>([]);
+	const [seriesSelection, setSeriesSelection] =
+		useState<AddBookSeriesSelection | null>(null);
 	const [countriesTouched, setCountriesTouched] = useState(false);
 	const countriesTouchedRef = useRef(false);
 
@@ -316,6 +323,16 @@ function AddBookDetailsForm({
 				void queryClient.invalidateQueries({
 					queryKey: orpc.book.listCatalogOlids.key(),
 				});
+				if (result.seriesSlug) {
+					void queryClient.invalidateQueries({
+						queryKey: orpc.series.getList.key(),
+					});
+					void queryClient.invalidateQueries({
+						queryKey: orpc.series.getBySlug.key({
+							input: { slug: result.seriesSlug },
+						}),
+					});
+				}
 				toast.success("Book added to the library.");
 				void onAfterAdd(result, {
 					addMore: addMoreRef.current,
@@ -357,7 +374,14 @@ function AddBookDetailsForm({
 					? { ...parsed, acceptanceNotes: trimmedNotes }
 					: parsed;
 
-			const apiCheck = AddBookInputSchema.safeParse(withNotes);
+			const withSeries =
+				seriesSelection?.kind === "existing"
+					? { ...withNotes, seriesSlug: seriesSelection.slug }
+					: seriesSelection?.kind === "new"
+						? { ...withNotes, newSeries: seriesSelection.draft }
+						: withNotes;
+
+			const apiCheck = AddBookInputSchema.safeParse(withSeries);
 			if (!apiCheck.success) {
 				toast.error(apiCheck.error.issues[0]?.message ?? "Invalid form data");
 				return;
@@ -555,6 +579,11 @@ function AddBookDetailsForm({
 				<BookReadAfterPicker
 					selected={readAfterBooks}
 					onChange={onReadAfterChange}
+				/>
+
+				<AddBookSeriesField
+					selection={seriesSelection}
+					onChange={setSeriesSelection}
 				/>
 			</FieldSet>
 
