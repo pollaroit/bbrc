@@ -7,7 +7,9 @@ import {
 	DropdownMenuTrigger,
 } from "@bbrc/ui/components/dropdown-menu";
 import { Plus } from "lucide-react";
+import { useState } from "react";
 import { CreateMenuItems } from "@/components/blocks/create-menu-items";
+import { CreateMenuSheet } from "@/components/blocks/create-menu-sheet";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +21,7 @@ type CreateMenuProps = {
 export function CreateMenu({ variant = "header", className }: CreateMenuProps) {
 	const { data: session, isPending: isSessionPending } =
 		authClient.useSession();
+	const [sheetOpen, setSheetOpen] = useState(false);
 
 	if (isSessionPending || !session?.user) {
 		return null;
@@ -26,32 +29,21 @@ export function CreateMenu({ variant = "header", className }: CreateMenuProps) {
 
 	if (variant === "fab") {
 		return (
-			<DropdownMenu>
-				<DropdownMenuTrigger
-					render={
-						<Button
-							type="button"
-							size="icon"
-							aria-label="Create"
-							className={cn(
-								"size-14 border-2 border-background bg-primary text-primary-foreground shadow-none ring-1 ring-border",
-								"-translate-y-3",
-								className,
-							)}
-						/>
-					}
+			<>
+				<button
+					type="button"
+					aria-label="Create"
+					onClick={() => setSheetOpen(true)}
+					className={cn(
+						"flex size-14 items-center justify-center border-2 border-background bg-primary text-primary-foreground shadow-none ring-1 ring-border",
+						"-translate-y-3",
+						className,
+					)}
 				>
 					<Plus className="size-7 stroke-[2.25]" aria-hidden="true" />
-				</DropdownMenuTrigger>
-				<DropdownMenuContent
-					side="top"
-					align="center"
-					sideOffset={12}
-					className="min-w-48"
-				>
-					<CreateMenuItems />
-				</DropdownMenuContent>
-			</DropdownMenu>
+				</button>
+				<CreateMenuSheet open={sheetOpen} onOpenChange={setSheetOpen} />
+			</>
 		);
 	}
 
