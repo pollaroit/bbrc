@@ -38,9 +38,18 @@ type PendingRequestItem = {
 	id: string;
 	olid: string;
 	title: string;
+	authors: string[];
 	createdAt: Date;
 	requester: { username: string; name: string | null };
 };
+
+function formatRequestAuthors(authors: string[]): string {
+	if (authors.length === 0) {
+		return "Unknown author";
+	}
+
+	return authors.join(", ");
+}
 
 function AdminBookRequestRow({
 	item,
@@ -82,6 +91,9 @@ function AdminBookRequestRow({
 		<li className="flex flex-col gap-3 border border-border bg-muted/10 p-4">
 			<div className="space-y-0.5">
 				<OpenLibraryWorkTitleLink olid={item.olid} title={item.title} />
+				<p className="text-muted-foreground text-sm">
+					{formatRequestAuthors(item.authors)}
+				</p>
 				<p className="text-muted-foreground text-xs">
 					Requested by{" "}
 					<Link

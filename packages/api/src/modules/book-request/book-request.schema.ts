@@ -14,6 +14,10 @@ export const CreateBookRequestInputSchema = z.object({
 		.trim()
 		.min(1, "Title is required")
 		.max(500, "Title must be at most 500 characters"),
+	authors: z
+		.array(z.string().trim().min(1))
+		.max(20, "At most 20 authors")
+		.default([]),
 });
 
 export const CreateBookRequestOutputSchema = z.object({
@@ -31,6 +35,7 @@ const PendingBookRequestItemSchema = z.object({
 	id: z.string().uuid(),
 	olid: z.string(),
 	title: z.string(),
+	authors: z.array(z.string()),
 	createdAt: z.coerce.date(),
 	requester: z.object({
 		username: z.string(),
@@ -57,6 +62,7 @@ export const MyBookRequestItemSchema = z.object({
 	id: z.string().uuid(),
 	olid: z.string(),
 	title: z.string(),
+	authors: z.array(z.string()),
 	status: BookRequestStatusSchema,
 	createdAt: z.coerce.date(),
 	acceptanceNotes: z.string().nullable(),

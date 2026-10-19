@@ -54,6 +54,7 @@ export async function createBookRequest(
 				userId,
 				olid: input.olid,
 				title: input.title.trim(),
+				authors: input.authors,
 			},
 			select: { id: true, olid: true, title: true },
 		});
@@ -99,6 +100,7 @@ export async function listPendingBookRequests(
 			id: true,
 			olid: true,
 			title: true,
+			authors: true,
 			createdAt: true,
 			user: {
 				select: { username: true, name: true },
@@ -121,6 +123,7 @@ export async function listPendingBookRequests(
 			id: row.id,
 			olid: row.olid,
 			title: resolveRequestTitle(row.title, row.olid, fetchedByOlid),
+			authors: row.authors,
 			createdAt: row.createdAt,
 			requester: {
 				username: row.user.username,
@@ -141,6 +144,7 @@ export async function listMyBookRequests(
 			id: true,
 			olid: true,
 			title: true,
+			authors: true,
 			status: true,
 			createdAt: true,
 			acceptanceNotes: true,
@@ -171,6 +175,7 @@ export async function listMyBookRequests(
 			id: row.id,
 			olid: row.olid,
 			title: resolveRequestTitle(row.title, row.olid, fetchedByOlid),
+			authors: row.authors,
 			status: row.status,
 			createdAt: row.createdAt,
 			acceptanceNotes: row.acceptanceNotes,

@@ -83,24 +83,43 @@ function coverUrl(coverId: number | null) {
 	return `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`;
 }
 
+type AddBookAddedResult = {
+	slug: string;
+};
+
+type AfterAddBookOptions = {
+	addMore: boolean;
+	requestNext: boolean;
+	olid: string;
+	hadPendingRequest: boolean;
+};
+
 type AddBookDetailsFormProps = {
 	work: OpenLibrarySearchWork;
 	onCancel: () => void;
-	onAddAnother: () => void;
 	addMore: boolean;
 	onAddMoreChange: (checked: boolean) => void;
+	requestNext: boolean;
+	onRequestNextChange: (checked: boolean) => void;
+	onAfterAdd: (
+		result: AddBookAddedResult,
+		options: AfterAddBookOptions,
+	) => void | Promise<void>;
 };
 
 function AddBookDetailsForm({
 	work,
 	onCancel,
-	onAddAnother,
 	addMore,
 	onAddMoreChange,
+	requestNext,
+	onRequestNextChange,
+	onAfterAdd,
 }: AddBookDetailsFormProps) {
-	const router = useRouter();
 	const addMoreRef = useRef(addMore);
 	addMoreRef.current = addMore;
+	const requestNextRef = useRef(requestNext);
+	requestNextRef.current = requestNext;
 	const initialValues = useMemo(() => workToFormValues(work), [work]);
 	const workOlid = useMemo(() => requireWorkOlid(work), [work]);
 	const [acceptanceNotes, setAcceptanceNotes] = useState("");
@@ -298,11 +317,12 @@ function AddBookDetailsForm({
 					queryKey: orpc.book.listCatalogOlids.key(),
 				});
 				toast.success("Book added to the library.");
-				if (addMoreRef.current) {
-					onAddAnother();
-					return;
-				}
-				router.push(`/books/${result.slug}` as Route);
+				void onAfterAdd(result, {
+					addMore: addMoreRef.current,
+					requestNext: requestNextRef.current,
+					olid: workOlid,
+					hadPendingRequest: hasPendingMemberRequest,
+				});
 			},
 			onError: (error) => {
 				toast.error(error.message ?? "Could not add this book.");
@@ -562,14 +582,28 @@ function AddBookDetailsForm({
 			) : null}
 
 			<div className="flex flex-col gap-4">
-				{/** biome-ignore lint/a11y/noLabelWithoutControl: checkbox is the control */}
-				<label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
-					<Checkbox
-						checked={addMore}
-						onCheckedChange={(checked) => onAddMoreChange(checked === true)}
-					/>
-					Add more
-				</label>
+				<div className="flex flex-col gap-2">
+					{/** biome-ignore lint/a11y/noLabelWithoutControl: checkbox is the control */}
+					<label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
+						<Checkbox
+							checked={addMore}
+							onCheckedChange={(checked) => onAddMoreChange(checked === true)}
+						/>
+						Add more
+					</label>
+					{hasPendingMemberRequest ? (
+						// biome-ignore lint/a11y/noLabelWithoutControl: checkbox is the control
+						<label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
+							<Checkbox
+								checked={requestNext}
+								onCheckedChange={(checked) =>
+									onRequestNextChange(checked === true)
+								}
+							/>
+							Request next
+						</label>
+					) : null}
+				</div>
 				<div className="flex flex-wrap gap-2">
 					<form.Submit
 						className={cn("min-w-32")}
@@ -588,12 +622,14 @@ function AddBookDetailsForm({
 }
 
 export function AddNewBookForm() {
+	const router = useRouter();
 	const searchInputRef = useRef<HTMLInputElement>(null);
 	const [addMore, setAddMore] = useQueryState(
 		"add_more",
 		parseAsBoolean.withDefault(false),
 	);
 	const [prefillOlid, setPrefillOlid] = useQueryState("olid", parseAsString);
+	const [requestNext, setRequestNext] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const debouncedQuery = useDebouncedValue(searchQuery, 500);
 	const [selectedWork, setSelectedWork] =
@@ -606,6 +642,21 @@ export function AddNewBookForm() {
 		...orpc.book.listCatalogOlids.queryOptions(),
 		staleTime: 60_000,
 	});
+
+	const { data: pendingRequests } = useQuery({
+		...orpc.bookRequest.listPending.queryOptions(),
+		staleTime: 30_000,
+	});
+
+	const pendingRequestByOlid = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const item of pendingRequests?.items ?? []) {
+			const requesterName =
+				item.requester.name?.trim() || item.requester.username;
+			map.set(item.olid.toUpperCase(), requesterName);
+		}
+		return map;
+	}, [pendingRequests?.items]);
 
 	const inCatalogOlids = useMemo(() => {
 		const set = new Set<string>();
@@ -689,6 +740,7 @@ export function AddNewBookForm() {
 	const handleAddAnother = () => {
 		setSelectedWork(null);
 		setSearchQuery("");
+		void setPrefillOlid(null);
 		requestAnimationFrame(() => {
 			searchInputRef.current?.focus();
 		});
@@ -696,6 +748,38 @@ export function AddNewBookForm() {
 
 	const handleAddMoreChange = (checked: boolean) => {
 		void setAddMore(checked ? true : null);
+	};
+
+	const handleAfterAdd = async (
+		result: AddBookAddedResult,
+		options: AfterAddBookOptions,
+	) => {
+		if (options.requestNext && options.hadPendingRequest) {
+			await queryClient.invalidateQueries({
+				queryKey: orpc.bookRequest.listPending.key(),
+			});
+			const pending = await queryClient.fetchQuery(
+				orpc.bookRequest.listPending.queryOptions(),
+			);
+			const next = pending.items.find((item) => item.olid !== options.olid);
+			if (next) {
+				setSelectedWork(null);
+				setSearchQuery("");
+				await setPrefillOlid(next.olid);
+				return;
+			}
+
+			toast.message("No more pending requests.");
+			handleAddAnother();
+			return;
+		}
+
+		if (options.addMore) {
+			handleAddAnother();
+			return;
+		}
+
+		router.push(`/books/${result.slug}` as Route);
 	};
 
 	return (
@@ -734,6 +818,7 @@ export function AddNewBookForm() {
 							selectedWorkKey={null}
 							onSelect={handleSelectWork}
 							inCatalogOlids={inCatalogOlids}
+							pendingRequestByOlid={pendingRequestByOlid}
 							isLoading={searchEnabled && isSearching}
 						/>
 					)
@@ -764,9 +849,11 @@ export function AddNewBookForm() {
 						key={selectedWork.workKey}
 						work={selectedWork}
 						onCancel={handleChangeWork}
-						onAddAnother={handleAddAnother}
 						addMore={addMore}
 						onAddMoreChange={handleAddMoreChange}
+						requestNext={requestNext}
+						onRequestNextChange={setRequestNext}
+						onAfterAdd={handleAfterAdd}
 					/>
 				</>
 			) : null}

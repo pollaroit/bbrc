@@ -108,6 +108,7 @@ export function RequestBookForm({ canRequest }: RequestBookFormProps) {
 			createRequest.mutate({
 				olid: requireWorkOlid(selectedWork),
 				title: selectedWork.title.trim(),
+				authors: selectedWork.authors,
 			});
 		} catch (error) {
 			const message =

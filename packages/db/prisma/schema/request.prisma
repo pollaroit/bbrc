@@ -22,6 +22,9 @@ model BookRequest {
   /// @zod.min(1, "Title is required").max(500)
   title String? @map("title")
 
+  /// Author names from Open Library search at request time.
+  authors String[] @default([]) @map("authors")
+
   status          BookRequestStatus @default(pending)
   /// @zod.max(200, "Rejection reason must be at most 200 characters long")
   rejectionReason String?
