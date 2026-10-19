@@ -524,6 +524,12 @@ export type GetSittingBySlugOutput = z.infer<
 	typeof GetSittingBySlugOutputSchema
 >;
 
+export const OngoingSittingParticipantPreviewSchema = zod.object({
+	username: UserSchema.shape.username,
+	name: UserSchema.shape.name,
+	image: UserSchema.shape.image,
+});
+
 /** ONGOING — at most one sitting in voting or reading */
 export const GetOngoingSittingOutputSchema = SittingSchema.pick({
 	slug: true,
@@ -536,6 +542,8 @@ export const GetOngoingSittingOutputSchema = SittingSchema.pick({
 		displayName: zod.string().min(1),
 		pollDeadline: PollStoredDeadlineSchema.nullable(),
 		selectedBookTitle: zod.string().nullable(),
+		selectedBookAuthors: zod.array(zod.string()),
+		participantPreview: zod.array(OngoingSittingParticipantPreviewSchema),
 		viewerIsParticipant: zod.boolean(),
 	})
 	.nullable();

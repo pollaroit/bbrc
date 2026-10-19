@@ -5,6 +5,7 @@ import { Users } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
+import { formatBookAuthors } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
@@ -50,6 +51,11 @@ export function ActiveSittingTopChip({ className }: { className?: string }) {
 		ongoing.selectedBookTitle?.trim() ||
 		ongoing.displayName ||
 		"Sitting in progress";
+
+	const authorsLine =
+		ongoing.selectedBookAuthors.length > 0
+			? formatBookAuthors(ongoing.selectedBookAuthors)
+			: null;
 
 	return (
 		<Link

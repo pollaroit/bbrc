@@ -722,7 +722,7 @@ export async function getOngoingSitting(
 			deadline: true,
 			createdAt: true,
 			selectedBook: {
-				select: { title: true },
+				select: { title: true, authors: true },
 			},
 			poll: {
 				select: { deadline: true },
@@ -734,10 +734,26 @@ export async function getOngoingSitting(
 		return null;
 	}
 
-	const participantCount = await countActiveParticipantsForSitting(
-		db,
-		sitting.id,
-	);
+	const [participantCount, participantRows] = await Promise.all([
+		countActiveParticipantsForSitting(db, sitting.id),
+		db.participation.findMany({
+			where: {
+				sittingId: sitting.id,
+				...activeParticipationWhere,
+			},
+			orderBy: { createdAt: "asc" },
+			take: 5,
+			select: {
+				user: {
+					select: {
+						username: true,
+						name: true,
+						image: true,
+					},
+				},
+			},
+		}),
+	]);
 
 	let viewerIsParticipant = false;
 	if (viewerUserId) {
@@ -753,6 +769,7 @@ export async function getOngoingSitting(
 	}
 
 	const selectedBookTitle = sitting.selectedBook?.title ?? null;
+	const selectedBookAuthors = sitting.selectedBook?.authors ?? [];
 
 	return {
 		slug: sitting.slug,
@@ -767,6 +784,8 @@ export async function getOngoingSitting(
 		),
 		pollDeadline: sitting.poll?.deadline ?? null,
 		selectedBookTitle,
+		selectedBookAuthors,
+		participantPreview: participantRows.map((row) => row.user),
 		viewerIsParticipant,
 	};
 }
