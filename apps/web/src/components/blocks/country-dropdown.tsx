@@ -18,9 +18,30 @@ type CountryDropdownProps = {
 };
 
 function CountryFlag({ alpha2 }: { alpha2: string }) {
+	return <CountryFlagIcon alpha2={alpha2} size="md" />;
+}
+
+export function CountryFlagIcon({
+	alpha2,
+	size = "md",
+	className,
+}: {
+	alpha2: string;
+	size?: "sm" | "md";
+	className?: string;
+}) {
+	const dimension = size === "sm" ? 14 : 20;
+
 	return (
-		<span className="inline-flex size-5 shrink-0 overflow-hidden ring-1 ring-border">
-			<CircleFlag countryCode={alpha2.toLowerCase()} height={20} />
+		<span
+			className={cn(
+				"inline-flex shrink-0 overflow-hidden ring-1 ring-border",
+				size === "sm" ? "size-3.5" : "size-5",
+				className,
+			)}
+			aria-hidden
+		>
+			<CircleFlag countryCode={alpha2.toLowerCase()} height={dimension} />
 		</span>
 	);
 }

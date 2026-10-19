@@ -23,19 +23,24 @@ export const authorSortByLabels = {
 	name: "Name",
 	bookCount: "Book count",
 	readerCount: "Reader count",
+	reviewCount: "Review count",
 	averageRating: "Average rating",
 } as const satisfies FieldLabels<(typeof authorSortableFields)[number]>;
 
 export const authorsListingSearchParams = {
 	search: searchParser.withOptions({ shallow: false, throttleMs: 400 }),
-	sortBy: createSortByParser(authorSortableFields).withOptions({
-		shallow: false,
-	}),
-	sortDirection: sortDirectionParser.withOptions({ shallow: false }),
+	sortBy: createSortByParser(authorSortableFields)
+		.withDefault("bookCount")
+		.withOptions({ shallow: false }),
+	sortDirection: sortDirectionParser
+		.withDefault("desc")
+		.withOptions({ shallow: false }),
 	minBooks: parseAsInteger.withOptions({ shallow: false }),
 	maxBooks: parseAsInteger.withOptions({ shallow: false }),
 	minReads: parseAsInteger.withOptions({ shallow: false }),
 	maxReads: parseAsInteger.withOptions({ shallow: false }),
+	minReviews: parseAsInteger.withOptions({ shallow: false }),
+	maxReviews: parseAsInteger.withOptions({ shallow: false }),
 	minAverageRating: parseAsFloat.withOptions({ shallow: false }),
 	maxAverageRating: parseAsFloat.withOptions({ shallow: false }),
 	countries: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
@@ -69,12 +74,14 @@ export function toAuthorListCallInput(
 ): Partial<GetAuthorListInput> {
 	return buildListCallInput({
 		search: params.search,
-		sortBy: params.sortBy,
-		sortDirection: params.sortDirection,
+		sortBy: params.sortBy ?? "bookCount",
+		sortDirection: params.sortDirection ?? "desc",
 		minBooks: params.minBooks,
 		maxBooks: params.maxBooks,
 		minReads: params.minReads,
 		maxReads: params.maxReads,
+		minReviews: params.minReviews,
+		maxReviews: params.maxReviews,
 		minAverageRating: params.minAverageRating,
 		maxAverageRating: params.maxAverageRating,
 		countries: normalizeCountryCodes(params.countries),
@@ -115,6 +122,10 @@ export function countAuthorSheetFilters(
 		count += 1;
 	}
 
+	if (params.minReviews != null || params.maxReviews != null) {
+		count += 1;
+	}
+
 	if (params.minAverageRating != null || params.maxAverageRating != null) {
 		count += 1;
 	}
@@ -134,6 +145,8 @@ export function clearAuthorSheetFilters(
 		maxBooks: null,
 		minReads: null,
 		maxReads: null,
+		minReviews: null,
+		maxReviews: null,
 		minAverageRating: null,
 		maxAverageRating: null,
 		countries: null,

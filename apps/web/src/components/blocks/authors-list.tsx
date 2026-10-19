@@ -1,8 +1,10 @@
 "use client";
 
+import type { AuthorListItem } from "@bbrc/api/modules/author/author.schema";
 import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { AuthorCard } from "@/components/blocks/author-card";
 import {
 	toAuthorListCallInput,
@@ -47,7 +49,22 @@ export function AuthorsList() {
 		}),
 	);
 
-	const authors = data?.pages.flatMap((page) => page.items) ?? [];
+	const authors = useMemo(() => {
+		const seen = new Set<string>();
+		const merged: AuthorListItem[] = [];
+
+		for (const page of data?.pages ?? []) {
+			for (const author of page.items) {
+				if (seen.has(author.slug)) {
+					continue;
+				}
+				seen.add(author.slug);
+				merged.push(author);
+			}
+		}
+
+		return merged;
+	}, [data?.pages]);
 	const filteredTotal = data?.pages[0]?.metadata.total;
 
 	const countLabel =

@@ -85,7 +85,7 @@ export function AuthorsListingToolbar() {
 			/>
 			<ListingFiltersSheet
 				title="Author filters"
-				description="Filter by country, catalog size, member reads, or club rating."
+				description="Filter by country, catalog size, member reads, club reviews, or rating."
 				activeFilterCount={sheetFilterCount}
 				onClear={() => clearAuthorSheetFilters(setParams)}
 				appearance="library"
@@ -137,6 +137,22 @@ export function AuthorsListingToolbar() {
 								}}
 								onMaxChange={(maxReads) => {
 									void setParams({ maxReads });
+								}}
+							/>
+						</ListingFilterPanel>
+						<ListingFilterPanel title="Club reviews">
+							<ListingIntegerRangeFields
+								minId="author-filter-min-reviews"
+								maxId="author-filter-max-reviews"
+								min={params.minReviews}
+								max={params.maxReviews}
+								minLabel="Minimum reviews"
+								maxLabel="Maximum reviews"
+								onMinChange={(minReviews) => {
+									void setParams({ minReviews });
+								}}
+								onMaxChange={(maxReviews) => {
+									void setParams({ maxReviews });
 								}}
 							/>
 						</ListingFilterPanel>
