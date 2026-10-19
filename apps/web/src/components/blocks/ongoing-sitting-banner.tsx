@@ -1,11 +1,19 @@
 import type { GetOngoingSittingOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent } from "@bbrc/ui/components/card";
-import { ArrowRight, BookOpen } from "lucide-react";
+import { Progress, ProgressLabel } from "@bbrc/ui/components/progress";
+import { ArrowRight } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { SittingParticipantAvatarStack } from "@/components/blocks/sitting-participant-avatar-stack";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
-import { formatDateTime } from "@/lib/format-datetime";
+import { formatBookAuthors } from "@/lib/book-cover";
+import { formatDateTimeCompact } from "@/lib/format-datetime";
+import {
+	getSittingDeadlineProgress,
+	getSittingPhaseDeadline,
+	getSittingPhaseDeadlineLabel,
+} from "@/lib/sitting-deadline";
 
 type OngoingSittingBannerProps = {
 	sitting: NonNullable<GetOngoingSittingOutput>;
@@ -16,49 +24,80 @@ export function OngoingSittingBanner({ sitting }: OngoingSittingBannerProps) {
 		sitting.status === "voting"
 			? (`/sittings/${sitting.slug}/vote` as Route)
 			: (`/sittings/${sitting.slug}` as Route);
-	const phaseDeadline =
-		sitting.status === "voting" && sitting.pollDeadline
-			? sitting.pollDeadline
-			: sitting.status !== "voting"
-				? sitting.deadline
-				: null;
-	const deadlineLabel =
-		sitting.status === "voting" ? "Poll closes" : "Reading deadline";
+
+	const phaseDeadline = getSittingPhaseDeadline(sitting);
+	const deadlineLabel = getSittingPhaseDeadlineLabel(sitting);
+	const deadlineProgress = getSittingDeadlineProgress(sitting);
+
+	const bookTitle = sitting.selectedBookTitle?.trim();
+	const authorsLabel =
+		sitting.selectedBookAuthors.length > 0
+			? formatBookAuthors(sitting.selectedBookAuthors)
+			: null;
 
 	return (
 		<Card className="border-primary/30 bg-primary/5">
-			<CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div className="flex flex-col gap-2">
-					<div className="flex flex-wrap items-center gap-2">
-						<p className="font-semibold text-sm">Ongoing sitting</p>
-						<SittingStatusBadge status={sitting.status} />
+			<CardContent className="flex flex-col gap-3 p-4">
+				<div className="flex flex-wrap items-start justify-between gap-2">
+					<div className="min-w-0 flex-1">
+						{bookTitle ? (
+							<>
+								<h2 className="font-semibold text-lg leading-snug tracking-tight">
+									{bookTitle}
+								</h2>
+								{authorsLabel ? (
+									<p className="mt-1 text-muted-foreground text-sm">
+										{authorsLabel}
+									</p>
+								) : null}
+							</>
+						) : (
+							<h2 className="font-semibold text-lg leading-snug tracking-tight">
+								{sitting.displayName}
+							</h2>
+						)}
 					</div>
-					<p className="font-medium">{sitting.displayName}</p>
-					<dl className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground text-xs">
-						<div>
-							<dt className="sr-only">Participants</dt>
-							<dd>{sitting.participantCount} participants</dd>
-						</div>
-						{sitting.status === "voting" && sitting.selectedBookTitle ? (
-							<div className="flex items-center gap-1">
-								<BookOpen className="size-3.5" aria-hidden />
-								<dd>{sitting.selectedBookTitle}</dd>
-							</div>
-						) : null}
-						{phaseDeadline ? (
-							<div>
-								<dt className="sr-only">{deadlineLabel}</dt>
-								<dd>
-									{deadlineLabel}: {formatDateTime(phaseDeadline)}
-								</dd>
-							</div>
-						) : null}
-					</dl>
+					<SittingStatusBadge status={sitting.status} />
 				</div>
-				<Button render={<Link href={href} />} nativeButton={false} size="sm">
-					{sitting.status === "voting" ? "Vote in poll" : "Open sitting"}
-					<ArrowRight data-icon="inline-end" />
-				</Button>
+
+				{phaseDeadline ? (
+					deadlineProgress != null ? (
+						<Progress value={deadlineProgress} className="gap-1.5">
+							<div className="flex w-full items-baseline justify-between gap-2">
+								<ProgressLabel className="text-muted-foreground">
+									{deadlineLabel}
+								</ProgressLabel>
+								<span className="text-muted-foreground text-xs tabular-nums">
+									{formatDateTimeCompact(phaseDeadline)}
+								</span>
+							</div>
+						</Progress>
+					) : (
+						<p className="text-muted-foreground text-xs">
+							{deadlineLabel}: {formatDateTimeCompact(phaseDeadline)}
+						</p>
+					)
+				) : null}
+
+				<div className="flex flex-wrap items-center gap-2.5">
+					<span className="text-muted-foreground text-sm">Participants</span>
+					<SittingParticipantAvatarStack
+						participants={sitting.participantPreview}
+						totalCount={sitting.participantCount}
+					/>
+				</div>
+
+				<div className="flex justify-end pt-1">
+					<Button
+						render={<Link href={href} />}
+						nativeButton={false}
+						size="sm"
+						className="w-full md:w-auto"
+					>
+						{sitting.status === "voting" ? "Vote in poll" : "Open sitting"}
+						<ArrowRight data-icon="inline-end" />
+					</Button>
+				</div>
 			</CardContent>
 		</Card>
 	);

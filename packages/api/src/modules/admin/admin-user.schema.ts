@@ -8,6 +8,7 @@ import {
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import type { z } from "zod";
 import zod from "zod";
+import { UserPointsSchema } from "../user/user.schema";
 import {
 	adminUserListFiltersSchema,
 	adminUserListRanging,
@@ -41,10 +42,10 @@ export const AdminUserOverviewOutputSchema = zod.object({
 		active: zod.number().int().min(0),
 		warned: zod.number().int().min(0),
 		banned: zod.number().int().min(0),
-		averageXp: zod.number().min(0),
-		averageRp: zod.number().min(0),
-		totalXp: zod.number().int().min(0),
-		totalRp: zod.number().int().min(0),
+		averageXp: zod.number(),
+		averageRp: zod.number(),
+		totalXp: UserPointsSchema,
+		totalRp: UserPointsSchema,
 		joinedLast7Days: zod.number().int().min(0),
 		joinedLast30Days: zod.number().int().min(0),
 		unverifiedEmail: zod.number().int().min(0),
@@ -78,23 +79,26 @@ export type AdminUserOverviewOutput = z.infer<
 
 export const AdminUserListItemSchema = UserSchema.pick({
 	id: true,
-	username: true,
-	name: true,
 	email: true,
-	image: true,
 	isAdmin: true,
 	isHidden: true,
-	status: true,
-	xp: true,
-	rp: true,
 	emailVerified: true,
 	createdAt: true,
 	updatedAt: true,
-}).extend({
-	counts: AdminUserCountsSchema,
-	telegramUserId: zod.string().nullable(),
-	telegramUsername: zod.string().nullable(),
-});
+})
+	.extend({
+		username: zod.string(),
+		name: zod.string(),
+		image: UserSchema.shape.image,
+		status: UserSchema.shape.status,
+		xp: UserPointsSchema,
+		rp: UserPointsSchema,
+	})
+	.extend({
+		counts: AdminUserCountsSchema,
+		telegramUserId: zod.string().nullable(),
+		telegramUsername: zod.string().nullable(),
+	});
 
 const adminUserListQueryRefine = (
 	value: {

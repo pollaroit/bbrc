@@ -15,14 +15,63 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useComposePost } from "@/components/blocks/compose-post-provider";
 import { useCreateGoal } from "@/components/blocks/create-goal-provider";
+import {
+	MobileSheetRowBody,
+	MobileSheetRowIcon,
+	mobileSheetRowClass,
+} from "@/components/blocks/mobile-chrome-sheet";
 import { authClient } from "@/lib/auth-client";
 import { orpc } from "@/utils/orpc";
 
 type CreateMenuItemsProps = {
 	onNavigate?: () => void;
+	variant?: "dropdown" | "sheet";
 };
 
-export function CreateMenuItems({ onNavigate }: CreateMenuItemsProps) {
+function SheetActionRow({
+	icon,
+	label,
+	description,
+	onClick,
+}: {
+	icon: typeof PenLine;
+	label: string;
+	description?: string;
+	onClick: () => void;
+}) {
+	return (
+		<button type="button" className={mobileSheetRowClass} onClick={onClick}>
+			<MobileSheetRowIcon icon={icon} />
+			<MobileSheetRowBody label={label} description={description} />
+		</button>
+	);
+}
+
+function SheetLinkRow({
+	icon,
+	label,
+	description,
+	href,
+	onNavigate,
+}: {
+	icon: typeof PenLine;
+	label: string;
+	description?: string;
+	href: Route;
+	onNavigate?: () => void;
+}) {
+	return (
+		<Link href={href} className={mobileSheetRowClass} onClick={onNavigate}>
+			<MobileSheetRowIcon icon={icon} />
+			<MobileSheetRowBody label={label} description={description} />
+		</Link>
+	);
+}
+
+export function CreateMenuItems({
+	onNavigate,
+	variant = "dropdown",
+}: CreateMenuItemsProps) {
 	const { data: session } = authClient.useSession();
 	const { data: ongoing, isPending: isOngoingPending } = useQuery({
 		...orpc.sitting.getOngoingSitting.queryOptions(),
@@ -38,6 +87,73 @@ export function CreateMenuItems({ onNavigate }: CreateMenuItemsProps) {
 	const isAdmin = session.user.isAdmin === true;
 	const showStartSitting = isAdmin && !isOngoingPending && !ongoing;
 	const newShelfHref = `/users/${session.user.username}/shelves/new` as Route;
+
+	if (variant === "sheet") {
+		return (
+			<nav className="flex flex-col pb-3">
+				<SheetActionRow
+					icon={PenLine}
+					label="Create post"
+					description="Share with the club feed"
+					onClick={() => {
+						onNavigate?.();
+						openCompose();
+					}}
+				/>
+				<SheetLinkRow
+					icon={LayoutList}
+					label="Create shelf"
+					description="Curate a public list"
+					href={newShelfHref}
+					onNavigate={onNavigate}
+				/>
+				<SheetActionRow
+					icon={Target}
+					label="Add goal"
+					description="Track a reading target"
+					onClick={() => {
+						onNavigate?.();
+						openCreateGoal();
+					}}
+				/>
+				{isAdmin ? (
+					<>
+						<SheetLinkRow
+							icon={BookPlus}
+							label="Add book"
+							description="From Open Library"
+							href={"/books/new" as Route}
+							onNavigate={onNavigate}
+						/>
+						<SheetLinkRow
+							icon={Layers}
+							label="Add series"
+							description="Admin catalog"
+							href={"/admin/series/new" as Route}
+							onNavigate={onNavigate}
+						/>
+					</>
+				) : (
+					<SheetLinkRow
+						icon={BookMarked}
+						label="Request book"
+						description="Suggest for the library"
+						href={"/books/request" as Route}
+						onNavigate={onNavigate}
+					/>
+				)}
+				{showStartSitting ? (
+					<SheetLinkRow
+						icon={Sofa}
+						label="Start sitting"
+						description="Open a new reading round"
+						href={"/sittings/new" as Route}
+						onNavigate={onNavigate}
+					/>
+				) : null}
+			</nav>
+		);
+	}
 
 	return (
 		<>

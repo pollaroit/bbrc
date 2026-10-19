@@ -12,6 +12,7 @@ import { Bell } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
+import { headerToolbarIconButtonClass } from "@/lib/header-toolbar";
 import { orpc, queryClient } from "@/utils/orpc";
 
 function formatNotificationTime(value: Date | string): string {
@@ -77,7 +78,7 @@ export function NotificationBell() {
 					<Button
 						variant="ghost"
 						size="icon"
-						className="relative"
+						className={`relative ${headerToolbarIconButtonClass}`}
 						aria-label={
 							unreadCount > 0
 								? `Notifications, ${unreadCount} unread`

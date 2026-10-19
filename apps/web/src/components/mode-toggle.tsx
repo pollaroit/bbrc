@@ -9,6 +9,7 @@ import {
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { headerToolbarIconButtonClass } from "@/lib/header-toolbar";
 import { nextThemeAfterToggle } from "@/lib/theme-toggle";
 
 export function ModeToggle() {
@@ -31,7 +32,7 @@ export function ModeToggle() {
 						variant="ghost"
 						size="icon"
 						type="button"
-						className="relative"
+						className={`relative ${headerToolbarIconButtonClass}`}
 						onClick={toggle}
 						aria-label="Toggle light and dark theme"
 					/>
