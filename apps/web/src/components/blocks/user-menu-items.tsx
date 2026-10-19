@@ -1,12 +1,14 @@
 "use client";
 
 import {
+	BarChart3,
 	BookCheck,
 	BookOpen,
 	LayoutList,
 	MessageSquare,
 	Settings,
 	Shield,
+	Target,
 	User,
 } from "lucide-react";
 import type { Route } from "next";
@@ -81,6 +83,22 @@ export function UserMenuItems({
 			>
 				<LayoutList className="size-4 shrink-0" aria-hidden="true" />
 				My shelves
+			</Link>
+			<Link
+				href={`/users/${user.username}/goals` as Route}
+				className={itemClass}
+				onClick={onNavigate}
+			>
+				<Target className="size-4 shrink-0" aria-hidden="true" />
+				My goals
+			</Link>
+			<Link
+				href={`/users/${user.username}/stats` as Route}
+				className={itemClass}
+				onClick={onNavigate}
+			>
+				<BarChart3 className="size-4 shrink-0" aria-hidden="true" />
+				My stats
 			</Link>
 			<Link
 				href={`/users/${user.username}/reels` as Route}

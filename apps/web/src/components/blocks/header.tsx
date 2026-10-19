@@ -3,6 +3,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { BrowseMenuDropdown } from "@/components/blocks/browse-menu-dropdown";
 import { CreateMenu } from "@/components/blocks/create-menu";
 import { GlobalSearchTrigger } from "@/components/blocks/global-search-trigger";
 import { HeaderAuthLinks } from "@/components/blocks/header-auth-links";
@@ -16,7 +17,6 @@ import { useLiveUserImage } from "@/lib/user-avatar-broadcast";
 
 const navLinks = [
 	{ label: "Library", href: "/books" },
-	{ label: "Shelves", href: "/shelves" },
 	{ label: "Sittings", href: "/sittings" },
 	{ label: "Leaderboard", href: "/leaderboard/overview" },
 ];
@@ -37,7 +37,7 @@ export default function Header() {
 					</Link>
 				</div>
 
-				<nav className="flex items-center gap-7">
+				<nav className="flex items-center gap-6">
 					{navLinks.map((link) => (
 						<Link
 							key={link.label}
@@ -47,6 +47,7 @@ export default function Header() {
 							{link.label}
 						</Link>
 					))}
+					<BrowseMenuDropdown />
 					<HeaderOngoingReadButton />
 				</nav>
 
