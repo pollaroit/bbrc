@@ -17,6 +17,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { PwaEngagementSettingsCard } from "@/components/blocks/pwa-engagement-settings-card";
 import { orpc, queryClient } from "@/utils/orpc";
 
 const GROUP_ORDER = ["club", "personal", "sitting", "admin"] as const;
@@ -34,11 +35,6 @@ const GROUP_DESCRIPTIONS: Record<(typeof GROUP_ORDER)[number], string> = {
 	sitting: "Polls and reading progress for sittings you participate in.",
 	admin: "Moderation and library requests (admins only).",
 };
-
-function ntfyTopicUrl(baseUrl: string, topic: string): string {
-	const base = baseUrl.replace(/\/$/, "");
-	return `${base}/${encodeURIComponent(topic)}`;
-}
 
 function CopyTopicButton({ url, label }: { url: string; label: string }) {
 	return (
@@ -185,6 +181,8 @@ export function NotificationPreferencesForm() {
 				});
 			}}
 		>
+			<PwaEngagementSettingsCard />
+
 			{telegram.linked ? (
 				<Card>
 					<CardHeader>

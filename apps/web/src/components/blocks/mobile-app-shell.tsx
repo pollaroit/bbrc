@@ -6,6 +6,7 @@ import { BodyPortal } from "@/components/blocks/body-portal";
 import { MobileBottomBar } from "@/components/blocks/mobile-bottom-bar";
 import { mobileMainBottomPaddingClass } from "@/components/blocks/mobile-shell-chrome";
 import { MobileTopBar } from "@/components/blocks/mobile-top-bar";
+import { PwaInstallHint } from "@/components/blocks/pwa-install-hint";
 import { cn } from "@/lib/utils";
 
 export function MobileAppShell({ children }: { children: ReactNode }) {
@@ -23,6 +24,7 @@ export function MobileAppShell({ children }: { children: ReactNode }) {
 		<>
 			<BodyPortal>
 				<MobileTopBar />
+				<PwaInstallHint />
 				<MobileBottomBar />
 			</BodyPortal>
 			<div

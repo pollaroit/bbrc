@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
+import { OfflineActions } from "@/app/~offline/offline-actions";
 import { Logo } from "@/components/blocks/logo";
 import { buildPageMetadata } from "@/lib/seo";
 
@@ -13,23 +13,16 @@ export const metadata: Metadata = buildPageMetadata({
 
 export default function OfflinePage() {
 	return (
-		<div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-6 px-6 text-center">
+		<div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-8 px-6 py-12 text-center">
 			<Logo className="size-16" label="BBRC" />
-			<div className="flex flex-col gap-2">
-				<h1 className="font-bold text-xl tracking-tight">
-					You&apos;re offline
-				</h1>
+			<div className="flex max-w-[32ch] flex-col gap-2">
+				<h1 className="font-bold text-xl tracking-tight">No connection</h1>
 				<p className="text-muted-foreground text-sm leading-relaxed">
-					Pages you opened while online may still load here. New actions and
-					updates need a connection.
+					Pages you already opened may still work. Anything new needs the
+					network.
 				</p>
 			</div>
-			<Link
-				href="/"
-				className="font-medium text-primary text-sm underline-offset-4 hover:underline"
-			>
-				Go to home
-			</Link>
+			<OfflineActions />
 		</div>
 	);
 }
