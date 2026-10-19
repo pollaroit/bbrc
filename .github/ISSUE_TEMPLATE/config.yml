@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Contributing guide
+    url: https://github.com/pollaroit/bbrc/blob/main/CONTRIBUTING.md
+    about: Workflow, local setup, and PR expectations
+  - name: Security (do not open a public issue)
+    url: https://github.com/pollaroit/bbrc/security/policy
+    about: Report sensitive problems privately to the maintainer

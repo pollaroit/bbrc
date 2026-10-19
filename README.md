@@ -1,65 +1,47 @@
-# Brigada Book Reading Club
+# BBRC (Brigada Book Reading Club)
 
-A Book Reading Club for members of Brigada. This is a closed application, only for a friend group. This app is neither public nor commercial.
+Private monorepo for the Brigada reading club web app and related packages. Invited contributors only; production is operated by the project owner.
 
-## Development database seed
+## Start here
 
-Runs only when `NODE_ENV=development` (blocked in production). Resets app data and loads realistic fixtures: users, Open Library books, sittings, polls, participations, XP/RP events, feedback, and a home feed of posts (with comments and likes).
+| If you want to… | Read |
+|-----------------|------|
+| Set up locally, branch/PR workflow, scripts, env & database | [CONTRIBUTING.md](./CONTRIBUTING.md) |
+| Club features, sittings, XP/RP rules (product domain) | [docs/DOMAIN.md](./docs/DOMAIN.md) |
+| Deploy to Vercel, Neon, cron, troubleshooting | [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) |
+| R2 uploads, documents, storage design | [docs/SPEC.md](./docs/SPEC.md) |
+| Report a security issue | [SECURITY.md](./SECURITY.md) |
+| Community expectations | [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) |
+| License | [LICENSE](./LICENSE) |
+
+**Quick local run** (after [CONTRIBUTING.md](./CONTRIBUTING.md) env + DB steps):
 
 ```bash
-bun run db:seed
+bun install
+bun run db:generate && bun run db:migrate:deploy
+bun run dev:web
 ```
 
-Every seeded account uses the same password: **`bbrcpwd1`** (see `SEED_PASSWORD` in `packages/db/src/seed/constants.ts`). Emails follow patterns like `admin_1@bbrc.test`, `warned_1@bbrc.test`, and `banned_1@bbrc.test` — see `packages/db/src/seed/users.ts` for the full list.
+App: [http://localhost:3001](http://localhost:3001)
 
-## Git hooks (Lefthook)
+## Repository map
 
-After `git init`, install hooks (also runs on `bun install` via `prepare`):
+| Path | What it is |
+|------|------------|
+| [`apps/web`](./apps/web) | Next.js app (UI, API routes, cron) |
+| [`apps/extension`](./apps/extension) | Browser extension |
+| [`packages/api`](./packages/api) | oRPC API modules and business logic |
+| [`packages/db`](./packages/db) | Prisma schema, migrations, seed |
+| [`packages/auth`](./packages/auth) | Better Auth |
+| [`packages/ui`](./packages/ui) | Shared UI components and styles |
+| [`packages/schemas`](./packages/schemas) | Shared Zod / generated types |
+| [`packages/shared`](./packages/shared) | Shared utilities |
+| [`packages/storage`](./packages/storage) | Object storage helpers |
+| [`packages/config`](./packages/config) | Shared tooling config |
+| [`.github`](./.github) | PR/issue templates, labeler, CODEOWNERS |
 
-```bash
-bun lefthook install
-```
+Stack: **Bun**, **Turborepo**, **Next.js**, **Prisma** (Neon Postgres), **Better Auth**, **oRPC**.
 
-| Hook           | What runs                                                                        |
-| -------------- | -------------------------------------------------------------------------------- |
-| **pre-commit** | Biome on staged `*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc,css}` (auto-fix + re-stage) |
-| **commit-msg** | [Conventional Commits](https://www.conventionalcommits.org/) via `commitlint`    |
-| **pre-push**   | `turbo run check-types`                                                          |
+## Contributing
 
-Commit messages follow `@commitlint/config-conventional` (`feat:`, `fix:`, optional scope, etc.). Override locally with an untracked `lefthook-local.yml` if needed.
-
-## Deploying to Vercel
-
-- Root directory: **`apps/web`**, with **include files outside root** enabled (monorepo).
-- Install (override if needed): `cd ../.. && bun install --frozen-lockfile`
-- Build: default **`bun run build`** in `apps/web` — runs `db:generate`, **`db:migrate:deploy`** (`prisma migrate deploy`), then Next.js. Monorepo **`turbo run build`** also runs `@bbrc/db#db:migrate:deploy` before `web#build` (uncached) so schema changes like `participation.removed_at` apply before static generation. Migrations use env from Vercel only (never committed; same keys as `apps/web/.env.schema`).
-- Set env vars in **Vercel → Settings → Environment Variables**: `DATABASE_URL` (pooled Neon URL for the app), optional **`DATABASE_URL_UNPOOLED`** (Neon direct URL for migrate; must be the **same branch/database** as `DATABASE_URL`). If `DATABASE_URL_UNPOOLED` is missing or points at a different branch, deploy **warns** and migrates via direct `DATABASE_URL` instead. `BETTER_AUTH_*`, `CRON_SECRET`, optional `CLUB_TIMEZONE=Asia/Baku`.
-- **`P2022` / `participation.removed_at` missing at runtime:** the app expects soft-remove on participations. Deploy runs `db:migrate:deploy` and verifies the column exists before finishing the build. If production still errors, run once locally with production env: `bun run db:migrate:deploy` (uses `DATABASE_URL_UNPOOLED` when set). Ensure Vercel **Build** has the same database env vars as **Production**.
-- **Neon dashboard shows empty tables but the live site has users/books:** you are almost certainly viewing a **different branch or database** than `DATABASE_URL` on Vercel. In Neon, open the branch named in the connection string (host + database), or copy **Production → DATABASE_URL** from Vercel and compare host/db to the branch selected in the UI. `db:migrate:deploy` logs `[db:migrate:deploy] target host/db` on build; it must match runtime. A common failure mode is Build migrating a fresh empty branch while Production serves an older branch that never received `participation.removed_at` — intermittent `P2022` until both URLs target the same branch and migrate deploy has run there.
-- **Cron:** [Upstash QStash](https://upstash.com/docs/qstash) schedule `0 10,13,16,19 * * *` (UTC) → `POST /api/cron/sittings` four times daily (**14:00, 17:00, 20:00, 23:00** club local when `CLUB_TIMEZONE=Asia/Baku`). Auth: `Upstash-Signature` (+ optional `Authorization: Bearer CRON_SECRET`). Env: `QSTASH_*` in `apps/web/.env.schema`.
-- That route closes due polls (winner = most votes, random tie-break) and finishes due reading sittings.
-
-The app is simple. There are a list of books which can be added by admin (`user.isAdmin=true`), on each Sitting one book is selected on Poll, then participants read the book.
-
-If they finish it they get XP, also can give feedback, if they cannot finish until deadline, they get "warned", (or if they are already warned, they get banned, which they won't be able to be participant on the next reading book, and won't be able to vote on poll).
-
-### XP
-
-XP (Experience Points) can be earned with these:
-
-- When they participate in a sitting - `xp += 5`
-- When they give feedback - `xp += 4 + feedback.review.length * 0.05`
-- When they vote on a poll - `xp += 2`
-- When they share a post - `xp += 4` (see `XP_AWARD.post` in `packages/api/src/modules/xp/xp.schema.ts`)
-- When they comment - `xp += 1`
-- When they request a book addition - `xp += 1`
-- When they create a reading goal - `xp += 3` (see `XP_AWARD.goal`)
-
-### RP
-
-Unlike XP (which focuses on the activity of a user), RP (Reading Points) focuses on the reading and unlike XP it can be reduced (gets minus).
-
-- When the user completes a book `rp += book.pages / 10`
-- When the user dnf'd a book `rp -= 1000 / book.pages`
-
-Note: XP gets rounded to the nearest integer
+All changes land on `main` through **owner-approved pull requests** — no direct pushes. See [CONTRIBUTING.md](./CONTRIBUTING.md) and [.github/CODEOWNERS](./.github/CODEOWNERS).

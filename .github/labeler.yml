@@ -1,0 +1,70 @@
+# Used by .github/workflows/labeler.yml (actions/labeler).
+# Create matching labels in the repo (see CONTRIBUTING.md → GitHub setup).
+
+"area: web":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "apps/web/**"
+
+"area: extension":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "apps/extension/**"
+
+"area: api":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "packages/api/**"
+
+"area: db":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "packages/db/**"
+
+"area: ui":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "packages/ui/**"
+
+"area: auth":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "packages/auth/**"
+
+"area: shared":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "packages/shared/**"
+          - "packages/schemas/**"
+          - "packages/storage/**"
+          - "packages/config/**"
+
+"area: infra":
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+          - "turbo.json"
+          - "lefthook.yml"
+          - "commitlint.config.js"
+          - "biome.json"
+          - "scripts/**"
+
+"area: docs":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/**"
+          - "**/*.md"
+
+"database: migration":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "packages/db/prisma/migrations/**"
+          - "packages/db/prisma/schema/**"
+
+"type: dependencies":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "package.json"
+          - "bun.lock"
+          - "apps/*/package.json"
+          - "packages/*/package.json"

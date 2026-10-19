@@ -1,0 +1,71 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+title: "[Bug]: "
+labels: ["type: bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve BBRC. Please avoid posting passwords, session tokens, or production URLs with secrets.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where did you see this?
+      options:
+        - Web app (browser)
+        - Browser extension
+        - Admin tools
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to …
+        2. Click …
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Blocks me from using the app
+        - Annoying but I can work around it
+        - Minor / cosmetic
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Browser / OS (optional)
+      placeholder: e.g. Safari 18 on macOS, Chrome on Android
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and did not find a duplicate
+          required: true

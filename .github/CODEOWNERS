@@ -1,0 +1,4 @@
+# Default: all changes need review from the project owner before merge.
+# Requires branch protection with "Require review from Code Owners" enabled.
+
+* @pollaroit

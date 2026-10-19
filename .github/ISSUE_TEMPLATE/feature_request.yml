@@ -1,0 +1,52 @@
+name: Feature request
+description: Suggest an improvement or new capability for members
+title: "[Feature]: "
+labels: ["type: feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the member-facing problem first. Admin-only tooling should be called out explicitly.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What are members trying to do today?
+      placeholder: As a member, I want to …
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How might the app solve it?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional — other approaches you thought about
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Who benefits?
+      options:
+        - All members
+        - Readers / participants only
+        - Admins only
+        - Not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      options:
+        - label: This is not a request for production credentials or access to live member data
+          required: true
