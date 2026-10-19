@@ -15,8 +15,12 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useComposePost } from "@/components/blocks/compose-post-provider";
 import { useCreateGoal } from "@/components/blocks/create-goal-provider";
+import {
+	MobileSheetRowBody,
+	MobileSheetRowIcon,
+	mobileSheetRowClass,
+} from "@/components/blocks/mobile-chrome-sheet";
 import { authClient } from "@/lib/auth-client";
-import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
 type CreateMenuItemsProps = {
@@ -24,41 +28,42 @@ type CreateMenuItemsProps = {
 	variant?: "dropdown" | "sheet";
 };
 
-const sheetRowClass =
-	"flex w-full items-center gap-3 border-border border-b px-4 py-3.5 text-left text-sm transition-colors last:border-b-0 hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset";
-
 function SheetActionRow({
-	icon: Icon,
+	icon,
 	label,
+	description,
 	onClick,
 }: {
 	icon: typeof PenLine;
 	label: string;
+	description?: string;
 	onClick: () => void;
 }) {
 	return (
-		<button type="button" className={sheetRowClass} onClick={onClick}>
-			<Icon className="size-4 shrink-0" aria-hidden="true" />
-			{label}
+		<button type="button" className={mobileSheetRowClass} onClick={onClick}>
+			<MobileSheetRowIcon icon={icon} />
+			<MobileSheetRowBody label={label} description={description} />
 		</button>
 	);
 }
 
 function SheetLinkRow({
-	icon: Icon,
+	icon,
 	label,
+	description,
 	href,
 	onNavigate,
 }: {
 	icon: typeof PenLine;
 	label: string;
+	description?: string;
 	href: Route;
 	onNavigate?: () => void;
 }) {
 	return (
-		<Link href={href} className={sheetRowClass} onClick={onNavigate}>
-			<Icon className="size-4 shrink-0" aria-hidden="true" />
-			{label}
+		<Link href={href} className={mobileSheetRowClass} onClick={onNavigate}>
+			<MobileSheetRowIcon icon={icon} />
+			<MobileSheetRowBody label={label} description={description} />
 		</Link>
 	);
 }
@@ -85,10 +90,11 @@ export function CreateMenuItems({
 
 	if (variant === "sheet") {
 		return (
-			<nav className={cn("flex flex-col pb-2")}>
+			<nav className="flex flex-col pb-3">
 				<SheetActionRow
 					icon={PenLine}
 					label="Create post"
+					description="Share with the club feed"
 					onClick={() => {
 						onNavigate?.();
 						openCompose();
@@ -97,12 +103,14 @@ export function CreateMenuItems({
 				<SheetLinkRow
 					icon={LayoutList}
 					label="Create shelf"
+					description="Curate a public list"
 					href={newShelfHref}
 					onNavigate={onNavigate}
 				/>
 				<SheetActionRow
 					icon={Target}
 					label="Add goal"
+					description="Track a reading target"
 					onClick={() => {
 						onNavigate?.();
 						openCreateGoal();
@@ -113,12 +121,14 @@ export function CreateMenuItems({
 						<SheetLinkRow
 							icon={BookPlus}
 							label="Add book"
+							description="From Open Library"
 							href={"/books/new" as Route}
 							onNavigate={onNavigate}
 						/>
 						<SheetLinkRow
 							icon={Layers}
 							label="Add series"
+							description="Admin catalog"
 							href={"/admin/series/new" as Route}
 							onNavigate={onNavigate}
 						/>
@@ -127,6 +137,7 @@ export function CreateMenuItems({
 					<SheetLinkRow
 						icon={BookMarked}
 						label="Request book"
+						description="Suggest for the library"
 						href={"/books/request" as Route}
 						onNavigate={onNavigate}
 					/>
@@ -135,6 +146,7 @@ export function CreateMenuItems({
 					<SheetLinkRow
 						icon={Sofa}
 						label="Start sitting"
+						description="Open a new reading round"
 						href={"/sittings/new" as Route}
 						onNavigate={onNavigate}
 					/>

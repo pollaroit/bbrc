@@ -35,12 +35,12 @@ export function CreateMenu({ variant = "header", className }: CreateMenuProps) {
 					aria-label="Create"
 					onClick={() => setSheetOpen(true)}
 					className={cn(
-						"flex size-14 items-center justify-center border-2 border-background bg-primary text-primary-foreground shadow-none ring-1 ring-border",
-						"-translate-y-3",
+						"flex size-[3.25rem] items-center justify-center border-2 border-background bg-primary text-primary-foreground shadow-none ring-1 ring-border transition-transform active:scale-95",
+						"-translate-y-2",
 						className,
 					)}
 				>
-					<Plus className="size-7 stroke-[2.25]" aria-hidden="true" />
+					<Plus className="size-6 stroke-[2.25]" aria-hidden="true" />
 				</button>
 				<CreateMenuSheet open={sheetOpen} onOpenChange={setSheetOpen} />
 			</>

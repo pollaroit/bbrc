@@ -13,7 +13,7 @@ import { orpc } from "@/utils/orpc";
 function ChipPlaceholder() {
 	return (
 		<div
-			className="h-8 min-w-0 flex-1 animate-pulse border border-border bg-muted/30"
+			className="h-9 min-w-0 flex-1 animate-pulse border border-border bg-muted/20"
 			aria-hidden="true"
 		/>
 	);
@@ -57,23 +57,29 @@ export function ActiveSittingTopChip({ className }: { className?: string }) {
 			? formatBookAuthors(ongoing.selectedBookAuthors)
 			: null;
 
+	const metaLine = [
+		authorsLine,
+		phaseDeadline ? formatDateTime(phaseDeadline) : "Open sitting",
+	]
+		.filter(Boolean)
+		.join(" · ");
+
 	return (
 		<Link
 			href={href}
 			className={cn(
-				"flex h-8 min-w-0 flex-1 items-center gap-2 border border-primary/40 bg-primary/10 px-2.5 text-left text-xs transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+				"flex min-h-9 min-w-0 flex-1 items-center gap-2 border border-border border-l-2 border-l-primary bg-muted/25 py-1 ps-2.5 pe-2 text-left text-xs transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
 				className,
 			)}
 			aria-label={`Open sitting: ${titleLine}`}
 		>
-			<div className="flex min-w-0 flex-1 flex-col justify-center leading-tight">
+			<div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 leading-tight">
 				<span className="truncate font-medium">{titleLine}</span>
-				<span className="truncate text-[0.65rem] text-muted-foreground">
-					{authorsLine ? `${authorsLine} · ` : null}
-					{phaseDeadline ? formatDateTime(phaseDeadline) : "Open sitting"}
+				<span className="truncate text-[0.6875rem] text-muted-foreground">
+					{metaLine}
 				</span>
 			</div>
-			<span className="inline-flex shrink-0 items-center gap-0.5 text-muted-foreground tabular-nums">
+			<span className="inline-flex shrink-0 items-center gap-0.5 border border-border bg-background px-1.5 py-0.5 text-muted-foreground tabular-nums">
 				<Users className="size-3.5" aria-hidden />
 				{ongoing.participantCount}
 			</span>

@@ -16,7 +16,9 @@ import { usePathname } from "next/navigation";
 import {
 	browseMenuItems,
 	browseNavPlaceholderItems,
+	browseNavSections,
 	isBrowseNavActive,
+	isBrowseNavItemActive,
 } from "@/lib/browse-nav";
 import { cn } from "@/lib/utils";
 
@@ -44,32 +46,61 @@ export function BrowseMenuDropdown() {
 				<Compass data-icon="inline-start" className="size-4" aria-hidden />
 				Browse
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="start" className="min-w-52">
-				<DropdownMenuLabel className="text-muted-foreground text-xs">
-					Catalog & club
-				</DropdownMenuLabel>
-				{browseMenuItems.map((item) => {
-					const Icon = item.icon;
+			<DropdownMenuContent align="start" className="min-w-56">
+				{browseNavSections.map((section) => {
+					const items = browseMenuItems.filter(
+						(item) => item.section === section.id,
+					);
+					if (items.length === 0) {
+						return null;
+					}
+
 					return (
-						<DropdownMenuItem
-							key={item.href}
-							render={<Link href={item.href as Route} />}
-							nativeButton={false}
-						>
-							<Icon className="size-4" aria-hidden />
-							{item.label}
-						</DropdownMenuItem>
+						<div key={section.id}>
+							<DropdownMenuLabel className="text-muted-foreground text-xs">
+								{section.label}
+							</DropdownMenuLabel>
+							{items.map((item) => {
+								const Icon = item.icon;
+								const active = isBrowseNavItemActive(pathname, item.href);
+								return (
+									<DropdownMenuItem
+										key={item.href}
+										render={<Link href={item.href as Route} />}
+										nativeButton={false}
+										className={cn(active && "bg-muted/60")}
+									>
+										<Icon className="size-4" aria-hidden />
+										<span className="flex flex-col gap-0.5">
+											<span>{item.label}</span>
+											{item.description ? (
+												<span className="font-normal text-muted-foreground text-xs">
+													{item.description}
+												</span>
+											) : null}
+										</span>
+									</DropdownMenuItem>
+								);
+							})}
+						</div>
 					);
 				})}
 				<DropdownMenuSeparator />
-				{browseNavPlaceholderItems.map((item) => (
-					<DropdownMenuItem key={item.label} disabled>
-						<span className="text-muted-foreground">{item.label}</span>
-						<span className="ms-auto text-muted-foreground text-xs">
-							{item.description}
-						</span>
-					</DropdownMenuItem>
-				))}
+				<DropdownMenuLabel className="text-muted-foreground text-xs">
+					Later
+				</DropdownMenuLabel>
+				{browseNavPlaceholderItems.map((item) => {
+					const Icon = item.icon;
+					return (
+						<DropdownMenuItem key={item.label} disabled>
+							{Icon ? <Icon className="size-4 opacity-50" aria-hidden /> : null}
+							<span className="text-muted-foreground">{item.label}</span>
+							<span className="ms-auto text-muted-foreground text-xs">
+								{item.description}
+							</span>
+						</DropdownMenuItem>
+					);
+				})}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

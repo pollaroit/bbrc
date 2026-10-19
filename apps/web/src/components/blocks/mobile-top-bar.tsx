@@ -21,7 +21,7 @@ export function MobileTopBar() {
 		<header className={mobileChromeTopClass}>
 			<div
 				className={cn(
-					"mx-auto flex h-14 w-full max-w-6xl items-center gap-2 pt-1",
+					"mx-auto flex h-14 w-full max-w-6xl items-center gap-2.5 pt-1",
 					mobileChromeInsetClass,
 					"pb-0",
 				)}
