@@ -7,7 +7,22 @@ import {
 import { ORPCError } from "@orpc/server";
 import { resolveAuthorSlugsToNames } from "../book/book-author-filter";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
-import type { GetAuthorPageOutput } from "./author.schema";
+import { authorListSorting } from "./author.listing";
+import type {
+	GetAuthorListCountryFacetsInput,
+	GetAuthorListCountryFacetsOutput,
+	GetAuthorListInput,
+	GetAuthorListOutput,
+	GetAuthorPageOutput,
+} from "./author.schema";
+import {
+	type AuthorCatalogEntry,
+	type AuthorSortField,
+	aggregateAuthorCountryFacets,
+	filterAuthorCatalog,
+	loadAuthorCatalog,
+	sortAuthorCatalog,
+} from "./author-catalog";
 
 const LEADERBOARD_LIMIT = 8;
 const SIMILAR_AUTHOR_LIMIT = 12;
@@ -238,5 +253,95 @@ export async function getAuthorPage(
 		bestReaders,
 		biggestFans,
 		similarAuthors,
+	};
+}
+
+function toAuthorListItem(entry: AuthorCatalogEntry) {
+	return {
+		slug: entry.slug,
+		name: entry.name,
+		bookCount: entry.bookCount,
+		readerCount: entry.readerCount,
+		reviewCount: entry.reviewCount,
+		averageRating: entry.averageRating,
+		countryAlpha2: entry.countryAlpha2,
+	};
+}
+
+function listFiltersFromInput(input: {
+	search?: string;
+	countries?: GetAuthorListInput["countries"];
+	minBooks?: number;
+	maxBooks?: number;
+	minReads?: number;
+	maxReads?: number;
+	minAverageRating?: number;
+	maxAverageRating?: number;
+}) {
+	return {
+		search: input.search,
+		countries: input.countries,
+		minBooks: input.minBooks,
+		maxBooks: input.maxBooks,
+		minReads: input.minReads,
+		maxReads: input.maxReads,
+		minAverageRating: input.minAverageRating,
+		maxAverageRating: input.maxAverageRating,
+	};
+}
+
+export async function getAuthorList(
+	input: GetAuthorListInput,
+	db: Database,
+): Promise<GetAuthorListOutput> {
+	const sorting = authorListSorting.from(input);
+	const sortBy = sorting.sortBy as AuthorSortField;
+	const limit = input.limit ?? 10;
+
+	const catalog = await loadAuthorCatalog(db);
+	const filtered = filterAuthorCatalog(catalog, listFiltersFromInput(input));
+	const sorted = sortAuthorCatalog(filtered, sortBy, sorting.sortDirection);
+
+	const total = sorted.length;
+	let startIndex = 0;
+
+	if (input.cursor) {
+		const cursorIndex = sorted.findIndex(
+			(entry) => entry.slug === input.cursor,
+		);
+		startIndex = cursorIndex >= 0 ? cursorIndex + 1 : 0;
+	}
+
+	const window = sorted.slice(startIndex, startIndex + limit + 1);
+	const hasNextPage = window.length > limit;
+	const pageEntries = hasNextPage ? window.slice(0, limit) : window;
+	const lastEntry = pageEntries.at(-1);
+
+	return {
+		items: pageEntries.map(toAuthorListItem),
+		metadata: {
+			limit,
+			hasNextPage,
+			hasPreviousPage: input.cursor != null,
+			nextCursor: hasNextPage && lastEntry != null ? lastEntry.slug : null,
+			...(input.cursor == null ? { total } : {}),
+		},
+	};
+}
+
+export async function getAuthorListCountryFacets(
+	input: GetAuthorListCountryFacetsInput,
+	db: Database,
+): Promise<GetAuthorListCountryFacetsOutput> {
+	const { pinnedCountryCodes, countries: _countries, ...rest } = input;
+
+	const catalog = await loadAuthorCatalog(db);
+	const filtered = filterAuthorCatalog(catalog, {
+		...listFiltersFromInput(rest),
+		countries: undefined,
+	});
+
+	return {
+		countries: aggregateAuthorCountryFacets(filtered, pinnedCountryCodes ?? []),
 	};
 }
