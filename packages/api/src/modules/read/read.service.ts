@@ -497,12 +497,24 @@ export async function listUserReads(
 
 	const page = pagination.paginate(rows);
 
+	const feedbacks = await db.feedback.findMany({
+		where: {
+			authorId: user.id,
+			bookId: { in: page.items.map((row) => row.book.id) },
+		},
+		select: { bookId: true, rating: true },
+	});
+	const ratingByBookId = new Map(
+		feedbacks.map((feedback) => [feedback.bookId, feedback.rating]),
+	);
+
 	return {
 		items: page.items.map((row) => ({
 			readEndYear: row.readEndYear,
 			readEndMonth: row.readEndMonth,
 			editionId: row.editionId,
 			recordedAt: row.createdAt,
+			rating: ratingByBookId.get(row.book.id) ?? null,
 			book: {
 				slug: row.book.slug,
 				title: row.book.title,

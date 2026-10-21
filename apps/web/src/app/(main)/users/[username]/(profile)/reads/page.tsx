@@ -39,7 +39,7 @@ export default async function UserReadsPage({
 	return (
 		<div className="flex flex-col gap-6">
 			<ListingSearchParamsBoundary>
-				<div className="border border-border bg-muted/15 p-4">
+				<div>
 					<UserReadsListingToolbar
 						username={username}
 						isOwnProfile={isOwnProfile}

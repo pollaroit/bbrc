@@ -41,7 +41,7 @@ export default async function UserSittingsPage({
 	return (
 		<div className="flex flex-col gap-6">
 			<ListingSearchParamsBoundary>
-				<div className="border border-border bg-muted/15 p-4">
+				<div>
 					<UserSittingsListingToolbar isOwnProfile={isOwnProfile} />
 				</div>
 				<UserReadingsFeed username={username} />

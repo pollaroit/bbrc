@@ -4,14 +4,14 @@ import {
 	userParticipationRangeableFields,
 	userParticipationSortableFields,
 } from "@bbrc/api/modules/user/user-participation.listing";
-import { Checkbox } from "@bbrc/ui/components/checkbox";
-import { Label } from "@bbrc/ui/components/label";
+import { Users } from "lucide-react";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
 import { ListingIntegerRangeFields } from "@/components/listing/listing-integer-range-fields";
 import { ListingRangeFields } from "@/components/listing/listing-range-fields";
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
+import { ListingToggleChip } from "@/components/listing/listing-toggle-chip";
 import { authClient } from "@/lib/auth-client";
 import {
 	clearUserSittingSheetFilters,
@@ -49,7 +49,7 @@ export function UserSittingsListingToolbar({
 	const showMutual = Boolean(session?.user) && !isOwnProfile;
 
 	return (
-		<div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+		<div className="flex flex-col gap-3 md:flex-row md:items-center">
 			<ListingSearch
 				value={params.search ?? ""}
 				onChange={(search) => {
@@ -58,23 +58,17 @@ export function UserSittingsListingToolbar({
 				placeholder="Search by sitting or book…"
 			/>
 
-			<div className="flex flex-wrap items-center gap-2 lg:shrink-0">
+			<div className="flex flex-wrap items-center gap-2 md:shrink-0">
 				{showMutual ? (
-					<div className="flex items-center gap-2 border border-border px-3 py-2">
-						<Checkbox
-							id="user-sittings-mutual-only"
-							checked={params.mutualOnly}
-							onCheckedChange={(checked) => {
-								void setParams({ mutualOnly: checked === true });
-							}}
-						/>
-						<Label
-							htmlFor="user-sittings-mutual-only"
-							className="cursor-pointer font-normal text-sm"
-						>
-							Only mutuals
-						</Label>
-					</div>
+					<ListingToggleChip
+						pressed={params.mutualOnly}
+						onPressedChange={(mutualOnly) => {
+							void setParams({ mutualOnly });
+						}}
+						icon={<Users data-icon="inline-start" />}
+					>
+						Only mutuals
+					</ListingToggleChip>
 				) : null}
 
 				<ListingSort
@@ -88,6 +82,7 @@ export function UserSittingsListingToolbar({
 					}}
 					sortByOptions={userParticipationSortableFields}
 					sortByLabels={userSittingSortByLabels}
+					appearance="library"
 				/>
 
 				<ListingFiltersSheet
@@ -95,6 +90,7 @@ export function UserSittingsListingToolbar({
 					description="Narrow this member's sittings by status, progress, size, or dates."
 					activeFilterCount={sheetFilterCount}
 					onClear={() => clearUserSittingSheetFilters(setParams)}
+					appearance="library"
 				>
 					<ListingCheckboxList
 						legend="Sitting status"
