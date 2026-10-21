@@ -3,21 +3,20 @@
 import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { FeedbackListSort } from "@/components/blocks/feedback-list-sort";
-import { UserFeedbackCard } from "@/components/blocks/user-feedback-card";
+import { useMemo } from "react";
+import { MemberProfileFeedbackCard } from "@/components/blocks/member-profile-feedback-card";
 import { authClient } from "@/lib/auth-client";
 import {
-	feedbackListParamsToQuery,
-	useFeedbackListSearchParams,
-} from "@/lib/feedback/feedback-list-search-params";
+	hasActiveUserFeedbackFilters,
+	toUserFeedbackListCallInput,
+	useUserFeedbackListingSearchParams,
+} from "@/lib/listing/user-feedbacks-listing";
 import { orpc } from "@/utils/orpc";
-
-const PAGE_LIMIT = 10;
 
 function UserFeedbacksFeedSkeleton() {
 	return (
-		<div className="flex flex-col gap-4" aria-hidden>
-			{Array.from({ length: 3 }, (_, index) => (
+		<div className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-hidden>
+			{Array.from({ length: 4 }, (_, index) => (
 				<Skeleton key={index} className="h-36 w-full" />
 			))}
 		</div>
@@ -32,12 +31,12 @@ export function UserFeedbacksFeed({ username }: UserFeedbacksFeedProps) {
 	const { data: session } = authClient.useSession();
 	const isOwnProfile = session?.user.username === username;
 
-	const [searchParams, setSearchParams] = useFeedbackListSearchParams();
-	const { sortBy, sortDirection } = feedbackListParamsToQuery({
-		feedbackMinRating: searchParams.feedbackMinRating,
-		sortBy: searchParams.sortBy,
-		sortDirection: searchParams.sortDirection,
-	});
+	const [params] = useUserFeedbackListingSearchParams();
+	const listInput = useMemo(
+		() => toUserFeedbackListCallInput(params),
+		[params],
+	);
+	const filtered = hasActiveUserFeedbackFilters(params);
 
 	const {
 		data,
@@ -54,28 +53,24 @@ export function UserFeedbacksFeed({ username }: UserFeedbacksFeedProps) {
 			getNextPageParam: (lastPage) => lastPage.metadata.nextCursor ?? undefined,
 			input: (pageCursor) => ({
 				username,
-				limit: PAGE_LIMIT,
-				sortBy,
-				sortDirection,
+				...listInput,
 				...(pageCursor != null ? { cursor: pageCursor } : {}),
 			}),
 		}),
 	);
 
 	const items = data?.pages.flatMap((page) => page.items) ?? [];
+	const total = data?.pages[0]?.metadata.total;
 
 	return (
 		<div className="flex flex-col gap-4">
-			<div className="flex flex-wrap items-center justify-end gap-2 border border-border bg-muted/15 p-3">
-				<FeedbackListSort
-					sortBy={sortBy}
-					sortDirection={sortDirection}
-					onSortByChange={(value) => setSearchParams({ sortBy: value })}
-					onSortDirectionChange={(value) =>
-						setSearchParams({ sortDirection: value })
-					}
-				/>
-			</div>
+			{total != null ? (
+				<p className="text-muted-foreground text-sm tabular-nums">
+					{total} review{total === 1 ? "" : "s"}
+					{filtered ? " match your filters" : ""}
+				</p>
+			) : null}
+
 			<InfiniteScroll
 				className="flex flex-col gap-4"
 				hasNextPage={hasNextPage}
@@ -90,15 +85,21 @@ export function UserFeedbacksFeed({ username }: UserFeedbacksFeedProps) {
 					void refetch();
 				}}
 				isEmpty={items.length === 0}
-				emptyTitle="No feedback yet"
-				emptyDescription="Book reviews from this member will appear here."
+				emptyTitle={
+					filtered ? "No reviews match these filters" : "No reviews yet"
+				}
+				emptyDescription={
+					filtered
+						? "Try clearing filters or changing your search."
+						: "Book reviews from this member will appear here."
+				}
 				loadingContent={<UserFeedbacksFeedSkeleton />}
-				endMessage="End of feedback list."
+				endMessage="End of reviews."
 			>
-				<ul className="flex flex-col gap-4">
+				<ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
 					{items.map((item) => (
 						<li key={item.slug}>
-							<UserFeedbackCard item={item} showEdit={isOwnProfile} />
+							<MemberProfileFeedbackCard item={item} showEdit={isOwnProfile} />
 						</li>
 					))}
 				</ul>
