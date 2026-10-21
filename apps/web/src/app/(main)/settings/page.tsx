@@ -18,6 +18,11 @@ export const metadata: Metadata = buildPageMetadata({
 
 const settingsLinks = [
 	{
+		href: "/settings/profile",
+		title: "Profile",
+		description: "Birthday, bio, favorite genres, links and reading speed.",
+	},
+	{
 		href: "/settings/accounts",
 		title: "Account connections",
 		description: "Link Telegram for club bot features.",

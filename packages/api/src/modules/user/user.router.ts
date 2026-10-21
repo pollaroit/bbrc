@@ -26,6 +26,12 @@ import {
 	getUserProfileCard,
 } from "./user.service";
 import {
+	GetMyProfileOutputSchema,
+	UpdateMyProfileInputSchema,
+	UpdateMyProfileOutputSchema,
+} from "./user-profile.schema";
+import { getMyProfile, updateMyProfile } from "./user-profile.service";
+import {
 	GetUserStatsInputSchema,
 	GetUserStatsOutputSchema,
 } from "./user-stats.schema";
@@ -109,5 +115,16 @@ export const userRouter = {
 		.output(UpdateNameOutputSchema)
 		.handler(async ({ input, context }) =>
 			updateName(context.session.user.id, input, context.db),
+		),
+	getMyProfile: protectedProcedure
+		.output(GetMyProfileOutputSchema)
+		.handler(async ({ context }) =>
+			getMyProfile(context.session.user.id, context.db),
+		),
+	updateMyProfile: protectedProcedure
+		.input(UpdateMyProfileInputSchema)
+		.output(UpdateMyProfileOutputSchema)
+		.handler(async ({ input, context }) =>
+			updateMyProfile(context.session.user.id, input, context.db),
 		),
 };
