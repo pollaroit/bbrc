@@ -2,7 +2,6 @@ import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { CreateShelfForm } from "@/components/blocks/create-shelf-form";
-import { CreateShelfPageHeader } from "@/components/blocks/create-shelf-page-header";
 import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { auth } from "@/services";
@@ -39,10 +38,5 @@ export default async function NewShelfPage({
 		redirect(`/users/${username}/shelves` as Route);
 	}
 
-	return (
-		<div className="mx-auto flex max-w-2xl flex-col gap-8">
-			<CreateShelfPageHeader username={username} />
-			<CreateShelfForm username={username} />
-		</div>
-	);
+	return <CreateShelfForm username={username} />;
 }

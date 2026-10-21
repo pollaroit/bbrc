@@ -38,9 +38,5 @@ export default async function ShelfReorderPage({
 		redirect(`/users/${username}/shelves/${slug}` as Route);
 	}
 
-	return (
-		<div className="mx-auto max-w-2xl">
-			<ShelfReorderEditor username={username} shelfSlug={slug} />
-		</div>
-	);
+	return <ShelfReorderEditor username={username} shelfSlug={slug} />;
 }

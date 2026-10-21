@@ -21,13 +21,14 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowLeft, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ShelfDetailBookRow } from "@/components/blocks/shelf-detail-book-row";
+import { ShelfEditorShell } from "@/components/blocks/shelf-editor-shell";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type ShelfReorderEditorProps = {
@@ -215,24 +216,43 @@ export function ShelfReorderEditor({
 		order.every((book, index) => book.slug === shelf.books[index]?.book.slug);
 
 	return (
-		<div className="flex flex-col gap-6">
-			<Link
-				href={`/users/${username}/shelves/${shelfSlug}` as Route}
-				className="inline-flex w-fit items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
-			>
-				<ArrowLeft className="size-4" />
-				Back to shelf
-			</Link>
-
-			<div className="space-y-1">
-				<h1 className="font-bold text-xl tracking-tight">Reorder books</h1>
-				<p className="text-muted-foreground text-sm">
-					{shelf.type === "ordered"
-						? "Visitors will see these ranks on the public shelf page."
-						: "Order is saved but rank numbers stay hidden on the public page."}
-				</p>
-			</div>
-
+		<ShelfEditorShell
+			title="Reorder books"
+			description={
+				shelf.type === "ordered"
+					? "Drag books or use the arrows. Visitors will see these ranks on the shelf page."
+					: "Drag books or use the arrows. The order is saved, but rank numbers stay hidden on the shelf page."
+			}
+			backHref={`/users/${username}/shelves/${shelfSlug}` as Route}
+			backLabel="Back to shelf"
+			footer={
+				<>
+					<Button
+						type="button"
+						variant="outline"
+						render={
+							<Link href={`/users/${username}/shelves/${shelfSlug}` as Route} />
+						}
+						nativeButton={false}
+					>
+						Cancel
+					</Button>
+					<LoadingButton
+						type="button"
+						disabled={order.length === 0 || unchanged}
+						loading={reorderMutation.isPending}
+						onClick={() => {
+							reorderMutation.mutate({
+								shelfSlug,
+								bookSlugs: order.map((b) => b.slug),
+							});
+						}}
+					>
+						Save order
+					</LoadingButton>
+				</>
+			}
+		>
 			{order.length === 0 ? (
 				<p className="text-muted-foreground text-sm">
 					Add books before reordering.
@@ -241,40 +261,38 @@ export function ShelfReorderEditor({
 				<ol className="flex flex-col gap-2">
 					{order.map((book, index) => (
 						<li key={book.slug} className="list-none">
-							<div className="flex items-center gap-2">
-								<div className="flex shrink-0 flex-col gap-1">
-									<Button
-										type="button"
-										variant="outline"
-										size="icon-sm"
-										disabled={index === 0}
-										aria-label="Move up"
-										onClick={() => move(index, -1)}
-									>
-										<ArrowUp className="size-4" />
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										size="icon-sm"
-										disabled={index === order.length - 1}
-										aria-label="Move down"
-										onClick={() => move(index, 1)}
-									>
-										<ArrowDown className="size-4" />
-									</Button>
-								</div>
-								<div className="min-w-0 flex-1">
-									<ShelfDetailBookRow
-										username={username}
-										shelfSlug={shelfSlug}
-										rank={index + 1}
-										showRank
-										isOwner={false}
-										book={book}
-									/>
-								</div>
-							</div>
+							<ShelfDetailBookRow
+								username={username}
+								shelfSlug={shelfSlug}
+								rank={index + 1}
+								showRank
+								isOwner={false}
+								book={book}
+								actions={
+									<span className="flex shrink-0 gap-1">
+										<Button
+											type="button"
+											variant="outline"
+											size="icon-sm"
+											disabled={index === 0}
+											aria-label={`Move ${book.title} up`}
+											onClick={() => move(index, -1)}
+										>
+											<ArrowUp className="size-4" />
+										</Button>
+										<Button
+											type="button"
+											variant="outline"
+											size="icon-sm"
+											disabled={index === order.length - 1}
+											aria-label={`Move ${book.title} down`}
+											onClick={() => move(index, 1)}
+										>
+											<ArrowDown className="size-4" />
+										</Button>
+									</span>
+								}
+							/>
 						</li>
 					))}
 				</ol>
@@ -306,32 +324,6 @@ export function ShelfReorderEditor({
 					</SortableContext>
 				</DndContext>
 			)}
-
-			<div className="flex flex-wrap gap-3 border-border border-t pt-4 md:sticky md:bottom-0 md:bg-background md:py-3">
-				<LoadingButton
-					type="button"
-					disabled={order.length === 0 || unchanged}
-					loading={reorderMutation.isPending}
-					onClick={() => {
-						reorderMutation.mutate({
-							shelfSlug,
-							bookSlugs: order.map((b) => b.slug),
-						});
-					}}
-				>
-					Save order
-				</LoadingButton>
-				<Button
-					type="button"
-					variant="outline"
-					render={
-						<Link href={`/users/${username}/shelves/${shelfSlug}` as Route} />
-					}
-					nativeButton={false}
-				>
-					Cancel
-				</Button>
-			</div>
-		</div>
+		</ShelfEditorShell>
 	);
 }

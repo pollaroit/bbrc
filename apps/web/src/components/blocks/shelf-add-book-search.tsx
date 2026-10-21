@@ -2,9 +2,8 @@
 
 import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
 import { Input } from "@bbrc/ui/components/input";
-import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Loader2, Plus, Search } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -49,7 +48,6 @@ export function ShelfAddBookSearch({
 		orpc.shelf.addBook.mutationOptions({
 			onSuccess: async () => {
 				toast.success("Book added to shelf.");
-				setSearchInput("");
 				await queryClient.invalidateQueries({
 					queryKey: orpc.shelf.getBySlug.key({
 						input: { username, shelfSlug },
@@ -83,7 +81,7 @@ export function ShelfAddBookSearch({
 					Add books
 				</h2>
 				<p className="text-muted-foreground text-xs leading-relaxed">
-					Search the club library by title or author.{" "}
+					Search the club library, then tap a book to add it.{" "}
 					{atCap ? (
 						<span className="text-foreground">
 							This shelf is full ({MAX_BOOKS_PER_SHELF} books).
@@ -134,13 +132,27 @@ export function ShelfAddBookSearch({
 					) : (
 						books.map((book) => {
 							const coverSrc = bookCoverUrl(book.coverId);
+							const adding =
+								addMutation.isPending &&
+								addMutation.variables?.bookSlug === book.slug;
 							return (
 								<li
 									key={book.slug}
 									className="border-border border-b last:border-b-0"
 								>
-									<div className="flex items-center gap-3 p-2">
-										<div className="relative aspect-2/3 w-10 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10">
+									<button
+										type="button"
+										disabled={addMutation.isPending}
+										aria-label={`Add ${book.title} to shelf`}
+										className="flex min-h-14 w-full items-center gap-3 p-2 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none disabled:opacity-60"
+										onClick={() => {
+											addMutation.mutate({
+												shelfSlug,
+												bookSlug: book.slug,
+											});
+										}}
+									>
+										<span className="relative block aspect-2/3 w-10 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10">
 											{coverSrc ? (
 												<Image
 													src={coverSrc}
@@ -150,30 +162,27 @@ export function ShelfAddBookSearch({
 													sizes="40px"
 												/>
 											) : null}
-										</div>
-										<div className="min-w-0 flex-1">
-											<p className="truncate font-medium text-sm">
+										</span>
+										<span className="min-w-0 flex-1">
+											<span className="block truncate font-medium text-sm">
 												{book.title}
-											</p>
-											<p className="truncate text-muted-foreground text-xs">
+											</span>
+											<span className="block truncate text-muted-foreground text-xs">
 												{formatBookAuthors(book.authors)}
-											</p>
-										</div>
-										<LoadingButton
-											type="button"
-											size="sm"
-											variant="outline"
-											loading={addMutation.isPending}
-											onClick={() => {
-												addMutation.mutate({
-													shelfSlug,
-													bookSlug: book.slug,
-												});
-											}}
-										>
-											Add
-										</LoadingButton>
-									</div>
+											</span>
+										</span>
+										{adding ? (
+											<Loader2
+												className="size-4 shrink-0 animate-spin text-muted-foreground"
+												aria-hidden
+											/>
+										) : (
+											<Plus
+												className="size-4 shrink-0 text-muted-foreground"
+												aria-hidden
+											/>
+										)}
+									</button>
 								</li>
 							);
 						})

@@ -12,12 +12,15 @@ type MemberProfileShelfCardProps = {
 	username: string;
 	/** Owners also see non-active statuses. */
 	showStatus?: boolean;
+	/** Static look-alike for the editor: no links. */
+	preview?: boolean;
 };
 
 export function MemberProfileShelfCard({
 	shelf,
 	username,
 	showStatus = false,
+	preview = false,
 }: MemberProfileShelfCardProps) {
 	return (
 		<article className="relative flex h-full gap-3 border border-border p-3 transition-colors hover:bg-muted/40">
@@ -30,12 +33,16 @@ export function MemberProfileShelfCard({
 			<div className="flex min-w-0 flex-1 flex-col gap-1.5">
 				<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
 					<h3 className="font-medium text-sm leading-snug">
-						<Link
-							href={`/users/${username}/shelves/${shelf.slug}` as Route}
-							className="after:absolute after:inset-0"
-						>
-							{shelf.title}
-						</Link>
+						{preview ? (
+							shelf.title
+						) : (
+							<Link
+								href={`/users/${username}/shelves/${shelf.slug}` as Route}
+								className="after:absolute after:inset-0"
+							>
+								{shelf.title}
+							</Link>
+						)}
 					</h3>
 					<Badge variant={shelf.type === "ordered" ? "secondary" : "outline"}>
 						{shelf.type === "ordered" ? "Ranked" : "List"}
