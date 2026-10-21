@@ -32,11 +32,14 @@ import {
 import { getUserStats } from "./user-stats.service";
 import {
 	GetUsernameUpdateStatusOutputSchema,
+	UpdateNameInputSchema,
+	UpdateNameOutputSchema,
 	UpdateUsernameInputSchema,
 	UpdateUsernameOutputSchema,
 } from "./username-update.schema";
 import {
 	getUsernameUpdateStatus,
+	updateName,
 	updateUsername,
 } from "./username-update.service";
 
@@ -100,5 +103,11 @@ export const userRouter = {
 		.output(UpdateUsernameOutputSchema)
 		.handler(async ({ input, context }) =>
 			updateUsername(context.session.user.id, input, context.db),
+		),
+	updateName: protectedProcedure
+		.input(UpdateNameInputSchema)
+		.output(UpdateNameOutputSchema)
+		.handler(async ({ input, context }) =>
+			updateName(context.session.user.id, input, context.db),
 		),
 };

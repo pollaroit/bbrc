@@ -3,6 +3,8 @@ import { getUsernameUpdateEligibility } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import type {
 	GetUsernameUpdateStatusOutput,
+	UpdateNameInput,
+	UpdateNameOutput,
 	UpdateUsernameInput,
 	UpdateUsernameOutput,
 } from "./username-update.schema";
@@ -34,6 +36,48 @@ export async function getUsernameUpdateStatus(
 		usernameLastUpdatedAt: user.usernameLastUpdatedAt,
 		canUpdate: eligibility.canUpdate,
 		nextAllowedAt: eligibility.nextAllowedAt,
+	};
+}
+
+export async function updateName(
+	userId: string,
+	input: UpdateNameInput,
+	db: Database,
+): Promise<UpdateNameOutput> {
+	const nextName = input.name.trim();
+
+	const user = await db.user.findUnique({
+		where: { id: userId },
+		select: {
+			name: true,
+			username: true,
+		},
+	});
+
+	if (!user) {
+		throw new ORPCError("NOT_FOUND", { message: "User not found" });
+	}
+
+	if (nextName === user.name) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Choose a different name than your current one.",
+		});
+	}
+
+	const updated = await db.user.update({
+		where: { id: userId },
+		data: {
+			name: nextName,
+		},
+		select: {
+			name: true,
+			username: true,
+		},
+	});
+
+	return {
+		name: updated.name,
+		username: updated.username,
 	};
 }
 

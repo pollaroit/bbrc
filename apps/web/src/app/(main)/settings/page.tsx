@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SettingsAvatarUpload } from "@/components/blocks/settings-avatar-upload";
+import { SettingsNameForm } from "@/components/blocks/settings-name-form";
 import { SettingsUsernameForm } from "@/components/blocks/settings-username-form";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
@@ -38,6 +39,7 @@ export default async function SettingsPage() {
 	}
 
 	const telegramLinked = Boolean(session.user.telegramUserId);
+	const currentName = session.user.name;
 
 	return (
 		<div className="mx-auto flex max-w-xl flex-col gap-8">
@@ -84,6 +86,16 @@ export default async function SettingsPage() {
 					Username
 				</h2>
 				<SettingsUsernameForm />
+			</section>
+
+			<section
+				className="border border-border px-4 py-5"
+				aria-labelledby="name-heading"
+			>
+				<h2 id="name-heading" className="sr-only">
+					Your Name
+				</h2>
+				<SettingsNameForm currentName={currentName} />
 			</section>
 
 			<section

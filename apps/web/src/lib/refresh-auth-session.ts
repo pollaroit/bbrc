@@ -4,6 +4,7 @@ import { authClient } from "@/lib/auth-client";
 export async function refreshAuthSession(options?: {
 	imageUrl?: string | null;
 	username?: string;
+	name?: string;
 }): Promise<void> {
 	await authClient.getSession({
 		query: {
@@ -12,7 +13,11 @@ export async function refreshAuthSession(options?: {
 	});
 
 	// Client session cache may still hold stale user fields until the next full refetch.
-	if (options?.imageUrl !== undefined || options?.username !== undefined) {
+	if (
+		options?.imageUrl !== undefined ||
+		options?.username !== undefined ||
+		options?.name !== undefined
+	) {
 		const client = authClient as {
 			$store?: {
 				atoms?: {
@@ -22,6 +27,7 @@ export async function refreshAuthSession(options?: {
 								user?: Record<string, unknown> & {
 									image?: string | null;
 									username?: string;
+									name?: string;
 								};
 							} | null;
 						} | null;
@@ -47,6 +53,7 @@ export async function refreshAuthSession(options?: {
 							...(options.username !== undefined
 								? { username: options.username }
 								: {}),
+							...(options.name !== undefined ? { name: options.name } : {}),
 						},
 					},
 				});

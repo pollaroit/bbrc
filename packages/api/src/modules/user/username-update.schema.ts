@@ -23,3 +23,15 @@ export const UpdateUsernameOutputSchema = zod.object({
 
 export type UpdateUsernameInput = zod.infer<typeof UpdateUsernameInputSchema>;
 export type UpdateUsernameOutput = zod.infer<typeof UpdateUsernameOutputSchema>;
+
+export const UpdateNameInputSchema = zod.object({
+	name: UserSchema.shape.name,
+});
+
+export const UpdateNameOutputSchema = zod.object({
+	name: UserSchema.shape.name,
+	username: UserSchema.shape.username,
+});
+
+export type UpdateNameInput = zod.infer<typeof UpdateNameInputSchema>;
+export type UpdateNameOutput = zod.infer<typeof UpdateNameOutputSchema>;
