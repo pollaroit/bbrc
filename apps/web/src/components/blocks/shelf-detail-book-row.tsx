@@ -28,6 +28,8 @@ type ShelfDetailBookRowProps = {
 	/** When true, row is a drag handle target (reorder page). */
 	sortable?: boolean;
 	dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+	/** Extra controls shown at the end of the row (e.g. move up/down). */
+	actions?: React.ReactNode;
 };
 
 export function ShelfDetailBookRow({
@@ -40,6 +42,7 @@ export function ShelfDetailBookRow({
 	bordered = true,
 	sortable = false,
 	dragHandleProps,
+	actions,
 }: ShelfDetailBookRowProps) {
 	const href = `/books/${book.slug}` as Route;
 	const coverSrc = bookCoverUrl(book.coverId);
@@ -76,7 +79,7 @@ export function ShelfDetailBookRow({
 			{sortable ? (
 				<button
 					type="button"
-					className="touch-none text-muted-foreground hover:text-foreground"
+					className="-ml-1 flex size-10 shrink-0 touch-none items-center justify-center text-muted-foreground hover:text-foreground"
 					aria-label="Drag to reorder"
 					{...dragHandleProps}
 				>
@@ -110,6 +113,7 @@ export function ShelfDetailBookRow({
 					</p>
 				</div>
 			</Link>
+			{actions}
 			{isOwner && !sortable ? (
 				<Button
 					type="button"

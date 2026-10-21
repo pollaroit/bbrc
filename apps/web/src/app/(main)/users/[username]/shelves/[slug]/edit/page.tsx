@@ -42,7 +42,7 @@ export default async function EditShelfPage({
 	}
 
 	return (
-		<div className="flex flex-col gap-8">
+		<div className="mx-auto flex max-w-2xl flex-col gap-8">
 			<header className="flex flex-col gap-4 border-border border-b pb-6">
 				<Button
 					render={<Link href={`/users/${username}/shelves/${slug}` as Route} />}

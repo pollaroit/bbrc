@@ -48,12 +48,18 @@ function SortableBookRow({
 	shelfSlug,
 	rank,
 	book,
+	isFirst,
+	isLast,
+	onMove,
 }: {
 	id: string;
 	username: string;
 	shelfSlug: string;
 	rank: number;
 	book: BookRow;
+	isFirst: boolean;
+	isLast: boolean;
+	onMove: (direction: -1 | 1) => void;
 }) {
 	const {
 		attributes,
@@ -81,6 +87,30 @@ function SortableBookRow({
 				book={book}
 				sortable
 				dragHandleProps={{ ...attributes, ...listeners }}
+				actions={
+					<span className="flex shrink-0 gap-1">
+						<Button
+							type="button"
+							variant="outline"
+							size="icon-sm"
+							disabled={isFirst}
+							aria-label={`Move ${book.title} up`}
+							onClick={() => onMove(-1)}
+						>
+							<ArrowUp className="size-4" />
+						</Button>
+						<Button
+							type="button"
+							variant="outline"
+							size="icon-sm"
+							disabled={isLast}
+							aria-label={`Move ${book.title} down`}
+							onClick={() => onMove(1)}
+						>
+							<ArrowDown className="size-4" />
+						</Button>
+					</span>
+				}
 			/>
 		</li>
 	);
@@ -180,6 +210,9 @@ export function ShelfReorderEditor({
 	}
 
 	const shelf = shelfQuery.data;
+	const unchanged =
+		order.length === shelf.books.length &&
+		order.every((book, index) => book.slug === shelf.books[index]?.book.slug);
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -264,6 +297,9 @@ export function ShelfReorderEditor({
 									shelfSlug={shelfSlug}
 									rank={index + 1}
 									book={book}
+									isFirst={index === 0}
+									isLast={index === order.length - 1}
+									onMove={(direction) => move(index, direction)}
 								/>
 							))}
 						</ol>
@@ -271,10 +307,10 @@ export function ShelfReorderEditor({
 				</DndContext>
 			)}
 
-			<div className="flex flex-wrap gap-3">
+			<div className="flex flex-wrap gap-3 border-border border-t pt-4 md:sticky md:bottom-0 md:bg-background md:py-3">
 				<LoadingButton
 					type="button"
-					disabled={order.length === 0}
+					disabled={order.length === 0 || unchanged}
 					loading={reorderMutation.isPending}
 					onClick={() => {
 						reorderMutation.mutate({

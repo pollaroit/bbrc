@@ -40,7 +40,7 @@ export default async function NewShelfPage({
 	}
 
 	return (
-		<div className="flex flex-col gap-8">
+		<div className="mx-auto flex max-w-2xl flex-col gap-8">
 			<CreateShelfPageHeader username={username} />
 			<CreateShelfForm username={username} />
 		</div>
