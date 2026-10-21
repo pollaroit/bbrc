@@ -3,12 +3,14 @@
 import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
 import { useCreateGoal } from "@/components/blocks/create-goal-provider";
 import { GoalCard } from "@/components/blocks/goal-card";
 import { UserGoalsListToolbar } from "@/components/blocks/user-goals-list-toolbar";
 import {
 	collectGoalYears,
 	filterGoalListItems,
+	hasActiveGoalListFilters,
 	partitionFilteredGoals,
 	sortGoalListItems,
 	useGoalListSearchParams,
@@ -31,7 +33,7 @@ export function UserGoalsList({ username }: UserGoalsListProps) {
 
 	if (listQuery.isPending) {
 		return (
-			<div className="grid gap-4 sm:grid-cols-2">
+			<div className="grid gap-3 md:grid-cols-2" aria-hidden>
 				{Array.from({ length: 2 }, (_, i) => (
 					<Skeleton key={i} className="h-44 w-full" />
 				))}
@@ -57,30 +59,37 @@ export function UserGoalsList({ username }: UserGoalsListProps) {
 	const { active, expired } = partitionFilteredGoals(filteredItems);
 	const hasGoals = items.length > 0;
 	const hasFilteredResults = filteredItems.length > 0;
+	const filtered = hasActiveGoalListFilters(filterParams);
+
+	const newGoalButton = showOwnerChrome ? (
+		<Button size="sm" onClick={openCreateGoal}>
+			<Plus data-icon="inline-start" aria-hidden />
+			New goal
+		</Button>
+	) : null;
 
 	return (
-		<div className="flex flex-col gap-8">
-			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<p className="max-w-prose text-muted-foreground text-sm leading-relaxed">
-					{showOwnerChrome
-						? "Track how many books you finish each year. Scoped goals only count reads that match your filters."
-						: "Yearly reading targets for this member."}
-				</p>
-				{showOwnerChrome ? (
-					<Button size="sm" onClick={openCreateGoal}>
-						New goal
-					</Button>
-				) : null}
-			</div>
+		<div className="flex flex-col gap-5">
+			{hasGoals ? (
+				<UserGoalsListToolbar
+					yearOptions={yearOptions}
+					action={newGoalButton}
+				/>
+			) : null}
 
-			{hasGoals ? <UserGoalsListToolbar yearOptions={yearOptions} /> : null}
+			{hasGoals ? (
+				<p className="text-muted-foreground text-sm tabular-nums">
+					{filteredItems.length} goal{filteredItems.length === 1 ? "" : "s"}
+					{filtered ? " match your filters" : ""}
+				</p>
+			) : null}
 
 			{!hasGoals ? (
 				<div className="border border-border border-dashed px-6 py-12 text-center">
 					<p className="font-medium">No goals yet</p>
 					<p className="mt-1 text-muted-foreground text-sm">
 						{showOwnerChrome
-							? "Create a goal to set a target for this year or next."
+							? "Set a target for how many books you want to finish this year. Scoped goals only count reads that match their authors or countries."
 							: "This member has not published any reading goals."}
 					</p>
 					{showOwnerChrome ? (
@@ -93,15 +102,15 @@ export function UserGoalsList({ username }: UserGoalsListProps) {
 				<div className="border border-border border-dashed px-6 py-10 text-center">
 					<p className="font-medium">No goals match these filters</p>
 					<p className="mt-1 text-muted-foreground text-sm">
-						Try a different status, year, or scope.
+						Try clearing filters or changing your search.
 					</p>
 				</div>
 			) : (
 				<>
 					{active.length > 0 ? (
-						<section className="space-y-4">
-							<h2 className="font-semibold text-lg">Active</h2>
-							<ul className="grid gap-4 sm:grid-cols-2">
+						<section className="flex flex-col gap-3">
+							<h2 className="font-semibold text-base tracking-tight">Active</h2>
+							<ul className="grid gap-3 md:grid-cols-2">
 								{active.map((goal) => (
 									<li key={goal.id}>
 										<GoalCard username={username} goal={goal} />
@@ -112,11 +121,11 @@ export function UserGoalsList({ username }: UserGoalsListProps) {
 					) : null}
 
 					{expired.length > 0 ? (
-						<section className="space-y-4">
-							<h2 className="font-semibold text-lg text-muted-foreground">
+						<section className="flex flex-col gap-3">
+							<h2 className="font-semibold text-base text-muted-foreground tracking-tight">
 								Expired
 							</h2>
-							<ul className="grid gap-4 sm:grid-cols-2">
+							<ul className="grid gap-3 md:grid-cols-2">
 								{expired.map((goal) => (
 									<li key={goal.id}>
 										<GoalCard username={username} goal={goal} />

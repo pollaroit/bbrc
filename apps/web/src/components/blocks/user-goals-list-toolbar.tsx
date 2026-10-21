@@ -1,8 +1,10 @@
 "use client";
 
 import { Tabs, TabsList, TabsTrigger } from "@bbrc/ui/components/tabs";
+import type { ReactNode } from "react";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
+import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
 import {
 	clearGoalListFilters,
@@ -20,10 +22,13 @@ import {
 
 type UserGoalsListToolbarProps = {
 	yearOptions: number[];
+	/** Shown at the end of the completion tabs row (e.g. "New goal"). */
+	action?: ReactNode;
 };
 
 export function UserGoalsListToolbar({
 	yearOptions,
+	action,
 }: UserGoalsListToolbarProps) {
 	const [params, setParams] = useGoalListSearchParams();
 	const sheetFilterCount = countGoalListFilters(params);
@@ -59,74 +64,87 @@ export function UserGoalsListToolbar({
 	};
 
 	return (
-		<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-			<Tabs
-				value={params.completion}
-				onValueChange={(value) => {
-					void setParams({
-						completion:
-							value === "all" ? null : (value as GoalCompletionFilter),
-					});
-				}}
-			>
-				<TabsList
-					variant="line"
-					className="h-auto w-full justify-start sm:w-auto"
+		<div className="flex flex-col gap-4">
+			<div className="flex items-center justify-between gap-3">
+				<Tabs
+					value={params.completion}
+					onValueChange={(value) => {
+						void setParams({
+							completion:
+								value === "all" ? null : (value as GoalCompletionFilter),
+						});
+					}}
 				>
-					{goalCompletionFilters.map((filter) => (
-						<TabsTrigger key={filter} value={filter}>
-							{goalCompletionFilterLabels[filter]}
-						</TabsTrigger>
-					))}
-				</TabsList>
-			</Tabs>
+					<TabsList variant="line" className="h-auto justify-start">
+						{goalCompletionFilters.map((filter) => (
+							<TabsTrigger key={filter} value={filter}>
+								{goalCompletionFilterLabels[filter]}
+							</TabsTrigger>
+						))}
+					</TabsList>
+				</Tabs>
+				{action}
+			</div>
 
-			<div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-				<ListingSort
-					sortBy={params.sortBy}
-					sortDirection={params.sortDirection}
-					onSortByChange={(sortBy) => {
-						void setParams({ sortBy });
+			<div className="flex flex-col gap-3 md:flex-row md:items-center">
+				<ListingSearch
+					value={params.search ?? ""}
+					onChange={(search) => {
+						void setParams({ search });
 					}}
-					onSortDirectionChange={(sortDirection) => {
-						void setParams({ sortDirection });
-					}}
-					sortByOptions={goalSortableFields}
-					sortByLabels={goalSortByLabels}
+					placeholder="Search goals…"
 				/>
+				<div className="flex flex-wrap items-center gap-2 md:shrink-0">
+					<ListingSort
+						sortBy={params.sortBy}
+						sortDirection={params.sortDirection}
+						onSortByChange={(sortBy) => {
+							void setParams({ sortBy });
+						}}
+						onSortDirectionChange={(sortDirection) => {
+							void setParams({ sortDirection });
+						}}
+						sortByOptions={goalSortableFields}
+						sortByLabels={goalSortByLabels}
+						appearance="library"
+					/>
 
-				<ListingFiltersSheet
-					title="Goal filters"
-					description="Narrow goals by calendar year or scope."
-					activeFilterCount={sheetFilterCount}
-					onClear={() => clearGoalListFilters(setParams)}
-				>
-					{yearOptions.length > 0 ? (
+					<ListingFiltersSheet
+						title="Goal filters"
+						description="Narrow goals by calendar year or scope."
+						activeFilterCount={sheetFilterCount}
+						onClear={() => clearGoalListFilters(setParams)}
+						appearance="library"
+					>
+						{yearOptions.length > 0 ? (
+							<ListingCheckboxList
+								legend="Year"
+								options={yearOptions.map((year) => ({
+									id: String(year),
+									label: String(year),
+									checked: params.years?.includes(year) ?? false,
+									onCheckedChange: (checked) => {
+										toggleYear(year, checked);
+									},
+								}))}
+							/>
+						) : null}
+
 						<ListingCheckboxList
-							legend="Year"
-							options={yearOptions.map((year) => ({
-								id: String(year),
-								label: String(year),
-								checked: params.years?.includes(year) ?? false,
+							legend="Scope"
+							options={goalScopeFilterKinds.map((scope) => ({
+								id: scope,
+								label: goalScopeFilterLabels[scope],
+								checked: (params.scopes ?? goalScopeFilterKinds).includes(
+									scope,
+								),
 								onCheckedChange: (checked) => {
-									toggleYear(year, checked);
+									toggleScope(scope, checked);
 								},
 							}))}
 						/>
-					) : null}
-
-					<ListingCheckboxList
-						legend="Scope"
-						options={goalScopeFilterKinds.map((scope) => ({
-							id: scope,
-							label: goalScopeFilterLabels[scope],
-							checked: (params.scopes ?? goalScopeFilterKinds).includes(scope),
-							onCheckedChange: (checked) => {
-								toggleScope(scope, checked);
-							},
-						}))}
-					/>
-				</ListingFiltersSheet>
+					</ListingFiltersSheet>
+				</div>
 			</div>
 		</div>
 	);

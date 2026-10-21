@@ -29,7 +29,7 @@ export function GoalCard({ username, goal }: GoalCardProps) {
 		>
 			<div className="flex flex-wrap items-start justify-between gap-2">
 				<div className="min-w-0 space-y-1">
-					<h2 className="font-semibold leading-snug">{goal.title}</h2>
+					<h3 className="font-semibold leading-snug">{goal.title}</h3>
 					<p className="text-muted-foreground text-sm">{goal.year}</p>
 				</div>
 				<div className="flex flex-wrap gap-2">
