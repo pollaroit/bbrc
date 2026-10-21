@@ -19,7 +19,11 @@ import {
 import { createFeedback } from "../feedback/feedback.service";
 import { activeParticipationWhere } from "../sitting/participation-active";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
-import { userReadListSorting, withStableUserReadOrderBy } from "./read.listing";
+import {
+	compareUserReadRatings,
+	userReadListSorting,
+	withStableUserReadOrderBy,
+} from "./read.listing";
 import type {
 	GetBookReadStateOutput,
 	ListBookReadsInput,
@@ -483,13 +487,55 @@ export async function listUserReads(
 
 	const isFirstPage = input.cursor == null;
 
-	const [rows, total] = await Promise.all([
-		db.read.findMany({
-			...pagination.use(),
+	const loadRowsByRating = async (): Promise<UserReadListRow[]> => {
+		const all = await db.read.findMany({
 			where: readWhere,
-			orderBy: withStableUserReadOrderBy(sorting.use(), sorting.sortDirection),
+			select: { bookId: true },
+		});
+		const ratings = await db.feedback.findMany({
+			where: {
+				authorId: user.id,
+				bookId: { in: all.map((row) => row.bookId) },
+			},
+			select: { bookId: true, rating: true },
+		});
+		const ratingByBookId = new Map(
+			ratings.map((feedback) => [feedback.bookId, feedback.rating]),
+		);
+		const sortedIds = all
+			.map((row) => ({
+				bookId: row.bookId,
+				rating: ratingByBookId.get(row.bookId) ?? null,
+			}))
+			.toSorted((a, b) => compareUserReadRatings(a, b, sorting.sortDirection))
+			.map((row) => row.bookId);
+
+		const start = input.cursor ? sortedIds.indexOf(input.cursor) + 1 : 0;
+		const pageIds = sortedIds.slice(start, start + pagination.limit + 1);
+		const pageRows = await db.read.findMany({
+			where: { userId: user.id, bookId: { in: pageIds } },
 			select: userReadListSelect,
-		}),
+		});
+		const rowByBookId = new Map(pageRows.map((row) => [row.book.id, row]));
+
+		return pageIds.flatMap((id) => {
+			const row = rowByBookId.get(id);
+			return row ? [row] : [];
+		});
+	};
+
+	const [rows, total] = await Promise.all([
+		sorting.sortBy === "rating"
+			? loadRowsByRating()
+			: db.read.findMany({
+					...pagination.use(),
+					where: readWhere,
+					orderBy: withStableUserReadOrderBy(
+						sorting.use(),
+						sorting.sortDirection,
+					),
+					select: userReadListSelect,
+				}),
 		isFirstPage
 			? db.read.count({ where: readWhere })
 			: Promise.resolve(undefined),

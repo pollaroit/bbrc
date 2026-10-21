@@ -35,6 +35,7 @@ import {
 
 export const userReadSortByLabels = {
 	readEndMonth: "Finish month",
+	rating: "Member's rating",
 	recordedAt: "Logged in app",
 	title: "Title",
 	pages: "Page count",
@@ -122,6 +123,8 @@ export function toUserReadsAuthorFacetsInput(
 		countries: _countries,
 		limit: _limit,
 		cursor: _cursor,
+		sortBy: _sortBy,
+		sortDirection: _sortDirection,
 		...rest
 	} = listInput;
 
@@ -139,6 +142,8 @@ export function toUserReadsCountryFacetsInput(
 		countries: selectedCountries,
 		limit: _limit,
 		cursor: _cursor,
+		sortBy: _sortBy,
+		sortDirection: _sortDirection,
 		...rest
 	} = listInput;
 

@@ -141,7 +141,7 @@ export function UserReadsExportMenu({
 		setSheetOpen(false);
 	};
 
-	const triggerLabel = isOwnProfile ? "Export my reads" : "Export reads";
+	const triggerLabel = isOwnProfile ? "Export" : "Export";
 
 	return (
 		<>
