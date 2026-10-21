@@ -195,7 +195,15 @@ export const UserParticipationListItemSchema = zod.object({
 	id: zod.uuid(),
 	progress: ProgressSchema,
 	updatedAt: zod.coerce.date(),
+	/** Whether the viewer (not the profile owner) also takes part in this sitting. */
+	viewerParticipates: zod.boolean(),
 	sitting: zod.object({
+		poll: zod
+			.object({
+				createdAt: zod.coerce.date(),
+				deadline: zod.coerce.date(),
+			})
+			.nullable(),
 		slug: SittingSchema.shape.slug,
 		status: SittingStatusSchema,
 		deadline: zod.coerce.date().nullable(),
@@ -226,10 +234,12 @@ export const getUserParticipationListFields = {
 	updatedAt: true,
 	sitting: {
 		select: {
+			id: true,
 			slug: true,
 			status: true,
 			deadline: true,
 			createdAt: true,
+			poll: { select: { createdAt: true, deadline: true } },
 			selectedBook: {
 				select: {
 					slug: true,

@@ -284,7 +284,16 @@ export async function getUserFeedbackList(
 		select: getUserFeedbackListFields,
 	});
 
-	return pagination.paginate(rows);
+	const page = pagination.paginate(rows);
+
+	return {
+		items: page.items.map(({ _count, id: _id, ...item }) => ({
+			...item,
+			likeCount: _count.likes,
+			commentCount: _count.comments,
+		})),
+		metadata: page.metadata,
+	};
 }
 
 export async function getBookFeedbackState(

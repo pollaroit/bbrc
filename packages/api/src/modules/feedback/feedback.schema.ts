@@ -115,6 +115,8 @@ export const UserFeedbackListItemSchema = zod.object({
 	review: FeedbackSchema.shape.review,
 	isSpoiler: FeedbackSchema.shape.isSpoiler,
 	createdAt: zod.coerce.date(),
+	likeCount: zod.number().int().min(0),
+	commentCount: zod.number().int().min(0),
 	book: UserFeedbackBookSchema,
 });
 
@@ -143,6 +145,7 @@ export const getUserFeedbackListFields = {
 	review: true,
 	isSpoiler: true,
 	createdAt: true,
+	_count: { select: { likes: true, comments: true } },
 	book: {
 		select: {
 			slug: true,

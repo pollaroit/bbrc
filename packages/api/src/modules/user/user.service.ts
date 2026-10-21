@@ -258,12 +258,27 @@ export async function getUserParticipationList(
 
 	const page = pagination.paginate(rows);
 
+	const viewerId = session?.user?.id ?? null;
+	const viewerSittingIds = new Set<string>();
+	if (viewerId) {
+		const mine = await db.participation.findMany({
+			where: {
+				userId: viewerId,
+				sittingId: { in: page.items.map((row) => row.sitting.id) },
+			},
+			select: { sittingId: true },
+		});
+		for (const row of mine) viewerSittingIds.add(row.sittingId);
+	}
+
 	return {
 		items: page.items.map((row) => ({
 			id: row.id,
 			progress: row.progress,
 			updatedAt: row.updatedAt,
+			viewerParticipates: viewerSittingIds.has(row.sitting.id),
 			sitting: {
+				poll: row.sitting.poll,
 				slug: row.sitting.slug,
 				status: row.sitting.status,
 				deadline: row.sitting.deadline,

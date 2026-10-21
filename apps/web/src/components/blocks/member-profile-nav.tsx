@@ -34,7 +34,7 @@ const tabs: { segment: ProfileSegment; label: string; ownOnly?: boolean }[] = [
 
 function tabHref(username: string, segment: ProfileSegment) {
 	return (
-		segment === "sittings"
+		segment === "overview"
 			? `/users/${username}`
 			: `/users/${username}/${segment}`
 	) as Route;

@@ -9,10 +9,9 @@ import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { GoalProgressBar } from "@/components/blocks/goal-progress-bar";
+import { MemberProfileSittingCard } from "@/components/blocks/member-profile-sitting-card";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ShelfCover } from "@/components/blocks/shelf-cover";
-import { progressLabels } from "@/components/blocks/sitting-participation-progress";
-import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatReadFinishedMonthField } from "@/lib/format-read-date";
 import { cn } from "@/lib/utils";
@@ -201,39 +200,13 @@ export function MemberProfileOverview({
 						href={`${base}/sittings` as Route}
 						className="order-1 md:order-none"
 					>
-						<RowList>
-							{sittingItems.map((item) => {
-								const book = item.sitting.selectedBook;
-								return (
-									<li key={item.id}>
-										<Link
-											href={`/sittings/${item.sitting.slug}` as Route}
-											className={rowLinkClass}
-										>
-											<Cover coverId={book?.coverId} />
-											<span className="flex min-w-0 flex-1 flex-col gap-1.5">
-												<span className="font-medium text-sm leading-snug">
-													{item.sitting.displayName}
-												</span>
-												<span className="truncate text-muted-foreground text-sm">
-													{book
-														? `${book.title} · ${formatBookAuthors(book.authors)}`
-														: item.sitting.status === "voting"
-															? "Poll in progress"
-															: "No book selected"}
-												</span>
-												<span className="flex flex-wrap items-center gap-1.5">
-													<SittingStatusBadge status={item.sitting.status} />
-													<Badge variant="outline">
-														{progressLabels[item.progress]}
-													</Badge>
-												</span>
-											</span>
-										</Link>
-									</li>
-								);
-							})}
-						</RowList>
+						<ul className="flex flex-col gap-3">
+							{sittingItems.map((item) => (
+								<li key={item.id}>
+									<MemberProfileSittingCard item={item} />
+								</li>
+							))}
+						</ul>
 					</Section>
 				) : null}
 
@@ -332,6 +305,16 @@ export function MemberProfileOverview({
 													? "Spoiler — open to read"
 													: snippet(item.review, 140) || "Rating only"}
 											</span>
+											<span className="mt-1 flex items-center gap-4 text-muted-foreground text-xs tabular-nums">
+												<span className="inline-flex items-center gap-1">
+													<Heart className="size-3.5" aria-hidden />
+													{item.likeCount}
+												</span>
+												<span className="inline-flex items-center gap-1">
+													<MessageCircle className="size-3.5" aria-hidden />
+													{item.commentCount}
+												</span>
+											</span>
 										</span>
 									</Link>
 								</li>
@@ -364,21 +347,22 @@ export function MemberProfileOverview({
 										className={rowLinkClass}
 									>
 										<Cover coverId={item.book.coverId} className="w-9" />
-										<span className="flex min-w-0 flex-col gap-0.5">
+										<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 											<span className="font-medium text-sm leading-snug">
 												{item.book.title}
 											</span>
 											<span className="truncate text-muted-foreground text-xs">
 												{formatBookAuthors(item.book.authors)}
 											</span>
-											<span className="text-muted-foreground text-xs">
-												Finished{" "}
+										</span>
+										{item.readEndYear != null && item.readEndMonth != null ? (
+											<span className="shrink-0 text-muted-foreground text-xs">
 												{formatReadFinishedMonthField(
 													item.readEndYear,
 													item.readEndMonth,
 												)}
 											</span>
-										</span>
+										) : null}
 									</Link>
 								</li>
 							))}
