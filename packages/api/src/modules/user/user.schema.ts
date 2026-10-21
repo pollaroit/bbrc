@@ -16,6 +16,7 @@ import {
 	userListSearching,
 	userListSorting,
 } from "./user.listing";
+import { UserProfileOutputSchema } from "./user-profile.schema";
 
 /** LIST — composed as a concrete ZodObject so oRPC clients get input autocomplete. */
 export const GetUserListInputSchema = userListFiltersSchema
@@ -111,6 +112,7 @@ export const GetUserByUsernameOutputSchema = UserMemberSnapshotSchema.extend({
 	xpLevel: MemberLevelSchema,
 	rpLevel: MemberLevelSchema,
 	readingStreak: ReadingStreakSchema,
+	profile: UserProfileOutputSchema,
 });
 
 export type GetUserByUsernameInput = z.infer<
@@ -151,6 +153,7 @@ export const GetUserProfileCardInputSchema = UserSchema.pick({
 export const GetUserProfileCardOutputSchema =
 	GetUserByUsernameOutputSchema.omit({
 		indexable: true,
+		profile: true,
 	}).extend({
 		favorites: zod.array(ProfileCardFavoriteItemSchema),
 		recentReads: zod.array(ProfileCardReadItemSchema),

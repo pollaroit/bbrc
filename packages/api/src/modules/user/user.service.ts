@@ -28,6 +28,7 @@ import {
 	type UpdateUserStatusInput,
 	type UpdateUserStatusOutput,
 } from "./user.schema";
+import { getProfileByUserId } from "./user-profile.service";
 import {
 	assertMemberVisible,
 	viewerFromSession,
@@ -79,9 +80,10 @@ export async function getUserByUsername(
 
 	assertMemberVisible(user, viewer);
 
-	const [readingStreak, levels] = await Promise.all([
+	const [readingStreak, levels, profile] = await Promise.all([
 		loadReadingStreakForUser(user.id, db),
 		Promise.resolve(userMemberLevelsFromPoints(user.xp, user.rp)),
+		getProfileByUserId(user.id, db),
 	]);
 
 	return {
@@ -96,6 +98,7 @@ export async function getUserByUsername(
 		xpLevel: levels.xpLevel,
 		rpLevel: levels.rpLevel,
 		readingStreak,
+		profile,
 	};
 }
 
