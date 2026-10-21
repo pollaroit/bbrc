@@ -3,6 +3,7 @@ import { authClient } from "@/lib/auth-client";
 /** Refetch session from the server (e.g. after avatar URL changes). */
 export async function refreshAuthSession(options?: {
 	imageUrl?: string | null;
+	username?: string;
 }): Promise<void> {
 	await authClient.getSession({
 		query: {
@@ -11,14 +12,17 @@ export async function refreshAuthSession(options?: {
 	});
 
 	// Client session cache may still hold stale user fields until the next full refetch.
-	if (options?.imageUrl !== undefined) {
+	if (options?.imageUrl !== undefined || options?.username !== undefined) {
 		const client = authClient as {
 			$store?: {
 				atoms?: {
 					session?: {
 						get: () => {
 							data?: {
-								user?: Record<string, unknown> & { image?: string | null };
+								user?: Record<string, unknown> & {
+									image?: string | null;
+									username?: string;
+								};
 							} | null;
 						} | null;
 						set: (value: unknown) => void;
@@ -37,7 +41,12 @@ export async function refreshAuthSession(options?: {
 						...current.data,
 						user: {
 							...current.data.user,
-							image: options.imageUrl,
+							...(options.imageUrl !== undefined
+								? { image: options.imageUrl }
+								: {}),
+							...(options.username !== undefined
+								? { username: options.username }
+								: {}),
 						},
 					},
 				});
