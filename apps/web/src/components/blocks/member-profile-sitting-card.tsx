@@ -3,6 +3,7 @@
 import type { GetUserParticipationListOutput } from "@bbrc/api/modules/user/user.schema";
 import { formatSittingSlugLabel } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
+import { BookOpen, Users } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -56,11 +57,96 @@ function VotingProgress({
 	);
 }
 
+const shortDate = new Intl.DateTimeFormat("en", {
+	month: "short",
+	day: "numeric",
+});
+const shortDateWithYear = new Intl.DateTimeFormat("en", {
+	month: "short",
+	day: "numeric",
+	year: "numeric",
+});
+
+function formatShortDate(date: Date, withYear: boolean) {
+	return (withYear ? shortDateWithYear : shortDate).format(date);
+}
+
+/** Start-to-deadline bar for reading and finished sittings. */
+function ReadingTimeline({
+	start,
+	end,
+	finished,
+}: {
+	start: Date;
+	end: Date;
+	finished: boolean;
+}) {
+	const now = Date.now();
+	const span = end.getTime() - start.getTime();
+	const percent = finished
+		? 100
+		: span > 0
+			? Math.min(100, Math.max(0, ((now - start.getTime()) / span) * 100))
+			: 100;
+	const overdue = !finished && end.getTime() < now;
+	// Show years when the span crosses years or is not in the current year.
+	const withYear =
+		start.getFullYear() !== end.getFullYear() ||
+		end.getFullYear() !== new Date().getFullYear();
+
+	return (
+		<div className="flex flex-col gap-1.5">
+			<div
+				className="h-1.5 border border-border bg-muted/30"
+				role="progressbar"
+				aria-valuemin={0}
+				aria-valuemax={100}
+				aria-valuenow={Math.round(percent)}
+				aria-label="Sitting time elapsed"
+			>
+				<div
+					className={cn(
+						"h-full",
+						finished
+							? "bg-foreground/30"
+							: overdue
+								? "bg-destructive"
+								: "bg-primary",
+					)}
+					style={{ width: `${percent}%` }}
+				/>
+			</div>
+			<div className="flex items-baseline justify-between gap-2 text-muted-foreground text-xs tabular-nums">
+				<span>{formatShortDate(start, withYear)}</span>
+				{finished ? null : (
+					<span className={cn(overdue && "text-destructive")}>
+						Due {formatRelativeTime(end)}
+					</span>
+				)}
+				<span>{formatShortDate(end, withYear)}</span>
+			</div>
+		</div>
+	);
+}
+
 type MemberProfileSittingCardProps = {
 	item: Item;
 	/** Adds dates, readers and page count (sittings tab). */
 	variant?: "compact" | "detailed";
 };
+
+function VoteButton({ slug }: { slug: string }) {
+	return (
+		<Button
+			size="sm"
+			nativeButton={false}
+			className="relative z-10"
+			render={<Link href={`/sittings/${slug}/vote` as Route} />}
+		>
+			Open voting
+		</Button>
+	);
+}
 
 export function MemberProfileSittingCard({
 	item,
@@ -116,53 +202,43 @@ export function MemberProfileSittingCard({
 				</div>
 			</div>
 
-			{variant === "detailed" ? (
-				<dl className="flex flex-wrap gap-x-5 gap-y-1 text-muted-foreground text-xs">
-					<div className="flex gap-1.5">
-						<dt>Started</dt>
-						<dd className="text-foreground">
-							{formatDateTime(sitting.createdAt)}
-						</dd>
-					</div>
-					{!isVoting && sitting.deadline ? (
-						<div className="flex gap-1.5">
-							<dt>Deadline</dt>
-							<dd className="text-foreground">
-								{formatDateTime(sitting.deadline)}
-							</dd>
-						</div>
-					) : null}
-					<div className="flex gap-1.5">
-						<dt>Readers</dt>
-						<dd className="text-foreground tabular-nums">
-							{sitting.participantCount}
-						</dd>
-					</div>
-					{book ? (
-						<div className="flex gap-1.5">
-							<dt>Pages</dt>
-							<dd className="text-foreground tabular-nums">{book.pages}</dd>
-						</div>
-					) : null}
-				</dl>
+			{variant === "detailed" && !isVoting && sitting.deadline ? (
+				<ReadingTimeline
+					start={sitting.createdAt}
+					end={sitting.deadline}
+					finished={sitting.status === "finished"}
+				/>
 			) : null}
 
 			{isVoting && sitting.poll ? <VotingProgress poll={sitting.poll} /> : null}
 
 			<div className="flex items-center justify-between gap-2">
-				{isVoting && item.viewerParticipates ? (
-					<Button
-						size="sm"
-						nativeButton={false}
-						className="relative z-10"
-						render={<Link href={`/sittings/${sitting.slug}/vote` as Route} />}
-					>
-						Open voting
-					</Button>
+				{variant === "detailed" ? (
+					<p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground text-xs tabular-nums">
+						<span className="inline-flex items-center gap-1.5">
+							<Users className="size-3.5" aria-hidden />
+							{sitting.participantCount}{" "}
+							{sitting.participantCount === 1 ? "reader" : "readers"}
+						</span>
+						{book ? (
+							<span className="inline-flex items-center gap-1.5">
+								<BookOpen className="size-3.5" aria-hidden />
+								{book.pages} pages
+							</span>
+						) : null}
+					</p>
+				) : isVoting && item.viewerParticipates ? (
+					<VoteButton slug={sitting.slug} />
 				) : (
 					<span />
 				)}
-				{isVoting ? null : <SittingStatusBadge status={sitting.status} />}
+				{isVoting ? (
+					variant === "detailed" && item.viewerParticipates ? (
+						<VoteButton slug={sitting.slug} />
+					) : null
+				) : (
+					<SittingStatusBadge status={sitting.status} />
+				)}
 			</div>
 		</article>
 	);
