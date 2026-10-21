@@ -199,7 +199,7 @@ export function GoalFormDialog({
 								max={MAX_TARGET}
 								value={values.target}
 								onChange={(e) => setTarget(Number(e.target.value))}
-								className="w-20 text-center tabular-nums"
+								className="min-w-0 flex-1 text-center tabular-nums"
 							/>
 							<Button
 								type="button"
