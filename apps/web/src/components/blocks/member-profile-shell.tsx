@@ -19,11 +19,10 @@ export function MemberProfileShell({
 		<div className="flex flex-col gap-8">
 			<MemberProfileHeader
 				user={user}
-				favoritesHighlight={
-					<MemberProfileFavorites username={user.username} embedded />
-				}
+				isOwnProfile={isOwnProfile}
+				favoritesHighlight={<MemberProfileFavorites username={user.username} />}
 				recentReadsHighlight={
-					<MemberProfileRecentReads username={user.username} embedded />
+					<MemberProfileRecentReads username={user.username} />
 				}
 			/>
 			<MemberProfileNav isOwnProfile={isOwnProfile} username={user.username} />

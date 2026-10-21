@@ -7,12 +7,10 @@ import { orpc } from "@/utils/orpc";
 
 type MemberProfileRecentReadsProps = {
 	username: string;
-	embedded?: boolean;
 };
 
 export function MemberProfileRecentReads({
 	username,
-	embedded = false,
 }: MemberProfileRecentReadsProps) {
 	const { data, isPending, isError } = useQuery(
 		orpc.user.getUserProfileCard.queryOptions({
@@ -36,7 +34,6 @@ export function MemberProfileRecentReads({
 			items={items}
 			isPending={isPending}
 			isError={isError}
-			embedded={embedded}
 		/>
 	);
 }
