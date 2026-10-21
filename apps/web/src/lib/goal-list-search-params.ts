@@ -2,6 +2,7 @@ import type { ListGoalsByUsernameOutput } from "@bbrc/api/modules/goal/goal.sche
 import {
 	parseAsArrayOf,
 	parseAsInteger,
+	parseAsString,
 	parseAsStringLiteral,
 	useQueryStates,
 } from "nuqs";
@@ -51,6 +52,7 @@ export const goalScopeFilterLabels = {
 } as const satisfies Record<GoalScopeFilterKind, string>;
 
 export const goalListSearchParams = {
+	search: parseAsString.withOptions({ shallow: false, throttleMs: 400 }),
 	completion: parseAsStringLiteral(goalCompletionFilters)
 		.withDefault("all")
 		.withOptions({ shallow: false }),
@@ -98,6 +100,13 @@ export function countGoalListFilters(params: GoalListSearchParams): number {
 	return count;
 }
 
+/** True when a search or any filter narrows the list (sorting does not count). */
+export function hasActiveGoalListFilters(
+	params: GoalListSearchParams,
+): boolean {
+	return Boolean(params.search?.trim()) || countGoalListFilters(params) > 0;
+}
+
 export function clearGoalListFilters(
 	setParams: ReturnType<typeof useGoalListSearchParams>[1],
 ) {
@@ -119,6 +128,13 @@ export function filterGoalListItems(
 	params: GoalListSearchParams,
 ): ListGoalsByUsernameOutput["items"] {
 	let filtered = items;
+
+	const query = params.search?.trim().toLowerCase();
+	if (query) {
+		filtered = filtered.filter((item) =>
+			`${item.title} ${item.description ?? ""}`.toLowerCase().includes(query),
+		);
+	}
 
 	if (params.completion === "completed") {
 		filtered = filtered.filter((item) => item.isComplete);

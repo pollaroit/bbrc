@@ -39,7 +39,7 @@ function toOutput(profile: StoredProfile): UserProfileOutput {
 	};
 }
 
-export async function getMyProfile(
+export async function getProfileByUserId(
 	userId: string,
 	db: Database,
 ): Promise<UserProfileOutput> {

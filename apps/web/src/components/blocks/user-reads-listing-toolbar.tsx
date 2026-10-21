@@ -4,8 +4,7 @@ import {
 	userReadRangeableFields,
 	userReadSortableFields,
 } from "@bbrc/api/modules/read/read.schema";
-import { Checkbox } from "@bbrc/ui/components/checkbox";
-import { Label } from "@bbrc/ui/components/label";
+import { Users } from "lucide-react";
 import { useMemo } from "react";
 import { UserReadsExportMenu } from "@/components/blocks/user-reads-export-menu";
 import { ListingAuthorMultiSelect } from "@/components/listing/listing-author-multi-select";
@@ -17,6 +16,7 @@ import { ListingRangeFields } from "@/components/listing/listing-range-fields";
 import { ListingRatingRangeFields } from "@/components/listing/listing-rating-range-fields";
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
+import { ListingToggleChip } from "@/components/listing/listing-toggle-chip";
 import { authClient } from "@/lib/auth-client";
 import {
 	bookStatuses,
@@ -43,6 +43,7 @@ export function UserReadsListingToolbar({
 	const { data: session } = authClient.useSession();
 	const [params, setParams] = useUserReadsListingSearchParams();
 	const sheetFilterCount = countUserReadsSheetFilters(params);
+	const showMutual = Boolean(session?.user) && !isOwnProfile;
 	const authorFacetsInput = useMemo(
 		() => toUserReadsAuthorFacetsInput(params),
 		[params],
@@ -53,7 +54,7 @@ export function UserReadsListingToolbar({
 	);
 
 	return (
-		<div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+		<div className="flex flex-col gap-3 md:flex-row md:items-center">
 			<ListingSearch
 				value={params.search ?? ""}
 				onChange={(search) => {
@@ -62,23 +63,17 @@ export function UserReadsListingToolbar({
 				placeholder="Search by title or slug…"
 			/>
 
-			<div className="flex flex-wrap items-center gap-2 lg:shrink-0">
-				{session?.user ? (
-					<div className="flex items-center gap-2 border border-border px-3 py-2">
-						<Checkbox
-							id="user-reads-mutual-only"
-							checked={params.mutualOnly}
-							onCheckedChange={(checked) => {
-								void setParams({ mutualOnly: checked === true });
-							}}
-						/>
-						<Label
-							htmlFor="user-reads-mutual-only"
-							className="cursor-pointer font-normal text-sm"
-						>
-							Only mutuals
-						</Label>
-					</div>
+			<div className="flex flex-wrap items-center gap-2 md:shrink-0">
+				{showMutual ? (
+					<ListingToggleChip
+						pressed={params.mutualOnly}
+						onPressedChange={(mutualOnly) => {
+							void setParams({ mutualOnly });
+						}}
+						icon={<Users data-icon="inline-start" />}
+					>
+						Only mutuals
+					</ListingToggleChip>
 				) : null}
 
 				<ListingSort
@@ -92,6 +87,7 @@ export function UserReadsListingToolbar({
 					}}
 					sortByOptions={userReadSortableFields}
 					sortByLabels={userReadSortByLabels}
+					appearance="library"
 				/>
 
 				<UserReadsExportMenu username={username} isOwnProfile={isOwnProfile} />
@@ -101,6 +97,7 @@ export function UserReadsListingToolbar({
 					description="Filter this member's reads by author, status, rating, pages, or catalog dates."
 					activeFilterCount={sheetFilterCount}
 					onClear={() => clearUserReadsSheetFilters(setParams)}
+					appearance="library"
 				>
 					<ListingCheckboxList
 						legend="Status"

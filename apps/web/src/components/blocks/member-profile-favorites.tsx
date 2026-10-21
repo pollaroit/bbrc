@@ -6,12 +6,10 @@ import { orpc } from "@/utils/orpc";
 
 type MemberProfileFavoritesProps = {
 	username: string;
-	embedded?: boolean;
 };
 
 export function MemberProfileFavorites({
 	username,
-	embedded = false,
 }: MemberProfileFavoritesProps) {
 	const { data, isPending, isError } = useQuery(
 		orpc.favorite.getUserFavorites.queryOptions({
@@ -30,10 +28,9 @@ export function MemberProfileFavorites({
 	return (
 		<MemberProfileBookPanel
 			title="Favorite books"
-			items={items.slice(0, 4)}
+			items={items}
 			isPending={isPending}
 			isError={isError}
-			embedded={embedded}
 		/>
 	);
 }

@@ -141,8 +141,6 @@ export function UserReadsExportMenu({
 		setSheetOpen(false);
 	};
 
-	const triggerLabel = isOwnProfile ? "Export my reads" : "Export reads";
-
 	return (
 		<>
 			<DropdownMenu>
@@ -150,7 +148,7 @@ export function UserReadsExportMenu({
 					render={<Button type="button" variant="outline" size="sm" />}
 				>
 					<Download data-icon="inline-start" />
-					{triggerLabel}
+					Export
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" className="min-w-48">
 					{standardExportFormats.map((option) => (

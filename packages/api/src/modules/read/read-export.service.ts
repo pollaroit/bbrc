@@ -7,7 +7,11 @@ import {
 	type BookListQueryInput,
 	buildBookListWhereWithAuthors,
 } from "../book/book-list-where";
-import { userReadListSorting, withStableUserReadOrderBy } from "./read.listing";
+import {
+	compareUserReadRatings,
+	userReadListSorting,
+	withStableUserReadOrderBy,
+} from "./read.listing";
 import type {
 	ExportUserReadsInput,
 	ExportUserReadsOutput,
@@ -149,12 +153,31 @@ export async function exportUserReads(
 	const take = input.limit ?? 5000;
 
 	const readSelect = buildExportUserReadSelect(user.id);
-	const rows = await db.read.findMany({
+	const byRating = sorting.sortBy === "rating";
+	const fetched = await db.read.findMany({
 		where: readWhere,
 		orderBy: withStableUserReadOrderBy(sorting.use(), sorting.sortDirection),
 		select: readSelect,
-		take,
+		// Rating order is applied in memory, so every row is needed first.
+		...(byRating ? {} : { take }),
 	});
+	const rows = byRating
+		? fetched
+				.toSorted((a, b) =>
+					compareUserReadRatings(
+						{
+							bookId: a.book.slug,
+							rating: a.book.feedbacks[0]?.rating ?? null,
+						},
+						{
+							bookId: b.book.slug,
+							rating: b.book.feedbacks[0]?.rating ?? null,
+						},
+						sorting.sortDirection,
+					),
+				)
+				.slice(0, take)
+		: fetched;
 
 	const editionIds = rows
 		.map((row) => row.editionId)

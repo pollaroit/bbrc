@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { UserShelvesList } from "@/components/blocks/user-shelves-list";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 
@@ -27,5 +28,9 @@ export default async function UserShelvesPage({
 }: PageProps<"/users/[username]/shelves">) {
 	const { username } = await params;
 
-	return <UserShelvesList username={username} />;
+	return (
+		<ListingSearchParamsBoundary>
+			<UserShelvesList username={username} />
+		</ListingSearchParamsBoundary>
+	);
 }

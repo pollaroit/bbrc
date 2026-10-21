@@ -10,6 +10,7 @@ import {
 
 export const userReadSortableFields = [
 	"readEndMonth",
+	"rating",
 	"recordedAt",
 	"title",
 	"pages",
@@ -28,6 +29,9 @@ export const userReadListSorting = defineSorting<
 	Prisma.ReadOrderByWithRelationInput
 >(userReadSortableFields, "readEndMonth", "desc", {
 	orderBy: {
+		// The member's own rating lives on their feedback, so services sort it in
+		// memory (see `compareUserReadRatings`); this is only a stable fallback.
+		rating: (direction) => ({ bookId: direction }),
 		recordedAt: (direction) => ({ createdAt: direction }),
 		readEndMonth: (direction) => ({
 			readEndYear: direction,
@@ -91,4 +95,22 @@ export function withStableUserReadOrderBy(
 	sortDirection: "asc" | "desc",
 ): Prisma.ReadOrderByWithRelationInput[] {
 	return [...expandReadOrderBy(orderBy), { bookId: sortDirection }];
+}
+
+/**
+ * Orders reads by the member's own rating. Unrated reads always come last,
+ * whichever the direction; ties fall back to book id for stable paging.
+ */
+export function compareUserReadRatings(
+	a: { bookId: string; rating: number | null },
+	b: { bookId: string; rating: number | null },
+	direction: "asc" | "desc",
+): number {
+	if (a.rating == null && b.rating == null) {
+		return a.bookId.localeCompare(b.bookId);
+	}
+	if (a.rating == null) return 1;
+	if (b.rating == null) return -1;
+	const diff = direction === "asc" ? a.rating - b.rating : b.rating - a.rating;
+	return diff !== 0 ? diff : a.bookId.localeCompare(b.bookId);
 }

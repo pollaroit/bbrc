@@ -4,6 +4,7 @@ import { LikeSourceSchema } from "@bbrc/schemas";
 import { ORPCError } from "@orpc/server";
 import { normalizeFeedbackReview } from "../../lib/feedback-review";
 import { definePagination } from "../../utils/pagination";
+import { mergeWhereFragments } from "../../utils/searching";
 import {
 	clubReadEligibilityHint,
 	userCompletedClubRead,
@@ -35,6 +36,12 @@ import {
 	getUserFeedbackListFields,
 } from "./feedback.schema";
 import { generateFeedbackSlug } from "./feedback-slug";
+import {
+	userFeedbackListRanging,
+	userFeedbackListSearching,
+	userFeedbackListSorting,
+	userFeedbackReviewTypeWhere,
+} from "./user-feedback.listing";
 
 async function loadBookBySlug(slug: string, db: Database) {
 	const book = await db.book.findUnique({
@@ -259,6 +266,7 @@ const userFeedbackListCursorCodec = {
 export async function getUserFeedbackList(
 	input: GetUserFeedbackListInput,
 	db: Database,
+	session: Session | null = null,
 ): Promise<GetUserFeedbackListOutput> {
 	const user = await db.user.findUnique({
 		where: { username: input.username },
@@ -272,19 +280,66 @@ export async function getUserFeedbackList(
 		});
 	}
 
+	const viewerId = viewerUserId(session);
+	if (input.mutualOnly && !viewerId) {
+		throw new ORPCError("UNAUTHORIZED", {
+			message: "Sign in to filter by mutual reviews.",
+		});
+	}
+
 	const pagination = definePagination.cursor(
 		input,
 		userFeedbackListCursorCodec,
 	);
+	const sorting = userFeedbackListSorting.from(input);
+	const ranging = userFeedbackListRanging.from(input);
+	const searching = userFeedbackListSearching.from(input);
 
-	const rows = await db.feedback.findMany({
-		...pagination.use(),
-		where: { authorId: user.id },
-		orderBy: feedbackListOrderBy(input.sortBy, input.sortDirection),
-		select: getUserFeedbackListFields,
-	});
+	const where = mergeWhereFragments<Prisma.FeedbackWhereInput>(
+		{ authorId: user.id },
+		ranging.use(),
+		searching.use(),
+		userFeedbackReviewTypeWhere(input.reviewType),
+		input.minRating != null || input.maxRating != null
+			? {
+					rating: {
+						...(input.minRating != null ? { gte: input.minRating } : {}),
+						...(input.maxRating != null ? { lte: input.maxRating } : {}),
+					},
+				}
+			: {},
+		input.spoilers === "only" ? { isSpoiler: true } : {},
+		input.spoilers === "hide" ? { isSpoiler: false } : {},
+		input.mutualOnly && viewerId
+			? { book: { feedbacks: { some: { authorId: viewerId } } } }
+			: {},
+	);
 
-	return pagination.paginate(rows);
+	const isFirstPage = input.cursor == null;
+
+	const [rows, total] = await Promise.all([
+		db.feedback.findMany({
+			...pagination.use(),
+			where,
+			orderBy: [sorting.use(), { id: sorting.sortDirection }],
+			select: getUserFeedbackListFields,
+		}),
+		isFirstPage ? db.feedback.count({ where }) : Promise.resolve(undefined),
+	]);
+
+	const page = pagination.paginate(rows);
+
+	return {
+		items: page.items.map(({ _count, id: _id, ...item }) => ({
+			...item,
+			likeCount: _count.likes,
+			commentCount: _count.comments,
+		})),
+		metadata: {
+			...page.metadata,
+			...(total != null ? { total } : {}),
+		},
+	};
 }
 
 export async function getBookFeedbackState(

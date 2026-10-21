@@ -10,7 +10,6 @@ import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { bookCoverUrl } from "@/lib/book-cover";
-import { cn } from "@/lib/utils";
 
 export type MemberProfileBookPanelItem = {
 	id: string;
@@ -26,19 +25,12 @@ type MemberProfileBookPanelProps = {
 	items: MemberProfileBookPanelItem[];
 	isPending?: boolean;
 	isError?: boolean;
-	/** Sits inside the profile stat grid (no outer border). */
-	embedded?: boolean;
 };
 
 const coverClassName =
-	"relative block aspect-2/3 w-[4.75rem] overflow-hidden bg-muted ring-1 ring-foreground/10 transition-opacity hover:opacity-90 sm:w-[5.25rem]";
+	"relative block aspect-2/3 w-20 shrink-0 snap-start overflow-hidden bg-muted ring-1 ring-foreground/10 transition-opacity hover:opacity-90 sm:w-24";
 
-function panelShellClassName(embedded: boolean) {
-	return cn(
-		embedded ? "min-h-0" : "border border-border bg-muted/10 p-4 sm:p-5",
-	);
-}
-
+/** A titled, horizontally scrolling row of book covers. */
 export function MemberProfileBookPanel({
 	title,
 	viewAllHref,
@@ -46,32 +38,14 @@ export function MemberProfileBookPanel({
 	items,
 	isPending = false,
 	isError = false,
-	embedded = false,
 }: MemberProfileBookPanelProps) {
-	if (isPending) {
-		return (
-			<section className={panelShellClassName(embedded)}>
-				<div className="mb-4 flex items-center justify-between gap-3">
-					<Skeleton className="h-5 w-32" />
-				</div>
-				<div className="flex flex-wrap gap-3">
-					{Array.from({ length: 4 }, (_, i) => (
-						<Skeleton key={i} className={coverClassName} />
-					))}
-				</div>
-			</section>
-		);
-	}
-
-	if (isError || items.length === 0) {
+	if (!isPending && (isError || items.length === 0)) {
 		return null;
 	}
 
-	const displayItems = items.slice(0, 4);
-
 	return (
-		<section className={panelShellClassName(embedded)}>
-			<div className="mb-4 flex items-center justify-between gap-3">
+		<section className="flex min-w-0 flex-col gap-3">
+			<div className="flex items-center justify-between gap-3">
 				<h2 className="font-medium text-base tracking-tight">{title}</h2>
 				{viewAllHref ? (
 					<Link
@@ -82,47 +56,51 @@ export function MemberProfileBookPanel({
 					</Link>
 				) : null}
 			</div>
-			<ul
-				className={cn(
-					"flex flex-wrap gap-3 sm:gap-4",
-					embedded && "justify-center sm:justify-start",
-				)}
-			>
-				{displayItems.map((item) => {
-					const href = `/books/${item.slug}` as Route;
-					const coverSrc = bookCoverUrl(item.coverId);
+			<ul className="-mx-6 flex snap-x gap-3 overflow-x-auto px-6 pb-1 md:mx-0 md:px-0">
+				{isPending
+					? Array.from({ length: 4 }, (_, i) => (
+							<li key={i}>
+								<Skeleton className={coverClassName} />
+							</li>
+						))
+					: items.map((item) => {
+							const coverSrc = bookCoverUrl(item.coverId);
 
-					return (
-						<li key={item.id}>
-							<Tooltip>
-								<TooltipTrigger
-									render={
-										<Link href={href} className={coverClassName}>
-											{coverSrc ? (
-												<Image
-													src={coverSrc}
-													alt=""
-													fill
-													className="object-cover"
-													sizes="(max-width: 640px) 76px, 84px"
-												/>
-											) : (
-												<span className="flex size-full items-center justify-center px-1 text-center text-[10px] text-muted-foreground">
-													No cover
-												</span>
-											)}
-										</Link>
-									}
-								/>
-								<TooltipContent side="bottom">
-									<p className="max-w-[14rem] font-medium text-sm">
-										{item.title}
-									</p>
-								</TooltipContent>
-							</Tooltip>
-						</li>
-					);
-				})}
+							return (
+								<li key={item.id} className="shrink-0">
+									<Tooltip>
+										<TooltipTrigger
+											render={
+												<Link
+													href={`/books/${item.slug}` as Route}
+													className={coverClassName}
+													aria-label={item.title}
+												>
+													{coverSrc ? (
+														<Image
+															src={coverSrc}
+															alt=""
+															fill
+															className="object-cover"
+															sizes="96px"
+														/>
+													) : (
+														<span className="flex size-full items-center justify-center px-1 text-center text-[10px] text-muted-foreground">
+															No cover
+														</span>
+													)}
+												</Link>
+											}
+										/>
+										<TooltipContent side="bottom">
+											<p className="max-w-[14rem] font-medium text-sm">
+												{item.title}
+											</p>
+										</TooltipContent>
+									</Tooltip>
+								</li>
+							);
+						})}
 			</ul>
 		</section>
 	);

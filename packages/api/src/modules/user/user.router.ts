@@ -30,7 +30,7 @@ import {
 	UpdateMyProfileInputSchema,
 	UpdateMyProfileOutputSchema,
 } from "./user-profile.schema";
-import { getMyProfile, updateMyProfile } from "./user-profile.service";
+import { getProfileByUserId, updateMyProfile } from "./user-profile.service";
 import {
 	GetUserStatsInputSchema,
 	GetUserStatsOutputSchema,
@@ -119,7 +119,7 @@ export const userRouter = {
 	getMyProfile: protectedProcedure
 		.output(GetMyProfileOutputSchema)
 		.handler(async ({ context }) =>
-			getMyProfile(context.session.user.id, context.db),
+			getProfileByUserId(context.session.user.id, context.db),
 		),
 	updateMyProfile: protectedProcedure
 		.input(UpdateMyProfileInputSchema)

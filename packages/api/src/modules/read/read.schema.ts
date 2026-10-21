@@ -175,6 +175,8 @@ export const UserReadListItemSchema = z.object({
 	readEndMonth: z.number().int().nullable(),
 	editionId: ReadEditionIdFieldSchema,
 	recordedAt: z.coerce.date(),
+	/** The member's own rating for this book, when they left feedback. */
+	rating: z.number().nullable(),
 	book: UserReadBookSummarySchema,
 });
 

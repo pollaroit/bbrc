@@ -2,16 +2,24 @@
 
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@bbrc/ui/components/dropdown-menu";
 import { Input } from "@bbrc/ui/components/input";
 import { Label } from "@bbrc/ui/components/label";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { ListOrdered, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { ShelfAddBookSearch } from "@/components/blocks/shelf-add-book-search";
 import {
@@ -89,108 +97,110 @@ export function MemberShelfDetail({
 	);
 
 	return (
-		<div className="flex flex-col gap-8">
-			<Link
-				href={`/users/${username}/shelves` as Route}
-				className="inline-flex w-fit items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
-			>
-				<ArrowLeft className="size-4" />
-				All shelves
-			</Link>
-
+		<div className="flex flex-col gap-6">
 			{shelf.isOwner && shelf.status !== "active" ? (
 				<p className="border border-border bg-muted/30 px-4 py-3 text-sm">
 					Only you can see this shelf while it is {shelf.status}.
 				</p>
 			) : null}
 
-			<header className="flex flex-col gap-4 border-border border-b pb-6 sm:flex-row sm:items-start sm:justify-between">
-				<div className="flex gap-4">
-					<div className="shrink-0 self-start">
-						<ShelfCover
-							coverIds={coverIds}
-							coverImageUrl={shelf.coverImageUrl}
-							size="lg"
-						/>
-					</div>
-					<div className="min-w-0 space-y-2">
-						<div className="flex flex-wrap items-center gap-2">
-							<h1 className="font-bold text-2xl tracking-tight">
+			<header className="flex items-start gap-4">
+				<ShelfCover
+					coverIds={coverIds}
+					coverImageUrl={shelf.coverImageUrl}
+					size="lg"
+					className="self-start"
+				/>
+				<div className="flex min-w-0 flex-1 flex-col gap-2">
+					<div className="flex items-start justify-between gap-3">
+						<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+							<h1 className="font-semibold text-xl tracking-tight sm:text-2xl">
 								{shelf.title}
 							</h1>
-							{shelf.type === "ordered" ? (
-								<Badge variant="secondary">Ranked</Badge>
-							) : (
-								<Badge variant="outline">List</Badge>
-							)}
+							<Badge
+								variant={shelf.type === "ordered" ? "secondary" : "outline"}
+							>
+								{shelf.type === "ordered" ? "Ranked" : "List"}
+							</Badge>
 						</div>
-						{shelf.description ? (
-							<p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
-								{shelf.description}
-							</p>
-						) : null}
-						<p className="text-muted-foreground text-xs tabular-nums">
-							{shelf.bookCount} {shelf.bookCount === 1 ? "book" : "books"}
-						</p>
+						<div className="flex shrink-0 divide-x divide-border border border-border">
+							{shelf.status === "active" ? (
+								<ResourceShareMenu
+									path={`/users/${username}/shelves/${shelfSlug}`}
+									shareText={shelf.title}
+									label="Share shelf"
+									shareInPost={{
+										kind: "shelf",
+										ownerUsername: username,
+										slug: shelfSlug,
+									}}
+									size="md"
+									iconOnly
+									triggerClassName="size-8 px-0 text-foreground"
+								/>
+							) : null}
+							{shelf.isOwner ? (
+								<DropdownMenu>
+									<DropdownMenuTrigger
+										render={
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="size-8"
+												aria-label="Manage shelf"
+											/>
+										}
+									>
+										<MoreHorizontal className="size-4" aria-hidden />
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end" className="min-w-44">
+										<DropdownMenuItem
+											onClick={() =>
+												router.push(
+													`/users/${username}/shelves/${shelfSlug}/edit` as Route,
+												)
+											}
+										>
+											<Pencil aria-hidden />
+											Edit shelf
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											onClick={() =>
+												router.push(
+													`/users/${username}/shelves/${shelfSlug}/edit/order` as Route,
+												)
+											}
+										>
+											<ListOrdered aria-hidden />
+											Reorder books
+										</DropdownMenuItem>
+										<DropdownMenuSeparator />
+										<DropdownMenuItem
+											variant="destructive"
+											onClick={() => setDeleteOpen(true)}
+										>
+											<Trash2 aria-hidden />
+											Delete shelf
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
+							) : null}
+						</div>
 					</div>
-				</div>
-
-				<div className="flex flex-wrap items-center gap-2">
-					{shelf.status === "active" ? (
-						<ResourceShareMenu
-							path={`/users/${username}/shelves/${shelfSlug}`}
-							shareText={shelf.title}
-							label="Share shelf"
-							shareInPost={{
-								kind: "shelf",
-								ownerUsername: username,
-								slug: shelfSlug,
-							}}
-							size="md"
+					{shelf.description ? (
+						<p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
+							{shelf.description}
+						</p>
+					) : null}
+					<p className="text-muted-foreground text-xs tabular-nums">
+						{shelf.bookCount} {shelf.bookCount === 1 ? "book" : "books"} ·
+						updated{" "}
+						<RelativeTime
+							date={shelf.updatedAt}
+							className="text-muted-foreground text-xs"
 						/>
-					) : null}
-					{shelf.isOwner ? (
-						<>
-							<Button
-								variant="outline"
-								size="sm"
-								render={
-									<Link
-										href={
-											`/users/${username}/shelves/${shelfSlug}/edit` as Route
-										}
-									/>
-								}
-								nativeButton={false}
-							>
-								<Pencil className="size-4" />
-								Edit
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								render={
-									<Link
-										href={
-											`/users/${username}/shelves/${shelfSlug}/edit/order` as Route
-										}
-									/>
-								}
-								nativeButton={false}
-							>
-								Reorder
-							</Button>
-							<Button
-								variant="ghost"
-								size="sm"
-								className="text-destructive hover:text-destructive"
-								onClick={() => setDeleteOpen(true)}
-							>
-								<Trash2 className="size-4" />
-								Delete
-							</Button>
-						</>
-					) : null}
+					</p>
 				</div>
 			</header>
 
@@ -223,7 +233,7 @@ export function MemberShelfDetail({
 					) : null}
 				</div>
 			) : (
-				<ol className="flex flex-col gap-3">
+				<ol className="divide-y divide-border border border-border">
 					{shelf.books.map((row, index) => (
 						<li key={row.book.slug}>
 							<ShelfDetailBookRow
@@ -232,6 +242,7 @@ export function MemberShelfDetail({
 								rank={index + 1}
 								showRank={shelf.type === "ordered"}
 								isOwner={shelf.isOwner}
+								bordered={false}
 								book={{
 									...row.book,
 									coverId: row.book.coverId ?? null,

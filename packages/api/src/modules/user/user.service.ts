@@ -29,6 +29,12 @@ import {
 	type UpdateUserStatusOutput,
 } from "./user.schema";
 import {
+	userParticipationListRanging,
+	userParticipationListSearching,
+	userParticipationListSorting,
+} from "./user-participation.listing";
+import { getProfileByUserId } from "./user-profile.service";
+import {
 	assertMemberVisible,
 	viewerFromSession,
 	visibleOnSiteUserWhere,
@@ -79,9 +85,10 @@ export async function getUserByUsername(
 
 	assertMemberVisible(user, viewer);
 
-	const [readingStreak, levels] = await Promise.all([
+	const [readingStreak, levels, profile] = await Promise.all([
 		loadReadingStreakForUser(user.id, db),
 		Promise.resolve(userMemberLevelsFromPoints(user.xp, user.rp)),
+		getProfileByUserId(user.id, db),
 	]);
 
 	return {
@@ -96,6 +103,7 @@ export async function getUserByUsername(
 		xpLevel: levels.xpLevel,
 		rpLevel: levels.rpLevel,
 		readingStreak,
+		profile,
 	};
 }
 
@@ -241,30 +249,104 @@ export async function getUserParticipationList(
 
 	assertMemberVisible(profileUser, viewerFromSession(session));
 
+	const viewerId = session?.user?.id ?? null;
+	if (input.mutualOnly && !viewerId) {
+		throw new ORPCError("UNAUTHORIZED", {
+			message: "Sign in to filter by mutual sittings.",
+		});
+	}
+
 	const pagination = definePagination.cursor(
 		input,
 		userParticipationListCursorCodec,
 	);
+	const sorting = userParticipationListSorting.from(input);
+	const ranging = userParticipationListRanging.from(input);
+	const searching = userParticipationListSearching.from(input);
 
-	const rows = await db.participation.findMany({
-		...pagination.use(),
-		where: { userId: profileUser.id },
-		orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-		select: getUserParticipationListFields,
-	});
+	// Prisma cannot filter on a relation count, so resolve matching sittings first.
+	let participantCountWhere: Prisma.ParticipationWhereInput = {};
+	if (input.minParticipants != null || input.maxParticipants != null) {
+		const groups = await db.participation.groupBy({
+			by: ["sittingId"],
+			where: { removedAt: null },
+			having: {
+				id: {
+					_count: {
+						...(input.minParticipants != null
+							? { gte: input.minParticipants }
+							: {}),
+						...(input.maxParticipants != null
+							? { lte: input.maxParticipants }
+							: {}),
+					},
+				},
+			},
+		});
+		participantCountWhere = {
+			sittingId: { in: groups.map((group) => group.sittingId) },
+		};
+	}
+
+	const where = mergeWhereFragments<Prisma.ParticipationWhereInput>(
+		{ userId: profileUser.id },
+		ranging.use(),
+		searching.use(),
+		participantCountWhere,
+		input.statuses?.length
+			? { sitting: { status: { in: input.statuses } } }
+			: {},
+		input.progresses?.length ? { progress: { in: input.progresses } } : {},
+		input.mutualOnly && viewerId
+			? {
+					sitting: {
+						participants: { some: { userId: viewerId, removedAt: null } },
+					},
+				}
+			: {},
+	);
+
+	const isFirstPage = input.cursor == null;
+
+	const [rows, total] = await Promise.all([
+		db.participation.findMany({
+			...pagination.use(),
+			where,
+			orderBy: [sorting.use(), { id: sorting.sortDirection }],
+			select: getUserParticipationListFields,
+		}),
+		isFirstPage
+			? db.participation.count({ where })
+			: Promise.resolve(undefined),
+	]);
 
 	const page = pagination.paginate(rows);
+
+	const viewerSittingIds = new Set<string>();
+	if (viewerId) {
+		const mine = await db.participation.findMany({
+			where: {
+				userId: viewerId,
+				sittingId: { in: page.items.map((row) => row.sitting.id) },
+			},
+			select: { sittingId: true },
+		});
+		for (const row of mine) viewerSittingIds.add(row.sittingId);
+	}
 
 	return {
 		items: page.items.map((row) => ({
 			id: row.id,
 			progress: row.progress,
 			updatedAt: row.updatedAt,
+			viewerParticipates: viewerSittingIds.has(row.sitting.id),
 			sitting: {
+				poll: row.sitting.poll,
 				slug: row.sitting.slug,
 				status: row.sitting.status,
 				deadline: row.sitting.deadline,
 				createdAt: row.sitting.createdAt,
+				participantCount: row.sitting._count.participants,
 				displayName: formatSittingDisplayName(
 					row.sitting.slug,
 					row.sitting.status,
@@ -273,7 +355,10 @@ export async function getUserParticipationList(
 				selectedBook: row.sitting.selectedBook,
 			},
 		})),
-		metadata: page.metadata,
+		metadata: {
+			...page.metadata,
+			...(total != null ? { total } : {}),
+		},
 	};
 }
 

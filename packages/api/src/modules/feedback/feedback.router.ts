@@ -47,7 +47,7 @@ export const feedbackRouter = {
 		.input(GetUserFeedbackListInputSchema)
 		.output(GetUserFeedbackListOutputSchema)
 		.handler(async ({ input, context }) =>
-			getUserFeedbackList(input, context.db),
+			getUserFeedbackList(input, context.db, context.session),
 		),
 	getBookFeedbackState: protectedProcedure
 		.input(GetBookFeedbackStateInputSchema)

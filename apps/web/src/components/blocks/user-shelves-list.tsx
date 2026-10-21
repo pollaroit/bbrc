@@ -1,16 +1,28 @@
 "use client";
 
-import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@bbrc/ui/components/tabs";
 import { useQuery } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { ShelfCover } from "@/components/blocks/shelf-cover";
+import { MemberProfileShelfCard } from "@/components/blocks/member-profile-shelf-card";
+import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
+import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
+import { ListingSearch } from "@/components/listing/listing-search";
+import { ListingSort } from "@/components/listing/listing-sort";
 import { authClient } from "@/lib/auth-client";
-import { cn } from "@/lib/utils";
+import {
+	filterAndSortShelves,
+	hasActiveUserShelfFilters,
+	userShelfSortByLabels,
+	userShelfSortFields,
+	userShelfTypeLabels,
+	userShelfTypes,
+	useUserShelfListingParams,
+} from "@/lib/listing/user-shelves-listing";
 import { orpc } from "@/utils/orpc";
 
 const ownerStatuses = ["active", "draft", "archived"] as const;
@@ -23,10 +35,6 @@ type UserShelvesListProps = {
 	username: string;
 };
 
-function shelfHref(username: string, slug: string) {
-	return `/users/${username}/shelves/${slug}` as Route;
-}
-
 function newShelfHref(username: string) {
 	return `/users/${username}/shelves/new` as Route;
 }
@@ -34,6 +42,7 @@ function newShelfHref(username: string) {
 export function UserShelvesList({ username }: UserShelvesListProps) {
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [status, setStatus] = useQueryState("status", statusParser);
+	const [params, setParams] = useUserShelfListingParams();
 
 	const isOwner = !sessionPending && session?.user.username === username;
 
@@ -48,9 +57,9 @@ export function UserShelvesList({ username }: UserShelvesListProps) {
 
 	if (listQuery.isPending) {
 		return (
-			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				{Array.from({ length: 3 }, (_, i) => (
-					<Skeleton key={i} className="h-36 w-full" />
+			<div className="grid gap-3 md:grid-cols-2" aria-hidden>
+				{Array.from({ length: 4 }, (_, i) => (
+					<Skeleton key={i} className="h-32 w-full" />
 				))}
 			</div>
 		);
@@ -66,42 +75,94 @@ export function UserShelvesList({ username }: UserShelvesListProps) {
 
 	const { items, isOwner: ownerFromApi } = listQuery.data;
 	const showOwnerChrome = isOwner && ownerFromApi;
+	const visible = filterAndSortShelves(items, params);
+	const filtered = hasActiveUserShelfFilters(params);
 
 	return (
-		<div className="flex flex-col gap-6">
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				{showOwnerChrome ? (
+		<div className="flex flex-col gap-5">
+			{showOwnerChrome ? (
+				<div className="flex items-center justify-between gap-3">
 					<Tabs
 						value={status}
 						onValueChange={(value) => {
 							void setStatus(value as OwnerStatus);
 						}}
 					>
-						<TabsList
-							variant="line"
-							className="h-auto w-full justify-start sm:w-auto"
-						>
+						<TabsList variant="line" className="h-auto justify-start">
 							<TabsTrigger value="active">Active</TabsTrigger>
 							<TabsTrigger value="draft">Draft</TabsTrigger>
 							<TabsTrigger value="archived">Archived</TabsTrigger>
 						</TabsList>
 					</Tabs>
-				) : (
-					<p className="text-muted-foreground text-sm">
-						Public reading lists from this member.
-					</p>
-				)}
-
-				{showOwnerChrome ? (
 					<Button
 						render={<Link href={newShelfHref(username)} />}
 						nativeButton={false}
 						size="sm"
 					>
+						<Plus data-icon="inline-start" aria-hidden />
 						New shelf
 					</Button>
-				) : null}
-			</div>
+				</div>
+			) : null}
+
+			{items.length > 0 ? (
+				<div className="flex flex-col gap-3 md:flex-row md:items-center">
+					<ListingSearch
+						value={params.search ?? ""}
+						onChange={(search) => {
+							void setParams({ search });
+						}}
+						placeholder="Search shelves…"
+					/>
+					<div className="flex flex-wrap items-center gap-2 md:shrink-0">
+						<ListingSort
+							sortBy={params.sortBy}
+							sortDirection={params.sortDirection}
+							onSortByChange={(sortBy) => {
+								void setParams({ sortBy });
+							}}
+							onSortDirectionChange={(sortDirection) => {
+								void setParams({ sortDirection });
+							}}
+							sortByOptions={userShelfSortFields}
+							sortByLabels={userShelfSortByLabels}
+							appearance="library"
+						/>
+						<ListingFiltersSheet
+							title="Shelf filters"
+							description="Show only ranked shelves or plain lists."
+							activeFilterCount={params.types?.length ? 1 : 0}
+							onClear={() => {
+								void setParams({ types: null });
+							}}
+							appearance="library"
+						>
+							<ListingCheckboxList
+								legend="Shelf type"
+								options={userShelfTypes.map((type) => ({
+									id: type,
+									label: userShelfTypeLabels[type],
+									checked: params.types?.includes(type) ?? false,
+									onCheckedChange: (checked) => {
+										const current = params.types ?? [];
+										const next = checked
+											? [...new Set([...current, type])]
+											: current.filter((value) => value !== type);
+										void setParams({ types: next.length > 0 ? next : null });
+									},
+								}))}
+							/>
+						</ListingFiltersSheet>
+					</div>
+				</div>
+			) : null}
+
+			{items.length > 0 ? (
+				<p className="text-muted-foreground text-sm tabular-nums">
+					{visible.length} {visible.length === 1 ? "shelf" : "shelves"}
+					{filtered ? " match your filters" : ""}
+				</p>
+			) : null}
 
 			{items.length === 0 ? (
 				<div className="border border-border border-dashed px-6 py-12 text-center">
@@ -121,44 +182,22 @@ export function UserShelvesList({ username }: UserShelvesListProps) {
 						</Button>
 					) : null}
 				</div>
+			) : visible.length === 0 ? (
+				<div className="border border-border border-dashed px-6 py-10 text-center">
+					<p className="font-medium">No shelves match these filters</p>
+					<p className="mt-1 text-muted-foreground text-sm">
+						Try clearing filters or changing your search.
+					</p>
+				</div>
 			) : (
-				<ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					{items.map((shelf) => (
+				<ul className="grid gap-3 md:grid-cols-2">
+					{visible.map((shelf) => (
 						<li key={shelf.id}>
-							<Link
-								href={shelfHref(username, shelf.slug)}
-								className={cn(
-									"flex h-full flex-col gap-3 border border-border p-4 transition-colors",
-									"hover:bg-muted/40",
-								)}
-							>
-								<ShelfCover
-									coverIds={shelf.coverPreviewCoverIds}
-									coverImageUrl={shelf.coverImageUrl}
-									size="md"
-								/>
-								<div className="flex flex-wrap items-center gap-2">
-									<h2 className="font-semibold leading-snug">{shelf.title}</h2>
-									{shelf.type === "ordered" ? (
-										<Badge variant="secondary">Ranked</Badge>
-									) : (
-										<Badge variant="outline">List</Badge>
-									)}
-									{showOwnerChrome && shelf.status !== "active" ? (
-										<Badge variant="outline" className="capitalize">
-											{shelf.status}
-										</Badge>
-									) : null}
-								</div>
-								{shelf.description ? (
-									<p className="line-clamp-2 text-muted-foreground text-sm">
-										{shelf.description}
-									</p>
-								) : null}
-								<p className="mt-auto text-muted-foreground text-xs tabular-nums">
-									{shelf.bookCount} {shelf.bookCount === 1 ? "book" : "books"}
-								</p>
-							</Link>
+							<MemberProfileShelfCard
+								shelf={shelf}
+								username={username}
+								showStatus={showOwnerChrome}
+							/>
 						</li>
 					))}
 				</ul>

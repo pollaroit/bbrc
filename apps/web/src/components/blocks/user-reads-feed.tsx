@@ -4,7 +4,7 @@ import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { UserMemberReadCard } from "@/components/blocks/user-member-read-card";
+import { MemberProfileReadCard } from "@/components/blocks/member-profile-read-card";
 import {
 	toUserReadsListCallInput,
 	useUserReadsListingSearchParams,
@@ -15,9 +15,9 @@ const PAGE_LIMIT = 12;
 
 function UserReadsFeedSkeleton() {
 	return (
-		<div className="grid grid-cols-1 gap-4 sm:grid-cols-2" aria-hidden>
+		<div className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-hidden>
 			{Array.from({ length: 4 }, (_, index) => (
-				<Skeleton key={index} className="h-36 w-full" />
+				<Skeleton key={index} className="h-28 w-full" />
 			))}
 		</div>
 	);
@@ -83,10 +83,10 @@ export function UserReadsFeed({ username }: UserReadsFeedProps) {
 				loadingContent={<UserReadsFeedSkeleton />}
 				endMessage="End of read list."
 			>
-				<ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+				<ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
 					{items.map((item) => (
 						<li key={item.book.slug}>
-							<UserMemberReadCard item={item} layout="grid" />
+							<MemberProfileReadCard item={item} />
 						</li>
 					))}
 				</ul>

@@ -1,14 +1,22 @@
 import {
 	BookSchema,
 	CursorPaginationInputSchema,
+	CursorPaginationMetadataSchema,
 	CursorPaginationOutputSchema,
 	FeedbackSchema,
 	UserSchema,
 } from "@bbrc/schemas";
+import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import { isFeedbackRatingStep } from "@bbrc/shared";
 import type { z } from "zod";
 import zod from "zod";
 import { PostAuthorSchema } from "../post/post.schema";
+import {
+	userFeedbackFiltersSchema,
+	userFeedbackListRanging,
+	userFeedbackListSearching,
+	userFeedbackListSorting,
+} from "./user-feedback.listing";
 
 export const BookFeedbackReviewSchema = zod.object({
 	slug: FeedbackSchema.shape.slug,
@@ -115,19 +123,44 @@ export const UserFeedbackListItemSchema = zod.object({
 	review: FeedbackSchema.shape.review,
 	isSpoiler: FeedbackSchema.shape.isSpoiler,
 	createdAt: zod.coerce.date(),
+	likeCount: zod.number().int().min(0),
+	commentCount: zod.number().int().min(0),
 	book: UserFeedbackBookSchema,
 });
 
-export const GetUserFeedbackListInputSchema =
-	CursorPaginationInputSchema.extend({
-		username: UserSchema.shape.username,
-		sortBy: FeedbackListSortBySchema.optional(),
-		sortDirection: FeedbackListSortDirectionSchema.optional(),
+export const GetUserFeedbackListInputSchema = userFeedbackFiltersSchema
+	.extend(CursorPaginationInputSchema.shape)
+	.extend({ username: UserSchema.shape.username })
+	.extend(userFeedbackListSorting.inputSchema.shape)
+	.extend(userFeedbackListRanging.inputSchema.shape)
+	.extend(userFeedbackListSearching.inputSchema.shape)
+	.superRefine((value, ctx) => {
+		refineRangingBounds(
+			{ rangeMin: value.rangeMin, rangeMax: value.rangeMax },
+			ctx,
+		);
+
+		if (
+			value.minRating != null &&
+			value.maxRating != null &&
+			value.maxRating < value.minRating
+		) {
+			ctx.addIssue({
+				code: "custom",
+				message: "Maximum rating must be at least the minimum",
+				path: ["maxRating"],
+			});
+		}
 	});
 
 export const GetUserFeedbackListOutputSchema = CursorPaginationOutputSchema(
 	UserFeedbackListItemSchema,
-);
+).extend({
+	metadata: CursorPaginationMetadataSchema.extend({
+		/** Matching reviews across all pages; only sent with the first page. */
+		total: zod.number().int().min(0).optional(),
+	}),
+});
 
 export type GetUserFeedbackListInput = z.infer<
 	typeof GetUserFeedbackListInputSchema
@@ -143,6 +176,7 @@ export const getUserFeedbackListFields = {
 	review: true,
 	isSpoiler: true,
 	createdAt: true,
+	_count: { select: { likes: true, comments: true } },
 	book: {
 		select: {
 			slug: true,

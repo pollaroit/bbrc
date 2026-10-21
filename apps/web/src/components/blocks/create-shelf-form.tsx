@@ -2,17 +2,10 @@
 
 import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
-import {
-	Field,
-	FieldDescription,
-	FieldGroup,
-	FieldLegend,
-	FieldSet,
-} from "@bbrc/ui/components/field";
+import { Field } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { Label } from "@bbrc/ui/components/label";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
-import { Separator } from "@bbrc/ui/components/separator";
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
@@ -21,6 +14,11 @@ import { useRouter } from "next/navigation";
 import { parseAsString, useQueryState } from "nuqs";
 import { useId, useState } from "react";
 import { toast } from "sonner";
+import { MemberProfileShelfCard } from "@/components/blocks/member-profile-shelf-card";
+import {
+	ShelfEditorSection,
+	ShelfEditorShell,
+} from "@/components/blocks/shelf-editor-shell";
 import {
 	ShelfOptionPicker,
 	shelfTypeOptions,
@@ -71,8 +69,30 @@ export function CreateShelfForm({ username }: CreateShelfFormProps) {
 	const trimmedTitle = title.trim();
 
 	return (
-		<form
-			className="flex max-w-2xl flex-col gap-8 pb-8"
+		<ShelfEditorShell
+			title="New shelf"
+			description="Name your list, choose who can see it, and pick how books are shown. Add up to 50 books from the shelf page or any book page."
+			backHref={`/users/${username}/shelves` as Route}
+			backLabel="Shelves"
+			preview={
+				<MemberProfileShelfCard
+					preview
+					showStatus
+					username={username}
+					shelf={{
+						id: "preview",
+						slug: "preview",
+						title: trimmedTitle || "Untitled shelf",
+						description: description.trim() || null,
+						coverImageUrl: null,
+						status,
+						type,
+						bookCount: addBookSlug ? 1 : 0,
+						updatedAt: new Date(),
+						coverPreviewCoverIds: [],
+					}}
+				/>
+			}
 			onSubmit={(event) => {
 				event.preventDefault();
 				if (!trimmedTitle) {
@@ -87,112 +107,98 @@ export function CreateShelfForm({ username }: CreateShelfFormProps) {
 					addBookSlug: addBookSlug ?? undefined,
 				});
 			}}
+			footer={
+				<>
+					<Button
+						type="button"
+						variant="outline"
+						render={<Link href={cancelHref} />}
+						nativeButton={false}
+					>
+						Cancel
+					</Button>
+					<LoadingButton
+						type="submit"
+						loading={createMutation.isPending}
+						disabled={!trimmedTitle}
+					>
+						Create shelf
+					</LoadingButton>
+				</>
+			}
 		>
 			{addBookSlug ? (
-				<div className="border border-border bg-muted/30 px-4 py-3 text-sm leading-relaxed">
-					<p className="font-medium">Adding a book after create</p>
-					<p className="mt-1 text-muted-foreground">
-						When you save,{" "}
-						<span className="font-mono text-foreground">{addBookSlug}</span>{" "}
-						will be placed on this shelf automatically.
-					</p>
-				</div>
+				<p className="border border-border bg-muted/30 px-4 py-3 text-muted-foreground text-sm leading-relaxed">
+					The book you picked (
+					<span className="font-mono text-foreground">{addBookSlug}</span>) will
+					be added to this shelf when you create it.
+				</p>
 			) : null}
 
-			<FieldSet>
-				<FieldLegend>Basics</FieldLegend>
-				<FieldDescription>
-					Give the shelf a clear name. Description is optional and appears under
-					the title on the shelf page.
-				</FieldDescription>
-				<FieldGroup className="gap-4">
-					<Field>
-						<div className="flex items-baseline justify-between gap-2">
-							<Label htmlFor={titleId}>Title</Label>
-							<span className="text-muted-foreground text-xs tabular-nums">
-								{title.length}/120
-							</span>
-						</div>
-						<Input
-							id={titleId}
-							value={title}
-							onChange={(e) => setTitle(e.target.value)}
-							maxLength={120}
-							placeholder="e.g. Books I want to read this year"
-							autoComplete="off"
-							required
-						/>
-					</Field>
-
-					<Field>
-						<div className="flex items-baseline justify-between gap-2">
-							<Label htmlFor={descriptionId}>
-								Description{" "}
-								<span className="font-normal text-muted-foreground">
-									(optional)
-								</span>
-							</Label>
-							<span className="text-muted-foreground text-xs tabular-nums">
-								{description.length}/2000
-							</span>
-						</div>
-						<Textarea
-							id={descriptionId}
-							value={description}
-							onChange={(e) => setDescription(e.target.value)}
-							maxLength={2000}
-							rows={4}
-							placeholder="What is this list for? A sentence or two is enough."
-							className="min-h-24 resize-y"
-						/>
-					</Field>
-				</FieldGroup>
-			</FieldSet>
-
-			<Separator />
-
-			<FieldSet>
-				<FieldLegend>Visibility</FieldLegend>
-				<FieldGroup>
-					<ShelfOptionPicker
-						name="shelf-visibility"
-						label="Who can see this shelf?"
-						value={status}
-						options={[...shelfVisibilityCreateOptions]}
-						onChange={setStatus}
+			<ShelfEditorSection title="Basics">
+				<Field>
+					<div className="flex items-baseline justify-between gap-2">
+						<Label htmlFor={titleId}>Title</Label>
+						<span className="text-muted-foreground text-xs tabular-nums">
+							{title.length}/120
+						</span>
+					</div>
+					<Input
+						id={titleId}
+						value={title}
+						onChange={(e) => setTitle(e.target.value)}
+						maxLength={120}
+						placeholder="e.g. Books I want to read this year"
+						autoComplete="off"
+						required
 					/>
-				</FieldGroup>
-			</FieldSet>
-
-			<Separator />
-
-			<FieldSet>
-				<FieldLegend>Display</FieldLegend>
-				<FieldGroup>
-					<ShelfOptionPicker
-						name="shelf-type"
-						label="How should books appear?"
-						description={`You can reorder anytime. Each shelf holds up to ${MAX_BOOKS_PER_SHELF} books.`}
-						value={type}
-						options={[...shelfTypeOptions]}
-						onChange={setType}
+				</Field>
+				<Field>
+					<div className="flex items-baseline justify-between gap-2">
+						<Label htmlFor={descriptionId}>
+							Description{" "}
+							<span className="font-normal text-muted-foreground">
+								(optional)
+							</span>
+						</Label>
+						<span className="text-muted-foreground text-xs tabular-nums">
+							{description.length}/2000
+						</span>
+					</div>
+					<Textarea
+						id={descriptionId}
+						value={description}
+						onChange={(e) => setDescription(e.target.value)}
+						maxLength={2000}
+						rows={4}
+						placeholder="What is this list for? A sentence or two is enough."
+						className="min-h-24 resize-y"
 					/>
-				</FieldGroup>
-			</FieldSet>
+				</Field>
+			</ShelfEditorSection>
 
-			<div className="flex flex-col gap-3 border-border border-t pt-6 sm:flex-row sm:items-center">
-				<LoadingButton type="submit" loading={createMutation.isPending}>
-					Create shelf
-				</LoadingButton>
-				<Button
-					type="button"
-					variant="outline"
-					render={<Link href={cancelHref} />}
-					nativeButton={false}
-				>
-					Cancel
-				</Button>
-			</div>
-		</form>
+			<ShelfEditorSection title="Visibility">
+				<ShelfOptionPicker
+					name="shelf-visibility"
+					label="Who can see this shelf?"
+					value={status}
+					options={[...shelfVisibilityCreateOptions]}
+					onChange={setStatus}
+				/>
+			</ShelfEditorSection>
+
+			<ShelfEditorSection
+				title="Display"
+				description={`You can reorder anytime. Each shelf holds up to ${MAX_BOOKS_PER_SHELF} books.`}
+			>
+				<ShelfOptionPicker
+					name="shelf-type"
+					label="How should books appear?"
+					value={type}
+					options={[...shelfTypeOptions]}
+					onChange={setType}
+				/>
+			</ShelfEditorSection>
+		</ShelfEditorShell>
 	);
 }

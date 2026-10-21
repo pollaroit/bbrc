@@ -12,8 +12,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { EditGoalDialog } from "@/components/blocks/edit-goal-dialog";
 import { GoalProgressBar } from "@/components/blocks/goal-progress-bar";
+import { GoalScopeChips } from "@/components/blocks/goal-scope-chips";
+import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
-import { formatGoalScopeSummary } from "@/lib/goal-scope-ui";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -49,48 +50,56 @@ export function UserGoalDetail({ username, goalSlug }: UserGoalDetailProps) {
 	}
 
 	const goal = detailQuery.data;
-	const scopeSummary = formatGoalScopeSummary(goal.scope);
-	const backHref = `/users/${username}/goals` as Route;
+	const remaining = Math.max(0, goal.target - goal.current);
+	const yearEnd = new Date(goal.year, 11, 31, 23, 59, 59);
+	const daysLeft = Math.max(
+		0,
+		Math.ceil((yearEnd.getTime() - Date.now()) / 86_400_000),
+	);
 
 	return (
-		<div className="flex flex-col gap-8">
-			<p className="text-sm">
-				<Link
-					href={backHref}
-					className="text-muted-foreground hover:text-foreground"
-				>
-					← All goals
-				</Link>
-			</p>
-
+		<div className="flex flex-col gap-6">
 			<header
 				className={cn(
-					"space-y-4 border border-border p-6",
+					"flex flex-col gap-4 border border-border p-4 sm:p-5",
 					goal.isComplete &&
 						"border-emerald-600/50 bg-emerald-500/5 dark:border-emerald-500/40 dark:bg-emerald-500/10",
 				)}
 			>
-				<div className="flex flex-wrap items-start justify-between gap-3">
-					<div className="space-y-1">
-						<h1 className="font-semibold text-2xl tracking-tight">
-							{goal.title}
-						</h1>
-						<p className="text-muted-foreground text-sm">{goal.year}</p>
+				<div className="flex items-start justify-between gap-3">
+					<div className="min-w-0">
+						<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+							<h1 className="font-semibold text-xl tracking-tight sm:text-2xl">
+								{goal.title}
+							</h1>
+							{goal.isComplete ? (
+								<Badge className="border-emerald-600/30 bg-emerald-600 text-white dark:bg-emerald-500">
+									Complete
+								</Badge>
+							) : null}
+							{goal.isExpired && !goal.isComplete ? (
+								<Badge variant="secondary">Expired</Badge>
+							) : null}
+						</div>
+						<p className="mt-0.5 text-muted-foreground text-sm tabular-nums">
+							{goal.year}
+						</p>
 					</div>
-					<div className="flex flex-wrap items-center justify-end gap-2">
-						{goal.isComplete ? (
-							<Badge className="border-emerald-600/30 bg-emerald-600 text-white dark:bg-emerald-500">
-								Complete
-							</Badge>
-						) : null}
-						{goal.isExpired && !goal.isComplete ? (
-							<Badge variant="secondary">Expired</Badge>
-						) : null}
+					<div className="flex shrink-0 divide-x divide-border border border-border">
+						<ResourceShareMenu
+							path={`/users/${username}/goals/${goalSlug}`}
+							shareText={goal.title}
+							label="Share goal"
+							size="md"
+							iconOnly
+							triggerClassName="size-8 px-0 text-foreground"
+						/>
 						{goal.isOwner ? (
 							<Button
 								type="button"
-								variant="outline"
-								size="icon-sm"
+								variant="ghost"
+								size="icon"
+								className="size-8"
 								aria-label="Edit goal"
 								onClick={() => setEditOpen(true)}
 							>
@@ -106,21 +115,39 @@ export function UserGoalDetail({ username, goalSlug }: UserGoalDetailProps) {
 					</p>
 				) : null}
 
-				<p className="text-muted-foreground text-sm">
-					{scopeSummary ??
-						"All finished reads in this year count toward the target."}
-				</p>
+				<GoalScopeChips scope={goal.scope} max={8} />
 
-				<GoalProgressBar
-					current={goal.current}
-					target={goal.target}
-					isComplete={goal.isComplete}
-				/>
+				<div className="flex flex-col gap-3 border-border border-t pt-4">
+					<GoalProgressBar
+						current={goal.current}
+						target={goal.target}
+						isComplete={goal.isComplete}
+					/>
+					{goal.isComplete ? (
+						<p className="text-sm">
+							Target reached
+							{goal.current > goal.target
+								? ` with ${goal.current - goal.target} to spare`
+								: ""}
+							.
+						</p>
+					) : (
+						<p className="text-muted-foreground text-sm tabular-nums">
+							{remaining} {remaining === 1 ? "book" : "books"} to go
+							{goal.isExpired
+								? ""
+								: ` · ${daysLeft} ${daysLeft === 1 ? "day" : "days"} left in ${goal.year}`}
+						</p>
+					)}
+				</div>
 			</header>
 
-			<section className="space-y-4">
-				<h2 className="font-semibold text-lg">
-					Books counted ({goal.books.length})
+			<section className="flex flex-col gap-3">
+				<h2 className="font-semibold text-base tracking-tight">
+					Books counted{" "}
+					<span className="font-normal text-muted-foreground tabular-nums">
+						({goal.books.length})
+					</span>
 				</h2>
 
 				{goal.books.length === 0 ? (
@@ -134,7 +161,6 @@ export function UserGoalDetail({ username, goalSlug }: UserGoalDetailProps) {
 				) : (
 					<ul className="divide-y divide-border border border-border">
 						{goal.books.map((entry) => {
-							const bookHref = `/books/${entry.book.slug}` as Route;
 							const coverSrc = bookCoverUrl(entry.book.coverId);
 							const finishedLabel = formatReadFinishedMonth({
 								year: entry.readEndYear,
@@ -144,10 +170,10 @@ export function UserGoalDetail({ username, goalSlug }: UserGoalDetailProps) {
 							return (
 								<li key={entry.book.slug}>
 									<Link
-										href={bookHref}
-										className="flex gap-4 p-4 transition-colors hover:bg-muted/40"
+										href={`/books/${entry.book.slug}` as Route}
+										className="flex items-start gap-3 p-3 transition-colors hover:bg-muted/40"
 									>
-										<div className="relative aspect-2/3 w-12 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10">
+										<span className="relative block aspect-2/3 w-10 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10">
 											{coverSrc ? (
 												<Image
 													src={coverSrc}
@@ -156,23 +182,19 @@ export function UserGoalDetail({ username, goalSlug }: UserGoalDetailProps) {
 													className="object-cover"
 													sizes="48px"
 												/>
-											) : (
-												<div className="flex size-full items-center justify-center text-[10px] text-muted-foreground">
-													No cover
-												</div>
-											)}
-										</div>
-										<div className="min-w-0 flex-1">
-											<p className="font-medium leading-snug">
+											) : null}
+										</span>
+										<span className="min-w-0 flex-1">
+											<span className="block font-medium text-sm leading-snug">
 												{entry.book.title}
-											</p>
-											<p className="text-muted-foreground text-sm">
+											</span>
+											<span className="block text-muted-foreground text-sm">
 												{formatBookAuthors(entry.book.authors)}
-											</p>
-											<p className="mt-1 text-muted-foreground text-xs">
-												Finished {finishedLabel}
-											</p>
-										</div>
+											</span>
+										</span>
+										<span className="shrink-0 text-muted-foreground text-xs">
+											{finishedLabel}
+										</span>
 									</Link>
 								</li>
 							);

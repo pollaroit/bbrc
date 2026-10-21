@@ -1,6 +1,7 @@
 import {
 	BookSchema,
 	CursorPaginationInputSchema,
+	CursorPaginationMetadataSchema,
 	CursorPaginationOutputSchema,
 	ProgressSchema,
 	SittingSchema,
@@ -16,6 +17,13 @@ import {
 	userListSearching,
 	userListSorting,
 } from "./user.listing";
+import {
+	userParticipationFiltersSchema,
+	userParticipationListRanging,
+	userParticipationListSearching,
+	userParticipationListSorting,
+} from "./user-participation.listing";
+import { UserProfileOutputSchema } from "./user-profile.schema";
 
 /** LIST — composed as a concrete ZodObject so oRPC clients get input autocomplete. */
 export const GetUserListInputSchema = userListFiltersSchema
@@ -111,6 +119,7 @@ export const GetUserByUsernameOutputSchema = UserMemberSnapshotSchema.extend({
 	xpLevel: MemberLevelSchema,
 	rpLevel: MemberLevelSchema,
 	readingStreak: ReadingStreakSchema,
+	profile: UserProfileOutputSchema,
 });
 
 export type GetUserByUsernameInput = z.infer<
@@ -151,6 +160,7 @@ export const GetUserProfileCardInputSchema = UserSchema.pick({
 export const GetUserProfileCardOutputSchema =
 	GetUserByUsernameOutputSchema.omit({
 		indexable: true,
+		profile: true,
 	}).extend({
 		favorites: zod.array(ProfileCardFavoriteItemSchema),
 		recentReads: zod.array(ProfileCardReadItemSchema),
@@ -186,29 +196,65 @@ export const UserParticipationBookSchema = BookSchema.pick({
 	title: true,
 	authors: true,
 	coverId: true,
+	pages: true,
 });
 
 export const UserParticipationListItemSchema = zod.object({
 	id: zod.uuid(),
 	progress: ProgressSchema,
 	updatedAt: zod.coerce.date(),
+	/** Whether the viewer (not the profile owner) also takes part in this sitting. */
+	viewerParticipates: zod.boolean(),
 	sitting: zod.object({
+		poll: zod
+			.object({
+				createdAt: zod.coerce.date(),
+				deadline: zod.coerce.date(),
+			})
+			.nullable(),
 		slug: SittingSchema.shape.slug,
 		status: SittingStatusSchema,
 		deadline: zod.coerce.date().nullable(),
 		createdAt: zod.coerce.date(),
+		participantCount: zod.number().int().min(0),
 		displayName: zod.string().min(1),
 		selectedBook: UserParticipationBookSchema.nullable(),
 	}),
 });
 
 export const GetUserParticipationListInputSchema =
-	CursorPaginationInputSchema.extend({
-		username: UserSchema.shape.username,
-	});
+	userParticipationFiltersSchema
+		.extend(CursorPaginationInputSchema.shape)
+		.extend({ username: UserSchema.shape.username })
+		.extend(userParticipationListSorting.inputSchema.shape)
+		.extend(userParticipationListRanging.inputSchema.shape)
+		.extend(userParticipationListSearching.inputSchema.shape)
+		.superRefine((value, ctx) => {
+			refineRangingBounds(
+				{ rangeMin: value.rangeMin, rangeMax: value.rangeMax },
+				ctx,
+			);
+
+			if (
+				value.minParticipants != null &&
+				value.maxParticipants != null &&
+				value.maxParticipants < value.minParticipants
+			) {
+				ctx.addIssue({
+					code: "custom",
+					message: "Maximum participants must be at least the minimum",
+					path: ["maxParticipants"],
+				});
+			}
+		});
 
 export const GetUserParticipationListOutputSchema =
-	CursorPaginationOutputSchema(UserParticipationListItemSchema);
+	CursorPaginationOutputSchema(UserParticipationListItemSchema).extend({
+		metadata: CursorPaginationMetadataSchema.extend({
+			/** Matching sittings across all pages; only sent with the first page. */
+			total: zod.number().int().min(0).optional(),
+		}),
+	});
 
 export type GetUserParticipationListInput = z.infer<
 	typeof GetUserParticipationListInputSchema
@@ -223,16 +269,20 @@ export const getUserParticipationListFields = {
 	updatedAt: true,
 	sitting: {
 		select: {
+			id: true,
 			slug: true,
 			status: true,
 			deadline: true,
 			createdAt: true,
+			poll: { select: { createdAt: true, deadline: true } },
+			_count: { select: { participants: { where: { removedAt: null } } } },
 			selectedBook: {
 				select: {
 					slug: true,
 					title: true,
 					authors: true,
 					coverId: true,
+					pages: true,
 				},
 			},
 		},
