@@ -12,6 +12,7 @@ type MemberProfileNavProps = {
 };
 
 type ProfileSegment =
+	| "overview"
 	| "sittings"
 	| "reads"
 	| "posts"
@@ -21,6 +22,7 @@ type ProfileSegment =
 	| "reels";
 
 const tabs: { segment: ProfileSegment; label: string; ownOnly?: boolean }[] = [
+	{ segment: "overview", label: "Overview" },
 	{ segment: "sittings", label: "Sittings" },
 	{ segment: "reads", label: "Reads" },
 	{ segment: "posts", label: "Feed" },
@@ -41,11 +43,11 @@ function tabHref(username: string, segment: ProfileSegment) {
 function activeSegment(pathname: string, username: string): ProfileSegment {
 	const base = `/users/${username}`;
 	for (const { segment } of tabs) {
-		if (segment !== "sittings" && pathname.startsWith(`${base}/${segment}`)) {
+		if (segment !== "overview" && pathname.startsWith(`${base}/${segment}`)) {
 			return segment;
 		}
 	}
-	return "sittings";
+	return "overview";
 }
 
 const FADE = "1.75rem";

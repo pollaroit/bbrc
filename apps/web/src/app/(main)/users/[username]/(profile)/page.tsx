@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { UserReadingsFeed } from "@/components/blocks/user-readings-feed";
+import { MemberProfileOverview } from "@/components/blocks/member-profile-overview";
 import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import {
 	buildNotFoundMetadata,
@@ -27,7 +27,7 @@ export async function generateMetadata({
 
 		return buildPageMetadata({
 			title: `${user.name} (@${user.username})`,
-			description: `${user.name}'s club sittings, reads, posts, and feedback on BBRC.`,
+			description: `${user.name}'s reading life on BBRC: sittings, reads, posts, and feedback.`,
 			path: `/users/${user.username}`,
 			robots: user.indexable ? undefined : NO_INDEX_ROBOTS,
 			openGraph: { type: "profile" },
@@ -37,10 +37,10 @@ export async function generateMetadata({
 	}
 }
 
-export default async function UserReadingsPage({
+export default async function UserOverviewPage({
 	params,
 }: PageProps<"/users/[username]">) {
 	const { username } = await params;
 
-	return <UserReadingsFeed username={username} />;
+	return <MemberProfileOverview username={username} />;
 }

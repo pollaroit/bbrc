@@ -18,14 +18,12 @@ type MemberProfileHeaderProps = {
 	user: GetUserByUsernameOutput;
 	isOwnProfile?: boolean;
 	favoritesHighlight?: React.ReactNode;
-	recentReadsHighlight?: React.ReactNode;
 };
 
 export function MemberProfileHeader({
 	user,
 	isOwnProfile = false,
 	favoritesHighlight,
-	recentReadsHighlight,
 }: MemberProfileHeaderProps) {
 	return (
 		<header className="flex flex-col gap-6">
@@ -97,10 +95,7 @@ export function MemberProfileHeader({
 				<MemberProfileNumbers user={user} className="md:self-start" />
 			</div>
 
-			<div className="grid gap-6 empty:hidden md:grid-cols-2 md:gap-8">
-				{favoritesHighlight}
-				{recentReadsHighlight}
-			</div>
+			<div className="grid gap-6 empty:hidden">{favoritesHighlight}</div>
 		</header>
 	);
 }
