@@ -30,6 +30,15 @@ import {
 	GetUserStatsOutputSchema,
 } from "./user-stats.schema";
 import { getUserStats } from "./user-stats.service";
+import {
+	GetUsernameUpdateStatusOutputSchema,
+	UpdateUsernameInputSchema,
+	UpdateUsernameOutputSchema,
+} from "./username-update.schema";
+import {
+	getUsernameUpdateStatus,
+	updateUsername,
+} from "./username-update.service";
 
 export const userRouter = {
 	getUserList: publicProcedure
@@ -80,5 +89,16 @@ export const userRouter = {
 		.output(UnlinkTelegramOutputSchema)
 		.handler(async ({ context }) =>
 			unlinkTelegramAccount(context.session.user.id, context.db),
+		),
+	getUsernameUpdateStatus: protectedProcedure
+		.output(GetUsernameUpdateStatusOutputSchema)
+		.handler(async ({ context }) =>
+			getUsernameUpdateStatus(context.session.user.id, context.db),
+		),
+	updateUsername: protectedProcedure
+		.input(UpdateUsernameInputSchema)
+		.output(UpdateUsernameOutputSchema)
+		.handler(async ({ input, context }) =>
+			updateUsername(context.session.user.id, input, context.db),
 		),
 };

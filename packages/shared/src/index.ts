@@ -25,3 +25,4 @@ export * from "./spoiler-reveal";
 export * from "./subject-slug";
 export * from "./user-stats";
 export * from "./username";
+export * from "./username-update";

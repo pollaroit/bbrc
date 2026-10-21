@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SettingsAvatarUpload } from "@/components/blocks/settings-avatar-upload";
+import { SettingsUsernameForm } from "@/components/blocks/settings-username-form";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 
@@ -73,6 +74,16 @@ export default async function SettingsPage() {
 				aria-labelledby="profile-photo-heading"
 			>
 				<SettingsAvatarUpload />
+			</section>
+
+			<section
+				className="border border-border px-4 py-5"
+				aria-labelledby="username-heading"
+			>
+				<h2 id="username-heading" className="sr-only">
+					Username
+				</h2>
+				<SettingsUsernameForm />
 			</section>
 
 			<section
