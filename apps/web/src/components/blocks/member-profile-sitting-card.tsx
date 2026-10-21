@@ -56,7 +56,16 @@ function VotingProgress({
 	);
 }
 
-export function MemberProfileSittingCard({ item }: { item: Item }) {
+type MemberProfileSittingCardProps = {
+	item: Item;
+	/** Adds dates, readers and page count (sittings tab). */
+	variant?: "compact" | "detailed";
+};
+
+export function MemberProfileSittingCard({
+	item,
+	variant = "compact",
+}: MemberProfileSittingCardProps) {
 	const { sitting } = item;
 	const book = sitting.selectedBook;
 	const coverSrc = book ? bookCoverUrl(book.coverId) : null;
@@ -106,6 +115,37 @@ export function MemberProfileSittingCard({ item }: { item: Item }) {
 					</p>
 				</div>
 			</div>
+
+			{variant === "detailed" ? (
+				<dl className="flex flex-wrap gap-x-5 gap-y-1 text-muted-foreground text-xs">
+					<div className="flex gap-1.5">
+						<dt>Started</dt>
+						<dd className="text-foreground">
+							{formatDateTime(sitting.createdAt)}
+						</dd>
+					</div>
+					{!isVoting && sitting.deadline ? (
+						<div className="flex gap-1.5">
+							<dt>Deadline</dt>
+							<dd className="text-foreground">
+								{formatDateTime(sitting.deadline)}
+							</dd>
+						</div>
+					) : null}
+					<div className="flex gap-1.5">
+						<dt>Readers</dt>
+						<dd className="text-foreground tabular-nums">
+							{sitting.participantCount}
+						</dd>
+					</div>
+					{book ? (
+						<div className="flex gap-1.5">
+							<dt>Pages</dt>
+							<dd className="text-foreground tabular-nums">{book.pages}</dd>
+						</div>
+					) : null}
+				</dl>
+			) : null}
 
 			{isVoting && sitting.poll ? <VotingProgress poll={sitting.poll} /> : null}
 

@@ -3,16 +3,20 @@
 import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { UserReadingCard } from "@/components/blocks/user-reading-card";
+import { useMemo } from "react";
+import { MemberProfileSittingCard } from "@/components/blocks/member-profile-sitting-card";
+import {
+	hasActiveUserSittingFilters,
+	toUserSittingListCallInput,
+	useUserSittingListingSearchParams,
+} from "@/lib/listing/user-sittings-listing";
 import { orpc } from "@/utils/orpc";
-
-const PAGE_LIMIT = 10;
 
 function UserReadingsFeedSkeleton() {
 	return (
-		<div className="flex flex-col gap-4" aria-hidden>
+		<div className="flex flex-col gap-3" aria-hidden>
 			{Array.from({ length: 3 }, (_, index) => (
-				<Skeleton key={index} className="h-40 w-full" />
+				<Skeleton key={index} className="h-28 w-full" />
 			))}
 		</div>
 	);
@@ -23,6 +27,10 @@ type UserReadingsFeedProps = {
 };
 
 export function UserReadingsFeed({ username }: UserReadingsFeedProps) {
+	const [params] = useUserSittingListingSearchParams();
+	const listInput = useMemo(() => toUserSittingListCallInput(params), [params]);
+	const filtered = hasActiveUserSittingFilters(params);
+
 	const {
 		data,
 		error,
@@ -38,41 +46,57 @@ export function UserReadingsFeed({ username }: UserReadingsFeedProps) {
 			getNextPageParam: (lastPage) => lastPage.metadata.nextCursor ?? undefined,
 			input: (pageCursor) => ({
 				username,
-				limit: PAGE_LIMIT,
+				...listInput,
 				...(pageCursor != null ? { cursor: pageCursor } : {}),
 			}),
 		}),
 	);
 
 	const items = data?.pages.flatMap((page) => page.items) ?? [];
+	const total = data?.pages[0]?.metadata.total;
 
 	return (
-		<InfiniteScroll
-			className="flex flex-col gap-4"
-			hasNextPage={hasNextPage}
-			isFetchingNextPage={isFetchingNextPage}
-			fetchNextPage={() => {
-				void fetchNextPage();
-			}}
-			isPending={isPending}
-			isError={isError}
-			error={error}
-			onRetry={() => {
-				void refetch();
-			}}
-			isEmpty={items.length === 0}
-			emptyTitle="No sittings yet"
-			emptyDescription="When this member joins club sittings, they show up here."
-			loadingContent={<UserReadingsFeedSkeleton />}
-			endMessage="End of sitting history."
-		>
-			<ul className="flex flex-col gap-4">
-				{items.map((item) => (
-					<li key={item.id}>
-						<UserReadingCard item={item} />
-					</li>
-				))}
-			</ul>
-		</InfiniteScroll>
+		<div className="flex flex-col gap-4">
+			{total != null ? (
+				<p className="text-muted-foreground text-sm tabular-nums">
+					{total} sitting{total === 1 ? "" : "s"}
+					{filtered ? " match your filters" : ""}
+				</p>
+			) : null}
+
+			<InfiniteScroll
+				className="flex flex-col gap-4"
+				hasNextPage={hasNextPage}
+				isFetchingNextPage={isFetchingNextPage}
+				fetchNextPage={() => {
+					void fetchNextPage();
+				}}
+				isPending={isPending}
+				isError={isError}
+				error={error}
+				onRetry={() => {
+					void refetch();
+				}}
+				isEmpty={items.length === 0}
+				emptyTitle={
+					filtered ? "No sittings match these filters" : "No sittings yet"
+				}
+				emptyDescription={
+					filtered
+						? "Try clearing filters or changing your search."
+						: "When this member joins club sittings, they show up here."
+				}
+				loadingContent={<UserReadingsFeedSkeleton />}
+				endMessage="End of sitting history."
+			>
+				<ul className="flex flex-col gap-3">
+					{items.map((item) => (
+						<li key={item.id}>
+							<MemberProfileSittingCard item={item} variant="detailed" />
+						</li>
+					))}
+				</ul>
+			</InfiniteScroll>
+		</div>
 	);
 }
