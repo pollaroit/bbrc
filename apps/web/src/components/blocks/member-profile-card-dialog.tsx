@@ -27,6 +27,9 @@ import { orpc } from "@/utils/orpc";
 
 type MemberProfileCardDialogProps = {
 	user: GetUserByUsernameOutput;
+	/** Compact icon trigger for toolbars. */
+	iconOnly?: boolean;
+	triggerClassName?: string;
 };
 
 const coverClassName =
@@ -162,6 +165,8 @@ function PointsMetric({
 
 export function MemberProfileCardDialog({
 	user,
+	iconOnly = false,
+	triggerClassName,
 }: MemberProfileCardDialogProps) {
 	const [open, setOpen] = useState(false);
 
@@ -178,13 +183,15 @@ export function MemberProfileCardDialog({
 		<Dialog open={open} onOpenChange={setOpen}>
 			<Button
 				type="button"
-				variant="outline"
-				size="sm"
-				className="gap-1.5"
+				variant={iconOnly ? "ghost" : "outline"}
+				size={iconOnly ? "icon" : "sm"}
+				className={cn("gap-1.5", triggerClassName)}
+				aria-label={iconOnly ? "Profile card" : undefined}
+				title={iconOnly ? "Profile card" : undefined}
 				onClick={() => setOpen(true)}
 			>
 				<IdCard className="size-4" aria-hidden />
-				Profile card
+				{iconOnly ? null : "Profile card"}
 			</Button>
 			<DialogContent
 				showCloseButton={false}

@@ -94,9 +94,12 @@ export function MemberProfileAbout({
 		{ key: "wpm", Icon: Gauge, text: `${profile.wpm} WPM` },
 	].filter((item) => item !== null);
 
-	const hasWebsite = Boolean(profile.websiteUrl);
+	const website = profile.websiteUrl
+		? { href: profile.websiteUrl, label: hostLabel(profile.websiteUrl) }
+		: null;
+
 	const isEmpty =
-		!hasBio && chips.length === 0 && links.length === 0 && !hasWebsite;
+		!hasBio && chips.length === 0 && links.length === 0 && !website;
 
 	return (
 		<div className={cn("flex flex-col gap-4", className)}>
@@ -107,6 +110,19 @@ export function MemberProfileAbout({
 						{text}
 					</li>
 				))}
+				{website ? (
+					<li className="flex items-center gap-1.5">
+						<Globe className="size-4 shrink-0" aria-hidden />
+						<a
+							href={website.href}
+							target="_blank"
+							rel="noopener noreferrer nofollow"
+							className="font-medium text-foreground underline underline-offset-4"
+						>
+							{website.label}
+						</a>
+					</li>
+				) : null}
 			</ul>
 
 			{hasBio ? (
@@ -160,28 +176,15 @@ export function MemberProfileAbout({
 				</div>
 			) : null}
 
-			{hasWebsite || links.length > 0 ? (
-				<ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm">
-					{profile.websiteUrl ? (
-						<li>
-							<a
-								href={profile.websiteUrl}
-								target="_blank"
-								rel="noopener noreferrer nofollow"
-								className="inline-flex items-center gap-1.5 font-medium underline underline-offset-4"
-							>
-								<Globe className="size-4" aria-hidden />
-								{hostLabel(profile.websiteUrl)}
-							</a>
-						</li>
-					) : null}
+			{links.length > 0 ? (
+				<ul className="flex flex-wrap gap-1.5">
 					{links.map((link) => (
 						<li key={link.key}>
 							<a
 								href={link.href}
 								target="_blank"
 								rel="noopener noreferrer nofollow"
-								className="font-medium underline underline-offset-4"
+								className="inline-flex items-center border border-border px-2.5 py-1 font-medium text-xs transition-colors hover:bg-muted/50"
 							>
 								{link.label}
 							</a>

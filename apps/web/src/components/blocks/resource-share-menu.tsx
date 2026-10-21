@@ -46,6 +46,8 @@ type ResourceShareMenuProps = {
 	className?: string;
 	triggerClassName?: string;
 	size?: "sm" | "md";
+	/** Hide the text label (the trigger keeps its aria-label). */
+	iconOnly?: boolean;
 };
 
 export function ResourceShareMenu({
@@ -57,6 +59,7 @@ export function ResourceShareMenu({
 	className,
 	triggerClassName,
 	size = "sm",
+	iconOnly = false,
 }: ResourceShareMenuProps) {
 	const [copied, setCopied] = useState(false);
 	const { data: session } = authClient.useSession();
@@ -102,7 +105,7 @@ export function ResourceShareMenu({
 				}
 			>
 				<Share2 className={cn(iconSize, "shrink-0")} aria-hidden />
-				Share
+				{iconOnly ? null : "Share"}
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="min-w-44">
 				{shareInPost && session?.user ? (
