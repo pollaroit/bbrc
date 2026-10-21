@@ -56,7 +56,7 @@ export function MemberProfileBookPanel({
 					</Link>
 				) : null}
 			</div>
-			<ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+			<ul className="-mx-6 flex snap-x gap-3 overflow-x-auto px-6 pb-1 md:mx-0 md:px-0">
 				{isPending
 					? Array.from({ length: 4 }, (_, i) => (
 							<li key={i}>
