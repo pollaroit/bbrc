@@ -8,6 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type ShelfDetailBookRowProps = {
@@ -22,6 +23,8 @@ type ShelfDetailBookRowProps = {
 		authors: string[];
 		coverId: number | null;
 	};
+	/** Draw the row's own border (off when the parent list provides dividers). */
+	bordered?: boolean;
 	/** When true, row is a drag handle target (reorder page). */
 	sortable?: boolean;
 	dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
@@ -34,6 +37,7 @@ export function ShelfDetailBookRow({
 	showRank,
 	isOwner,
 	book,
+	bordered = true,
 	sortable = false,
 	dragHandleProps,
 }: ShelfDetailBookRowProps) {
@@ -63,7 +67,12 @@ export function ShelfDetailBookRow({
 	);
 
 	return (
-		<div className="flex items-center gap-2 border border-border p-3 sm:gap-4">
+		<div
+			className={cn(
+				"flex items-center gap-2 p-3 transition-colors hover:bg-muted/40 sm:gap-4",
+				bordered && "border border-border",
+			)}
+		>
 			{sortable ? (
 				<button
 					type="button"
@@ -75,7 +84,7 @@ export function ShelfDetailBookRow({
 				</button>
 			) : null}
 			{showRank && rank != null ? (
-				<span className="w-8 shrink-0 text-center font-medium text-muted-foreground tabular-nums">
+				<span className="w-7 shrink-0 text-center font-semibold text-lg text-muted-foreground tabular-nums">
 					{rank}
 				</span>
 			) : null}
