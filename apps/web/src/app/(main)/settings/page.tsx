@@ -23,6 +23,11 @@ const settingsLinks = [
 		description: "Link Telegram for club bot features.",
 	},
 	{
+		href: "/settings/sessions",
+		title: "Sessions",
+		description: "See where you're signed in and log out of devices.",
+	},
+	{
 		href: "/settings/notifications",
 		title: "Notifications",
 		description: "Bell alerts and one-time ntfy phone setup.",
