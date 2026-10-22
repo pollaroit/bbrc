@@ -17,7 +17,14 @@ import {
 	TooltipTrigger,
 } from "@bbrc/ui/components/tooltip";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { BookCheck, BookOpen, CalendarDays, Star, Trophy } from "lucide-react";
+import {
+	BookCheck,
+	BookOpen,
+	CalendarDays,
+	Clock,
+	Star,
+	Trophy,
+} from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -33,6 +40,7 @@ import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatClubDateTime } from "@/lib/club-timezone";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
 import { formatPollPageRange } from "@/lib/poll-page-range";
+import { readingEstimateLabel } from "@/lib/reading-estimate";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -569,6 +577,15 @@ export function SittingPollSection({
 												>
 													{option.book.series.title}
 												</Link>
+											</p>
+										) : null}
+										{readingEstimateLabel(option.book.pages, poll.deadline) ? (
+											<p
+												className="mt-1 inline-flex items-center gap-1 text-muted-foreground text-xs"
+												title="Based on the book's page count and the club's reading pace, if reading starts when voting ends. Weekends and the final start date can change it."
+											>
+												<Clock className="size-3.5 shrink-0" aria-hidden />
+												{readingEstimateLabel(option.book.pages, poll.deadline)}
 											</p>
 										) : null}
 										{option.book.requestedBy ? (
