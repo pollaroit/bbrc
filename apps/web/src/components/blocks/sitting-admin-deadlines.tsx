@@ -25,8 +25,7 @@ import { toast } from "sonner";
 import { SittingAdminToolRow } from "@/components/blocks/sitting-admin-tool-row";
 import { SittingDeadlinePicker } from "@/components/blocks/sitting-deadline-picker";
 import { authClient } from "@/lib/auth-client";
-import { clubTimeZone } from "@/lib/club-timezone";
-import { formatDateTime } from "@/lib/format-datetime";
+import { clubTimeZone, formatClubDateTime } from "@/lib/club-timezone";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type SittingAdminDeadlinesProps = {
@@ -119,7 +118,7 @@ export function SittingDeadlinesRow({ sitting }: SittingAdminDeadlinesProps) {
 		setCalculatedDeadlineInPast(
 			sitting.status === "reading" && clamped.getTime() < Date.now(),
 		);
-		setSuggestion(formatDateTime(clamped));
+		setSuggestion(formatClubDateTime(clamped));
 	}
 
 	function handleSaveBookPages() {
@@ -157,11 +156,11 @@ export function SittingDeadlinesRow({ sitting }: SittingAdminDeadlinesProps) {
 				description={
 					<>
 						{sitting.poll
-							? `Voting ${sitting.status === "voting" ? "closes" : "closed"} ${formatDateTime(sitting.poll.deadline)}. `
+							? `Voting ${sitting.status === "voting" ? "closes" : "closed"} ${formatClubDateTime(sitting.poll.deadline)}. `
 							: null}
 						{sitting.status === "voting"
 							? "Reading deadline is set when reading starts."
-							: `Reading ${sitting.status === "finished" ? "ended" : "ends"} ${formatDateTime(sitting.deadline)}.`}
+							: `Reading ${sitting.status === "finished" ? "ended" : "ends"} ${formatClubDateTime(sitting.deadline)}.`}
 					</>
 				}
 			>
@@ -328,7 +327,7 @@ export function SittingDeadlinesSummary({
 				<div>
 					<dt className="text-muted-foreground text-xs">Poll deadline</dt>
 					<dd className="font-medium">
-						{formatDateTime(sitting.poll.deadline)}
+						{formatClubDateTime(sitting.poll.deadline)}
 					</dd>
 				</div>
 			) : null}
@@ -337,7 +336,7 @@ export function SittingDeadlinesSummary({
 				<dd className="font-medium">
 					{sitting.status === "voting"
 						? "Set when reading starts"
-						: formatDateTime(sitting.deadline)}
+						: formatClubDateTime(sitting.deadline)}
 				</dd>
 			</div>
 		</dl>

@@ -2,6 +2,14 @@
 
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { Button } from "@bbrc/ui/components/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@bbrc/ui/components/dialog";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import {
 	Sheet,
@@ -12,13 +20,12 @@ import {
 	SheetTitle,
 } from "@bbrc/ui/components/sheet";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
-import { UserMinusIcon, UserPlusIcon } from "lucide-react";
+import { UndoIcon, UserMinusIcon, UserPlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
-import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { formatDateTime } from "@/lib/format-datetime";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -52,16 +59,33 @@ function useEligibleUsersToAdd(activeUserIds: Set<string>) {
 	return { addable, isPending: query.isPending };
 }
 
+const removeModes = [
+	{
+		value: "dnf",
+		label: "Mark as DNF",
+		hint: "Stays on their history as DNF and loses RP when the sitting ends. You can recover them later.",
+	},
+	{
+		value: "remove",
+		label: "Remove completely",
+		hint: "Like they never joined: no DNF, no RP change, and the sitting leaves their history.",
+	},
+] as const;
+
 export function useParticipantRemoveDialog(sitting: GetSittingBySlugOutput) {
 	const router = useRouter();
 	const [removeTarget, setRemoveTarget] = useState<
 		GetSittingBySlugOutput["participants"][number] | null
 	>(null);
 
+	const [removeMode, setRemoveMode] = useState<"dnf" | "remove">("dnf");
+
 	const removeMutation = useMutation(
 		orpc.sitting.removeSittingParticipant.mutationOptions({
 			onSuccess: async () => {
-				toast.success("Participant removed");
+				toast.success(
+					removeMode === "dnf" ? "Marked as DNF" : "Participant removed",
+				);
 				setRemoveTarget(null);
 				await queryClient.invalidateQueries({
 					queryKey: orpc.sitting.getSittingBySlug.key(),
@@ -75,31 +99,72 @@ export function useParticipantRemoveDialog(sitting: GetSittingBySlugOutput) {
 	const canRemove = sitting.status === "voting" || sitting.status === "reading";
 
 	const dialog = (
-		<DestructiveConfirmDialog
+		<Dialog
 			open={removeTarget != null}
 			onOpenChange={(open) => {
-				if (!open) setRemoveTarget(null);
+				if (!open && !removeMutation.isPending) setRemoveTarget(null);
 			}}
-			title="Remove participant?"
-			description={
-				removeTarget ? (
-					<>
-						Remove <strong>{removeTarget.name}</strong> from this sitting? Their
-						participation XP stays. Poll votes are cleared if voting is still
-						open. Members who finished the book cannot be removed.
-					</>
-				) : null
-			}
-			confirmLabel="Remove"
-			loading={removeMutation.isPending}
-			onConfirm={() => {
-				if (!removeTarget) return;
-				removeMutation.mutate({
-					slug: sitting.slug,
-					userId: removeTarget.userId,
-				});
-			}}
-		/>
+		>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>
+						Remove {removeTarget?.name ?? "participant"}?
+					</DialogTitle>
+					<DialogDescription>
+						Poll votes are cleared if voting is still open. Participation XP
+						stays. Members who finished the book cannot be removed.
+					</DialogDescription>
+				</DialogHeader>
+				<fieldset className="flex flex-col gap-2">
+					<legend className="sr-only">What happens to their record</legend>
+					{removeModes.map((option) => (
+						<label
+							key={option.value}
+							className="flex cursor-pointer items-start gap-3 border border-border p-3 has-checked:border-primary has-checked:bg-primary/5"
+						>
+							<input
+								type="radio"
+								name="removeMode"
+								className="mt-1"
+								checked={removeMode === option.value}
+								onChange={() => setRemoveMode(option.value)}
+							/>
+							<span className="flex flex-col gap-0.5">
+								<span className="font-medium text-sm">{option.label}</span>
+								<span className="text-muted-foreground text-xs">
+									{option.hint}
+								</span>
+							</span>
+						</label>
+					))}
+				</fieldset>
+				<DialogFooter>
+					<Button
+						type="button"
+						variant="outline"
+						disabled={removeMutation.isPending}
+						onClick={() => setRemoveTarget(null)}
+					>
+						Cancel
+					</Button>
+					<LoadingButton
+						type="button"
+						variant="destructive"
+						loading={removeMutation.isPending}
+						onClick={() => {
+							if (!removeTarget) return;
+							removeMutation.mutate({
+								slug: sitting.slug,
+								userId: removeTarget.userId,
+								mode: removeMode,
+							});
+						}}
+					>
+						Remove
+					</LoadingButton>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 
 	return {
@@ -273,6 +338,22 @@ export function SittingRemovedParticipantsSection({
 	sitting: GetSittingBySlugOutput;
 }) {
 	const removed = sitting.removedParticipants;
+	const router = useRouter();
+	const canRecover =
+		sitting.status === "voting" || sitting.status === "reading";
+
+	const recoverMutation = useMutation(
+		orpc.sitting.addSittingParticipant.mutationOptions({
+			onSuccess: async () => {
+				toast.success("Participant recovered");
+				await queryClient.invalidateQueries({
+					queryKey: orpc.sitting.getSittingBySlug.key(),
+				});
+				router.refresh();
+			},
+			onError: (error) => toast.error(error.message),
+		}),
+	);
 
 	if (removed.length === 0) {
 		return null;
@@ -288,8 +369,30 @@ export function SittingRemovedParticipantsSection({
 						className="flex flex-wrap items-center justify-between gap-2 border border-border/60 bg-muted/20 px-3 py-2"
 					>
 						<UserPanel user={participant} className="min-w-0" />
-						<span className="text-muted-foreground text-xs">
-							Removed {formatDateTime(participant.removedAt)}
+						<span className="flex items-center gap-3">
+							<span className="text-muted-foreground text-xs">
+								DNF · removed {formatDateTime(participant.removedAt)}
+							</span>
+							{canRecover ? (
+								<LoadingButton
+									type="button"
+									size="sm"
+									variant="outline"
+									loading={
+										recoverMutation.isPending &&
+										recoverMutation.variables?.userId === participant.userId
+									}
+									onClick={() =>
+										recoverMutation.mutate({
+											slug: sitting.slug,
+											userId: participant.userId,
+										})
+									}
+								>
+									<UndoIcon data-icon="inline-start" />
+									Recover
+								</LoadingButton>
+							) : null}
 						</span>
 					</li>
 				))}

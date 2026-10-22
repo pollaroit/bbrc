@@ -84,6 +84,7 @@ import {
 	getSittingRemovedParticipantFields,
 	type PreviewSittingPollOptionsInput,
 	type PreviewSittingPollOptionsOutput,
+	type RemoveSittingParticipantInput,
 	type ReplaceSittingPollPreviewOptionInput,
 	type ReplaceSittingPollPreviewOptionOutput,
 	type ResendSittingTelegramPollOpenInput,
@@ -362,7 +363,8 @@ function mapSittingDetail(
 					myVoteOptionIds,
 					myVotes,
 					myChipGrants,
-					voterCount: hidePollAggregates ? 0 : pollVoterCount,
+					// Only the number of ballots is public while voting; picks and points stay hidden.
+					voterCount: pollVoterCount,
 				}
 			: null,
 		reviews,
@@ -1584,8 +1586,12 @@ export async function transitionSitting(
 			data: { progress: "dnf" },
 		});
 
+		// Members removed as DNF still take the DNF penalty when the sitting ends.
 		const participants = await tx.participation.findMany({
-			where: { sittingId: sitting.id, ...activeParticipationWhere },
+			where: {
+				sittingId: sitting.id,
+				OR: [activeParticipationWhere, { progress: "dnf" }],
+			},
 			select: { userId: true, progress: true },
 		});
 
@@ -1963,12 +1969,6 @@ export async function addSittingParticipant(
 		});
 	}
 
-	if (user.status === "banned") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Banned members cannot join a sitting",
-		});
-	}
-
 	const existing = await db.participation.findUnique({
 		where: {
 			userId_sittingId: {
@@ -1982,6 +1982,12 @@ export async function addSittingParticipant(
 	if (existing && existing.removedAt == null) {
 		throw new ORPCError("CONFLICT", {
 			message: "Member is already on this sitting",
+		});
+	}
+	// Recovering a removed member is an admin call; only new joins are blocked.
+	if (!existing && user.status === "banned") {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Banned members cannot join a sitting",
 		});
 	}
 
@@ -2018,7 +2024,7 @@ export async function addSittingParticipant(
 }
 
 export async function removeSittingParticipant(
-	input: SittingParticipantMutationInput,
+	input: RemoveSittingParticipantInput,
 	db: Database,
 ): Promise<SittingParticipantMutationOutput> {
 	const sitting = await db.sitting.findUnique({
@@ -2074,15 +2080,18 @@ export async function removeSittingParticipant(
 	const removedAt = new Date();
 
 	await db.$transaction(async (tx) => {
-		await tx.participation.update({
-			where: {
-				userId_sittingId: {
-					userId: input.userId,
-					sittingId: sitting.id,
-				},
-			},
-			data: { removedAt },
-		});
+		const key = {
+			userId_sittingId: { userId: input.userId, sittingId: sitting.id },
+		};
+
+		if (input.mode === "remove") {
+			await tx.participation.delete({ where: key });
+		} else {
+			await tx.participation.update({
+				where: key,
+				data: { removedAt, progress: "dnf" },
+			});
+		}
 
 		if (sitting.status === "voting" && sitting.poll) {
 			await tx.pollVote.deleteMany({

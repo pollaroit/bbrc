@@ -4,7 +4,7 @@ import { CalendarDays, Users } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
-import { formatDateTime } from "@/lib/format-datetime";
+import { formatClubDateTime } from "@/lib/club-timezone";
 import { cn } from "@/lib/utils";
 
 export type SittingCardSitting = GetSittingListOutput["items"][number];
@@ -33,7 +33,7 @@ export function SittingCard({ sitting, className }: SittingCardProps) {
 							<CalendarDays className="size-3.5 shrink-0" aria-hidden />
 							<div>
 								<dt className="sr-only">Deadline</dt>
-								<dd>{formatDateTime(sitting.deadline)}</dd>
+								<dd>{formatClubDateTime(sitting.deadline)}</dd>
 							</div>
 						</div>
 						<div className="flex items-center gap-1.5">

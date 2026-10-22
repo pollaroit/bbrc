@@ -9,7 +9,7 @@ import { SittingHubNav } from "@/components/blocks/sitting-hub-nav";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
 import { SittingViewerAction } from "@/components/blocks/sitting-viewer-action";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
-import { formatDateTime } from "@/lib/format-datetime";
+import { formatClubDateTime } from "@/lib/club-timezone";
 
 type SittingShellProps = {
 	sitting: GetSittingBySlugOutput;
@@ -115,7 +115,7 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 										Reading ends <RelativeTime date={closesAt} />
 									</>
 								) : (
-									<>Ended {formatDateTime(closesAt)}</>
+									<>Ended {formatClubDateTime(closesAt)}</>
 								)}
 							</span>
 						</p>
@@ -154,7 +154,7 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 						icon={<CalendarClock className="size-3.5" aria-hidden />}
 						sub={
 							!isVoting && sitting.poll
-								? `Voting closed ${formatDateTime(sitting.poll.deadline)}`
+								? `Voting closed ${formatClubDateTime(sitting.poll.deadline)}`
 								: undefined
 						}
 						label={
@@ -165,7 +165,7 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 									: "Deadline"
 						}
 					>
-						{formatDateTime(closesAt)}
+						{formatClubDateTime(closesAt)}
 					</Fact>
 				</div>
 

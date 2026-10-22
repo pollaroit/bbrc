@@ -10,8 +10,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@bbrc/ui/components/card";
-import { Checkbox } from "@bbrc/ui/components/checkbox";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@bbrc/ui/components/tooltip";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { BookCheck, BookOpen, CalendarDays, Star, Trophy } from "lucide-react";
 import type { Route } from "next";
@@ -26,7 +30,7 @@ import { PollOptionVotersDialog } from "@/components/blocks/poll-option-voters-d
 import { PollVotesByVoterSection } from "@/components/blocks/poll-votes-by-voter-section";
 import { authClient } from "@/lib/auth-client";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
-import { formatDateTime } from "@/lib/format-datetime";
+import { formatClubDateTime } from "@/lib/club-timezone";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
 import { formatPollPageRange } from "@/lib/poll-page-range";
 import { cn } from "@/lib/utils";
@@ -50,28 +54,17 @@ function optionScore(option: SittingPoll["options"][number], isAdmin: boolean) {
 	return isAdmin ? option.pointTotal : option.voteCount;
 }
 
-function votePointsLabel(points: 1 | 2 | 3): string {
-	if (points === 3) {
-		return "Golden · 3 pts";
-	}
-
-	if (points === 2) {
-		return "Silver · 2 pts";
-	}
-
-	return "Standard · 1 pt";
-}
-
-function votePointsAccentClass(points: 1 | 2 | 3, fallback: string): string {
-	if (points === 3) {
-		return "bg-amber-600 dark:bg-amber-500";
-	}
-
-	if (points === 2) {
-		return "bg-slate-500 dark:bg-slate-400";
-	}
-
-	return fallback;
+function PollTotals({ option }: { option: SittingPoll["options"][number] }) {
+	return (
+		<>
+			<span className="font-semibold text-base text-foreground">
+				{option.pointTotal} pts
+			</span>
+			<span className="text-muted-foreground">
+				{option.voteCount} {option.voteCount === 1 ? "voter" : "voters"}
+			</span>
+		</>
+	);
 }
 
 function votePointsRowTintClass(points: 1 | 2 | 3, active: boolean): string {
@@ -335,7 +328,7 @@ export function SittingPollSection({
 					<div>
 						<dt className="text-muted-foreground text-xs">Poll deadline</dt>
 						<dd className="font-medium text-sm">
-							{formatDateTime(poll.deadline)}
+							{formatClubDateTime(poll.deadline)}
 						</dd>
 					</div>
 					<div>
@@ -411,10 +404,21 @@ export function SittingPollSection({
 					const voteShare =
 						showVoteBars && optionPoints > 0 ? optionPoints / maxVoteCount : 0;
 					const readCount = option.participantReadCount;
-					const readLabel =
+					const readTip =
 						participantCount > 0
-							? `${readCount} of ${participantCount} read`
-							: `${readCount} read`;
+							? `${readCount} of ${participantCount} participants read this`
+							: `${readCount} read this`;
+					const shownVote = canEditSelection
+						? draftVote != null
+							? draftPoints
+							: null
+						: showAsVoted
+							? savedPoints
+							: null;
+					const showTotals =
+						showVoteBars && (isAdmin || sittingStatus !== "voting");
+					const showChips = showChipControls && checked;
+					const hasBottom = showChips || shownVote != null || showTotals;
 
 					return (
 						<li key={option.id}>
@@ -439,8 +443,7 @@ export function SittingPollSection({
 									}
 								}}
 								className={cn(
-									"relative flex items-stretch gap-3 overflow-hidden border border-border p-3 pl-4 transition-colors",
-									layout === "page" && "gap-4 p-4 pl-5 sm:p-5 sm:pl-6",
+									"relative flex flex-col overflow-hidden border border-border transition-colors",
 									canEditSelection && "cursor-pointer hover:bg-muted/30",
 									canEditSelection && checked
 										? votePointsRowTintClass(draftPoints, true)
@@ -448,24 +451,17 @@ export function SittingPollSection({
 									canEditSelection &&
 										checked &&
 										draftPoints === 3 &&
-										"border-amber-600/40 dark:border-amber-500/35",
+										"border-amber-600/50 dark:border-amber-500/40",
 									canEditSelection &&
 										checked &&
 										draftPoints === 2 &&
-										"border-slate-500/40 dark:border-slate-400/35",
+										"border-slate-500/50 dark:border-slate-400/40",
+									canEditSelection &&
+										checked &&
+										draftPoints === 1 &&
+										"border-primary/60",
 								)}
 							>
-								<div
-									className={cn(
-										"pointer-events-none absolute inset-y-0 left-0 w-1",
-										canEditSelection && checked
-											? votePointsAccentClass(draftPoints, "bg-primary")
-											: checked || showAsVoted || isClubPick
-												? "bg-primary"
-												: "bg-border",
-									)}
-									aria-hidden
-								/>
 								{voteShare > 0 ? (
 									<div
 										className="pointer-events-none absolute inset-y-0 left-0 bg-primary/10"
@@ -473,49 +469,65 @@ export function SittingPollSection({
 										aria-hidden
 									/>
 								) : null}
-								{showVoteBars && layout === "page" ? (
-									<span className="relative w-6 shrink-0 self-center text-center font-semibold text-lg text-muted-foreground tabular-nums">
-										{index + 1}
+
+								<div className="relative flex items-center justify-between gap-3 border-border border-b bg-muted/30 px-3 py-1.5 text-muted-foreground text-xs tabular-nums">
+									<span className="inline-flex items-center gap-1">
+										<BookOpen className="size-3.5" aria-hidden />
+										{option.book.pages} p
 									</span>
-								) : null}
-								{canEditSelection ? (
-									<div className="flex shrink-0 items-start pt-0.5">
-										<Checkbox
-											checked={checked}
-											className="pointer-events-none"
-											tabIndex={-1}
-											aria-hidden
-										/>
-									</div>
-								) : null}
+									<span className="inline-flex items-center gap-1">
+										<CalendarDays className="size-3.5" aria-hidden />
+										{option.book.publishedIn}
+									</span>
+									<span
+										className="inline-flex items-center gap-1"
+										title="Open Library rating"
+									>
+										{option.book.openLibraryRating != null
+											? option.book.openLibraryRating.toFixed(1)
+											: "—"}
+										<Star className="size-3.5" aria-hidden />
+									</span>
+								</div>
 
-								<Link
-									href={href}
+								<div
 									className={cn(
-										"relative aspect-2/3 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10",
-										layout === "page" ? "w-20 sm:w-24" : "w-14",
+										"relative flex items-stretch gap-3 p-3",
+										layout === "page" && "gap-4 p-4",
 									)}
-									onClick={(event) => {
-										event.stopPropagation();
-									}}
 								>
-									{coverSrc ? (
-										<Image
-											src={coverSrc}
-											alt=""
-											fill
-											className="object-cover"
-											sizes="56px"
-										/>
-									) : (
-										<div className="flex size-full items-center justify-center text-[10px] text-muted-foreground">
-											No cover
-										</div>
-									)}
-								</Link>
+									{showVoteBars && layout === "page" ? (
+										<span className="w-6 shrink-0 self-center text-center font-semibold text-lg text-muted-foreground tabular-nums">
+											{index + 1}
+										</span>
+									) : null}
 
-								<div className="relative flex min-w-0 flex-1 flex-col gap-3">
-									<div className="min-w-0">
+									<Link
+										href={href}
+										className={cn(
+											"relative aspect-2/3 shrink-0 self-start overflow-hidden bg-muted ring-1 ring-foreground/10",
+											layout === "page" ? "w-20 sm:w-24" : "w-14",
+										)}
+										onClick={(event) => {
+											event.stopPropagation();
+										}}
+									>
+										{coverSrc ? (
+											<Image
+												src={coverSrc}
+												alt=""
+												fill
+												className="object-cover"
+												sizes="96px"
+											/>
+										) : (
+											<div className="flex size-full items-center justify-center text-[10px] text-muted-foreground">
+												No cover
+											</div>
+										)}
+									</Link>
+
+									<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 										<div className="flex flex-wrap items-center gap-2">
 											<Link
 												href={href}
@@ -539,21 +551,6 @@ export function SittingPollSection({
 												<Badge variant="secondary" className="gap-1">
 													<Trophy className="size-3" aria-hidden />
 													Club pick
-												</Badge>
-											) : null}
-											{canEditSelection && checked ? (
-												<Badge
-													variant="outline"
-													className={votePointsBadgeClass(draftPoints)}
-												>
-													{votePointsLabel(draftPoints)}
-												</Badge>
-											) : showAsVoted ? (
-												<Badge
-													variant="outline"
-													className={votePointsBadgeClass(savedPoints)}
-												>
-													{votePointsLabel(savedPoints)}
 												</Badge>
 											) : null}
 										</div>
@@ -580,137 +577,132 @@ export function SittingPollSection({
 											/>
 										) : null}
 									</div>
-									<div className="mt-auto flex flex-wrap items-end justify-between gap-3">
-										{showChipControls && checked ? (
-											<div className="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto">
-												<fieldset
-													className="flex min-w-0 flex-col gap-1.5 border-0 p-0"
-													onClick={(event) => {
-														event.stopPropagation();
-													}}
-													onKeyDown={(event) => {
-														event.stopPropagation();
-													}}
-												>
-													<legend className="font-medium text-foreground text-xs">
-														Weight for this book
-													</legend>
-													<div className="flex flex-wrap gap-1 border border-border bg-muted/20 p-1">
+
+									{readCount > 0 || canOpenReadersList ? (
+										<Tooltip>
+											<TooltipTrigger
+												render={
+													canOpenReadersList ? (
 														<button
 															type="button"
-															aria-pressed={draftPoints === 1}
+															onClick={(event) => {
+																event.stopPropagation();
+																setReadersOptionCount(readCount);
+																setReadersOptionId(option.id);
+															}}
+														/>
+													) : (
+														<span />
+													)
+												}
+												className="inline-flex h-fit shrink-0 items-center gap-1 text-muted-foreground text-xs tabular-nums hover:text-foreground"
+												aria-label={readTip}
+											>
+												<BookCheck className="size-3.5" aria-hidden />
+												{readCount}
+											</TooltipTrigger>
+											<TooltipContent side="left">{readTip}</TooltipContent>
+										</Tooltip>
+									) : null}
+								</div>
+
+								{hasBottom ? (
+									<div className="relative flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-border border-t bg-muted/30 px-3 py-2 text-xs">
+										{showChips ? (
+											<fieldset
+												className="flex w-full min-w-0 flex-col gap-1.5 border-0 p-0"
+												onClick={(event) => {
+													event.stopPropagation();
+												}}
+												onKeyDown={(event) => {
+													event.stopPropagation();
+												}}
+											>
+												<legend className="mb-1.5 font-medium text-foreground text-xs">
+													Weight for this book
+												</legend>
+												<div className="flex flex-wrap gap-1">
+													<button
+														type="button"
+														aria-pressed={draftPoints === 1}
+														className={cn(
+															"min-w-[4.5rem] border px-2.5 py-1.5 text-xs transition-colors",
+															voteChipButtonClass(draftPoints === 1, 1),
+														)}
+														onClick={() => {
+															setOptionPoints(option.id, 1);
+														}}
+													>
+														1 pt
+													</button>
+													{chipGrants.canUseSilver ? (
+														<button
+															type="button"
+															aria-pressed={draftPoints === 2}
 															className={cn(
 																"min-w-[4.5rem] border px-2.5 py-1.5 text-xs transition-colors",
-																voteChipButtonClass(draftPoints === 1, 1),
+																voteChipButtonClass(draftPoints === 2, 2),
 															)}
 															onClick={() => {
-																setOptionPoints(option.id, 1);
+																setOptionPoints(option.id, 2);
 															}}
 														>
-															1 pt
+															Silver · 2
 														</button>
-														{chipGrants.canUseSilver ? (
-															<button
-																type="button"
-																aria-pressed={draftPoints === 2}
-																className={cn(
-																	"min-w-[4.5rem] border px-2.5 py-1.5 text-xs transition-colors",
-																	voteChipButtonClass(draftPoints === 2, 2),
-																)}
-																onClick={() => {
-																	setOptionPoints(option.id, 2);
-																}}
-															>
-																Silver · 2
-															</button>
-														) : null}
-														{chipGrants.canUseGolden ? (
-															<button
-																type="button"
-																aria-pressed={draftPoints === 3}
-																className={cn(
-																	"min-w-[4.5rem] border px-2.5 py-1.5 text-xs transition-colors",
-																	voteChipButtonClass(draftPoints === 3, 3),
-																)}
-																onClick={() => {
-																	setOptionPoints(option.id, 3);
-																}}
-															>
-																Golden · 3
-															</button>
-														) : null}
-													</div>
-												</fieldset>
-											</div>
-										) : null}
-										<div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-muted-foreground text-xs tabular-nums">
-											<span className="inline-flex items-center gap-1">
-												<BookOpen className="size-3.5" aria-hidden />
-												{option.book.pages} pages
-											</span>
-											<span className="inline-flex items-center gap-1">
-												<CalendarDays className="size-3.5" aria-hidden />
-												{option.book.publishedIn}
-											</span>
-											{option.book.openLibraryRating != null ? (
-												<span
-													className="inline-flex items-center gap-1"
-													title="Open Library rating"
-												>
-													<Star className="size-3.5" aria-hidden />
-													{option.book.openLibraryRating.toFixed(1)}
+													) : null}
+													{chipGrants.canUseGolden ? (
+														<button
+															type="button"
+															aria-pressed={draftPoints === 3}
+															className={cn(
+																"min-w-[4.5rem] border px-2.5 py-1.5 text-xs transition-colors",
+																voteChipButtonClass(draftPoints === 3, 3),
+															)}
+															onClick={() => {
+																setOptionPoints(option.id, 3);
+															}}
+														>
+															Golden · 3
+														</button>
+													) : null}
+												</div>
+											</fieldset>
+										) : (
+											<>
+												<span className="min-w-0">
+													{shownVote != null ? (
+														<Badge
+															variant="outline"
+															className={votePointsBadgeClass(shownVote)}
+														>
+															Your vote · {shownVote}{" "}
+															{shownVote === 1 ? "pt" : "pts"}
+														</Badge>
+													) : null}
 												</span>
-											) : null}
-										</div>
-										<div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs tabular-nums">
-											{canOpenReadersList ? (
-												<button
-													type="button"
-													className="text-foreground underline-offset-2 hover:underline"
-													onClick={(event) => {
-														event.stopPropagation();
-														setReadersOptionCount(readCount);
-														setReadersOptionId(option.id);
-													}}
-												>
-													{readLabel}
-												</button>
-											) : readCount > 0 ? (
-												<span className="text-muted-foreground">
-													{readLabel}
-												</span>
-											) : null}
-											{showVoteBars &&
-											(isAdmin || sittingStatus !== "voting") ? (
-												<span className="text-muted-foreground">
-													{option.pointTotal > 0 ? (
-														isAdmin ? (
+												{showTotals ? (
+													<span className="ml-auto inline-flex items-baseline gap-1.5 tabular-nums">
+														{isAdmin && option.pointTotal > 0 ? (
 															<button
 																type="button"
-																className="text-foreground underline-offset-2 hover:underline"
+																className="inline-flex items-baseline gap-1.5 underline-offset-2 hover:underline"
 																onClick={(event) => {
 																	event.stopPropagation();
 																	setAdminVotersOptionCount(option.voteCount);
 																	setAdminVotersOptionId(option.id);
 																}}
 															>
-																{option.pointTotal} pts · {option.voteCount}{" "}
-																{option.voteCount === 1 ? "voter" : "voters"}
+																<PollTotals option={option} />
 															</button>
 														) : (
-															<span className="text-foreground">
-																{option.pointTotal} pts · {option.voteCount}{" "}
-																{option.voteCount === 1 ? "voter" : "voters"}
-															</span>
-														)
-													) : (
-														<span>0 pts</span>
-													)}
-												</span>
-											) : null}
-										</div>
+															<PollTotals option={option} />
+														)}
+													</span>
+												) : null}
+											</>
+										)}
 									</div>
-								</div>
+								) : null}
 							</div>
 						</li>
 					);
