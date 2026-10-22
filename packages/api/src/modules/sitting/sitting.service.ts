@@ -230,18 +230,26 @@ async function assertPollSlugAvailable(
 	}
 }
 
-function mapSittingListRow(row: SittingListRow) {
+function mapSittingListRow(
+	row: SittingListRow,
+	completedCount: number,
+	viewerProgress: GetSittingListOutput["items"][number]["viewerProgress"],
+) {
 	return {
 		slug: row.slug,
 		status: row.status,
 		deadline: row.deadline,
 		createdAt: row.createdAt,
 		participantCount: row._count.participants,
+		completedCount,
 		displayName: formatSittingDisplayName(
 			row.slug,
 			row.status,
 			row.selectedBook?.title,
 		),
+		selectedBook: row.selectedBook,
+		poll: row.poll,
+		viewerProgress,
 	};
 }
 
@@ -515,13 +523,45 @@ async function loadPollOptionAggregates(
 export async function getSittingList(
 	input: GetSittingListInput,
 	db: Database,
+	session: Session | null = null,
 ): Promise<GetSittingListOutput> {
+	const viewerId = session?.user?.id ?? null;
+	if (input.mineOnly && !viewerId) {
+		throw new ORPCError("UNAUTHORIZED", {
+			message: "Sign in to filter by your sittings.",
+		});
+	}
+
 	const pagination = definePagination.cursor(input, sittingListCursorCodec);
 	const sorting = sittingListSorting.from(input);
 	const ranging = sittingListRanging.from(input);
 	const searching = sittingListSearching.from(input);
 
-	const where = mergeWhereFragments<Prisma.SittingWhereInput>(
+	// Prisma cannot filter on relation counts, so resolve matching sittings first.
+	let participantCountWhere: Prisma.SittingWhereInput = {};
+	if (input.minParticipants != null || input.maxParticipants != null) {
+		const groups = await db.participation.groupBy({
+			by: ["sittingId"],
+			where: { removedAt: null },
+			having: {
+				id: {
+					_count: {
+						...(input.minParticipants != null
+							? { gte: input.minParticipants }
+							: {}),
+						...(input.maxParticipants != null
+							? { lte: input.maxParticipants }
+							: {}),
+					},
+				},
+			},
+		});
+		participantCountWhere = {
+			id: { in: groups.map((group) => group.sittingId) },
+		};
+	}
+
+	const baseWhere = mergeWhereFragments<Prisma.SittingWhereInput>(
 		ranging.use(),
 		searching.use(),
 		{
@@ -531,20 +571,146 @@ export async function getSittingList(
 					? { in: input.statuses }
 					: undefined,
 		},
+		participantCountWhere,
+		input.minPages != null || input.maxPages != null
+			? {
+					selectedBook: {
+						pages: {
+							...(input.minPages != null ? { gte: input.minPages } : {}),
+							...(input.maxPages != null ? { lte: input.maxPages } : {}),
+						},
+					},
+				}
+			: {},
+		input.mineOnly && viewerId
+			? { participants: { some: { userId: viewerId, removedAt: null } } }
+			: {},
 	);
 
-	const rows = await db.sitting.findMany({
-		...pagination.use(),
-		where,
-		orderBy: withStableSlugOrderBy(sorting.use(), sorting.sortDirection),
-		select: getSittingListFields,
-	});
+	// The completed-member count needs a grouped query, so filtering and sorting
+	// by it happen here instead of in the database query.
+	const needsCompletedCounts =
+		sorting.sortBy === "completedCount" ||
+		input.minCompleted != null ||
+		input.maxCompleted != null;
+
+	let where = baseWhere;
+	let orderedSlugs: string[] | null = null;
+
+	if (needsCompletedCounts) {
+		const candidates = await db.sitting.findMany({
+			where: baseWhere,
+			select: { id: true, slug: true },
+		});
+		const grouped = await db.participation.groupBy({
+			by: ["sittingId"],
+			where: {
+				progress: "completed",
+				removedAt: null,
+				sittingId: { in: candidates.map((candidate) => candidate.id) },
+			},
+			_count: { _all: true },
+		});
+		const counts = new Map(
+			grouped.map((group) => [group.sittingId, group._count._all]),
+		);
+		const countOf = (id: string) => counts.get(id) ?? 0;
+
+		const matching = candidates.filter((candidate) => {
+			const count = countOf(candidate.id);
+			return (
+				(input.minCompleted == null || count >= input.minCompleted) &&
+				(input.maxCompleted == null || count <= input.maxCompleted)
+			);
+		});
+
+		where = { id: { in: matching.map((candidate) => candidate.id) } };
+
+		if (sorting.sortBy === "completedCount") {
+			const sign = sorting.sortDirection === "asc" ? 1 : -1;
+			orderedSlugs = matching
+				.toSorted(
+					(a, b) =>
+						sign * (countOf(a.id) - countOf(b.id)) ||
+						a.slug.localeCompare(b.slug),
+				)
+				.map((candidate) => candidate.slug);
+		}
+	}
+
+	const isFirstPage = input.cursor == null;
+
+	let rows: SittingListRow[];
+	if (orderedSlugs) {
+		const start = input.cursor ? orderedSlugs.indexOf(input.cursor) + 1 : 0;
+		const pageSlugs = orderedSlugs.slice(start, start + pagination.limit + 1);
+		const found = await db.sitting.findMany({
+			where: { slug: { in: pageSlugs } },
+			select: getSittingListFields,
+		});
+		const bySlug = new Map(found.map((row) => [row.slug, row]));
+		rows = pageSlugs.flatMap((slug) => {
+			const row = bySlug.get(slug);
+			return row ? [row] : [];
+		});
+	} else {
+		rows = await db.sitting.findMany({
+			...pagination.use(),
+			where,
+			orderBy: withStableSlugOrderBy(sorting.use(), sorting.sortDirection),
+			select: getSittingListFields,
+		});
+	}
+
+	const total = isFirstPage
+		? orderedSlugs
+			? orderedSlugs.length
+			: await db.sitting.count({ where })
+		: undefined;
 
 	const page = pagination.paginate(rows);
+	const pageIds = page.items.map((row) => row.id);
+
+	const [completedGroups, viewerParticipations] = await Promise.all([
+		db.participation.groupBy({
+			by: ["sittingId"],
+			where: {
+				progress: "completed",
+				removedAt: null,
+				sittingId: { in: pageIds },
+			},
+			_count: { _all: true },
+		}),
+		viewerId
+			? db.participation.findMany({
+					where: {
+						userId: viewerId,
+						removedAt: null,
+						sittingId: { in: pageIds },
+					},
+					select: { sittingId: true, progress: true },
+				})
+			: Promise.resolve([]),
+	]);
+	const completedBySitting = new Map(
+		completedGroups.map((group) => [group.sittingId, group._count._all]),
+	);
+	const progressBySitting = new Map(
+		viewerParticipations.map((row) => [row.sittingId, row.progress]),
+	);
 
 	return {
-		items: page.items.map(mapSittingListRow),
-		metadata: page.metadata,
+		items: page.items.map((row) =>
+			mapSittingListRow(
+				row,
+				completedBySitting.get(row.id) ?? 0,
+				progressBySitting.get(row.id) ?? null,
+			),
+		),
+		metadata: {
+			...page.metadata,
+			...(total != null ? { total } : {}),
+		},
 	};
 }
 

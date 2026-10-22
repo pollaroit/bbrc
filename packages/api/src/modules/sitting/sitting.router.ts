@@ -70,7 +70,8 @@ export const sittingRouter = {
 		.input(GetSittingListInputSchema)
 		.output(GetSittingListOutputSchema)
 		.handler(
-			async ({ input, context }) => await getSittingList(input, context.db),
+			async ({ input, context }) =>
+				await getSittingList(input, context.db, context.session),
 		),
 	getSittingBySlug: publicProcedure
 		.input(SittingSchema.shape.slug)

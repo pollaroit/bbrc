@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
+import { SittingsLibraryPageHeader } from "@/components/blocks/sittings-library-page-header";
 import { SittingsList } from "@/components/blocks/sittings-list";
-import { SittingsListingToolbar } from "@/components/blocks/sittings-listing-toolbar";
-import { SittingsPageActions } from "@/components/blocks/sittings-page-actions";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { buildPageMetadata } from "@/lib/seo";
 
@@ -16,12 +15,8 @@ export const dynamic = "force-static";
 export default function SittingsPage() {
 	return (
 		<div className="flex flex-col gap-6">
-			<div className="flex flex-wrap items-center justify-between gap-3">
-				<h1 className="font-bold text-2xl">Sittings</h1>
-				<SittingsPageActions />
-			</div>
 			<ListingSearchParamsBoundary>
-				<SittingsListingToolbar />
+				<SittingsLibraryPageHeader />
 				<SittingsList />
 			</ListingSearchParamsBoundary>
 		</div>
