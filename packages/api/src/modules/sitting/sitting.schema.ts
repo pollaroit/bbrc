@@ -344,6 +344,18 @@ export const PollChipGrantSchema = zod.object({
 	canUseSilver: zod.boolean(),
 });
 
+const SittingPollOptionBookWithSeriesSchema =
+	SittingPollOptionBookSchema.extend({
+		/** Series the book belongs to, with its place in it. */
+		series: zod
+			.object({
+				title: zod.string(),
+				slug: zod.string(),
+				position: zod.number().int().min(1),
+			})
+			.nullable(),
+	});
+
 export const SittingPollOptionSchema = zod.object({
 	id: zod.uuid(),
 	/** Number of voters who selected this option. */
@@ -354,7 +366,7 @@ export const SittingPollOptionSchema = zod.object({
 	participantReadCount: zod.number().int().min(0),
 	/** Signed-in viewer has marked this book read (false when anonymous). */
 	viewerHasRead: zod.boolean(),
-	book: SittingPollOptionBookSchema,
+	book: SittingPollOptionBookWithSeriesSchema,
 });
 
 export const SittingPollPreviewOptionSchema = zod.object({
@@ -510,7 +522,15 @@ export const getSittingBySlugFields = {
 						},
 					},
 					book: {
-						select: getBookPollSelect,
+						select: {
+							...getBookPollSelect,
+							seriesMembership: {
+								select: {
+									position: true,
+									series: { select: { title: true, slug: true } },
+								},
+							},
+						},
 					},
 				},
 			},

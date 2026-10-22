@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { UserPanel } from "@/components/blocks/user-panel";
-import { formatDateTime } from "@/lib/format-datetime";
+import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
 type PollOptionVotersDialogProps = {
@@ -21,15 +21,22 @@ type PollOptionVotersDialogProps = {
 	onDismiss: () => void;
 };
 
-function formatBallotSummary(
-	totalSelections: number,
-	maxChoices: number,
-): string {
-	if (totalSelections === 1) {
-		return "Single selection (only this book)";
-	}
+const weightLabel = {
+	1: "1 pt",
+	2: "Silver · 2 pts",
+	3: "Golden · 3 pts",
+} as const;
 
-	return `${totalSelections} of ${maxChoices} selections`;
+const weightClass = {
+	1: "border-border text-muted-foreground",
+	2: "border-slate-500/60 bg-slate-200 text-slate-900 dark:border-slate-400/50 dark:bg-slate-800 dark:text-slate-100",
+	3: "border-amber-600/60 bg-amber-100 text-amber-950 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-50",
+} as const;
+
+function ballotNote(totalSelections: number, maxChoices: number): string {
+	return totalSelections === 1
+		? "Only voted for this book"
+		: `Picked ${totalSelections} of ${maxChoices} books`;
 }
 
 export function PollOptionVotersDialog({
@@ -46,7 +53,12 @@ export function PollOptionVotersDialog({
 		enabled: open,
 	});
 
-	const voters = query.data?.voters ?? [];
+	const voters = (query.data?.voters ?? []).toSorted(
+		(a, b) => b.points - a.points,
+	);
+	const totalPoints = voters.reduce((sum, entry) => sum + entry.points, 0);
+	const golden = voters.filter((entry) => entry.points === 3).length;
+	const silver = voters.filter((entry) => entry.points === 2).length;
 	const bookTitle = query.data?.bookTitle;
 
 	return (
@@ -58,58 +70,68 @@ export function PollOptionVotersDialog({
 				}
 			}}
 		>
-			<DialogContent className="flex max-h-[min(90vh,560px)] max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
-				<DialogHeader className="border-border border-b p-4">
-					<DialogTitle>Votes for this book</DialogTitle>
-					<DialogDescription>
-						{bookTitle ? (
-							<span className="line-clamp-2">{bookTitle}</span>
-						) : (
-							<span>
-								{voteCount === 1
-									? "1 vote on this option."
-									: `${voteCount} votes on this option.`}
+			<DialogContent className="flex max-h-[min(90vh,600px)] max-w-md flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+				<DialogHeader className="gap-1 border-border border-b p-4 pr-10">
+					<DialogDescription className="text-xs">Votes for</DialogDescription>
+					<DialogTitle className="line-clamp-2 text-base leading-snug">
+						{bookTitle ?? "this book"}
+					</DialogTitle>
+					<p className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-muted-foreground text-xs tabular-nums">
+						<span>
+							<span className="font-medium text-foreground">
+								{query.data ? totalPoints : "—"} pts
 							</span>
-						)}
-					</DialogDescription>
+						</span>
+						<span>
+							{query.data ? voters.length : voteCount}{" "}
+							{(query.data ? voters.length : voteCount) === 1
+								? "voter"
+								: "voters"}
+						</span>
+						{golden > 0 ? <span>{golden} golden</span> : null}
+						{silver > 0 ? <span>{silver} silver</span> : null}
+					</p>
 				</DialogHeader>
-				<div className="min-h-0 flex-1 overflow-y-auto p-4">
+
+				<div className="min-h-0 flex-1 overflow-y-auto">
 					{query.isPending ? (
-						<div className="flex flex-col gap-2" aria-hidden>
+						<div className="flex flex-col gap-px p-px" aria-hidden>
 							{Array.from({ length: 4 }, (_, index) => (
-								<Skeleton key={index} className="h-16 w-full" />
+								<Skeleton key={index} className="h-14 w-full" />
 							))}
 						</div>
 					) : query.isError ? (
-						<p className="text-destructive text-sm">{query.error.message}</p>
+						<p className="p-4 text-destructive text-sm">
+							{query.error.message}
+						</p>
 					) : voters.length === 0 ? (
-						<p className="text-muted-foreground text-sm">No votes yet.</p>
+						<p className="p-4 text-muted-foreground text-sm">No votes yet.</p>
 					) : (
-						<ul className="flex flex-col gap-2">
+						<ul className="divide-y divide-border">
 							{voters.map((entry) => (
-								<li key={`${entry.user.username}-${entry.votedAt.toString()}`}>
+								<li key={entry.user.username}>
 									<Link
 										href={`/users/${entry.user.username}` as Route}
-										className="flex flex-col gap-1 border px-3 py-2 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
+										className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/40"
 									>
-										<UserPanel user={entry.user} className="min-w-0" />
-										<div className="flex shrink-0 flex-col items-start gap-0.5 sm:items-end">
-											<span className="text-muted-foreground text-xs tabular-nums">
-												{formatDateTime(entry.votedAt)}
+										<span className="flex min-w-0 flex-col gap-0.5">
+											<UserPanel
+												user={entry.user}
+												renderDescription={false}
+												className="min-w-0"
+											/>
+											<span className="pl-0 text-muted-foreground text-xs">
+												{ballotNote(entry.totalSelections, entry.maxChoices)}
 											</span>
-											<span className="text-muted-foreground text-xs">
-												{entry.points === 3
-													? "Golden chip (3 pts)"
-													: entry.points === 2
-														? "Silver chip (2 pts)"
-														: "1 pt"}{" "}
-												·{" "}
-												{formatBallotSummary(
-													entry.totalSelections,
-													entry.maxChoices,
-												)}
-											</span>
-										</div>
+										</span>
+										<span
+											className={cn(
+												"shrink-0 border px-2 py-0.5 text-xs tabular-nums",
+												weightClass[entry.points],
+											)}
+										>
+											{weightLabel[entry.points]}
+										</span>
 									</Link>
 								</li>
 							))}

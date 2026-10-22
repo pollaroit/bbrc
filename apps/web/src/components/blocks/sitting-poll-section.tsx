@@ -561,6 +561,20 @@ export function SittingPollSection({
 										<p className="truncate text-muted-foreground text-xs">
 											{formatBookAuthors(option.book.authors)}
 										</p>
+										{option.book.series ? (
+											<p className="truncate text-muted-foreground text-xs">
+												#{option.book.series.position} in{" "}
+												<Link
+													href={`/series/${option.book.series.slug}` as Route}
+													className="text-foreground underline-offset-2 hover:underline"
+													onClick={(event) => {
+														event.stopPropagation();
+													}}
+												>
+													{option.book.series.title}
+												</Link>
+											</p>
+										) : null}
 										{option.book.requestedBy ? (
 											<BookRequestedByLine
 												requestedBy={option.book.requestedBy}

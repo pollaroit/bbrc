@@ -340,7 +340,19 @@ function mapSittingDetail(
 							participantReadCount:
 								participantReadCountByBookId.get(option.book.id) ?? 0,
 							viewerHasRead: viewerReadBookIds.has(option.book.id),
-							book: option.book,
+							book: (() => {
+								const { seriesMembership, ...book } = option.book;
+								return {
+									...book,
+									series: seriesMembership
+										? {
+												title: seriesMembership.series.title,
+												slug: seriesMembership.series.slug,
+												position: seriesMembership.position,
+											}
+										: null,
+								};
+							})(),
 						};
 					}),
 					myVoteOptionIds,
