@@ -8,7 +8,6 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
 import { UserPanel } from "@/components/blocks/user-panel";
-import { formatDateTime } from "@/lib/format-datetime";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -16,13 +15,13 @@ type PollVotesByVoterSectionProps = {
 	sittingSlug: string;
 };
 
-function formatBallotSummary(choiceCount: number, maxChoices: number): string {
-	if (choiceCount === 1 && maxChoices === 1) {
-		return "1 book";
-	}
+const chipClass = {
+	1: "border-border",
+	2: "border-slate-500/60 bg-slate-200 text-slate-900 dark:border-slate-400/50 dark:bg-slate-800 dark:text-slate-100",
+	3: "border-amber-600/60 bg-amber-100 text-amber-950 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-50",
+} as const;
 
-	return `${choiceCount} of ${maxChoices} books`;
-}
+const chipTag = { 1: null, 2: "Silver", 3: "Golden" } as const;
 
 export function PollVotesByVoterSection({
 	sittingSlug,
@@ -47,7 +46,14 @@ export function PollVotesByVoterSection({
 				onClick={() => setOpen((current) => !current)}
 				aria-expanded={open}
 			>
-				<span className="font-medium text-sm">Votes by voter</span>
+				<span className="flex items-baseline gap-2">
+					<span className="font-medium text-sm">Votes by voter</span>
+					{query.data ? (
+						<span className="text-muted-foreground text-xs tabular-nums">
+							{voters.length} {voters.length === 1 ? "voter" : "voters"}
+						</span>
+					) : null}
+				</span>
 				<span className="flex items-center gap-2 text-muted-foreground text-xs">
 					Admin only
 					<ChevronDownIcon
@@ -60,63 +66,58 @@ export function PollVotesByVoterSection({
 				</span>
 			</Button>
 			{open ? (
-				<div className="border-border border-t px-4 py-4">
+				<div className="border-border border-t">
 					{query.isPending ? (
-						<div className="flex flex-col gap-2" aria-hidden>
+						<div className="flex flex-col gap-px p-px" aria-hidden>
 							{Array.from({ length: 3 }, (_, index) => (
 								<Skeleton key={index} className="h-20 w-full" />
 							))}
 						</div>
 					) : query.isError ? (
-						<p className="text-destructive text-sm">{query.error.message}</p>
+						<p className="p-4 text-destructive text-sm">
+							{query.error.message}
+						</p>
 					) : voters.length === 0 ? (
-						<p className="text-muted-foreground text-sm">No votes yet.</p>
+						<p className="p-4 text-muted-foreground text-sm">No votes yet.</p>
 					) : (
-						<ul className="flex flex-col gap-3">
+						<ul className="divide-y divide-border">
 							{voters.map((entry) => (
 								<li
 									key={entry.user.username}
-									className="flex flex-col gap-2 border border-border p-3"
+									className="flex flex-col gap-2 px-4 py-3"
 								>
-									<div className="flex flex-wrap items-start justify-between gap-2">
+									<div className="flex items-center justify-between gap-2">
 										<Link
 											href={`/users/${entry.user.username}` as Route}
 											className="min-w-0 hover:underline"
 										>
-											<UserPanel user={entry.user} />
+											<UserPanel user={entry.user} renderDescription={false} />
 										</Link>
-										<span className="text-muted-foreground text-xs tabular-nums">
-											{formatBallotSummary(
-												entry.choices.length,
-												entry.maxChoices,
-											)}
+										<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
+											{entry.choices.length} of {entry.maxChoices}{" "}
+											{entry.maxChoices === 1 ? "book" : "books"}
 										</span>
 									</div>
-									<ol className="flex flex-col gap-1.5 pl-0">
-										{entry.choices.map((choice) => (
-											<li
-												key={choice.pollOptionId}
-												className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm"
-											>
-												<span className="min-w-0 font-medium">
+									<ul className="flex flex-wrap gap-1.5">
+										{entry.choices
+											.toSorted((a, b) => b.points - a.points)
+											.map((choice) => (
+												<li
+													key={choice.pollOptionId}
+													className={cn(
+														"inline-flex items-center gap-1.5 border px-2 py-1 text-xs",
+														chipClass[choice.points],
+													)}
+												>
 													{choice.bookTitle}
-													<span className="font-normal text-muted-foreground">
-														{" "}
-														(
-														{choice.points === 3
-															? "Golden · 3 pts"
-															: choice.points === 2
-																? "Silver · 2 pts"
-																: "1 pt"}
-														)
-													</span>
-												</span>
-												<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-													{formatDateTime(choice.votedAt)}
-												</span>
-											</li>
-										))}
-									</ol>
+													{chipTag[choice.points] ? (
+														<span className="font-medium">
+															· {chipTag[choice.points]}
+														</span>
+													) : null}
+												</li>
+											))}
+									</ul>
 								</li>
 							))}
 						</ul>

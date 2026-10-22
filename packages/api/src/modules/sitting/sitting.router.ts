@@ -2,12 +2,18 @@ import { SittingSchema } from "@bbrc/schemas";
 import {
 	adminProcedure,
 	notBannedProcedure,
+	protectedProcedure,
 	publicProcedure,
 } from "../../procedures";
-import { revalidateSittingIsr } from "../../revalidate-isr";
+import {
+	revalidateBookIsr,
+	revalidateBooksCatalogIsr,
+	revalidateSittingIsr,
+} from "../../revalidate-isr";
 import {
 	CreateSittingInputSchema,
 	CreateSittingOutputSchema,
+	GetMySittingStateOutputSchema,
 	GetOngoingSittingOutputSchema,
 	GetPollOptionReadersInputSchema,
 	GetPollOptionReadersOutputSchema,
@@ -18,6 +24,8 @@ import {
 	GetSittingBySlugOutputSchema,
 	GetSittingListInputSchema,
 	GetSittingListOutputSchema,
+	GetSittingPollPoolSizeInputSchema,
+	GetSittingPollPoolSizeOutputSchema,
 	GetSittingPollPreviewReadersInputSchema,
 	PreviewSittingPollOptionsInputSchema,
 	PreviewSittingPollOptionsOutputSchema,
@@ -45,12 +53,14 @@ import {
 import {
 	addSittingParticipant,
 	createSitting,
+	getMySittingState,
 	getOngoingSitting,
 	getPollOptionReaders,
 	getPollOptionVotes,
 	getPollVotesByUser,
 	getSittingBySlug,
 	getSittingList,
+	getSittingPollPoolSize,
 	getSittingPollPreviewReaders,
 	previewSittingPollOptions,
 	removeSittingParticipant,
@@ -70,7 +80,8 @@ export const sittingRouter = {
 		.input(GetSittingListInputSchema)
 		.output(GetSittingListOutputSchema)
 		.handler(
-			async ({ input, context }) => await getSittingList(input, context.db),
+			async ({ input, context }) =>
+				await getSittingList(input, context.db, context.session),
 		),
 	getSittingBySlug: publicProcedure
 		.input(SittingSchema.shape.slug)
@@ -79,11 +90,25 @@ export const sittingRouter = {
 			async ({ input, context }) =>
 				await getSittingBySlug(input, context.db, context.session),
 		),
+	getMySittingState: protectedProcedure
+		.input(SittingSchema.shape.slug)
+		.output(GetMySittingStateOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await getMySittingState(input, context.session.user.id, context.db),
+		),
 	getOngoingSitting: publicProcedure
 		.output(GetOngoingSittingOutputSchema)
 		.handler(
 			async ({ context }) =>
 				await getOngoingSitting(context.db, context.session?.user.id),
+		),
+	getSittingPollPoolSize: adminProcedure
+		.input(GetSittingPollPoolSizeInputSchema)
+		.output(GetSittingPollPoolSizeOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await getSittingPollPoolSize(input, context.db),
 		),
 	previewSittingPollOptions: adminProcedure
 		.input(PreviewSittingPollOptionsInputSchema)
@@ -160,6 +185,12 @@ export const sittingRouter = {
 		.handler(async ({ input, context }) => {
 			const result = await transitionSitting(input, context.db);
 			revalidateSittingIsr(context, result.slug);
+			// The chosen book's status changes with the phase, so its pages and the
+			// catalog need refreshing too.
+			if (result.selectedBook) {
+				revalidateBookIsr(context, result.selectedBook.slug);
+			}
+			revalidateBooksCatalogIsr(context);
 			return result;
 		}),
 	updateSittingDeadlines: adminProcedure

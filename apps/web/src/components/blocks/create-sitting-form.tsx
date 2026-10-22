@@ -3,39 +3,35 @@
 import type { PreviewSittingPollOptionsOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { Button } from "@bbrc/ui/components/button";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@bbrc/ui/components/card";
-import { Checkbox } from "@bbrc/ui/components/checkbox";
-import {
-	Field,
-	FieldGroup,
-	FieldLegend,
-	FieldSet,
-} from "@bbrc/ui/components/field";
-import { Skeleton } from "@bbrc/ui/components/skeleton";
-import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
+	keepPreviousData,
+	useInfiniteQuery,
+	useMutation,
+	useQuery,
+} from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { useWatch } from "react-hook-form";
 import { toast } from "sonner";
+import { CreateSittingBallotFields } from "@/components/blocks/create-sitting-ballot-fields";
+import { CreateSittingDeadlineField } from "@/components/blocks/create-sitting-deadline-field";
+import { CreateSittingParticipantsPicker } from "@/components/blocks/create-sitting-participants-picker";
 import { CreateSittingPollFilters } from "@/components/blocks/create-sitting-poll-filters";
 import { CreateSittingPollReview } from "@/components/blocks/create-sitting-poll-review";
-import { SittingDeadlinePicker } from "@/components/blocks/sitting-deadline-picker";
-import { UserPanel } from "@/components/blocks/user-panel";
-import { UserStatusBadge } from "@/components/blocks/user-status-badge";
+import { CreateSittingSteps } from "@/components/blocks/create-sitting-steps";
+import { ShelfEditorSection } from "@/components/blocks/shelf-editor-shell";
 import { useAppForm } from "@/hooks/use-app-form";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
 	CreateSittingFormSchema,
 	type CreateSittingFormValues,
 	defaultCreateSittingFormValues,
+	livePollInputFromForm,
 	toCreateSittingInput,
 	toPreviewSittingPollOptionsInput,
 } from "@/lib/create-sitting-form";
+import { formatDateTime } from "@/lib/format-datetime";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -110,7 +106,8 @@ export function CreateSittingForm() {
 		}
 	}, [defaultParticipantIds, form]);
 
-	const selectedIds = form.watch("participantUserIds");
+	const selectedIds =
+		useWatch({ control: form.control, name: "participantUserIds" }) ?? [];
 
 	const previewMutation = useMutation(
 		orpc.sitting.previewSittingPollOptions.mutationOptions({
@@ -139,40 +136,63 @@ export function CreateSittingForm() {
 		}),
 	);
 
+	const pollValues = useWatch({ control: form.control, name: "poll" });
+	const pollDeadline = useWatch({
+		control: form.control,
+		name: "pollDeadline",
+	});
+	const livePoll = useMemo(
+		() => livePollInputFromForm(pollValues),
+		[pollValues],
+	);
+	const debouncedPoll = useDebouncedValue(livePoll, 400);
+
+	const poolQuery = useQuery({
+		...orpc.sitting.getSittingPollPoolSize.queryOptions({
+			input: { poll: debouncedPoll ?? {} },
+		}),
+		enabled: debouncedPoll != null,
+		placeholderData: keepPreviousData,
+		retry: false,
+	});
+
+	const pool = poolQuery.data;
+	const take = livePoll?.take ?? pollValues.take;
+	const poolTooSmall =
+		pool != null && typeof take === "number" && pool.eligiblePoolSize < take;
 	if (step === "review" && configureValues != null && review != null) {
 		return (
-			<CreateSittingPollReview
-				formValues={configureValues}
-				initialOptions={review.options}
-				eligiblePoolSize={review.eligiblePoolSize}
-				initialUsedUniformFallback={review.usedUniformFallback}
-				participantCount={configureValues.participantUserIds.length}
-				confirmLoading={createMutation.isPending}
-				onBack={() => {
-					setStep("configure");
-				}}
-				onConfirm={(optionBookIds) => {
-					createMutation.mutate(
-						toCreateSittingInput(configureValues, optionBookIds),
-					);
-				}}
-			/>
+			<div className="flex flex-col gap-6">
+				<CreateSittingSteps step="review" />
+				<CreateSittingPollReview
+					formValues={configureValues}
+					initialOptions={review.options}
+					eligiblePoolSize={review.eligiblePoolSize}
+					initialUsedUniformFallback={review.usedUniformFallback}
+					participantCount={configureValues.participantUserIds.length}
+					confirmLoading={createMutation.isPending}
+					onBack={() => {
+						setStep("configure");
+					}}
+					onConfirm={(optionBookIds) => {
+						createMutation.mutate(
+							toCreateSittingInput(configureValues, optionBookIds),
+						);
+					}}
+				/>
+			</div>
 		);
 	}
 
-	function toggleParticipant(userId: string, checked: boolean) {
-		const next = checked
-			? [...new Set([...selectedIds, userId])]
-			: selectedIds.filter((id) => id !== userId);
-
-		form.setValue("participantUserIds", next, { shouldValidate: true });
-	}
-
 	const selectedCount = selectedIds.length;
+	const canContinue = selectedCount > 0 && !poolTooSmall;
+
+	const maxChoices = livePoll?.maxChoices;
+	const minChoices = livePoll?.minChoices;
 
 	return (
 		<form
-			className="flex flex-col gap-8"
+			className="flex flex-col gap-6"
 			onSubmit={form.handleSubmit((values) => {
 				setConfigureValues(values);
 				previewMutation.mutate(toPreviewSittingPollOptionsInput(values), {
@@ -187,132 +207,176 @@ export function CreateSittingForm() {
 				});
 			})}
 		>
-			<div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)] xl:items-start">
-				<div className="flex min-w-0 flex-col gap-6">
-					<Card>
-						<CardHeader className="border-border border-b pb-4">
-							<CardTitle className="text-base">Voting deadline</CardTitle>
-							<CardDescription>
-								When the book poll closes. Times snap to 14:00, 17:00, 20:00, or
-								23:00 club time (default is about 12 hours ahead). Reading
-								deadline is set from the winning book when reading starts.
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="pt-6">
-							<FieldGroup>
-								<form.Input
-									name="pollDeadline"
-									render={(field, fieldState) => (
-										<SittingDeadlinePicker
-											mode="poll"
-											id={field.name}
-											label="Poll deadline"
-											value={field.value}
-											onChange={field.onChange}
-											invalid={fieldState.invalid}
-											errorMessage={fieldState.error?.message}
-										/>
-									)}
-								/>
-							</FieldGroup>
-						</CardContent>
-					</Card>
+			<CreateSittingSteps step="configure" />
 
-					<CreateSittingPollFilters form={form} />
+			<div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start xl:gap-8">
+				<div className="flex min-w-0 flex-col gap-5">
+					<ShelfEditorSection
+						title="Who is reading"
+						description="Everyone selected joins this round, can vote, and earns participation XP."
+					>
+						<CreateSittingParticipantsPicker
+							users={users}
+							selectedIds={selectedIds}
+							onChange={(ids) => {
+								form.setValue("participantUserIds", ids, {
+									shouldValidate: true,
+								});
+							}}
+							isLoading={isLoadingUsers}
+							isError={isError}
+							onRetry={() => {
+								void refetch();
+							}}
+							errorMessage={form.formState.errors.participantUserIds?.message}
+						/>
+					</ShelfEditorSection>
+
+					<ShelfEditorSection
+						title="Voting closes"
+						description="Voting can end at 2PM, 5PM, 8PM or 11PM club time. The reading deadline is set from the winning book when reading starts."
+					>
+						<form.Input
+							name="pollDeadline"
+							render={(field, fieldState) => (
+								<CreateSittingDeadlineField
+									id={field.name}
+									value={field.value}
+									onChange={field.onChange}
+									invalid={fieldState.invalid}
+									errorMessage={fieldState.error?.message}
+								/>
+							)}
+						/>
+					</ShelfEditorSection>
+
+					<ShelfEditorSection
+						title="Book pool"
+						description="Only wishlist books that pass the read-after rules, whose earlier series books are done, and every filter below can appear on the poll."
+					>
+						<PoolStatus
+							size={pool?.eligiblePoolSize}
+							take={typeof take === "number" ? take : undefined}
+							loading={poolQuery.isFetching}
+						/>
+						<CreateSittingPollFilters form={form} />
+					</ShelfEditorSection>
+
+					<ShelfEditorSection
+						title="Ballot"
+						description="How many books go on the poll and how many each member can back."
+					>
+						<CreateSittingBallotFields form={form} />
+					</ShelfEditorSection>
 				</div>
 
-				<aside className="flex flex-col gap-4 xl:sticky xl:top-6">
-					<Card>
-						<CardHeader className="border-border border-b pb-4">
-							<CardTitle className="text-base">Participants</CardTitle>
-							<CardDescription>
-								{selectedCount} selected
-								{users.length > 0 ? ` of ${users.length} members` : ""}. Banned
-								members stay muted but can be included if you check them.
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="max-h-[min(70vh,36rem)] overflow-y-auto pt-4">
-							{isLoadingUsers ? (
-								<ul className="flex flex-col gap-2">
-									{Array.from({ length: 5 }, (_, index) => (
-										<Skeleton key={index} className="h-16 w-full" />
-									))}
-								</ul>
-							) : isError ? (
-								<Field>
-									<p className="text-destructive text-sm">
-										Could not load members.
-									</p>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={() => {
-											void refetch();
-										}}
-									>
-										Retry
-									</Button>
-								</Field>
+				<aside className="flex flex-col gap-4 border border-border p-4 xl:sticky xl:top-20">
+					<h2 className="font-medium text-base">Summary</h2>
+					<dl className="flex flex-col gap-3 text-sm">
+						<SummaryRow label="Readers">
+							{selectedCount} {selectedCount === 1 ? "member" : "members"}
+						</SummaryRow>
+						<SummaryRow label="Voting closes">
+							{formatDateTime(pollDeadline)}
+						</SummaryRow>
+						<SummaryRow label="Book pool">
+							{pool ? (
+								<span className={cn(poolTooSmall && "text-destructive")}>
+									{pool.eligiblePoolSize}{" "}
+									{pool.eligiblePoolSize === 1 ? "book" : "books"} match
+								</span>
 							) : (
-								<FieldSet>
-									<FieldLegend className="sr-only">Member list</FieldLegend>
-									<ul className="flex flex-col gap-1">
-										{users.map((user) => {
-											const checked = selectedIds.includes(user.id);
-											const isBanned = user.status === "banned";
-
-											return (
-												<li key={user.id}>
-													<div
-														className={cn(
-															"flex items-start gap-3 border border-transparent px-2 py-2 transition-colors hover:bg-muted/40",
-															isBanned && "opacity-60",
-														)}
-													>
-														<Checkbox
-															checked={checked}
-															onCheckedChange={(value) => {
-																toggleParticipant(user.id, value === true);
-															}}
-															className="mt-1"
-															aria-label={`Include ${user.name}`}
-														/>
-														<div className="flex min-w-0 flex-1 flex-col gap-1.5">
-															<UserPanel user={user} />
-															<UserStatusBadge status={user.status} />
-														</div>
-													</div>
-												</li>
-											);
-										})}
-									</ul>
-								</FieldSet>
+								"—"
 							)}
+						</SummaryRow>
+						<SummaryRow label="On the poll">
+							{typeof take === "number" ? `${take} books` : "—"}
+						</SummaryRow>
+						<SummaryRow label="Each member picks">
+							{minChoices != null && maxChoices != null
+								? minChoices === maxChoices
+									? `${maxChoices}`
+									: `${minChoices} to ${maxChoices}`
+								: "—"}
+						</SummaryRow>
+					</dl>
 
-							{form.formState.errors.participantUserIds ? (
-								<p className="mt-3 text-destructive text-sm">
-									{form.formState.errors.participantUserIds.message}
-								</p>
-							) : null}
-						</CardContent>
-					</Card>
+					{poolTooSmall ? (
+						<p className="border border-destructive/40 bg-destructive/5 px-3 py-2 text-destructive text-sm">
+							Only {pool?.eligiblePoolSize} books match, but the poll needs{" "}
+							{take}. Loosen a filter or lower the number of books.
+						</p>
+					) : null}
+
+					<div className="flex flex-col gap-2 border-border border-t pt-4">
+						<form.Submit
+							loading={previewMutation.isPending}
+							disabled={!canContinue}
+						>
+							Draw the poll
+						</form.Submit>
+						<Button
+							render={<Link href={"/sittings" as Route} />}
+							nativeButton={false}
+							type="button"
+							variant="outline"
+						>
+							Cancel
+						</Button>
+						<p className="text-muted-foreground text-xs leading-relaxed">
+							You'll see the drawn books next, and can swap, lock or shuffle
+							them before voting opens.
+						</p>
+					</div>
 				</aside>
 			</div>
-
-			<div className="flex flex-wrap items-center gap-2 border-border border-t pt-6">
-				<form.Submit loading={previewMutation.isPending}>
-					Continue to review
-				</form.Submit>
-				<Button
-					render={<Link href={"/sittings" as Route} />}
-					nativeButton={false}
-					type="button"
-					variant="outline"
-				>
-					Cancel
-				</Button>
-			</div>
 		</form>
+	);
+}
+
+function SummaryRow({
+	label,
+	children,
+}: {
+	label: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<div className="flex items-baseline justify-between gap-3">
+			<dt className="text-muted-foreground">{label}</dt>
+			<dd className="text-right font-medium tabular-nums">{children}</dd>
+		</div>
+	);
+}
+
+function PoolStatus({
+	size,
+	take,
+	loading,
+}: {
+	size: number | undefined;
+	take: number | undefined;
+	loading: boolean;
+}) {
+	if (size == null) {
+		return <p className="text-muted-foreground text-sm">Counting books…</p>;
+	}
+
+	const tooSmall = take != null && size < take;
+	return (
+		<p
+			className={cn(
+				"flex items-center gap-2 text-sm tabular-nums",
+				tooSmall ? "text-destructive" : "text-foreground",
+				loading && "opacity-60",
+			)}
+			aria-live="polite"
+		>
+			<span className="font-semibold text-lg">{size}</span>
+			<span className="text-muted-foreground">
+				{size === 1 ? "book matches" : "books match"}
+				{take != null ? ` · ${take} go on the poll` : ""}
+			</span>
+		</p>
 	);
 }

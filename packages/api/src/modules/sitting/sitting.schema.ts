@@ -1,6 +1,7 @@
 import {
 	BookSchema,
 	CursorPaginationInputSchema,
+	CursorPaginationMetadataSchema,
 	CursorPaginationOutputSchema,
 	FeedbackSchema,
 	PollSchema,
@@ -27,7 +28,7 @@ import {
 	UserMemberSnapshotSchema,
 } from "../user/user.schema";
 import {
-	sittingListFiltersSchema,
+	publicSittingListFiltersSchema,
 	sittingListRanging,
 	sittingListSearching,
 	sittingListSorting,
@@ -40,6 +41,7 @@ export const PollStoredDeadlineSchema = zod.coerce.date();
 export {
 	sittingListRanging,
 	sittingListSearching,
+	sittingListSortableFields,
 	sittingListSorting,
 	sittingOngoingStatuses,
 	sittingOngoingWhere,
@@ -203,7 +205,7 @@ export type CreateSittingInput = z.infer<typeof CreateSittingInputSchema>;
 export type CreateSittingOutput = z.infer<typeof CreateSittingOutputSchema>;
 
 /** LIST — composed as a concrete ZodObject so oRPC clients get input autocomplete. */
-export const GetSittingListInputSchema = sittingListFiltersSchema
+export const GetSittingListInputSchema = publicSittingListFiltersSchema
 	.extend(CursorPaginationInputSchema.shape)
 	.extend(sittingListSorting.inputSchema.shape)
 	.extend(sittingListRanging.inputSchema.shape)
@@ -213,6 +215,20 @@ export const GetSittingListInputSchema = sittingListFiltersSchema
 			{ rangeMin: value.rangeMin, rangeMax: value.rangeMax },
 			ctx,
 		);
+
+		for (const [min, max, path] of [
+			[value.minParticipants, value.maxParticipants, "maxParticipants"],
+			[value.minCompleted, value.maxCompleted, "maxCompleted"],
+			[value.minPages, value.maxPages, "maxPages"],
+		] as const) {
+			if (min != null && max != null && max < min) {
+				ctx.addIssue({
+					code: "custom",
+					message: "Maximum must be at least the minimum",
+					path: [path],
+				});
+			}
+		}
 
 		if (value.ongoingOnly && value.statuses?.includes("finished")) {
 			ctx.addIssue({
@@ -225,19 +241,35 @@ export const GetSittingListInputSchema = sittingListFiltersSchema
 	});
 
 export const getSittingListFields = {
+	id: true,
 	slug: true,
 	status: true,
 	deadline: true,
 	createdAt: true,
 	selectedBook: {
-		select: { title: true },
+		select: {
+			slug: true,
+			title: true,
+			authors: true,
+			coverId: true,
+			pages: true,
+		},
 	},
+	poll: { select: { createdAt: true, deadline: true } },
 	_count: {
 		select: {
 			participants: { where: { removedAt: null } },
 		},
 	},
 } as const;
+
+const SittingListBookSchema = BookSchema.pick({
+	slug: true,
+	title: true,
+	authors: true,
+	coverId: true,
+	pages: true,
+});
 
 const SittingListItemSchema = SittingSchema.pick({
 	slug: true,
@@ -246,12 +278,28 @@ const SittingListItemSchema = SittingSchema.pick({
 }).extend({
 	deadline: SittingStoredDeadlineSchema,
 	participantCount: zod.number().int().min(0),
+	/** Active participants who marked the book completed. */
+	completedCount: zod.number().int().min(0),
 	displayName: zod.string().min(1),
+	selectedBook: SittingListBookSchema.nullable(),
+	poll: zod
+		.object({
+			createdAt: zod.coerce.date(),
+			deadline: zod.coerce.date(),
+		})
+		.nullable(),
+	/** The signed-in viewer's progress, or null when they are not a participant. */
+	viewerProgress: ProgressSchema.nullable(),
 });
 
 export const GetSittingListOutputSchema = CursorPaginationOutputSchema(
 	SittingListItemSchema,
-);
+).extend({
+	metadata: CursorPaginationMetadataSchema.extend({
+		/** Matching sittings across all pages; only sent with the first page. */
+		total: zod.number().int().min(0).optional(),
+	}),
+});
 
 export type GetSittingListInput = z.infer<typeof GetSittingListInputSchema>;
 export type GetSittingListOutput = z.infer<typeof GetSittingListOutputSchema>;
@@ -296,6 +344,18 @@ export const PollChipGrantSchema = zod.object({
 	canUseSilver: zod.boolean(),
 });
 
+const SittingPollOptionBookWithSeriesSchema =
+	SittingPollOptionBookSchema.extend({
+		/** Series the book belongs to, with its place in it. */
+		series: zod
+			.object({
+				title: zod.string(),
+				slug: zod.string(),
+				position: zod.number().int().min(1),
+			})
+			.nullable(),
+	});
+
 export const SittingPollOptionSchema = zod.object({
 	id: zod.uuid(),
 	/** Number of voters who selected this option. */
@@ -306,7 +366,7 @@ export const SittingPollOptionSchema = zod.object({
 	participantReadCount: zod.number().int().min(0),
 	/** Signed-in viewer has marked this book read (false when anonymous). */
 	viewerHasRead: zod.boolean(),
-	book: SittingPollOptionBookSchema,
+	book: SittingPollOptionBookWithSeriesSchema,
 });
 
 export const SittingPollPreviewOptionSchema = zod.object({
@@ -322,6 +382,26 @@ export const PreviewSittingPollOptionsInputSchema = zod
 	.superRefine((value, ctx) => {
 		refinePollConfig(value.poll, ctx, ["poll"]);
 	});
+
+export const GetSittingPollPoolSizeInputSchema = zod
+	.object({
+		poll: CreateSittingPollInputSchema.default({}),
+	})
+	.superRefine((value, ctx) => {
+		refinePollConfig(value.poll, ctx, ["poll"]);
+	});
+
+export const GetSittingPollPoolSizeOutputSchema = zod.object({
+	eligiblePoolSize: zod.number().int().min(0),
+	take: zod.number().int().min(1),
+});
+
+export type GetSittingPollPoolSizeInput = z.infer<
+	typeof GetSittingPollPoolSizeInputSchema
+>;
+export type GetSittingPollPoolSizeOutput = z.infer<
+	typeof GetSittingPollPoolSizeOutputSchema
+>;
 
 export const PreviewSittingPollOptionsOutputSchema = zod.object({
 	options: zod.array(SittingPollPreviewOptionSchema),
@@ -408,6 +488,11 @@ export const SittingRemovedParticipantSchema =
 
 export const SittingSelectedBookSchema = BookSchema.pick(getBookListFields);
 
+/** The sitting page also shows where the book comes from. */
+export const SittingDetailBookSchema = SittingSelectedBookSchema.extend({
+	countries: zod.array(zod.string()),
+});
+
 export const SittingReviewSummarySchema = zod.object({
 	slug: FeedbackSchema.shape.slug,
 	authorId: UserSchema.shape.id,
@@ -429,9 +514,11 @@ export const getSittingBySlugFields = {
 	status: true,
 	deadline: true,
 	createdAt: true,
+	readingStartedAt: true,
+	midtermAt: true,
 	selectedBookId: true,
 	selectedBook: {
-		select: getBookListFields,
+		select: { ...getBookListFields, countries: true },
 	},
 	poll: {
 		select: {
@@ -460,7 +547,15 @@ export const getSittingBySlugFields = {
 						},
 					},
 					book: {
-						select: getBookPollSelect,
+						select: {
+							...getBookPollSelect,
+							seriesMembership: {
+								select: {
+									position: true,
+									series: { select: { title: true, slug: true } },
+								},
+							},
+						},
 					},
 				},
 			},
@@ -503,15 +598,33 @@ export const getSittingRemovedParticipantFields = {
 } as const;
 
 /** GET BY SLUG */
+export const SittingStatsSchema = zod.object({
+	participantCount: zod.number().int().min(0),
+	progressCounts: zod.object({
+		not_started: zod.number().int().min(0),
+		in_progress: zod.number().int().min(0),
+		completed: zod.number().int().min(0),
+		dnf: zod.number().int().min(0),
+	}),
+	reviewCount: zod.number().int().min(0),
+	/** Average of participant reviews for the chosen book, if any. */
+	averageRating: zod.number().min(0).max(5).nullable(),
+});
+
 export const GetSittingBySlugOutputSchema = SittingSchema.pick({
 	slug: true,
 	status: true,
 	createdAt: true,
 }).extend({
 	deadline: SittingStoredDeadlineSchema,
+	/** When the reading phase began; null while voting. */
+	readingStartedAt: zod.coerce.date().nullable(),
+	/** Scheduled mid-sitting check-in, if any. */
+	midtermAt: zod.coerce.date().nullable(),
+	stats: SittingStatsSchema,
 	displayName: zod.string().min(1),
 	poll: SittingPollDetailSchema.nullable(),
-	selectedBook: SittingSelectedBookSchema.nullable(),
+	selectedBook: SittingDetailBookSchema.nullable(),
 	reviews: zod.array(SittingReviewSummarySchema),
 	participants: zod.array(SittingParticipantSummarySchema),
 	removedParticipants: zod.array(SittingRemovedParticipantSchema),
@@ -803,3 +916,17 @@ export type ResendSittingTelegramPollOpenOutput = z.infer<
 >;
 
 export { refinePollConfig };
+
+/** The signed-in viewer's relationship to a sitting. */
+export const GetMySittingStateOutputSchema = zod.object({
+	isParticipant: zod.boolean(),
+	/** The viewer's reading progress; null when they are not a participant. */
+	progress: ProgressSchema.nullable(),
+	hasVoted: zod.boolean(),
+	/** How many poll options the viewer picked. */
+	voteCount: zod.number().int().min(0),
+});
+
+export type GetMySittingStateOutput = z.infer<
+	typeof GetMySittingStateOutputSchema
+>;

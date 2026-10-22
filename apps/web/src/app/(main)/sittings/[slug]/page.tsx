@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SittingDetail } from "@/components/blocks/sitting-detail";
+import { SittingOverview } from "@/components/blocks/sitting-overview";
 import { loadSittingBySlugForIsr } from "@/lib/isr-data";
 import {
 	buildNotFoundMetadata,
@@ -40,5 +40,5 @@ export default async function SittingPage({
 	const { slug } = await params;
 	const sitting = await loadSittingBySlugForIsr(slug);
 
-	return <SittingDetail sitting={sitting} />;
+	return <SittingOverview sitting={sitting} />;
 }

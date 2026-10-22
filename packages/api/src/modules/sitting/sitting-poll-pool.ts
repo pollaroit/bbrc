@@ -46,6 +46,48 @@ export async function assertParticipantsExist(
 	return uniqueParticipantIds;
 }
 
+/**
+ * How many wishlist books could appear on a poll with these filters. Unlike
+ * `loadPollDrawContext` this never throws on a small pool, so the setup form
+ * can show the count live while an admin adjusts filters.
+ */
+export async function countEligiblePollBooks(
+	poll: CreateSittingPollInput,
+	db: Database,
+): Promise<number> {
+	const bookWhere = await resolveWishlistPollBookWhere(poll, db);
+	if (bookWhere == null) {
+		return 0;
+	}
+
+	const wishlistBooks = await db.book.findMany({
+		where: bookWhere,
+		select: {
+			id: true,
+			readAfterPrerequisites: {
+				select: { prerequisiteBook: { select: { status: true } } },
+			},
+			seriesMembership: { select: { position: true, seriesId: true } },
+		},
+	});
+
+	const seriesIds = [
+		...new Set(
+			wishlistBooks.flatMap((book) =>
+				book.seriesMembership ? [book.seriesMembership.seriesId] : [],
+			),
+		),
+	];
+	const seriesBooksBySeriesId = await loadSeriesBooksStatusBySeriesId(
+		seriesIds,
+		db,
+	);
+
+	return wishlistBooks.filter((book) =>
+		wishlistBookEligibleForPoll(book, seriesBooksBySeriesId),
+	).length;
+}
+
 export async function loadPollDrawContext(
 	participantUserIds: string[],
 	poll: CreateSittingPollInput,

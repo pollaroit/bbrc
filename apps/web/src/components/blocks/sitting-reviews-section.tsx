@@ -3,16 +3,23 @@
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { formatFeedbackRating } from "@bbrc/shared";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { FeedbackListSort } from "@/components/blocks/feedback-list-sort";
-import { FeedbackRatingFilterSelect } from "@/components/blocks/feedback-rating-filter-select";
+import { Star } from "lucide-react";
 import { FeedbackReviewList } from "@/components/blocks/feedback-review-list";
+import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
+import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
+import { ListingRatingRangeFields } from "@/components/listing/listing-rating-range-fields";
+import { ListingSearch } from "@/components/listing/listing-search";
+import { ListingSort } from "@/components/listing/listing-sort";
 import {
-	feedbackListParamsToQuery,
-	useFeedbackListSearchParams,
-} from "@/lib/feedback/feedback-list-search-params";
-import { sortFeedbackListItems } from "@/lib/feedback/list-sort";
-import { filterReviewsByMinRating } from "@/lib/feedback/rating-filter";
+	countSittingReviewFilters,
+	filterAndSortSittingReviews,
+	hasActiveSittingReviewFilters,
+	sittingReviewSortByLabels,
+	sittingReviewSortFields,
+	sittingReviewSpoilerLabels,
+	sittingReviewSpoilerModes,
+	useSittingReviewListingParams,
+} from "@/lib/listing/sitting-reviews-listing";
 import { orpc } from "@/utils/orpc";
 
 type SittingReviewsSectionProps = {
@@ -24,68 +31,108 @@ export function SittingReviewsSection({ sitting }: SittingReviewsSectionProps) {
 		...orpc.sitting.getSittingBySlug.queryOptions({ input: sitting.slug }),
 		initialData: sitting,
 	});
+	const [params, setParams] = useSittingReviewListingParams();
 
-	const reviews = data.reviews;
-	const participantCount = data.participants.length;
 	const bookSlug = data.selectedBook?.slug ?? "";
-
-	const [searchParams, setSearchParams] = useFeedbackListSearchParams();
-
-	const { minRating, minRatingFilter, sortBy, sortDirection } =
-		feedbackListParamsToQuery({
-			feedbackMinRating: searchParams.feedbackMinRating,
-			sortBy: searchParams.sortBy,
-			sortDirection: searchParams.sortDirection,
-		});
-
-	const filteredReviews = useMemo(() => {
-		const filtered = filterReviewsByMinRating(reviews, minRating);
-		return sortFeedbackListItems(filtered, sortBy, sortDirection);
-	}, [reviews, minRating, sortBy, sortDirection]);
-
-	const emptyMessage =
-		minRating !== undefined
-			? "No participant reviews match this rating filter."
-			: "No club reviews for this book yet. Members can leave feedback once they finish reading.";
-
 	if (!bookSlug) {
 		return null;
 	}
 
+	const visible = filterAndSortSittingReviews(data.reviews, params);
+	const filtered = hasActiveSittingReviewFilters(params);
+	const { stats } = data;
+
 	return (
-		<section className="flex flex-col gap-3">
-			<div className="flex flex-wrap items-end justify-between gap-3">
-				<div className="flex flex-col gap-1">
-					<h2 className="font-semibold text-lg">Reviews</h2>
-					<p className="text-muted-foreground text-sm tabular-nums">
-						{filteredReviews.length} of {participantCount} participants
-						{minRating !== undefined
-							? ` · ${formatFeedbackRating(minRating)}+`
-							: ""}
-					</p>
-				</div>
-				<div className="flex flex-wrap items-center gap-2">
-					<FeedbackListSort
-						sortBy={sortBy}
-						sortDirection={sortDirection}
-						onSortByChange={(value) => setSearchParams({ sortBy: value })}
-						onSortDirectionChange={(value) =>
-							setSearchParams({ sortDirection: value })
-						}
+		<section className="flex flex-col gap-4">
+			<div className="flex flex-col gap-3 md:flex-row md:items-center">
+				<ListingSearch
+					value={params.search ?? ""}
+					onChange={(search) => {
+						void setParams({ search });
+					}}
+					placeholder="Search by reader or review…"
+				/>
+				<div className="flex flex-wrap items-center gap-2 md:shrink-0">
+					<ListingSort
+						sortBy={params.sortBy}
+						sortDirection={params.sortDirection}
+						onSortByChange={(sortBy) => {
+							void setParams({ sortBy });
+						}}
+						onSortDirectionChange={(sortDirection) => {
+							void setParams({ sortDirection });
+						}}
+						sortByOptions={sittingReviewSortFields}
+						sortByLabels={sittingReviewSortByLabels}
+						appearance="library"
 					/>
-					<FeedbackRatingFilterSelect
-						value={minRatingFilter}
-						onValueChange={(value) =>
-							setSearchParams({ feedbackMinRating: value })
-						}
-					/>
+					<ListingFiltersSheet
+						title="Review filters"
+						description="Narrow reviews by rating or spoilers."
+						activeFilterCount={countSittingReviewFilters(params)}
+						onClear={() => {
+							void setParams({
+								minRating: null,
+								maxRating: null,
+								spoilers: null,
+							});
+						}}
+						appearance="library"
+					>
+						<ListingRatingRangeFields
+							legend="Rating"
+							minId="sitting-review-filter-min-rating"
+							maxId="sitting-review-filter-max-rating"
+							step={0.5}
+							min={params.minRating}
+							max={params.maxRating}
+							onMinChange={(minRating) => {
+								void setParams({ minRating });
+							}}
+							onMaxChange={(maxRating) => {
+								void setParams({ maxRating });
+							}}
+						/>
+						<ListingCheckboxList
+							legend="Spoilers"
+							options={sittingReviewSpoilerModes.map((mode) => ({
+								id: mode,
+								label: sittingReviewSpoilerLabels[mode],
+								checked: params.spoilers === mode,
+								onCheckedChange: (checked) => {
+									void setParams({ spoilers: checked ? mode : null });
+								},
+							}))}
+						/>
+					</ListingFiltersSheet>
 				</div>
+			</div>
+
+			<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground text-sm tabular-nums">
+				<span>
+					{visible.length} of {stats.participantCount} readers
+					{filtered ? " match your filters" : " reviewed"}
+				</span>
+				{stats.averageRating != null ? (
+					<span className="inline-flex items-center gap-1.5 text-foreground">
+						<Star
+							className="size-4 fill-amber-500 text-amber-500"
+							aria-hidden
+						/>
+						{formatFeedbackRating(Number(stats.averageRating.toFixed(1)))}{" "}
+						<span className="text-muted-foreground">average</span>
+					</span>
+				) : null}
 			</div>
 
 			<FeedbackReviewList
 				bookSlug={bookSlug}
-				reviews={filteredReviews}
-				emptyMessage={emptyMessage}
+				reviews={visible}
+				emptyMessage={
+					filtered
+						? "No reviews match these filters."
+						: "No club reviews for this book yet. Members can leave feedback once they finish reading."
+				}
 			/>
 		</section>
 	);

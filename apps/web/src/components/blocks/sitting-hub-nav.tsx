@@ -1,76 +1,79 @@
 "use client";
 
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
-import { Tabs, TabsList, TabsTrigger } from "@bbrc/ui/components/tabs";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 type SittingHubNavProps = {
 	sitting: GetSittingBySlugOutput;
 };
 
-type SittingHubSegment = "overview" | "vote" | "participants";
+type Segment = "overview" | "participants" | "vote" | "reviews";
 
-function sittingTabHref(slug: string, segment: SittingHubSegment): Route {
-	if (segment === "overview") {
-		return `/sittings/${slug}` as Route;
-	}
-	if (segment === "vote") {
-		return `/sittings/${slug}/vote` as Route;
-	}
-	return `/sittings/${slug}/participants` as Route;
+function tabHref(slug: string, segment: Segment): Route {
+	return (
+		segment === "overview"
+			? `/sittings/${slug}`
+			: `/sittings/${slug}/${segment}`
+	) as Route;
 }
 
-function activeTab(pathname: string, slug: string): SittingHubSegment {
+function activeSegment(pathname: string, slug: string): Segment {
 	const base = `/sittings/${slug}`;
-	if (pathname.startsWith(`${base}/vote`)) {
-		return "vote";
-	}
-	if (pathname.startsWith(`${base}/participants`)) {
-		return "participants";
-	}
+	if (pathname.startsWith(`${base}/vote`)) return "vote";
+	if (pathname.startsWith(`${base}/participants`)) return "participants";
+	if (pathname.startsWith(`${base}/reviews`)) return "reviews";
 	return "overview";
 }
 
 export function SittingHubNav({ sitting }: SittingHubNavProps) {
 	const pathname = usePathname();
-	const current = activeTab(pathname, sitting.slug);
+	const current = activeSegment(pathname, sitting.slug);
 	const hasPoll = sitting.poll != null;
-	const pollLabel =
-		sitting.status === "voting" ? "Vote" : hasPoll ? "Voting results" : "Vote";
+
+	const tabs: { segment: Segment; label: string }[] = [
+		{ segment: "overview", label: "Overview" },
+		{ segment: "participants", label: "Participants" },
+		...(hasPoll
+			? [
+					{
+						segment: "vote" as const,
+						label: sitting.status === "voting" ? "Voting" : "Voting results",
+					},
+				]
+			: []),
+		...(sitting.selectedBook
+			? [{ segment: "reviews" as const, label: "Reviews" }]
+			: []),
+	];
 
 	return (
-		<nav aria-label="Sitting sections">
-			<Tabs value={current}>
-				<TabsList variant="line" className="h-auto w-full justify-start gap-0">
-					<TabsTrigger
-						value="overview"
-						nativeButton={false}
-						render={<Link href={sittingTabHref(sitting.slug, "overview")} />}
-					>
-						Overview
-					</TabsTrigger>
-					<TabsTrigger
-						value="participants"
-						nativeButton={false}
-						render={
-							<Link href={sittingTabHref(sitting.slug, "participants")} />
-						}
-					>
-						Participants
-					</TabsTrigger>
-					{hasPoll ? (
-						<TabsTrigger
-							value="vote"
-							nativeButton={false}
-							render={<Link href={sittingTabHref(sitting.slug, "vote")} />}
+		<nav
+			aria-label="Sitting sections"
+			className="sticky top-[calc(3.5rem+max(0.25rem,env(safe-area-inset-top)))] z-20 -mx-6 border-border border-b bg-background/95 backdrop-blur-sm supports-backdrop-filter:bg-background/80 md:top-14 md:mx-0 md:border"
+		>
+			<div className="flex overflow-x-auto px-3 [scrollbar-width:none] md:px-1 [&::-webkit-scrollbar]:hidden">
+				{tabs.map((tab) => {
+					const active = tab.segment === current;
+					return (
+						<Link
+							key={tab.segment}
+							href={tabHref(sitting.slug, tab.segment)}
+							aria-current={active ? "page" : undefined}
+							className={cn(
+								"relative flex h-11 shrink-0 items-center px-3 font-medium text-sm transition-colors after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-foreground after:opacity-0 after:transition-opacity focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-2 md:h-10 md:flex-1 md:justify-center",
+								active
+									? "text-foreground after:opacity-100"
+									: "text-muted-foreground hover:text-foreground",
+							)}
 						>
-							{pollLabel}
-						</TabsTrigger>
-					) : null}
-				</TabsList>
-			</Tabs>
+							{tab.label}
+						</Link>
+					);
+				})}
+			</div>
 		</nav>
 	);
 }

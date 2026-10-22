@@ -42,7 +42,11 @@ import { calculateRpPointsDelta } from "../rp/rp.service";
 import { userMemberLevelsFromPoints } from "../user/member-levels";
 import { loadActorSocialGate } from "../user/user-visibility";
 import { XP_AWARD } from "../xp/xp.schema";
-import { awardParticipationXp, awardPollVoteXp } from "../xp/xp.service";
+import {
+	awardParticipationXp,
+	awardParticipationXpBulk,
+	awardPollVoteXp,
+} from "../xp/xp.service";
 import {
 	activeParticipationWhere,
 	countActiveParticipantsForSitting,
@@ -61,6 +65,7 @@ import {
 	buildSittingPollSlug,
 	type CreateSittingInput,
 	type CreateSittingOutput,
+	type GetMySittingStateOutput,
 	type GetOngoingSittingOutput,
 	type GetPollOptionReadersInput,
 	type GetPollOptionReadersOutput,
@@ -71,6 +76,8 @@ import {
 	type GetSittingBySlugOutput,
 	type GetSittingListInput,
 	type GetSittingListOutput,
+	type GetSittingPollPoolSizeInput,
+	type GetSittingPollPoolSizeOutput,
 	type GetSittingPollPreviewReadersInput,
 	getSittingBySlugFields,
 	getSittingListFields,
@@ -103,10 +110,12 @@ import { insertPollChipGrantsForParticipants } from "./sitting-poll-chip-grants"
 import {
 	assertParticipantsExist,
 	assertValidPollOptionBookIds,
+	countEligiblePollBooks,
 	drawInitialPollBookIds,
 	drawReplacementPollBookId,
 	loadPollDrawContext,
 	loadPollPreviewBooks,
+	resolvePollTake,
 	shuffleUnlockedPollPreviewBookIds,
 } from "./sitting-poll-pool";
 import { createPollInputToStoredFilters } from "./sitting-poll-stored-filters";
@@ -230,18 +239,26 @@ async function assertPollSlugAvailable(
 	}
 }
 
-function mapSittingListRow(row: SittingListRow) {
+function mapSittingListRow(
+	row: SittingListRow,
+	completedCount: number,
+	viewerProgress: GetSittingListOutput["items"][number]["viewerProgress"],
+) {
 	return {
 		slug: row.slug,
 		status: row.status,
 		deadline: row.deadline,
 		createdAt: row.createdAt,
 		participantCount: row._count.participants,
+		completedCount,
 		displayName: formatSittingDisplayName(
 			row.slug,
 			row.status,
 			row.selectedBook?.title,
 		),
+		selectedBook: row.selectedBook,
+		poll: row.poll,
+		viewerProgress,
 	};
 }
 
@@ -265,11 +282,33 @@ function mapSittingDetail(
 	const myVoteOptionIds = myVotes.map((vote) => vote.optionId);
 	const bookPages = row.selectedBook?.pages ?? null;
 
+	const progressCounts = {
+		not_started: 0,
+		in_progress: 0,
+		completed: 0,
+		dnf: 0,
+	};
+	for (const participation of row.participants) {
+		progressCounts[participation.progress] += 1;
+	}
+	const averageRating =
+		reviews.length > 0
+			? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+			: null;
+
 	return {
 		slug: row.slug,
 		status: row.status,
 		deadline: row.deadline,
 		createdAt: row.createdAt,
+		readingStartedAt: row.readingStartedAt,
+		midtermAt: row.midtermAt,
+		stats: {
+			participantCount: row.participants.length,
+			progressCounts,
+			reviewCount: reviews.length,
+			averageRating,
+		},
 		displayName: formatSittingDisplayName(
 			row.slug,
 			row.status,
@@ -305,7 +344,19 @@ function mapSittingDetail(
 							participantReadCount:
 								participantReadCountByBookId.get(option.book.id) ?? 0,
 							viewerHasRead: viewerReadBookIds.has(option.book.id),
-							book: option.book,
+							book: (() => {
+								const { seriesMembership, ...book } = option.book;
+								return {
+									...book,
+									series: seriesMembership
+										? {
+												title: seriesMembership.series.title,
+												slug: seriesMembership.series.slug,
+												position: seriesMembership.position,
+											}
+										: null,
+								};
+							})(),
 						};
 					}),
 					myVoteOptionIds,
@@ -515,13 +566,45 @@ async function loadPollOptionAggregates(
 export async function getSittingList(
 	input: GetSittingListInput,
 	db: Database,
+	session: Session | null = null,
 ): Promise<GetSittingListOutput> {
+	const viewerId = session?.user?.id ?? null;
+	if (input.mineOnly && !viewerId) {
+		throw new ORPCError("UNAUTHORIZED", {
+			message: "Sign in to filter by your sittings.",
+		});
+	}
+
 	const pagination = definePagination.cursor(input, sittingListCursorCodec);
 	const sorting = sittingListSorting.from(input);
 	const ranging = sittingListRanging.from(input);
 	const searching = sittingListSearching.from(input);
 
-	const where = mergeWhereFragments<Prisma.SittingWhereInput>(
+	// Prisma cannot filter on relation counts, so resolve matching sittings first.
+	let participantCountWhere: Prisma.SittingWhereInput = {};
+	if (input.minParticipants != null || input.maxParticipants != null) {
+		const groups = await db.participation.groupBy({
+			by: ["sittingId"],
+			where: { removedAt: null },
+			having: {
+				id: {
+					_count: {
+						...(input.minParticipants != null
+							? { gte: input.minParticipants }
+							: {}),
+						...(input.maxParticipants != null
+							? { lte: input.maxParticipants }
+							: {}),
+					},
+				},
+			},
+		});
+		participantCountWhere = {
+			id: { in: groups.map((group) => group.sittingId) },
+		};
+	}
+
+	const baseWhere = mergeWhereFragments<Prisma.SittingWhereInput>(
 		ranging.use(),
 		searching.use(),
 		{
@@ -531,20 +614,183 @@ export async function getSittingList(
 					? { in: input.statuses }
 					: undefined,
 		},
+		participantCountWhere,
+		input.minPages != null || input.maxPages != null
+			? {
+					selectedBook: {
+						pages: {
+							...(input.minPages != null ? { gte: input.minPages } : {}),
+							...(input.maxPages != null ? { lte: input.maxPages } : {}),
+						},
+					},
+				}
+			: {},
+		input.mineOnly && viewerId
+			? { participants: { some: { userId: viewerId, removedAt: null } } }
+			: {},
 	);
 
-	const rows = await db.sitting.findMany({
-		...pagination.use(),
-		where,
-		orderBy: withStableSlugOrderBy(sorting.use(), sorting.sortDirection),
-		select: getSittingListFields,
-	});
+	// The completed-member count needs a grouped query, so filtering and sorting
+	// by it happen here instead of in the database query.
+	const needsCompletedCounts =
+		sorting.sortBy === "completedCount" ||
+		input.minCompleted != null ||
+		input.maxCompleted != null;
+
+	let where = baseWhere;
+	let orderedSlugs: string[] | null = null;
+
+	if (needsCompletedCounts) {
+		const candidates = await db.sitting.findMany({
+			where: baseWhere,
+			select: { id: true, slug: true },
+		});
+		const grouped = await db.participation.groupBy({
+			by: ["sittingId"],
+			where: {
+				progress: "completed",
+				removedAt: null,
+				sittingId: { in: candidates.map((candidate) => candidate.id) },
+			},
+			_count: { _all: true },
+		});
+		const counts = new Map(
+			grouped.map((group) => [group.sittingId, group._count._all]),
+		);
+		const countOf = (id: string) => counts.get(id) ?? 0;
+
+		const matching = candidates.filter((candidate) => {
+			const count = countOf(candidate.id);
+			return (
+				(input.minCompleted == null || count >= input.minCompleted) &&
+				(input.maxCompleted == null || count <= input.maxCompleted)
+			);
+		});
+
+		where = { id: { in: matching.map((candidate) => candidate.id) } };
+
+		if (sorting.sortBy === "completedCount") {
+			const sign = sorting.sortDirection === "asc" ? 1 : -1;
+			orderedSlugs = matching
+				.toSorted(
+					(a, b) =>
+						sign * (countOf(a.id) - countOf(b.id)) ||
+						a.slug.localeCompare(b.slug),
+				)
+				.map((candidate) => candidate.slug);
+		}
+	}
+
+	const isFirstPage = input.cursor == null;
+
+	let rows: SittingListRow[];
+	if (orderedSlugs) {
+		const start = input.cursor ? orderedSlugs.indexOf(input.cursor) + 1 : 0;
+		const pageSlugs = orderedSlugs.slice(start, start + pagination.limit + 1);
+		const found = await db.sitting.findMany({
+			where: { slug: { in: pageSlugs } },
+			select: getSittingListFields,
+		});
+		const bySlug = new Map(found.map((row) => [row.slug, row]));
+		rows = pageSlugs.flatMap((slug) => {
+			const row = bySlug.get(slug);
+			return row ? [row] : [];
+		});
+	} else {
+		rows = await db.sitting.findMany({
+			...pagination.use(),
+			where,
+			orderBy: withStableSlugOrderBy(sorting.use(), sorting.sortDirection),
+			select: getSittingListFields,
+		});
+	}
+
+	const total = isFirstPage
+		? orderedSlugs
+			? orderedSlugs.length
+			: await db.sitting.count({ where })
+		: undefined;
 
 	const page = pagination.paginate(rows);
+	const pageIds = page.items.map((row) => row.id);
+
+	const [completedGroups, viewerParticipations] = await Promise.all([
+		db.participation.groupBy({
+			by: ["sittingId"],
+			where: {
+				progress: "completed",
+				removedAt: null,
+				sittingId: { in: pageIds },
+			},
+			_count: { _all: true },
+		}),
+		viewerId
+			? db.participation.findMany({
+					where: {
+						userId: viewerId,
+						removedAt: null,
+						sittingId: { in: pageIds },
+					},
+					select: { sittingId: true, progress: true },
+				})
+			: Promise.resolve([]),
+	]);
+	const completedBySitting = new Map(
+		completedGroups.map((group) => [group.sittingId, group._count._all]),
+	);
+	const progressBySitting = new Map(
+		viewerParticipations.map((row) => [row.sittingId, row.progress]),
+	);
 
 	return {
-		items: page.items.map(mapSittingListRow),
-		metadata: page.metadata,
+		items: page.items.map((row) =>
+			mapSittingListRow(
+				row,
+				completedBySitting.get(row.id) ?? 0,
+				progressBySitting.get(row.id) ?? null,
+			),
+		),
+		metadata: {
+			...page.metadata,
+			...(total != null ? { total } : {}),
+		},
+	};
+}
+
+export async function getMySittingState(
+	slug: string,
+	userId: string,
+	db: Database,
+): Promise<GetMySittingStateOutput> {
+	const sitting = await db.sitting.findUnique({
+		where: { slug },
+		select: { id: true, poll: { select: { id: true } } },
+	});
+
+	if (!sitting) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Sitting not found",
+			data: { slug },
+		});
+	}
+
+	const [participation, voteCount] = await Promise.all([
+		db.participation.findFirst({
+			where: { sittingId: sitting.id, userId, removedAt: null },
+			select: { progress: true },
+		}),
+		sitting.poll
+			? db.pollVote.count({
+					where: { userId, option: { pollId: sitting.poll.id } },
+				})
+			: Promise.resolve(0),
+	]);
+
+	return {
+		isParticipant: participation != null,
+		progress: participation?.progress ?? null,
+		hasVoted: voteCount > 0,
+		voteCount,
 	};
 }
 
@@ -563,6 +809,31 @@ export async function getSittingBySlug(
 			message: "Sitting not found",
 			data: { slug },
 		});
+	}
+
+	// A sitting's book follows its phase: reading while it runs, completed after.
+	// Self-heal if the two drifted apart (for example after a manual data edit).
+	if (sitting.selectedBook && sitting.selectedBookId) {
+		const expectedBookStatus =
+			sitting.status === "reading"
+				? "reading"
+				: sitting.status === "finished"
+					? "completed"
+					: null;
+
+		if (
+			expectedBookStatus &&
+			sitting.selectedBook.status !== expectedBookStatus
+		) {
+			await db.book.update({
+				where: { id: sitting.selectedBookId },
+				data: { status: expectedBookStatus },
+			});
+			sitting.selectedBook = {
+				...sitting.selectedBook,
+				status: expectedBookStatus,
+			};
+		}
 	}
 
 	if (sitting.status === "reading" && sitting.selectedBookId) {
@@ -800,6 +1071,16 @@ async function markPollWinnerBookAsReading(
 	});
 }
 
+export async function getSittingPollPoolSize(
+	input: GetSittingPollPoolSizeInput,
+	db: Database,
+): Promise<GetSittingPollPoolSizeOutput> {
+	return {
+		eligiblePoolSize: await countEligiblePollBooks(input.poll, db),
+		take: resolvePollTake(input.poll),
+	};
+}
+
 export async function previewSittingPollOptions(
 	input: PreviewSittingPollOptionsInput,
 	db: Database,
@@ -932,68 +1213,74 @@ export async function createSitting(
 		: defaultPollDeadline(new Date(), clubTimeZone);
 	const sittingDeadline = sittingReadingDeadlinePlaceholder();
 
-	const created = await db.$transaction(async (tx) => {
-		const sittingSlug = await generateSittingSlug(tx);
-		const pollSlug = buildSittingPollSlug(sittingSlug);
-		await assertPollSlugAvailable(pollSlug, tx);
+	const created = await db.$transaction(
+		async (tx) => {
+			const sittingSlug = await generateSittingSlug(tx);
+			const pollSlug = buildSittingPollSlug(sittingSlug);
+			await assertPollSlugAvailable(pollSlug, tx);
 
-		const sitting = await tx.sitting.create({
-			data: {
-				slug: sittingSlug,
-				deadline: sittingDeadline,
-				status: "voting",
-			},
-			select: { id: true, slug: true },
-		});
-
-		const storedFilters = createPollInputToStoredFilters(input.poll);
-
-		const poll = await tx.poll.create({
-			data: {
-				slug: pollSlug,
-				sittingId: sitting.id,
-				deadline: pollDeadline,
-				minPages: storedFilters.minPages ?? undefined,
-				maxPages: storedFilters.maxPages ?? undefined,
-				minPublishedIn: storedFilters.minPublishedIn ?? undefined,
-				maxPublishedIn: storedFilters.maxPublishedIn ?? undefined,
-				minOpenLibraryRating: storedFilters.minOpenLibraryRating ?? undefined,
-				minReads: storedFilters.minReads ?? undefined,
-				maxReads: storedFilters.maxReads ?? undefined,
-				filterCountries: storedFilters.filterCountries,
-				filterAuthorSlugs: storedFilters.filterAuthorSlugs,
-				take,
-				minChoices,
-				maxChoices,
-				options: {
-					create: pollBookIds.map((bookId) => ({ bookId })),
+			const sitting = await tx.sitting.create({
+				data: {
+					slug: sittingSlug,
+					deadline: sittingDeadline,
+					status: "voting",
 				},
-			},
-			select: { id: true },
-		});
+				select: { id: true, slug: true },
+			});
 
-		await insertPollChipGrantsForParticipants(
-			poll.id,
-			uniqueParticipantIds,
-			tx,
-		);
+			const storedFilters = createPollInputToStoredFilters(input.poll);
 
-		await tx.participation.createMany({
-			data: uniqueParticipantIds.map((userId) => ({
-				userId,
-				sittingId: sitting.id,
-			})),
-		});
+			const poll = await tx.poll.create({
+				data: {
+					slug: pollSlug,
+					sittingId: sitting.id,
+					deadline: pollDeadline,
+					minPages: storedFilters.minPages ?? undefined,
+					maxPages: storedFilters.maxPages ?? undefined,
+					minPublishedIn: storedFilters.minPublishedIn ?? undefined,
+					maxPublishedIn: storedFilters.maxPublishedIn ?? undefined,
+					minOpenLibraryRating: storedFilters.minOpenLibraryRating ?? undefined,
+					minReads: storedFilters.minReads ?? undefined,
+					maxReads: storedFilters.maxReads ?? undefined,
+					filterCountries: storedFilters.filterCountries,
+					filterAuthorSlugs: storedFilters.filterAuthorSlugs,
+					take,
+					minChoices,
+					maxChoices,
+					options: {
+						create: pollBookIds.map((bookId) => ({ bookId })),
+					},
+				},
+				select: { id: true },
+			});
 
-		for (const userId of uniqueParticipantIds) {
-			await awardParticipationXp({ userId, sittingId: sitting.id }, tx);
-		}
+			await insertPollChipGrantsForParticipants(
+				poll.id,
+				uniqueParticipantIds,
+				tx,
+			);
 
-		return {
-			slug: sitting.slug,
-			pollSlug,
-		};
-	});
+			await tx.participation.createMany({
+				data: uniqueParticipantIds.map((userId) => ({
+					userId,
+					sittingId: sitting.id,
+				})),
+			});
+
+			await awardParticipationXpBulk(
+				{ userIds: uniqueParticipantIds, sittingId: sitting.id },
+				tx,
+			);
+
+			return {
+				slug: sitting.slug,
+				pollSlug,
+			};
+		},
+		// Remote databases add latency to every query; 5s is too tight for a sitting
+		// with a full roster.
+		{ maxWait: 10_000, timeout: 30_000 },
+	);
 
 	void notifySittingPollStarted(db, created.slug);
 	void telegramAnnouncePollOpen(db, created.slug);
@@ -1360,7 +1647,8 @@ export async function updateSittingDeadlines(
 
 	if (input.sittingDeadline != null) {
 		const clubTimeZone = resolveClubTimeZone();
-		const newDeadline = clampSittingDeadlineToClubEnd(
+		// Any club deadline hour (14/17/20/23) is allowed; other times snap forward.
+		const newDeadline = snapPollDeadlineOnOrAfter(
 			input.sittingDeadline,
 			clubTimeZone,
 		);
