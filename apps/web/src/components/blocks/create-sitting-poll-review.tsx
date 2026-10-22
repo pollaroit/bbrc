@@ -3,13 +3,16 @@
 import type { PreviewSittingPollOptionsOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { Alert, AlertDescription, AlertTitle } from "@bbrc/ui/components/alert";
 import { Button } from "@bbrc/ui/components/button";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@bbrc/ui/components/tooltip";
+import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
-import { Lock, RefreshCw, Shuffle } from "lucide-react";
+import {
+	BookOpen,
+	CalendarDays,
+	Lock,
+	RefreshCw,
+	Shuffle,
+	Star,
+} from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,6 +24,7 @@ import {
 	type CreateSittingFormValues,
 	toPreviewSittingPollOptionsInput,
 } from "@/lib/create-sitting-form";
+import { formatDateTime } from "@/lib/format-datetime";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -131,17 +135,29 @@ export function CreateSittingPollReview({
 		);
 	}
 
+	const lockedTotal = lockedBookIds.length;
+
 	return (
-		<div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-			<div>
-				<h2 className="font-semibold text-lg">Review poll options</h2>
-				<p className="text-muted-foreground text-sm">
-					These wishlist books were drawn for the poll. Replace one slot, lock
-					books you want to keep, or shuffle all unlocked slots.{" "}
-					<span className="text-foreground">
-						{eligiblePoolSize} books match your filters.
-					</span>
+		<div className="flex flex-col gap-6">
+			<div className="flex flex-col gap-2">
+				<h2 className="font-semibold text-xl tracking-tight">
+					Review the draw
+				</h2>
+				<p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
+					These wishlist books were drawn for the poll. Keep the ones you like,
+					swap any slot for another random book, or shuffle everything you
+					haven't kept.
 				</p>
+				<dl className="mt-1 grid grid-cols-2 divide-x divide-y divide-border border border-border sm:grid-cols-4 sm:divide-y-0">
+					<ReviewFact label="On the poll">{options.length} books</ReviewFact>
+					<ReviewFact label="Matched filters">
+						{eligiblePoolSize} books
+					</ReviewFact>
+					<ReviewFact label="Readers">{participantCount}</ReviewFact>
+					<ReviewFact label="Voting closes">
+						{formatDateTime(formValues.pollDeadline)}
+					</ReviewFact>
+				</dl>
 			</div>
 
 			{usedUniformFallback ? (
@@ -155,7 +171,12 @@ export function CreateSittingPollReview({
 				</Alert>
 			) : null}
 
-			<div className="flex flex-wrap gap-2">
+			<div className="flex flex-wrap items-center justify-between gap-3">
+				<p className="text-muted-foreground text-sm tabular-nums">
+					{lockedTotal > 0
+						? `${lockedTotal} kept · ${unlockedCount} will change on shuffle`
+						: "Nothing kept yet"}
+				</p>
 				<Button
 					type="button"
 					variant="outline"
@@ -165,38 +186,37 @@ export function CreateSittingPollReview({
 					}}
 				>
 					<Shuffle
-						className={cn("size-4", shuffling && "animate-pulse")}
+						data-icon="inline-start"
+						className={cn(shuffling && "animate-pulse")}
 						aria-hidden
 					/>
-					Shuffle unlocked
+					{lockedTotal > 0 ? "Shuffle the rest" : "Shuffle all"}
 				</Button>
 			</div>
 
-			<ul className="flex flex-col gap-3">
+			<ul className="grid gap-4 md:grid-cols-2">
 				{options.map((option) => {
 					const coverSrc = bookCoverUrl(option.book.coverId);
 					const href = `/books/${option.book.slug}` as Route;
 					const readCount = option.participantReadCount;
-					const readLabel =
-						participantCount > 0
-							? `${readCount} of ${participantCount} participants read`
-							: `${readCount} read`;
 					const isReplacing = replacingBookId === option.book.id;
 					const isLocked = lockedSet.has(option.book.id);
+					const mostlyRead =
+						participantCount > 0 && readCount / participantCount >= 0.5;
 
 					return (
-						<li key={option.book.id}>
-							<div className="relative flex items-stretch gap-3 border border-border p-4 pl-5">
-								<div
-									className={cn(
-										"pointer-events-none absolute inset-y-0 left-0 w-0.5",
-										isLocked ? "bg-primary" : "bg-border",
-									)}
-									aria-hidden
-								/>
+						<li
+							key={option.book.id}
+							className={cn(
+								"flex flex-col border transition-colors",
+								isLocked ? "border-foreground" : "border-border",
+							)}
+						>
+							<div className="flex gap-4 p-4">
 								<Link
 									href={href}
-									className="relative aspect-2/3 w-16 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10 sm:w-20"
+									target="_blank"
+									className="relative aspect-2/3 w-20 shrink-0 self-start overflow-hidden bg-muted ring-1 ring-foreground/10 sm:w-24"
 								>
 									{coverSrc ? (
 										<Image
@@ -204,7 +224,7 @@ export function CreateSittingPollReview({
 											alt=""
 											fill
 											className="object-cover"
-											sizes="80px"
+											sizes="96px"
 										/>
 									) : (
 										<div className="flex size-full items-center justify-center text-[10px] text-muted-foreground">
@@ -213,20 +233,41 @@ export function CreateSittingPollReview({
 									)}
 								</Link>
 
-								<div className="flex min-w-0 flex-1 flex-col gap-1">
-									<Link
-										href={href}
-										className="line-clamp-2 font-medium text-sm leading-snug hover:underline"
-									>
-										{option.book.title}
-									</Link>
-									<p className="text-muted-foreground text-sm">
-										{formatBookAuthors(option.book.authors)}
+								<div className="flex min-w-0 flex-1 flex-col gap-2">
+									<div>
+										<Link
+											href={href}
+											target="_blank"
+											className="line-clamp-2 font-medium text-sm leading-snug hover:underline"
+										>
+											{option.book.title}
+										</Link>
+										<p className="text-muted-foreground text-sm">
+											{formatBookAuthors(option.book.authors)}
+										</p>
+									</div>
+
+									<p className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-muted-foreground text-xs tabular-nums">
+										<span className="inline-flex items-center gap-1">
+											<BookOpen className="size-3.5" aria-hidden />
+											{option.book.pages} pages
+										</span>
+										<span className="inline-flex items-center gap-1">
+											<CalendarDays className="size-3.5" aria-hidden />
+											{option.book.publishedIn}
+										</span>
+										{option.book.openLibraryRating != null ? (
+											<span
+												className="inline-flex items-center gap-1"
+												title="Open Library rating"
+											>
+												<Star className="size-3.5" aria-hidden />
+												{option.book.openLibraryRating.toFixed(1)}
+											</span>
+										) : null}
 									</p>
-									<p className="text-muted-foreground text-xs tabular-nums">
-										{option.book.pages != null
-											? `${option.book.pages} pp · `
-											: null}
+
+									<div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
 										{participantCount > 0 ? (
 											<button
 												type="button"
@@ -236,66 +277,53 @@ export function CreateSittingPollReview({
 													setReadersBookId(option.book.id);
 												}}
 											>
-												{readLabel}
+												{readCount} of {participantCount} have read it
 											</button>
 										) : (
-											readLabel
+											<span className="text-muted-foreground">
+												{readCount} read
+											</span>
 										)}
-									</p>
+										{mostlyRead ? (
+											<span className="border border-amber-600/50 px-1.5 py-0.5 text-amber-700 dark:text-amber-400">
+												Mostly read
+											</span>
+										) : null}
+									</div>
 								</div>
+							</div>
 
-								<div className="flex shrink-0 items-start gap-1">
-									<Tooltip>
-										<TooltipTrigger
-											render={
-												<Button
-													type="button"
-													variant={isLocked ? "secondary" : "outline"}
-													size="icon-sm"
-													disabled={previewBusy}
-													aria-label={
-														isLocked
-															? "Unlock this book during shuffle"
-															: "Lock this book during shuffle"
-													}
-													aria-pressed={isLocked}
-													onClick={() => {
-														toggleLock(option.book.id);
-													}}
-												>
-													<Lock className="size-4" aria-hidden />
-												</Button>
-											}
-										/>
-										<TooltipContent>
-											{isLocked ? "Unlock for shuffle" : "Lock during shuffle"}
-										</TooltipContent>
-									</Tooltip>
-									<Tooltip>
-										<TooltipTrigger
-											render={
-												<Button
-													type="button"
-													variant="outline"
-													size="icon-sm"
-													disabled={previewBusy && !isReplacing}
-													aria-label="Replace with another random book"
-													onClick={() => {
-														void replaceOption(option.book.id);
-													}}
-												>
-													<RefreshCw
-														className={cn(
-															"size-4",
-															isReplacing && "animate-spin",
-														)}
-													/>
-												</Button>
-											}
-										/>
-										<TooltipContent>Replace option</TooltipContent>
-									</Tooltip>
-								</div>
+							<div className="flex items-center justify-end gap-2 border-border border-t bg-muted/20 px-4 py-2.5">
+								<Button
+									type="button"
+									variant={isLocked ? "secondary" : "outline"}
+									size="xs"
+									disabled={previewBusy}
+									aria-pressed={isLocked}
+									onClick={() => {
+										toggleLock(option.book.id);
+									}}
+								>
+									<Lock data-icon="inline-start" aria-hidden />
+									{isLocked ? "Kept" : "Keep"}
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="xs"
+									disabled={(previewBusy && !isReplacing) || isLocked}
+									title={isLocked ? "Unlock this book to swap it" : undefined}
+									onClick={() => {
+										void replaceOption(option.book.id);
+									}}
+								>
+									<RefreshCw
+										data-icon="inline-start"
+										className={cn(isReplacing && "animate-spin")}
+										aria-hidden
+									/>
+									Swap
+								</Button>
 							</div>
 						</li>
 					);
@@ -312,25 +340,47 @@ export function CreateSittingPollReview({
 				}}
 			/>
 
-			<div className="flex flex-wrap gap-2">
-				<Button
-					type="button"
-					disabled={confirmLoading || previewBusy}
-					onClick={() => {
-						onConfirm(options.map((option) => option.book.id));
-					}}
-				>
-					{confirmLoading ? "Creating…" : "Create sitting"}
-				</Button>
-				<Button
-					type="button"
-					variant="outline"
-					disabled={confirmLoading || previewBusy}
-					onClick={onBack}
-				>
-					Back to configuration
-				</Button>
+			<div className="flex flex-col gap-3 border-border border-t pt-4 md:sticky md:bottom-0 md:z-10 md:bg-background/95 md:py-3 md:backdrop-blur">
+				<p className="text-muted-foreground text-xs leading-relaxed">
+					Starting the sitting opens voting, gives every reader participation
+					XP, and announces the poll on Telegram.
+				</p>
+				<div className="grid grid-cols-2 gap-2 sm:flex">
+					<Button
+						type="button"
+						variant="outline"
+						disabled={confirmLoading || previewBusy}
+						onClick={onBack}
+					>
+						Back to setup
+					</Button>
+					<LoadingButton
+						type="button"
+						loading={confirmLoading}
+						disabled={previewBusy}
+						onClick={() => {
+							onConfirm(options.map((option) => option.book.id));
+						}}
+					>
+						Start sitting
+					</LoadingButton>
+				</div>
 			</div>
+		</div>
+	);
+}
+
+function ReviewFact({
+	label,
+	children,
+}: {
+	label: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<div className="flex min-w-0 flex-col gap-0.5 px-3 py-3">
+			<dt className="text-muted-foreground text-xs">{label}</dt>
+			<dd className="font-medium text-sm tabular-nums">{children}</dd>
 		</div>
 	);
 }
