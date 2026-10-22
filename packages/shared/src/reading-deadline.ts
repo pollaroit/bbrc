@@ -1,178 +1,105 @@
+import {
+	addCalendarDays,
+	getZonedParts,
+	resolveClubTimeZone,
+	zonedTimeToUtc,
+} from "./club-timezone";
+
 const MS_PER_DAY = 86_400_000;
 
-export type ReadingPlanInput = {
-	pageCount: number;
-	weekdayMinutes?: number;
-	weekendMinutes?: number;
-	wordsPerPage?: number;
-	wpm?: number;
-	bufferMultiplier?: number;
-	startDate?: Date;
+/** Club reading pace: pages the club is expected to read per calendar day. */
+export const READING_PAGES_PER_WEEKDAY = 25;
+export const READING_PAGES_PER_WEEKEND_DAY = 30;
+
+const MAX_PLAN_DAYS = 366 * 10;
+
+export type ReadingPlan = {
+	/** Calendar days the reading spans, counting the start day and the last day in full. */
+	calendarDays: number;
+	/** Elapsed days with the last day counted only for the share of pages left on it. */
+	elapsedDays: number;
+	/** Club-local calendar day on which the last page is reached. */
+	endDay: { year: number; month: number; day: number };
+	/** Saturdays and Sundays inside the span. */
+	weekendDays: number;
 };
 
-export type ReadingPlanResult = {
-	totalReadingMinutes: number;
-	bufferedReadingMinutes: number;
-	weeklyCapacityMinutes: number;
-	rawDaysRequired: number;
-	targetDays: number;
-	bufferedTargetDays: number;
-	endDate?: Date;
-	calendarDaysSpanned?: number;
-};
+function isWeekend(year: number, month: number, day: number): boolean {
+	const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+	return weekday === 0 || weekday === 6;
+}
 
-const DEFAULT_WEEKDAY_MINUTES = 20;
-const DEFAULT_WEEKEND_MINUTES = 45;
-const DEFAULT_WPM = 230;
-const DEFAULT_WORDS_PER_PAGE = 275;
+function pagesOnDay(year: number, month: number, day: number): number {
+	return isWeekend(year, month, day)
+		? READING_PAGES_PER_WEEKEND_DAY
+		: READING_PAGES_PER_WEEKDAY;
+}
 
-function assertPositive(value: number, label: string) {
-	if (!Number.isFinite(value) || value <= 0) {
-		throw new Error(`${label} must be a number greater than 0.`);
+/**
+ * Walks the club calendar from the day containing `startDate`: weekdays count
+ * {@link READING_PAGES_PER_WEEKDAY} pages, Saturdays and Sundays
+ * {@link READING_PAGES_PER_WEEKEND_DAY}. The start day counts as a full day.
+ */
+export function planReading(
+	pageCount: number,
+	startDate: Date = new Date(),
+	timeZone: string = resolveClubTimeZone(),
+): ReadingPlan {
+	if (!Number.isFinite(pageCount) || pageCount <= 0) {
+		throw new Error("Page count must be a number greater than 0.");
 	}
-}
 
-function assertNonNegative(value: number, label: string) {
-	if (!Number.isFinite(value) || value < 0) {
-		throw new Error(`${label} must be a number greater than or equal to 0.`);
-	}
-}
+	let { year, month, day } = getZonedParts(startDate, timeZone);
+	let remaining = pageCount;
+	let calendarDays = 0;
+	let weekendDays = 0;
 
-export function startOfLocalDay(date: Date): Date {
-	const next = new Date(date);
-	next.setHours(0, 0, 0, 0);
-	return next;
-}
-
-export function endOfLocalDay(date: Date): Date {
-	const next = new Date(date);
-	next.setHours(23, 59, 59, 999);
-	return next;
-}
-
-function minutesAvailableOnDay(
-	date: Date,
-	weekdayMinutes: number,
-	weekendMinutes: number,
-): number {
-	const day = date.getDay();
-	return day === 0 || day === 6 ? weekendMinutes : weekdayMinutes;
-}
-
-export function calculateEndDateFromCalendar(
-	startDate: Date,
-	minutesNeeded: number,
-	weekdayMinutes: number,
-	weekendMinutes: number,
-): { endDate: Date; calendarDaysSpanned: number } {
-	assertPositive(minutesNeeded, "Minutes needed");
-
-	let remaining = minutesNeeded;
-	const cursor = startOfLocalDay(startDate);
-	let calendarDaysSpanned = 0;
-	const maxDays = 366 * 10;
-
-	while (remaining > 0) {
-		if (calendarDaysSpanned >= maxDays) {
-			throw new Error(
-				"Could not reach deadline within 10 years — check minutes per day.",
-			);
+	for (;;) {
+		if (calendarDays >= MAX_PLAN_DAYS) {
+			throw new Error("Could not reach the last page within 10 years.");
 		}
 
-		const dayCapacity = minutesAvailableOnDay(
-			cursor,
-			weekdayMinutes,
-			weekendMinutes,
-		);
-
-		if (dayCapacity <= 0) {
-			cursor.setTime(cursor.getTime() + MS_PER_DAY);
-			calendarDaysSpanned += 1;
-			continue;
+		const capacity = pagesOnDay(year, month, day);
+		calendarDays += 1;
+		if (isWeekend(year, month, day)) {
+			weekendDays += 1;
 		}
 
-		remaining -= dayCapacity;
-		calendarDaysSpanned += 1;
-
-		if (remaining > 0) {
-			cursor.setTime(cursor.getTime() + MS_PER_DAY);
+		if (remaining <= capacity) {
+			return {
+				calendarDays,
+				elapsedDays: calendarDays - 1 + remaining / capacity,
+				endDay: { year, month, day },
+				weekendDays,
+			};
 		}
-	}
 
-	return { endDate: cursor, calendarDaysSpanned };
+		remaining -= capacity;
+		({ year, month, day } = addCalendarDays(year, month, day, 1));
+	}
 }
 
-export function calculateReadingDeadline(
-	input: ReadingPlanInput,
-): ReadingPlanResult {
-	const {
-		pageCount,
-		weekdayMinutes = DEFAULT_WEEKDAY_MINUTES,
-		weekendMinutes = DEFAULT_WEEKEND_MINUTES,
-		wordsPerPage = DEFAULT_WORDS_PER_PAGE,
-		wpm = DEFAULT_WPM,
-		bufferMultiplier = 1.25,
-		startDate,
-	} = input;
-
-	assertPositive(pageCount, "Page count");
-	assertPositive(wpm, "WPM");
-	assertPositive(wordsPerPage, "Words per page");
-	assertPositive(bufferMultiplier, "Buffer multiplier");
-	assertNonNegative(weekdayMinutes, "Weekday minutes");
-	assertNonNegative(weekendMinutes, "Weekend minutes");
-
-	const weeklyCapacityMinutes = 5 * weekdayMinutes + 2 * weekendMinutes;
-	if (weeklyCapacityMinutes <= 0) {
-		throw new Error("Weekly reading capacity must be greater than 0 minutes.");
-	}
-
-	const totalWords = pageCount * wordsPerPage;
-	const totalReadingMinutes = totalWords / wpm;
-	const bufferedReadingMinutes = totalReadingMinutes * bufferMultiplier;
-	const rawDaysRequired = (totalReadingMinutes / weeklyCapacityMinutes) * 7;
-
-	const result: ReadingPlanResult = {
-		totalReadingMinutes: Math.round(totalReadingMinutes),
-		bufferedReadingMinutes: Math.round(bufferedReadingMinutes),
-		weeklyCapacityMinutes,
-		rawDaysRequired: Number(rawDaysRequired.toFixed(1)),
-		targetDays: Math.max(1, Math.round(rawDaysRequired)),
-		bufferedTargetDays: Math.max(
-			1,
-			Math.round(rawDaysRequired * bufferMultiplier),
-		),
-	};
-
-	if (startDate) {
-		const { endDate, calendarDaysSpanned } = calculateEndDateFromCalendar(
-			startDate,
-			totalReadingMinutes,
-			weekdayMinutes,
-			weekendMinutes,
-		);
-		result.endDate = endDate;
-		result.calendarDaysSpanned = calendarDaysSpanned;
-	}
-
-	return result;
-}
-
-/** Club reading deadline from page count (Mon–Fri / weekend reading minutes). */
+/** Club reading deadline (the day, at midday club time) from page count. */
 export function calculateSittingReadingDeadline(
 	pageCount: number,
-	startDate = new Date(),
+	startDate: Date = new Date(),
+	timeZone: string = resolveClubTimeZone(),
 ): Date {
-	const plan = calculateReadingDeadline({
-		pageCount,
-		startDate: startOfLocalDay(startDate),
-	});
+	const { endDay } = planReading(pageCount, startDate, timeZone);
+	return zonedTimeToUtc(endDay.year, endDay.month, endDay.day, 12, 0, timeZone);
+}
 
-	if (!plan.endDate) {
-		throw new Error("Could not calculate sitting reading deadline");
-	}
+/** "~12 days 8 hours reading time"; the "~" marks it as an estimate. */
+export function formatReadingEstimate(elapsedDays: number): string {
+	const totalHours = Math.max(1, Math.round(elapsedDays * 24));
+	const days = Math.floor(totalHours / 24);
+	const hours = totalHours % 24;
+	const parts = [
+		days > 0 ? `${days} ${days === 1 ? "day" : "days"}` : null,
+		hours > 0 ? `${hours} ${hours === 1 ? "hour" : "hours"}` : null,
+	].filter((part): part is string => part != null);
 
-	return plan.endDate;
+	return `~${parts.join(" ")} reading time`;
 }
 
 /** @deprecated Use {@link defaultPollDeadline} from `./scheduled-deadlines.js`. */

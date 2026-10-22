@@ -8,6 +8,7 @@ import { useMutation } from "@tanstack/react-query";
 import {
 	BookOpen,
 	CalendarDays,
+	Clock,
 	Lock,
 	RefreshCw,
 	Shuffle,
@@ -25,6 +26,7 @@ import {
 	toPreviewSittingPollOptionsInput,
 } from "@/lib/create-sitting-form";
 import { formatDateTime } from "@/lib/format-datetime";
+import { readingEstimateLabel } from "@/lib/reading-estimate";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -266,6 +268,22 @@ export function CreateSittingPollReview({
 											</span>
 										) : null}
 									</p>
+
+									{readingEstimateLabel(
+										option.book.pages,
+										formValues.pollDeadline,
+									) ? (
+										<p
+											className="inline-flex items-center gap-1 text-muted-foreground text-xs"
+											title="If reading starts when voting ends. Weekends, the page count and the start date can change it."
+										>
+											<Clock className="size-3.5 shrink-0" aria-hidden />
+											{readingEstimateLabel(
+												option.book.pages,
+												formValues.pollDeadline,
+											)}
+										</p>
+									) : null}
 
 									<div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
 										{participantCount > 0 ? (
