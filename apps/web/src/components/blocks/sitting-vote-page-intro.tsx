@@ -1,14 +1,15 @@
 "use client";
 
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
-import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
-import { type ReactNode, useState } from "react";
+import { CheckCircle2, Circle, Trophy } from "lucide-react";
+import { useState } from "react";
 import { PollConfigurationDialog } from "@/components/blocks/poll-configuration-dialog";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { authClient } from "@/lib/auth-client";
 import { formatDateTime } from "@/lib/format-datetime";
+import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
 type SittingPoll = NonNullable<GetSittingBySlugOutput["poll"]>;
@@ -18,26 +19,30 @@ type SittingVotePageIntroProps = {
 	sittingStatus: GetSittingBySlugOutput["status"];
 	initialPoll: SittingPoll;
 	participantCount: number;
+	selectedBookSlug: string | null;
 };
 
-function IntroStat({
+function ChipTag({
 	label,
-	value,
-	className,
+	points,
+	tone,
 }: {
 	label: string;
-	value: ReactNode;
-	className?: string;
+	points: number;
+	tone: "gold" | "silver";
 }) {
 	return (
-		<div
-			className={`border border-border bg-muted/15 px-3 py-2.5 ${className ?? ""}`}
+		<span
+			className={cn(
+				"inline-flex items-center gap-1.5 border px-2 py-1 text-xs",
+				tone === "gold"
+					? "border-amber-600/60 bg-amber-100 text-amber-950 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-50"
+					: "border-slate-500/60 bg-slate-200 text-slate-900 dark:border-slate-400/50 dark:bg-slate-800 dark:text-slate-100",
+			)}
 		>
-			<dt className="text-muted-foreground text-xs">{label}</dt>
-			<dd className="mt-0.5 font-medium text-sm tabular-nums leading-snug">
-				{value}
-			</dd>
-		</div>
+			{label}
+			<span className="tabular-nums">· {points} pts</span>
+		</span>
 	);
 }
 
@@ -46,6 +51,7 @@ export function SittingVotePageIntro({
 	sittingStatus,
 	initialPoll,
 	participantCount,
+	selectedBookSlug,
 }: SittingVotePageIntroProps) {
 	const [configOpen, setConfigOpen] = useState(false);
 	const { data: session } = authClient.useSession();
@@ -56,106 +62,135 @@ export function SittingVotePageIntro({
 
 	const poll = sitting?.poll ?? initialPoll;
 	const status = sitting?.status ?? sittingStatus;
-	const participants = sitting?.participants.length ?? participantCount;
-
+	const participants = sitting?.participants ?? [];
+	const participantTotal = sitting?.participants.length ?? participantCount;
 	const maxChoices = poll.maxChoices ?? poll.take;
 	const isOpen = status === "voting";
 	const isAdmin = session?.user.isAdmin === true;
-	const showLiveTotals = !isOpen || isAdmin;
+	const isParticipant =
+		Boolean(session?.user) &&
+		participants.some((person) => person.userId === session?.user.id);
+	const hasVoted = poll.myVoteOptionIds.length > 0;
+	const grants = poll.myChipGrants;
+
+	const ballotLabel =
+		poll.minChoices === maxChoices
+			? `${maxChoices} ${maxChoices === 1 ? "book" : "books"}`
+			: `${poll.minChoices} to ${maxChoices} books`;
+
+	const winner =
+		selectedBookSlug != null
+			? poll.options.find((option) => option.book.slug === selectedBookSlug)
+			: undefined;
 	const totalPoints = poll.options.reduce(
 		(sum, option) => sum + option.pointTotal,
 		0,
 	);
-	const ballotLabel =
-		poll.minChoices === maxChoices
-			? `${maxChoices} book${maxChoices === 1 ? "" : "s"}`
-			: `${poll.minChoices}–${maxChoices} books`;
 
 	return (
 		<>
-			<header className="flex flex-col border border-border bg-card">
-				<div className="flex flex-col gap-5 p-4 sm:p-6">
-					<div className="flex flex-wrap items-start justify-between gap-4">
-						<div className="flex max-w-prose flex-col gap-2">
-							<h1 className="font-semibold text-2xl tracking-tight sm:text-3xl">
-								{isOpen ? "Choose the club read" : "Voting results"}
-							</h1>
-							<p className="text-muted-foreground text-sm leading-relaxed">
-								{isOpen
-									? "Rank wishlist books you want the club to read. Options favor titles fewer participants have finished."
-									: "Final totals from this poll. The club pick is marked on the winning book."}
-							</p>
-						</div>
-						<div className="flex flex-wrap items-center gap-2">
-							<Badge variant={isOpen ? "default" : "outline"}>
-								{isOpen ? "Voting open" : "Voting closed"}
-							</Badge>
-							<ResourceShareMenu
-								path={`/sittings/${sittingSlug}/vote`}
-								shareText={
-									isOpen
-										? `Vote on books for ${sittingSlug.replaceAll("_", " ")}`
-										: `Voting results · ${sittingSlug.replaceAll("_", " ")}`
-								}
-								label="Share poll"
-								shareInPost={{ kind: "sitting", slug: sittingSlug }}
-								size="md"
-							/>
-						</div>
+			<header className="flex flex-col gap-4 border border-border p-4 sm:p-5">
+				<div className="flex items-start justify-between gap-3">
+					<div className="flex min-w-0 flex-col gap-1">
+						<h1 className="font-semibold text-xl tracking-tight sm:text-2xl">
+							{isOpen ? "Pick the next club read" : "Voting results"}
+						</h1>
+						<p className="max-w-prose text-muted-foreground text-sm leading-relaxed">
+							{isOpen
+								? `Choose ${ballotLabel} from ${poll.options.length} books. Closes ${formatDateTime(poll.deadline)}.`
+								: `Voting closed ${formatDateTime(poll.deadline)}. ${poll.voterCount} ${poll.voterCount === 1 ? "ballot" : "ballots"} counted.`}
+						</p>
 					</div>
-
-					<dl className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-						<IntroStat
-							label={isOpen ? "Closes" : "Closed"}
-							value={formatDateTime(poll.deadline)}
+					<div className="flex shrink-0 divide-x divide-border border border-border">
+						<ResourceShareMenu
+							path={`/sittings/${sittingSlug}/vote`}
+							shareText={
+								isOpen
+									? `Vote on books for ${sittingSlug.replaceAll("_", " ")}`
+									: `Voting results · ${sittingSlug.replaceAll("_", " ")}`
+							}
+							label="Share poll"
+							shareInPost={{ kind: "sitting", slug: sittingSlug }}
+							size="md"
+							iconOnly
+							triggerClassName="size-8 px-0 text-foreground"
 						/>
-						<IntroStat label="Your ballot" value={ballotLabel} />
-						<IntroStat
-							label="Participants"
-							value={participants}
-							className="col-span-2 lg:col-span-1"
-						/>
-						{showLiveTotals ? (
-							<div className="col-span-2 border border-border bg-muted/15 lg:col-span-1">
-								<div className="grid h-full min-h-[3.25rem] grid-cols-2 divide-x divide-border">
-									<div className="px-3 py-2.5">
-										<p className="text-muted-foreground text-xs">
-											Ballots cast
-										</p>
-										<p className="mt-0.5 font-medium text-sm tabular-nums">
-											{poll.voterCount}
-										</p>
-									</div>
-									<div className="px-3 py-2.5">
-										<p className="text-muted-foreground text-xs">
-											Total points
-										</p>
-										<p className="mt-0.5 font-medium text-sm tabular-nums">
-											{totalPoints}
-										</p>
-									</div>
-								</div>
-							</div>
-						) : (
-							<IntroStat
-								label="Live totals"
-								value="Hidden until voting ends"
-								className="col-span-2 lg:col-span-1"
-							/>
-						)}
-					</dl>
+					</div>
 				</div>
 
-				<div className="flex flex-wrap items-center justify-end gap-2 border-border border-t bg-muted/10 px-4 py-3 sm:px-6">
+				{isOpen && isParticipant ? (
+					<div className="flex flex-col gap-3 border-border border-t pt-4">
+						<p className="flex items-center gap-2 text-sm">
+							{hasVoted ? (
+								<CheckCircle2 className="size-4 text-success" aria-hidden />
+							) : (
+								<Circle className="size-4 text-muted-foreground" aria-hidden />
+							)}
+							{hasVoted
+								? `Your ballot is saved (${poll.myVoteOptionIds.length} ${poll.myVoteOptionIds.length === 1 ? "book" : "books"}). You can change it until voting closes.`
+								: "You haven't voted yet."}
+						</p>
+						{grants.canUseGolden || grants.canUseSilver ? (
+							<div className="flex flex-wrap items-center gap-2">
+								<span className="text-muted-foreground text-xs">
+									Your chips
+								</span>
+								{grants.canUseGolden ? (
+									<ChipTag label="Golden" points={3} tone="gold" />
+								) : null}
+								{grants.canUseSilver ? (
+									<ChipTag label="Silver" points={2} tone="silver" />
+								) : null}
+								<span className="text-muted-foreground text-xs">
+									One of each, on any book you pick.
+								</span>
+							</div>
+						) : null}
+					</div>
+				) : null}
+
+				{isOpen && !isParticipant ? (
+					<p className="border-border border-t pt-4 text-muted-foreground text-sm">
+						{session?.user
+							? "Only readers in this sitting can vote."
+							: "Sign in as a participant to vote."}
+					</p>
+				) : null}
+
+				{!isOpen && winner ? (
+					<div className="flex items-start gap-3 border-border border-t pt-4">
+						<Trophy
+							className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400"
+							aria-hidden
+						/>
+						<div className="min-w-0">
+							<p className="font-medium text-sm">{winner.book.title}</p>
+							<p className="text-muted-foreground text-xs tabular-nums">
+								Club pick · {winner.pointTotal} pts from {winner.voteCount}{" "}
+								{winner.voteCount === 1 ? "voter" : "voters"} · {totalPoints}{" "}
+								points in total
+							</p>
+						</div>
+					</div>
+				) : null}
+
+				<div className="flex flex-wrap items-center justify-between gap-2 border-border border-t pt-3">
+					<p className="text-muted-foreground text-xs">
+						{isOpen && !isAdmin
+							? "Live totals stay hidden until voting ends."
+							: isAdmin && isOpen
+								? `${poll.voterCount} of ${participantTotal} readers have voted.`
+								: `${participantTotal} readers took part.`}
+					</p>
 					<Button
 						type="button"
-						variant="outline"
+						variant="ghost"
 						size="sm"
 						onClick={() => {
 							setConfigOpen(true);
 						}}
 					>
-						See configuration
+						Poll rules
 					</Button>
 				</div>
 			</header>

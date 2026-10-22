@@ -13,7 +13,7 @@ import {
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { BookCheck } from "lucide-react";
+import { BookCheck, BookOpen, CalendarDays, Star, Trophy } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -389,7 +389,7 @@ export function SittingPollSection({
 					layout === "page" && "gap-3 sm:grid sm:grid-cols-1",
 				)}
 			>
-				{sortedOptions.map((option) => {
+				{sortedOptions.map((option, index) => {
 					const coverSrc = bookCoverUrl(option.book.coverId);
 					const draftVote = voteDrafts.find(
 						(vote) => vote.optionId === option.id,
@@ -474,6 +474,11 @@ export function SittingPollSection({
 										aria-hidden
 									/>
 								) : null}
+								{showVoteBars && layout === "page" ? (
+									<span className="relative w-6 shrink-0 self-center text-center font-semibold text-lg text-muted-foreground tabular-nums">
+										{index + 1}
+									</span>
+								) : null}
 								{canEditSelection ? (
 									<div className="flex shrink-0 items-start pt-0.5">
 										<Checkbox
@@ -489,7 +494,7 @@ export function SittingPollSection({
 									href={href}
 									className={cn(
 										"relative aspect-2/3 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10",
-										layout === "page" ? "w-16 sm:w-20" : "w-14",
+										layout === "page" ? "w-20 sm:w-24" : "w-14",
 									)}
 									onClick={(event) => {
 										event.stopPropagation();
@@ -532,7 +537,10 @@ export function SittingPollSection({
 												</span>
 											) : null}
 											{isClubPick ? (
-												<Badge variant="secondary">Club pick</Badge>
+												<Badge variant="secondary" className="gap-1">
+													<Trophy className="size-3" aria-hidden />
+													Club pick
+												</Badge>
 											) : null}
 											{canEditSelection && checked ? (
 												<Badge
@@ -622,14 +630,25 @@ export function SittingPollSection({
 												</fieldset>
 											</div>
 										) : null}
-										<div className="flex flex-wrap items-center gap-2">
-											<BookStatusBadge status={option.book.status} />
-											<span className="text-muted-foreground text-xs tabular-nums">
-												{option.book.openLibraryRating != null
-													? `${option.book.openLibraryRating.toFixed(1)} OL`
-													: "— OL"}{" "}
-												· {option.book.pages} pp
+										<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs tabular-nums">
+											<span className="inline-flex items-center gap-1">
+												<BookOpen className="size-3.5" aria-hidden />
+												{option.book.pages} pages
 											</span>
+											<span className="inline-flex items-center gap-1">
+												<CalendarDays className="size-3.5" aria-hidden />
+												{option.book.publishedIn}
+											</span>
+											{option.book.openLibraryRating != null ? (
+												<span
+													className="inline-flex items-center gap-1"
+													title="Open Library rating"
+												>
+													<Star className="size-3.5" aria-hidden />
+													{option.book.openLibraryRating.toFixed(1)}
+												</span>
+											) : null}
+											<BookStatusBadge status={option.book.status} />
 										</div>
 										<div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs tabular-nums">
 											{canOpenReadersList ? (
@@ -649,21 +668,29 @@ export function SittingPollSection({
 													{readLabel}
 												</span>
 											) : null}
-											{isAdmin && showVoteBars ? (
+											{showVoteBars &&
+											(isAdmin || sittingStatus !== "voting") ? (
 												<span className="text-muted-foreground">
-													{optionPoints > 0 ? (
-														<button
-															type="button"
-															className="text-foreground underline-offset-2 hover:underline"
-															onClick={(event) => {
-																event.stopPropagation();
-																setAdminVotersOptionCount(option.voteCount);
-																setAdminVotersOptionId(option.id);
-															}}
-														>
-															{optionPoints} pts · {option.voteCount}{" "}
-															{option.voteCount === 1 ? "voter" : "voters"}
-														</button>
+													{option.pointTotal > 0 ? (
+														isAdmin ? (
+															<button
+																type="button"
+																className="text-foreground underline-offset-2 hover:underline"
+																onClick={(event) => {
+																	event.stopPropagation();
+																	setAdminVotersOptionCount(option.voteCount);
+																	setAdminVotersOptionId(option.id);
+																}}
+															>
+																{option.pointTotal} pts · {option.voteCount}{" "}
+																{option.voteCount === 1 ? "voter" : "voters"}
+															</button>
+														) : (
+															<span className="text-foreground">
+																{option.pointTotal} pts · {option.voteCount}{" "}
+																{option.voteCount === 1 ? "voter" : "voters"}
+															</span>
+														)
 													) : (
 														<span>0 pts</span>
 													)}
@@ -683,7 +710,7 @@ export function SittingPollSection({
 					className={cn(
 						"flex flex-wrap gap-2",
 						layout === "page" &&
-							"sticky bottom-4 border border-border bg-background/95 p-3 shadow-sm backdrop-blur-sm supports-backdrop-filter:bg-background/80",
+							"sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-10 border border-border bg-background/95 p-3 shadow-sm backdrop-blur-sm supports-backdrop-filter:bg-background/80 md:bottom-4",
 					)}
 				>
 					<p className="w-full text-muted-foreground text-xs sm:w-auto sm:flex-1">

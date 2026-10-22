@@ -78,6 +78,7 @@ export default async function SittingVotePage({
 				sittingStatus={sitting.status}
 				initialPoll={sitting.poll}
 				participantCount={participantUserIds.length}
+				selectedBookSlug={sitting.selectedBook?.slug ?? null}
 			/>
 			<SittingPollSection
 				sittingSlug={sitting.slug}
