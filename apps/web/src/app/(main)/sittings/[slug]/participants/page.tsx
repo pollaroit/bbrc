@@ -2,8 +2,8 @@ import { getSittingBySlug } from "@bbrc/api/modules/sitting/sitting.service";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { SittingParticipantsPageContent } from "@/components/blocks/sitting-participants-page-content";
-import { SittingParticipantsPageIntro } from "@/components/blocks/sitting-participants-page-intro";
+import { SittingParticipantsView } from "@/components/blocks/sitting-participants-view";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { loadSittingBySlugForIsr } from "@/lib/isr-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { auth, db } from "@/services";
@@ -49,23 +49,13 @@ export default async function SittingParticipantsPage({
 		notFound();
 	}
 
-	const isParticipant = sitting.participants.some(
-		(participant) => participant.userId === session.user.id,
-	);
-	const isAdmin = session.user.isAdmin;
-
-	if (!isParticipant && !isAdmin) {
-		redirect(`/sittings/${sitting.slug}` as Route);
-	}
-
 	return (
-		<div className="flex flex-col gap-6">
-			<SittingParticipantsPageIntro sitting={sitting} />
-			<SittingParticipantsPageContent
+		<ListingSearchParamsBoundary>
+			<SittingParticipantsView
 				sitting={sitting}
-				isAdmin={isAdmin}
+				isAdmin={session.user.isAdmin === true}
 				viewerUserId={session.user.id}
 			/>
-		</div>
+		</ListingSearchParamsBoundary>
 	);
 }
