@@ -383,6 +383,26 @@ export const PreviewSittingPollOptionsInputSchema = zod
 		refinePollConfig(value.poll, ctx, ["poll"]);
 	});
 
+export const GetSittingPollPoolSizeInputSchema = zod
+	.object({
+		poll: CreateSittingPollInputSchema.default({}),
+	})
+	.superRefine((value, ctx) => {
+		refinePollConfig(value.poll, ctx, ["poll"]);
+	});
+
+export const GetSittingPollPoolSizeOutputSchema = zod.object({
+	eligiblePoolSize: zod.number().int().min(0),
+	take: zod.number().int().min(1),
+});
+
+export type GetSittingPollPoolSizeInput = z.infer<
+	typeof GetSittingPollPoolSizeInputSchema
+>;
+export type GetSittingPollPoolSizeOutput = z.infer<
+	typeof GetSittingPollPoolSizeOutputSchema
+>;
+
 export const PreviewSittingPollOptionsOutputSchema = zod.object({
 	options: zod.array(SittingPollPreviewOptionSchema),
 	eligiblePoolSize: zod.number().int().min(0),

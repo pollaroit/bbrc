@@ -24,6 +24,8 @@ import {
 	GetSittingBySlugOutputSchema,
 	GetSittingListInputSchema,
 	GetSittingListOutputSchema,
+	GetSittingPollPoolSizeInputSchema,
+	GetSittingPollPoolSizeOutputSchema,
 	GetSittingPollPreviewReadersInputSchema,
 	PreviewSittingPollOptionsInputSchema,
 	PreviewSittingPollOptionsOutputSchema,
@@ -58,6 +60,7 @@ import {
 	getPollVotesByUser,
 	getSittingBySlug,
 	getSittingList,
+	getSittingPollPoolSize,
 	getSittingPollPreviewReaders,
 	previewSittingPollOptions,
 	removeSittingParticipant,
@@ -99,6 +102,13 @@ export const sittingRouter = {
 		.handler(
 			async ({ context }) =>
 				await getOngoingSitting(context.db, context.session?.user.id),
+		),
+	getSittingPollPoolSize: adminProcedure
+		.input(GetSittingPollPoolSizeInputSchema)
+		.output(GetSittingPollPoolSizeOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await getSittingPollPoolSize(input, context.db),
 		),
 	previewSittingPollOptions: adminProcedure
 		.input(PreviewSittingPollOptionsInputSchema)

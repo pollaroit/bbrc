@@ -76,6 +76,8 @@ import {
 	type GetSittingBySlugOutput,
 	type GetSittingListInput,
 	type GetSittingListOutput,
+	type GetSittingPollPoolSizeInput,
+	type GetSittingPollPoolSizeOutput,
 	type GetSittingPollPreviewReadersInput,
 	getSittingBySlugFields,
 	getSittingListFields,
@@ -108,10 +110,12 @@ import { insertPollChipGrantsForParticipants } from "./sitting-poll-chip-grants"
 import {
 	assertParticipantsExist,
 	assertValidPollOptionBookIds,
+	countEligiblePollBooks,
 	drawInitialPollBookIds,
 	drawReplacementPollBookId,
 	loadPollDrawContext,
 	loadPollPreviewBooks,
+	resolvePollTake,
 	shuffleUnlockedPollPreviewBookIds,
 } from "./sitting-poll-pool";
 import { createPollInputToStoredFilters } from "./sitting-poll-stored-filters";
@@ -1065,6 +1069,16 @@ async function markPollWinnerBookAsReading(
 		where: { id: bookId },
 		data: { status: "reading" },
 	});
+}
+
+export async function getSittingPollPoolSize(
+	input: GetSittingPollPoolSizeInput,
+	db: Database,
+): Promise<GetSittingPollPoolSizeOutput> {
+	return {
+		eligiblePoolSize: await countEligiblePollBooks(input.poll, db),
+		take: resolvePollTake(input.poll),
+	};
 }
 
 export async function previewSittingPollOptions(

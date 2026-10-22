@@ -21,14 +21,15 @@ export default async function NewSittingPage() {
 	}
 
 	return (
-		<div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-			<header className="flex max-w-3xl flex-col gap-2">
-				<h1 className="font-bold text-2xl tracking-tight sm:text-3xl">
+		<div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+			<header className="flex max-w-2xl flex-col gap-1.5">
+				<h1 className="font-semibold text-2xl tracking-tight sm:text-3xl">
 					Start a sitting
 				</h1>
 				<p className="text-muted-foreground text-sm leading-relaxed">
-					Set who joins this round, narrow the wishlist pool, then review the
-					random poll draw before voting opens. Only one sitting runs at a time.
+					Choose who is reading and when voting closes, narrow the pool of
+					wishlist books, then check the random draw before the poll opens. Only
+					one sitting runs at a time.
 				</p>
 			</header>
 			<CreateSittingForm />

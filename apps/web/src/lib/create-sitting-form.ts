@@ -91,6 +91,27 @@ function pollFromFormValues(values: CreateSittingFormValues) {
 	};
 }
 
+/**
+ * Poll config for live previews (e.g. the pool-size count). Returns null while
+ * the form holds values that cannot be sent yet.
+ */
+export function livePollInputFromForm(
+	rawPoll: unknown,
+): ReturnType<typeof pollFromFormValues> | null {
+	const parsed = CreateSittingFormSchema.shape.poll.safeParse(rawPoll);
+	if (!parsed.success) {
+		return null;
+	}
+
+	const poll = pollFromFormValues({
+		pollDeadline: new Date(),
+		participantUserIds: [],
+		poll: parsed.data,
+	});
+
+	return poll.minChoices > poll.maxChoices ? null : poll;
+}
+
 export type WishlistPollFilterSlice = Pick<
 	CreateSittingFormValues["poll"],
 	| "minPages"
