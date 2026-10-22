@@ -130,6 +130,7 @@ export function QuizPlayer({
 	const [step, setStep] = useState(0);
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const startedRef = useRef(false);
+	const mountedRef = useRef(false);
 	const submittedRef = useRef(false);
 
 	const startMutation = useMutation(orpc.quiz.start.mutationOptions());
@@ -152,13 +153,12 @@ export function QuizPlayer({
 			return;
 		}
 		startedRef.current = true;
-		let cancelled = false;
 		let timer: number | undefined;
 
 		const attempt = async () => {
 			try {
 				const result = await startMutation.mutateAsync({ slug: book.slug });
-				if (cancelled) {
+				if (!mountedRef.current) {
 					return;
 				}
 				if (result.status === "generating") {
@@ -194,7 +194,7 @@ export function QuizPlayer({
 					resetsAt: result.resetsAt,
 				});
 			} catch (error) {
-				if (!cancelled) {
+				if (mountedRef.current) {
 					setPhase({
 						kind: "error",
 						message:
@@ -207,11 +207,14 @@ export function QuizPlayer({
 		};
 
 		void attempt();
+	}, []);
+
+	// Strict Mode mounts, unmounts and remounts in dev: track the live mount
+	// instead of cancelling the first request, whose reply we still need.
+	useEffect(() => {
+		mountedRef.current = true;
 		return () => {
-			cancelled = true;
-			if (timer) {
-				window.clearTimeout(timer);
-			}
+			mountedRef.current = false;
 		};
 	}, []);
 
