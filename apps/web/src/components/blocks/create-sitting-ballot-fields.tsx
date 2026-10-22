@@ -18,6 +18,18 @@ export function CreateSittingBallotFields({
 		name: ["poll.take", "poll.minChoices", "poll.maxChoices"],
 	});
 
+	const limit = take ?? 12;
+
+	function changeTake(next: number) {
+		form.setValue("poll.take", next, { shouldValidate: true });
+		if ((maxChoices ?? 0) > next) {
+			form.setValue("poll.maxChoices", next, { shouldValidate: true });
+		}
+		if ((minChoices ?? 0) > next) {
+			form.setValue("poll.minChoices", next, { shouldValidate: true });
+		}
+	}
+
 	const range =
 		minChoices === maxChoices
 			? `${maxChoices} ${maxChoices === 1 ? "book" : "books"}`
@@ -35,7 +47,7 @@ export function CreateSittingBallotFields({
 							value={field.value}
 							min={3}
 							max={12}
-							onChange={field.onChange}
+							onChange={changeTake}
 						/>
 						<FieldDescription>Between 3 and 12.</FieldDescription>
 					</>
@@ -53,7 +65,7 @@ export function CreateSittingBallotFields({
 								id={field.name}
 								value={field.value}
 								min={1}
-								max={12}
+								max={limit}
 								onChange={field.onChange}
 							/>
 						)}
@@ -66,7 +78,7 @@ export function CreateSittingBallotFields({
 								id={field.name}
 								value={field.value}
 								min={1}
-								max={12}
+								max={limit}
 								onChange={field.onChange}
 							/>
 						)}

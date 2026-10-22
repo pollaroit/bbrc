@@ -12,6 +12,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { CreateSittingBallotFields } from "@/components/blocks/create-sitting-ballot-fields";
 import { CreateSittingDeadlineField } from "@/components/blocks/create-sitting-deadline-field";
@@ -105,7 +106,8 @@ export function CreateSittingForm() {
 		}
 	}, [defaultParticipantIds, form]);
 
-	const selectedIds = form.watch("participantUserIds");
+	const selectedIds =
+		useWatch({ control: form.control, name: "participantUserIds" }) ?? [];
 
 	const previewMutation = useMutation(
 		orpc.sitting.previewSittingPollOptions.mutationOptions({
@@ -134,8 +136,11 @@ export function CreateSittingForm() {
 		}),
 	);
 
-	const pollValues = form.watch("poll");
-	const pollDeadline = form.watch("pollDeadline");
+	const pollValues = useWatch({ control: form.control, name: "poll" });
+	const pollDeadline = useWatch({
+		control: form.control,
+		name: "pollDeadline",
+	});
 	const livePoll = useMemo(
 		() => livePollInputFromForm(pollValues),
 		[pollValues],
@@ -213,11 +218,11 @@ export function CreateSittingForm() {
 						<CreateSittingParticipantsPicker
 							users={users}
 							selectedIds={selectedIds}
-							onChange={(ids) =>
+							onChange={(ids) => {
 								form.setValue("participantUserIds", ids, {
 									shouldValidate: true,
-								})
-							}
+								});
+							}}
 							isLoading={isLoadingUsers}
 							isError={isError}
 							onRetry={() => {
