@@ -29,6 +29,7 @@ import {
 	GetSittingPollPreviewReadersInputSchema,
 	PreviewSittingPollOptionsInputSchema,
 	PreviewSittingPollOptionsOutputSchema,
+	RemoveSittingParticipantInputSchema,
 	ReplaceSittingPollPreviewOptionInputSchema,
 	ReplaceSittingPollPreviewOptionOutputSchema,
 	ResendSittingTelegramPollOpenInputSchema,
@@ -224,7 +225,7 @@ export const sittingRouter = {
 			return result;
 		}),
 	removeSittingParticipant: adminProcedure
-		.input(SittingParticipantMutationInputSchema)
+		.input(RemoveSittingParticipantInputSchema)
 		.output(SittingParticipantMutationOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await removeSittingParticipant(input, context.db);

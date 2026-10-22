@@ -8,7 +8,7 @@ import { useState } from "react";
 import { PollConfigurationDialog } from "@/components/blocks/poll-configuration-dialog";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { authClient } from "@/lib/auth-client";
-import { formatDateTime } from "@/lib/format-datetime";
+import { formatClubDateTime } from "@/lib/club-timezone";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -97,8 +97,8 @@ export function SittingVotePageIntro({
 						</h1>
 						<p className="max-w-prose text-muted-foreground text-sm leading-relaxed">
 							{isOpen
-								? `Choose ${ballotLabel} from ${poll.options.length} books. Closes ${formatDateTime(poll.deadline)}.`
-								: `Voting closed ${formatDateTime(poll.deadline)}. ${poll.voterCount} ${poll.voterCount === 1 ? "ballot" : "ballots"} counted.`}
+								? `Choose ${ballotLabel} from ${poll.options.length} books. Closes ${formatClubDateTime(poll.deadline)}.`
+								: `Voting closed ${formatClubDateTime(poll.deadline)}. ${poll.voterCount} ${poll.voterCount === 1 ? "ballot" : "ballots"} counted.`}
 						</p>
 					</div>
 					<div className="flex shrink-0 divide-x divide-border border border-border">
@@ -176,11 +176,9 @@ export function SittingVotePageIntro({
 
 				<div className="flex flex-wrap items-center justify-between gap-2 border-border border-t pt-3">
 					<p className="text-muted-foreground text-xs">
-						{isOpen && !isAdmin
-							? "Live totals stay hidden until voting ends."
-							: isAdmin && isOpen
-								? `${poll.voterCount} of ${participantTotal} readers have voted.`
-								: `${participantTotal} readers took part.`}
+						{isOpen
+							? `${poll.voterCount} of ${participantTotal} readers have voted.${isAdmin ? "" : " Totals stay hidden until voting ends."}`
+							: `${participantTotal} readers took part.`}
 					</p>
 					<Button
 						type="button"

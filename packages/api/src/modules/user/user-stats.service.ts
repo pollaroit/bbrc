@@ -249,6 +249,7 @@ export async function getUserStats(
 		db.participation.count({
 			where: {
 				userId,
+				OR: [{ removedAt: null }, { progress: "dnf" }],
 				...(activityRange ? { createdAt: activityRange } : {}),
 			},
 		}),

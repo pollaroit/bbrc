@@ -290,6 +290,8 @@ export async function getUserParticipationList(
 
 	const where = mergeWhereFragments<Prisma.ParticipationWhereInput>(
 		{ userId: profileUser.id },
+		// Removed members only stay on their history when they were marked DNF.
+		{ OR: [{ removedAt: null }, { progress: "dnf" }] },
 		ranging.use(),
 		searching.use(),
 		participantCountWhere,

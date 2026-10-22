@@ -874,6 +874,16 @@ export const SittingParticipantMutationInputSchema = zod.object({
 	userId: UserSchema.shape.id,
 });
 
+export const RemoveSittingParticipantInputSchema =
+	SittingParticipantMutationInputSchema.extend({
+		/** `dnf` keeps the member on record as DNF; `remove` erases their participation. */
+		mode: zod.enum(["dnf", "remove"]),
+	});
+
+export type RemoveSittingParticipantInput = z.infer<
+	typeof RemoveSittingParticipantInputSchema
+>;
+
 export const SittingParticipantMutationOutputSchema = zod.object({
 	ok: zod.literal(true),
 });

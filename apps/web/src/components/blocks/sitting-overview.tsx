@@ -20,7 +20,7 @@ import {
 	VotingProgress,
 } from "@/components/blocks/sitting-card-parts";
 import { bookCoverUrl } from "@/lib/book-cover";
-import { formatDateTime } from "@/lib/format-datetime";
+import { formatClubDateTime } from "@/lib/club-timezone";
 import { cn } from "@/lib/utils";
 
 type Sitting = GetSittingBySlugOutput;
@@ -257,7 +257,7 @@ function VotingSection({ sitting }: { sitting: Sitting }) {
 					</ul>
 					<p className="text-muted-foreground text-sm">
 						{poll.options.length} books to choose from. Voting closes{" "}
-						{formatDateTime(poll.deadline)}.
+						{formatClubDateTime(poll.deadline)}.
 					</p>
 				</div>
 			</Section>
