@@ -11,6 +11,7 @@ import { BookDeleteButton } from "@/components/blocks/book-delete-button";
 import { BookEditLink } from "@/components/blocks/book-edit-link";
 import { BookHeaderActions } from "@/components/blocks/book-header-actions";
 import { BookMarkReadButton } from "@/components/blocks/book-mark-read-button";
+import { BookQuizButton } from "@/components/blocks/book-quiz-button";
 import { BookReadAfterLinks } from "@/components/blocks/book-read-after-links";
 import { BookRequestedByLine } from "@/components/blocks/book-requested-by";
 import { BookStatusBanner } from "@/components/blocks/book-status-badge";
@@ -101,6 +102,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 						)}
 					</div>
 					<BookMarkReadButton bookSlug={book.slug} bookTitle={book.title} />
+					<BookQuizButton bookSlug={book.slug} />
 				</div>
 
 				<div className="flex min-w-0 flex-1 flex-col gap-5">
