@@ -6,12 +6,8 @@ import {
 	clampSittingDeadlineToClubEnd,
 } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
-import {
-	InputGroup,
-	InputGroupAddon,
-	InputGroupButton,
-	InputGroupInput,
-} from "@bbrc/ui/components/input-group";
+import { Input } from "@bbrc/ui/components/input";
+import { Label } from "@bbrc/ui/components/label";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import {
 	Sheet,
@@ -48,6 +44,7 @@ export function SittingDeadlinesRow({ sitting }: SittingAdminDeadlinesProps) {
 	const [pageCountInput, setPageCountInput] = useState("");
 	const [calculatedDeadlineInPast, setCalculatedDeadlineInPast] =
 		useState(false);
+	const [suggestion, setSuggestion] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (!open) {
@@ -67,6 +64,7 @@ export function SittingDeadlinesRow({ sitting }: SittingAdminDeadlinesProps) {
 			sitting.selectedBook != null ? String(sitting.selectedBook.pages) : "",
 		);
 		setCalculatedDeadlineInPast(false);
+		setSuggestion(null);
 	}, [open, sitting.deadline, sitting.poll, sitting.selectedBook]);
 
 	const mutation = useMutation(
@@ -121,7 +119,7 @@ export function SittingDeadlinesRow({ sitting }: SittingAdminDeadlinesProps) {
 		setCalculatedDeadlineInPast(
 			sitting.status === "reading" && clamped.getTime() < Date.now(),
 		);
-		toast.success("Reading deadline updated in this form — save to persist.");
+		setSuggestion(formatDateTime(clamped));
 	}
 
 	function handleSaveBookPages() {
@@ -144,6 +142,11 @@ export function SittingDeadlinesRow({ sitting }: SittingAdminDeadlinesProps) {
 		return null;
 	}
 
+	const typedPages = parsePageCount();
+	const pagesDifferFromBook =
+		sitting.selectedBook != null &&
+		typedPages != null &&
+		typedPages !== sitting.selectedBook.pages;
 	const showPoll = sitting.status === "voting" && sitting.poll;
 
 	return (
@@ -211,58 +214,69 @@ export function SittingDeadlinesRow({ sitting }: SittingAdminDeadlinesProps) {
 							/>
 						</section>
 
-						<section className="flex flex-col gap-3 border border-border p-3">
-							<div>
-								<p className="font-medium text-sm">Club pace</p>
-								<p className="text-muted-foreground text-xs leading-relaxed">
-									Work out the reading deadline from the book's pages. "Use club
-									pace" only fills the form above; "Save pages" updates the book
-									for future sittings.
-								</p>
+						<section className="flex flex-col gap-2.5 border border-border p-3">
+							<p className="font-medium text-sm">Club pace</p>
+							<div className="flex items-end gap-2">
+								<div className="flex min-w-0 flex-1 flex-col gap-1">
+									<Label
+										htmlFor="deadline-page-count"
+										className="text-muted-foreground text-xs"
+									>
+										Book pages
+									</Label>
+									<Input
+										id="deadline-page-count"
+										type="number"
+										min={1}
+										inputMode="numeric"
+										placeholder="e.g. 320"
+										value={pageCountInput}
+										onChange={(event) => {
+											setPageCountInput(event.target.value);
+											setCalculatedDeadlineInPast(false);
+											setSuggestion(null);
+										}}
+									/>
+								</div>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={handleCalculateReadingDeadline}
+								>
+									Suggest
+								</Button>
 							</div>
-							<InputGroup className="h-auto min-h-8">
-								<InputGroupInput
-									type="number"
-									min={1}
-									inputMode="numeric"
-									placeholder="Pages"
-									value={pageCountInput}
-									onChange={(event) => {
-										setPageCountInput(event.target.value);
-										setCalculatedDeadlineInPast(false);
-									}}
-									aria-label="Page count for reading schedule"
-								/>
-								<InputGroupAddon align="inline-end" className="gap-1 pr-1">
-									<InputGroupButton
-										type="button"
-										variant="outline"
-										onClick={handleCalculateReadingDeadline}
-									>
-										Use club pace
-									</InputGroupButton>
-									<InputGroupButton
-										type="button"
-										variant="outline"
-										disabled={
-											savePagesMutation.isPending ||
-											sitting.selectedBook == null
-										}
-										onClick={handleSaveBookPages}
-									>
-										Save pages
-									</InputGroupButton>
-								</InputGroupAddon>
-							</InputGroup>
-							{sitting.selectedBook == null ? (
-								<p className="text-muted-foreground text-xs">
-									Saving pages is available once a book is chosen.
+
+							{suggestion ? (
+								<p
+									className={
+										calculatedDeadlineInPast
+											? "text-amber-600 text-xs dark:text-amber-500"
+											: "text-muted-foreground text-xs"
+									}
+								>
+									At club pace, reading ends {suggestion}.{" "}
+									{calculatedDeadlineInPast
+										? "That's already past — adjust it above."
+										: "Applied above; save to keep it."}
 								</p>
 							) : null}
-							{calculatedDeadlineInPast ? (
-								<p className="text-amber-600 text-xs dark:text-amber-500">
-									That deadline is already in the past. Adjust it before saving.
-								</p>
+
+							{pagesDifferFromBook ? (
+								<div className="flex items-center justify-between gap-2 border-border border-t pt-2.5">
+									<p className="text-muted-foreground text-xs">
+										The book is listed with {sitting.selectedBook?.pages} pages.
+									</p>
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										disabled={savePagesMutation.isPending}
+										onClick={handleSaveBookPages}
+									>
+										Update book
+									</Button>
+								</div>
 							) : null}
 						</section>
 					</div>

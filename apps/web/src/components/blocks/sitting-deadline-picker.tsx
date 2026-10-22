@@ -1,7 +1,6 @@
 "use client";
 
 import {
-	CLUB_DEADLINE_HOUR,
 	clampSittingDeadlineToClubEnd,
 	getZonedParts,
 	isPollDeadlineClubHour,
@@ -73,6 +72,10 @@ function defaultPollHourForDay(
 	return POLL_DEADLINE_HOURS[0];
 }
 
+function formatClubHour(hour: number): string {
+	return `${hour % 12 === 0 ? 12 : hour % 12}${hour < 12 ? "AM" : "PM"}`;
+}
+
 export function SittingDeadlinePicker({
 	id,
 	label = "Deadline",
@@ -83,16 +86,14 @@ export function SittingDeadlinePicker({
 	mode = "poll",
 }: SittingDeadlinePickerProps) {
 	const normalizedValue = useMemo(() => {
-		if (mode === "reading") {
-			return clampSittingDeadlineToClubEnd(value, clubTimeZone);
-		}
-
 		const hour = getZonedParts(value, clubTimeZone).hour;
 		if (isPollDeadlineClubHour(hour)) {
 			return pollDeadlineAtClubLocal(value, hour, clubTimeZone);
 		}
 
-		return snapPollDeadlineOnOrAfter(value, clubTimeZone);
+		return mode === "reading"
+			? clampSittingDeadlineToClubEnd(value, clubTimeZone)
+			: snapPollDeadlineOnOrAfter(value, clubTimeZone);
 	}, [mode, value]);
 
 	const [open, setOpen] = useState(false);
@@ -114,12 +115,9 @@ export function SittingDeadlinePicker({
 	}, []);
 
 	const selectedPollHour = useMemo(() => {
-		if (mode !== "poll") {
-			return null;
-		}
 		const hour = getZonedParts(normalizedValue, clubTimeZone).hour;
 		return isPollDeadlineClubHour(hour) ? hour : POLL_DEADLINE_HOURS[0];
-	}, [mode, normalizedValue]);
+	}, [normalizedValue]);
 
 	function applyPollDayAndHour(
 		day: Date,
@@ -165,19 +163,6 @@ export function SittingDeadlinePicker({
 									return;
 								}
 
-								if (mode === "reading") {
-									const snapped = clampSittingDeadlineToClubEnd(
-										day,
-										clubTimeZone,
-									);
-									onChange(
-										snapped.getTime() < minSelectable.getTime()
-											? minSelectable
-											: snapped,
-									);
-									return;
-								}
-
 								const preferredHour = getZonedParts(
 									normalizedValue,
 									clubTimeZone,
@@ -191,14 +176,6 @@ export function SittingDeadlinePicker({
 								applyPollDayAndHour(day, hour);
 							}}
 							disabled={(day) => {
-								if (mode === "reading") {
-									const snapped = clampSittingDeadlineToClubEnd(
-										day,
-										clubTimeZone,
-									);
-									return snapped.getTime() < minSelectable.getTime();
-								}
-
 								return !dayHasSelectablePollSlot(
 									day,
 									minSelectable,
@@ -206,7 +183,7 @@ export function SittingDeadlinePicker({
 								);
 							}}
 						/>
-						{mode === "poll" && selectedPollHour !== null ? (
+						{selectedPollHour !== null ? (
 							<div className="flex flex-col gap-2">
 								<p className="font-medium text-muted-foreground text-xs">
 									Closing time ({clubTimeZone})
@@ -234,7 +211,7 @@ export function SittingDeadlinePicker({
 													applyPollDayAndHour(normalizedValue, hour);
 												}}
 											>
-												{String(hour).padStart(2, "0")}:00
+												{formatClubHour(hour)}
 											</Button>
 										);
 									})}
@@ -254,20 +231,10 @@ export function SittingDeadlinePicker({
 					</div>
 				</PopoverContent>
 			</Popover>
-			{mode === "poll" ? (
-				<FieldDescription>
-					Choose a date and one of{" "}
-					{POLL_DEADLINE_HOURS.map((h) => String(h).padStart(2, "0")).join(
-						":00, ",
-					)}
-					:00 club time ({clubTimeZone}).
-				</FieldDescription>
-			) : (
-				<FieldDescription>
-					Reading end is fixed at {String(CLUB_DEADLINE_HOUR).padStart(2, "0")}
-					:00 club time ({clubTimeZone}) on the day you pick.
-				</FieldDescription>
-			)}
+			<FieldDescription>
+				Pick a day, then a time:{" "}
+				{POLL_DEADLINE_HOURS.map(formatClubHour).join(", ")} ({clubTimeZone}).
+			</FieldDescription>
 			{errorMessage ? <FieldError>{errorMessage}</FieldError> : null}
 		</Field>
 	);

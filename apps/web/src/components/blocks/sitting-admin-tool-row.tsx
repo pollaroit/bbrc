@@ -36,7 +36,10 @@ export function SittingAdminToolRow({
 					</p>
 				</div>
 			</div>
-			<div className="flex shrink-0 flex-wrap gap-2">{children}</div>
+			{/* pl-7 lines the button up with the text, past the 1rem icon and its gap */}
+			<div className="flex shrink-0 flex-wrap gap-2 pl-7 sm:pl-0">
+				{children}
+			</div>
 		</li>
 	);
 }

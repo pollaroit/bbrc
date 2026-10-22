@@ -10,6 +10,13 @@ const compactDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
 	minute: "2-digit",
 });
 
+/** "2:00 PM" -> "2PM", "3:46 PM" -> "3:46PM". */
+function tidyTime(text: string): string {
+	return text
+		.replace(/:00[\s\u202f\u00a0]*(AM|PM)/gi, "$1")
+		.replace(/[\s\u202f\u00a0]+(AM|PM)/gi, "$1");
+}
+
 export function formatDateTimeCompact(value: Date | string): string {
 	const date = typeof value === "string" ? new Date(value) : value;
 
@@ -17,7 +24,7 @@ export function formatDateTimeCompact(value: Date | string): string {
 		return "—";
 	}
 
-	return compactDateTimeFormatter.format(date);
+	return tidyTime(compactDateTimeFormatter.format(date));
 }
 
 export function formatDateTime(value: Date | string): string {
@@ -27,7 +34,7 @@ export function formatDateTime(value: Date | string): string {
 		return "—";
 	}
 
-	return dateTimeFormatter.format(date);
+	return tidyTime(dateTimeFormatter.format(date));
 }
 
 export function formatDateTimeInTimeZone(
@@ -40,11 +47,13 @@ export function formatDateTimeInTimeZone(
 		return "—";
 	}
 
-	return new Intl.DateTimeFormat(undefined, {
-		dateStyle: "medium",
-		timeStyle: "short",
-		timeZone,
-	}).format(date);
+	return tidyTime(
+		new Intl.DateTimeFormat(undefined, {
+			dateStyle: "medium",
+			timeStyle: "short",
+			timeZone,
+		}).format(date),
+	);
 }
 
 /** Human-readable time until `target` from `now` (for cooldown copy). */

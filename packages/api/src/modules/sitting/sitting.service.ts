@@ -1608,7 +1608,8 @@ export async function updateSittingDeadlines(
 
 	if (input.sittingDeadline != null) {
 		const clubTimeZone = resolveClubTimeZone();
-		const newDeadline = clampSittingDeadlineToClubEnd(
+		// Any club deadline hour (14/17/20/23) is allowed; other times snap forward.
+		const newDeadline = snapPollDeadlineOnOrAfter(
 			input.sittingDeadline,
 			clubTimeZone,
 		);
