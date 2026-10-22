@@ -1969,12 +1969,6 @@ export async function addSittingParticipant(
 		});
 	}
 
-	if (user.status === "banned") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Banned members cannot join a sitting",
-		});
-	}
-
 	const existing = await db.participation.findUnique({
 		where: {
 			userId_sittingId: {
@@ -1988,6 +1982,12 @@ export async function addSittingParticipant(
 	if (existing && existing.removedAt == null) {
 		throw new ORPCError("CONFLICT", {
 			message: "Member is already on this sitting",
+		});
+	}
+	// Recovering a removed member is an admin call; only new joins are blocked.
+	if (!existing && user.status === "banned") {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Banned members cannot join a sitting",
 		});
 	}
 

@@ -10,7 +10,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@bbrc/ui/components/card";
-import { Checkbox } from "@bbrc/ui/components/checkbox";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import {
 	Tooltip,
@@ -66,18 +65,6 @@ function PollTotals({ option }: { option: SittingPoll["options"][number] }) {
 			</span>
 		</>
 	);
-}
-
-function votePointsLabel(points: 1 | 2 | 3): string {
-	if (points === 3) {
-		return "Golden · 3 pts";
-	}
-
-	if (points === 2) {
-		return "Silver · 2 pts";
-	}
-
-	return "Standard · 1 pt";
 }
 
 function votePointsRowTintClass(points: 1 | 2 | 3, active: boolean): string {
@@ -514,16 +501,6 @@ export function SittingPollSection({
 											{index + 1}
 										</span>
 									) : null}
-									{canEditSelection ? (
-										<div className="flex shrink-0 items-center">
-											<Checkbox
-												checked={checked}
-												className="pointer-events-none"
-												tabIndex={-1}
-												aria-hidden
-											/>
-										</div>
-									) : null}
 
 									<Link
 										href={href}
@@ -698,7 +675,8 @@ export function SittingPollSection({
 															variant="outline"
 															className={votePointsBadgeClass(shownVote)}
 														>
-															Your vote · {votePointsLabel(shownVote)}
+															Your vote · {shownVote}{" "}
+															{shownVote === 1 ? "pt" : "pts"}
 														</Badge>
 													) : null}
 												</span>
