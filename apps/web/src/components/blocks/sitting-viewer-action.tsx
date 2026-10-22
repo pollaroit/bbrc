@@ -1,12 +1,23 @@
 "use client";
 
 import type { GetMySittingStateOutput } from "@bbrc/api/modules/sitting/sitting.schema";
+import {
+	AlertDialog,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@bbrc/ui/components/alert-dialog";
 import { Button } from "@bbrc/ui/components/button";
+import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Vote } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
 import { SittingBookFeedbackPrompt } from "@/components/blocks/sitting-book-feedback-prompt";
 import { progressLabels } from "@/components/blocks/sitting-participation-progress";
@@ -40,6 +51,34 @@ const selectedClassName: Record<Progress, string> = {
 	dnf: "border-destructive bg-destructive/10",
 };
 
+const confirmCopy: Record<
+	Progress,
+	{ title: string; description: string; action: string }
+> = {
+	not_started: {
+		title: "Mark as not started?",
+		description: "You can't go back to this once you've started.",
+		action: "Mark not started",
+	},
+	in_progress: {
+		title: "Mark yourself as reading?",
+		description:
+			"The club will see that you've started the book. You can mark it finished whenever you're done.",
+		action: "I'm reading",
+	},
+	completed: {
+		title: "Mark the book as finished?",
+		description:
+			"This tells the club you finished the book and earns your reading points when the sitting ends. You can't undo it.",
+		action: "I finished it",
+	},
+	dnf: {
+		title: "Mark as did not finish?",
+		description: "This is applied automatically when a sitting ends.",
+		action: "Confirm",
+	},
+};
+
 function ProgressControl({
 	sittingSlug,
 	current,
@@ -48,10 +87,12 @@ function ProgressControl({
 	current: Progress;
 }) {
 	const router = useRouter();
+	const [pendingChoice, setPendingChoice] = useState<Progress | null>(null);
 
 	const mutation = useMutation(
 		orpc.sitting.updateMyParticipationProgress.mutationOptions({
 			onSuccess: async () => {
+				setPendingChoice(null);
 				toast.success("Progress updated");
 				await Promise.all([
 					queryClient.invalidateQueries({
@@ -87,7 +128,7 @@ function ProgressControl({
 							disabled={mutation.isPending || (!selected && !allowed)}
 							onClick={() => {
 								if (!selected) {
-									mutation.mutate({ slug: sittingSlug, progress: option });
+									setPendingChoice(option);
 								}
 							}}
 							className={cn(
@@ -104,6 +145,42 @@ function ProgressControl({
 					);
 				})}
 			</div>
+			<AlertDialog
+				open={pendingChoice != null}
+				onOpenChange={(open) => {
+					if (!open && !mutation.isPending) setPendingChoice(null);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader className="text-left sm:place-items-start sm:text-left">
+						<AlertDialogTitle>
+							{pendingChoice ? confirmCopy[pendingChoice].title : ""}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							{pendingChoice ? confirmCopy[pendingChoice].description : ""}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={mutation.isPending}>
+							Cancel
+						</AlertDialogCancel>
+						<LoadingButton
+							type="button"
+							loading={mutation.isPending}
+							onClick={() => {
+								if (pendingChoice) {
+									mutation.mutate({
+										slug: sittingSlug,
+										progress: pendingChoice,
+									});
+								}
+							}}
+						>
+							{pendingChoice ? confirmCopy[pendingChoice].action : "Confirm"}
+						</LoadingButton>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</fieldset>
 	);
 }

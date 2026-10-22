@@ -19,10 +19,12 @@ type SittingShellProps = {
 function Fact({
 	icon,
 	label,
+	sub,
 	children,
 }: {
 	icon: React.ReactNode;
 	label: string;
+	sub?: React.ReactNode;
 	children: React.ReactNode;
 }) {
 	return (
@@ -31,9 +33,14 @@ function Fact({
 				{icon}
 				{label}
 			</span>
-			<span className="font-medium text-base tabular-nums leading-tight">
+			<span className="font-medium text-sm tabular-nums leading-tight sm:text-base">
 				{children}
 			</span>
+			{sub ? (
+				<span className="text-muted-foreground text-xs leading-snug">
+					{sub}
+				</span>
+			) : null}
 		</div>
 	);
 }
@@ -145,6 +152,11 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 					</Fact>
 					<Fact
 						icon={<CalendarClock className="size-3.5" aria-hidden />}
+						sub={
+							!isVoting && sitting.poll
+								? `Voting closed ${formatDateTime(sitting.poll.deadline)}`
+								: undefined
+						}
 						label={
 							isVoting
 								? "Voting closes"
@@ -153,11 +165,7 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 									: "Deadline"
 						}
 					>
-						{new Intl.DateTimeFormat("en", {
-							month: "short",
-							day: "numeric",
-							year: "numeric",
-						}).format(closesAt)}
+						{formatDateTime(closesAt)}
 					</Fact>
 				</div>
 

@@ -21,12 +21,16 @@ import {
 	SheetTitle,
 } from "@bbrc/ui/components/sheet";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { BarChart3Icon, BookOpenIcon, FlagIcon, SendIcon } from "lucide-react";
+import { BookOpenIcon, CheckIcon, FlagIcon, SendIcon } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { SittingAdminToolRow } from "@/components/blocks/sitting-admin-tool-row";
 import { authClient } from "@/lib/auth-client";
+import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
+import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type SittingAdminActionsProps = {
@@ -138,17 +142,6 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 		}),
 	);
 
-	const sendTelegramProgressPoll = useMutation(
-		orpc.sitting.sendSittingTelegramProgressPoll.mutationOptions({
-			onSuccess: () => {
-				toast.success("Progress poll sent to Telegram");
-			},
-			onError: (error) => {
-				toast.error(error.message);
-			},
-		}),
-	);
-
 	const finishSitting = useMutation(
 		orpc.sitting.transitionSitting.mutationOptions({
 			onSuccess: async () => {
@@ -180,26 +173,40 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 		return null;
 	}
 
+	const topPoints = pollOptions[0]?.pointTotal ?? 0;
+
 	return (
-		<div className="flex flex-wrap gap-2">
+		<>
 			{sitting.status === "voting" && sitting.poll ? (
 				<>
-					<LoadingButton
-						type="button"
-						size="sm"
-						variant="outline"
-						loading={resendTelegramPollOpen.isPending}
-						onClick={() =>
-							resendTelegramPollOpen.mutate({ slug: sitting.slug })
-						}
+					<SittingAdminToolRow
+						icon={<SendIcon />}
+						title="Telegram announcement"
+						description="Post the poll in the club group again, for example if people missed it."
 					>
-						<SendIcon data-icon="inline-start" />
-						Announce poll on Telegram
-					</LoadingButton>
-					<Button type="button" size="sm" onClick={openStartReadingSheet}>
-						<BookOpenIcon data-icon="inline-start" />
-						Close poll & start reading
-					</Button>
+						<LoadingButton
+							type="button"
+							size="sm"
+							variant="outline"
+							loading={resendTelegramPollOpen.isPending}
+							onClick={() =>
+								resendTelegramPollOpen.mutate({ slug: sitting.slug })
+							}
+						>
+							Announce poll
+						</LoadingButton>
+					</SittingAdminToolRow>
+
+					<SittingAdminToolRow
+						icon={<BookOpenIcon />}
+						title="Close voting"
+						description="Choose the winner and start the reading phase. The poll is locked afterwards."
+					>
+						<Button type="button" size="sm" onClick={openStartReadingSheet}>
+							Close poll & start reading
+						</Button>
+					</SittingAdminToolRow>
+
 					<Sheet
 						open={startOpen}
 						onOpenChange={(next) => {
@@ -216,38 +223,111 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 							className="flex flex-col gap-0 sm:max-w-md"
 						>
 							<SheetHeader>
-								<SheetTitle>Start reading phase</SheetTitle>
+								<SheetTitle>Choose the club read</SheetTitle>
 								<SheetDescription>
-									Choose the book the club will read. This closes voting and
-									locks the poll. You cannot reopen the poll afterward.
+									{pollLeaders.length > 1 && !showAllPollOptions
+										? `${pollLeaders.length} books are tied for the lead. Pick one to start reading.`
+										: "The highest-scoring book is selected. Pick another if you need to."}{" "}
+									Closing voting can't be undone.
 								</SheetDescription>
 							</SheetHeader>
-							<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+
+							<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
 								{liveSittingQuery.isFetching &&
 								pollOptions.every((o) => o.pointTotal === 0) ? (
-									<p className="mb-3 text-muted-foreground text-xs">
+									<p className="text-muted-foreground text-xs">
 										Loading live vote totals…
 									</p>
 								) : null}
-								{!showAllPollOptions && pollLeaders.length > 0 ? (
-									<p className="mb-3 text-muted-foreground text-sm leading-relaxed">
-										{pollLeaders.length === 1
-											? "Highest score on the poll. Confirm or pick another title."
-											: `${pollLeaders.length} books tied for the lead.`}
-									</p>
-								) : null}
+
+								<fieldset className="flex flex-col gap-2">
+									<legend className="sr-only">Winning poll option</legend>
+									{pollOptionsInSheet.map((option) => {
+										const selected = selectedOptionId === option.id;
+										const leading =
+											option.pointTotal === topPoints && topPoints > 0;
+										const coverSrc = bookCoverUrl(option.book.coverId);
+										return (
+											<label
+												key={option.id}
+												className={cn(
+													"relative flex cursor-pointer gap-3 border p-3 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring/50",
+													selected
+														? "border-foreground bg-muted/30"
+														: "border-border hover:bg-muted/40",
+												)}
+											>
+												<input
+													type="radio"
+													name="selectedPollOption"
+													className="sr-only"
+													checked={selected}
+													onChange={() => setSelectedOptionId(option.id)}
+												/>
+												<span className="relative block aspect-2/3 w-12 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10">
+													{coverSrc ? (
+														<Image
+															src={coverSrc}
+															alt=""
+															fill
+															className="object-cover"
+															sizes="48px"
+														/>
+													) : null}
+												</span>
+												<span className="flex min-w-0 flex-1 flex-col gap-1.5">
+													<span className="flex items-start justify-between gap-2">
+														<span className="font-medium text-sm leading-snug">
+															{option.book.title}
+														</span>
+														{selected ? (
+															<CheckIcon
+																className="size-4 shrink-0"
+																aria-hidden
+															/>
+														) : null}
+													</span>
+													<span className="text-muted-foreground text-xs">
+														{formatBookAuthors(option.book.authors)}
+													</span>
+													<span className="flex items-center gap-2 text-xs tabular-nums">
+														<span className="font-medium">
+															{option.pointTotal} pts
+														</span>
+														<span className="text-muted-foreground">
+															{option.voteCount}{" "}
+															{option.voteCount === 1 ? "voter" : "voters"}
+														</span>
+														{leading ? (
+															<span className="border border-border px-1.5 py-0.5 text-[10px]">
+																Leading
+															</span>
+														) : null}
+													</span>
+													<span className="h-1 bg-muted/40">
+														<span
+															className="block h-full bg-foreground/60"
+															style={{
+																width: `${topPoints > 0 ? (option.pointTotal / topPoints) * 100 : 0}%`,
+															}}
+														/>
+													</span>
+												</span>
+											</label>
+										);
+									})}
+								</fieldset>
+
 								{!showAllPollOptions &&
 								pollOptions.length > pollLeaders.length ? (
 									<Button
 										type="button"
 										variant="outline"
 										size="sm"
-										className="mb-3 w-fit"
-										onClick={() => {
-											setShowAllPollOptions(true);
-										}}
+										className="w-fit"
+										onClick={() => setShowAllPollOptions(true)}
 									>
-										Select other book…
+										Show all {pollOptions.length} books
 									</Button>
 								) : null}
 								{showAllPollOptions ? (
@@ -255,7 +335,7 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 										type="button"
 										variant="ghost"
 										size="sm"
-										className="mb-3 w-fit"
+										className="w-fit"
 										onClick={() => {
 											setShowAllPollOptions(false);
 											if (
@@ -271,33 +351,8 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 										Show leaders only
 									</Button>
 								) : null}
-								<fieldset className="flex flex-col gap-2">
-									<legend className="sr-only">Winning poll option</legend>
-									{pollOptionsInSheet.map((option) => (
-										<label
-											key={option.id}
-											className="flex cursor-pointer items-start gap-3 border border-border p-3 has-checked:border-primary has-checked:bg-primary/5"
-										>
-											<input
-												type="radio"
-												name="selectedPollOption"
-												className="mt-1"
-												checked={selectedOptionId === option.id}
-												onChange={() => setSelectedOptionId(option.id)}
-											/>
-											<span className="flex min-w-0 flex-1 flex-col gap-0.5">
-												<span className="font-medium text-sm">
-													{option.book.title}
-												</span>
-												<span className="text-muted-foreground text-xs">
-													{option.pointTotal} pts · {option.voteCount}{" "}
-													{option.voteCount === 1 ? "voter" : "voters"}
-												</span>
-											</span>
-										</label>
-									))}
-								</fieldset>
 							</div>
+
 							<SheetFooter className="border-border border-t">
 								<Button
 									type="button"
@@ -312,11 +367,14 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 									disabled={!selectedOptionId}
 									onClick={() => setStartConfirmOpen(true)}
 								>
-									Start reading
+									{selectedPollOption
+										? `Start with ${selectedPollOption.book.title.length > 22 ? `${selectedPollOption.book.title.slice(0, 21)}…` : selectedPollOption.book.title}`
+										: "Start reading"}
 								</Button>
 							</SheetFooter>
 						</SheetContent>
 					</Sheet>
+
 					<AlertDialog
 						open={startConfirmOpen}
 						onOpenChange={(next) => {
@@ -366,27 +424,21 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 
 			{sitting.status === "reading" ? (
 				<>
-					<LoadingButton
-						type="button"
-						size="sm"
-						variant="outline"
-						loading={sendTelegramProgressPoll.isPending}
-						onClick={() =>
-							sendTelegramProgressPoll.mutate({ slug: sitting.slug })
-						}
+					<SittingAdminToolRow
+						icon={<FlagIcon />}
+						title="Finish sitting"
+						description="Locks the results. Anyone still reading or not started is marked as not finished, and reading points are applied."
 					>
-						<BarChart3Icon data-icon="inline-start" />
-						Send Telegram progress poll
-					</LoadingButton>
-					<Button
-						type="button"
-						size="sm"
-						variant="secondary"
-						onClick={() => setFinishOpen(true)}
-					>
-						<FlagIcon data-icon="inline-start" />
-						Mark sitting finished
-					</Button>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+							onClick={() => setFinishOpen(true)}
+						>
+							Finish sitting
+						</Button>
+					</SittingAdminToolRow>
 					<AlertDialog
 						open={finishOpen}
 						onOpenChange={(next) => {
@@ -426,6 +478,6 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 					</AlertDialog>
 				</>
 			) : null}
-		</div>
+		</>
 	);
 }

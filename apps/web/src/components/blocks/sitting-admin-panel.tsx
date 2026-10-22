@@ -5,7 +5,7 @@ import { Button } from "@bbrc/ui/components/button";
 import { ChevronDown, Settings2 } from "lucide-react";
 import { useState } from "react";
 import { SittingAdminActions } from "@/components/blocks/sitting-admin-actions";
-import { SittingAdminDeadlines } from "@/components/blocks/sitting-admin-deadlines";
+import { SittingDeadlinesRow } from "@/components/blocks/sitting-admin-deadlines";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +23,7 @@ export function SittingAdminPanel({
 	}
 
 	return (
-		<div className="flex flex-col gap-3 border border-border border-dashed p-3">
+		<section className="flex flex-col gap-3 border border-border border-dashed p-3">
 			<Button
 				type="button"
 				variant="ghost"
@@ -40,11 +40,11 @@ export function SittingAdminPanel({
 				/>
 			</Button>
 			{open ? (
-				<div className="flex flex-wrap gap-2">
-					<SittingAdminDeadlines sitting={sitting} />
+				<ul className="flex flex-col divide-y divide-border border-border border-t pt-3">
+					<SittingDeadlinesRow sitting={sitting} />
 					<SittingAdminActions sitting={sitting} />
-				</div>
+				</ul>
 			) : null}
-		</div>
+		</section>
 	);
 }

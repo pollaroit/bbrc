@@ -91,62 +91,66 @@ function ParticipantRow({
 			? formatPollChipRankLabel(participant.pollChipRank)
 			: null;
 
+	const showRemove = isAdmin && canRemove;
+
 	return (
-		<li className="flex items-center gap-3 px-3 py-3">
-			<Link
-				href={`/users/${participant.username}` as Route}
-				className="shrink-0"
-				tabIndex={-1}
-				aria-hidden
-			>
-				<Avatar className="size-10">
-					<AvatarImage src={participant.image ?? undefined} />
-					<AvatarFallback>{participant.name.charAt(0)}</AvatarFallback>
-				</Avatar>
-			</Link>
+		<li className="flex flex-col">
+			<div className="flex items-start gap-3 px-3 py-3">
+				<Link
+					href={`/users/${participant.username}` as Route}
+					className="shrink-0"
+					tabIndex={-1}
+					aria-hidden
+				>
+					<Avatar className="size-10">
+						<AvatarImage src={participant.image ?? undefined} />
+						<AvatarFallback>{participant.name.charAt(0)}</AvatarFallback>
+					</Avatar>
+				</Link>
 
-			<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-				<p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
-					<Link
-						href={`/users/${participant.username}` as Route}
-						className="truncate font-medium hover:underline"
-					>
-						{participant.name}
-					</Link>
-					{isSelf ? (
-						<Badge variant="secondary" className="h-5 px-1.5">
-							You
-						</Badge>
-					) : null}
-					{participant.status !== "active" ? (
-						<Badge variant="outline" className="h-5 px-1.5 capitalize">
-							{participant.status}
-						</Badge>
-					) : null}
-				</p>
-				<p className="truncate text-muted-foreground text-xs tabular-nums">
-					@{participant.username} · {participant.rpLevel.label} ·{" "}
-					{participant.rp.toLocaleString()} RP
-				</p>
-				{chipLabel ? <p className="font-medium text-xs">{chipLabel}</p> : null}
-				{sitting.status === "finished" && participant.rpChange != null ? (
-					<p
-						className={cn(
-							"font-medium text-xs tabular-nums",
-							participant.rpChange < 0 && "text-destructive",
-						)}
-					>
-						{participant.rpChange > 0
-							? `+${participant.rpChange}`
-							: participant.rpChange}{" "}
-						RP from this sitting
+				<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+					<p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+						<Link
+							href={`/users/${participant.username}` as Route}
+							className="truncate font-medium hover:underline"
+						>
+							{participant.name}
+						</Link>
+						{isSelf ? (
+							<Badge variant="secondary" className="h-5 px-1.5">
+								You
+							</Badge>
+						) : null}
+						{participant.status !== "active" ? (
+							<Badge variant="outline" className="h-5 px-1.5 capitalize">
+								{participant.status}
+							</Badge>
+						) : null}
 					</p>
-				) : null}
-			</div>
+					<p className="text-muted-foreground text-xs tabular-nums">
+						@{participant.username} · {participant.rpLevel.label} ·{" "}
+						{participant.rp.toLocaleString()} RP
+					</p>
+					{chipLabel ? (
+						<p className="font-medium text-xs">{chipLabel}</p>
+					) : null}
+					{sitting.status === "finished" && participant.rpChange != null ? (
+						<p
+							className={cn(
+								"font-medium text-xs tabular-nums",
+								participant.rpChange < 0 && "text-destructive",
+							)}
+						>
+							{participant.rpChange > 0
+								? `+${participant.rpChange}`
+								: participant.rpChange}{" "}
+							RP from this sitting
+						</p>
+					) : null}
+				</div>
 
-			<div className="flex shrink-0 flex-col items-end gap-1.5">
 				{showProgress ? (
-					<p className="flex items-center gap-1.5 text-xs">
+					<p className="flex shrink-0 items-center gap-1.5 text-xs">
 						<span
 							className={cn(
 								"size-2",
@@ -157,7 +161,10 @@ function ParticipantRow({
 						{progressLabels[participant.progress]}
 					</p>
 				) : null}
-				<div className="flex items-center gap-1.5">
+			</div>
+
+			{canEditProgress || showRemove ? (
+				<div className="flex items-center justify-end gap-2 border-border border-t bg-muted/20 px-3 py-2">
 					{canEditProgress ? (
 						<Button
 							type="button"
@@ -165,10 +172,10 @@ function ParticipantRow({
 							size="xs"
 							onClick={() => setPickerOpen(true)}
 						>
-							Update
+							Update progress
 						</Button>
 					) : null}
-					{isAdmin && canRemove ? (
+					{showRemove ? (
 						<Button
 							type="button"
 							variant="outline"
@@ -182,7 +189,7 @@ function ParticipantRow({
 						</Button>
 					) : null}
 				</div>
-			</div>
+			) : null}
 
 			{canEditProgress ? (
 				<SittingParticipationProgressPickerDialog

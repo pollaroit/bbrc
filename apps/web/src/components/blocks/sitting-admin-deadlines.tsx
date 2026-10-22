@@ -12,6 +12,7 @@ import {
 	InputGroupButton,
 	InputGroupInput,
 } from "@bbrc/ui/components/input-group";
+import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import {
 	Sheet,
 	SheetContent,
@@ -25,6 +26,7 @@ import { CalendarClockIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { SittingAdminToolRow } from "@/components/blocks/sitting-admin-tool-row";
 import { SittingDeadlinePicker } from "@/components/blocks/sitting-deadline-picker";
 import { authClient } from "@/lib/auth-client";
 import { clubTimeZone } from "@/lib/club-timezone";
@@ -35,7 +37,7 @@ type SittingAdminDeadlinesProps = {
 	sitting: GetSittingBySlugOutput;
 };
 
-export function SittingAdminDeadlines({ sitting }: SittingAdminDeadlinesProps) {
+export function SittingDeadlinesRow({ sitting }: SittingAdminDeadlinesProps) {
 	const router = useRouter();
 	const { data: session, isPending } = authClient.useSession();
 	const [open, setOpen] = useState(false);
@@ -142,57 +144,82 @@ export function SittingAdminDeadlines({ sitting }: SittingAdminDeadlinesProps) {
 		return null;
 	}
 
+	const showPoll = sitting.status === "voting" && sitting.poll;
+
 	return (
 		<>
-			<Button
-				type="button"
-				size="sm"
-				variant="outline"
-				onClick={() => setOpen(true)}
+			<SittingAdminToolRow
+				icon={<CalendarClockIcon />}
+				title="Deadlines"
+				description={
+					<>
+						{sitting.poll
+							? `Voting ${sitting.status === "voting" ? "closes" : "closed"} ${formatDateTime(sitting.poll.deadline)}. `
+							: null}
+						{sitting.status === "voting"
+							? "Reading deadline is set when reading starts."
+							: `Reading ${sitting.status === "finished" ? "ended" : "ends"} ${formatDateTime(sitting.deadline)}.`}
+					</>
+				}
 			>
-				<CalendarClockIcon data-icon="inline-start" />
-				Edit deadlines
-			</Button>
+				<Button
+					type="button"
+					size="sm"
+					variant="outline"
+					onClick={() => setOpen(true)}
+				>
+					Edit deadlines
+				</Button>
+			</SittingAdminToolRow>
+
 			<Sheet open={open} onOpenChange={setOpen}>
-				<SheetContent side="right" className="flex flex-col gap-0">
+				<SheetContent side="right" className="flex flex-col gap-0 sm:max-w-md">
 					<SheetHeader>
 						<SheetTitle>Deadlines</SheetTitle>
 						<SheetDescription>
-							Poll and reading deadlines are independent. Reading deadline is
-							auto-calculated from page count when reading starts; you can
-							override it here.
+							Voting and reading deadlines are separate. The reading deadline
+							follows the club pace for the book's page count unless you set it
+							yourself.
 						</SheetDescription>
 					</SheetHeader>
-					<div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 py-4">
-						{sitting.status === "voting" && sitting.poll ? (
+
+					<div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-4">
+						{showPoll ? (
+							<section className="flex flex-col gap-2 border border-border p-3">
+								<SittingDeadlinePicker
+									mode="poll"
+									label="Voting closes"
+									value={pollDeadline}
+									onChange={setPollDeadline}
+								/>
+							</section>
+						) : (
+							<p className="border border-border bg-muted/30 px-3 py-2.5 text-muted-foreground text-sm">
+								Voting is closed, so only the reading deadline applies.
+							</p>
+						)}
+
+						<section className="flex flex-col gap-2 border border-border p-3">
 							<SittingDeadlinePicker
-								mode="poll"
-								label="Poll deadline"
-								value={pollDeadline}
-								onChange={setPollDeadline}
+								mode="reading"
+								label="Reading ends"
+								value={sittingDeadline}
+								onChange={(value) => {
+									setSittingDeadline(value);
+									setCalculatedDeadlineInPast(false);
+								}}
 							/>
-						) : null}
-						{sitting.status !== "voting" ? (
-							<p className="text-muted-foreground text-sm">
-								Poll voting is closed — only the reading deadline applies now.
-							</p>
-						) : null}
-						<SittingDeadlinePicker
-							mode="reading"
-							label="Reading deadline"
-							value={sittingDeadline}
-							onChange={(value) => {
-								setSittingDeadline(value);
-								setCalculatedDeadlineInPast(false);
-							}}
-						/>
-						<div className="flex flex-col gap-2">
-							<p className="font-medium text-sm">Page count</p>
-							<p className="text-muted-foreground text-xs">
-								Calculate updates the reading deadline in this sheet only (club
-								reading rules). Save PP updates the library book for future
-								sittings.
-							</p>
+						</section>
+
+						<section className="flex flex-col gap-3 border border-border p-3">
+							<div>
+								<p className="font-medium text-sm">Club pace</p>
+								<p className="text-muted-foreground text-xs leading-relaxed">
+									Work out the reading deadline from the book's pages. "Use club
+									pace" only fills the form above; "Save pages" updates the book
+									for future sittings.
+								</p>
+							</div>
 							<InputGroup className="h-auto min-h-8">
 								<InputGroupInput
 									type="number"
@@ -212,7 +239,7 @@ export function SittingAdminDeadlines({ sitting }: SittingAdminDeadlinesProps) {
 										variant="outline"
 										onClick={handleCalculateReadingDeadline}
 									>
-										Calculate
+										Use club pace
 									</InputGroupButton>
 									<InputGroupButton
 										type="button"
@@ -223,24 +250,23 @@ export function SittingAdminDeadlines({ sitting }: SittingAdminDeadlinesProps) {
 										}
 										onClick={handleSaveBookPages}
 									>
-										Save PP
+										Save pages
 									</InputGroupButton>
 								</InputGroupAddon>
 							</InputGroup>
 							{sitting.selectedBook == null ? (
 								<p className="text-muted-foreground text-xs">
-									Save PP is available after a book is selected for this
-									sitting.
+									Saving pages is available once a book is chosen.
 								</p>
 							) : null}
 							{calculatedDeadlineInPast ? (
 								<p className="text-amber-600 text-xs dark:text-amber-500">
-									Calculated deadline is in the past. Adjust manually or confirm
-									before saving.
+									That deadline is already in the past. Adjust it before saving.
 								</p>
 							) : null}
-						</div>
+						</section>
 					</div>
+
 					<SheetFooter className="border-border border-t">
 						<Button
 							type="button"
@@ -249,22 +275,19 @@ export function SittingAdminDeadlines({ sitting }: SittingAdminDeadlinesProps) {
 						>
 							Cancel
 						</Button>
-						<Button
+						<LoadingButton
 							type="button"
-							disabled={mutation.isPending}
+							loading={mutation.isPending}
 							onClick={() =>
 								mutation.mutate({
 									slug: sitting.slug,
-									pollDeadline:
-										sitting.status === "voting" && sitting.poll
-											? pollDeadline
-											: undefined,
+									pollDeadline: showPoll ? pollDeadline : undefined,
 									sittingDeadline,
 								})
 							}
 						>
-							Save
-						</Button>
+							Save deadlines
+						</LoadingButton>
 					</SheetFooter>
 				</SheetContent>
 			</Sheet>
