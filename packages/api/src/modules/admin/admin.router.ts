@@ -91,6 +91,19 @@ import {
 	listAdminPosts,
 } from "./admin-post.service";
 import {
+	AdminQuizOverviewOutputSchema,
+	GetAdminQuizOverviewInputSchema,
+	GetAdminQuizStatsInputSchema,
+	GetAdminQuizStatsOutputSchema,
+	ListAdminQuizzesInputSchema,
+	ListAdminQuizzesOutputSchema,
+} from "./admin-quiz.schema";
+import {
+	getAdminQuizOverview,
+	getAdminQuizStats,
+	listAdminQuizzes,
+} from "./admin-quiz.service";
+import {
 	AdminSeriesOverviewOutputSchema,
 	GetAdminSeriesOverviewInputSchema,
 	GetAdminSeriesStatsInputSchema,
@@ -305,6 +318,22 @@ export const adminRouter = {
 		.output(GetAdminFeedbackStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminFeedbackStats(input, context.db),
+		),
+	getQuizOverview: adminProcedure
+		.input(GetAdminQuizOverviewInputSchema)
+		.output(AdminQuizOverviewOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminQuizOverview(input, context.db),
+		),
+	listQuizzes: adminProcedure
+		.input(ListAdminQuizzesInputSchema)
+		.output(ListAdminQuizzesOutputSchema)
+		.handler(async ({ input, context }) => listAdminQuizzes(input, context.db)),
+	getQuizStats: adminProcedure
+		.input(GetAdminQuizStatsInputSchema)
+		.output(GetAdminQuizStatsOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAdminQuizStats(input, context.db),
 		),
 	getShelfOverview: adminProcedure
 		.input(GetAdminShelfOverviewInputSchema)

@@ -48,6 +48,7 @@ export function BookQuizButton({ bookSlug }: { bookSlug: string }) {
 				<Button
 					variant="secondary"
 					className="w-full"
+					nativeButton={false}
 					render={<Link href={resultsHref} />}
 				>
 					<Trophy data-icon="inline-start" />
@@ -59,7 +60,11 @@ export function BookQuizButton({ bookSlug }: { bookSlug: string }) {
 					Quiz unavailable
 				</Button>
 			) : (
-				<Button className="w-full" render={<Link href={quizHref} />}>
+				<Button
+					className="w-full"
+					nativeButton={false}
+					render={<Link href={quizHref} />}
+				>
 					<ListChecks data-icon="inline-start" />
 					{data.state === "in_progress" ? "Continue quiz" : "Take quiz"}
 				</Button>

@@ -1,64 +1,88 @@
 "use client";
 
+import type { ListAdminQuizzesOutput } from "@bbrc/api/modules/admin/admin-quiz.schema";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@bbrc/ui/components/table";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@bbrc/ui/components/tooltip";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Flag, RefreshCw, Trash2 } from "lucide-react";
+import { RefreshCw, Trash2 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { parseAsBoolean, useQueryStates } from "nuqs";
 import { useState } from "react";
 import { toast } from "sonner";
-import { QuizPager } from "@/components/blocks/quiz-pager";
+import {
+	ADMIN_TABLE_MOBILE_MIN_WIDTH,
+	AdminListTableScroll,
+} from "@/components/blocks/admin-list-table-scroll";
+import { AdminQuizzesToolbar } from "@/components/blocks/admin-quizzes-toolbar";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
-import { ListingSearch } from "@/components/listing/listing-search";
-import { ListingToggleChip } from "@/components/listing/listing-toggle-chip";
 import { formatDateTime } from "@/lib/format-datetime";
-import { quizListingSearchParams } from "@/lib/listing/quiz-listing";
+import {
+	adminQuizStatusLabels,
+	toAdminQuizzesListCallInput,
+	useAdminQuizzesListingSearchParams,
+} from "@/lib/listing/admin-quizzes-listing";
 import { orpc } from "@/utils/orpc";
 
-const PAGE_SIZE = 20;
+type Row = ListAdminQuizzesOutput["items"][number];
 
-const statusLabel = {
-	generating: "Generating",
-	ready: "Ready",
-	unavailable: "Unavailable",
-} as const;
+const LOCKED_TIP =
+	"Readers already have attempts on this quiz, so it can't be deleted or regenerated.";
+
+function ActionButton({
+	locked,
+	tip,
+	children,
+}: {
+	locked: boolean;
+	tip: string;
+	children: React.ReactElement;
+}) {
+	if (!locked) {
+		return children;
+	}
+	return (
+		<Tooltip>
+			<TooltipTrigger render={<span className="inline-flex" />}>
+				{children}
+			</TooltipTrigger>
+			<TooltipContent>{tip}</TooltipContent>
+		</Tooltip>
+	);
+}
 
 export function AdminQuizzesTable() {
 	const queryClient = useQueryClient();
-	const [params, setParams] = useQueryStates({
-		search: quizListingSearchParams.search,
-		page: quizListingSearchParams.page,
-		reported: parseAsBoolean.withDefault(false),
-	});
-	const [pendingDelete, setPendingDelete] = useState<{
-		id: string;
-		title: string;
-	} | null>(null);
+	const [params, setParams] = useAdminQuizzesListingSearchParams();
+	const listInput = toAdminQuizzesListCallInput(params);
+	const [pendingDelete, setPendingDelete] = useState<Row | null>(null);
 
-	const options = orpc.quiz.adminList.queryOptions({
-		input: {
-			page: params.page,
-			limit: PAGE_SIZE,
-			search: params.search ?? undefined,
-			reportedOnly: params.reported || undefined,
-		},
-	});
-	const query = useQuery({
-		...options,
-		placeholderData: (previous) => previous,
-	});
+	const { data, isPending, isError, error, refetch } = useQuery(
+		orpc.admin.listQuizzes.queryOptions({ input: listInput }),
+	);
 
 	async function refresh() {
 		await queryClient.invalidateQueries({
-			queryKey: orpc.quiz.adminList.key(),
+			queryKey: orpc.admin.listQuizzes.key(),
+		});
+		await queryClient.invalidateQueries({
+			queryKey: orpc.admin.getQuizOverview.key(),
+		});
+		await queryClient.invalidateQueries({
+			queryKey: orpc.admin.getQuizStats.key(),
 		});
 	}
 
@@ -69,16 +93,16 @@ export function AdminQuizzesTable() {
 				setPendingDelete(null);
 				await refresh();
 			},
-			onError: (error) => toast.error(error.message),
+			onError: (err) => toast.error(err.message),
 		}),
 	);
 	const clearMutation = useMutation(
 		orpc.quiz.adminClearUnavailable.mutationOptions({
 			onSuccess: async () => {
-				toast.success("Cleared — the next reader can trigger a new attempt");
+				toast.success("Cleared. The next reader can trigger a new attempt.");
 				await refresh();
 			},
-			onError: (error) => toast.error(error.message),
+			onError: (err) => toast.error(err.message),
 		}),
 	);
 	const regenerateMutation = useMutation(
@@ -87,173 +111,266 @@ export function AdminQuizzesTable() {
 				toast.success("Quiz regenerated");
 				await refresh();
 			},
-			onError: (error) => toast.error(error.message),
+			onError: (err) => toast.error(err.message),
 		}),
 	);
 
+	const footer = data ? (
+		<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+			<p className="text-muted-foreground text-sm tabular-nums">
+				{data.metadata.total} quizzes · Page {data.metadata.page} of{" "}
+				{Math.max(data.metadata.totalPages, 1)}
+			</p>
+			<div className="flex items-center gap-2">
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={data.metadata.prevPage == null}
+					onClick={() => {
+						if (data.metadata.prevPage != null) {
+							void setParams({ page: data.metadata.prevPage });
+						}
+					}}
+				>
+					Previous
+				</Button>
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={data.metadata.nextPage == null}
+					onClick={() => {
+						if (data.metadata.nextPage != null) {
+							void setParams({ page: data.metadata.nextPage });
+						}
+					}}
+				>
+					Next
+				</Button>
+			</div>
+		</div>
+	) : null;
+
 	return (
 		<div className="flex flex-col gap-4">
-			<div className="flex flex-col gap-3 md:flex-row md:items-center">
-				<ListingSearch
-					value={params.search ?? ""}
-					onChange={(search) => {
-						void setParams({ search, page: 1 });
-					}}
-					placeholder="Search by book title…"
-				/>
-				<ListingToggleChip
-					pressed={params.reported}
-					onPressedChange={(reported) => {
-						void setParams({ reported, page: 1 });
-					}}
-					icon={<Flag data-icon="inline-start" />}
-				>
-					Reported only
-				</ListingToggleChip>
-			</div>
+			<AdminQuizzesToolbar />
 
-			{query.isPending ? (
-				<Skeleton className="h-64 w-full" />
-			) : query.isError ? (
-				<p className="text-destructive text-sm">{query.error.message}</p>
-			) : query.data.items.length === 0 ? (
-				<p className="border border-border border-dashed px-4 py-10 text-center text-muted-foreground text-sm">
-					No quizzes yet.
-				</p>
+			{isPending ? (
+				<Skeleton className="h-120 w-full" />
+			) : isError ? (
+				<div className="flex flex-col items-start gap-3 border border-dashed p-6">
+					<p className="text-sm">
+						{error?.message ?? "Could not load quizzes."}
+					</p>
+					<Button variant="outline" size="sm" onClick={() => refetch()}>
+						Try again
+					</Button>
+				</div>
+			) : data.items.length === 0 ? (
+				<div className="border border-dashed p-8 text-center">
+					<p className="font-medium text-sm">No quizzes match these filters</p>
+					<p className="mt-1 text-muted-foreground text-sm">
+						Try clearing search or filters.
+					</p>
+				</div>
 			) : (
 				<>
-					<ul className="flex flex-col divide-y divide-border border border-border">
-						{query.data.items.map((row) => {
-							const locked = row.submissionCount > 0;
-							const busy =
-								(deleteMutation.isPending &&
-									deleteMutation.variables?.quizId === row.id) ||
-								(regenerateMutation.isPending &&
-									regenerateMutation.variables?.quizId === row.id) ||
-								(clearMutation.isPending &&
-									clearMutation.variables?.quizId === row.id);
-							const lockedTip =
-								"Readers already have attempts on this quiz, so it can't be deleted or regenerated.";
+					<AdminListTableScroll>
+						<Table className={ADMIN_TABLE_MOBILE_MIN_WIDTH}>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Book</TableHead>
+									<TableHead>Status</TableHead>
+									<TableHead className="hidden md:table-cell">
+										Generated by
+									</TableHead>
+									<TableHead className="text-right tabular-nums">
+										Attempts
+									</TableHead>
+									<TableHead className="hidden text-right tabular-nums lg:table-cell">
+										Avg score
+									</TableHead>
+									<TableHead className="text-right tabular-nums">
+										Reports
+									</TableHead>
+									<TableHead className="hidden lg:table-cell">
+										Generated
+									</TableHead>
+									<TableHead className="text-right">Actions</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{data.items.map((row) => {
+									const locked =
+										row.counts.submitted +
+											row.counts.forfeited +
+											row.counts.inProgress >
+										0;
+									const busy =
+										(deleteMutation.isPending &&
+											deleteMutation.variables?.quizId === row.id) ||
+										(regenerateMutation.isPending &&
+											regenerateMutation.variables?.quizId === row.id) ||
+										(clearMutation.isPending &&
+											clearMutation.variables?.quizId === row.id);
 
-							return (
-								<li key={row.id} className="flex flex-col gap-3 p-4">
-									<div className="flex flex-wrap items-start justify-between gap-3">
-										<div className="min-w-0">
-											<Link
-												href={`/books/${row.book.slug}` as Route}
-												className="font-medium text-sm hover:underline"
-											>
-												{row.book.title}
-											</Link>
-											<p className="text-muted-foreground text-xs">
-												{statusLabel[row.status]}
-												{row.generatedBy
-													? ` · by @${row.generatedBy.username}`
-													: ""}
-												{` · ${formatDateTime(row.createdAt)}`}
-												{row.model ? ` · ${row.model}` : ""}
-											</p>
-											<p className="text-muted-foreground text-xs tabular-nums">
-												{row.submissionCount} attempts · {row.reportCount}{" "}
-												reports
-												{row.status === "unavailable" && row.unavailableUntil
-													? ` · retry after ${formatDateTime(row.unavailableUntil)}`
-													: ""}
-											</p>
-										</div>
-										<div className="flex flex-wrap items-center gap-2">
-											{row.status === "unavailable" ? (
-												<Button
-													type="button"
-													variant="outline"
-													size="sm"
-													disabled={busy}
-													onClick={() =>
-														clearMutation.mutate({ quizId: row.id })
-													}
-												>
-													Clear unavailable
-												</Button>
-											) : null}
-											{row.status === "ready" ? (
-												<>
-													<ActionWithTip
-														disabled={locked || busy}
-														tip={locked ? lockedTip : null}
+									return (
+										<TableRow key={row.id} className="align-top">
+											<TableCell>
+												<div className="flex min-w-0 flex-col gap-0.5">
+													<Link
+														href={`/books/${row.book.slug}` as Route}
+														className="line-clamp-2 font-medium text-sm hover:underline"
 													>
-														<Button
-															type="button"
-															variant="outline"
-															size="sm"
-															disabled={locked || busy}
-															onClick={() =>
-																regenerateMutation.mutate({ quizId: row.id })
-															}
-														>
-															<RefreshCw data-icon="inline-start" />
-															Regenerate
-														</Button>
-													</ActionWithTip>
-													<ActionWithTip
-														disabled={locked || busy}
-														tip={locked ? lockedTip : null}
-													>
-														<Button
-															type="button"
-															variant="outline"
-															size="sm"
-															disabled={locked || busy}
-															onClick={() =>
-																setPendingDelete({
-																	id: row.id,
-																	title: row.book.title,
-																})
-															}
-														>
-															<Trash2 data-icon="inline-start" />
-															Delete
-														</Button>
-													</ActionWithTip>
-												</>
-											) : null}
-										</div>
-									</div>
-									{row.reportedQuestions.length > 0 ? (
-										<ul className="flex flex-col gap-2 border border-border border-dashed p-3">
-											{row.reportedQuestions.map((item) => (
-												<li key={item.position} className="text-xs">
-													<div className="flex items-center gap-2">
-														<Badge variant="outline">
-															Q{item.position} · {item.count}{" "}
-															{item.count === 1 ? "report" : "reports"}
-														</Badge>
-													</div>
-													<p className="mt-1 text-muted-foreground">
-														{item.question}
+														{row.book.title}
+													</Link>
+													<p className="line-clamp-1 text-muted-foreground text-xs">
+														{row.book.authors.join(", ")}
 													</p>
-													{item.reasons.length > 0 ? (
-														<ul className="mt-1 list-disc pl-5">
-															{item.reasons.map((reason) => (
-																<li key={reason}>{reason}</li>
-															))}
-														</ul>
+													{row.reportedQuestions.length > 0 ? (
+														<details className="mt-1 text-xs">
+															<summary className="cursor-pointer text-destructive">
+																Reported questions
+															</summary>
+															<ul className="mt-1 flex flex-col gap-2">
+																{row.reportedQuestions.map((item) => (
+																	<li key={item.position}>
+																		<Badge variant="outline">
+																			Q{item.position} · {item.count}
+																		</Badge>
+																		<p className="mt-0.5 text-muted-foreground">
+																			{item.question}
+																		</p>
+																		{item.reasons.length > 0 ? (
+																			<ul className="list-disc pl-4">
+																				{item.reasons.map((reason) => (
+																					<li key={reason}>{reason}</li>
+																				))}
+																			</ul>
+																		) : null}
+																	</li>
+																))}
+															</ul>
+														</details>
 													) : null}
-												</li>
-											))}
-										</ul>
-									) : null}
-								</li>
-							);
-						})}
-					</ul>
-					<QuizPager
-						page={query.data.metadata.page}
-						totalPages={query.data.metadata.totalPages}
-						total={query.data.metadata.total}
-						onPageChange={(page) => {
-							void setParams({ page });
-						}}
-					/>
+												</div>
+											</TableCell>
+											<TableCell>
+												<div className="flex flex-col gap-1">
+													<Badge variant="secondary">
+														{adminQuizStatusLabels[row.status]}
+													</Badge>
+													{row.status === "unavailable" &&
+													row.unavailableUntil ? (
+														<span className="text-muted-foreground text-xs">
+															Retry after {formatDateTime(row.unavailableUntil)}
+														</span>
+													) : null}
+												</div>
+											</TableCell>
+											<TableCell className="hidden text-sm md:table-cell">
+												{row.generatedBy ? (
+													<Link
+														href={`/users/${row.generatedBy.username}` as Route}
+														className="hover:underline"
+													>
+														@{row.generatedBy.username}
+													</Link>
+												) : (
+													<span className="text-muted-foreground">—</span>
+												)}
+												{row.model ? (
+													<p className="font-mono text-muted-foreground text-xs">
+														{row.model}
+													</p>
+												) : null}
+											</TableCell>
+											<TableCell className="text-right tabular-nums">
+												<span title="Submitted">{row.counts.submitted}</span>
+												{row.counts.forfeited > 0 ||
+												row.counts.inProgress > 0 ? (
+													<span className="block text-muted-foreground text-xs">
+														{row.counts.forfeited} abandoned ·{" "}
+														{row.counts.inProgress} open
+													</span>
+												) : null}
+											</TableCell>
+											<TableCell className="hidden text-right tabular-nums lg:table-cell">
+												{row.averageScore == null
+													? "—"
+													: row.averageScore.toFixed(1)}
+											</TableCell>
+											<TableCell className="text-right tabular-nums">
+												{row.counts.reports > 0 ? (
+													<span className="font-medium text-destructive">
+														{row.counts.reports}
+													</span>
+												) : (
+													<span className="text-muted-foreground">0</span>
+												)}
+											</TableCell>
+											<TableCell className="hidden text-muted-foreground text-xs lg:table-cell">
+												{formatDateTime(row.createdAt)}
+											</TableCell>
+											<TableCell>
+												<div className="flex flex-wrap justify-end gap-1.5">
+													{row.status === "unavailable" ? (
+														<Button
+															type="button"
+															variant="outline"
+															size="xs"
+															disabled={busy}
+															onClick={() =>
+																clearMutation.mutate({ quizId: row.id })
+															}
+														>
+															Clear
+														</Button>
+													) : null}
+													{row.status === "ready" ? (
+														<>
+															<ActionButton locked={locked} tip={LOCKED_TIP}>
+																<Button
+																	type="button"
+																	variant="outline"
+																	size="xs"
+																	disabled={locked || busy}
+																	onClick={() =>
+																		regenerateMutation.mutate({
+																			quizId: row.id,
+																		})
+																	}
+																>
+																	<RefreshCw data-icon="inline-start" />
+																	{regenerateMutation.isPending &&
+																	regenerateMutation.variables?.quizId ===
+																		row.id
+																		? "Working…"
+																		: "Regenerate"}
+																</Button>
+															</ActionButton>
+															<ActionButton locked={locked} tip={LOCKED_TIP}>
+																<Button
+																	type="button"
+																	variant="outline"
+																	size="xs"
+																	disabled={locked || busy}
+																	onClick={() => setPendingDelete(row)}
+																>
+																	<Trash2 data-icon="inline-start" />
+																	Delete
+																</Button>
+															</ActionButton>
+														</>
+													) : null}
+												</div>
+											</TableCell>
+										</TableRow>
+									);
+								})}
+							</TableBody>
+						</Table>
+					</AdminListTableScroll>
+					{footer}
 				</>
 			)}
 
@@ -266,8 +383,8 @@ export function AdminQuizzesTable() {
 				description={
 					pendingDelete ? (
 						<>
-							Delete the quiz for <strong>{pendingDelete.title}</strong>? The
-							next reader to open it will generate a new one, which counts
+							Delete the quiz for <strong>{pendingDelete.book.title}</strong>?
+							The next reader to open it will generate a new one, which counts
 							against their daily first-time quizzes.
 						</>
 					) : null
@@ -280,27 +397,5 @@ export function AdminQuizzesTable() {
 				}}
 			/>
 		</div>
-	);
-}
-
-function ActionWithTip({
-	tip,
-	disabled,
-	children,
-}: {
-	tip: string | null;
-	disabled: boolean;
-	children: React.ReactElement;
-}) {
-	if (!tip || !disabled) {
-		return children;
-	}
-	return (
-		<Tooltip>
-			<TooltipTrigger render={<span className="inline-flex" />}>
-				{children}
-			</TooltipTrigger>
-			<TooltipContent>{tip}</TooltipContent>
-		</Tooltip>
 	);
 }

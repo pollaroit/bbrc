@@ -18,8 +18,6 @@ import type {
 	GetQuizEntryStateOutput,
 	GetQuizResultsOutput,
 	GetQuizReviewOutput,
-	ListAdminQuizzesInputSchema,
-	ListAdminQuizzesOutput,
 	ListBookQuizSubmissionsInputSchema,
 	ListBookQuizSubmissionsOutput,
 	ListUserQuizzesInputSchema,
@@ -1119,83 +1117,6 @@ export async function listUserQuizzes(
 // ---------------------------------------------------------------------------
 // Admin
 // ---------------------------------------------------------------------------
-
-export async function listAdminQuizzes(
-	input: z.infer<typeof ListAdminQuizzesInputSchema>,
-	db: Database,
-): Promise<ListAdminQuizzesOutput> {
-	const pagination = definePagination.offset({
-		page: input.page,
-		limit: input.limit,
-	});
-
-	const where: Prisma.QuizWhereInput = {
-		...(input.status ? { status: input.status } : {}),
-		...(input.search
-			? { book: { title: { contains: input.search, mode: "insensitive" } } }
-			: {}),
-		...(input.reportedOnly
-			? { questions: { some: { reports: { some: {} } } } }
-			: {}),
-	};
-
-	const [total, rows] = await Promise.all([
-		db.quiz.count({ where }),
-		db.quiz.findMany({
-			...pagination.use(),
-			where,
-			orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-			select: {
-				id: true,
-				status: true,
-				model: true,
-				createdAt: true,
-				unavailableUntil: true,
-				book: {
-					select: { slug: true, title: true, authors: true, coverId: true },
-				},
-				generatedBy: { select: { username: true, name: true, image: true } },
-				_count: { select: { submissions: true } },
-				questions: {
-					orderBy: { position: "asc" },
-					select: {
-						position: true,
-						question: true,
-						reports: { select: { reason: true } },
-					},
-				},
-			},
-		}),
-	]);
-
-	return pagination.paginate(
-		rows.map((row) => {
-			const reportedQuestions = row.questions
-				.filter((q) => q.reports.length > 0)
-				.map((q) => ({
-					position: q.position,
-					question: q.question,
-					count: q.reports.length,
-					reasons: q.reports
-						.map((report) => report.reason?.trim())
-						.filter((reason): reason is string => Boolean(reason)),
-				}));
-			return {
-				id: row.id,
-				status: row.status,
-				book: row.book,
-				generatedBy: row.generatedBy,
-				model: row.model,
-				createdAt: row.createdAt,
-				unavailableUntil: row.unavailableUntil,
-				submissionCount: row._count.submissions,
-				reportCount: reportedQuestions.reduce((sum, q) => sum + q.count, 0),
-				reportedQuestions,
-			};
-		}),
-		total,
-	);
-}
 
 async function loadEditableQuiz(quizId: string, db: Database) {
 	const quiz = await db.quiz.findUnique({

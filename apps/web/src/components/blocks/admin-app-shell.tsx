@@ -331,8 +331,18 @@ const adminNavSections: AdminNavSection[] = [
 		children: [
 			{
 				href: "/admin/quizzes" as Route,
-				label: "Quizzes",
-				isActive: (pathname) => pathname.startsWith("/admin/quizzes"),
+				label: "Overview",
+				isActive: (pathname) => pathname === "/admin/quizzes",
+			},
+			{
+				href: "/admin/quizzes/list" as Route,
+				label: "List",
+				isActive: (pathname) => pathname.startsWith("/admin/quizzes/list"),
+			},
+			{
+				href: "/admin/quizzes/stats" as Route,
+				label: "Stats",
+				isActive: (pathname) => pathname.startsWith("/admin/quizzes/stats"),
 			},
 		],
 	},

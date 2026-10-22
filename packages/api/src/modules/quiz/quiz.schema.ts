@@ -248,37 +248,6 @@ export const ListUserQuizzesOutputSchema = z.object({
 
 // --- admin ---
 
-export const ListAdminQuizzesInputSchema = OffsetPaginationInputSchema.extend({
-	search: z.string().trim().max(100).optional(),
-	status: z.enum(["generating", "ready", "unavailable"]).optional(),
-	reportedOnly: z.boolean().optional(),
-});
-
-export const AdminQuizRowSchema = z.object({
-	id: z.string(),
-	status: z.enum(["generating", "ready", "unavailable"]),
-	book: QuizBookSchema,
-	generatedBy: QuizPersonSchema.nullable(),
-	model: z.string().nullable(),
-	createdAt: z.coerce.date(),
-	unavailableUntil: z.coerce.date().nullable(),
-	submissionCount: z.number().int(),
-	reportCount: z.number().int(),
-	reportedQuestions: z.array(
-		z.object({
-			position: z.number().int(),
-			question: z.string(),
-			count: z.number().int(),
-			reasons: z.array(z.string()),
-		}),
-	),
-});
-
-export const ListAdminQuizzesOutputSchema = z.object({
-	items: z.array(AdminQuizRowSchema),
-	metadata: OffsetPaginationMetadataSchema,
-});
-
 export const AdminQuizIdInputSchema = z.object({ quizId: z.string().min(1) });
 export const AdminQuizActionOutputSchema = z.object({ ok: z.literal(true) });
 
@@ -292,8 +261,5 @@ export type ListBookQuizSubmissionsOutput = z.infer<
 	typeof ListBookQuizSubmissionsOutputSchema
 >;
 export type ListUserQuizzesOutput = z.infer<typeof ListUserQuizzesOutputSchema>;
-export type ListAdminQuizzesOutput = z.infer<
-	typeof ListAdminQuizzesOutputSchema
->;
 export type QuizReviewQuestion = z.infer<typeof QuizReviewQuestionSchema>;
 export type QuizPlayQuestion = z.infer<typeof QuizPlayQuestionSchema>;

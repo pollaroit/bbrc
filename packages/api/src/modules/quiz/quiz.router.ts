@@ -12,8 +12,6 @@ import {
 	GetQuizResultsOutputSchema,
 	GetQuizReviewInputSchema,
 	GetQuizReviewOutputSchema,
-	ListAdminQuizzesInputSchema,
-	ListAdminQuizzesOutputSchema,
 	ListBookQuizSubmissionsInputSchema,
 	ListBookQuizSubmissionsOutputSchema,
 	ListUserQuizzesInputSchema,
@@ -32,7 +30,6 @@ import {
 	getQuizEntryState,
 	getQuizResults,
 	getQuizReview,
-	listAdminQuizzes,
 	listBookQuizSubmissions,
 	listUserQuizzes,
 	reportQuizQuestion,
@@ -89,10 +86,6 @@ export const quizRouter = {
 		.handler(({ input, context }) =>
 			listUserQuizzes(input, context.db, context.session),
 		),
-	adminList: adminProcedure
-		.input(ListAdminQuizzesInputSchema)
-		.output(ListAdminQuizzesOutputSchema)
-		.handler(({ input, context }) => listAdminQuizzes(input, context.db)),
 	adminDelete: adminProcedure
 		.input(AdminQuizIdInputSchema)
 		.output(AdminQuizActionOutputSchema)
