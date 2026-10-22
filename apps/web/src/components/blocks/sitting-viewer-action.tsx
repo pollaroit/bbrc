@@ -116,7 +116,7 @@ function ProgressControl({
 			<legend className="mb-1.5 p-0 text-muted-foreground text-xs">
 				Your progress
 			</legend>
-			<div className="grid grid-cols-3 gap-1.5 sm:inline-grid">
+			<div className="grid grid-cols-3 gap-2">
 				{options.map((option) => {
 					const selected = option === current;
 					const allowed = nextProgress[current].includes(option);
@@ -132,7 +132,7 @@ function ProgressControl({
 								}
 							}}
 							className={cn(
-								"border px-3 py-2 text-xs transition-colors disabled:cursor-not-allowed",
+								"border px-3 py-2.5 text-sm transition-colors disabled:cursor-not-allowed",
 								selected
 									? cn(selectedClassName[option], "font-medium")
 									: allowed

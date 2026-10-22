@@ -21,7 +21,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BookRequestedByLine } from "@/components/blocks/book-requested-by";
-import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { PollOptionReadersDialog } from "@/components/blocks/poll-option-readers-dialog";
 import { PollOptionVotersDialog } from "@/components/blocks/poll-option-voters-dialog";
 import { PollVotesByVoterSection } from "@/components/blocks/poll-votes-by-voter-section";
@@ -386,7 +385,7 @@ export function SittingPollSection({
 			<ul
 				className={cn(
 					"flex flex-col gap-2",
-					layout === "page" && "gap-3 sm:grid sm:grid-cols-1",
+					layout === "page" && "gap-4 sm:grid sm:grid-cols-1",
 				)}
 			>
 				{sortedOptions.map((option, index) => {
@@ -441,7 +440,7 @@ export function SittingPollSection({
 								}}
 								className={cn(
 									"relative flex items-stretch gap-3 overflow-hidden border border-border p-3 pl-4 transition-colors",
-									layout === "page" && "p-4 pl-5 sm:gap-4",
+									layout === "page" && "gap-4 p-4 pl-5 sm:p-5 sm:pl-6",
 									canEditSelection && "cursor-pointer hover:bg-muted/30",
 									canEditSelection && checked
 										? votePointsRowTintClass(draftPoints, true)
@@ -515,7 +514,7 @@ export function SittingPollSection({
 									)}
 								</Link>
 
-								<div className="relative flex min-w-0 flex-1 flex-col gap-2">
+								<div className="relative flex min-w-0 flex-1 flex-col gap-3">
 									<div className="min-w-0">
 										<div className="flex flex-wrap items-center gap-2">
 											<Link
@@ -644,7 +643,7 @@ export function SittingPollSection({
 												</fieldset>
 											</div>
 										) : null}
-										<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs tabular-nums">
+										<div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-muted-foreground text-xs tabular-nums">
 											<span className="inline-flex items-center gap-1">
 												<BookOpen className="size-3.5" aria-hidden />
 												{option.book.pages} pages
@@ -662,7 +661,6 @@ export function SittingPollSection({
 													{option.book.openLibraryRating.toFixed(1)}
 												</span>
 											) : null}
-											<BookStatusBadge status={option.book.status} />
 										</div>
 										<div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs tabular-nums">
 											{canOpenReadersList ? (
