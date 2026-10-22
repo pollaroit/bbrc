@@ -42,7 +42,11 @@ import { calculateRpPointsDelta } from "../rp/rp.service";
 import { userMemberLevelsFromPoints } from "../user/member-levels";
 import { loadActorSocialGate } from "../user/user-visibility";
 import { XP_AWARD } from "../xp/xp.schema";
-import { awardParticipationXp, awardPollVoteXp } from "../xp/xp.service";
+import {
+	awardParticipationXp,
+	awardParticipationXpBulk,
+	awardPollVoteXp,
+} from "../xp/xp.service";
 import {
 	activeParticipationWhere,
 	countActiveParticipantsForSitting,
@@ -1158,68 +1162,74 @@ export async function createSitting(
 		: defaultPollDeadline(new Date(), clubTimeZone);
 	const sittingDeadline = sittingReadingDeadlinePlaceholder();
 
-	const created = await db.$transaction(async (tx) => {
-		const sittingSlug = await generateSittingSlug(tx);
-		const pollSlug = buildSittingPollSlug(sittingSlug);
-		await assertPollSlugAvailable(pollSlug, tx);
+	const created = await db.$transaction(
+		async (tx) => {
+			const sittingSlug = await generateSittingSlug(tx);
+			const pollSlug = buildSittingPollSlug(sittingSlug);
+			await assertPollSlugAvailable(pollSlug, tx);
 
-		const sitting = await tx.sitting.create({
-			data: {
-				slug: sittingSlug,
-				deadline: sittingDeadline,
-				status: "voting",
-			},
-			select: { id: true, slug: true },
-		});
-
-		const storedFilters = createPollInputToStoredFilters(input.poll);
-
-		const poll = await tx.poll.create({
-			data: {
-				slug: pollSlug,
-				sittingId: sitting.id,
-				deadline: pollDeadline,
-				minPages: storedFilters.minPages ?? undefined,
-				maxPages: storedFilters.maxPages ?? undefined,
-				minPublishedIn: storedFilters.minPublishedIn ?? undefined,
-				maxPublishedIn: storedFilters.maxPublishedIn ?? undefined,
-				minOpenLibraryRating: storedFilters.minOpenLibraryRating ?? undefined,
-				minReads: storedFilters.minReads ?? undefined,
-				maxReads: storedFilters.maxReads ?? undefined,
-				filterCountries: storedFilters.filterCountries,
-				filterAuthorSlugs: storedFilters.filterAuthorSlugs,
-				take,
-				minChoices,
-				maxChoices,
-				options: {
-					create: pollBookIds.map((bookId) => ({ bookId })),
+			const sitting = await tx.sitting.create({
+				data: {
+					slug: sittingSlug,
+					deadline: sittingDeadline,
+					status: "voting",
 				},
-			},
-			select: { id: true },
-		});
+				select: { id: true, slug: true },
+			});
 
-		await insertPollChipGrantsForParticipants(
-			poll.id,
-			uniqueParticipantIds,
-			tx,
-		);
+			const storedFilters = createPollInputToStoredFilters(input.poll);
 
-		await tx.participation.createMany({
-			data: uniqueParticipantIds.map((userId) => ({
-				userId,
-				sittingId: sitting.id,
-			})),
-		});
+			const poll = await tx.poll.create({
+				data: {
+					slug: pollSlug,
+					sittingId: sitting.id,
+					deadline: pollDeadline,
+					minPages: storedFilters.minPages ?? undefined,
+					maxPages: storedFilters.maxPages ?? undefined,
+					minPublishedIn: storedFilters.minPublishedIn ?? undefined,
+					maxPublishedIn: storedFilters.maxPublishedIn ?? undefined,
+					minOpenLibraryRating: storedFilters.minOpenLibraryRating ?? undefined,
+					minReads: storedFilters.minReads ?? undefined,
+					maxReads: storedFilters.maxReads ?? undefined,
+					filterCountries: storedFilters.filterCountries,
+					filterAuthorSlugs: storedFilters.filterAuthorSlugs,
+					take,
+					minChoices,
+					maxChoices,
+					options: {
+						create: pollBookIds.map((bookId) => ({ bookId })),
+					},
+				},
+				select: { id: true },
+			});
 
-		for (const userId of uniqueParticipantIds) {
-			await awardParticipationXp({ userId, sittingId: sitting.id }, tx);
-		}
+			await insertPollChipGrantsForParticipants(
+				poll.id,
+				uniqueParticipantIds,
+				tx,
+			);
 
-		return {
-			slug: sitting.slug,
-			pollSlug,
-		};
-	});
+			await tx.participation.createMany({
+				data: uniqueParticipantIds.map((userId) => ({
+					userId,
+					sittingId: sitting.id,
+				})),
+			});
+
+			await awardParticipationXpBulk(
+				{ userIds: uniqueParticipantIds, sittingId: sitting.id },
+				tx,
+			);
+
+			return {
+				slug: sitting.slug,
+				pollSlug,
+			};
+		},
+		// Remote databases add latency to every query; 5s is too tight for a sitting
+		// with a full roster.
+		{ maxWait: 10_000, timeout: 30_000 },
+	);
 
 	void notifySittingPollStarted(db, created.slug);
 	void telegramAnnouncePollOpen(db, created.slug);

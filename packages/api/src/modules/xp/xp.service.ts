@@ -101,6 +101,53 @@ export async function awardParticipationXp(
 	);
 }
 
+/**
+ * Participation XP for many users in a fixed number of queries. Looping
+ * `awardParticipationXp` costs three round trips per member, which can outlast
+ * a transaction when a sitting starts with a large roster.
+ */
+export async function awardParticipationXpBulk(
+	input: { userIds: string[]; sittingId: string },
+	tx: DatabaseTransaction,
+): Promise<number> {
+	if (input.userIds.length === 0) {
+		return 0;
+	}
+
+	const existing = await tx.xPEvent.findMany({
+		where: {
+			reason: "participation",
+			entityId: input.sittingId,
+			userId: { in: input.userIds },
+		},
+		select: { userId: true },
+	});
+	const alreadyAwarded = new Set(existing.map((event) => event.userId));
+	const pending = [...new Set(input.userIds)].filter(
+		(userId) => !alreadyAwarded.has(userId),
+	);
+
+	if (pending.length === 0) {
+		return 0;
+	}
+
+	await tx.xPEvent.createMany({
+		data: pending.map((userId) => ({
+			userId,
+			points: XP_AWARD.participation,
+			reason: "participation" as const,
+			entityId: input.sittingId,
+		})),
+	});
+
+	await tx.user.updateMany({
+		where: { id: { in: pending } },
+		data: { xp: { increment: XP_AWARD.participation } },
+	});
+
+	return pending.length;
+}
+
 /** First saved vote on a poll only; edits must not call this again. */
 export async function awardPollVoteXp(
 	input: AwardPollVoteXpInput,
