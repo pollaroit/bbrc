@@ -10,7 +10,7 @@ type SittingHubNavProps = {
 	sitting: GetSittingBySlugOutput;
 };
 
-type Segment = "overview" | "participants" | "vote";
+type Segment = "overview" | "participants" | "vote" | "reviews";
 
 function tabHref(slug: string, segment: Segment): Route {
 	return (
@@ -24,6 +24,7 @@ function activeSegment(pathname: string, slug: string): Segment {
 	const base = `/sittings/${slug}`;
 	if (pathname.startsWith(`${base}/vote`)) return "vote";
 	if (pathname.startsWith(`${base}/participants`)) return "participants";
+	if (pathname.startsWith(`${base}/reviews`)) return "reviews";
 	return "overview";
 }
 
@@ -42,6 +43,9 @@ export function SittingHubNav({ sitting }: SittingHubNavProps) {
 						label: sitting.status === "voting" ? "Voting" : "Voting results",
 					},
 				]
+			: []),
+		...(sitting.selectedBook
+			? [{ segment: "reviews" as const, label: "Reviews" }]
 			: []),
 	];
 
