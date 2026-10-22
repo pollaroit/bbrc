@@ -95,20 +95,20 @@ function ParticipantRow({
 
 	return (
 		<li className="flex flex-col">
-			<div className="flex items-start gap-3 px-3 py-3">
+			<div className="flex items-start gap-4 px-4 py-4">
 				<Link
 					href={`/users/${participant.username}` as Route}
 					className="shrink-0"
 					tabIndex={-1}
 					aria-hidden
 				>
-					<Avatar className="size-10">
+					<Avatar className="size-11">
 						<AvatarImage src={participant.image ?? undefined} />
 						<AvatarFallback>{participant.name.charAt(0)}</AvatarFallback>
 					</Avatar>
 				</Link>
 
-				<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+				<div className="flex min-w-0 flex-1 flex-col gap-1">
 					<p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
 						<Link
 							href={`/users/${participant.username}` as Route}
@@ -116,11 +116,6 @@ function ParticipantRow({
 						>
 							{participant.name}
 						</Link>
-						{isSelf ? (
-							<Badge variant="secondary" className="h-5 px-1.5">
-								You
-							</Badge>
-						) : null}
 						{participant.status !== "active" ? (
 							<Badge variant="outline" className="h-5 px-1.5 capitalize">
 								{participant.status}
@@ -164,7 +159,7 @@ function ParticipantRow({
 			</div>
 
 			{canEditProgress || showRemove ? (
-				<div className="flex items-center justify-end gap-2 border-border border-t bg-muted/20 px-3 py-2">
+				<div className="flex items-center justify-end gap-2 border-border border-t bg-muted/20 px-4 py-2.5">
 					{canEditProgress ? (
 						<Button
 							type="button"
@@ -227,10 +222,18 @@ export function SittingParticipantsView({
 	const counts = sitting.stats.progressCounts;
 	const query = params.search?.trim().toLowerCase();
 
+	const me = sitting.participants.find(
+		(person) => person.userId === viewerUserId,
+	);
+
 	const visible = useMemo(() => {
 		const sign = params.sortDirection === "asc" ? 1 : -1;
 		return sitting.participants
 			.filter((person) => {
+				// You get your own row at the top, outside the filters.
+				if (person.userId === viewerUserId) {
+					return false;
+				}
 				if (params.progress && person.progress !== params.progress) {
 					return false;
 				}
@@ -260,6 +263,7 @@ export function SittingParticipantsView({
 		params.sortBy,
 		params.sortDirection,
 		query,
+		viewerUserId,
 	]);
 
 	const filtered = Boolean(params.progress) || Boolean(query);
@@ -345,8 +349,35 @@ export function SittingParticipantsView({
 				</div>
 			) : null}
 
+			{me ? (
+				<ul className="border border-foreground/30 bg-muted/20">
+					<ParticipantRow
+						sitting={sitting}
+						participant={me}
+						viewerUserId={viewerUserId}
+						isAdmin={isAdmin}
+						canRemove={canRemove}
+						onRemove={() => requestRemove(me)}
+						removeDisabledReason={
+							me.progress === "completed"
+								? "Members who finished the book stay on the roster"
+								: sitting.participants.length <= 1
+									? "At least one participant must remain"
+									: undefined
+						}
+					/>
+				</ul>
+			) : null}
+
 			<p className="text-muted-foreground text-sm tabular-nums">
-				{visible.length} {visible.length === 1 ? "reader" : "readers"}
+				{visible.length}{" "}
+				{me
+					? visible.length === 1
+						? "other reader"
+						: "other readers"
+					: visible.length === 1
+						? "reader"
+						: "readers"}
 				{filtered ? " match your filters" : ""}
 			</p>
 
