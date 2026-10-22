@@ -14,8 +14,7 @@
 		"db:migrate:deploy": "bun run scripts/migrate-deploy.ts",
 		"db:studio": "prisma studio",
 		"db:seed": "varlock run -- bun run src/seed/index.ts",
-		"db:clear-dev": "varlock run -- bun run scripts/clear-dev-database.ts",
-		"db:backfill-removed": "varlock run -- bun run scripts/backfill-removed-participants.ts"
+		"db:clear-dev": "varlock run -- bun run scripts/clear-dev-database.ts"
 	},
 	"dependencies": {
 		"@neondatabase/serverless": "^1.1.0",
