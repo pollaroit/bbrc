@@ -807,6 +807,31 @@ export async function getSittingBySlug(
 		});
 	}
 
+	// A sitting's book follows its phase: reading while it runs, completed after.
+	// Self-heal if the two drifted apart (for example after a manual data edit).
+	if (sitting.selectedBook && sitting.selectedBookId) {
+		const expectedBookStatus =
+			sitting.status === "reading"
+				? "reading"
+				: sitting.status === "finished"
+					? "completed"
+					: null;
+
+		if (
+			expectedBookStatus &&
+			sitting.selectedBook.status !== expectedBookStatus
+		) {
+			await db.book.update({
+				where: { id: sitting.selectedBookId },
+				data: { status: expectedBookStatus },
+			});
+			sitting.selectedBook = {
+				...sitting.selectedBook,
+				status: expectedBookStatus,
+			};
+		}
+	}
+
 	if (sitting.status === "reading" && sitting.selectedBookId) {
 		await syncParticipationWithExistingReadsForSelectedBook(
 			db,

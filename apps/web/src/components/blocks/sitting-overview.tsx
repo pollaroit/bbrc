@@ -1,14 +1,19 @@
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
-import { contentPlainText, formatFeedbackRating } from "@bbrc/shared";
+import {
+	authorNameToSlug,
+	contentPlainText,
+	formatFeedbackRating,
+} from "@bbrc/shared";
 import {
 	Avatar,
 	AvatarFallback,
 	AvatarImage,
 } from "@bbrc/ui/components/avatar";
-import { CalendarClock, Star, Trophy } from "lucide-react";
+import { Star, Trophy } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { BookCountriesSummary } from "@/components/blocks/book-countries-summary";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import {
 	ReadingTimeline,
@@ -134,12 +139,6 @@ function ProgressSection({ sitting }: { sitting: Sitting }) {
 								finished={sitting.status === "finished"}
 							/>
 						) : null}
-						{sitting.midtermAt && sitting.status === "reading" ? (
-							<p className="flex items-center gap-1.5 text-muted-foreground text-xs">
-								<CalendarClock className="size-3.5" aria-hidden />
-								Midterm check-in {formatDateTime(sitting.midtermAt)}
-							</p>
-						) : null}
 					</>
 				)}
 			</div>
@@ -179,11 +178,36 @@ function BookSection({ sitting }: { sitting: Sitting }) {
 			linkLabel="Open book page"
 		>
 			<div className="flex flex-col gap-3 border border-border p-4">
-				<div className="flex items-center justify-between gap-2">
-					<p className="font-medium text-sm">{book.title}</p>
+				<div className="flex items-start justify-between gap-2">
+					<div className="min-w-0">
+						<p className="font-medium text-sm leading-snug">
+							<Link
+								href={`/books/${book.slug}` as Route}
+								className="hover:underline"
+							>
+								{book.title}
+							</Link>
+						</p>
+						<p className="text-muted-foreground text-sm">
+							{book.authors.map((author, index) => (
+								<span key={author}>
+									{index > 0 ? ", " : null}
+									<Link
+										href={`/authors/${authorNameToSlug(author)}` as Route}
+										className="hover:text-foreground hover:underline"
+									>
+										{author}
+									</Link>
+								</span>
+							))}
+						</p>
+					</div>
 					<BookStatusBadge status={book.status} />
 				</div>
-				<dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+				{book.countries.length > 0 ? (
+					<BookCountriesSummary countries={book.countries} maxVisible={4} />
+				) : null}
+				<dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-border border-t pt-3 text-sm">
 					{facts.map((fact) => (
 						<div key={fact.label}>
 							<dt className="text-muted-foreground text-xs">{fact.label}</dt>

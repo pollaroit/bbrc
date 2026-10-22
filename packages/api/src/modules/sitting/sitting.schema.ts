@@ -468,6 +468,11 @@ export const SittingRemovedParticipantSchema =
 
 export const SittingSelectedBookSchema = BookSchema.pick(getBookListFields);
 
+/** The sitting page also shows where the book comes from. */
+export const SittingDetailBookSchema = SittingSelectedBookSchema.extend({
+	countries: zod.array(zod.string()),
+});
+
 export const SittingReviewSummarySchema = zod.object({
 	slug: FeedbackSchema.shape.slug,
 	authorId: UserSchema.shape.id,
@@ -493,7 +498,7 @@ export const getSittingBySlugFields = {
 	midtermAt: true,
 	selectedBookId: true,
 	selectedBook: {
-		select: getBookListFields,
+		select: { ...getBookListFields, countries: true },
 	},
 	poll: {
 		select: {
@@ -599,7 +604,7 @@ export const GetSittingBySlugOutputSchema = SittingSchema.pick({
 	stats: SittingStatsSchema,
 	displayName: zod.string().min(1),
 	poll: SittingPollDetailSchema.nullable(),
-	selectedBook: SittingSelectedBookSchema.nullable(),
+	selectedBook: SittingDetailBookSchema.nullable(),
 	reviews: zod.array(SittingReviewSummarySchema),
 	participants: zod.array(SittingParticipantSummarySchema),
 	removedParticipants: zod.array(SittingRemovedParticipantSchema),

@@ -5,7 +5,11 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "../../procedures";
-import { revalidateSittingIsr } from "../../revalidate-isr";
+import {
+	revalidateBookIsr,
+	revalidateBooksCatalogIsr,
+	revalidateSittingIsr,
+} from "../../revalidate-isr";
 import {
 	CreateSittingInputSchema,
 	CreateSittingOutputSchema,
@@ -171,6 +175,12 @@ export const sittingRouter = {
 		.handler(async ({ input, context }) => {
 			const result = await transitionSitting(input, context.db);
 			revalidateSittingIsr(context, result.slug);
+			// The chosen book's status changes with the phase, so its pages and the
+			// catalog need refreshing too.
+			if (result.selectedBook) {
+				revalidateBookIsr(context, result.selectedBook.slug);
+			}
+			revalidateBooksCatalogIsr(context);
 			return result;
 		}),
 	updateSittingDeadlines: adminProcedure
