@@ -477,6 +477,8 @@ export const getSittingBySlugFields = {
 	status: true,
 	deadline: true,
 	createdAt: true,
+	readingStartedAt: true,
+	midtermAt: true,
 	selectedBookId: true,
 	selectedBook: {
 		select: getBookListFields,
@@ -551,12 +553,30 @@ export const getSittingRemovedParticipantFields = {
 } as const;
 
 /** GET BY SLUG */
+export const SittingStatsSchema = zod.object({
+	participantCount: zod.number().int().min(0),
+	progressCounts: zod.object({
+		not_started: zod.number().int().min(0),
+		in_progress: zod.number().int().min(0),
+		completed: zod.number().int().min(0),
+		dnf: zod.number().int().min(0),
+	}),
+	reviewCount: zod.number().int().min(0),
+	/** Average of participant reviews for the chosen book, if any. */
+	averageRating: zod.number().min(0).max(5).nullable(),
+});
+
 export const GetSittingBySlugOutputSchema = SittingSchema.pick({
 	slug: true,
 	status: true,
 	createdAt: true,
 }).extend({
 	deadline: SittingStoredDeadlineSchema,
+	/** When the reading phase began; null while voting. */
+	readingStartedAt: zod.coerce.date().nullable(),
+	/** Scheduled mid-sitting check-in, if any. */
+	midtermAt: zod.coerce.date().nullable(),
+	stats: SittingStatsSchema,
 	displayName: zod.string().min(1),
 	poll: SittingPollDetailSchema.nullable(),
 	selectedBook: SittingSelectedBookSchema.nullable(),
@@ -851,3 +871,17 @@ export type ResendSittingTelegramPollOpenOutput = z.infer<
 >;
 
 export { refinePollConfig };
+
+/** The signed-in viewer's relationship to a sitting. */
+export const GetMySittingStateOutputSchema = zod.object({
+	isParticipant: zod.boolean(),
+	/** The viewer's reading progress; null when they are not a participant. */
+	progress: ProgressSchema.nullable(),
+	hasVoted: zod.boolean(),
+	/** How many poll options the viewer picked. */
+	voteCount: zod.number().int().min(0),
+});
+
+export type GetMySittingStateOutput = z.infer<
+	typeof GetMySittingStateOutputSchema
+>;

@@ -2,12 +2,14 @@ import { SittingSchema } from "@bbrc/schemas";
 import {
 	adminProcedure,
 	notBannedProcedure,
+	protectedProcedure,
 	publicProcedure,
 } from "../../procedures";
 import { revalidateSittingIsr } from "../../revalidate-isr";
 import {
 	CreateSittingInputSchema,
 	CreateSittingOutputSchema,
+	GetMySittingStateOutputSchema,
 	GetOngoingSittingOutputSchema,
 	GetPollOptionReadersInputSchema,
 	GetPollOptionReadersOutputSchema,
@@ -45,6 +47,7 @@ import {
 import {
 	addSittingParticipant,
 	createSitting,
+	getMySittingState,
 	getOngoingSitting,
 	getPollOptionReaders,
 	getPollOptionVotes,
@@ -79,6 +82,13 @@ export const sittingRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await getSittingBySlug(input, context.db, context.session),
+		),
+	getMySittingState: protectedProcedure
+		.input(SittingSchema.shape.slug)
+		.output(GetMySittingStateOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await getMySittingState(input, context.session.user.id, context.db),
 		),
 	getOngoingSitting: publicProcedure
 		.output(GetOngoingSittingOutputSchema)

@@ -61,6 +61,7 @@ import {
 	buildSittingPollSlug,
 	type CreateSittingInput,
 	type CreateSittingOutput,
+	type GetMySittingStateOutput,
 	type GetOngoingSittingOutput,
 	type GetPollOptionReadersInput,
 	type GetPollOptionReadersOutput,
@@ -273,11 +274,33 @@ function mapSittingDetail(
 	const myVoteOptionIds = myVotes.map((vote) => vote.optionId);
 	const bookPages = row.selectedBook?.pages ?? null;
 
+	const progressCounts = {
+		not_started: 0,
+		in_progress: 0,
+		completed: 0,
+		dnf: 0,
+	};
+	for (const participation of row.participants) {
+		progressCounts[participation.progress] += 1;
+	}
+	const averageRating =
+		reviews.length > 0
+			? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+			: null;
+
 	return {
 		slug: row.slug,
 		status: row.status,
 		deadline: row.deadline,
 		createdAt: row.createdAt,
+		readingStartedAt: row.readingStartedAt,
+		midtermAt: row.midtermAt,
+		stats: {
+			participantCount: row.participants.length,
+			progressCounts,
+			reviewCount: reviews.length,
+			averageRating,
+		},
 		displayName: formatSittingDisplayName(
 			row.slug,
 			row.status,
@@ -711,6 +734,43 @@ export async function getSittingList(
 			...page.metadata,
 			...(total != null ? { total } : {}),
 		},
+	};
+}
+
+export async function getMySittingState(
+	slug: string,
+	userId: string,
+	db: Database,
+): Promise<GetMySittingStateOutput> {
+	const sitting = await db.sitting.findUnique({
+		where: { slug },
+		select: { id: true, poll: { select: { id: true } } },
+	});
+
+	if (!sitting) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Sitting not found",
+			data: { slug },
+		});
+	}
+
+	const [participation, voteCount] = await Promise.all([
+		db.participation.findFirst({
+			where: { sittingId: sitting.id, userId, removedAt: null },
+			select: { progress: true },
+		}),
+		sitting.poll
+			? db.pollVote.count({
+					where: { userId, option: { pollId: sitting.poll.id } },
+				})
+			: Promise.resolve(0),
+	]);
+
+	return {
+		isParticipant: participation != null,
+		progress: participation?.progress ?? null,
+		hasVoted: voteCount > 0,
+		voteCount,
 	};
 }
 
