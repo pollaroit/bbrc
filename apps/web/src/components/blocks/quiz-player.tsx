@@ -153,8 +153,6 @@ export function QuizPlayer({
 			return;
 		}
 		startedRef.current = true;
-		let timer: number | undefined;
-
 		const attempt = async () => {
 			try {
 				const result = await startMutation.mutateAsync({ slug: book.slug });
@@ -162,7 +160,7 @@ export function QuizPlayer({
 					return;
 				}
 				if (result.status === "generating") {
-					timer = window.setTimeout(attempt, POLL_MS);
+					window.setTimeout(attempt, POLL_MS);
 					return;
 				}
 				if (result.status === "finished") {
