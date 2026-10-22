@@ -11,6 +11,8 @@ type GenerateJsonParams<T> = {
 	responseSchema: GeminiJsonSchema;
 	parse: (value: unknown) => T;
 	temperature?: number;
+	/** Abort the request after this many milliseconds. */
+	timeoutMs?: number;
 };
 
 type GeminiGenerateContentResponse = {
@@ -27,12 +29,14 @@ export async function geminiGenerateJson<T>({
 	responseSchema,
 	parse,
 	temperature = 0.8,
+	timeoutMs,
 }: GenerateJsonParams<T>): Promise<T> {
 	const url = `${GEMINI_API_BASE}/models/${encodeURIComponent(config.model)}:generateContent?key=${encodeURIComponent(config.apiKey)}`;
 
 	const response = await fetch(url, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
+		signal: timeoutMs != null ? AbortSignal.timeout(timeoutMs) : undefined,
 		body: JSON.stringify({
 			systemInstruction: {
 				parts: [{ text: systemInstruction }],
