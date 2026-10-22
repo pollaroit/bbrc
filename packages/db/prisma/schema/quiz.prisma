@@ -1,0 +1,150 @@
+enum QuizStatus {
+  generating
+  ready
+  /// The model could not write a faithful quiz for this book; retried after `unavailableUntil`.
+  unavailable
+}
+
+enum QuizSubmissionStatus {
+  in_progress
+  submitted
+  /// Not submitted before `expiresAt`; the single attempt is used up.
+  forfeited
+}
+
+enum QuizGenerationOutcome {
+  ready
+  declined
+  failed
+}
+
+/// One quiz per book, generated once by AI and shared by every reader.
+model Quiz {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.uuid("Invalid book id")
+  bookId String @unique @map("book_id")
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  status QuizStatus @default(generating)
+
+  /// Set while `status = generating`; a stale value means the generation died.
+  generatingStartedAt DateTime? @map("generating_started_at")
+  /// Set when the model declined; no new attempt to generate before this moment.
+  unavailableUntil    DateTime? @map("unavailable_until")
+  /// Model id that wrote the questions.
+  model               String?
+
+  generatedById String? @map("generated_by_id")
+  generatedBy   User?   @relation("QuizGeneratedBy", fields: [generatedById], references: [id], onDelete: SetNull)
+
+  questions   QuizQuestion[]
+  submissions QuizSubmission[]
+
+  @@index([status])
+  @@map("quiz")
+}
+
+model QuizQuestion {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// @zod.uuid("Invalid quiz id")
+  quizId String @map("quiz_id")
+  quiz   Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  /// 1 (very easy) to 5 (very hard).
+  /// @zod.min(1).max(5)
+  position Int
+
+  question    String @db.Text
+  explanation String @db.Text
+
+  /// `{ text: string; isCorrect: boolean }[]`, already in display order.
+  choices Json
+
+  reports QuizQuestionReport[]
+
+  @@unique([quizId, position])
+  @@map("quiz_question")
+}
+
+/// A user's single attempt at a quiz. Created when they open it.
+model QuizSubmission {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid quiz id")
+  quizId String @map("quiz_id")
+  quiz   Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  status QuizSubmissionStatus @default(in_progress)
+
+  startedAt   DateTime  @default(now()) @map("started_at")
+  expiresAt   DateTime  @map("expires_at")
+  submittedAt DateTime? @map("submitted_at")
+
+  /// Chosen choice index per question, -1 = skipped. Empty until submitted.
+  answers Int[] @default([])
+
+  correctAnswersCount   Int  @default(0) @map("correct_answers_count")
+  incorrectAnswersCount Int  @default(0) @map("incorrect_answers_count")
+  skippedAnswersCount   Int  @default(0) @map("skipped_answers_count")
+  /// Null until submitted.
+  score                 Int?
+
+  @@unique([userId, quizId])
+  @@index([quizId, status, score])
+  @@index([userId, status])
+  @@map("quiz_submission")
+}
+
+/// Counts first-time quizzes (and failures) per day; survives quiz deletion.
+model QuizGenerationLog {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid book id")
+  bookId String @map("book_id")
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  outcome QuizGenerationOutcome
+
+  @@index([userId, createdAt])
+  @@map("quiz_generation_log")
+}
+
+model QuizQuestionReport {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// @zod.uuid("Invalid question id")
+  questionId String       @map("question_id")
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  /// @zod.max(500, "Reason must be at most 500 characters long").nullish()
+  reason String?
+
+  @@unique([userId, questionId])
+  @@map("quiz_question_report")
+}

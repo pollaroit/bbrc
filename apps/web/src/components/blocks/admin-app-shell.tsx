@@ -27,6 +27,7 @@ import {
 	Home,
 	LayoutDashboard,
 	Library,
+	ListChecks,
 	ListOrdered,
 	MessageCircle,
 	MessageSquareQuote,
@@ -318,6 +319,30 @@ const adminNavSections: AdminNavSection[] = [
 				href: "/admin/documents/stats" as Route,
 				label: "Stats",
 				isActive: (pathname) => pathname.startsWith("/admin/documents/stats"),
+			},
+		],
+	},
+	{
+		id: "quizzes",
+		label: "Quizzes",
+		icon: ListChecks,
+		defaultHref: "/admin/quizzes" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/quizzes"),
+		children: [
+			{
+				href: "/admin/quizzes" as Route,
+				label: "Overview",
+				isActive: (pathname) => pathname === "/admin/quizzes",
+			},
+			{
+				href: "/admin/quizzes/list" as Route,
+				label: "List",
+				isActive: (pathname) => pathname.startsWith("/admin/quizzes/list"),
+			},
+			{
+				href: "/admin/quizzes/stats" as Route,
+				label: "Stats",
+				isActive: (pathname) => pathname.startsWith("/admin/quizzes/stats"),
 			},
 		],
 	},

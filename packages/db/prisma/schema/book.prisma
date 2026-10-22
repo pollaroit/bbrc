@@ -51,6 +51,8 @@ model Book {
   sittingsSelectedFor Sitting[] @relation("SittingSelectedBook")
   documents           Document[]
   reads               Read[]
+  quiz                Quiz?
+  quizGenerationLogs  QuizGenerationLog[]
 
   readAfterPrerequisites BookReadingPrerequisite[] @relation("BookReadAfter")
   prerequisiteForBooks   BookReadingPrerequisite[] @relation("BookPrerequisiteFor")

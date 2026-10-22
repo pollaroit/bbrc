@@ -15,6 +15,7 @@ import { leaderboardRouter } from "./modules/leaderboard/leaderboard.router";
 import { likeRouter } from "./modules/like/like.router";
 import { notificationRouter } from "./modules/notification/notification.router";
 import { postRouter } from "./modules/post/post.router";
+import { quizRouter } from "./modules/quiz/quiz.router";
 import { readRouter } from "./modules/read/read.router";
 import { rpRouter } from "./modules/rp/rp.router";
 import { globalSearchRouter } from "./modules/search/global-search.router";
@@ -42,6 +43,7 @@ export const appRouter = {
 	like: likeRouter,
 	notification: notificationRouter,
 	post: postRouter,
+	quiz: quizRouter,
 	read: readRouter,
 	series: seriesRouter,
 	shelf: shelfRouter,

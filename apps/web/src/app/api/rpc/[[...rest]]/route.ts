@@ -8,6 +8,9 @@ import type { NextRequest } from "next/server";
 
 import { createContext } from "../../../../context";
 
+/** Quiz generation calls the AI model, which can take up to a minute. */
+export const maxDuration = 90;
+
 const rpcHandler = new RPCHandler(appRouter, {
 	interceptors: [
 		onError((error) => {

@@ -15,6 +15,7 @@ type ProfileSegment =
 	| "overview"
 	| "sittings"
 	| "reads"
+	| "quizzes"
 	| "posts"
 	| "feedbacks"
 	| "shelves"
@@ -25,6 +26,7 @@ const tabs: { segment: ProfileSegment; label: string; ownOnly?: boolean }[] = [
 	{ segment: "overview", label: "Overview" },
 	{ segment: "sittings", label: "Sittings" },
 	{ segment: "reads", label: "Reads" },
+	{ segment: "quizzes", label: "Quizzes" },
 	{ segment: "posts", label: "Feed" },
 	{ segment: "feedbacks", label: "Feedbacks" },
 	{ segment: "shelves", label: "Shelves" },

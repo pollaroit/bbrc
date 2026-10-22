@@ -63,6 +63,10 @@ model User {
   factImpressions         FactImpression[]
   reads                   Read[]
   goals                   Goal[]
+  quizSubmissions         QuizSubmission[]
+  quizGenerationLogs      QuizGenerationLog[]
+  quizQuestionReports     QuizQuestionReport[]
+  generatedQuizzes        Quiz[]                   @relation("QuizGeneratedBy")
   profile                 UserProfile?
 
   @@map("user")
