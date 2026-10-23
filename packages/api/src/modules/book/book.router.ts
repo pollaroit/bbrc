@@ -65,6 +65,11 @@ import {
 	listBlockedOpenLibraryWorks,
 	unblockOpenLibraryWork,
 } from "./book-recommendation-block.service";
+import {
+	GetBookStatsInputSchema,
+	GetBookStatsOutputSchema,
+} from "./book-stats.schema";
+import { getBookStats } from "./book-stats.service";
 
 export const bookRouter = {
 	getBookList: publicProcedure
@@ -108,6 +113,12 @@ export const bookRouter = {
 		.output(GetBookBySlugOutputSchema)
 		.handler(
 			async ({ input, context }) => await getBookBySlug(input, context.db),
+		),
+	getStats: publicProcedure
+		.input(GetBookStatsInputSchema)
+		.output(GetBookStatsOutputSchema)
+		.handler(async ({ input, context }) =>
+			getBookStats(input.bookSlug, context.db),
 		),
 	getCatalogDiscovery: publicProcedure
 		.input(GetBookCatalogDiscoveryInputSchema)

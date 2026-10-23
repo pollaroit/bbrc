@@ -1,6 +1,7 @@
 export * from "./author-slug";
 export * from "./book-catalog-similarity";
 export * from "./book-country";
+export * from "./book-stats";
 export * from "./club-timezone";
 export * from "./comment-thread";
 export * from "./document-file-check";
