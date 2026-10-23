@@ -1,5 +1,9 @@
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { getBookCatalogDiscovery } from "@bbrc/api/modules/book/book-catalog-discovery.service";
+import {
+	countBookSittings,
+	getBookSittings,
+} from "@bbrc/api/modules/book/book-sittings.service";
 import { getBookStats } from "@bbrc/api/modules/book/book-stats.service";
 import { listApprovedDocumentsByBook } from "@bbrc/api/modules/document/document.service";
 import { listBookFavorites } from "@bbrc/api/modules/favorite/favorite.service";
@@ -46,6 +50,14 @@ export const loadApprovedDocumentsForIsr = cache((slug: string) =>
 
 export const loadBookReadsForIsr = cache((slug: string) =>
 	listBookReads({ bookSlug: slug }, db),
+);
+
+export const loadBookSittingsForIsr = cache((slug: string) =>
+	getBookSittings(slug, db),
+);
+
+export const loadBookSittingCountForIsr = cache((slug: string) =>
+	countBookSittings(slug, db),
 );
 
 export const loadBookStatsForIsr = cache((slug: string) =>

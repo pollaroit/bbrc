@@ -7,6 +7,7 @@ import {
 	loadBookFeedbackListForIsr,
 	loadBookReadsForIsr,
 	loadBookShelvesForIsr,
+	loadBookSittingCountForIsr,
 } from "@/lib/isr-data";
 import { bookSlugStaticParams } from "@/lib/seo";
 import { db } from "@/services";
@@ -25,7 +26,7 @@ export default async function BookDetailLayout({
 }: LayoutProps<"/books/[slug]">) {
 	const { slug } = await params;
 
-	const [book, documents, reviews, shelves, reads, favorites] =
+	const [book, documents, reviews, shelves, reads, favorites, sittings] =
 		await Promise.all([
 			loadBookBySlugForIsr(slug),
 			loadApprovedDocumentsForIsr(slug),
@@ -33,6 +34,7 @@ export default async function BookDetailLayout({
 			loadBookShelvesForIsr(slug),
 			loadBookReadsForIsr(slug),
 			loadBookFavoritesForIsr(slug),
+			loadBookSittingCountForIsr(slug),
 		]);
 
 	return (
@@ -46,6 +48,7 @@ export default async function BookDetailLayout({
 					reviews: reviews.length,
 					reads: reads.total,
 					favorites: favorites.total,
+					sittings,
 				}}
 			/>
 			{children}

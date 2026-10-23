@@ -17,6 +17,7 @@ export type BookTabCounts = {
 	reviews?: number;
 	reads?: number;
 	favorites?: number;
+	sittings?: number;
 };
 
 type BookSubnavProps = {
@@ -43,7 +44,9 @@ function tabLabel(
 						? counts.reads
 						: tab.id === "favorites"
 							? counts.favorites
-							: undefined;
+							: tab.id === "sittings"
+								? counts.sittings
+								: undefined;
 
 	if (count == null || count < 1) {
 		return tab.label;

@@ -690,6 +690,14 @@ export function BookStatsPanel({ bookSlug, initialData }: BookStatsPanelProps) {
 				{pollBars.length > 0 ? (
 					<ChartCard
 						title="Poll results"
+						action={
+							<Link
+								href={`/books/${bookSlug}/sittings` as Route}
+								className="text-muted-foreground text-sm hover:text-foreground"
+							>
+								See sittings
+							</Link>
+						}
 						description={`Place in each poll, lower is better. Highlighted when the club picked it. ${data.polls.openNowSittingSlug ? "It is in an open poll now; results show once voting ends." : ""}`}
 					>
 						<ChartContainer config={countConfig} className="h-64 w-full">
