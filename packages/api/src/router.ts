@@ -14,6 +14,7 @@ import { healthRouter } from "./modules/health/health.router";
 import { leaderboardRouter } from "./modules/leaderboard/leaderboard.router";
 import { likeRouter } from "./modules/like/like.router";
 import { notificationRouter } from "./modules/notification/notification.router";
+import { peopleRouter } from "./modules/people/people.router";
 import { postRouter } from "./modules/post/post.router";
 import { quizRouter } from "./modules/quiz/quiz.router";
 import { readRouter } from "./modules/read/read.router";
@@ -42,6 +43,7 @@ export const appRouter = {
 	globalSearch: globalSearchRouter,
 	like: likeRouter,
 	notification: notificationRouter,
+	people: peopleRouter,
 	post: postRouter,
 	quiz: quizRouter,
 	read: readRouter,

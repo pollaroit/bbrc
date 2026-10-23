@@ -42,6 +42,13 @@ export const browseNavItems: BrowseNavItem[] = [
 		section: "catalog",
 	},
 	{
+		label: "People",
+		href: "/users" as Route,
+		icon: Users,
+		description: "Everyone in the club",
+		section: "club",
+	},
+	{
 		label: "Sittings",
 		href: "/sittings" as Route,
 		icon: Sofa,
@@ -71,7 +78,6 @@ export type BrowseNavPlaceholderItem = {
 };
 
 export const browseNavPlaceholderItems: BrowseNavPlaceholderItem[] = [
-	{ label: "Members", icon: Users, description: "Coming soon" },
 	{ label: "Achievements", description: "Coming soon" },
 	{ label: "Club stats", description: "Coming soon" },
 ];
