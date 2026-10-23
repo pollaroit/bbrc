@@ -17,6 +17,7 @@ import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { isPendingSlug } from "@/lib/optimistic/infinite-lists";
 import { shareSnippet } from "@/lib/share-snippet";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +28,7 @@ type PostCardProps = {
 	className?: string;
 };
 
-export function PostCard({ post, className }: PostCardProps) {
+function PostCardInner({ post, className }: PostCardProps) {
 	const postHref = `/posts/${post.slug}` as Route;
 	const profileHref = `/users/${post.author.username}` as Route;
 
@@ -137,5 +138,24 @@ export function PostCard({ post, className }: PostCardProps) {
 				) : null}
 			</CardFooter>
 		</Card>
+	);
+}
+
+/** A just-shared post shows at once, dimmed and inert until the server confirms it. */
+export function PostCard(props: PostCardProps) {
+	if (!isPendingSlug(props.post.slug)) {
+		return <PostCardInner {...props} />;
+	}
+
+	return (
+		<div
+			className="relative select-none opacity-60 *:pointer-events-none"
+			aria-busy="true"
+		>
+			<PostCardInner {...props} />
+			<span className="absolute top-3 right-3 z-10 text-muted-foreground text-xs">
+				Posting…
+			</span>
+		</div>
 	);
 }
