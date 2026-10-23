@@ -1,5 +1,6 @@
 "use client";
 
+import type { ListBookFavoritesOutput } from "@bbrc/api/modules/favorite/favorite.schema";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Tooltip,
@@ -136,8 +137,11 @@ function FavoriteHeart({
 	tooltipSide: "top" | "right" | "bottom" | "left";
 	state: FavoriteState;
 }) {
+	const { data: session } = authClient.useSession();
 	const [replaceOpen, setReplaceOpen] = useState(false);
 	const replaceIdRef = useRef<string | undefined>(undefined);
+	/** Which state the caches currently show, so each flip is applied once. */
+	const shownRef = useRef(state.isFavorite);
 
 	const mineQuery = useQuery({
 		...orpc.favorite.listMine.queryOptions(),
@@ -171,12 +175,83 @@ function FavoriteHeart({
 		},
 	});
 
+	/** Moves the heart, the Favorites tab count and the favoriters list at once. */
+	function showFavorite(next: boolean) {
+		sync.set(next);
+		if (next === shownRef.current) {
+			return;
+		}
+		shownRef.current = next;
+		const delta = next ? 1 : -1;
+		const user = session?.user;
+
+		queryClient.setQueryData(
+			orpc.favorite.getBookFavoriteState.queryKey({ input: bookSlug }),
+			(old) =>
+				old
+					? {
+							...old,
+							isFavorite: next,
+							canFavorite: next ? false : old.canFavorite,
+							slotsUsed: Math.max(0, old.slotsUsed + delta),
+						}
+					: old,
+		);
+		queryClient.setQueryData(
+			orpc.favorite.getViewerLibraryEngagement.queryKey(),
+			(old) =>
+				old
+					? {
+							...old,
+							favoriteSlugs: next
+								? [
+										...old.favoriteSlugs.filter((slug) => slug !== bookSlug),
+										bookSlug,
+									]
+								: old.favoriteSlugs.filter((slug) => slug !== bookSlug),
+							slotsUsed: Math.max(0, old.slotsUsed + delta),
+						}
+					: old,
+		);
+		queryClient.setQueriesData(
+			{ queryKey: orpc.favorite.listForBook.key({ input: { bookSlug } }) },
+			(old: ListBookFavoritesOutput | undefined) => {
+				if (!old) {
+					return old;
+				}
+				const others = user
+					? old.items.filter((item) => item.user.username !== user.username)
+					: old.items;
+				return {
+					...old,
+					total: Math.max(0, old.total + delta),
+					items:
+						next && user
+							? [
+									{
+										favoritedAt: new Date(),
+										slotsUsed: state.slotsUsed + 1,
+										maxSlots: state.maxSlots,
+										user: {
+											username: user.username as string,
+											name: user.name,
+											image: user.image ?? null,
+										},
+									},
+									...others,
+								]
+							: others,
+				};
+			},
+		);
+	}
+
 	const isFavorite = sync.value;
 	const hint = state.hint;
 
 	const handleToggle = () => {
 		if (isFavorite) {
-			sync.set(false);
+			showFavorite(false);
 			return;
 		}
 
@@ -189,7 +264,7 @@ function FavoriteHeart({
 			return;
 		}
 
-		sync.set(true);
+		showFavorite(true);
 	};
 
 	const label = isFavorite ? "Remove from favorites" : "Add to favorites";
@@ -244,7 +319,7 @@ function FavoriteHeart({
 				onConfirm={(replaceFavoriteId) => {
 					replaceIdRef.current = replaceFavoriteId;
 					setReplaceOpen(false);
-					sync.set(true);
+					showFavorite(true);
 				}}
 			/>
 		</>

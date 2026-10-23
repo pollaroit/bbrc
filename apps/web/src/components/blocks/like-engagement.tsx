@@ -30,7 +30,7 @@ type LikeHeartProps = {
 	label: string;
 };
 
-/** Purple heart that pops (with a soft ring) when it becomes liked. */
+/** Pink heart that pops (with a soft ring) when it becomes liked. */
 export function LikeHeartButton({
 	liked,
 	size = "md",
@@ -54,9 +54,10 @@ export function LikeHeartButton({
 			variant="ghost"
 			size="icon-sm"
 			className={cn(
-				"relative text-muted-foreground",
+				"relative text-muted-foreground hover:bg-transparent hover:text-foreground aria-expanded:bg-transparent dark:hover:bg-transparent",
 				isSmall && "size-7",
-				liked && "text-purple-600 hover:text-purple-600 dark:text-purple-400",
+				liked &&
+					"text-pink-500 hover:text-pink-500 dark:text-pink-400 dark:hover:text-pink-400",
 			)}
 			onClick={onClick}
 			aria-label={label}
@@ -66,7 +67,7 @@ export function LikeHeartButton({
 				<span
 					key={`ring-${popKey}`}
 					aria-hidden
-					className="pointer-events-none absolute inset-0 m-auto size-5 animate-like-ring rounded-full border-2 border-purple-500/70 motion-reduce:hidden"
+					className="pointer-events-none absolute inset-0 m-auto size-5 animate-like-ring rounded-full border-2 border-pink-400/80 motion-reduce:hidden"
 				/>
 			) : null}
 			<Heart
