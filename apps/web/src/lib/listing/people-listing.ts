@@ -30,6 +30,8 @@ export const peopleSortLabels = {
 	name: "Name",
 	createdAt: "Join date",
 	streak: "Reading streak",
+	averageRating: "Average rating given",
+	authors: "Authors read",
 	reads: "Books read",
 	feedbacks: "Reviews",
 	posts: "Posts",
@@ -78,6 +80,7 @@ export const peopleListingSearchParams = {
 	minReads: parseAsInteger,
 	minReviews: parseAsInteger,
 	minSittings: parseAsInteger,
+	minJoined: parseAsInteger,
 	activity: parseAsArrayOf(parseAsStringLiteral(PEOPLE_ACTIVITY_FILTERS)),
 };
 
@@ -114,6 +117,7 @@ export function toPeopleListCallInput(
 			minReads: params.minReads,
 			minReviews: params.minReviews,
 			minSittings: params.minSittings,
+			minJoined: params.minJoined,
 		}),
 		...activity,
 	} as Partial<GetPeopleListInput>;
@@ -135,6 +139,7 @@ export function countPeopleSheetFilters(
 			params.minReads != null,
 			params.minReviews != null,
 			params.minSittings != null,
+			params.minJoined != null,
 		].filter(Boolean).length + (params.activity?.length ?? 0)
 	);
 }
@@ -155,6 +160,7 @@ export function clearPeopleSheetFilters(
 		minReads: null,
 		minReviews: null,
 		minSittings: null,
+		minJoined: null,
 		activity: null,
 	});
 }

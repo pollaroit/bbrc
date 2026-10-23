@@ -66,7 +66,7 @@ function levelRanges(
 }
 
 async function userIdsWithAtLeast(
-	kind: "reads" | "reviews" | "sittings",
+	kind: "reads" | "reviews" | "sittings" | "joined",
 	count: number,
 	db: Database,
 ): Promise<string[]> {
@@ -86,7 +86,10 @@ async function userIdsWithAtLeast(
 	}
 	const rows = await db.participation.groupBy({
 		by: ["userId"],
-		where: { removedAt: null, progress: "completed" },
+		where:
+			kind === "joined"
+				? { removedAt: null }
+				: { removedAt: null, progress: "completed" },
 		having: { userId: { _count: { gte: count } } },
 	});
 	return rows.map((row) => row.userId);
@@ -176,6 +179,7 @@ async function buildWhere(
 		["reads", input.minReads],
 		["reviews", input.minReviews],
 		["sittings", input.minSittings],
+		["joined", input.minJoined],
 	] as const;
 	for (const [kind, count] of thresholds) {
 		if (count != null) {
@@ -187,7 +191,7 @@ async function buildWhere(
 }
 
 function orderByFor(
-	sortBy: Exclude<GetPeopleListInput["sortBy"], "streak">,
+	sortBy: Exclude<GetPeopleListInput["sortBy"], ComputedSort>,
 	direction: "asc" | "desc",
 ): Prisma.UserOrderByWithRelationInput {
 	switch (sortBy) {
@@ -210,6 +214,50 @@ function orderByFor(
 		default:
 			return { [sortBy]: direction };
 	}
+}
+
+const COMPUTED_SORTS = ["streak", "averageRating", "authors"] as const;
+type ComputedSort = (typeof COMPUTED_SORTS)[number];
+
+function isComputedSort(
+	sortBy: GetPeopleListInput["sortBy"],
+): sortBy is ComputedSort {
+	return (COMPUTED_SORTS as readonly string[]).includes(sortBy);
+}
+
+async function loadAverageRatings(
+	userIds: string[],
+	db: Database,
+): Promise<Map<string, number>> {
+	const rows = await db.feedback.groupBy({
+		by: ["authorId"],
+		where: { authorId: { in: userIds } },
+		_avg: { rating: true },
+	});
+	return new Map(
+		rows.flatMap((row) =>
+			row._avg.rating == null ? [] : [[row.authorId, row._avg.rating] as const],
+		),
+	);
+}
+
+async function loadDistinctAuthorCounts(
+	userIds: string[],
+	db: Database,
+): Promise<Map<string, number>> {
+	const rows = await db.read.findMany({
+		where: { userId: { in: userIds } },
+		select: { userId: true, book: { select: { authors: true } } },
+	});
+	const byUser = new Map<string, Set<string>>();
+	for (const row of rows) {
+		const set = byUser.get(row.userId) ?? new Set<string>();
+		for (const author of row.book.authors) {
+			set.add(author);
+		}
+		byUser.set(row.userId, set);
+	}
+	return new Map([...byUser].map(([id, set]) => [id, set.size]));
 }
 
 type Streak = { current: number; best: number; finished: number };
@@ -342,7 +390,7 @@ export async function getPeopleList(
 	const total = await db.user.count({ where });
 
 	// Streaks are computed, not stored, so these requests sort and page in memory.
-	if (input.sortBy === "streak" || input.hasStreak) {
+	if (isComputedSort(input.sortBy) || input.hasStreak) {
 		const candidates = await db.user.findMany({
 			where,
 			select: { id: true, username: true },
@@ -351,7 +399,25 @@ export async function getPeopleList(
 			candidates.map((candidate) => candidate.id),
 			db,
 		);
+		const ids = candidates.map((candidate) => candidate.id);
+		const ratings =
+			input.sortBy === "averageRating"
+				? await loadAverageRatings(ids, db)
+				: new Map<string, number>();
+		const authors =
+			input.sortBy === "authors"
+				? await loadDistinctAuthorCounts(ids, db)
+				: new Map<string, number>();
 		const sign = direction === "asc" ? 1 : -1;
+
+		/** Members without a value always sort last. */
+		const compareNullable = (a: number | undefined, b: number | undefined) => {
+			if (a == null && b == null) return 0;
+			if (a == null) return 1;
+			if (b == null) return -1;
+			return (a - b) * sign;
+		};
+
 		const ranked = candidates
 			.filter(
 				(candidate) =>
@@ -360,12 +426,20 @@ export async function getPeopleList(
 			.sort((a, b) => {
 				const left = streaks.get(a.id);
 				const right = streaks.get(b.id);
-				const byStreak =
-					input.sortBy === "streak"
-						? ((left?.current ?? 0) - (right?.current ?? 0)) * sign ||
-							((left?.best ?? 0) - (right?.best ?? 0)) * sign
-						: 0;
-				return byStreak || a.username.localeCompare(b.username);
+				let primary = 0;
+				if (input.sortBy === "streak") {
+					primary =
+						((left?.current ?? 0) - (right?.current ?? 0)) * sign ||
+						((left?.best ?? 0) - (right?.best ?? 0)) * sign;
+				} else if (input.sortBy === "averageRating") {
+					primary = compareNullable(ratings.get(a.id), ratings.get(b.id));
+				} else if (input.sortBy === "authors") {
+					primary = compareNullable(
+						authors.get(a.id) ?? 0,
+						authors.get(b.id) ?? 0,
+					);
+				}
+				return primary || a.username.localeCompare(b.username);
 			});
 
 		const offset = input.cursor ? Number.parseInt(input.cursor, 10) || 0 : 0;

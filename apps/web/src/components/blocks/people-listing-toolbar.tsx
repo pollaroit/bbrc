@@ -230,7 +230,7 @@ export function PeopleListingToolbar() {
 
 					<FieldSet className="gap-3">
 						<FieldLegend>At least</FieldLegend>
-						<FieldGroup className="grid grid-cols-3 gap-3">
+						<FieldGroup className="grid grid-cols-2 gap-3">
 							<MinimumField
 								id="people-min-reads"
 								label="Books read"
@@ -242,6 +242,12 @@ export function PeopleListingToolbar() {
 								label="Reviews"
 								value={params.minReviews}
 								onChange={(minReviews) => void setParams({ minReviews })}
+							/>
+							<MinimumField
+								id="people-min-joined"
+								label="Sittings joined"
+								value={params.minJoined}
+								onChange={(minJoined) => void setParams({ minJoined })}
 							/>
 							<MinimumField
 								id="people-min-sittings"
