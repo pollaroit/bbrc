@@ -5,10 +5,8 @@ import { cn } from "@/lib/utils";
 export type UserStatus = GetUserByUsernameOutput["status"];
 
 const statusBadgeClassName: Record<UserStatus, string> = {
-	active:
-		"border-emerald-600/30 bg-emerald-600/10 text-emerald-800 dark:text-emerald-300",
-	warned:
-		"border-amber-600/30 bg-amber-600/10 text-amber-900 dark:text-amber-300",
+	active: "border-success/30 bg-success/10 text-success-ink",
+	warned: "border-warning/30 bg-warning/10 text-warning-ink",
 	banned: "border-destructive/40 bg-destructive/10 text-destructive",
 };
 

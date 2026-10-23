@@ -5,11 +5,9 @@ import { Badge } from "@bbrc/ui/components/badge";
 export type SittingStatus = GetSittingListOutput["items"][number]["status"];
 
 const statusBadgeClassName: Record<SittingStatus, string> = {
-	voting:
-		"border-amber-600/30 bg-amber-600/10 text-amber-900 dark:text-amber-300",
-	reading: "border-sky-600/30 bg-sky-600/10 text-sky-900 dark:text-sky-300",
-	finished:
-		"border-emerald-600/30 bg-emerald-600/10 text-emerald-800 dark:text-emerald-300",
+	voting: "border-warning/30 bg-warning/10 text-warning-ink",
+	reading: "border-info/30 bg-info/10 text-info-ink",
+	finished: "border-success/30 bg-success/10 text-success-ink",
 };
 
 export function SittingStatusBadge({ status }: { status: SittingStatus }) {

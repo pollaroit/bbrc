@@ -29,8 +29,8 @@ const weightLabel = {
 
 const weightClass = {
 	1: "border-border text-muted-foreground",
-	2: "border-slate-500/60 bg-slate-200 text-slate-900 dark:border-slate-400/50 dark:bg-slate-800 dark:text-slate-100",
-	3: "border-amber-600/60 bg-amber-100 text-amber-950 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-50",
+	2: "border-border bg-muted text-foreground",
+	3: "border-warning/60 bg-warning/15 text-warning-ink",
 } as const;
 
 function ballotNote(totalSelections: number, maxChoices: number): string {

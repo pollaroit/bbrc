@@ -139,7 +139,7 @@ function BookCardRatingRow({
 		<div className="mt-auto flex flex-wrap items-baseline gap-x-5 gap-y-1 pt-3">
 			{viewerBookRating != null ? (
 				<p className="m-0 tabular-nums">
-					<span className="text-[11px] text-muted-foreground uppercase tracking-wide">
+					<span className="text-2xs text-muted-foreground uppercase tracking-wide">
 						You{" "}
 					</span>
 					<span className="font-semibold text-base text-foreground leading-none">
@@ -149,7 +149,7 @@ function BookCardRatingRow({
 			) : null}
 			{aggregateValue != null ? (
 				<p className="m-0 tabular-nums">
-					<span className="text-[11px] text-muted-foreground uppercase tracking-wide">
+					<span className="text-2xs text-muted-foreground uppercase tracking-wide">
 						{aggregateLabel}{" "}
 					</span>
 					<span className="font-semibold text-base text-foreground leading-none">
@@ -216,7 +216,7 @@ export function BookCard({
 									sizes="(max-width: 640px) 76px, 88px"
 								/>
 							) : (
-								<div className="flex size-full items-center justify-center bg-muted px-1 text-center text-[11px] text-muted-foreground leading-tight">
+								<div className="flex size-full items-center justify-center bg-muted px-1 text-center text-2xs text-muted-foreground leading-tight">
 									No cover
 								</div>
 							)}

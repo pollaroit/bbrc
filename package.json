@@ -46,6 +46,8 @@
 		"postinstall": "node ./scripts/guard-varlock-env.mjs && varlock codegen --path ./apps/web/ && varlock codegen --path ./packages/db/",
 		"auth:generate": "cd apps/web && bun run auth:generate",
 		"check": "biome check --write .",
+		"themes:generate": "bun run scripts/generate-palettes.ts",
+		"themes:import": "bun run scripts/import-tweakcn-presets.ts && biome check --write packages/shared/src/themes/imported-palettes.ts && bun run scripts/generate-palettes.ts",
 		"prepare": "lefthook install"
 	},
 	"dependencies": {

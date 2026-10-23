@@ -87,7 +87,7 @@ export function BookMarkReadButton({
 			<BookCheck
 				className={cn(
 					"size-[1.125rem] transition-transform active:scale-95",
-					hasRead && "text-emerald-700 dark:text-emerald-400",
+					hasRead && "text-success-ink",
 				)}
 			/>
 		</Button>

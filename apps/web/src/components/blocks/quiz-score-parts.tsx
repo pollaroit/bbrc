@@ -23,10 +23,7 @@ export function QuizCounts({
 				className="inline-flex items-center gap-0.5"
 				title={`${correct} correct`}
 			>
-				<Check
-					className="size-3.5 text-emerald-700 dark:text-emerald-400"
-					aria-hidden
-				/>
+				<Check className="size-3.5 text-success-ink" aria-hidden />
 				{correct}
 			</span>
 			<span
@@ -72,9 +69,9 @@ export function QuizRank({ rank }: { rank: number }) {
 		<span
 			className={cn(
 				"inline-flex size-8 shrink-0 items-center justify-center border border-border font-semibold text-sm tabular-nums",
-				rank === 1 && "border-amber-600/60 bg-amber-100 text-amber-950",
-				rank === 2 && "border-slate-500/60 bg-slate-200 text-slate-900",
-				rank === 3 && "border-orange-700/50 bg-orange-100 text-orange-950",
+				rank === 1 && "border-warning/60 bg-warning/15 text-warning-ink",
+				rank === 2 && "border-border bg-muted text-foreground",
+				rank === 3 && "border-warning/50 bg-warning/15 text-warning-ink",
 			)}
 		>
 			{rank}

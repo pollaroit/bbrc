@@ -102,7 +102,7 @@ function ListSketch({ ranked }: { ranked: boolean }) {
 		<span className="flex flex-col gap-1" aria-hidden>
 			{[1, 2, 3].map((n) => (
 				<span key={n} className="flex items-center gap-1.5">
-					<span className="w-3 text-center font-semibold text-[10px] text-muted-foreground tabular-nums">
+					<span className="w-3 text-center font-semibold text-3xs text-muted-foreground tabular-nums">
 						{ranked ? n : "•"}
 					</span>
 					<span className="h-2 flex-1 bg-muted-foreground/25" />

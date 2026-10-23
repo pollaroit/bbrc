@@ -291,7 +291,7 @@ function FavoriteHeart({
 			<Heart
 				className={cn(
 					"size-[1.125rem] transition-transform active:scale-95",
-					isFavorite && "fill-current text-rose-600 dark:text-rose-400",
+					isFavorite && "fill-current text-destructive",
 				)}
 			/>
 		</Button>

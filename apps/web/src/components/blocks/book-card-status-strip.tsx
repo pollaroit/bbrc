@@ -8,9 +8,9 @@ import {
 } from "@/components/blocks/book-status-badge";
 
 const statusStripClassName: Record<BookStatus, string> = {
-	completed: "bg-emerald-600/10 text-emerald-900 dark:text-emerald-200",
-	reading: "bg-sky-600/10 text-sky-950 dark:text-sky-200",
-	wishlist: "bg-violet-600/10 text-violet-950 dark:text-violet-200",
+	completed: "bg-success/10 text-success-ink",
+	reading: "bg-info/10 text-info-ink",
+	wishlist: "bg-violet/10 text-violet-ink",
 };
 
 import type { Route } from "next";

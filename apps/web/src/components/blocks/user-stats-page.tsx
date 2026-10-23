@@ -584,7 +584,7 @@ function CoverCell({
 								sizes="80px"
 							/>
 						) : (
-							<span className="flex size-full items-center justify-center p-1 text-[10px] text-muted-foreground">
+							<span className="flex size-full items-center justify-center p-1 text-3xs text-muted-foreground">
 								No cover
 							</span>
 						)}

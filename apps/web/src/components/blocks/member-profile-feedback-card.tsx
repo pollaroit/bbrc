@@ -66,10 +66,7 @@ export function MemberProfileFeedbackCard({
 						</p>
 					</div>
 					<span className="inline-flex shrink-0 items-center gap-1 border border-border px-1.5 py-0.5 font-medium text-xs tabular-nums">
-						<Star
-							className="size-3.5 fill-amber-500 text-amber-500"
-							aria-hidden
-						/>
+						<Star className="size-3.5 fill-warning text-warning" aria-hidden />
 						{formatFeedbackRating(item.rating)}
 					</span>
 				</div>

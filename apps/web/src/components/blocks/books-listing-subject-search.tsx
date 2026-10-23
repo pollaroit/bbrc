@@ -173,7 +173,7 @@ export function BooksListingSubjectSearch({
 						</span>
 						<button
 							type="button"
-							className="cursor-pointer rounded-none p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							className="cursor-pointer p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							aria-label={`Remove subject ${subjectSlugToLabel(slug)}`}
 							onClick={() => {
 								const next = subjects.filter((value) => value !== slug);

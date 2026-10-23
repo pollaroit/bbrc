@@ -38,7 +38,7 @@ function SubjectBadge({ item, linkable }: { item: string; linkable: boolean }) {
 	return (
 		<Link
 			href={href}
-			className="rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+			className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 		>
 			{badge}
 		</Link>
@@ -91,7 +91,7 @@ export function BookSubjectGroup({
 						<li>
 							<button
 								type="button"
-								className="cursor-pointer rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+								className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 								onClick={() => setDialogOpen(true)}
 							>
 								<Badge variant="outline" className="font-normal tabular-nums">

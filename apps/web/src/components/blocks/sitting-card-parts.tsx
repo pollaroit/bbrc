@@ -2,7 +2,7 @@
 
 import type { ProgressSchema } from "@bbrc/schemas";
 import type { z } from "zod";
-import { formatClubDateTime } from "@/lib/club-timezone";
+import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { formatRelativeTime } from "@/lib/format-relative-time";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +42,7 @@ export function VotingProgress({
 				<div className="h-full bg-warning" style={{ width: `${percent}%` }} />
 			</div>
 			<p className="text-muted-foreground text-xs">
-				Voting closes {formatClubDateTime(poll.deadline)} (
+				Voting closes <ClubDateTime value={poll.deadline} /> (
 				{formatRelativeTime(poll.deadline)})
 			</p>
 		</div>

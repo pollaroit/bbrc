@@ -62,8 +62,7 @@ export function UserGoalDetail({ username, goalSlug }: UserGoalDetailProps) {
 			<header
 				className={cn(
 					"flex flex-col gap-4 border border-border p-4 sm:p-5",
-					goal.isComplete &&
-						"border-emerald-600/50 bg-emerald-500/5 dark:border-emerald-500/40 dark:bg-emerald-500/10",
+					goal.isComplete && "border-success/50 bg-success/5",
 				)}
 			>
 				<div className="flex items-start justify-between gap-3">
@@ -73,7 +72,7 @@ export function UserGoalDetail({ username, goalSlug }: UserGoalDetailProps) {
 								{goal.title}
 							</h1>
 							{goal.isComplete ? (
-								<Badge className="border-emerald-600/30 bg-emerald-600 text-white dark:bg-emerald-500">
+								<Badge className="border-success/30 bg-success text-white">
 									Complete
 								</Badge>
 							) : null}

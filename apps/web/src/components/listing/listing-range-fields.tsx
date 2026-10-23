@@ -131,7 +131,7 @@ export function ListingRangeFields<TRangeBy extends string>({
 							<SelectTrigger
 								id="listing-range-by"
 								size="sm"
-								className="h-auto min-h-9 w-auto max-w-[45%] shrink-0 rounded-none border-0 border-input border-r bg-transparent py-2 pr-2 pl-3 shadow-none focus-visible:ring-0"
+								className="h-auto min-h-9 w-auto max-w-[45%] shrink-0 border-0 border-input border-r bg-transparent py-2 pr-2 pl-3 shadow-none focus-visible:ring-0"
 							>
 								<SelectValue placeholder="Field">
 									{rangeByDisplayLabel}
@@ -157,7 +157,7 @@ export function ListingRangeFields<TRangeBy extends string>({
 										type="button"
 										variant="ghost"
 										size="sm"
-										className="h-auto min-h-9 flex-1 justify-start gap-2 rounded-none px-3 py-2 font-normal hover:bg-muted/50"
+										className="h-auto min-h-9 flex-1 justify-start gap-2 px-3 py-2 font-normal hover:bg-muted/50"
 									>
 										<CalendarIcon className="size-4 shrink-0 text-muted-foreground" />
 										<span

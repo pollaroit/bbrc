@@ -15,12 +15,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { BookCountriesSummary } from "@/components/blocks/book-countries-summary";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
+import { ClubDateTime } from "@/components/blocks/club-date-time";
 import {
 	ReadingTimeline,
 	VotingProgress,
 } from "@/components/blocks/sitting-card-parts";
 import { bookCoverUrl } from "@/lib/book-cover";
-import { formatClubDateTime } from "@/lib/club-timezone";
 import { cn } from "@/lib/utils";
 
 type Sitting = GetSittingBySlugOutput;
@@ -257,7 +257,7 @@ function VotingSection({ sitting }: { sitting: Sitting }) {
 					</ul>
 					<p className="text-muted-foreground text-sm">
 						{poll.options.length} books to choose from. Voting closes{" "}
-						{formatClubDateTime(poll.deadline)}.
+						<ClubDateTime value={poll.deadline} />.
 					</p>
 				</div>
 			</Section>
@@ -281,7 +281,7 @@ function VotingSection({ sitting }: { sitting: Sitting }) {
 								<span className="flex min-w-0 items-center gap-1.5">
 									{winner ? (
 										<Trophy
-											className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+											className="size-3.5 shrink-0 text-warning"
 											aria-label="Winner"
 										/>
 									) : null}
@@ -389,10 +389,7 @@ function ReviewsSection({ sitting }: { sitting: Sitting }) {
 			) : (
 				<div className="flex flex-col divide-y divide-border border border-border">
 					<p className="flex items-center gap-1.5 px-4 py-3 text-sm">
-						<Star
-							className="size-4 fill-amber-500 text-amber-500"
-							aria-hidden
-						/>
+						<Star className="size-4 fill-warning text-warning" aria-hidden />
 						<span className="font-medium tabular-nums">
 							{stats.averageRating != null
 								? formatFeedbackRating(Number(stats.averageRating.toFixed(1)))
@@ -413,7 +410,7 @@ function ReviewsSection({ sitting }: { sitting: Sitting }) {
 								<span className="font-medium">{review.name}</span>
 								<span className="inline-flex items-center gap-1 text-xs tabular-nums">
 									<Star
-										className="size-3 fill-amber-500 text-amber-500"
+										className="size-3 fill-warning text-warning"
 										aria-hidden
 									/>
 									{formatFeedbackRating(review.rating)}

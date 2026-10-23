@@ -109,7 +109,7 @@ export function OpenLibraryWorkResults({
 												sizes="56px"
 											/>
 										) : (
-											<div className="flex size-full items-center justify-center text-[10px] text-muted-foreground">
+											<div className="flex size-full items-center justify-center text-3xs text-muted-foreground">
 												No cover
 											</div>
 										)}

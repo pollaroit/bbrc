@@ -13,6 +13,7 @@ import { PwaThemeColorSync } from "@/lib/pwa/pwa-theme-color-sync";
 import { PwaVisualViewportSync } from "@/lib/pwa/pwa-visual-viewport-sync";
 import { queryClient } from "@/utils/orpc";
 
+import { PreferencesSync } from "./preferences-sync";
 import { ThemeHotkey } from "./theme-hotkey";
 import { ThemeProvider } from "./theme-provider";
 
@@ -27,6 +28,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 		>
 			<TooltipProvider>
 				<ThemeHotkey />
+				<PreferencesSync />
 				<QueryClientProvider client={queryClient}>
 					<PwaVisualViewportSync />
 					<PwaThemeColorSync />

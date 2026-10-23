@@ -299,7 +299,7 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 															{option.voteCount === 1 ? "voter" : "voters"}
 														</span>
 														{leading ? (
-															<span className="border border-border px-1.5 py-0.5 text-[10px]">
+															<span className="border border-border px-1.5 py-0.5 text-3xs">
 																Leading
 															</span>
 														) : null}

@@ -7,22 +7,17 @@ import {
 	TooltipTrigger,
 } from "@bbrc/ui/components/tooltip";
 import { Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { headerToolbarIconButtonClass } from "@/lib/header-toolbar";
-import { nextThemeAfterToggle } from "@/lib/theme-toggle";
+import { useColorMode } from "@/lib/preferences/use-color-mode";
 
 export function ModeToggle() {
-	const { resolvedTheme, setTheme } = useTheme();
+	const { toggle } = useColorMode();
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
 		setMounted(true);
 	}, []);
-
-	const toggle = () => {
-		setTheme(nextThemeAfterToggle(resolvedTheme));
-	};
 
 	return (
 		<Tooltip>

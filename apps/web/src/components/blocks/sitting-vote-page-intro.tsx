@@ -5,10 +5,10 @@ import { Button } from "@bbrc/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Circle, Trophy } from "lucide-react";
 import { useState } from "react";
+import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { PollConfigurationDialog } from "@/components/blocks/poll-configuration-dialog";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { authClient } from "@/lib/auth-client";
-import { formatClubDateTime } from "@/lib/club-timezone";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -36,8 +36,8 @@ function ChipTag({
 			className={cn(
 				"inline-flex items-center gap-1.5 border px-2 py-1 text-xs",
 				tone === "gold"
-					? "border-amber-600/60 bg-amber-100 text-amber-950 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-50"
-					: "border-slate-500/60 bg-slate-200 text-slate-900 dark:border-slate-400/50 dark:bg-slate-800 dark:text-slate-100",
+					? "border-warning/60 bg-warning/15 text-warning-ink"
+					: "border-border bg-muted text-foreground",
 			)}
 		>
 			{label}
@@ -96,9 +96,18 @@ export function SittingVotePageIntro({
 							{isOpen ? "Pick the next club read" : "Voting results"}
 						</h1>
 						<p className="max-w-prose text-muted-foreground text-sm leading-relaxed">
-							{isOpen
-								? `Choose ${ballotLabel} from ${poll.options.length} books. Closes ${formatClubDateTime(poll.deadline)}.`
-								: `Voting closed ${formatClubDateTime(poll.deadline)}. ${poll.voterCount} ${poll.voterCount === 1 ? "ballot" : "ballots"} counted.`}
+							{isOpen ? (
+								<>
+									Choose {ballotLabel} from {poll.options.length} books. Closes{" "}
+									<ClubDateTime value={poll.deadline} />.
+								</>
+							) : (
+								<>
+									Voting closed <ClubDateTime value={poll.deadline} />.{" "}
+									{poll.voterCount}{" "}
+									{poll.voterCount === 1 ? "ballot" : "ballots"} counted.
+								</>
+							)}
 						</p>
 					</div>
 					<div className="flex shrink-0 divide-x divide-border border border-border">
@@ -160,7 +169,7 @@ export function SittingVotePageIntro({
 				{!isOpen && winner ? (
 					<div className="flex items-start gap-3 border-border border-t pt-4">
 						<Trophy
-							className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400"
+							className="mt-0.5 size-5 shrink-0 text-warning"
 							aria-hidden
 						/>
 						<div className="min-w-0">

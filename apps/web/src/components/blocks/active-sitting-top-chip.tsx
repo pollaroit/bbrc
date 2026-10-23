@@ -75,7 +75,7 @@ export function ActiveSittingTopChip({ className }: { className?: string }) {
 		>
 			<div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 leading-tight">
 				<span className="truncate font-medium">{titleLine}</span>
-				<span className="truncate text-[0.6875rem] text-muted-foreground">
+				<span className="truncate text-2xs text-muted-foreground">
 					{metaLine}
 				</span>
 			</div>

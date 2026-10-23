@@ -16,7 +16,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useComposePost } from "@/components/blocks/compose-post-provider";
@@ -25,6 +24,7 @@ import { globalSearchTypeLabels } from "@/components/blocks/global-search-provid
 import { GlobalSearchThumb } from "@/components/blocks/global-search-thumb";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { authClient } from "@/lib/auth-client";
+import { useColorMode } from "@/lib/preferences/use-color-mode";
 import {
 	bookFiltersToSearchParams,
 	buildSearchCommands,
@@ -47,7 +47,6 @@ import {
 	readRecentHits,
 	rememberHit,
 } from "@/lib/search/recents";
-import { nextThemeAfterToggle } from "@/lib/theme-toggle";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 
@@ -101,7 +100,7 @@ export function GlobalSearchDialog({
 	const { data: session } = authClient.useSession();
 	const { openCompose } = useComposePost();
 	const { openCreateGoal } = useCreateGoal();
-	const { resolvedTheme, setTheme } = useTheme();
+	const { toggle: toggleColorMode } = useColorMode();
 
 	const [query, setQuery] = useState("");
 	const [highlighted, setHighlighted] = useState("");
@@ -277,7 +276,7 @@ export function GlobalSearchDialog({
 				}
 				return;
 			case "theme":
-				setTheme(nextThemeAfterToggle(resolvedTheme));
+				toggleColorMode();
 				close();
 				return;
 			case "signout":
@@ -399,7 +398,7 @@ export function GlobalSearchDialog({
 										Recent
 										<button
 											type="button"
-											className="text-[11px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+											className="text-2xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
 											onClick={() => {
 												clearRecentHits();
 												setRecents([]);
@@ -458,7 +457,7 @@ export function GlobalSearchDialog({
 							</CommandGroup>
 						) : null}
 						{commandResult.hiddenCount > 0 ? (
-							<p className="px-3 py-1 text-[11px] text-muted-foreground">
+							<p className="px-3 py-1 text-2xs text-muted-foreground">
 								{commandResult.hiddenCount} more, keep typing to narrow
 							</p>
 						) : null}
@@ -549,7 +548,7 @@ function CommandRow({
 					{description}
 				</p>
 			</div>
-			<code className="hidden shrink-0 border border-border bg-background px-1 font-mono text-[10px] text-muted-foreground sm:inline">
+			<code className="hidden shrink-0 border border-border bg-background px-1 font-mono text-3xs text-muted-foreground sm:inline">
 				{command.keyword}
 			</code>
 		</CommandItem>
@@ -609,7 +608,7 @@ function HitRow({
 							<ExternalLink className="size-3.5" aria-hidden />
 						</Button>
 					) : null}
-					<Badge variant="outline" className="font-normal text-[10px]">
+					<Badge variant="outline" className="font-normal text-3xs">
 						{globalSearchTypeLabels[hit.type]}
 						{page ? ` · ${page.label}` : ""}
 					</Badge>
@@ -643,8 +642,8 @@ function InnerPageStrip({
 		<fieldset className="m-0 ms-12 flex min-w-0 items-center gap-1 overflow-x-auto border-0 p-0 pb-0.5 [scrollbar-width:none]">
 			<legend className="sr-only">Open a specific page</legend>
 			{selected == null ? (
-				<span className="shrink-0 text-[11px] text-muted-foreground">
-					<kbd className="border border-border bg-background px-1 font-mono text-[10px]">
+				<span className="shrink-0 text-2xs text-muted-foreground">
+					<kbd className="border border-border bg-background px-1 font-mono text-3xs">
 						→
 					</kbd>{" "}
 					pages
@@ -664,7 +663,7 @@ function InnerPageStrip({
 							}
 						}}
 						className={cn(
-							"shrink-0 border px-1.5 py-0.5 text-[11px] transition-colors",
+							"shrink-0 border px-1.5 py-0.5 text-2xs transition-colors",
 							active
 								? "border-foreground bg-foreground text-background"
 								: "border-border bg-background text-muted-foreground hover:text-foreground",
@@ -687,7 +686,7 @@ function InnerPageStrip({
 function GlobalSearchIdleHints() {
 	return (
 		<div className="px-3 pt-3 pb-2">
-			<ul className="space-y-1.5 border-border border-t pt-3 text-[11px] text-muted-foreground">
+			<ul className="space-y-1.5 border-border border-t pt-3 text-2xs text-muted-foreground">
 				<li>
 					Try <code className="font-mono">settings:</code>,{" "}
 					<code className="font-mono">create:</code> or{" "}
@@ -770,26 +769,26 @@ function GlobalSearchNoCommands({ query }: { query: string }) {
 
 function GlobalSearchFooter({ hasQuery }: { hasQuery: boolean }) {
 	return (
-		<div className="flex flex-wrap items-center justify-between gap-2 border-border border-t bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+		<div className="flex flex-wrap items-center justify-between gap-2 border-border border-t bg-muted/20 px-3 py-2 text-2xs text-muted-foreground">
 			<span>
 				{hasQuery
 					? "Commands and results from across the club"
 					: "Club-wide search"}
 			</span>
 			<span className="hidden sm:inline">
-				<kbd className="border border-border bg-background px-1 font-mono text-[10px]">
+				<kbd className="border border-border bg-background px-1 font-mono text-3xs">
 					↑↓
 				</kbd>{" "}
 				move{" "}
-				<kbd className="border border-border bg-background px-1 font-mono text-[10px]">
+				<kbd className="border border-border bg-background px-1 font-mono text-3xs">
 					→
 				</kbd>{" "}
 				pages{" "}
-				<kbd className="border border-border bg-background px-1 font-mono text-[10px]">
+				<kbd className="border border-border bg-background px-1 font-mono text-3xs">
 					↵
 				</kbd>{" "}
 				open{" "}
-				<kbd className="border border-border bg-background px-1 font-mono text-[10px]">
+				<kbd className="border border-border bg-background px-1 font-mono text-3xs">
 					esc
 				</kbd>{" "}
 				close

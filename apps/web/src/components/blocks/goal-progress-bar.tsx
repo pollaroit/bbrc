@@ -35,7 +35,7 @@ export function GoalProgressBar({
 				<div
 					className={cn(
 						"h-full transition-[width] duration-300 motion-reduce:transition-none",
-						isComplete ? "bg-emerald-600 dark:bg-emerald-500" : "bg-foreground",
+						isComplete ? "bg-success" : "bg-foreground",
 					)}
 					style={{ width: `${percent}%` }}
 				/>

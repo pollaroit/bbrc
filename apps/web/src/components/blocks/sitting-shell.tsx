@@ -2,6 +2,7 @@ import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.s
 import { formatSittingSlugLabel } from "@bbrc/shared";
 import { BookOpen, CalendarClock, CheckCheck, Users } from "lucide-react";
 import Image from "next/image";
+import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SittingAdminPanel } from "@/components/blocks/sitting-admin-panel";
@@ -9,7 +10,6 @@ import { SittingHubNav } from "@/components/blocks/sitting-hub-nav";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
 import { SittingViewerAction } from "@/components/blocks/sitting-viewer-action";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
-import { formatClubDateTime } from "@/lib/club-timezone";
 
 type SittingShellProps = {
 	sitting: GetSittingBySlugOutput;
@@ -115,7 +115,9 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 										Reading ends <RelativeTime date={closesAt} />
 									</>
 								) : (
-									<>Ended {formatClubDateTime(closesAt)}</>
+									<>
+										Ended <ClubDateTime value={closesAt} />
+									</>
 								)}
 							</span>
 						</p>
@@ -153,9 +155,11 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 					<Fact
 						icon={<CalendarClock className="size-3.5" aria-hidden />}
 						sub={
-							!isVoting && sitting.poll
-								? `Voting closed ${formatClubDateTime(sitting.poll.deadline)}`
-								: undefined
+							!isVoting && sitting.poll ? (
+								<>
+									Voting closed <ClubDateTime value={sitting.poll.deadline} />
+								</>
+							) : undefined
 						}
 						label={
 							isVoting
@@ -165,7 +169,7 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 									: "Deadline"
 						}
 					>
-						{formatClubDateTime(closesAt)}
+						<ClubDateTime value={closesAt} />
 					</Fact>
 				</div>
 

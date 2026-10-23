@@ -48,7 +48,7 @@ function PostCardInner({ post, className }: PostCardProps) {
 							className="text-muted-foreground text-xs"
 						/>
 					</Link>
-					{post.editedAt ? <p className="text-[11px]">edited</p> : null}
+					{post.editedAt ? <p className="text-2xs">edited</p> : null}
 				</div>
 			</CardHeader>
 

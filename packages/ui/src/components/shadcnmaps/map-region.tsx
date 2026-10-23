@@ -112,7 +112,7 @@ export function MapRegion({
 					y={labelY}
 					aria-hidden="true"
 					className={cn(
-						"pointer-events-none select-none fill-map-label font-medium text-[10px] motion-safe:transition-colors motion-safe:duration-150",
+						"pointer-events-none select-none fill-map-label font-medium text-3xs motion-safe:transition-colors motion-safe:duration-150",
 						isHovered && "fill-map-label-hover",
 						isSelected && "fill-map-label-selected",
 						labelClassName,

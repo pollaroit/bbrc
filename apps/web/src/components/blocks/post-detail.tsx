@@ -51,7 +51,7 @@ export function PostDetail({
 						<div className="text-right text-muted-foreground text-xs">
 							<RelativeTime date={post.createdAt} />
 							{post.editedAt ? (
-								<p className="text-[11px]">
+								<p className="text-2xs">
 									edited{" "}
 									<RelativeTime date={post.editedAt} className="inline" />
 								</p>

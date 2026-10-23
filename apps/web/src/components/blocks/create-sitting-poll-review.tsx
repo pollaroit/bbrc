@@ -229,7 +229,7 @@ export function CreateSittingPollReview({
 											sizes="96px"
 										/>
 									) : (
-										<div className="flex size-full items-center justify-center text-[10px] text-muted-foreground">
+										<div className="flex size-full items-center justify-center text-3xs text-muted-foreground">
 											No cover
 										</div>
 									)}
@@ -303,7 +303,7 @@ export function CreateSittingPollReview({
 											</span>
 										)}
 										{mostlyRead ? (
-											<span className="border border-amber-600/50 px-1.5 py-0.5 text-amber-700 dark:text-amber-400">
+											<span className="border border-warning/50 px-1.5 py-0.5 text-warning-ink">
 												Mostly read
 											</span>
 										) : null}

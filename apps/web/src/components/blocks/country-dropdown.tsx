@@ -35,10 +35,11 @@ export function CountryFlagIcon({
 	return (
 		<span
 			className={cn(
-				"inline-flex shrink-0 overflow-hidden ring-1 ring-border",
+				"inline-flex shrink-0 overflow-hidden rounded-full ring-1 ring-border",
 				size === "sm" ? "size-3.5" : "size-5",
 				className,
 			)}
+			data-round
 			aria-hidden
 		>
 			<CircleFlag countryCode={alpha2.toLowerCase()} height={dimension} />

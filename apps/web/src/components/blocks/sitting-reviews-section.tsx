@@ -115,10 +115,7 @@ export function SittingReviewsSection({ sitting }: SittingReviewsSectionProps) {
 				</span>
 				{stats.averageRating != null ? (
 					<span className="inline-flex items-center gap-1.5 text-foreground">
-						<Star
-							className="size-4 fill-amber-500 text-amber-500"
-							aria-hidden
-						/>
+						<Star className="size-4 fill-warning text-warning" aria-hidden />
 						{formatFeedbackRating(Number(stats.averageRating.toFixed(1)))}{" "}
 						<span className="text-muted-foreground">average</span>
 					</span>

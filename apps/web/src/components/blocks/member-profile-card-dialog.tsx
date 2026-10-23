@@ -89,7 +89,7 @@ function ProfileCardCoverRow({
 												sizes="68px"
 											/>
 										) : (
-											<span className="flex size-full items-center justify-center px-1 text-center text-[10px] text-muted-foreground">
+											<span className="flex size-full items-center justify-center px-1 text-center text-3xs text-muted-foreground">
 												No cover
 											</span>
 										)}
@@ -234,7 +234,7 @@ export function MemberProfileCardDialog({
 										<span className="truncate">{member.name}</span>
 										{card.isAdmin ? (
 											<Crown
-												className="size-4 shrink-0 text-amber-600 dark:text-amber-400"
+												className="size-4 shrink-0 text-warning"
 												aria-label="Administrator"
 											/>
 										) : null}

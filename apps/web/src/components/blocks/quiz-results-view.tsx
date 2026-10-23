@@ -64,7 +64,7 @@ export function QuizReviewList({
 						<span
 							className={cn(
 								"font-medium tabular-nums",
-								item.earned > 0 && "text-emerald-700 dark:text-emerald-400",
+								item.earned > 0 && "text-success-ink",
 								item.earned < 0 && "text-destructive",
 							)}
 						>
@@ -85,7 +85,7 @@ export function QuizReviewList({
 									className={cn(
 										"flex items-start gap-2.5 border border-border px-3 py-2 text-sm",
 										choice.isCorrect &&
-											"border-emerald-600/60 bg-emerald-50 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-100",
+											"border-success/60 bg-success/15 text-success-ink",
 										picked &&
 											!choice.isCorrect &&
 											"border-destructive/60 bg-destructive/10",

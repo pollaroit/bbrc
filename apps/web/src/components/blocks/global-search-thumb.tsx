@@ -44,9 +44,9 @@ const documentIcons = {
 } as const;
 
 const documentTints = {
-	pdf: "text-red-700 dark:text-red-300",
-	epub: "text-emerald-700 dark:text-emerald-300",
-	docx: "text-sky-700 dark:text-sky-300",
+	pdf: "text-destructive-ink",
+	epub: "text-success-ink",
+	docx: "text-info-ink",
 } as const;
 
 const frameClassName =
@@ -132,7 +132,7 @@ export function GlobalSearchThumb({ hit }: { hit: GlobalSearchHit }) {
 			>
 				<DocumentIcon className="size-4" />
 				{format ? (
-					<span className="font-semibold text-[8px] uppercase leading-none">
+					<span className="font-semibold text-4xs uppercase leading-none">
 						{format}
 					</span>
 				) : null}

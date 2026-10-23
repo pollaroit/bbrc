@@ -156,8 +156,8 @@ export function MemberProfileAbout({
 							className={cn(
 								"border px-2.5 py-1 text-xs",
 								chip.sub
-									? "border-pink-300 border-dashed text-pink-800 dark:border-pink-800 dark:text-pink-200"
-									: "border-pink-600 bg-pink-500 text-white",
+									? "border-pink/40 border-dashed text-pink-ink"
+									: "border-pink bg-pink text-white",
 							)}
 						>
 							{chip.name}

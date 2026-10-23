@@ -5,29 +5,27 @@ import { cn } from "@/lib/utils";
 export type BookStatus = GetBookListOutput["items"][number]["status"];
 
 const statusBadgeClassName: Record<BookStatus, string> = {
-	completed:
-		"border-emerald-600/30 bg-emerald-600/10 text-emerald-800 dark:text-emerald-300",
-	reading: "border-sky-600/30 bg-sky-600/10 text-sky-900 dark:text-sky-300",
-	wishlist:
-		"border-violet-600/30 bg-violet-600/10 text-violet-900 dark:text-violet-300",
+	completed: "border-success/30 bg-success/10 text-success-ink",
+	reading: "border-info/30 bg-info/10 text-info-ink",
+	wishlist: "border-violet/30 bg-violet/10 text-violet-ink",
 };
 
 const statusBannerClassName: Record<BookStatus, string> = {
-	completed: "border-l-emerald-600 bg-emerald-600/5 dark:bg-emerald-950/20",
-	reading: "border-l-sky-600 bg-sky-600/5 dark:bg-sky-950/20",
-	wishlist: "border-l-violet-600 bg-violet-600/5 dark:bg-violet-950/20",
+	completed: "border-l-success bg-success/5",
+	reading: "border-l-info bg-info/5",
+	wishlist: "border-l-violet bg-violet/5",
 };
 
 export const statusSpineClassName: Record<BookStatus, string> = {
-	completed: "bg-emerald-600",
-	reading: "bg-sky-600",
-	wishlist: "bg-violet-600",
+	completed: "bg-success",
+	reading: "bg-info",
+	wishlist: "bg-violet",
 };
 
 const statusStripClassName: Record<BookStatus, string> = {
-	completed: "bg-emerald-600/10 text-emerald-900 dark:text-emerald-200",
-	reading: "bg-sky-600/10 text-sky-950 dark:text-sky-200",
-	wishlist: "bg-violet-600/10 text-violet-950 dark:text-violet-200",
+	completed: "bg-success/10 text-success-ink",
+	reading: "bg-info/10 text-info-ink",
+	wishlist: "bg-violet/10 text-violet-ink",
 };
 
 const statusDescription: Record<BookStatus, string> = {
