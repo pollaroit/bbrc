@@ -16,7 +16,7 @@ import { Search } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
 	AchievementRow,
 	type AchievementState,
@@ -60,41 +60,6 @@ function Ticks({
 			))}
 		</span>
 	);
-}
-
-/** Which section is under the top of the screen, so the rail can follow the reader. */
-function useActiveSection(ids: string[]) {
-	const [active, setActive] = useState<string | null>(null);
-	const key = ids.join("|");
-
-	useEffect(() => {
-		const elements = key
-			.split("|")
-			.map((id) => document.getElementById(id))
-			.filter((element): element is HTMLElement => element != null);
-		if (elements.length === 0) {
-			return;
-		}
-		const observer = new IntersectionObserver(
-			(entries) => {
-				const visible = entries
-					.filter((entry) => entry.isIntersecting)
-					.sort(
-						(a, b) => a.boundingClientRect.top - b.boundingClientRect.top,
-					)[0];
-				if (visible) {
-					setActive(visible.target.id);
-				}
-			},
-			{ rootMargin: "-96px 0px -60% 0px" },
-		);
-		for (const element of elements) {
-			observer.observe(element);
-		}
-		return () => observer.disconnect();
-	}, [key]);
-
-	return active;
 }
 
 function Hero({
@@ -185,6 +150,10 @@ export function AchievementsCatalog() {
 		"status",
 		parseAsStringLiteral(STATUS_FILTERS).withDefault("all"),
 	);
+	const [categoryParam, setCategory] = useQueryState(
+		"category",
+		parseAsStringLiteral(ACHIEVEMENT_CATEGORIES),
+	);
 	const [search, setSearch] = useQueryState("q", parseAsString.withDefault(""));
 	const signedIn = Boolean(session?.user);
 
@@ -197,7 +166,12 @@ export function AchievementsCatalog() {
 	}, [query.data]);
 
 	const needle = search.trim().toLowerCase();
+	const category =
+		categoryParam && grouped.some((group) => group.category === categoryParam)
+			? categoryParam
+			: null;
 	const visibleGroups = grouped
+		.filter((group) => category == null || group.category === category)
 		.map((group) => ({
 			...group,
 			shown: group.items.filter(
@@ -211,8 +185,6 @@ export function AchievementsCatalog() {
 			),
 		}))
 		.filter((group) => group.shown.length > 0);
-
-	const active = useActiveSection(visibleGroups.map((group) => group.category));
 
 	if (query.isPending) {
 		return (
@@ -275,36 +247,46 @@ export function AchievementsCatalog() {
 				</div>
 			</div>
 
-			<div className="grid gap-x-10 gap-y-4 lg:grid-cols-[13rem_1fr]">
+			<div className="grid grid-cols-1 gap-x-10 gap-y-4 lg:grid-cols-[13rem_minmax(0,1fr)]">
 				<nav
 					aria-label="Categories"
-					className="lg:sticky lg:top-24 lg:self-start"
+					className="min-w-0 lg:sticky lg:top-24 lg:self-start"
 				>
-					<ul className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-col lg:gap-0 lg:overflow-visible lg:border-border lg:border-s lg:px-0 lg:pb-0">
-						{grouped.map((group) => {
-							const earned = group.items.filter(
-								(item) => achievementState(item) === "earned",
-							).length;
-							const isActive = active === group.category;
+					<ul className="flex gap-1 overflow-x-auto pb-1 lg:mx-0 lg:flex-col lg:gap-0 lg:overflow-visible lg:border-border lg:border-s lg:px-0 lg:pb-0">
+						{[
+							{
+								id: null,
+								label: "All",
+								text: signedIn
+									? `${counts.earned}/${counts.all}`
+									: String(counts.all),
+							},
+							...grouped.map((group) => ({
+								id: group.category,
+								label: ACHIEVEMENT_CATEGORY_LABELS[group.category],
+								text: signedIn
+									? `${group.items.filter((item) => achievementState(item) === "earned").length}/${group.items.length}`
+									: String(group.items.length),
+							})),
+						].map((entry) => {
+							const isActive = category === entry.id;
 							return (
-								<li key={group.category} className="shrink-0">
-									<a
-										href={`#${group.category}`}
+								<li key={entry.id ?? "all"} className="shrink-0">
+									<button
+										type="button"
+										onClick={() => void setCategory(entry.id)}
+										aria-pressed={isActive}
 										className={cn(
-											"flex items-baseline justify-between gap-6 px-3 py-2 text-sm transition-colors hover:text-foreground lg:-ms-px lg:border-s-2",
+											"flex w-full items-baseline justify-between gap-4 px-3 py-2 text-start text-sm transition-colors hover:text-foreground lg:-ms-px lg:gap-6 lg:border-s-2",
 											isActive
 												? "border-foreground border-b-2 font-medium text-foreground lg:border-b-0"
 												: "border-transparent text-muted-foreground lg:border-s-transparent",
 											isActive && "lg:border-s-foreground",
 										)}
 									>
-										{ACHIEVEMENT_CATEGORY_LABELS[group.category]}
-										<span className="text-2xs tabular-nums">
-											{signedIn
-												? `${earned}/${group.items.length}`
-												: group.items.length}
-										</span>
-									</a>
+										{entry.label}
+										<span className="text-2xs tabular-nums">{entry.text}</span>
+									</button>
 								</li>
 							);
 						})}
@@ -320,9 +302,7 @@ export function AchievementsCatalog() {
 						visibleGroups.map((group) => (
 							<section
 								key={group.category}
-								id={group.category}
 								aria-labelledby={`${group.category}-heading`}
-								className="scroll-mt-24"
 							>
 								<div className="flex items-end justify-between gap-4 pb-3">
 									<h2

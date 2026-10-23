@@ -55,6 +55,23 @@ export const AchievementEarnerSchema = zod.object({
 	earnedAt: zod.string(),
 });
 
+export const ListEarnersInputSchema = zod.object({
+	slug: zod.string().min(1),
+	/** Only members whose highest tier is this one. */
+	tier: zod.number().int().min(1).optional(),
+	offset: zod.number().int().min(0).default(0),
+	limit: zod.number().int().min(1).max(100).default(30),
+});
+
+export const ListEarnersOutputSchema = zod.object({
+	total: CountSchema,
+	/** Members per highest tier, regardless of the tier filter. */
+	perTier: zod.record(zod.string(), CountSchema),
+	items: zod.array(AchievementEarnerSchema),
+});
+
+export type ListEarnersOutput = zod.infer<typeof ListEarnersOutputSchema>;
+
 export const GetAchievementOutputSchema = AchievementSummarySchema.extend({
 	memberCount: CountSchema,
 	description: zod.string(),

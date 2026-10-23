@@ -6,15 +6,17 @@ import {
 } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { useState } from "react";
 import { AchievementBadge } from "@/components/blocks/achievement-badge";
 import {
 	AchievementRow,
 	achievementFocus,
 } from "@/components/blocks/achievement-row";
+import { SegmentedControl } from "@/components/blocks/segmented-control";
 import { TierLadder } from "@/components/blocks/tier-ladder";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import {
@@ -24,11 +26,133 @@ import {
 } from "@/lib/achievements/format";
 import { orpc } from "@/utils/orpc";
 
+const EARNERS_PAGE = 30;
+
+type TierOption = { id: string; label: string; count?: number };
+
+/** Everyone who has earned this achievement, filterable by their highest tier. */
+function AllEarners({
+	slug,
+	tiers,
+}: {
+	slug: string;
+	tiers: { tier: number; name: string }[];
+}) {
+	const [tier, setTier] = useState("all");
+	const tierNumber = tier === "all" ? undefined : Number(tier);
+	const query = useInfiniteQuery(
+		orpc.achievement.listEarners.infiniteOptions({
+			initialPageParam: 0,
+			input: (offset: number) => ({
+				slug,
+				tier: tierNumber,
+				offset,
+				limit: EARNERS_PAGE,
+			}),
+			getNextPageParam: (last, pages) => {
+				const loaded = pages.reduce((sum, page) => sum + page.items.length, 0);
+				return loaded < last.total ? loaded : undefined;
+			},
+		}),
+	);
+
+	const first = query.data?.pages[0];
+	const items = query.data?.pages.flatMap((page) => page.items) ?? [];
+	const options: TierOption[] = [
+		{
+			id: "all",
+			label: "All",
+			count: first
+				? Object.values(first.perTier).reduce((sum, n) => sum + n, 0)
+				: undefined,
+		},
+		...tiers.map((entry) => ({
+			id: String(entry.tier),
+			label: entry.name || `Tier ${entry.tier}`,
+			count: first?.perTier[String(entry.tier)] ?? 0,
+		})),
+	];
+
+	return (
+		<div className="flex flex-col gap-4">
+			{tiers.length > 1 ? (
+				<SegmentedControl
+					label="Highest tier"
+					value={tier}
+					onChange={setTier}
+					options={options}
+				/>
+			) : null}
+			{query.isPending ? (
+				<Skeleton className="h-40 w-full" aria-hidden />
+			) : items.length === 0 ? (
+				<p className="text-muted-foreground text-sm">
+					Nobody has reached this tier yet.
+				</p>
+			) : (
+				<ul className="border-border border-t">
+					{items.map((earner) => (
+						<li key={earner.username}>
+							<EarnerLink earner={earner} tiers={tiers} />
+						</li>
+					))}
+				</ul>
+			)}
+			{query.hasNextPage ? (
+				<Button
+					variant="outline"
+					size="sm"
+					className="w-fit"
+					disabled={query.isFetchingNextPage}
+					onClick={() => void query.fetchNextPage()}
+				>
+					{query.isFetchingNextPage ? "Loading…" : "Show more"}
+				</Button>
+			) : null}
+		</div>
+	);
+}
+
+function EarnerLink({
+	earner,
+	tiers,
+}: {
+	earner: {
+		username: string;
+		name: string;
+		image: string | null;
+		tier: number;
+		periodKey: string;
+		earnedAt: string;
+	};
+	tiers: { tier: number; name: string }[];
+}) {
+	return (
+		<Link
+			href={`/users/${earner.username}/achievements` as Route}
+			className="flex items-center gap-3 border-border border-b py-2.5 transition-colors hover:bg-muted/30"
+		>
+			<UserAvatar user={earner} className="size-8" />
+			<span className="min-w-0 flex-1">
+				<span className="block truncate font-medium text-sm">
+					{earner.name}
+				</span>
+				<span className="block truncate text-muted-foreground text-xs">
+					{tiers[earner.tier - 1]?.name || "Earned"}
+					{earner.periodKey ? ` ${earner.periodKey}` : ""} ·{" "}
+					{formatAchievementDate(earner.earnedAt)}
+				</span>
+			</span>
+		</Link>
+	);
+}
+
 export function AchievementDetail({ slug }: { slug: string }) {
 	const query = useQuery({
 		...orpc.achievement.getBySlug.queryOptions({ input: { slug } }),
 		retry: false,
 	});
+	const [showAll, setShowAll] = useState(false);
 	const catalog = useQuery(orpc.achievement.list.queryOptions());
 
 	if (query.isPending) {
@@ -103,7 +227,7 @@ export function AchievementDetail({ slug }: { slug: string }) {
 						</p>
 						<p className="text-muted-foreground text-sm">
 							<Link
-								href={`/achievements#${data.category}` as Route}
+								href={`/achievements?category=${data.category}` as Route}
 								className="underline underline-offset-4 hover:text-foreground"
 							>
 								{ACHIEVEMENT_CATEGORY_LABELS[category]}
@@ -199,9 +323,11 @@ export function AchievementDetail({ slug }: { slug: string }) {
 						id="earners-heading"
 						className="font-heading font-semibold text-lg tracking-tight"
 					>
-						Recently earned by
+						{showAll ? "Everyone who earned it" : "Recently earned by"}
 					</h2>
-					{data.recentEarners.length === 0 ? (
+					{showAll ? (
+						<AllEarners slug={slug} tiers={data.tiers} />
+					) : data.recentEarners.length === 0 ? (
 						<p className="text-muted-foreground text-sm">
 							Nobody yet. Be the first!
 						</p>
@@ -209,26 +335,21 @@ export function AchievementDetail({ slug }: { slug: string }) {
 						<ul className="border-border border-t">
 							{data.recentEarners.map((earner) => (
 								<li key={earner.username}>
-									<Link
-										href={`/users/${earner.username}/achievements` as Route}
-										className="flex items-center gap-3 border-border border-b py-2.5 transition-colors hover:bg-muted/30"
-									>
-										<UserAvatar user={earner} className="size-8" />
-										<span className="min-w-0 flex-1">
-											<span className="block truncate font-medium text-sm">
-												{earner.name}
-											</span>
-											<span className="block truncate text-muted-foreground text-xs">
-												{data.tiers[earner.tier - 1]?.name || "Earned"}
-												{earner.periodKey ? ` ${earner.periodKey}` : ""} ·{" "}
-												{formatAchievementDate(earner.earnedAt)}
-											</span>
-										</span>
-									</Link>
+									<EarnerLink earner={earner} tiers={data.tiers} />
 								</li>
 							))}
 						</ul>
 					)}
+					{data.recentEarners.length > 0 ? (
+						<Button
+							variant="ghost"
+							size="sm"
+							className="w-fit"
+							onClick={() => setShowAll((value) => !value)}
+						>
+							{showAll ? "Show recent only" : "Show everyone"}
+						</Button>
+					) : null}
 				</section>
 			</div>
 

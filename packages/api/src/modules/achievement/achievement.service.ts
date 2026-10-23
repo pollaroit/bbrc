@@ -20,6 +20,7 @@ import type {
 	GetAchievementOutput,
 	GetUserAchievementsOutput,
 	ListAchievementsOutput,
+	ListEarnersOutput,
 } from "./achievement.schema";
 import { loadAchievementFacts } from "./achievement-facts.service";
 
@@ -262,6 +263,83 @@ export async function listAchievements(
 	return { memberCount, hiddenRemaining, items };
 }
 
+type EarnerRow = {
+	tier: number;
+	periodKey: string;
+	earnedAt: Date;
+	user: { username: string; name: string; image: string | null };
+};
+
+/** One row per member: their highest tier, newest first. */
+function collapseEarners(rows: EarnerRow[]) {
+	const best = new Map<string, EarnerRow & { top: number }>();
+	for (const row of [...rows].sort(
+		(a, b) => b.earnedAt.getTime() - a.earnedAt.getTime(),
+	)) {
+		const known = best.get(row.user.username);
+		if (known) {
+			known.top = Math.max(known.top, row.tier);
+		} else {
+			best.set(row.user.username, { ...row, top: row.tier });
+		}
+	}
+	return [...best.values()].map((row) => ({
+		username: row.user.username,
+		name: row.user.name,
+		image: row.user.image,
+		tier: row.top,
+		periodKey: row.periodKey,
+		earnedAt: row.earnedAt.toISOString(),
+	}));
+}
+
+export async function listAchievementEarners(
+	db: Database,
+	input: { slug: string; tier?: number; offset: number; limit: number },
+	session: Session | null,
+): Promise<ListEarnersOutput> {
+	const definition = ACHIEVEMENTS.find((item) => item.slug === input.slug);
+	if (!definition) {
+		throw new ORPCError("NOT_FOUND", { message: "Achievement not found" });
+	}
+	if (definition.isHidden && !session?.user.isAdmin) {
+		const viewer = session ? await viewerState(db, session.user.id) : null;
+		if ((viewer?.get(definition.key)?.tier ?? 0) === 0) {
+			throw new ORPCError("NOT_FOUND", { message: "Achievement not found" });
+		}
+	}
+
+	const rows = await db.userAchievement.findMany({
+		where: {
+			achievementKey: definition.key,
+			revokedAt: null,
+			user: visibleOnSiteUserWhere,
+		},
+		orderBy: { earnedAt: "desc" },
+		select: {
+			tier: true,
+			periodKey: true,
+			earnedAt: true,
+			user: { select: { username: true, name: true, image: true } },
+		},
+	});
+
+	const all = collapseEarners(rows);
+	const perTier: Record<string, number> = {};
+	for (const earner of all) {
+		perTier[String(earner.tier)] = (perTier[String(earner.tier)] ?? 0) + 1;
+	}
+	const filtered = input.tier
+		? all.filter((earner) => earner.tier === input.tier)
+		: all;
+
+	return {
+		total: filtered.length,
+		perTier,
+		items: filtered.slice(input.offset, input.offset + input.limit),
+	};
+}
+
 export async function getAchievementBySlug(
 	db: Database,
 	slug: string,
@@ -303,28 +381,7 @@ export async function getAchievementBySlug(
 		throw new ORPCError("NOT_FOUND", { message: "Achievement not found" });
 	}
 
-	// One row per member: their highest tier, newest first.
-	const seen = new Set<string>();
-	const recentEarners = earners
-		.sort((a, b) => b.earnedAt.getTime() - a.earnedAt.getTime())
-		.filter((row) => {
-			if (seen.has(row.user.username)) return false;
-			seen.add(row.user.username);
-			return true;
-		})
-		.slice(0, RECENT_EARNERS)
-		.map((row) => ({
-			username: row.user.username,
-			name: row.user.name,
-			image: row.user.image,
-			tier: Math.max(
-				...earners
-					.filter((other) => other.user.username === row.user.username)
-					.map((other) => other.tier),
-			),
-			periodKey: row.periodKey,
-			earnedAt: row.earnedAt.toISOString(),
-		}));
+	const recentEarners = collapseEarners(earners).slice(0, RECENT_EARNERS);
 
 	return {
 		...summarize(definition, counts, mine),

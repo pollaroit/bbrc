@@ -9,6 +9,8 @@ import {
 	GetUserAchievementsInputSchema,
 	GetUserAchievementsOutputSchema,
 	ListAchievementsOutputSchema,
+	ListEarnersInputSchema,
+	ListEarnersOutputSchema,
 	OkOutputSchema,
 	RevokeAchievementInputSchema,
 	SetShowcaseInputSchema,
@@ -16,6 +18,7 @@ import {
 import {
 	getAchievementBySlug,
 	getUserAchievements,
+	listAchievementEarners,
 	listAchievements,
 	revokeAchievement,
 	setShowcase,
@@ -32,6 +35,12 @@ export const achievementRouter = {
 		.output(GetAchievementOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAchievementBySlug(context.db, input.slug, context.session),
+		),
+	listEarners: publicProcedure
+		.input(ListEarnersInputSchema)
+		.output(ListEarnersOutputSchema)
+		.handler(async ({ input, context }) =>
+			listAchievementEarners(context.db, input, context.session),
 		),
 	listByUsername: publicProcedure
 		.input(GetUserAchievementsInputSchema)
