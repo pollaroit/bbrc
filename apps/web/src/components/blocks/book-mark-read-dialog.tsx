@@ -80,6 +80,7 @@ export function BookMarkReadDialog({
 	const [reviewOpen, setReviewOpen] = useState(false);
 	/** Fill the form from the server once per opening, so a refetch never wipes typing. */
 	const initializedRef = useRef(false);
+	const reviewBlockRef = useRef<HTMLDivElement>(null);
 
 	const stateQuery = useQuery({
 		...orpc.read.getBookReadState.queryOptions({
@@ -115,6 +116,20 @@ export function BookMarkReadDialog({
 			);
 		},
 	});
+
+	// Bring the editor into view when it opens inside the scrolling form.
+	useEffect(() => {
+		if (!reviewOpen) {
+			return;
+		}
+		const frame = requestAnimationFrame(() => {
+			reviewBlockRef.current?.scrollIntoView({
+				block: "nearest",
+				behavior: "smooth",
+			});
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [reviewOpen]);
 
 	useEffect(() => {
 		if (!open) {
@@ -567,29 +582,43 @@ export function BookMarkReadDialog({
 								</div>
 								<FeedbackHalfStarRating
 									value={feedbackRating ?? 0}
-									onChange={(value) => setFeedbackRating(value)}
+									allowClear
+									onChange={(value) =>
+										setFeedbackRating(value === 0 ? null : value)
+									}
 								/>
-								<div className="flex flex-col gap-2">
+								<div ref={reviewBlockRef} className="border border-border">
 									<button
 										type="button"
-										className="inline-flex w-fit items-center gap-1.5 text-foreground text-sm underline-offset-2 hover:underline"
+										className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/40"
 										aria-expanded={reviewOpen}
 										onClick={() => setReviewOpen((openNow) => !openNow)}
 									>
-										<PenLine className="size-3.5" aria-hidden />
-										{reviewOpen
-											? "Hide written review"
-											: "Write a short review"}
+										<span className="grid size-8 shrink-0 place-items-center border border-border bg-muted/40">
+											<PenLine className="size-4" aria-hidden />
+										</span>
+										<span className="min-w-0 flex-1">
+											<span className="block font-medium text-sm">
+												{reviewLength > 0
+													? "Your review"
+													: "Add a written review"}
+											</span>
+											<span className="block text-muted-foreground text-xs">
+												{reviewLength > 0
+													? `${reviewLength}/${REVIEW_MAX_PLAIN} characters`
+													: "Optional. Share what stayed with you."}
+											</span>
+										</span>
 										<ChevronDown
 											className={cn(
-												"size-3.5 transition-transform",
+												"size-4 shrink-0 text-muted-foreground transition-transform",
 												reviewOpen && "rotate-180",
 											)}
 											aria-hidden
 										/>
 									</button>
 									{reviewOpen ? (
-										<div className="flex flex-col gap-1">
+										<div className="border-border border-t">
 											<RichTextEditor
 												instanceKey={`mark-read-${bookSlug}`}
 												id="mark-read-feedback-review"
@@ -598,11 +627,20 @@ export function BookMarkReadDialog({
 												maxPlainLength={REVIEW_MAX_PLAIN}
 												minHeightClassName="min-h-[6rem]"
 												placeholder="What stayed with you?"
+												className="border-0"
+												autoFocus
 												onSubmitShortcut={submitRead}
 											/>
-											<p className="text-right text-muted-foreground text-xs tabular-nums">
-												{reviewLength}/{REVIEW_MAX_PLAIN}
-											</p>
+											<div className="flex items-center justify-between gap-3 border-border border-t bg-muted/20 px-3 py-1.5 text-muted-foreground text-xs">
+												<span>
+													{reviewLength > 0 && !feedbackRating
+														? "Add a rating above to publish this review."
+														: "Press ⌘ + Enter to save."}
+												</span>
+												<span className="tabular-nums">
+													{reviewLength}/{REVIEW_MAX_PLAIN}
+												</span>
+											</div>
 										</div>
 									) : null}
 								</div>
