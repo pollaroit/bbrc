@@ -94,7 +94,8 @@ function OgCard({ entry, version }: { entry: OgEntry; version: number }) {
 export function OgDevPreview({ groups }: { groups: OgGroup[] }) {
 	const [query, setQuery] = useState("");
 	const [activeGroup, setActiveGroup] = useState<string>("all");
-	const [version, setVersion] = useState(() => Date.now());
+	// Fixed on first render so server and client markup match; Regenerate bumps it.
+	const [version, setVersion] = useState(0);
 	const [columns, setColumns] = useState<1 | 2>(2);
 
 	const needle = query.trim().toLowerCase();
