@@ -2,6 +2,7 @@ import { fetchWorkEditionTotalCount } from "@bbrc/api/lib/open-library/work-edit
 import { getAuthorPage } from "@bbrc/api/modules/author/author.service";
 import { loadAuthorCatalog } from "@bbrc/api/modules/author/author-catalog";
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
+import { bookSittingsWhere } from "@bbrc/api/modules/book/book-sittings.service";
 import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
 import { getFeedbackBySlug } from "@bbrc/api/modules/feedback/feedback.service";
 import {
@@ -352,6 +353,11 @@ const BOOK_TAB_OG: Record<
 		description: (title) =>
 			`Members who finished ${title} and the editions they read.`,
 	},
+	sittings: {
+		label: "Sittings",
+		description: (title) =>
+			`Club sittings that picked ${title}, and the polls it was part of.`,
+	},
 	stats: {
 		label: "Stats",
 		description: (title) =>
@@ -400,6 +406,18 @@ async function bookTabFact(
 		case "favorites": {
 			const count = await db.favorite.count({ where });
 			return fact("Favorites", num(count));
+		}
+		case "sittings": {
+			const count = await db.sitting.count({
+				where: bookSittingsWhere(book.slug),
+			});
+			return fact("Sittings", num(count));
+		}
+		case "stats": {
+			const count = await db.read.count({
+				where: { ...where, user: { isHidden: false } },
+			});
+			return fact("Readers", num(count));
 		}
 		case "quizzes": {
 			const count = await db.quizSubmission.count({

@@ -12,6 +12,7 @@ const BOOK_TABS = [
 	"shelves",
 	"reviews",
 	"reads",
+	"sittings",
 	"stats",
 	"editions",
 	"favorites",

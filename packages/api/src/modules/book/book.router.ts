@@ -1,5 +1,9 @@
 import { BookSchema } from "@bbrc/schemas";
-import { adminProcedure, publicProcedure } from "../../procedures";
+import {
+	adminProcedure,
+	protectedProcedure,
+	publicProcedure,
+} from "../../procedures";
 import {
 	revalidateBookIsr,
 	revalidateFeedsIsr,
@@ -66,6 +70,15 @@ import {
 	unblockOpenLibraryWork,
 } from "./book-recommendation-block.service";
 import {
+	GetBookSittingsInputSchema,
+	GetBookSittingsOutputSchema,
+	GetMyBookSittingMarksOutputSchema,
+} from "./book-sittings.schema";
+import {
+	getBookSittings,
+	getMyBookSittingMarks,
+} from "./book-sittings.service";
+import {
 	GetBookStatsInputSchema,
 	GetBookStatsOutputSchema,
 } from "./book-stats.schema";
@@ -113,6 +126,22 @@ export const bookRouter = {
 		.output(GetBookBySlugOutputSchema)
 		.handler(
 			async ({ input, context }) => await getBookBySlug(input, context.db),
+		),
+	getSittings: publicProcedure
+		.input(GetBookSittingsInputSchema)
+		.output(GetBookSittingsOutputSchema)
+		.handler(async ({ input, context }) =>
+			getBookSittings(input.bookSlug, context.db),
+		),
+	getMySittingMarks: protectedProcedure
+		.input(GetBookSittingsInputSchema)
+		.output(GetMyBookSittingMarksOutputSchema)
+		.handler(async ({ input, context }) =>
+			getMyBookSittingMarks(
+				input.bookSlug,
+				context.session.user.id,
+				context.db,
+			),
 		),
 	getStats: publicProcedure
 		.input(GetBookStatsInputSchema)
