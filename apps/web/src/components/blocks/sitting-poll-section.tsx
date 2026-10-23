@@ -233,24 +233,70 @@ export function SittingPollSection({
 	const hasSavedVotes = poll.myVoteOptionIds.length > 0;
 	const canEditSelection = canVoteBase && isEditingVotes;
 
+	const sittingKey = orpc.sitting.getSittingBySlug.queryKey({
+		input: sittingSlug,
+	});
+
 	const submitVotesMutation = useMutation(
 		orpc.sitting.submitPollVotes.mutationOptions({
-			onSuccess: async (result) => {
-				setVoteDrafts(result.myVotes);
-				setIsEditingVotes(false);
-				await queryClient.invalidateQueries({
-					queryKey: orpc.sitting.getSittingBySlug.key(),
+			// Saves for the same ballot run in click order, so the last one wins.
+			scope: { id: `poll-votes-${sittingSlug}` },
+			onMutate: async (variables) => {
+				await queryClient.cancelQueries({ queryKey: sittingKey });
+				const previous = queryClient.getQueryData(sittingKey);
+
+				const ballot = variables.votes.map((vote) => ({
+					optionId: vote.optionId,
+					points: vote.points ?? (1 as const),
+				}));
+
+				// Show the saved ballot at once, counting a first ballot as a new voter.
+				queryClient.setQueryData(sittingKey, (old) => {
+					if (!old?.poll) {
+						return old;
+					}
+					const firstBallot = old.poll.myVoteOptionIds.length === 0;
+					return {
+						...old,
+						poll: {
+							...old.poll,
+							myVotes: ballot,
+							myVoteOptionIds: ballot.map((vote) => vote.optionId),
+							voterCount: old.poll.voterCount + (firstBallot ? 1 : 0),
+						},
+					};
 				});
-				await invalidateUserPointQueries();
+
+				setVoteDrafts(ballot);
+				setIsEditingVotes(false);
+				return { previous };
+			},
+			onError: (error, variables, context) => {
+				if (context) {
+					queryClient.setQueryData(sittingKey, context.previous);
+				}
+				// Back to editing with the picks the member just made.
+				setVoteDrafts(
+					variables.votes.map((vote) => ({
+						optionId: vote.optionId,
+						points: vote.points ?? (1 as const),
+					})),
+				);
+				setIsEditingVotes(true);
+				toast.error(error.message ?? "Could not save votes.");
+			},
+			onSuccess: (result) => {
+				setVoteDrafts(result.myVotes);
+				void invalidateUserPointQueries();
 				router.refresh();
 				if (result.xpAwarded != null && result.xpAwarded > 0) {
 					toast.success(`Votes saved — +${result.xpAwarded} XP`);
-				} else {
-					toast.success("Votes saved.");
 				}
 			},
-			onError: (error) => {
-				toast.error(error.message ?? "Could not save votes.");
+			onSettled: () => {
+				void queryClient.invalidateQueries({
+					queryKey: orpc.sitting.getSittingBySlug.key(),
+				});
 			},
 		}),
 	);
