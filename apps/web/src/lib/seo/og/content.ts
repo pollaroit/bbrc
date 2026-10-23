@@ -352,6 +352,11 @@ const BOOK_TAB_OG: Record<
 		description: (title) =>
 			`Members who finished ${title} and the editions they read.`,
 	},
+	stats: {
+		label: "Stats",
+		description: (title) =>
+			`Readers, ratings, poll results and quiz scores for ${title}.`,
+	},
 	editions: {
 		label: "Editions",
 		description: (title) =>
