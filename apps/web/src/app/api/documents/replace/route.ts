@@ -1,5 +1,10 @@
-import { replaceDocumentPdf } from "@bbrc/api/modules/document/document.service";
-import { MAX_DOCUMENT_BYTES } from "@bbrc/shared";
+import { replaceDocumentFile } from "@bbrc/api/modules/document/document.service";
+import {
+	DOCUMENT_FORMATS,
+	DOCUMENT_FORMATS_LABEL,
+	MAX_DOCUMENT_BYTES,
+	resolveDocumentFormat,
+} from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
@@ -43,19 +48,20 @@ export async function POST(req: NextRequest) {
 
 	const file = formData.get("file");
 	if (!(file instanceof File)) {
-		return Response.json({ error: "Missing PDF file" }, { status: 400 });
+		return Response.json({ error: "Missing file" }, { status: 400 });
 	}
 
-	if (file.type !== "application/pdf") {
+	const format = resolveDocumentFormat(file);
+	if (!format) {
 		return Response.json(
-			{ error: "Only PDF files are allowed." },
+			{ error: `Only ${DOCUMENT_FORMATS_LABEL} files are allowed.` },
 			{ status: 400 },
 		);
 	}
 
 	if (file.size > MAX_DOCUMENT_BYTES) {
 		return Response.json(
-			{ error: "PDF must be 10 MB or smaller." },
+			{ error: "The file must be 10 MB or smaller." },
 			{ status: 400 },
 		);
 	}
@@ -63,12 +69,12 @@ export async function POST(req: NextRequest) {
 	const buffer = Buffer.from(await file.arrayBuffer());
 
 	try {
-		const result = await replaceDocumentPdf(
+		const result = await replaceDocumentFile(
 			{
 				bookSlug: parsed.data.bookSlug,
 				documentSlug: parsed.data.documentSlug,
 				buffer,
-				contentType: file.type,
+				contentType: DOCUMENT_FORMATS[format].mime,
 				contentLength: buffer.length,
 			},
 			session,

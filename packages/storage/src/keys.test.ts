@@ -46,7 +46,19 @@ describe("buildObjectKey", () => {
 				kind: "book-document",
 				bookSlug: "1984",
 				documentSlug: "study_guide",
+				extension: "pdf",
 			}),
 		).toBe("production/books/1984/documents/study_guide.pdf");
+	});
+
+	test("book document keeps the file extension", () => {
+		expect(
+			buildObjectKey("production", {
+				kind: "book-document",
+				bookSlug: "1984",
+				documentSlug: "study_guide",
+				extension: "epub",
+			}),
+		).toBe("production/books/1984/documents/study_guide.epub");
 	});
 });

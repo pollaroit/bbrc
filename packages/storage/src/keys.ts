@@ -1,3 +1,4 @@
+import type { DocumentFileExtension } from "./constants";
 import type { StorageEnv } from "./env";
 
 export type ObjectKeyParams =
@@ -13,6 +14,7 @@ export type ObjectKeyParams =
 			kind: "book-document";
 			bookSlug: string;
 			documentSlug: string;
+			extension: DocumentFileExtension;
 	  };
 
 export function buildObjectKey(
@@ -29,7 +31,7 @@ export function buildObjectKey(
 		case "shelf-cover":
 			return `${storageEnv}/users/${params.username}/shelves/${params.shelfSlug}/image.png`;
 		case "book-document":
-			return `${storageEnv}/books/${params.bookSlug}/documents/${params.documentSlug}.pdf`;
+			return `${storageEnv}/books/${params.bookSlug}/documents/${params.documentSlug}.${params.extension}`;
 		default: {
 			const _exhaustive: never = params;
 			return _exhaustive;

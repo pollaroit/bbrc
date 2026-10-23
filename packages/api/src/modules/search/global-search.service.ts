@@ -1,5 +1,9 @@
 import type { Database } from "@bbrc/db";
-import { authorNameToSlug, richContentPreview } from "@bbrc/shared";
+import {
+	authorNameToSlug,
+	documentFormatLabel,
+	richContentPreview,
+} from "@bbrc/shared";
 import type {
 	GlobalSearchHit,
 	GlobalSearchInput,
@@ -304,7 +308,7 @@ async function searchDocuments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 			action:
 				row.status === "approved" && row.documentKey
 					? {
-							label: "Open PDF",
+							label: `Open ${documentFormatLabel(row.documentKey)}`,
 							href: row.documentKey,
 						}
 					: undefined,

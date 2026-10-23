@@ -154,7 +154,7 @@ function AdminDocumentRow({
 					variant="ghost"
 					className="w-fit"
 				>
-					Review PDF
+					Review file
 				</Button>
 			</div>
 
@@ -163,7 +163,7 @@ function AdminDocumentRow({
 					<DialogHeader>
 						<DialogTitle>Approve document</DialogTitle>
 						<DialogDescription>
-							The PDF will appear on the book page. Optional note for the
+							The document will appear on the book page. Optional note for the
 							submitter.
 						</DialogDescription>
 					</DialogHeader>
@@ -295,7 +295,7 @@ export function AdminDocumentRequestsSheet({
 				<SheetContent side="right" className={listingSideSheetContentClassName}>
 					<ListingSideSheetHeader
 						title="Pending documents"
-						description="Approve PDFs for club books or reject with a reason."
+						description="Approve documents for club books or reject with a reason."
 					/>
 					<ListingSideSheetBody>
 						{count === 0 ? (

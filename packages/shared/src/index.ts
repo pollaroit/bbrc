@@ -3,6 +3,7 @@ export * from "./book-catalog-similarity";
 export * from "./book-country";
 export * from "./club-timezone";
 export * from "./comment-thread";
+export * from "./document-file-check";
 export * from "./documents";
 export * from "./favorites";
 export * from "./feedback-rating";

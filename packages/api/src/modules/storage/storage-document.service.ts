@@ -1,9 +1,11 @@
+import { DOCUMENT_FORMATS, documentFormatFromMime } from "@bbrc/shared";
 import {
 	ALLOWED_DOCUMENT_MIME_TYPES,
 	type AllowedDocumentMimeType,
 	buildObjectKey,
 	buildPublicObjectUrl,
 	createR2Client,
+	type DocumentFileExtension,
 	getStorageEnv,
 	headObject,
 	loadR2ConfigFromEnv,
@@ -32,7 +34,7 @@ export function parseDocumentMime(
 		: null;
 }
 
-async function verifyPdfAtKey(
+async function verifyDocumentAtKey(
 	key: string,
 	contentType: AllowedDocumentMimeType,
 	contentLength: number,
@@ -68,7 +70,7 @@ async function verifyPdfAtKey(
 	return buildPublicObjectUrl(config, key);
 }
 
-export async function putPdfAtKey(
+export async function putDocumentAtKey(
 	bookSlug: string,
 	documentSlug: string,
 	file: {
@@ -77,11 +79,20 @@ export async function putPdfAtKey(
 		contentLength: number;
 	},
 ): Promise<string> {
+	const format = documentFormatFromMime(file.contentType);
+	if (!format) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Only PDF, DOCX and EPUB files are allowed",
+		});
+	}
+	const extension: DocumentFileExtension = DOCUMENT_FORMATS[format].extension;
+
 	const storageEnv = getStorageEnv();
 	const key = buildObjectKey(storageEnv, {
 		kind: "book-document",
 		bookSlug,
 		documentSlug,
+		extension,
 	});
 
 	const { config, client } = requireR2();
@@ -91,7 +102,7 @@ export async function putPdfAtKey(
 		contentType: file.contentType,
 	});
 
-	return verifyPdfAtKey(key, file.contentType, file.contentLength);
+	return verifyDocumentAtKey(key, file.contentType, file.contentLength);
 }
 
 export async function deleteDocumentObject(

@@ -1,9 +1,12 @@
 "use client";
 
 import {
+	DOCUMENT_FILE_ACCEPT,
+	DOCUMENT_FORMATS_LABEL,
 	type DocumentLanguageCode,
 	MAX_DOCS_PER_BOOK,
 	MAX_DOCUMENT_BYTES,
+	resolveDocumentFormat,
 } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
@@ -77,17 +80,17 @@ export function CreateDocumentForm({
 		}
 
 		if (!file) {
-			toast.error("Choose a PDF file.");
+			toast.error("Choose a file to upload.");
 			return;
 		}
 
-		if (file.type !== "application/pdf") {
-			toast.error("Only PDF files are allowed.");
+		if (!resolveDocumentFormat(file)) {
+			toast.error(`Only ${DOCUMENT_FORMATS_LABEL} files are allowed.`);
 			return;
 		}
 
 		if (file.size > MAX_DOCUMENT_BYTES) {
-			toast.error("PDF must be 10 MB or smaller.");
+			toast.error("The file must be 10 MB or smaller.");
 			return;
 		}
 
@@ -156,8 +159,8 @@ export function CreateDocumentForm({
 			) : (
 				<p className="text-muted-foreground text-sm leading-relaxed">
 					{isAdmin
-						? `As an admin, your PDF is published immediately (${slotsLeft} of ${MAX_DOCS_PER_BOOK} slots left on this book).`
-						: `Members can upload up to ${MAX_DOCS_PER_BOOK} approved PDFs per book. Admins review submissions (${slotsLeft} slot${slotsLeft === 1 ? "" : "s"} left).`}
+						? `As an admin, your document is published immediately (${slotsLeft} of ${MAX_DOCS_PER_BOOK} slots left on this book).`
+						: `Members can upload up to ${MAX_DOCS_PER_BOOK} approved documents per book. Admins review submissions (${slotsLeft} slot${slotsLeft === 1 ? "" : "s"} left).`}
 				</p>
 			)}
 
@@ -165,7 +168,7 @@ export function CreateDocumentForm({
 				<CardHeader className="border-b">
 					<CardTitle className="text-base">Document details</CardTitle>
 					<CardDescription>
-						How this PDF should appear in the library for {bookTitle}.
+						How this document should appear in the library for {bookTitle}.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="pt-6">
@@ -194,7 +197,7 @@ export function CreateDocumentForm({
 									Language
 								</FieldLegend>
 								<FieldDescription className="mb-3">
-									Primary language of the PDF text.
+									Primary language of the text.
 								</FieldDescription>
 								<DocumentLanguagePicker
 									value={language}
@@ -209,16 +212,17 @@ export function CreateDocumentForm({
 
 			<Card size="sm">
 				<CardHeader className="border-b">
-					<CardTitle className="text-base">PDF file</CardTitle>
+					<CardTitle className="text-base">Document file</CardTitle>
 					<CardDescription>
-						One file per document. Maximum {formatFileSize(MAX_DOCUMENT_BYTES)}.
+						One file per document, as PDF, DOCX or EPUB. Maximum{" "}
+						{formatFileSize(MAX_DOCUMENT_BYTES)}.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="pt-6">
 					<input
 						ref={fileInputRef}
 						type="file"
-						accept="application/pdf"
+						accept={DOCUMENT_FILE_ACCEPT}
 						className="sr-only"
 						disabled={atCap || submitting}
 						onChange={(event) => {
@@ -238,10 +242,10 @@ export function CreateDocumentForm({
 								aria-hidden
 							/>
 							<span className="font-medium text-sm">
-								{file ? "Choose a different PDF" : "Select PDF to upload"}
+								{file ? "Choose a different file" : "Select a file to upload"}
 							</span>
 							<span className="text-muted-foreground text-xs">
-								application/pdf only
+								{DOCUMENT_FORMATS_LABEL} only
 							</span>
 						</button>
 						{file ? (

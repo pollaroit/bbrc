@@ -2,9 +2,13 @@
 
 import type { GetDocumentForEditOutput } from "@bbrc/api/modules/document/document.schema";
 import {
+	DOCUMENT_FILE_ACCEPT,
+	DOCUMENT_FORMATS_LABEL,
 	type DocumentLanguageCode,
+	documentFormatLabel,
 	isDocumentLanguageCode,
 	MAX_DOCUMENT_BYTES,
+	resolveDocumentFormat,
 } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Field, FieldDescription, FieldLabel } from "@bbrc/ui/components/field";
@@ -73,19 +77,19 @@ export function EditDocumentForm({ document }: EditDocumentFormProps) {
 		]);
 	}
 
-	async function handleReplacePdf() {
+	async function handleReplaceFile() {
 		if (!replaceFile) {
-			toast.error("Choose a PDF file.");
+			toast.error("Choose a file to upload.");
 			return;
 		}
 
-		if (replaceFile.type !== "application/pdf") {
-			toast.error("Only PDF files are allowed.");
+		if (!resolveDocumentFormat(replaceFile)) {
+			toast.error(`Only ${DOCUMENT_FORMATS_LABEL} files are allowed.`);
 			return;
 		}
 
 		if (replaceFile.size > MAX_DOCUMENT_BYTES) {
-			toast.error("PDF must be 10 MB or smaller.");
+			toast.error("The file must be 10 MB or smaller.");
 			return;
 		}
 
@@ -106,13 +110,13 @@ export function EditDocumentForm({ document }: EditDocumentFormProps) {
 			} | null;
 
 			if (!response.ok) {
-				throw new Error(body?.error ?? "Could not replace PDF.");
+				throw new Error(body?.error ?? "Could not replace the file.");
 			}
 
 			toast.success(
 				body?.status === "pending"
-					? "PDF replaced and sent for review again."
-					: "PDF replaced.",
+					? "File replaced and sent for review again."
+					: "File replaced.",
 			);
 			setReplaceFile(null);
 			if (fileInputRef.current) {
@@ -122,7 +126,7 @@ export function EditDocumentForm({ document }: EditDocumentFormProps) {
 			router.refresh();
 		} catch (error) {
 			toast.error(
-				error instanceof Error ? error.message : "Could not replace PDF.",
+				error instanceof Error ? error.message : "Could not replace the file.",
 			);
 		} finally {
 			setReplacing(false);
@@ -172,7 +176,7 @@ export function EditDocumentForm({ document }: EditDocumentFormProps) {
 				<Field>
 					<FieldLabel>Language</FieldLabel>
 					<FieldDescription className="mb-3">
-						Primary language of the PDF.
+						Primary language of the document.
 					</FieldDescription>
 					<DocumentLanguagePicker
 						value={language}
@@ -192,13 +196,13 @@ export function EditDocumentForm({ document }: EditDocumentFormProps) {
 				) : (
 					<p className="text-muted-foreground text-xs">
 						Approved documents cannot change title or language here. Replace the
-						PDF to submit a new version for review.
+						file to submit a new version for review.
 					</p>
 				)}
 			</form>
 
 			<Field>
-				<FieldLabel>Current PDF</FieldLabel>
+				<FieldLabel>Current file</FieldLabel>
 				<Button
 					render={
 						<a
@@ -212,21 +216,21 @@ export function EditDocumentForm({ document }: EditDocumentFormProps) {
 					variant="outline"
 					className="w-fit"
 				>
-					Open PDF
+					Open {documentFormatLabel(document.documentUrl)}
 				</Button>
 			</Field>
 
 			<Field>
-				<FieldLabel>Replace PDF</FieldLabel>
+				<FieldLabel>Replace file</FieldLabel>
 				<FieldDescription>
 					{session?.user.isAdmin
-						? "Upload a new PDF file for this document."
+						? "Upload a new PDF, DOCX or EPUB file for this document."
 						: "Replacing an approved document sends it back to pending for admins."}
 				</FieldDescription>
 				<input
 					ref={fileInputRef}
 					type="file"
-					accept="application/pdf"
+					accept={DOCUMENT_FILE_ACCEPT}
 					className="sr-only"
 					disabled={replacing}
 					onChange={(event) => {
@@ -241,7 +245,7 @@ export function EditDocumentForm({ document }: EditDocumentFormProps) {
 						disabled={replacing}
 						onClick={() => fileInputRef.current?.click()}
 					>
-						Choose PDF
+						Choose file
 					</Button>
 					{replaceFile ? (
 						<span className="text-muted-foreground text-sm">
@@ -253,7 +257,7 @@ export function EditDocumentForm({ document }: EditDocumentFormProps) {
 						size="sm"
 						loading={replacing}
 						disabled={!replaceFile}
-						onClick={() => void handleReplacePdf()}
+						onClick={() => void handleReplaceFile()}
 					>
 						Upload replacement
 					</LoadingButton>
@@ -276,7 +280,7 @@ export function EditDocumentForm({ document }: EditDocumentFormProps) {
 				open={deleteOpen}
 				onOpenChange={setDeleteOpen}
 				title="Delete document?"
-				description="The PDF will be removed from storage. This cannot be undone."
+				description="The file will be removed from storage. This cannot be undone."
 				confirmLabel="Delete"
 				loading={deleteMutation.isPending}
 				onConfirm={() =>

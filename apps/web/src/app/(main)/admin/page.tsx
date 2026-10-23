@@ -63,7 +63,7 @@ const resources = [
 	{
 		href: "/admin/documents" as Route,
 		title: "Documents",
-		description: "Book PDF submissions, review status, and languages.",
+		description: "Book document submissions, review status, and languages.",
 	},
 	{
 		href: "/admin/facts/create" as Route,

@@ -1,6 +1,11 @@
 import type { Session } from "@bbrc/auth";
 import type { Database } from "@bbrc/db";
-import { MAX_DOCS_PER_BOOK } from "@bbrc/shared";
+import {
+	documentFormatFromMime,
+	fileMatchesDocumentFormat,
+	MAX_DOCS_PER_BOOK,
+	MAX_DOCUMENT_BYTES,
+} from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import type { Context } from "../../context";
 import { revalidateBookIsr } from "../../revalidate-isr";
@@ -12,7 +17,7 @@ import {
 import {
 	deleteDocumentObject,
 	parseDocumentMime,
-	putPdfAtKey,
+	putDocumentAtKey,
 } from "../storage/storage-document.service";
 import type {
 	ApproveDocumentInput,
@@ -118,13 +123,20 @@ export async function createDocumentWithUpload(
 	const contentType = parseDocumentMime(input.contentType);
 	if (!contentType) {
 		throw new ORPCError("BAD_REQUEST", {
-			message: "Only PDF files are allowed",
+			message: "Only PDF, DOCX and EPUB files are allowed",
 		});
 	}
 
-	if (input.contentLength > 10 * 1024 * 1024) {
+	if (input.contentLength > MAX_DOCUMENT_BYTES) {
 		throw new ORPCError("BAD_REQUEST", {
-			message: "PDF must be 10 MB or smaller",
+			message: "The file must be 10 MB or smaller",
+		});
+	}
+
+	const format = documentFormatFromMime(contentType);
+	if (!format || !fileMatchesDocumentFormat(input.buffer, format)) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "The file content doesn't match its format",
 		});
 	}
 
@@ -136,7 +148,7 @@ export async function createDocumentWithUpload(
 
 	const created = await db.$transaction(async (tx) => {
 		const slug = await generateDocumentSlug(input.name, tx);
-		const publicUrl = await putPdfAtKey(book.slug, slug, {
+		const publicUrl = await putDocumentAtKey(book.slug, slug, {
 			buffer: input.buffer,
 			contentType,
 			contentLength: input.contentLength,
@@ -176,7 +188,7 @@ export async function createDocumentWithUpload(
 	};
 }
 
-export async function replaceDocumentPdf(
+export async function replaceDocumentFile(
 	input: {
 		bookSlug: string;
 		documentSlug: string;
@@ -191,7 +203,14 @@ export async function replaceDocumentPdf(
 	const contentType = parseDocumentMime(input.contentType);
 	if (!contentType) {
 		throw new ORPCError("BAD_REQUEST", {
-			message: "Only PDF files are allowed",
+			message: "Only PDF, DOCX and EPUB files are allowed",
+		});
+	}
+
+	const format = documentFormatFromMime(contentType);
+	if (!format || !fileMatchesDocumentFormat(input.buffer, format)) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "The file content doesn't match its format",
 		});
 	}
 
@@ -207,7 +226,7 @@ export async function replaceDocumentPdf(
 	}
 
 	const previousUrl = document.documentKey;
-	const publicUrl = await putPdfAtKey(book.slug, document.slug, {
+	const publicUrl = await putDocumentAtKey(book.slug, document.slug, {
 		buffer: input.buffer,
 		contentType,
 		contentLength: input.contentLength,
@@ -231,7 +250,10 @@ export async function replaceDocumentPdf(
 		select: { slug: true, status: true },
 	});
 
-	await deleteDocumentObject(previousUrl);
+	// Same format reuses the key, so only a different key leaves an old file behind.
+	if (previousUrl !== publicUrl) {
+		await deleteDocumentObject(previousUrl);
+	}
 
 	if (nextStatus === "pending" && document.status === "approved") {
 		void notifyDocumentSubmitted(
