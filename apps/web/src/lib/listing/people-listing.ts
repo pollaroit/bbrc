@@ -30,6 +30,7 @@ export const peopleSortLabels = {
 	name: "Name",
 	createdAt: "Join date",
 	streak: "Reading streak",
+	achievements: "Achievements",
 	averageRating: "Average rating given",
 	authors: "Authors read",
 	reads: "Books read",

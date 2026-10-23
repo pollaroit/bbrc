@@ -8,6 +8,7 @@ import {
 	RP_LEVEL_TIERS,
 	XP_LEVEL_TIERS,
 } from "@bbrc/shared";
+import { loadAchievementCounts } from "../achievement/achievement.service";
 import { userMemberLevelsFromPoints } from "../user/member-levels";
 import {
 	viewerFromSession,
@@ -227,13 +228,31 @@ function orderByFor(
 	}
 }
 
-const COMPUTED_SORTS = ["streak", "averageRating", "authors"] as const;
+const COMPUTED_SORTS = [
+	"streak",
+	"achievements",
+	"averageRating",
+	"authors",
+] as const;
 type ComputedSort = (typeof COMPUTED_SORTS)[number];
 
 function isComputedSort(
 	sortBy: GetPeopleListInput["sortBy"],
 ): sortBy is ComputedSort {
 	return (COMPUTED_SORTS as readonly string[]).includes(sortBy);
+}
+
+/** Achievement counts are a nice-to-have on this page, so a failure here never breaks the list. */
+async function safeAchievementCounts(
+	userIds: string[],
+	db: Database,
+): Promise<Map<string, number>> {
+	try {
+		return await loadAchievementCounts(db, userIds);
+	} catch (error) {
+		console.error("Could not load achievement counts", error);
+		return new Map();
+	}
 }
 
 async function loadAverageRatings(
@@ -323,28 +342,30 @@ async function buildItems(
 	db: Database,
 ): Promise<PeopleListItem[]> {
 	const ids = rows.map((row) => row.id);
-	const [streaks, ratings, reading, authorCounts] = await Promise.all([
-		loadStreaks(ids, db),
-		db.feedback.groupBy({
-			by: ["authorId"],
-			where: { authorId: { in: ids } },
-			_avg: { rating: true },
-		}),
-		db.participation.findMany({
-			where: {
-				userId: { in: ids },
-				removedAt: null,
-				progress: { in: ["not_started", "in_progress"] },
-				sitting: { status: "reading" },
-			},
-			select: {
-				userId: true,
-				progress: true,
-				sitting: { select: { slug: true } },
-			},
-		}),
-		loadDistinctAuthorCounts(ids, db),
-	]);
+	const [streaks, ratings, reading, authorCounts, achievementCounts] =
+		await Promise.all([
+			loadStreaks(ids, db),
+			db.feedback.groupBy({
+				by: ["authorId"],
+				where: { authorId: { in: ids } },
+				_avg: { rating: true },
+			}),
+			db.participation.findMany({
+				where: {
+					userId: { in: ids },
+					removedAt: null,
+					progress: { in: ["not_started", "in_progress"] },
+					sitting: { status: "reading" },
+				},
+				select: {
+					userId: true,
+					progress: true,
+					sitting: { select: { slug: true } },
+				},
+			}),
+			loadDistinctAuthorCounts(ids, db),
+			safeAchievementCounts(ids, db),
+		]);
 	const ratingByUser = new Map(
 		ratings.map((row) => [row.authorId, row._avg.rating]),
 	);
@@ -387,6 +408,7 @@ async function buildItems(
 			quizzesTaken: row._count.quizSubmissions,
 			documentsShared: row._count.documents,
 			authorsRead: authorCounts.get(row.id) ?? 0,
+			achievements: achievementCounts.get(row.id) ?? 0,
 			streak: { current: streak?.current ?? 0, best: streak?.best ?? 0 },
 			averageRatingGiven:
 				average != null ? Math.round(average * 100) / 100 : null,
@@ -426,6 +448,10 @@ export async function getPeopleList(
 			input.sortBy === "authors"
 				? await loadDistinctAuthorCounts(ids, db)
 				: new Map<string, number>();
+		const achievements =
+			input.sortBy === "achievements"
+				? await safeAchievementCounts(ids, db)
+				: new Map<string, number>();
 		const sign = direction === "asc" ? 1 : -1;
 
 		/** Members without a value always sort last. */
@@ -451,6 +477,10 @@ export async function getPeopleList(
 						((left?.best ?? 0) - (right?.best ?? 0)) * sign;
 				} else if (input.sortBy === "averageRating") {
 					primary = compareNullable(ratings.get(a.id), ratings.get(b.id));
+				} else if (input.sortBy === "achievements") {
+					primary =
+						((achievements.get(a.id) ?? 0) - (achievements.get(b.id) ?? 0)) *
+						sign;
 				} else if (input.sortBy === "authors") {
 					primary = compareNullable(
 						authors.get(a.id) ?? 0,

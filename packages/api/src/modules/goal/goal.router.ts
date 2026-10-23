@@ -1,5 +1,6 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
 import { revalidateUserIsr } from "../../revalidate-isr";
+import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import { viewerFromSession } from "../user/user-visibility";
 import {
 	CreateGoalInputSchema,
@@ -41,6 +42,7 @@ export const goalRouter = {
 			),
 		),
 	create: notBannedProcedure
+		.use(checkAchievementsAfter("goals"))
 		.input(CreateGoalInputSchema)
 		.output(CreateGoalOutputSchema)
 		.handler(async ({ input, context }) => {

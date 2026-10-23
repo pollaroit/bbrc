@@ -1,5 +1,6 @@
 import type { RouterClient } from "@orpc/server";
 
+import { achievementRouter } from "./modules/achievement/achievement.router";
 import { adminRouter } from "./modules/admin/admin.router";
 import { authorRouter } from "./modules/author/author.router";
 import { bookRouter } from "./modules/book/book.router";
@@ -28,6 +29,7 @@ import { userRouter } from "./modules/user/user.router";
 import { xpRouter } from "./modules/xp/xp.router";
 
 export const appRouter = {
+	achievement: achievementRouter,
 	admin: adminRouter,
 	author: authorRouter,
 	health: healthRouter,

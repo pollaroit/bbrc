@@ -1,4 +1,5 @@
 import { protectedProcedure, publicProcedure } from "../../procedures";
+import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import {
 	BeginTelegramLinkOutputSchema,
 	GetTelegramLinkStatusOutputSchema,
@@ -142,6 +143,7 @@ export const userRouter = {
 			updateMyPreferences(context.session.user.id, input, context.db),
 		),
 	updateMyProfile: protectedProcedure
+		.use(checkAchievementsAfter("profile"))
 		.input(UpdateMyProfileInputSchema)
 		.output(UpdateMyProfileOutputSchema)
 		.handler(async ({ input, context }) =>

@@ -72,6 +72,7 @@ model User {
   quizQuestionReports     QuizQuestionReport[]
   generatedQuizzes        Quiz[]                   @relation("QuizGeneratedBy")
   profile                 UserProfile?
+  achievements            UserAchievement[]
 
   @@map("user")
 }

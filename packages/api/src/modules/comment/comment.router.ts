@@ -1,5 +1,6 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
 import { revalidateCommentIsr, revalidatePostIsr } from "../../revalidate-isr";
+import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import {
 	CreateCommentInputSchema,
 	CreateCommentOutputSchema,
@@ -34,6 +35,7 @@ export const commentRouter = {
 			getCommentBySlug(input, context.db, context.session),
 		),
 	create: notBannedProcedure
+		.use(checkAchievementsAfter("comments"))
 		.input(CreateCommentInputSchema)
 		.output(CreateCommentOutputSchema)
 		.handler(async ({ input, context }) => {

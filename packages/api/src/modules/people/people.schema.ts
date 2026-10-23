@@ -8,6 +8,7 @@ export const PEOPLE_SORT_FIELDS = [
 	"name",
 	"createdAt",
 	"streak",
+	"achievements",
 	"averageRating",
 	"authors",
 	"reads",
@@ -93,6 +94,7 @@ export const PeopleListItemSchema = zod.object({
 	quizzesTaken: zod.number().int().min(0),
 	documentsShared: zod.number().int().min(0),
 	authorsRead: zod.number().int().min(0),
+	achievements: zod.number().int().min(0),
 	streak: zod.object({
 		current: zod.number().int().min(0),
 		best: zod.number().int().min(0),

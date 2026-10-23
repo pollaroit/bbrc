@@ -27,7 +27,7 @@ const NEW_MEMBER_DAYS = 14;
 
 type SortMetric = { label: string; value: string; href?: string };
 
-/** Sorts whose figure is not already on the card (the strips cover xp, rp, reads, reviews, posts, sittings and streak). */
+/** Sorts whose figure is not already on the card. */
 function sortMetricFor(
 	person: PeopleListItem,
 	sortBy: PeopleSortField | undefined,
@@ -42,6 +42,12 @@ function sortMetricFor(
 						? person.averageRatingGiven.toFixed(2)
 						: "—",
 				href: `${base}/feedbacks`,
+			};
+		case "achievements":
+			return {
+				label: "Achievements",
+				value: String(person.achievements),
+				href: `${base}/achievements`,
 			};
 		case "authors":
 			return {

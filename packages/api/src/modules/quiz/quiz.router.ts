@@ -3,6 +3,7 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "../../procedures";
+import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import {
 	AdminQuizActionOutputSchema,
 	AdminQuizIdInputSchema,
@@ -51,6 +52,7 @@ export const quizRouter = {
 			startQuiz(input.slug, context.db, context.session),
 		),
 	submit: protectedProcedure
+		.use(checkAchievementsAfter("quizzes"))
 		.input(SubmitQuizInputSchema)
 		.output(SubmitQuizOutputSchema)
 		.handler(({ input, context }) =>

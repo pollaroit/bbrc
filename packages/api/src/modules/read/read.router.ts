@@ -1,4 +1,5 @@
 import { protectedProcedure, publicProcedure } from "../../procedures";
+import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import {
 	GetBookReadStateInputSchema,
 	GetBookReadStateOutputSchema,
@@ -77,6 +78,7 @@ export const readRouter = {
 		),
 
 	setRead: protectedProcedure
+		.use(checkAchievementsAfter("reads", "goals", "club"))
 		.input(SetReadInputSchema)
 		.output(GetBookReadStateOutputSchema)
 		.handler(({ context, input }) =>
