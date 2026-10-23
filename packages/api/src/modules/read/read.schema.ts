@@ -77,6 +77,22 @@ export const GetBookReadStateOutputSchema = z.object({
 	editionId: ReadEditionIdFieldSchema,
 });
 
+export const GetReadPreferencesOutputSchema = z.object({
+	/** New reads start with the current month and year filled in. */
+	defaultToCurrentDate: z.boolean(),
+});
+
+export const SetReadPreferencesInputSchema = z.object({
+	defaultToCurrentDate: z.boolean(),
+});
+
+export type GetReadPreferencesOutput = z.infer<
+	typeof GetReadPreferencesOutputSchema
+>;
+export type SetReadPreferencesInput = z.infer<
+	typeof SetReadPreferencesInputSchema
+>;
+
 export type GetBookReadStateOutput = z.infer<
 	typeof GetBookReadStateOutputSchema
 >;

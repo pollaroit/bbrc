@@ -17,6 +17,8 @@ model User {
   username              String     @unique
   /// Set when the member last changed `username` (self-service); null until first change.
   usernameLastUpdatedAt DateTime?  @map("username_last_updated_at")
+  /// New reads start with the current month and year filled in.
+  readDateDefaultsToNow Boolean    @default(true) @map("read_date_defaults_to_now")
   /// @zod.email("Invalid email address")
   email                 String     @unique
   emailVerified         Boolean    @default(false) @map("email_verified")

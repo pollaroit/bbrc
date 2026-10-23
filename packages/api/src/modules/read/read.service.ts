@@ -26,6 +26,7 @@ import {
 } from "./read.listing";
 import type {
 	GetBookReadStateOutput,
+	GetReadPreferencesOutput,
 	ListBookReadsInput,
 	ListBookReadsOutput,
 	ListUserReadsInput,
@@ -34,6 +35,7 @@ import type {
 	SearchWorkEditionsInput,
 	SearchWorkEditionsOutput,
 	SetReadInput,
+	SetReadPreferencesInput,
 } from "./read.schema";
 import { userReadListSelect } from "./read.schema";
 
@@ -605,3 +607,29 @@ export async function searchWorkEditionsForBook(
 }
 
 export { fetchEditionDetailSummaries };
+
+export async function getReadPreferences(
+	userId: string,
+	db: Database,
+): Promise<GetReadPreferencesOutput> {
+	const user = await db.user.findUnique({
+		where: { id: userId },
+		select: { readDateDefaultsToNow: true },
+	});
+
+	return { defaultToCurrentDate: user?.readDateDefaultsToNow ?? true };
+}
+
+export async function setReadPreferences(
+	input: SetReadPreferencesInput,
+	userId: string,
+	db: Database,
+): Promise<GetReadPreferencesOutput> {
+	const user = await db.user.update({
+		where: { id: userId },
+		data: { readDateDefaultsToNow: input.defaultToCurrentDate },
+		select: { readDateDefaultsToNow: true },
+	});
+
+	return { defaultToCurrentDate: user.readDateDefaultsToNow };
+}
