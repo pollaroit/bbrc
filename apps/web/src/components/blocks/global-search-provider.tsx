@@ -37,6 +37,8 @@ export const globalSearchTypeLabels: Record<GlobalSearchHitType, string> = {
 	shelf: "Shelf",
 	document: "Document",
 	author: "Author",
+	goal: "Goal",
+	series: "Series",
 };
 
 export function GlobalSearchProvider({ children }: { children: ReactNode }) {

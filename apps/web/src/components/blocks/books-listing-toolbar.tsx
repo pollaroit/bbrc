@@ -28,6 +28,7 @@ import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet"
 import { ListingIntegerRangeFields } from "@/components/listing/listing-integer-range-fields";
 import { ListingOpenLibraryRatingSlider } from "@/components/listing/listing-open-library-rating-slider";
 import { ListingRangeFields } from "@/components/listing/listing-range-fields";
+import { ListingRatingRangeFields } from "@/components/listing/listing-rating-range-fields";
 import { ListingSideSheetSection } from "@/components/listing/listing-side-sheet";
 import { ListingSort } from "@/components/listing/listing-sort";
 import { authClient } from "@/lib/auth-client";
@@ -388,6 +389,40 @@ export function BooksListingToolbar({
 							}}
 						/>
 					),
+				)}
+
+				{filterSection(
+					"Reviews & club rating",
+					"How many club reviews a book has, and how members rated it.",
+					<>
+						<ListingIntegerRangeFields
+							legend="Club reviews"
+							minId="book-filter-min-feedbacks"
+							maxId="book-filter-max-feedbacks"
+							inputMin={0}
+							min={params.minFeedbacks}
+							max={params.maxFeedbacks}
+							onMinChange={(minFeedbacks) => {
+								void setParams({ minFeedbacks });
+							}}
+							onMaxChange={(maxFeedbacks) => {
+								void setParams({ maxFeedbacks });
+							}}
+						/>
+						<ListingRatingRangeFields
+							legend="Club rating"
+							minId="book-filter-min-club-rating"
+							maxId="book-filter-max-club-rating"
+							min={params.minAverageRating}
+							max={params.maxAverageRating}
+							onMinChange={(minAverageRating) => {
+								void setParams({ minAverageRating });
+							}}
+							onMaxChange={(maxAverageRating) => {
+								void setParams({ maxAverageRating });
+							}}
+						/>
+					</>,
 				)}
 
 				{variant === "library"

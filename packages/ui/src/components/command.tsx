@@ -35,6 +35,8 @@ function CommandDialog({
 	className,
 	showCloseButton = true,
 	shouldFilter = true,
+	value,
+	onValueChange,
 	...props
 }: Omit<React.ComponentProps<typeof Dialog>, "children"> & {
 	children?: React.ReactNode;
@@ -43,6 +45,9 @@ function CommandDialog({
 	className?: string;
 	showCloseButton?: boolean;
 	shouldFilter?: boolean;
+	/** The highlighted item, so callers can react to keyboard selection. */
+	value?: string;
+	onValueChange?: (value: string) => void;
 }) {
 	return (
 		<Dialog {...props}>
@@ -59,6 +64,8 @@ function CommandDialog({
 			>
 				<Command
 					shouldFilter={shouldFilter}
+					value={value}
+					onValueChange={onValueChange}
 					className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:text-xs [&_[cmdk-item]]:outline-none"
 				>
 					{children}

@@ -1,59 +1,92 @@
 "use client";
 
-import type {
-	GlobalSearchHit,
-	GlobalSearchHitType,
-} from "@bbrc/api/modules/search/global-search.schema";
+import type { GlobalSearchHit } from "@bbrc/api/modules/search/global-search.schema";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	CommandDialog,
 	CommandEmpty,
+	CommandGroup,
 	CommandInput,
 	CommandItem,
 	CommandList,
 } from "@bbrc/ui/components/command";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
-import {
-	BookOpen,
-	ExternalLink,
-	FileText,
-	Library,
-	MessageSquare,
-	PenLine,
-	Star,
-	User,
-} from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import type { ComponentType } from "react";
-import { useState } from "react";
+import { useTheme } from "next-themes";
+import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { useComposePost } from "@/components/blocks/compose-post-provider";
+import { useCreateGoal } from "@/components/blocks/create-goal-provider";
 import { globalSearchTypeLabels } from "@/components/blocks/global-search-provider";
+import { GlobalSearchThumb } from "@/components/blocks/global-search-thumb";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { authClient } from "@/lib/auth-client";
+import {
+	bookFiltersToSearchParams,
+	buildSearchCommands,
+	type CommandMatch,
+	describeBookFilters,
+	parseCommandFilters,
+	type SearchCommand,
+	type SearchCommandContext,
+	searchCommands,
+	suggestedCommands,
+} from "@/lib/search/commands";
+import {
+	type InnerPage,
+	innerPageHref,
+	innerPagesFor,
+	matchInnerPage,
+} from "@/lib/search/inner-pages";
+import {
+	clearRecentHits,
+	readRecentHits,
+	rememberHit,
+} from "@/lib/search/recents";
+import { nextThemeAfterToggle } from "@/lib/theme-toggle";
 import { cn } from "@/lib/utils";
-import { orpc } from "@/utils/orpc";
+import { client, orpc } from "@/utils/orpc";
 
-const typeIcons: Record<
-	GlobalSearchHitType,
-	ComponentType<{ className?: string }>
-> = {
-	book: BookOpen,
-	user: User,
-	post: PenLine,
-	feedback: Star,
-	comment: MessageSquare,
-	shelf: Library,
-	document: FileText,
-	author: BookOpen,
+const IDLE_COMMAND_LIMIT = 6;
+const TYPED_COMMAND_LIMIT = 6;
+const COMMANDS_ONLY_LIMIT = 12;
+
+const rowClassName = cn(
+	"mb-0.5 items-center gap-3 border border-transparent px-2.5 py-2.5",
+	"data-[selected=true]:border-border data-[selected=true]:bg-muted/45",
+);
+
+type ParsedQuery = {
+	mode: "all" | "commands" | "members";
+	/** Query without the `>` / `@` prefix. */
+	text: string;
+	/** Text to search resources for: everything before the first colon. */
+	term: string;
+	/** Text after the first colon, used to pick an inner page. */
+	suffix: string;
 };
 
-const searchHints = [
-	"Book titles and authors",
-	"Member names",
-	"Posts and reviews",
-	"Shelves and documents",
-] as const;
+function parseQuery(query: string): ParsedQuery {
+	const trimmed = query.trimStart();
+	const mode = trimmed.startsWith(">")
+		? "commands"
+		: trimmed.startsWith("@")
+			? "members"
+			: "all";
+	const text = mode === "all" ? query : trimmed.slice(1);
+	const colon = text.indexOf(":");
+
+	return {
+		mode,
+		text,
+		term: (colon === -1 ? text : text.slice(0, colon)).trim(),
+		suffix: colon === -1 ? "" : text.slice(colon + 1).trim(),
+	};
+}
 
 type GlobalSearchDialogProps = {
 	open: boolean;
@@ -65,91 +98,620 @@ export function GlobalSearchDialog({
 	onOpenChange,
 }: GlobalSearchDialogProps) {
 	const router = useRouter();
+	const { data: session } = authClient.useSession();
+	const { openCompose } = useComposePost();
+	const { openCreateGoal } = useCreateGoal();
+	const { resolvedTheme, setTheme } = useTheme();
+
 	const [query, setQuery] = useState("");
-	const debouncedQuery = useDebouncedValue(query, 300);
-	const trimmed = debouncedQuery.trim();
-	const canSearch = trimmed.length >= 2;
+	const [highlighted, setHighlighted] = useState("");
+	/** Inner page picked with the keyboard or mouse, per result. */
+	const [pickedPages, setPickedPages] = useState<Record<string, string | null>>(
+		{},
+	);
+	const [recents, setRecents] = useState<GlobalSearchHit[]>([]);
+
+	const parsed = useMemo(() => parseQuery(query), [query]);
+	const debouncedTerm = useDebouncedValue(parsed.term, 300).trim();
+
+	useEffect(() => {
+		if (open) {
+			setRecents(readRecentHits());
+		}
+	}, [open]);
+
+	const ongoingQuery = useQuery({
+		...orpc.sitting.getOngoingSitting.queryOptions(),
+		enabled: open,
+	});
+
+	const ctx: SearchCommandContext = useMemo(
+		() => ({
+			signedIn: Boolean(session?.user),
+			isAdmin: session?.user.isAdmin === true,
+			username: session?.user.username ?? null,
+			ongoingLoaded: ongoingQuery.isSuccess,
+			ongoing: ongoingQuery.data
+				? {
+						slug: ongoingQuery.data.slug,
+						viewerIsParticipant: ongoingQuery.data.viewerIsParticipant,
+					}
+				: null,
+		}),
+		[session, ongoingQuery.isSuccess, ongoingQuery.data],
+	);
+
+	const commands = useMemo(() => buildSearchCommands(), []);
+
+	const hasText = parsed.text.trim().length > 0;
+	const commandResult = useMemo(
+		() =>
+			parsed.mode === "members" || !hasText
+				? { matches: [], signInHint: null, hiddenCount: 0 }
+				: searchCommands(
+						parsed.text,
+						commands,
+						ctx,
+						parsed.mode === "commands"
+							? COMMANDS_ONLY_LIMIT
+							: TYPED_COMMAND_LIMIT,
+					),
+		[parsed, hasText, commands, ctx],
+	);
+
+	const idleCommands = useMemo(
+		() =>
+			hasText || parsed.mode === "members"
+				? []
+				: suggestedCommands(
+						commands,
+						ctx,
+						parsed.mode === "commands"
+							? COMMANDS_ONLY_LIMIT
+							: IDLE_COMMAND_LIMIT,
+					),
+		[hasText, parsed.mode, commands, ctx],
+	);
+
+	// `settings:pro` is a command, not a search for "settings".
+	const commandTail = parsed.suffix !== "" && commandResult.matches.length > 0;
+	const canSearch =
+		parsed.mode !== "commands" && !commandTail && debouncedTerm.length >= 2;
 
 	const searchQuery = useQuery({
 		...orpc.globalSearch.search.queryOptions({
-			input: { query: trimmed },
+			input: {
+				query: debouncedTerm,
+				...(parsed.mode === "members" ? { types: ["user" as const] } : {}),
+			},
 		}),
 		enabled: open && canSearch,
 	});
 
-	const items = searchQuery.data?.items ?? [];
+	const items = canSearch ? (searchQuery.data?.items ?? []) : [];
 	const isSearching =
 		canSearch && (searchQuery.isFetching || searchQuery.isPending);
+	const hasCommandRows =
+		commandResult.matches.length > 0 || commandResult.signInHint != null;
 	const showEmpty =
-		canSearch && !isSearching && items.length === 0 && !searchQuery.isError;
+		hasText &&
+		!hasCommandRows &&
+		!isSearching &&
+		items.length === 0 &&
+		!searchQuery.isError;
 
-	const navigate = (href: string) => {
+	const close = () => {
 		onOpenChange(false);
 		setQuery("");
+		setHighlighted("");
+		setPickedPages({});
+	};
+
+	const suffixPage = (hit: GlobalSearchHit): InnerPage | null => {
+		const pages = innerPagesFor(hit.type);
+		return pages ? matchInnerPage(pages, parsed.suffix) : null;
+	};
+
+	/** The page the next Enter opens for a result: picked by hand, else typed after a colon. */
+	const pageFor = (hit: GlobalSearchHit): InnerPage | null => {
+		const pages = innerPagesFor(hit.type);
+		if (!pages) {
+			return null;
+		}
+		const picked = pickedPages[hit.href];
+		if (picked !== undefined) {
+			return pages.find((page) => page.id === picked) ?? null;
+		}
+		return suffixPage(hit);
+	};
+
+	const openHit = (hit: GlobalSearchHit, page: InnerPage | null) => {
+		rememberHit(hit);
+		const href = page ? innerPageHref(hit, page) : hit.href;
+		close();
 		router.push(href as Route);
 	};
+
+	const runRandom = async (filtersText: string | null) => {
+		const result = parseCommandFilters(filtersText);
+		if (!result.ok) {
+			toast.error(result.error);
+			return;
+		}
+		if (result.filters.viewerRead && !ctx.signedIn) {
+			toast.error("Sign in to filter by what you have read (ir / nr).");
+			return;
+		}
+
+		close();
+		const toastId = toast.loading("Picking a book…");
+		try {
+			const book = await client.book.getRandom(result.filters);
+			toast.success(
+				book.matched > 1 ? `${book.title} (1 of ${book.matched})` : book.title,
+				{ id: toastId },
+			);
+			router.push(`/books/${book.slug}` as Route);
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Could not pick a book.",
+				{ id: toastId },
+			);
+		}
+	};
+
+	const runCommand = async (match: CommandMatch) => {
+		const action = match.command.action(ctx);
+
+		switch (action.kind) {
+			case "navigate":
+				close();
+				router.push(action.href as Route);
+				return;
+			case "dialog":
+				close();
+				if (action.dialog === "compose-post") {
+					openCompose();
+				} else {
+					openCreateGoal();
+				}
+				return;
+			case "theme":
+				setTheme(nextThemeAfterToggle(resolvedTheme));
+				close();
+				return;
+			case "signout":
+				close();
+				try {
+					await authClient.signOut();
+					router.refresh();
+				} catch {
+					toast.error("Failed to sign out");
+				}
+				return;
+			case "books": {
+				const result = parseCommandFilters(match.filtersText);
+				if (!result.ok) {
+					toast.error(result.error);
+					return;
+				}
+				if (result.filters.viewerRead && !ctx.signedIn) {
+					toast.error("Sign in to filter by what you have read (ir / nr).");
+					return;
+				}
+				const search = bookFiltersToSearchParams(result.filters);
+				close();
+				router.push((search ? `/books?${search}` : "/books") as Route);
+				return;
+			}
+			case "random":
+				await runRandom(match.filtersText);
+				return;
+		}
+	};
+
+	const highlightedHit = useMemo(() => {
+		const match = /^hit-(\d+)$/.exec(highlighted);
+		return match ? (items[Number(match[1])] ?? null) : null;
+	}, [highlighted, items]);
+
+	/** → opens a result's page chips one by one, ← steps back; both only apply to books and members. */
+	const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+		if (!highlightedHit || event.metaKey || event.ctrlKey || event.altKey) {
+			return;
+		}
+		const pages = innerPagesFor(highlightedHit.type);
+		if (!pages) {
+			return;
+		}
+
+		const input = event.currentTarget;
+		const caretAtEnd =
+			input.selectionStart === input.value.length &&
+			input.selectionEnd === input.value.length;
+		const current = pageFor(highlightedHit);
+		const index = current
+			? pages.findIndex((page) => page.id === current.id)
+			: -1;
+
+		const pick = (id: string | null) =>
+			setPickedPages((existing) => ({
+				...existing,
+				[highlightedHit.href]: id,
+			}));
+
+		if (event.key === "ArrowRight" && caretAtEnd) {
+			event.preventDefault();
+			pick(pages[Math.min(index + 1, pages.length - 1)]?.id ?? null);
+		} else if (event.key === "ArrowLeft" && index >= 0) {
+			event.preventDefault();
+			pick(index === 0 ? null : (pages[index - 1]?.id ?? null));
+		}
+	};
+
+	const showRecents = !hasText && parsed.mode === "all" && recents.length > 0;
 
 	return (
 		<CommandDialog
 			shouldFilter={false}
 			open={open}
+			value={highlighted}
+			onValueChange={setHighlighted}
 			onOpenChange={(nextOpen) => {
-				onOpenChange(nextOpen);
-				if (!nextOpen) {
-					setQuery("");
+				if (nextOpen) {
+					onOpenChange(true);
+				} else {
+					close();
 				}
 			}}
 			title="Search the club"
-			description="Find books, members, posts, and more across BBRC"
+			description="Find books, members, posts and more, or jump to a page"
 			className="gap-0 p-0 sm:max-w-xl"
 		>
 			<CommandInput
-				placeholder="Search books, members, posts…"
+				placeholder="Search or type a command…"
 				value={query}
 				onValueChange={setQuery}
+				onKeyDown={onInputKeyDown}
 			/>
-			<CommandList className="max-h-[min(52vh,22rem)] px-1.5 py-1.5">
-				{!canSearch ? (
-					<GlobalSearchIdleState />
-				) : isSearching ? (
-					<GlobalSearchLoadingState />
-				) : showEmpty ? (
-					<GlobalSearchNoResults query={trimmed} />
+			<CommandList className="max-h-[min(56vh,24rem)] px-1.5 py-1.5">
+				{!hasText && parsed.mode !== "members" ? (
+					<>
+						<CommandEmpty className="hidden" />
+						{idleCommands.length > 0 ? (
+							<CommandGroup heading="Go to">
+								{idleCommands.map((command) => (
+									<CommandRow
+										key={command.id}
+										command={command}
+										filtersText={null}
+										onSelect={() =>
+											void runCommand({ command, filtersText: null, score: 0 })
+										}
+									/>
+								))}
+							</CommandGroup>
+						) : null}
+						{showRecents ? (
+							<CommandGroup
+								heading={
+									<span className="flex items-center justify-between">
+										Recent
+										<button
+											type="button"
+											className="text-[11px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+											onClick={() => {
+												clearRecentHits();
+												setRecents([]);
+											}}
+										>
+											Clear
+										</button>
+									</span>
+								}
+							>
+								{recents.map((hit, index) => (
+									<HitRow
+										key={`recent-${hit.href}`}
+										value={`recent-${index}`}
+										hit={hit}
+										page={null}
+										chips={false}
+										pickedPage={null}
+										onPick={() => {}}
+										onOpen={(page) => openHit(hit, page)}
+									/>
+								))}
+							</CommandGroup>
+						) : null}
+						<GlobalSearchIdleHints />
+					</>
+				) : parsed.mode === "members" && !hasText ? (
+					<GlobalSearchMembersHint />
 				) : (
 					<>
 						<CommandEmpty className="hidden" />
-						{items.map((item, index) => (
-							<GlobalSearchHitRow
-								key={`${item.type}-${item.href}-${index}`}
-								item={item}
-								onNavigate={navigate}
-							/>
-						))}
+						{hasCommandRows ? (
+							<CommandGroup heading="Go to">
+								{commandResult.matches.map((match) => (
+									<CommandRow
+										key={match.command.id}
+										command={match.command}
+										filtersText={match.filtersText}
+										onSelect={() => void runCommand(match)}
+									/>
+								))}
+								{commandResult.signInHint ? (
+									<CommandRow
+										command={commandResult.signInHint}
+										filtersText={null}
+										note="Sign in to use this"
+										onSelect={() =>
+											void runCommand({
+												command: commandResult.signInHint as SearchCommand,
+												filtersText: null,
+												score: 0,
+											})
+										}
+									/>
+								) : null}
+							</CommandGroup>
+						) : null}
+						{commandResult.hiddenCount > 0 ? (
+							<p className="px-3 py-1 text-[11px] text-muted-foreground">
+								{commandResult.hiddenCount} more, keep typing to narrow
+							</p>
+						) : null}
+						{isSearching ? (
+							<GlobalSearchLoadingState />
+						) : items.length > 0 ? (
+							<CommandGroup heading={hasCommandRows ? "Results" : undefined}>
+								{items.map((hit, index) => {
+									const pages = innerPagesFor(hit.type);
+									const page = pageFor(hit);
+									return (
+										<HitRow
+											key={`${hit.type}-${hit.href}-${index}`}
+											value={`hit-${index}`}
+											hit={hit}
+											page={page}
+											chips={pages != null && highlighted === `hit-${index}`}
+											pickedPage={page}
+											onPick={(id) =>
+												setPickedPages((existing) => ({
+													...existing,
+													[hit.href]: id,
+												}))
+											}
+											onOpen={(chosen) => openHit(hit, chosen)}
+										/>
+									);
+								})}
+							</CommandGroup>
+						) : null}
+						{showEmpty ? (
+							parsed.mode === "commands" ? (
+								<GlobalSearchNoCommands query={parsed.text.trim()} />
+							) : (
+								<GlobalSearchNoResults query={parsed.term} />
+							)
+						) : null}
 					</>
 				)}
 			</CommandList>
-			<GlobalSearchFooter hasQuery={query.length > 0} />
+			<GlobalSearchFooter hasQuery={hasText} />
 		</CommandDialog>
 	);
 }
 
-function GlobalSearchIdleState() {
+function CommandRow({
+	command,
+	filtersText,
+	note,
+	onSelect,
+}: {
+	command: SearchCommand;
+	filtersText: string | null;
+	note?: string;
+	onSelect: () => void;
+}) {
+	const Icon = command.icon;
+	const parsedFilters =
+		filtersText != null ? parseCommandFilters(filtersText) : null;
+	const description = parsedFilters
+		? parsedFilters.ok
+			? describeBookFilters(parsedFilters.filters)
+			: parsedFilters.error
+		: (note ?? command.description);
+
+	return (
+		<CommandItem
+			value={`cmd-${command.id}`}
+			onSelect={onSelect}
+			className={rowClassName}
+		>
+			<div
+				className="flex size-9 shrink-0 items-center justify-center border border-border bg-muted/35 text-muted-foreground"
+				aria-hidden
+			>
+				<Icon className="size-4" />
+			</div>
+			<div className="min-w-0 flex-1 text-left">
+				<p className="truncate font-medium text-foreground text-sm leading-snug">
+					{command.label}
+				</p>
+				<p
+					className={cn(
+						"mt-0.5 truncate text-muted-foreground text-xs leading-snug",
+						parsedFilters && !parsedFilters.ok && "text-destructive",
+					)}
+				>
+					{description}
+				</p>
+			</div>
+			<code className="hidden shrink-0 border border-border bg-background px-1 font-mono text-[10px] text-muted-foreground sm:inline">
+				{command.keyword}
+			</code>
+		</CommandItem>
+	);
+}
+
+function HitRow({
+	value,
+	hit,
+	page,
+	chips,
+	pickedPage,
+	onPick,
+	onOpen,
+}: {
+	value: string;
+	hit: GlobalSearchHit;
+	/** Inner page the next Enter opens; null means the overview. */
+	page: InnerPage | null;
+	/** Show the page chips (only the highlighted row does). */
+	chips: boolean;
+	pickedPage: InnerPage | null;
+	onPick: (id: string | null) => void;
+	onOpen: (page: InnerPage | null) => void;
+}) {
+	const pages = innerPagesFor(hit.type);
+
+	return (
+		<CommandItem
+			value={value}
+			onSelect={() => onOpen(page)}
+			className={cn(rowClassName, "flex-col items-stretch gap-2")}
+		>
+			<div className="flex items-center gap-3">
+				<GlobalSearchThumb hit={hit} />
+				<div className="min-w-0 flex-1 text-left">
+					<p className="truncate font-medium text-foreground text-sm leading-snug">
+						{hit.title}
+					</p>
+					<p className="mt-0.5 truncate text-muted-foreground text-xs leading-snug">
+						{hit.description}
+					</p>
+				</div>
+				<div className="flex shrink-0 items-center gap-1.5">
+					{hit.action ? (
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon-xs"
+							className="text-muted-foreground hover:text-foreground"
+							aria-label={hit.action.label}
+							onClick={(event) => {
+								event.stopPropagation();
+								window.open(hit.action?.href, "_blank", "noopener,noreferrer");
+							}}
+						>
+							<ExternalLink className="size-3.5" aria-hidden />
+						</Button>
+					) : null}
+					<Badge variant="outline" className="font-normal text-[10px]">
+						{globalSearchTypeLabels[hit.type]}
+						{page ? ` · ${page.label}` : ""}
+					</Badge>
+				</div>
+			</div>
+			{chips && pages ? (
+				<InnerPageStrip
+					pages={pages}
+					selected={pickedPage}
+					onPick={onPick}
+					onOpen={onOpen}
+				/>
+			) : null}
+		</CommandItem>
+	);
+}
+
+/** One scrollable row of page shortcuts, shown only under the highlighted result. */
+function InnerPageStrip({
+	pages,
+	selected,
+	onPick,
+	onOpen,
+}: {
+	pages: InnerPage[];
+	selected: InnerPage | null;
+	onPick: (id: string | null) => void;
+	onOpen: (page: InnerPage | null) => void;
+}) {
+	return (
+		<fieldset className="m-0 ms-12 flex min-w-0 items-center gap-1 overflow-x-auto border-0 p-0 pb-0.5 [scrollbar-width:none]">
+			<legend className="sr-only">Open a specific page</legend>
+			{selected == null ? (
+				<span className="shrink-0 text-[11px] text-muted-foreground">
+					<kbd className="border border-border bg-background px-1 font-mono text-[10px]">
+						→
+					</kbd>{" "}
+					pages
+				</span>
+			) : null}
+			{pages.map((page) => {
+				const active = selected?.id === page.id;
+				return (
+					<button
+						key={page.id}
+						type="button"
+						tabIndex={-1}
+						aria-pressed={active}
+						ref={(element) => {
+							if (active && element) {
+								element.scrollIntoView({ block: "nearest", inline: "nearest" });
+							}
+						}}
+						className={cn(
+							"shrink-0 border px-1.5 py-0.5 text-[11px] transition-colors",
+							active
+								? "border-foreground bg-foreground text-background"
+								: "border-border bg-background text-muted-foreground hover:text-foreground",
+						)}
+						onMouseDown={(event) => event.preventDefault()}
+						onClick={(event) => {
+							event.stopPropagation();
+							onPick(page.id);
+							onOpen(page);
+						}}
+					>
+						{page.label}
+					</button>
+				);
+			})}
+		</fieldset>
+	);
+}
+
+function GlobalSearchIdleHints() {
+	return (
+		<div className="px-3 pt-3 pb-2">
+			<ul className="space-y-1.5 border-border border-t pt-3 text-[11px] text-muted-foreground">
+				<li>
+					Try <code className="font-mono">settings:</code>,{" "}
+					<code className="font-mono">create:</code> or{" "}
+					<code className="font-mono">admin:</code>
+				</li>
+				<li>
+					<code className="font-mono">@</code> searches members,{" "}
+					<code className="font-mono">&gt;</code> shows commands only
+				</li>
+				<li>
+					<code className="font-mono">random:nr:p&lt;400</code> picks a book you
+					have not read, under 400 pages
+				</li>
+			</ul>
+		</div>
+	);
+}
+
+function GlobalSearchMembersHint() {
 	return (
 		<div className="px-3 py-5">
 			<p className="text-pretty text-muted-foreground text-sm leading-relaxed">
-				Start typing to search the library, members, and conversations.
+				Type a name or username to search members only.
 			</p>
-			<ul className="mt-4 space-y-2 border-border border-t pt-4">
-				{searchHints.map((hint) => (
-					<li
-						key={hint}
-						className="flex items-center gap-2.5 text-muted-foreground text-xs"
-					>
-						<span className="size-1 shrink-0 bg-primary/70" aria-hidden />
-						{hint}
-					</li>
-				))}
-			</ul>
 		</div>
 	);
 }
@@ -193,17 +755,36 @@ function GlobalSearchNoResults({ query }: { query: string }) {
 	);
 }
 
+function GlobalSearchNoCommands({ query }: { query: string }) {
+	return (
+		<div className="px-3 py-8 text-center">
+			<p className="font-medium text-foreground text-sm">No command found</p>
+			<p className="mt-1.5 text-pretty text-muted-foreground text-xs leading-relaxed">
+				No command starts with{" "}
+				<span className="text-foreground">&ldquo;{query}&rdquo;</span> for you.
+				Delete the <code className="font-mono">&gt;</code> to search everything.
+			</p>
+		</div>
+	);
+}
+
 function GlobalSearchFooter({ hasQuery }: { hasQuery: boolean }) {
 	return (
 		<div className="flex flex-wrap items-center justify-between gap-2 border-border border-t bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
 			<span>
-				{hasQuery ? "Mixed results from across the club" : "Club-wide search"}
+				{hasQuery
+					? "Commands and results from across the club"
+					: "Club-wide search"}
 			</span>
 			<span className="hidden sm:inline">
 				<kbd className="border border-border bg-background px-1 font-mono text-[10px]">
 					↑↓
 				</kbd>{" "}
 				move{" "}
+				<kbd className="border border-border bg-background px-1 font-mono text-[10px]">
+					→
+				</kbd>{" "}
+				pages{" "}
 				<kbd className="border border-border bg-background px-1 font-mono text-[10px]">
 					↵
 				</kbd>{" "}
@@ -214,61 +795,5 @@ function GlobalSearchFooter({ hasQuery }: { hasQuery: boolean }) {
 				close
 			</span>
 		</div>
-	);
-}
-
-function GlobalSearchHitRow({
-	item,
-	onNavigate,
-}: {
-	item: GlobalSearchHit;
-	onNavigate: (href: string) => void;
-}) {
-	const Icon = typeIcons[item.type];
-
-	return (
-		<CommandItem
-			value={`${item.type} ${item.title} ${item.description}`}
-			onSelect={() => onNavigate(item.href)}
-			className={cn(
-				"mb-0.5 items-center gap-3 border border-transparent px-2.5 py-2.5",
-				"data-[selected=true]:border-border data-[selected=true]:bg-muted/45",
-			)}
-		>
-			<div
-				className="flex size-9 shrink-0 items-center justify-center border border-border bg-muted/35 text-muted-foreground"
-				aria-hidden
-			>
-				<Icon className="size-4" />
-			</div>
-			<div className="min-w-0 flex-1 text-left">
-				<p className="truncate font-medium text-foreground text-sm leading-snug">
-					{item.title}
-				</p>
-				<p className="mt-0.5 truncate text-muted-foreground text-xs leading-snug">
-					{item.description}
-				</p>
-			</div>
-			<div className="flex shrink-0 items-center gap-1.5">
-				{item.action ? (
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-xs"
-						className="text-muted-foreground hover:text-foreground"
-						aria-label={item.action.label}
-						onClick={(event) => {
-							event.stopPropagation();
-							window.open(item.action?.href, "_blank", "noopener,noreferrer");
-						}}
-					>
-						<ExternalLink className="size-3.5" aria-hidden />
-					</Button>
-				) : null}
-				<Badge variant="outline" className="font-normal text-[10px]">
-					{globalSearchTypeLabels[item.type]}
-				</Badge>
-			</div>
-		</CommandItem>
 	);
 }

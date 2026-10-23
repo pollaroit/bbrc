@@ -79,6 +79,30 @@ export function refineBookListQueryInput(
 	}
 
 	if (
+		value.maxFeedbacks != null &&
+		value.minFeedbacks != null &&
+		value.maxFeedbacks < value.minFeedbacks
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Maximum reviews must be greater than or equal to minimum",
+			path: ["maxFeedbacks"],
+		});
+	}
+
+	if (
+		value.maxAverageRating != null &&
+		value.minAverageRating != null &&
+		value.maxAverageRating < value.minAverageRating
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message: "Maximum club rating must be greater than or equal to minimum",
+			path: ["maxAverageRating"],
+		});
+	}
+
+	if (
 		value.maxPublishedIn != null &&
 		value.minPublishedIn != null &&
 		value.maxPublishedIn < value.minPublishedIn
@@ -311,3 +335,20 @@ export const UpdateBookOutputSchema = BookSchema.pick({
 
 export type TUpdateBookInputSchema = z.infer<typeof UpdateBookInputSchema>;
 export type TUpdateBookOutputSchema = z.infer<typeof UpdateBookOutputSchema>;
+
+/** RANDOM — one book picked at random from those matching the list filters. */
+export const GetRandomBookInputSchema = bookListFiltersSchema
+	.extend(bookListSorting.inputSchema.shape)
+	.extend(bookListRanging.inputSchema.shape)
+	.extend(bookListSearching.inputSchema.shape)
+	.superRefine(refineBookListQueryInput);
+
+export const GetRandomBookOutputSchema = z.object({
+	slug: z.string(),
+	title: z.string(),
+	/** Books that matched the filters, so the UI can say "1 of 12". */
+	matched: z.number().int().min(1),
+});
+
+export type GetRandomBookInput = z.infer<typeof GetRandomBookInputSchema>;
+export type GetRandomBookOutput = z.infer<typeof GetRandomBookOutputSchema>;

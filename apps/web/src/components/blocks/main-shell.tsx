@@ -7,10 +7,10 @@ import { GlobalSearchProvider } from "@/components/blocks/global-search-provider
 
 export function MainShell({ children }: { children: ReactNode }) {
 	return (
-		<GlobalSearchProvider>
-			<ComposePostProvider>
-				<CreateGoalProvider>{children}</CreateGoalProvider>
-			</ComposePostProvider>
-		</GlobalSearchProvider>
+		<ComposePostProvider>
+			<CreateGoalProvider>
+				<GlobalSearchProvider>{children}</GlobalSearchProvider>
+			</CreateGoalProvider>
+		</ComposePostProvider>
 	);
 }

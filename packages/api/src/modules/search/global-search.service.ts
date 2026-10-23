@@ -1,32 +1,72 @@
 import type { Database } from "@bbrc/db";
 import {
 	authorNameToSlug,
+	countReadsForGoal,
+	documentFormatFromFilename,
 	documentFormatLabel,
+	goalScopeFromStored,
 	richContentPreview,
 } from "@bbrc/shared";
 import type {
 	GlobalSearchHit,
+	GlobalSearchHitType,
 	GlobalSearchInput,
+	GlobalSearchMedia,
 	GlobalSearchOutput,
 } from "./global-search.schema";
+import { globalSearchHitTypes } from "./global-search.schema";
 import {
 	GLOBAL_SEARCH_MAX_ITEMS,
+	GLOBAL_SEARCH_NARROW_LIMIT,
 	GLOBAL_SEARCH_PER_TYPE_LIMIT,
+	matchScore,
 	previewText,
-	shuffleInPlace,
 } from "./global-search.utils";
 
 type SearchContext = {
 	db: Database;
 	query: string;
 	isAdmin: boolean;
+	limit: number;
 };
+
+const COLLAGE_COVERS = 4;
 
 function containsQuery(query: string) {
 	return {
 		contains: query,
 		mode: "insensitive" as const,
 	};
+}
+
+function coverMedia(coverId: number | null | undefined) {
+	return coverId == null
+		? undefined
+		: ({ kind: "cover", coverId } satisfies GlobalSearchMedia);
+}
+
+function collageMedia(coverIds: (number | null)[]) {
+	const ids = coverIds.filter((id): id is number => id != null);
+	return ids.length === 0
+		? undefined
+		: ({
+				kind: "collage",
+				coverIds: ids.slice(0, COLLAGE_COVERS),
+			} satisfies GlobalSearchMedia);
+}
+
+function avatarMedia(user: { image: string | null; name: string }) {
+	return user.image
+		? ({
+				kind: "avatar",
+				url: user.image,
+				name: user.name,
+			} satisfies GlobalSearchMedia)
+		: undefined;
+}
+
+function imageMedia(url: string | null | undefined) {
+	return url ? ({ kind: "image", url } satisfies GlobalSearchMedia) : undefined;
 }
 
 async function searchBooks(ctx: SearchContext): Promise<GlobalSearchHit[]> {
@@ -38,7 +78,7 @@ async function searchBooks(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 			SELECT 1 FROM unnest(b.authors) AS author_name(name)
 			WHERE author_name.name ILIKE ${pattern}
 		)
-		LIMIT ${GLOBAL_SEARCH_PER_TYPE_LIMIT}
+		LIMIT ${ctx.limit}
 	`;
 
 	const rows = await ctx.db.book.findMany({
@@ -52,11 +92,12 @@ async function searchBooks(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 			],
 		},
 		orderBy: [{ updatedAt: "desc" }, { slug: "desc" }],
-		take: GLOBAL_SEARCH_PER_TYPE_LIMIT,
+		take: ctx.limit,
 		select: {
 			slug: true,
 			title: true,
 			authors: true,
+			coverId: true,
 		},
 	});
 
@@ -65,19 +106,21 @@ async function searchBooks(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 		title: row.title,
 		description: row.authors.join(", "),
 		href: `/books/${row.slug}`,
+		media: coverMedia(row.coverId),
 	}));
 }
 
 async function searchAuthors(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const pattern = `%${ctx.query}%`;
-	const rows = await ctx.db.$queryRaw<{ author_name: string }[]>`
-		SELECT DISTINCT author_name
+	const rows = await ctx.db.$queryRaw<{ author_name: string; books: bigint }[]>`
+		SELECT author_name, COUNT(*) AS books
 		FROM (
 			SELECT unnest(authors) AS author_name FROM book
 		) AS authors_unnested
 		WHERE author_name ILIKE ${pattern}
+		GROUP BY author_name
 		ORDER BY author_name ASC
-		LIMIT ${GLOBAL_SEARCH_PER_TYPE_LIMIT}
+		LIMIT ${ctx.limit}
 	`;
 
 	const seen = new Set<string>();
@@ -94,13 +137,14 @@ async function searchAuthors(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 		}
 
 		seen.add(slug);
+		const books = Number(row.books);
 
 		return [
 			{
 				type: "author" as const,
 				title: name,
-				description: "Author",
-				href: `/books?authors=${encodeURIComponent(slug)}`,
+				description: `Author · ${books} ${books === 1 ? "book" : "books"}`,
+				href: `/authors/${slug}`,
 			},
 		];
 	});
@@ -117,10 +161,11 @@ async function searchUsers(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 			],
 		},
 		orderBy: [{ xp: "desc" }, { username: "asc" }],
-		take: GLOBAL_SEARCH_PER_TYPE_LIMIT,
+		take: ctx.limit,
 		select: {
 			username: true,
 			name: true,
+			image: true,
 		},
 	});
 
@@ -129,6 +174,7 @@ async function searchUsers(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 		title: row.name?.trim() || row.username,
 		description: `@${row.username}`,
 		href: `/users/${row.username}`,
+		media: avatarMedia(row),
 	}));
 }
 
@@ -143,10 +189,11 @@ async function searchPosts(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 			],
 		},
 		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
-		take: GLOBAL_SEARCH_PER_TYPE_LIMIT,
+		take: ctx.limit,
 		select: {
 			slug: true,
 			content: true,
+			imageUrl: true,
 			author: { select: { username: true } },
 		},
 	});
@@ -156,6 +203,7 @@ async function searchPosts(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 		title: richContentPreview(row.content, 80),
 		description: `@${row.author.username}`,
 		href: `/posts/${row.slug}`,
+		media: imageMedia(row.imageUrl),
 	}));
 }
 
@@ -166,11 +214,11 @@ async function searchFeedbacks(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 			review: containsQuery(ctx.query),
 		},
 		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
-		take: GLOBAL_SEARCH_PER_TYPE_LIMIT,
+		take: ctx.limit,
 		select: {
 			slug: true,
 			review: true,
-			book: { select: { slug: true, title: true } },
+			book: { select: { slug: true, title: true, coverId: true } },
 			author: { select: { username: true } },
 		},
 	});
@@ -180,6 +228,7 @@ async function searchFeedbacks(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 		title: row.book.title,
 		description: `${richContentPreview(row.review, 80)} · @${row.author.username}`,
 		href: `/books/${row.book.slug}/feedbacks/${row.slug}`,
+		media: coverMedia(row.book.coverId),
 	}));
 }
 
@@ -210,10 +259,11 @@ async function searchComments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 			],
 		},
 		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
-		take: GLOBAL_SEARCH_PER_TYPE_LIMIT,
+		take: ctx.limit,
 		select: {
 			slug: true,
 			content: true,
+			imageUrl: true,
 			author: { select: { username: true } },
 			post: { select: { slug: true } },
 			feedback: {
@@ -237,6 +287,7 @@ async function searchComments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 				title: richContentPreview(row.content, 80),
 				description: `@${row.author.username}`,
 				href,
+				media: imageMedia(row.imageUrl),
 			},
 		];
 	});
@@ -256,12 +307,18 @@ async function searchShelves(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 			],
 		},
 		orderBy: [{ updatedAt: "desc" }, { slug: "desc" }],
-		take: GLOBAL_SEARCH_PER_TYPE_LIMIT,
+		take: ctx.limit,
 		select: {
 			slug: true,
 			title: true,
 			description: true,
+			coverImageUrl: true,
 			user: { select: { username: true } },
+			books: {
+				orderBy: { position: "asc" },
+				take: COLLAGE_COVERS,
+				select: { book: { select: { coverId: true } } },
+			},
 		},
 	});
 
@@ -272,6 +329,9 @@ async function searchShelves(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 			? `${previewText(row.description, 60)} · @${row.user.username}`
 			: `@${row.user.username}`,
 		href: `/users/${row.user.username}/shelves/${row.slug}`,
+		media:
+			imageMedia(row.coverImageUrl) ??
+			collageMedia(row.books.map((entry) => entry.book.coverId)),
 	}));
 }
 
@@ -286,7 +346,7 @@ async function searchDocuments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 			],
 		},
 		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
-		take: GLOBAL_SEARCH_PER_TYPE_LIMIT,
+		take: ctx.limit,
 		select: {
 			slug: true,
 			name: true,
@@ -305,6 +365,10 @@ async function searchDocuments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 				? `${row.book.title} · Pending review`
 				: row.book.title,
 			href: `/books/${row.book.slug}/documents`,
+			media: {
+				kind: "document" as const,
+				format: documentFormatFromFilename(row.documentKey),
+			},
 			action:
 				row.status === "approved" && row.documentKey
 					? {
@@ -316,51 +380,175 @@ async function searchDocuments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	});
 }
 
+async function searchGoals(ctx: SearchContext): Promise<GlobalSearchHit[]> {
+	const rows = await ctx.db.goal.findMany({
+		where: {
+			user: { isHidden: false, status: { in: ["active", "warned"] } },
+			OR: [
+				{ title: containsQuery(ctx.query) },
+				{ slug: containsQuery(ctx.query) },
+				{ description: containsQuery(ctx.query) },
+				{ user: { name: containsQuery(ctx.query) } },
+				{ user: { username: containsQuery(ctx.query) } },
+			],
+		},
+		orderBy: [{ year: "desc" }, { updatedAt: "desc" }],
+		take: ctx.limit,
+		select: {
+			slug: true,
+			title: true,
+			year: true,
+			target: true,
+			scopeKind: true,
+			scopeAuthors: true,
+			scopeCountries: true,
+			userId: true,
+			user: { select: { username: true, name: true, image: true } },
+		},
+	});
+
+	if (rows.length === 0) {
+		return [];
+	}
+
+	const reads = await ctx.db.read.findMany({
+		where: {
+			readEndMonth: { not: null },
+			OR: rows.map((row) => ({ userId: row.userId, readEndYear: row.year })),
+		},
+		select: {
+			userId: true,
+			readEndYear: true,
+			readEndMonth: true,
+			book: { select: { authors: true, countries: true } },
+		},
+	});
+
+	return rows.map((row) => {
+		const scope = goalScopeFromStored({
+			scopeKind: row.scopeKind,
+			scopeAuthors: row.scopeAuthors,
+			scopeCountries: row.scopeCountries,
+		});
+		const current = countReadsForGoal(
+			reads
+				.filter((read) => read.userId === row.userId)
+				.map((read) => ({
+					readEndYear: read.readEndYear,
+					readEndMonth: read.readEndMonth,
+					book: {
+						authors: read.book.authors,
+						countries: read.book.countries,
+					},
+				})),
+			row.year,
+			scope,
+		);
+
+		return {
+			type: "goal" as const,
+			title: row.title,
+			description: `@${row.user.username} · ${row.year} · ${Math.min(current, row.target)} of ${row.target}`,
+			href: `/users/${row.user.username}/goals/${row.slug}`,
+			media: avatarMedia(row.user),
+		};
+	});
+}
+
+async function searchSeries(ctx: SearchContext): Promise<GlobalSearchHit[]> {
+	const rows = await ctx.db.series.findMany({
+		where: {
+			OR: [
+				{ title: containsQuery(ctx.query) },
+				{ slug: containsQuery(ctx.query) },
+				{ description: containsQuery(ctx.query) },
+			],
+		},
+		orderBy: [{ updatedAt: "desc" }, { slug: "desc" }],
+		take: ctx.limit,
+		select: {
+			slug: true,
+			title: true,
+			_count: { select: { books: true } },
+			books: {
+				orderBy: { position: "asc" },
+				take: COLLAGE_COVERS,
+				select: { book: { select: { coverId: true } } },
+			},
+		},
+	});
+
+	return rows.map((row) => ({
+		type: "series" as const,
+		title: row.title,
+		description: `Series · ${row._count.books} ${row._count.books === 1 ? "book" : "books"}`,
+		href: `/series/${row.slug}`,
+		media: collageMedia(row.books.map((entry) => entry.book.coverId)),
+	}));
+}
+
+const searchers: Record<
+	GlobalSearchHitType,
+	(ctx: SearchContext) => Promise<GlobalSearchHit[]>
+> = {
+	book: searchBooks,
+	author: searchAuthors,
+	user: searchUsers,
+	post: searchPosts,
+	feedback: searchFeedbacks,
+	comment: searchComments,
+	shelf: searchShelves,
+	document: searchDocuments,
+	goal: searchGoals,
+	series: searchSeries,
+};
+
+/**
+ * Best matches first (exact title, then prefix, then contains), interleaved
+ * across types so one kind of item cannot crowd out the rest.
+ */
+function rankHits(
+	groups: GlobalSearchHit[][],
+	query: string,
+): GlobalSearchHit[] {
+	return groups
+		.flatMap((hits, typeIndex) =>
+			hits.map((hit, indexInType) => ({
+				hit,
+				score: matchScore(hit.title, query),
+				indexInType,
+				typeIndex,
+			})),
+		)
+		.sort(
+			(a, b) =>
+				a.score - b.score ||
+				a.indexInType - b.indexInType ||
+				a.typeIndex - b.typeIndex,
+		)
+		.map((entry) => entry.hit);
+}
+
 export async function globalSearch(
 	input: GlobalSearchInput,
 	db: Database,
 	isAdmin: boolean,
 ): Promise<GlobalSearchOutput> {
+	const types = input.types ?? globalSearchHitTypes;
+	const narrowed = input.types != null && input.types.length === 1;
 	const ctx: SearchContext = {
 		db,
 		query: input.query,
 		isAdmin,
+		limit: narrowed ? GLOBAL_SEARCH_NARROW_LIMIT : GLOBAL_SEARCH_PER_TYPE_LIMIT,
 	};
 
-	const [
-		books,
-		authors,
-		users,
-		posts,
-		feedbacks,
-		comments,
-		shelves,
-		documents,
-	] = await Promise.all([
-		searchBooks(ctx),
-		searchAuthors(ctx),
-		searchUsers(ctx),
-		searchPosts(ctx),
-		searchFeedbacks(ctx),
-		searchComments(ctx),
-		searchShelves(ctx),
-		searchDocuments(ctx),
-	]);
-
-	const combined = [
-		...books,
-		...authors,
-		...users,
-		...posts,
-		...feedbacks,
-		...comments,
-		...shelves,
-		...documents,
-	];
-
-	shuffleInPlace(combined);
+	const groups = await Promise.all(types.map((type) => searchers[type](ctx)));
 
 	return {
-		items: combined.slice(0, GLOBAL_SEARCH_MAX_ITEMS),
+		items: rankHits(groups, input.query).slice(
+			0,
+			narrowed ? GLOBAL_SEARCH_NARROW_LIMIT : GLOBAL_SEARCH_MAX_ITEMS,
+		),
 	};
 }
