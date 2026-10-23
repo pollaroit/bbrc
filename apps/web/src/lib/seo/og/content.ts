@@ -58,6 +58,7 @@ function stripMarkdown(text: string): string {
 		.replace(/<br\s*\/?>/gi, " ")
 		.replace(/<[^>]+>/g, "")
 		.replace(/&nbsp;/g, " ")
+		.replace(/\\([\\`*_{}[\]()#+\-.!|])/g, "$1")
 		.replace(/!\[[^\]]*\]\([^)]*\)/g, "")
 		.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
 		.replace(/\[\d+\]/g, "")
@@ -375,7 +376,6 @@ const BOOK_TAB_OG: Record<
 async function bookTabFact(
 	tab: string | undefined,
 	book: { slug: string; authors: string[]; olid: string | null },
-	reviewCount: number,
 ): Promise<OgFact | null> {
 	const where = { book: { slug: book.slug } };
 
@@ -391,10 +391,6 @@ async function bookTabFact(
 				where: { ...where, shelf: { status: "active" } },
 			});
 			return fact("On shelves", num(count));
-		}
-		case "reads": {
-			const count = await db.read.count({ where });
-			return fact("Reads", num(count));
 		}
 		case "favorites": {
 			const count = await db.favorite.count({ where });
@@ -419,8 +415,16 @@ async function bookTabFact(
 			});
 			return fact("More by author", num(others));
 		}
-		default:
-			return fact("Reviews", num(reviewCount));
+		case "reviews": {
+			const count = await db.feedback.count({
+				where: { ...where, rating: { gte: 5 } },
+			});
+			return fact("5-star reviews", num(count));
+		}
+		default: {
+			const count = await db.read.count({ where });
+			return fact("Reads", num(count));
+		}
 	}
 }
 
@@ -437,8 +441,8 @@ async function resolveBookOg(
 		]);
 		const tabMeta = tab && tabIsLeaf ? BOOK_TAB_OG[tab] : undefined;
 		const fourth =
-			(await bookTabFact(tabMeta ? tab : undefined, book, reviewCount)) ??
-			fact("Reviews", num(reviewCount));
+			(await bookTabFact(tabMeta ? tab : undefined, book)) ??
+			fact("Reads", num(await db.read.count({ where: { book: { slug } } })));
 
 		const facts: OgFact[] = [];
 		if (book.averageRating != null) {
@@ -465,7 +469,7 @@ async function resolveBookOg(
 		if (length.length > 0) {
 			facts.push(fact("Length · Published", length.join(" · ")));
 		}
-		facts.push(fourth);
+		facts.push(fact("Reviews", num(reviewCount)), fourth);
 
 		const description = stripMarkdown(book.excerpt ?? "");
 
