@@ -25,6 +25,7 @@ import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
+import { isPendingSlug } from "@/lib/optimistic/infinite-lists";
 import { shareSnippet } from "@/lib/share-snippet";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -86,6 +87,7 @@ function CommentAuthorActions({
 
 	if (
 		isPending ||
+		isPendingSlug(comment.slug) ||
 		!session?.user.username ||
 		session.user.username !== comment.author.username
 	) {
@@ -216,7 +218,7 @@ function CommentEditForm({
 	);
 }
 
-export function CommentListItemView({
+function CommentListItemViewInner({
 	comment,
 	variant = "full",
 	layout = "card",
@@ -469,5 +471,24 @@ export function CommentListItemView({
 		>
 			<CardContent>{body}</CardContent>
 		</Card>
+	);
+}
+
+/** A just-posted comment shows at once, dimmed and inert until the server confirms it. */
+export function CommentListItemView(props: CommentListItemProps) {
+	if (!isPendingSlug(props.comment.slug)) {
+		return <CommentListItemViewInner {...props} />;
+	}
+
+	return (
+		<div
+			className="relative select-none opacity-60 *:pointer-events-none"
+			aria-busy="true"
+		>
+			<CommentListItemViewInner {...props} />
+			<span className="absolute top-2 right-2 text-muted-foreground text-xs">
+				Posting…
+			</span>
+		</div>
 	);
 }

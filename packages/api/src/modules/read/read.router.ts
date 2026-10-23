@@ -2,6 +2,7 @@ import { protectedProcedure, publicProcedure } from "../../procedures";
 import {
 	GetBookReadStateInputSchema,
 	GetBookReadStateOutputSchema,
+	GetReadPreferencesOutputSchema,
 	ListBookReadsInputSchema,
 	ListBookReadsOutputSchema,
 	ListUserReadsInputSchema,
@@ -11,14 +12,17 @@ import {
 	SearchWorkEditionsInputSchema,
 	SearchWorkEditionsOutputSchema,
 	SetReadInputSchema,
+	SetReadPreferencesInputSchema,
 } from "./read.schema";
 import {
 	getBookReadState,
+	getReadPreferences,
 	listBookReads,
 	listUserReads,
 	removeRead,
 	searchWorkEditionsForBook,
 	setRead,
+	setReadPreferences,
 } from "./read.service";
 import {
 	ExportUserReadsInputSchema,
@@ -57,6 +61,19 @@ export const readRouter = {
 		.output(GetBookReadStateOutputSchema)
 		.handler(({ context, input }) =>
 			getBookReadState(input.bookSlug, context.session.user.id, context.db),
+		),
+
+	getReadPreferences: protectedProcedure
+		.output(GetReadPreferencesOutputSchema)
+		.handler(({ context }) =>
+			getReadPreferences(context.session.user.id, context.db),
+		),
+
+	setReadPreferences: protectedProcedure
+		.input(SetReadPreferencesInputSchema)
+		.output(GetReadPreferencesOutputSchema)
+		.handler(({ context, input }) =>
+			setReadPreferences(input, context.session.user.id, context.db),
 		),
 
 	setRead: protectedProcedure

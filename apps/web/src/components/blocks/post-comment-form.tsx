@@ -17,6 +17,12 @@ import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { SignInLink } from "@/components/blocks/sign-in-link";
 import { uploadImageForEntity } from "@/components/blocks/single-image-upload-field";
 import { authClient } from "@/lib/auth-client";
+import {
+	createPendingSlug,
+	prependToLists,
+	removeFromLists,
+	swapListItemSlug,
+} from "@/lib/optimistic/infinite-lists";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -27,9 +33,22 @@ type PostCommentFormProps = {
 	replyToUsername?: string;
 	onCancelReply?: () => void;
 	onCommentCreated?: () => void;
+	/** Called the moment a reply is sent, so the parent can close the reply box. */
+	onSubmitted?: () => void;
+	/** Called when sending failed and the reply box should open again with the draft. */
+	onSubmitFailed?: () => void;
 	compact?: boolean;
 	autoFocus?: boolean;
 };
+
+type CommentDraft = {
+	content: string;
+	isSpoiler: boolean;
+	imageFile: File | null;
+};
+
+/** Drafts of replies that failed after their box closed; the box reads it when it reopens. */
+const failedReplyDrafts = new Map<string, CommentDraft>();
 
 async function invalidateCommentQueries() {
 	await queryClient.invalidateQueries({
@@ -53,13 +72,19 @@ export function PostCommentForm({
 	replyToUsername,
 	onCancelReply,
 	onCommentCreated,
+	onSubmitted,
+	onSubmitFailed,
 	compact = false,
 	autoFocus = false,
 }: PostCommentFormProps) {
 	const { data: session, isPending: sessionPending } = authClient.useSession();
-	const [content, setContent] = useState("");
-	const [isSpoiler, setIsSpoiler] = useState(false);
-	const [imageFile, setImageFile] = useState<File | null>(null);
+	const draftKey = `${postSlug ?? feedbackSlug ?? "thread"}:${parentSlug ?? "root"}`;
+	const [restoredDraft] = useState(() => failedReplyDrafts.get(draftKey));
+	const [content, setContent] = useState(restoredDraft?.content ?? "");
+	const [isSpoiler, setIsSpoiler] = useState(restoredDraft?.isSpoiler ?? false);
+	const [imageFile, setImageFile] = useState<File | null>(
+		restoredDraft?.imageFile ?? null,
+	);
 	const [composerOpen, setComposerOpen] = useState(
 		Boolean(parentSlug || replyToUsername || autoFocus),
 	);
@@ -76,20 +101,120 @@ export function PostCommentForm({
 	const imageInput = usePendingImageInput(setImageFile, { variant: "comment" });
 
 	useEffect(() => {
+		failedReplyDrafts.delete(draftKey);
+	}, [draftKey]);
+
+	useEffect(() => {
 		if (parentSlug || replyToUsername || autoFocus) {
 			setComposerOpen(true);
 			setShouldFocusEditor(true);
 		}
 	}, [parentSlug, replyToUsername, autoFocus]);
 
+	const commentListKey = orpc.comment.getCommentList.key();
+
+	function adjustCommentCount(delta: number) {
+		if (postSlug) {
+			queryClient.setQueryData(
+				orpc.post.getPostBySlug.queryKey({ input: postSlug }),
+				(old) =>
+					old
+						? { ...old, commentCount: Math.max(0, old.commentCount + delta) }
+						: old,
+			);
+		}
+		if (feedbackSlug) {
+			queryClient.setQueryData(
+				orpc.feedback.getFeedbackBySlug.queryKey({ input: feedbackSlug }),
+				(old) =>
+					old
+						? { ...old, commentCount: Math.max(0, old.commentCount + delta) }
+						: old,
+			);
+		}
+	}
+
 	const createMutation = useMutation(
 		orpc.comment.create.mutationOptions({
-			onSuccess: async (result) => {
-				const file = imageFile;
+			// Comments on the same thing are created one after another, in order.
+			scope: { id: `comment-create-${postSlug ?? feedbackSlug ?? "thread"}` },
+			onMutate: async (variables) => {
+				const user = session?.user;
+				const pendingSlug = createPendingSlug();
+				const draft = {
+					content,
+					isSpoiler,
+					imageFile,
+				};
+
+				await queryClient.cancelQueries({ queryKey: commentListKey });
+
+				if (user) {
+					prependToLists(
+						commentListKey,
+						{
+							slug: pendingSlug,
+							content: variables.content,
+							imageUrl: null,
+							isSpoiler: Boolean(variables.isSpoiler),
+							createdAt: new Date(),
+							editedAt: null,
+							depth: variables.parentSlug ? 1 : 0,
+							parentSlug: variables.parentSlug ?? null,
+							author: {
+								username: user.username as string,
+								name: user.name,
+								image: user.image ?? null,
+							},
+							likeCount: 0,
+							likedByMe: false,
+							replyCount: 0,
+						},
+						(input) =>
+							postSlug
+								? input.postSlug === postSlug
+								: input.feedbackSlug === feedbackSlug,
+					);
+				}
+				adjustCommentCount(1);
+
+				// The form is free again right away; the draft comes back on failure.
 				setImageFile(null);
 				if (imageInput.inputRef.current) {
 					imageInput.inputRef.current.value = "";
 				}
+				setContent("");
+				setIsSpoiler(false);
+				setEditorEpoch((epoch) => epoch + 1);
+				if (!parentSlug && !replyToUsername) {
+					setComposerOpen(false);
+				}
+				onSubmitted?.();
+
+				return { pendingSlug, draft };
+			},
+			onError: (error, _variables, context) => {
+				if (context) {
+					removeFromLists(commentListKey, context.pendingSlug);
+					adjustCommentCount(-1);
+					setContent(context.draft.content);
+					setIsSpoiler(context.draft.isSpoiler);
+					setImageFile(context.draft.imageFile);
+					setComposerOpen(true);
+					setShouldFocusEditor(true);
+					setEditorEpoch((epoch) => epoch + 1);
+
+					// A reply box that already closed reopens with this draft.
+					if (parentSlug || replyToUsername) {
+						failedReplyDrafts.set(draftKey, context.draft);
+						onSubmitFailed?.();
+					}
+				}
+				toast.error(error.message);
+			},
+			onSuccess: async (result, _variables, context) => {
+				swapListItemSlug(commentListKey, context.pendingSlug, result.slug);
+				const file = context.draft.imageFile;
 
 				if (file) {
 					try {
@@ -106,25 +231,38 @@ export function PostCommentForm({
 					}
 				}
 
-				toast.success(
-					result.xpAwarded > 0
-						? `Comment posted (+${result.xpAwarded} XP)`
-						: "Comment posted.",
-				);
-				setContent("");
-				setIsSpoiler(false);
-				setEditorEpoch((epoch) => epoch + 1);
-				if (!parentSlug && !replyToUsername) {
-					setComposerOpen(false);
+				if (result.xpAwarded > 0) {
+					toast.success(`Comment posted (+${result.xpAwarded} XP)`);
 				}
-				await invalidateCommentQueries();
 				onCommentCreated?.();
 			},
-			onError: (error) => toast.error(error.message),
+			onSettled: () => {
+				void invalidateCommentQueries();
+			},
 		}),
 	);
 
-	const isPending = createMutation.isPending;
+	function submitComment() {
+		const plain = contentPlainText(content).trim();
+		if (plain.length < 1) {
+			toast.error("Comment must be at least 1 character long");
+			return;
+		}
+		if (plain.length > 5000) {
+			toast.error("Comment must be at most 5000 characters");
+			return;
+		}
+
+		createMutation.mutate({
+			...(postSlug ? { postSlug } : {}),
+			...(feedbackSlug ? { feedbackSlug } : {}),
+			content,
+			isSpoiler,
+			...(parentSlug ? { parentSlug } : {}),
+		});
+	}
+
+	const isPending = false;
 
 	if (sessionPending) {
 		return (
@@ -169,24 +307,7 @@ export function PostCommentForm({
 			className={cn("flex min-w-0 flex-col", compact ? "gap-2" : "gap-3")}
 			onSubmit={(event) => {
 				event.preventDefault();
-
-				const plain = contentPlainText(content).trim();
-				if (plain.length < 1) {
-					toast.error("Comment must be at least 1 character long");
-					return;
-				}
-				if (plain.length > 5000) {
-					toast.error("Comment must be at most 5000 characters");
-					return;
-				}
-
-				createMutation.mutate({
-					...(postSlug ? { postSlug } : {}),
-					...(feedbackSlug ? { feedbackSlug } : {}),
-					content,
-					isSpoiler,
-					...(parentSlug ? { parentSlug } : {}),
-				});
+				submitComment();
 			}}
 		>
 			{imageInput.input}
@@ -207,6 +328,7 @@ export function PostCommentForm({
 					placeholder={placeholder}
 					minHeightClassName={compact ? "min-h-[5rem]" : "min-h-[8rem]"}
 					autoFocus={shouldFocusEditor}
+					onSubmitShortcut={submitComment}
 				/>
 			</Field>
 

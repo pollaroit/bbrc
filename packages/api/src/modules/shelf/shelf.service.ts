@@ -403,13 +403,6 @@ export async function addBookToShelf(
 ) {
 	await db.$transaction(async (tx) => {
 		const shelf = await loadOwnedShelf(shelfSlug, userId, tx);
-
-		if (shelf._count.books >= MAX_BOOKS_PER_SHELF) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: `A shelf can hold at most ${MAX_BOOKS_PER_SHELF} books.`,
-			});
-		}
-
 		const book = await loadBookBySlug(bookSlug, tx);
 
 		const existing = await tx.shelfBook.findUnique({
@@ -419,9 +412,15 @@ export async function addBookToShelf(
 			select: { id: true },
 		});
 
+		// Idempotent: a book that is already on the shelf is a success, so a
+		// repeated click or a retry never errors the second time.
 		if (existing) {
-			throw new ORPCError("CONFLICT", {
-				message: "This book is already on the shelf.",
+			return;
+		}
+
+		if (shelf._count.books >= MAX_BOOKS_PER_SHELF) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: `A shelf can hold at most ${MAX_BOOKS_PER_SHELF} books.`,
 			});
 		}
 
@@ -463,10 +462,9 @@ export async function removeBookFromShelf(
 			where: { shelfId: shelf.id, bookId: book.id },
 		});
 
+		// Idempotent: nothing to remove means it is already gone.
 		if (deleted.count === 0) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Book not on this shelf.",
-			});
+			return;
 		}
 
 		const remaining = await tx.shelfBook.findMany({

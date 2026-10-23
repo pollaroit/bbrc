@@ -22,6 +22,10 @@ import { toast } from "sonner";
 import { SittingBookFeedbackPrompt } from "@/components/blocks/sitting-book-feedback-prompt";
 import { progressLabels } from "@/components/blocks/sitting-participation-progress";
 import { authClient } from "@/lib/auth-client";
+import {
+	applyProgressOptimistically,
+	restoreProgress,
+} from "@/lib/sitting/optimistic-progress";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -89,12 +93,30 @@ function ProgressControl({
 	const router = useRouter();
 	const [pendingChoice, setPendingChoice] = useState<Progress | null>(null);
 
+	const { data: session } = authClient.useSession();
+
 	const mutation = useMutation(
 		orpc.sitting.updateMyParticipationProgress.mutationOptions({
-			onSuccess: async () => {
+			scope: { id: `progress-${sittingSlug}-${session?.user.id ?? "me"}` },
+			onMutate: async (variables) => {
+				const snapshot = await applyProgressOptimistically(
+					sittingSlug,
+					session?.user.id ?? "",
+					variables.progress,
+					{ self: true },
+				);
 				setPendingChoice(null);
-				toast.success("Progress updated");
-				await Promise.all([
+				return snapshot;
+			},
+			onError: (error, _variables, snapshot) => {
+				restoreProgress(snapshot);
+				toast.error(error.message);
+			},
+			onSuccess: () => {
+				router.refresh();
+			},
+			onSettled: () => {
+				void Promise.all([
 					queryClient.invalidateQueries({
 						queryKey: orpc.sitting.getMySittingState.key(),
 					}),
@@ -102,9 +124,7 @@ function ProgressControl({
 						queryKey: orpc.sitting.getSittingBySlug.key(),
 					}),
 				]);
-				router.refresh();
 			},
-			onError: (error) => toast.error(error.message),
 		}),
 	);
 

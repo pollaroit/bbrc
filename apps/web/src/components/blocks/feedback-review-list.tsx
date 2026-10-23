@@ -22,6 +22,7 @@ import { authClient } from "@/lib/auth-client";
 import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
 import { formatDateTime } from "@/lib/format-datetime";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
+import { isPendingSlug } from "@/lib/optimistic/infinite-lists";
 import { shareSnippet } from "@/lib/share-snippet";
 import { orpc } from "@/utils/orpc";
 
@@ -80,7 +81,20 @@ export function FeedbackReviewList({
 					const isOwner = currentUserId === entry.authorId;
 
 					return (
-						<li key={entry.slug}>
+						<li
+							key={entry.slug}
+							className={
+								isPendingSlug(entry.slug)
+									? "relative select-none opacity-60 *:pointer-events-none"
+									: undefined
+							}
+							aria-busy={isPendingSlug(entry.slug) || undefined}
+						>
+							{isPendingSlug(entry.slug) ? (
+								<span className="absolute top-3 right-3 z-10 text-muted-foreground text-xs">
+									Posting…
+								</span>
+							) : null}
 							<Card size="sm">
 								<CardContent className="flex flex-col gap-3">
 									<div className="flex flex-wrap items-start justify-between gap-3">
@@ -147,6 +161,7 @@ export function FeedbackReviewList({
 													rating={entry.rating}
 													review={entry.review}
 													isSpoiler={entry.isSpoiler}
+													feedbackSlug={entry.slug}
 												/>
 												<LoadingButton
 													type="button"

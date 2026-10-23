@@ -10,6 +10,10 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import type { z } from "zod";
 import { authClient } from "@/lib/auth-client";
+import {
+	applyProgressOptimistically,
+	restoreProgress,
+} from "@/lib/sitting/optimistic-progress";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type ParticipationProgress = z.infer<typeof ProgressSchema>;
@@ -60,14 +64,29 @@ export function SittingParticipationProgress({
 
 	const mutation = useMutation(
 		orpc.sitting.updateMyParticipationProgress.mutationOptions({
-			onSuccess: async () => {
-				toast.success("Reading status updated");
-				await queryClient.invalidateQueries({
-					queryKey: orpc.sitting.getSittingBySlug.key(),
-				});
+			scope: { id: `progress-${sittingSlug}-${session?.user.id ?? "me"}` },
+			onMutate: async (variables) =>
+				applyProgressOptimistically(
+					sittingSlug,
+					session?.user.id ?? "",
+					variables.progress,
+					{ self: true },
+				),
+			onError: (error, _variables, snapshot) => {
+				restoreProgress(snapshot);
+				toast.error(error.message);
+			},
+			onSuccess: () => {
 				router.refresh();
 			},
-			onError: (error) => toast.error(error.message),
+			onSettled: () => {
+				void queryClient.invalidateQueries({
+					queryKey: orpc.sitting.getSittingBySlug.key(),
+				});
+				void queryClient.invalidateQueries({
+					queryKey: orpc.sitting.getMySittingState.key(),
+				});
+			},
 		}),
 	);
 

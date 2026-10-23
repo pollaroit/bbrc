@@ -9,7 +9,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
-import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import {
 	Tooltip,
 	TooltipContent,
@@ -49,24 +48,55 @@ export function BookAddToShelfDialog({
 		enabled: open,
 	});
 
+	const editableKey = orpc.shelf.listMineEditable.queryKey({
+		input: { bookSlug },
+	});
+
 	const addMutation = useMutation(
 		orpc.shelf.addBook.mutationOptions({
-			onSuccess: async () => {
-				toast.success("Added to shelf.");
+			// Adds to the same shelf run one at a time, in click order.
+			scope: { id: `shelf-${selectedSlug ?? "none"}` },
+			onMutate: async (variables) => {
+				await queryClient.cancelQueries({ queryKey: editableKey });
+				const previous = queryClient.getQueryData(editableKey);
+
+				queryClient.setQueryData(editableKey, (old) =>
+					old
+						? {
+								...old,
+								items: old.items.map((shelf) =>
+									shelf.slug === variables.shelfSlug
+										? {
+												...shelf,
+												containsBook: true,
+												bookCount: shelf.bookCount + 1,
+											}
+										: shelf,
+								),
+							}
+						: old,
+				);
+
 				setOpen(false);
 				setSelectedSlug(null);
-				await queryClient.invalidateQueries({
+				return { previous };
+			},
+			onError: (error, _variables, context) => {
+				if (context) {
+					queryClient.setQueryData(editableKey, context.previous);
+				}
+				toast.error(error.message ?? "Could not add book.");
+			},
+			onSettled: () => {
+				void queryClient.invalidateQueries({
 					queryKey: orpc.shelf.listForBook.key(),
 				});
-				await queryClient.invalidateQueries({
+				void queryClient.invalidateQueries({
 					queryKey: orpc.shelf.listMineEditable.key(),
 				});
-				await queryClient.invalidateQueries({
+				void queryClient.invalidateQueries({
 					queryKey: orpc.shelf.getBySlug.key(),
 				});
-			},
-			onError: (error) => {
-				toast.error(error.message ?? "Could not add book.");
 			},
 		}),
 	);
@@ -161,17 +191,16 @@ export function BookAddToShelfDialog({
 				)}
 
 				<DialogFooter className="flex-col gap-2 sm:flex-col sm:items-stretch">
-					<LoadingButton
+					<Button
 						type="button"
 						disabled={!selectedSlug}
-						loading={addMutation.isPending}
 						onClick={() => {
 							if (!selectedSlug) return;
 							addMutation.mutate({ shelfSlug: selectedSlug, bookSlug });
 						}}
 					>
 						Add book
-					</LoadingButton>
+					</Button>
 					<Button
 						type="button"
 						variant="ghost"

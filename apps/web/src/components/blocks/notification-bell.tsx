@@ -12,6 +12,7 @@ import { Bell } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
+import { toast } from "sonner";
 import { headerToolbarIconButtonClass } from "@/lib/header-toolbar";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -38,33 +39,90 @@ export function NotificationBell() {
 		enabled: open,
 	});
 
+	const unreadKey = orpc.notification.getUnreadCount.queryKey();
+	const listKey = orpc.notification.getNotificationList.key();
+
+	/** Marks notifications read in the badge and the open list before the server answers. */
+	async function markReadOptimistically(ids: "all" | string) {
+		await Promise.all([
+			queryClient.cancelQueries({ queryKey: unreadKey }),
+			queryClient.cancelQueries({ queryKey: listKey }),
+		]);
+		const previousUnread = queryClient.getQueryData(unreadKey);
+		const previousLists = queryClient.getQueriesData({ queryKey: listKey });
+		const now = new Date();
+		let newlyRead = 0;
+
+		queryClient.setQueriesData(
+			{ queryKey: listKey },
+			(old: { items: { id: string; readAt: Date | null }[] } | undefined) => {
+				if (!old?.items) {
+					return old;
+				}
+				return {
+					...old,
+					items: old.items.map((item) => {
+						if (item.readAt != null || (ids !== "all" && item.id !== ids)) {
+							return item;
+						}
+						newlyRead += 1;
+						return { ...item, readAt: now };
+					}),
+				};
+			},
+		);
+
+		queryClient.setQueryData(unreadKey, (old) =>
+			old
+				? {
+						...old,
+						count:
+							ids === "all"
+								? 0
+								: Math.max(0, old.count - Math.max(newlyRead, 1)),
+					}
+				: old,
+		);
+
+		return { previousUnread, previousLists };
+	}
+
+	function restoreNotifications(
+		context: Awaited<ReturnType<typeof markReadOptimistically>> | undefined,
+	) {
+		if (!context) {
+			return;
+		}
+		queryClient.setQueryData(unreadKey, context.previousUnread);
+		for (const [key, data] of context.previousLists) {
+			queryClient.setQueryData(key, data);
+		}
+	}
+
+	function refreshNotifications() {
+		void queryClient.invalidateQueries({ queryKey: unreadKey });
+		void queryClient.invalidateQueries({ queryKey: listKey });
+	}
+
 	const markReadMutation = useMutation(
 		orpc.notification.markRead.mutationOptions({
-			onSuccess: async () => {
-				await Promise.all([
-					queryClient.invalidateQueries({
-						queryKey: orpc.notification.getUnreadCount.key(),
-					}),
-					queryClient.invalidateQueries({
-						queryKey: orpc.notification.getNotificationList.key(),
-					}),
-				]);
+			onMutate: (variables) => markReadOptimistically(variables.id),
+			onError: (error, _variables, context) => {
+				restoreNotifications(context);
+				toast.error(error.message);
 			},
+			onSettled: refreshNotifications,
 		}),
 	);
 
 	const markAllMutation = useMutation(
 		orpc.notification.markAllRead.mutationOptions({
-			onSuccess: async () => {
-				await Promise.all([
-					queryClient.invalidateQueries({
-						queryKey: orpc.notification.getUnreadCount.key(),
-					}),
-					queryClient.invalidateQueries({
-						queryKey: orpc.notification.getNotificationList.key(),
-					}),
-				]);
+			onMutate: () => markReadOptimistically("all"),
+			onError: (error, _variables, context) => {
+				restoreNotifications(context);
+				toast.error(error.message);
 			},
+			onSettled: refreshNotifications,
 		}),
 	);
 
@@ -106,7 +164,6 @@ export function NotificationBell() {
 							variant="ghost"
 							size="sm"
 							className="h-auto px-2 py-1 text-xs"
-							disabled={markAllMutation.isPending}
 							onClick={() => markAllMutation.mutate(undefined)}
 						>
 							Mark all read

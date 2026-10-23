@@ -106,6 +106,36 @@ export const ToggleLikeOutputSchema = zod.object({
 });
 
 export type ToggleLikeInput = z.infer<typeof ToggleLikeInputSchema>;
+
+export const SetLikeInputSchema = zod
+	.object({
+		postSlug: PostSchema.shape.slug.optional(),
+		commentSlug: CommentSchema.shape.slug.optional(),
+		feedbackSlug: FeedbackSchema.shape.slug.optional(),
+		liked: zod.boolean(),
+	})
+	.superRefine((value, ctx) => {
+		refineLikeTarget(value, ctx);
+	});
+
+export type SetLikeInput = z.infer<typeof SetLikeInputSchema>;
+
+const viewerLikeSlugs = zod.array(zod.string().min(1)).max(200);
+
+export const GetViewerLikesInputSchema = zod.object({
+	postSlugs: viewerLikeSlugs.optional(),
+	commentSlugs: viewerLikeSlugs.optional(),
+	feedbackSlugs: viewerLikeSlugs.optional(),
+});
+
+export const GetViewerLikesOutputSchema = zod.object({
+	postSlugs: zod.array(zod.string()),
+	commentSlugs: zod.array(zod.string()),
+	feedbackSlugs: zod.array(zod.string()),
+});
+
+export type GetViewerLikesInput = z.infer<typeof GetViewerLikesInputSchema>;
+export type GetViewerLikesOutput = z.infer<typeof GetViewerLikesOutputSchema>;
 export type ToggleLikeOutput = z.infer<typeof ToggleLikeOutputSchema>;
 
 /** Prisma select when resolving a user's existing like row. */

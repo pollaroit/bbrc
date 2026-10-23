@@ -120,10 +120,9 @@ function CommentThreadNode({
 							onCancelReply={onCancelReply}
 							compact
 							autoFocus
-							onCommentCreated={() => {
-								onCancelReply();
-								onCommentCreated();
-							}}
+							onSubmitted={onCancelReply}
+							onSubmitFailed={() => onReply(node.slug)}
+							onCommentCreated={onCommentCreated}
 						/>
 					</div>
 				) : null}

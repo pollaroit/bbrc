@@ -37,6 +37,8 @@ type RichTextEditorProps = {
 	className?: string;
 	minHeightClassName?: string;
 	autoFocus?: boolean;
+	/** Runs on ⌘/Ctrl + Enter, e.g. to post a comment. */
+	onSubmitShortcut?: () => void;
 };
 
 function initialEditorDoc(stored: string) {
@@ -93,6 +95,7 @@ export function RichTextEditor({
 	className,
 	minHeightClassName = "min-h-[8rem]",
 	autoFocus = false,
+	onSubmitShortcut,
 }: RichTextEditorProps) {
 	const [linkDialogOpen, setLinkDialogOpen] = useState(false);
 	const openLinkDialogRef = useRef<() => void>(() => {});
@@ -100,6 +103,9 @@ export function RichTextEditor({
 
 	const onChangeRef = useRef(onChange);
 	onChangeRef.current = onChange;
+
+	const onSubmitShortcutRef = useRef(onSubmitShortcut);
+	onSubmitShortcutRef.current = onSubmitShortcut;
 
 	const valueRef = useRef(value);
 	valueRef.current = value;
@@ -115,6 +121,7 @@ export function RichTextEditor({
 					heading: { levels: [1] },
 					blockquote: {},
 					link: false,
+					underline: false,
 				}),
 				Underline,
 				LinkExtension.configure({
@@ -132,6 +139,19 @@ export function RichTextEditor({
 			],
 			content: initialEditorDoc(value),
 			editorProps: {
+				// Before the editor's own keymap, which would insert a hard break.
+				handleKeyDown: (_view, event) => {
+					if (
+						event.key === "Enter" &&
+						(event.metaKey || event.ctrlKey) &&
+						onSubmitShortcutRef.current
+					) {
+						event.preventDefault();
+						onSubmitShortcutRef.current();
+						return true;
+					}
+					return false;
+				},
 				attributes: {
 					...(id ? { id } : {}),
 					class: cn(
@@ -221,7 +241,10 @@ export function RichTextEditor({
 	}, [editor]);
 
 	useEffect(() => {
-		if (!editor) {
+		// A new `instanceKey` destroys the previous editor; this effect can still
+		// fire with that dead instance (its `commands` are gone) in the same pass
+		// that the form clears `value`. The replacement editor starts from `value`.
+		if (!editor || editor.isDestroyed) {
 			return;
 		}
 		const current = tiptapJsonToStoredContent(editor.getJSON());

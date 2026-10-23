@@ -14,7 +14,10 @@ import {
 import {
 	type GetLikeListInput,
 	type GetLikeListOutput,
+	type GetViewerLikesInput,
+	type GetViewerLikesOutput,
 	getLikeListFields,
+	type SetLikeInput,
 	type ToggleLikeInput,
 	type ToggleLikeOutput,
 } from "./like.schema";
@@ -253,10 +256,13 @@ export async function getLikeList(
 	};
 }
 
-export async function toggleLike(
+type LikeIntent = boolean | "toggle";
+
+async function applyLike(
 	input: ToggleLikeInput,
 	userId: string,
 	db: Database,
+	intent: LikeIntent,
 ): Promise<ToggleLikeOutput> {
 	await loadActorSocialGate(userId, db);
 
@@ -267,43 +273,118 @@ export async function toggleLike(
 			where: existingLikeWhere(target, userId),
 			select: { id: true },
 		});
+		const wantsLiked = intent === "toggle" ? !existing : intent;
 
-		if (existing) {
-			await tx.like.delete({
-				where: { id: existing.id },
-			});
+		if (!wantsLiked) {
+			if (existing) {
+				await tx.like.delete({ where: { id: existing.id } });
+			}
 
 			return {
 				source: target.source,
 				liked: false,
+				created: false,
 				likeCount: await countLikesForTarget(target, tx),
 			};
 		}
 
-		await tx.like.create({
-			data: {
-				source: target.source,
-				userId,
-				postId: target.postId,
-				commentId: target.commentId,
-				feedbackId: target.feedbackId,
-			},
-		});
+		if (!existing) {
+			await tx.like.create({
+				data: {
+					source: target.source,
+					userId,
+					postId: target.postId,
+					commentId: target.commentId,
+					feedbackId: target.feedbackId,
+				},
+			});
+		}
 
 		return {
 			source: target.source,
 			liked: true,
+			created: !existing,
 			likeCount: await countLikesForTarget(target, tx),
 		};
 	});
 
 	if (
-		result.liked &&
+		result.created &&
 		result.source === LikeSourceSchema.enum.post &&
 		input.postSlug
 	) {
 		void notifyReactionOnYourPost(db, input.postSlug, userId);
 	}
 
-	return result;
+	return {
+		source: result.source,
+		liked: result.liked,
+		likeCount: result.likeCount,
+	};
+}
+
+export async function toggleLike(
+	input: ToggleLikeInput,
+	userId: string,
+	db: Database,
+): Promise<ToggleLikeOutput> {
+	return applyLike(input, userId, db, "toggle");
+}
+
+/** Idempotent: sets the viewer's like to exactly `liked`, however many times it is called. */
+export async function setLike(
+	input: SetLikeInput,
+	userId: string,
+	db: Database,
+): Promise<ToggleLikeOutput> {
+	const { liked, ...target } = input;
+	return applyLike(target, userId, db, liked);
+}
+
+/** Which of the given posts, comments and reviews the viewer has liked. */
+export async function getViewerLikes(
+	input: GetViewerLikesInput,
+	userId: string | null,
+	db: Database,
+): Promise<GetViewerLikesOutput> {
+	const postSlugs = input.postSlugs ?? [];
+	const commentSlugs = input.commentSlugs ?? [];
+	const feedbackSlugs = input.feedbackSlugs ?? [];
+
+	if (
+		!userId ||
+		postSlugs.length + commentSlugs.length + feedbackSlugs.length === 0
+	) {
+		return { postSlugs: [], commentSlugs: [], feedbackSlugs: [] };
+	}
+
+	const rows = await db.like.findMany({
+		where: {
+			userId,
+			OR: [
+				...(postSlugs.length ? [{ post: { slug: { in: postSlugs } } }] : []),
+				...(commentSlugs.length
+					? [{ comment: { slug: { in: commentSlugs } } }]
+					: []),
+				...(feedbackSlugs.length
+					? [{ feedback: { slug: { in: feedbackSlugs } } }]
+					: []),
+			],
+		},
+		select: {
+			post: { select: { slug: true } },
+			comment: { select: { slug: true } },
+			feedback: { select: { slug: true } },
+		},
+	});
+
+	return {
+		postSlugs: rows.flatMap((row) => (row.post ? [row.post.slug] : [])),
+		commentSlugs: rows.flatMap((row) =>
+			row.comment ? [row.comment.slug] : [],
+		),
+		feedbackSlugs: rows.flatMap((row) =>
+			row.feedback ? [row.feedback.slug] : [],
+		),
+	};
 }

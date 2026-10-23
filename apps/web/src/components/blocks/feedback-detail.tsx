@@ -1,6 +1,4 @@
 import type { GetFeedbackBySlugOutput } from "@bbrc/api/modules/feedback/feedback.schema";
-import { contentPlainText } from "@bbrc/shared";
-import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
 import { ArrowLeft, MessageCircle } from "lucide-react";
@@ -10,9 +8,12 @@ import { FeedbackCommentFocusSection } from "@/components/blocks/feedback-commen
 import { FeedbackCommentsSection } from "@/components/blocks/feedback-comments-section";
 import { FeedbackDetailOwnerActions } from "@/components/blocks/feedback-detail-owner-actions";
 import { FeedbackLikeEngagement } from "@/components/blocks/feedback-like-engagement";
+import {
+	FeedbackRatingBadge,
+	FeedbackReviewBody,
+} from "@/components/blocks/feedback-live";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
-import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { shareSnippet } from "@/lib/share-snippet";
 
@@ -54,9 +55,7 @@ export function FeedbackDetail({
 						<UserPanel user={feedback.author} className="min-w-0 items-start" />
 					</Link>
 					<div className="flex shrink-0 flex-col items-end gap-1 text-right">
-						<Badge variant="outline" className="tabular-nums">
-							{feedback.rating.toFixed(1)} / 5
-						</Badge>
+						<FeedbackRatingBadge feedback={feedback} />
 						<p className="text-muted-foreground text-xs">
 							<RelativeTime date={feedback.createdAt} />
 						</p>
@@ -71,27 +70,9 @@ export function FeedbackDetail({
 					</div>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-4 pt-4">
-					{contentPlainText(feedback.review).trim().length > 0 ? (
-						<SocialContentBody
-							content={feedback.review}
-							isSpoiler={feedback.isSpoiler}
-							kind="feedback"
-							identifier={feedback.slug}
-							interactiveLinks
-						/>
-					) : (
-						<p className="text-muted-foreground text-sm italic">
-							Rating only — no written review.
-						</p>
-					)}
+					<FeedbackReviewBody feedback={feedback} />
 					<div className="flex flex-wrap items-center gap-4 border-t pt-4 text-muted-foreground text-sm">
-						<FeedbackDetailOwnerActions
-							bookSlug={feedback.bookSlug}
-							authorUsername={feedback.author.username}
-							rating={feedback.rating}
-							review={feedback.review}
-							isSpoiler={feedback.isSpoiler}
-						/>
+						<FeedbackDetailOwnerActions feedback={feedback} />
 						<FeedbackLikeEngagement
 							feedbackSlug={feedback.slug}
 							initialLikeCount={feedback.likeCount}

@@ -110,6 +110,7 @@ export function MemberProfileFeedbackCard({
 								rating={item.rating}
 								review={item.review}
 								isSpoiler={item.isSpoiler}
+								feedbackSlug={item.slug}
 							/>
 						) : null}
 						<ResourceShareMenu

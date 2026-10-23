@@ -16,6 +16,11 @@ import {
 	progressIndicatorClassName,
 	progressLabels,
 } from "@/components/blocks/sitting-participation-progress";
+import { authClient } from "@/lib/auth-client";
+import {
+	applyProgressOptimistically,
+	restoreProgress,
+} from "@/lib/sitting/optimistic-progress";
 import {
 	canAdminSelectProgress,
 	canMemberSelectProgress,
@@ -47,31 +52,62 @@ export function SittingParticipationProgressPickerDialog({
 	const router = useRouter();
 	const choices = progressChoicesForSitting(sitting.status);
 
+	const { data: session } = authClient.useSession();
+
+	function refreshSitting() {
+		void queryClient.invalidateQueries({
+			queryKey: orpc.sitting.getSittingBySlug.key(),
+		});
+		void queryClient.invalidateQueries({
+			queryKey: orpc.sitting.getMySittingState.key(),
+		});
+	}
+
 	const adminMutation = useMutation(
 		orpc.sitting.updateParticipation.mutationOptions({
-			onSuccess: async () => {
-				toast.success("Reading status updated");
-				await queryClient.invalidateQueries({
-					queryKey: orpc.sitting.getSittingBySlug.key(),
-				});
+			scope: { id: `progress-${sitting.slug}-${participant.userId}` },
+			onMutate: async (variables) => {
+				const snapshot = await applyProgressOptimistically(
+					sitting.slug,
+					variables.userId,
+					variables.progress,
+					{ self: variables.userId === session?.user.id },
+				);
 				onOpenChange(false);
+				return snapshot;
+			},
+			onError: (error, _variables, snapshot) => {
+				restoreProgress(snapshot);
+				toast.error(error.message);
+			},
+			onSuccess: () => {
 				router.refresh();
 			},
-			onError: (error) => toast.error(error.message),
+			onSettled: refreshSitting,
 		}),
 	);
 
 	const selfMutation = useMutation(
 		orpc.sitting.updateMyParticipationProgress.mutationOptions({
-			onSuccess: async () => {
-				toast.success("Reading status updated");
-				await queryClient.invalidateQueries({
-					queryKey: orpc.sitting.getSittingBySlug.key(),
-				});
+			scope: { id: `progress-${sitting.slug}-${participant.userId}` },
+			onMutate: async (variables) => {
+				const snapshot = await applyProgressOptimistically(
+					sitting.slug,
+					participant.userId,
+					variables.progress,
+					{ self: true },
+				);
 				onOpenChange(false);
+				return snapshot;
+			},
+			onError: (error, _variables, snapshot) => {
+				restoreProgress(snapshot);
+				toast.error(error.message);
+			},
+			onSuccess: () => {
 				router.refresh();
 			},
-			onError: (error) => toast.error(error.message),
+			onSettled: refreshSitting,
 		}),
 	);
 

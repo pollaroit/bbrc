@@ -187,6 +187,8 @@ export async function addFavorite(
 		throw new ORPCError("FORBIDDEN", { message: hint });
 	}
 
+	// Idempotent: adding a book that is already a favorite just returns it, so a
+	// repeated or retried request can never fail the second time.
 	const existing = await db.favorite.findUnique({
 		where: {
 			bookId_userId: {
@@ -194,13 +196,11 @@ export async function addFavorite(
 				userId,
 			},
 		},
-		select: { id: true },
+		select: favoriteItemSelect,
 	});
 
 	if (existing) {
-		throw new ORPCError("CONFLICT", {
-			message: "This book is already in your favorites.",
-		});
+		return existing;
 	}
 
 	const favorites = await db.favorite.findMany({
@@ -235,8 +235,16 @@ export async function addFavorite(
 			select: favoriteItemSelect,
 		});
 	} catch {
+		// Lost a race with a parallel add of the same book: it is there now.
+		const raced = await db.favorite.findUnique({
+			where: { bookId_userId: { bookId: book.id, userId } },
+			select: favoriteItemSelect,
+		});
+		if (raced) {
+			return raced;
+		}
 		throw new ORPCError("CONFLICT", {
-			message: "This book is already in your favorites.",
+			message: "Could not add this favorite. Try again.",
 		});
 	}
 }
@@ -248,18 +256,13 @@ export async function removeFavorite(
 ): Promise<{ removed: true }> {
 	const book = await loadBookBySlug(input.bookSlug, db);
 
-	const deleted = await db.favorite.deleteMany({
+	// Idempotent: removing something that is already gone is a success.
+	await db.favorite.deleteMany({
 		where: {
 			userId,
 			bookId: book.id,
 		},
 	});
-
-	if (deleted.count === 0) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Favorite not found",
-		});
-	}
 
 	return { removed: true };
 }

@@ -28,8 +28,18 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { FeedbackHalfStarRating } from "@/components/blocks/feedback-half-star-rating";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
+import { authClient } from "@/lib/auth-client";
 import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
+import {
+	applyFeedbackCreate,
+	applyFeedbackUpdate,
+	confirmFeedbackCreate,
+	myFeedbackSlug,
+	restoreFeedbackQueries,
+	snapshotFeedbackQueries,
+} from "@/lib/feedback/optimistic-feedback";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
+import { createPendingSlug } from "@/lib/optimistic/infinite-lists";
 import { orpc } from "@/utils/orpc";
 
 const FEEDBACK_REVIEW_MAX_PLAIN = 500;
@@ -46,6 +56,8 @@ type FeedbackFormDialogProps = {
 	onOpenChange: (open: boolean) => void;
 	mode?: "create" | "edit";
 	initialValues?: FeedbackFormInitialValues;
+	/** Slug of the review being edited, so every cached view of it can update. */
+	feedbackSlug?: string;
 	/** When false, stay on the current page after save (e.g. sitting page). */
 	navigateToReview?: boolean;
 };
@@ -56,9 +68,11 @@ export function FeedbackFormDialog({
 	onOpenChange,
 	mode = "create",
 	initialValues,
+	feedbackSlug,
 	navigateToReview = true,
 }: FeedbackFormDialogProps) {
 	const router = useRouter();
+	const { data: session } = authClient.useSession();
 	const isEdit = mode === "edit";
 	const [rating, setRating] = useState<FeedbackRatingStep>(4);
 	const [review, setReview] = useState("");
@@ -83,40 +97,104 @@ export function FeedbackFormDialog({
 
 	const createMutation = useMutation(
 		orpc.feedback.create.mutationOptions({
-			onSuccess: async (result) => {
-				toast.success(
-					result.xpAwarded > 0
-						? `Feedback saved (+${result.xpAwarded} XP)`
-						: "Feedback saved",
-				);
-				await invalidateFeedbackQueries();
-				await invalidateUserPointQueries();
+			scope: { id: `feedback-${bookSlug}` },
+			onMutate: async (variables) => {
+				const user = session?.user;
+				const pendingSlug = createPendingSlug();
+				const draft = { rating, review, isSpoiler };
+				const snapshot = await snapshotFeedbackQueries();
+
+				if (user) {
+					applyFeedbackCreate({
+						bookSlug,
+						pendingSlug,
+						author: {
+							id: user.id,
+							username: user.username as string,
+							name: user.name,
+							image: user.image ?? null,
+						},
+						values: {
+							rating: variables.rating,
+							review: variables.review ?? "",
+							isSpoiler: Boolean(variables.isSpoiler),
+						},
+					});
+				}
+
 				onOpenChange(false);
+				return { pendingSlug, draft, snapshot };
+			},
+			onError: (error, _variables, context) => {
+				if (context) {
+					restoreFeedbackQueries(context.snapshot);
+					setRating(context.draft.rating);
+					setReview(context.draft.review);
+					setIsSpoiler(context.draft.isSpoiler);
+					onOpenChange(true);
+				}
+				toast.error(error.message);
+			},
+			onSuccess: (result, _variables, context) => {
+				confirmFeedbackCreate(bookSlug, context.pendingSlug, result.slug);
+				if (result.xpAwarded > 0) {
+					toast.success(`Feedback saved (+${result.xpAwarded} XP)`);
+				}
+				void invalidateUserPointQueries();
 				if (navigateToReview) {
 					router.push(`/books/${bookSlug}/feedbacks/${result.slug}` as Route);
 				}
 				router.refresh();
 			},
-			onError: (error) => toast.error(error.message),
+			onSettled: () => {
+				void invalidateFeedbackQueries();
+			},
 		}),
 	);
 
 	const updateMutation = useMutation(
 		orpc.feedback.update.mutationOptions({
-			onSuccess: async (result) => {
-				toast.success("Feedback updated");
-				await invalidateFeedbackQueries();
+			scope: { id: `feedback-${bookSlug}` },
+			onMutate: async (variables) => {
+				const snapshot = await snapshotFeedbackQueries();
+				const targetSlug = feedbackSlug ?? myFeedbackSlug(bookSlug);
+
+				if (targetSlug) {
+					applyFeedbackUpdate({
+						bookSlug,
+						feedbackSlug: targetSlug,
+						values: {
+							rating: variables.rating,
+							review: variables.review ?? initialValues?.review ?? "",
+							isSpoiler:
+								variables.isSpoiler ?? initialValues?.isSpoiler ?? false,
+						},
+					});
+				}
+
 				onOpenChange(false);
+				return { snapshot };
+			},
+			onError: (error, _variables, context) => {
+				if (context) {
+					restoreFeedbackQueries(context.snapshot);
+					onOpenChange(true);
+				}
+				toast.error(error.message);
+			},
+			onSuccess: (result) => {
 				if (navigateToReview) {
 					router.push(`/books/${bookSlug}/feedbacks/${result.slug}` as Route);
 				}
 				router.refresh();
 			},
-			onError: (error) => toast.error(error.message),
+			onSettled: () => {
+				void invalidateFeedbackQueries();
+			},
 		}),
 	);
 
-	const pending = createMutation.isPending || updateMutation.isPending;
+	const pending = false;
 
 	function handleSubmit() {
 		const plain = contentPlainText(review).trim();
