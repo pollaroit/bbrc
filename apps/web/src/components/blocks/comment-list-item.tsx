@@ -87,6 +87,7 @@ function CommentAuthorActions({
 
 	if (
 		isPending ||
+		isPendingSlug(comment.slug) ||
 		!session?.user.username ||
 		session.user.username !== comment.author.username
 	) {

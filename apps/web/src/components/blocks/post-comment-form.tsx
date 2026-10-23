@@ -33,9 +33,22 @@ type PostCommentFormProps = {
 	replyToUsername?: string;
 	onCancelReply?: () => void;
 	onCommentCreated?: () => void;
+	/** Called the moment a reply is sent, so the parent can close the reply box. */
+	onSubmitted?: () => void;
+	/** Called when sending failed and the reply box should open again with the draft. */
+	onSubmitFailed?: () => void;
 	compact?: boolean;
 	autoFocus?: boolean;
 };
+
+type CommentDraft = {
+	content: string;
+	isSpoiler: boolean;
+	imageFile: File | null;
+};
+
+/** Drafts of replies that failed after their box closed; the box reads it when it reopens. */
+const failedReplyDrafts = new Map<string, CommentDraft>();
 
 async function invalidateCommentQueries() {
 	await queryClient.invalidateQueries({
@@ -59,13 +72,19 @@ export function PostCommentForm({
 	replyToUsername,
 	onCancelReply,
 	onCommentCreated,
+	onSubmitted,
+	onSubmitFailed,
 	compact = false,
 	autoFocus = false,
 }: PostCommentFormProps) {
 	const { data: session, isPending: sessionPending } = authClient.useSession();
-	const [content, setContent] = useState("");
-	const [isSpoiler, setIsSpoiler] = useState(false);
-	const [imageFile, setImageFile] = useState<File | null>(null);
+	const draftKey = `${postSlug ?? feedbackSlug ?? "thread"}:${parentSlug ?? "root"}`;
+	const [restoredDraft] = useState(() => failedReplyDrafts.get(draftKey));
+	const [content, setContent] = useState(restoredDraft?.content ?? "");
+	const [isSpoiler, setIsSpoiler] = useState(restoredDraft?.isSpoiler ?? false);
+	const [imageFile, setImageFile] = useState<File | null>(
+		restoredDraft?.imageFile ?? null,
+	);
 	const [composerOpen, setComposerOpen] = useState(
 		Boolean(parentSlug || replyToUsername || autoFocus),
 	);
@@ -80,6 +99,10 @@ export function PostCommentForm({
 			: "post-comment-content";
 
 	const imageInput = usePendingImageInput(setImageFile, { variant: "comment" });
+
+	useEffect(() => {
+		failedReplyDrafts.delete(draftKey);
+	}, [draftKey]);
 
 	useEffect(() => {
 		if (parentSlug || replyToUsername || autoFocus) {
@@ -166,6 +189,7 @@ export function PostCommentForm({
 				if (!parentSlug && !replyToUsername) {
 					setComposerOpen(false);
 				}
+				onSubmitted?.();
 
 				return { pendingSlug, draft };
 			},
@@ -179,6 +203,12 @@ export function PostCommentForm({
 					setComposerOpen(true);
 					setShouldFocusEditor(true);
 					setEditorEpoch((epoch) => epoch + 1);
+
+					// A reply box that already closed reopens with this draft.
+					if (parentSlug || replyToUsername) {
+						failedReplyDrafts.set(draftKey, context.draft);
+						onSubmitFailed?.();
+					}
 				}
 				toast.error(error.message);
 			},
@@ -211,6 +241,26 @@ export function PostCommentForm({
 			},
 		}),
 	);
+
+	function submitComment() {
+		const plain = contentPlainText(content).trim();
+		if (plain.length < 1) {
+			toast.error("Comment must be at least 1 character long");
+			return;
+		}
+		if (plain.length > 5000) {
+			toast.error("Comment must be at most 5000 characters");
+			return;
+		}
+
+		createMutation.mutate({
+			...(postSlug ? { postSlug } : {}),
+			...(feedbackSlug ? { feedbackSlug } : {}),
+			content,
+			isSpoiler,
+			...(parentSlug ? { parentSlug } : {}),
+		});
+	}
 
 	const isPending = false;
 
@@ -257,24 +307,7 @@ export function PostCommentForm({
 			className={cn("flex min-w-0 flex-col", compact ? "gap-2" : "gap-3")}
 			onSubmit={(event) => {
 				event.preventDefault();
-
-				const plain = contentPlainText(content).trim();
-				if (plain.length < 1) {
-					toast.error("Comment must be at least 1 character long");
-					return;
-				}
-				if (plain.length > 5000) {
-					toast.error("Comment must be at most 5000 characters");
-					return;
-				}
-
-				createMutation.mutate({
-					...(postSlug ? { postSlug } : {}),
-					...(feedbackSlug ? { feedbackSlug } : {}),
-					content,
-					isSpoiler,
-					...(parentSlug ? { parentSlug } : {}),
-				});
+				submitComment();
 			}}
 		>
 			{imageInput.input}
@@ -295,6 +328,7 @@ export function PostCommentForm({
 					placeholder={placeholder}
 					minHeightClassName={compact ? "min-h-[5rem]" : "min-h-[8rem]"}
 					autoFocus={shouldFocusEditor}
+					onSubmitShortcut={submitComment}
 				/>
 			</Field>
 
