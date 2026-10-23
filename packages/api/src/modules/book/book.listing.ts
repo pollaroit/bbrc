@@ -87,6 +87,11 @@ export const bookListFiltersSchema = z
 		viewerReviewed: z.boolean(),
 		minReads: z.number().int().min(0),
 		maxReads: z.number().int().min(0),
+		minFeedbacks: z.number().int().min(0),
+		maxFeedbacks: z.number().int().min(0),
+		/** Club (member) average rating. Books without reviews never match. */
+		minAverageRating: z.number().min(0).max(5),
+		maxAverageRating: z.number().min(0).max(5),
 		minPublishedIn: z.number().int().min(0),
 		maxPublishedIn: z.number().int().min(0),
 	})

@@ -19,6 +19,8 @@ import {
 	GetBookListCountryFacetsOutputSchema,
 	GetBookListInputSchema,
 	GetBookListOutputSchema,
+	GetRandomBookInputSchema,
+	GetRandomBookOutputSchema,
 	UpdateBookInputSchema,
 	UpdateBookOutputSchema,
 } from "./book.schema";
@@ -28,6 +30,7 @@ import {
 	getBookList,
 	getBookListAuthorFacets,
 	getBookListCountryFacets,
+	getRandomBook,
 	removeBook,
 	updateBook,
 } from "./book.service";
@@ -91,6 +94,13 @@ export const bookRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await getBookList(input, context.db, context.session?.user?.id),
+		),
+	getRandom: publicProcedure
+		.input(GetRandomBookInputSchema)
+		.output(GetRandomBookOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await getRandomBook(input, context.db, context.session?.user?.id),
 		),
 	getBookListAuthorFacets: publicProcedure
 		.input(GetBookListAuthorFacetsInputSchema)

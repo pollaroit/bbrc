@@ -15,6 +15,8 @@ import {
 	type GetBookListCountryFacetsOutput,
 	type GetBookListInput,
 	type GetBookListOutput,
+	type GetRandomBookInput,
+	type GetRandomBookOutput,
 	getBookListFields,
 	type TAddBookInputSchema,
 	type TGetBookBySlugOutputSchema,
@@ -89,6 +91,48 @@ function expandBookListOrderBy(
 		];
 	}
 	return withStableSlugOrderBy(orderBy, sortDirection);
+}
+
+export async function getRandomBook(
+	input: GetRandomBookInput,
+	db: Database,
+	viewerUserId?: string,
+): Promise<GetRandomBookOutput> {
+	if (
+		(input.viewerRead != null ||
+			input.viewerFavorite ||
+			input.viewerReviewed) &&
+		!viewerUserId
+	) {
+		throw new ORPCError("UNAUTHORIZED", {
+			message: "Sign in to filter by your own reads.",
+		});
+	}
+
+	const where = await buildBookListWhereWithAuthors(input, db, viewerUserId);
+	const matched = where == null ? 0 : await db.book.count({ where });
+
+	if (where == null || matched === 0) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "No book matches these filters.",
+		});
+	}
+
+	const [book] = await db.book.findMany({
+		where,
+		orderBy: { id: "asc" },
+		skip: Math.floor(Math.random() * matched),
+		take: 1,
+		select: { slug: true, title: true },
+	});
+
+	if (!book) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "No book matches these filters.",
+		});
+	}
+
+	return { ...book, matched };
 }
 
 export async function getBookList(

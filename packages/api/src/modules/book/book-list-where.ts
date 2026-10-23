@@ -3,6 +3,7 @@ import { mergeWhereFragments } from "../../utils/searching";
 import { bookListRanging } from "./book.listing";
 import type { GetBookListInput } from "./book.schema";
 import { resolveAuthorSlugsToNames } from "./book-author-filter";
+import { bookIdsWithFeedbackCountBounds } from "./book-feedback-count-filter";
 import {
 	buildBookTextSearchWhere,
 	findBookIdsByAuthorNameSearch,
@@ -79,6 +80,13 @@ export function buildBookListWhere(
 							gte: input.minOpenLibraryRating ?? undefined,
 							lte: input.maxOpenLibraryRating ?? undefined,
 						},
+			averageRating:
+				input.minAverageRating == null && input.maxAverageRating == null
+					? undefined
+					: {
+							gte: input.minAverageRating ?? undefined,
+							lte: input.maxAverageRating ?? undefined,
+						},
 			pages:
 				input.minPages == null && input.maxPages == null
 					? undefined
@@ -145,6 +153,16 @@ export async function buildBookListWhereWithAuthors(
 		return null;
 	}
 
+	const feedbackCountIds = await bookIdsWithFeedbackCountBounds(
+		db,
+		input.minFeedbacks ?? undefined,
+		input.maxFeedbacks ?? undefined,
+	);
+
+	if (feedbackCountIds !== null && feedbackCountIds.length === 0) {
+		return null;
+	}
+
 	let searchAuthorBookIds: string[] | undefined;
 	if (input.search?.trim()) {
 		searchAuthorBookIds = await findBookIdsByAuthorNameSearch(db, input.search);
@@ -156,11 +174,13 @@ export async function buildBookListWhereWithAuthors(
 		searchAuthorBookIds,
 	});
 
-	if (readsCountIds == null) {
+	const idFilters = [readsCountIds, feedbackCountIds]
+		.filter((ids): ids is string[] => ids != null)
+		.map((ids) => ({ id: { in: ids } }));
+
+	if (idFilters.length === 0) {
 		return baseWhere;
 	}
 
-	return mergeWhereFragments<Prisma.BookWhereInput>(baseWhere, {
-		id: { in: readsCountIds },
-	});
+	return mergeWhereFragments<Prisma.BookWhereInput>(baseWhere, ...idFilters);
 }

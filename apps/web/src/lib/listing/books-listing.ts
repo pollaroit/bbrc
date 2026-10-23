@@ -93,6 +93,10 @@ export const bookListingSearchParams = {
 	maxPublishedIn: parseAsInteger.withOptions({ shallow: false }),
 	minReads: parseAsInteger.withOptions({ shallow: false }),
 	maxReads: parseAsInteger.withOptions({ shallow: false }),
+	minFeedbacks: parseAsInteger.withOptions({ shallow: false }),
+	maxFeedbacks: parseAsInteger.withOptions({ shallow: false }),
+	minAverageRating: parseAsFloat.withOptions({ shallow: false }),
+	maxAverageRating: parseAsFloat.withOptions({ shallow: false }),
 	authors: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
 	subjects: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
 	subjectsMatch: parseAsStringLiteral(subjectMatchValues).withOptions({
@@ -176,6 +180,10 @@ export function toBookListCallInput(
 		maxPublishedIn: params.maxPublishedIn,
 		minReads: params.minReads,
 		maxReads: params.maxReads,
+		minFeedbacks: params.minFeedbacks,
+		maxFeedbacks: params.maxFeedbacks,
+		minAverageRating: params.minAverageRating,
+		maxAverageRating: params.maxAverageRating,
 		authors: normalizeAuthorSlugs(params.authors),
 		subjects: normalizeSubjectSlugs(params.subjects),
 		subjectsMatch:
@@ -262,6 +270,14 @@ export function countBookSheetFilters(params: BookListingSearchParams): number {
 		count += 1;
 	}
 
+	if (params.minFeedbacks != null || params.maxFeedbacks != null) {
+		count += 1;
+	}
+
+	if (params.minAverageRating != null || params.maxAverageRating != null) {
+		count += 1;
+	}
+
 	if (params.authors && params.authors.length > 0) {
 		count += 1;
 	}
@@ -310,6 +326,10 @@ export function clearBookSheetFilters(
 		maxPublishedIn: null,
 		minReads: null,
 		maxReads: null,
+		minFeedbacks: null,
+		maxFeedbacks: null,
+		minAverageRating: null,
+		maxAverageRating: null,
 		authors: null,
 		subjects: null,
 		subjectsMatch: null,
