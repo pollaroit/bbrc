@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
+import { isPendingSlug } from "@/lib/optimistic/infinite-lists";
 import { client, queryClient } from "@/utils/orpc";
 
 export type LikeKind = "post" | "comment" | "feedback";
@@ -109,7 +110,7 @@ export function useViewerLike(
 	const query = useQuery({
 		queryKey: viewerLikeKey(kind, slug),
 		queryFn: () => loadViewerLike(kind, slug),
-		enabled: Boolean(session?.user),
+		enabled: Boolean(session?.user) && !isPendingSlug(slug),
 		staleTime: 60_000,
 	});
 	return query.data;

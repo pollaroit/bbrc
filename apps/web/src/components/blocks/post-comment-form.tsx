@@ -17,6 +17,12 @@ import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { SignInLink } from "@/components/blocks/sign-in-link";
 import { uploadImageForEntity } from "@/components/blocks/single-image-upload-field";
 import { authClient } from "@/lib/auth-client";
+import {
+	createPendingSlug,
+	prependToLists,
+	removeFromLists,
+	swapListItemSlug,
+} from "@/lib/optimistic/infinite-lists";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -82,14 +88,103 @@ export function PostCommentForm({
 		}
 	}, [parentSlug, replyToUsername, autoFocus]);
 
+	const commentListKey = orpc.comment.getCommentList.key();
+
+	function adjustCommentCount(delta: number) {
+		if (postSlug) {
+			queryClient.setQueryData(
+				orpc.post.getPostBySlug.queryKey({ input: postSlug }),
+				(old) =>
+					old
+						? { ...old, commentCount: Math.max(0, old.commentCount + delta) }
+						: old,
+			);
+		}
+		if (feedbackSlug) {
+			queryClient.setQueryData(
+				orpc.feedback.getFeedbackBySlug.queryKey({ input: feedbackSlug }),
+				(old) =>
+					old
+						? { ...old, commentCount: Math.max(0, old.commentCount + delta) }
+						: old,
+			);
+		}
+	}
+
 	const createMutation = useMutation(
 		orpc.comment.create.mutationOptions({
-			onSuccess: async (result) => {
-				const file = imageFile;
+			// Comments on the same thing are created one after another, in order.
+			scope: { id: `comment-create-${postSlug ?? feedbackSlug ?? "thread"}` },
+			onMutate: async (variables) => {
+				const user = session?.user;
+				const pendingSlug = createPendingSlug();
+				const draft = {
+					content,
+					isSpoiler,
+					imageFile,
+				};
+
+				await queryClient.cancelQueries({ queryKey: commentListKey });
+
+				if (user) {
+					prependToLists(
+						commentListKey,
+						{
+							slug: pendingSlug,
+							content: variables.content,
+							imageUrl: null,
+							isSpoiler: Boolean(variables.isSpoiler),
+							createdAt: new Date(),
+							editedAt: null,
+							depth: variables.parentSlug ? 1 : 0,
+							parentSlug: variables.parentSlug ?? null,
+							author: {
+								username: user.username as string,
+								name: user.name,
+								image: user.image ?? null,
+							},
+							likeCount: 0,
+							likedByMe: false,
+							replyCount: 0,
+						},
+						(input) =>
+							postSlug
+								? input.postSlug === postSlug
+								: input.feedbackSlug === feedbackSlug,
+					);
+				}
+				adjustCommentCount(1);
+
+				// The form is free again right away; the draft comes back on failure.
 				setImageFile(null);
 				if (imageInput.inputRef.current) {
 					imageInput.inputRef.current.value = "";
 				}
+				setContent("");
+				setIsSpoiler(false);
+				setEditorEpoch((epoch) => epoch + 1);
+				if (!parentSlug && !replyToUsername) {
+					setComposerOpen(false);
+				}
+
+				return { pendingSlug, draft };
+			},
+			onError: (error, _variables, context) => {
+				if (context) {
+					removeFromLists(commentListKey, context.pendingSlug);
+					adjustCommentCount(-1);
+					setContent(context.draft.content);
+					setIsSpoiler(context.draft.isSpoiler);
+					setImageFile(context.draft.imageFile);
+					setComposerOpen(true);
+					setShouldFocusEditor(true);
+					setEditorEpoch((epoch) => epoch + 1);
+				}
+				toast.error(error.message);
+			},
+			onSuccess: async (result, _variables, context) => {
+				swapListItemSlug(commentListKey, context.pendingSlug, result.slug);
+				const file = context.draft.imageFile;
 
 				if (file) {
 					try {
@@ -106,25 +201,18 @@ export function PostCommentForm({
 					}
 				}
 
-				toast.success(
-					result.xpAwarded > 0
-						? `Comment posted (+${result.xpAwarded} XP)`
-						: "Comment posted.",
-				);
-				setContent("");
-				setIsSpoiler(false);
-				setEditorEpoch((epoch) => epoch + 1);
-				if (!parentSlug && !replyToUsername) {
-					setComposerOpen(false);
+				if (result.xpAwarded > 0) {
+					toast.success(`Comment posted (+${result.xpAwarded} XP)`);
 				}
-				await invalidateCommentQueries();
 				onCommentCreated?.();
 			},
-			onError: (error) => toast.error(error.message),
+			onSettled: () => {
+				void invalidateCommentQueries();
+			},
 		}),
 	);
 
-	const isPending = createMutation.isPending;
+	const isPending = false;
 
 	if (sessionPending) {
 		return (
