@@ -237,7 +237,7 @@ export default async function OgDevPage() {
 			id: "member",
 			label: "Members",
 			entries: [
-				entry("users", "Members list", "/users", ""),
+				entry("users", "People list", "/users", ""),
 				entry("user", "Member overview", u ? `/users/${u}` : null, noUser),
 				entry(
 					"user-avatar",

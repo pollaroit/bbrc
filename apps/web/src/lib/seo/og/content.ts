@@ -305,20 +305,26 @@ async function resolveAuthorsListOg(): Promise<OgImageContent> {
 }
 
 async function resolveMembersListOg(): Promise<OgImageContent> {
-	const [members, admins, reads] = await Promise.all([
-		db.user.count(),
-		db.user.count({ where: { isAdmin: true } }),
-		db.read.count(),
+	const where = { isHidden: false, status: { not: "banned" as const } };
+	const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+	const [people, active, reads, reviews] = await Promise.all([
+		db.user.count({ where }),
+		db.user.count({
+			where: { ...where, xpEvents: { some: { createdAt: { gte: since } } } },
+		}),
+		db.read.count({ where: { user: where } }),
+		db.feedback.count({ where: { author: where } }),
 	]);
 
 	return {
-		kind: "Members",
-		title: "The brigade",
-		body: "Everyone in the club, with XP, reading points and reading history.",
+		kind: "People",
+		title: "People",
+		body: "Everyone in the club, with levels, reads, reviews and reading streaks.",
 		facts: [
-			fact("Members", num(members)),
-			fact("Admins", num(admins)),
-			fact("Reads logged", num(reads)),
+			fact("People", num(people)),
+			fact("Active · 30 days", num(active)),
+			fact("Books read", num(reads)),
+			fact("Reviews", num(reviews)),
 		],
 	};
 }
