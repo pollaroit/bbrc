@@ -186,6 +186,16 @@ export const LINE_SPACINGS = [
 ] as const;
 export type LineSpacingId = (typeof LINE_SPACINGS)[number]["id"];
 
+export const RADIUS_OPTIONS = [
+	{ id: "none", label: "None", value: "0" },
+	{ id: "xs", label: "XS", value: "0.125rem" },
+	{ id: "sm", label: "SM", value: "0.25rem" },
+	{ id: "md", label: "MD", value: "0.5rem" },
+	{ id: "lg", label: "LG", value: "0.75rem" },
+	{ id: "xl", label: "XL", value: "1rem" },
+] as const;
+export type RadiusId = (typeof RADIUS_OPTIONS)[number]["id"];
+
 export const MOTION_MODES = ["system", "reduce", "full"] as const;
 export type MotionMode = (typeof MOTION_MODES)[number];
 
@@ -211,6 +221,8 @@ export type UserPreferences = {
 		fontReading: ReadingFontId;
 		textSize: TextSizeId;
 		lineSpacing: LineSpacingId;
+		/** Corner rounding. "none" is the club's own sharp look. */
+		radius: RadiusId;
 	};
 	accessibility: {
 		motion: MotionMode;
@@ -234,6 +246,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
 		fontReading: SAME_AS_BODY,
 		textSize: "md",
 		lineSpacing: "normal",
+		radius: "none",
 	},
 	accessibility: { motion: "system", contrast: "normal" },
 	reading: { spoilers: "hide" },
@@ -302,6 +315,11 @@ export function normalizePreferences(input: unknown): UserPreferences {
 				LINE_SPACINGS.map((spacing) => spacing.id),
 				defaults.appearance.lineSpacing,
 			),
+			radius: pick(
+				appearance.radius,
+				RADIUS_OPTIONS.map((option) => option.id),
+				defaults.appearance.radius,
+			),
 		},
 		accessibility: {
 			motion: pick(
@@ -349,6 +367,7 @@ export function preferenceAttributes(
 		"data-font-reading": preferences.appearance.fontReading,
 		"data-text-size": preferences.appearance.textSize,
 		"data-leading": preferences.appearance.lineSpacing,
+		"data-radius": preferences.appearance.radius,
 		"data-motion": preferences.accessibility.motion,
 		"data-contrast": preferences.accessibility.contrast,
 	};
@@ -399,6 +418,13 @@ export function buildAppearanceCss(): string {
 			`html[data-text-size="${size.id}"] {\n\t--text-scale: ${size.scale};\n}`,
 		);
 	}
+	for (const option of RADIUS_OPTIONS) {
+		if (option.id !== "none") {
+			blocks.push(
+				`html[data-radius="${option.id}"] {\n\t--radius: ${option.value};\n}`,
+			);
+		}
+	}
 	for (const spacing of LINE_SPACINGS) {
 		blocks.push(
 			`html[data-leading="${spacing.id}"] {\n\t--leading-scale: ${spacing.scale};\n}`,
@@ -421,6 +447,7 @@ export function buildBootScript(lockedModes: Record<string, string>): string {
 		fontReading: READING_FONT_IDS,
 		textSize: TEXT_SIZES.map((size) => size.id),
 		lineSpacing: LINE_SPACINGS.map((spacing) => spacing.id),
+		radius: RADIUS_OPTIONS.map((option) => option.id),
 		motion: MOTION_MODES,
 		contrast: CONTRAST_MODES,
 		mode: COLOR_MODES,
@@ -438,6 +465,7 @@ D.setAttribute("data-font-heading",p(a.fontHeading,V.fontHeading,"body"));
 D.setAttribute("data-font-reading",p(a.fontReading,V.fontReading,"body"));
 D.setAttribute("data-text-size",p(a.textSize,V.textSize,"md"));
 D.setAttribute("data-leading",p(a.lineSpacing,V.lineSpacing,"normal"));
+D.setAttribute("data-radius",p(a.radius,V.radius,"none"));
 D.setAttribute("data-motion",p(x.motion,V.motion,"system"));
 D.setAttribute("data-contrast",p(x.contrast,V.contrast,"normal"));
 var eff=L[pal]||p(a.mode,V.mode,"system");

@@ -67,7 +67,7 @@ export function ClubBookPicker({
 			</div>
 
 			{value ? (
-				<div className="flex items-center gap-3 rounded-none border bg-muted/20 p-2">
+				<div className="flex items-center gap-3 border bg-muted/20 p-2">
 					<div className="relative aspect-2/3 w-10 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10">
 						{(() => {
 							const coverSrc = bookCoverUrl(value.coverId);
@@ -101,7 +101,7 @@ export function ClubBookPicker({
 			) : null}
 
 			{!value && trimmed.length > 0 ? (
-				<ul className="max-h-48 overflow-y-auto rounded-none border">
+				<ul className="max-h-48 overflow-y-auto border">
 					{booksQuery.isPending ? (
 						<li className="p-2">
 							<Skeleton className="h-10 w-full" />

@@ -17,11 +17,11 @@ describe("normalizePreferences", () => {
 
 	test("keeps valid values and replaces invalid ones", () => {
 		const result = normalizePreferences({
-			appearance: { palette: "forest", fontBody: "not-a-font", textSize: "xl" },
+			appearance: { palette: "vercel", fontBody: "not-a-font", textSize: "xl" },
 			accessibility: { motion: "reduce", contrast: "loud" },
 			time: { clock: "12h" },
 		});
-		expect(result.appearance.palette).toBe("forest");
+		expect(result.appearance.palette).toBe("vercel");
 		expect(result.appearance.fontBody).toBe("geist-mono");
 		expect(result.appearance.textSize).toBe("xl");
 		expect(result.accessibility).toEqual({
@@ -32,7 +32,7 @@ describe("normalizePreferences", () => {
 	});
 
 	test("is idempotent", () => {
-		const once = normalizePreferences({ appearance: { palette: "nord" } });
+		const once = normalizePreferences({ appearance: { palette: "mono" } });
 		expect(normalizePreferences(once)).toEqual(once);
 	});
 
@@ -40,7 +40,7 @@ describe("normalizePreferences", () => {
 		expect(arePreferencesDefault(DEFAULT_PREFERENCES)).toBe(true);
 		expect(
 			arePreferencesDefault(
-				normalizePreferences({ appearance: { palette: "ink" } }),
+				normalizePreferences({ appearance: { palette: "mono" } }),
 			),
 		).toBe(false);
 	});

@@ -29,6 +29,7 @@ export * from "./slug";
 export * from "./social-sites";
 export * from "./spoiler-reveal";
 export * from "./subject-slug";
+export * from "./themes/contrast";
 export * from "./themes/oklch";
 export * from "./themes/palettes";
 export * from "./user-profile";

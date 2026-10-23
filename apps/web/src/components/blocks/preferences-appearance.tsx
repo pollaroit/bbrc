@@ -12,12 +12,14 @@ import {
 	lockedModeFor,
 	PALETTES,
 	paletteTokens,
+	RADIUS_OPTIONS,
 	READING_FONT_IDS,
 	SAME_AS_BODY,
 	TEXT_SIZES,
 } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
+import { Input } from "@bbrc/ui/components/input";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import {
@@ -100,9 +102,11 @@ function PaletteCard({
 					</Badge>
 				) : null}
 			</span>
-			<span className="text-muted-foreground text-xs leading-snug">
-				{palette.description}
-			</span>
+			{palette.description ? (
+				<span className="text-muted-foreground text-xs leading-snug">
+					{palette.description}
+				</span>
+			) : null}
 		</OptionCard>
 	);
 }
@@ -207,6 +211,14 @@ export function PreferencesAppearance() {
 	const { appearance } = usePreferences();
 	const resolved = useResolvedMode();
 	const locked = lockedModeFor(appearance.palette);
+	const [paletteQuery, setPaletteQuery] = useState("");
+	const needle = paletteQuery.trim().toLowerCase();
+	const visiblePalettes = PALETTES.filter(
+		(palette) =>
+			palette.id === appearance.palette ||
+			needle === "" ||
+			palette.name.toLowerCase().includes(needle),
+	);
 
 	return (
 		<PreferencesSection
@@ -231,12 +243,23 @@ export function PreferencesAppearance() {
 				/>
 			</PreferenceRow>
 
-			<PreferenceRow label="Palette" hint="The colours used across the site.">
+			<PreferenceRow
+				label="Palette"
+				hint="The colours used across the site. Most come in light and dark."
+			>
+				<Input
+					type="search"
+					value={paletteQuery}
+					onChange={(event) => setPaletteQuery(event.target.value)}
+					placeholder="Search palettes…"
+					aria-label="Search palettes"
+					className="max-w-xs"
+				/>
 				<ChoiceGroup
 					label="Palette"
 					className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
 				>
-					{PALETTES.map((palette) => (
+					{visiblePalettes.map((palette) => (
 						<PaletteCard
 							key={palette.id}
 							paletteId={palette.id}
@@ -245,6 +268,23 @@ export function PreferencesAppearance() {
 						/>
 					))}
 				</ChoiceGroup>
+				{visiblePalettes.length === 0 ? (
+					<p className="text-muted-foreground text-sm">
+						No palette matches “{paletteQuery}”.
+					</p>
+				) : null}
+				<p className="text-muted-foreground text-xs">
+					Most palettes are presets from{" "}
+					<a
+						href="https://tweakcn.com"
+						target="_blank"
+						rel="noreferrer"
+						className="underline"
+					>
+						tweakcn
+					</a>
+					, lightly adjusted so text stays easy to read.
+				</p>
 			</PreferenceRow>
 
 			<FontPicker
@@ -310,6 +350,46 @@ export function PreferencesAppearance() {
 						updatePreference("appearance", "lineSpacing", spacing)
 					}
 				/>
+			</PreferenceRow>
+
+			<PreferenceRow
+				label="Corners"
+				hint="How round boxes, buttons and inputs are. None is the club's sharp look."
+			>
+				<ChoiceGroup
+					label="Corners"
+					className="grid grid-cols-3 gap-2 sm:grid-cols-6"
+				>
+					{RADIUS_OPTIONS.map((option) => (
+						<OptionCard
+							key={option.id}
+							label={`${option.label} corners`}
+							selected={appearance.radius === option.id}
+							onSelect={() =>
+								updatePreference("appearance", "radius", option.id)
+							}
+						>
+							{/* SVG, because the radius preference squares every CSS box. */}
+							<svg
+								viewBox="0 0 32 32"
+								className="size-8 text-foreground"
+								aria-hidden
+							>
+								<rect
+									x="2"
+									y="2"
+									width="28"
+									height="28"
+									rx={Number.parseFloat(option.value) * 16}
+									fill="none"
+									stroke="currentColor"
+									strokeWidth="2"
+								/>
+							</svg>
+							<span className="font-medium text-sm">{option.label}</span>
+						</OptionCard>
+					))}
+				</ChoiceGroup>
 			</PreferenceRow>
 
 			<AppearancePreview />

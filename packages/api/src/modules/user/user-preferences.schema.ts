@@ -10,6 +10,7 @@ export const MyPreferencesSchema = zod.object({
 		fontReading: zod.string(),
 		textSize: zod.string(),
 		lineSpacing: zod.string(),
+		radius: zod.string(),
 	}),
 	accessibility: zod.object({ motion: zod.string(), contrast: zod.string() }),
 	reading: zod.object({ spoilers: zod.string() }),

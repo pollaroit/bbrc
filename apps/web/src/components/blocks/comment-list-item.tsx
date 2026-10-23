@@ -444,9 +444,7 @@ function CommentListItemViewInner({
 
 	if (isCompact && !isThread) {
 		return (
-			<div
-				className={cn("rounded-none border bg-muted/20 px-3 py-2", className)}
-			>
+			<div className={cn("border bg-muted/20 px-3 py-2", className)}>
 				{body}
 			</div>
 		);

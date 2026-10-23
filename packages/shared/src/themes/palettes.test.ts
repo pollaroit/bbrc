@@ -2,17 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildAppearanceCss } from "../preferences";
-import {
-	compositeOver,
-	contrastOn,
-	contrastRgb,
-	type Oklch,
-	oklch,
-	oklchToSrgb,
-} from "./oklch";
+import { paletteContrastProblems } from "./contrast";
 import {
 	buildPalettesCss,
 	PALETTES,
+	type PaletteDefinition,
 	type PaletteMode,
 	paletteTokens,
 	STATUS_TOKENS,
@@ -61,25 +55,35 @@ const REQUIRED_TOKENS = [
  * Existing looks we have chosen not to change. The default dark palette's
  * button blue is dark, so using it as text (`text-primary` links) is below 3:1.
  */
-const KNOWN_EXCEPTIONS = new Set(["default (dark): primary on background"]);
+const KNOWN_EXCEPTIONS = new Set([
+	"default (dark): primary on background: 2.63 (needs 3)",
+]);
 
 const cases = PALETTES.flatMap((palette) =>
 	palette.modes.map((mode) => ({ palette, mode: mode as PaletteMode })),
 );
 
-function toneOf(palette: (typeof PALETTES)[number], mode: PaletteMode) {
-	const tone = mode === "dark" ? palette.dark : palette.light;
-	if (!tone) {
-		throw new Error(`${palette.id} has no ${mode} tone`);
+function definitionOf(
+	palette: (typeof PALETTES)[number],
+	mode: PaletteMode,
+): PaletteDefinition {
+	const definition = mode === "dark" ? palette.dark : palette.light;
+	if (!definition) {
+		throw new Error(`${palette.id} has no ${mode} definition`);
 	}
-	return tone;
+	return definition;
 }
 
 describe("palettes", () => {
+	test("there are presets beyond the default", () => {
+		expect(PALETTES.length).toBeGreaterThan(10);
+	});
+
 	test("every palette defines the modes it claims", () => {
 		for (const palette of PALETTES) {
+			expect(palette.modes.length).toBeGreaterThan(0);
 			for (const mode of palette.modes) {
-				expect(toneOf(palette, mode)).toBeDefined();
+				expect(definitionOf(palette, mode)).toBeDefined();
 			}
 		}
 	});
@@ -91,7 +95,7 @@ describe("palettes", () => {
 
 	for (const { palette, mode } of cases) {
 		const label = `${palette.id} (${mode})`;
-		const tokens = paletteTokens(toneOf(palette, mode), mode);
+		const tokens = paletteTokens(definitionOf(palette, mode), mode);
 
 		test(`${label} defines every token`, () => {
 			for (const name of REQUIRED_TOKENS) {
@@ -99,72 +103,11 @@ describe("palettes", () => {
 			}
 		});
 
-		test(`${label} keeps text readable`, () => {
-			const t = (name: string) => tokens[name] as Oklch;
-			const pairs: [string, Oklch, Oklch, number][] = [
-				["foreground on background", t("foreground"), t("background"), 7],
-				["card-foreground on card", t("card-foreground"), t("card"), 7],
-				["foreground on muted", t("foreground"), t("muted"), 4.5],
-				["foreground on accent", t("foreground"), t("accent"), 4.5],
-				["foreground on secondary", t("foreground"), t("secondary"), 4.5],
-				[
-					"muted-foreground on background",
-					t("muted-foreground"),
-					t("background"),
-					4.5,
-				],
-				["muted-foreground on card", t("muted-foreground"), t("card"), 4.5],
-				["muted-foreground on muted", t("muted-foreground"), t("muted"), 4.5],
-				[
-					"primary-foreground on primary",
-					t("primary-foreground"),
-					t("primary"),
-					4.5,
-				],
-				["primary on background", t("primary"), t("background"), 3],
-			];
-			for (const [name, fg, bg, min] of pairs) {
-				if (KNOWN_EXCEPTIONS.has(`${label}: ${name}`)) {
-					continue;
-				}
-				const ratio = contrastOn(fg, bg);
-				expect(`${name}: ${ratio >= min ? "ok" : ratio.toFixed(2)}`).toBe(
-					`${name}: ok`,
-				);
-			}
-		});
-
-		test(`${label} keeps status colours readable`, () => {
-			const background = tokens.background as Oklch;
-			const card = tokens.card as Oklch;
-			for (const name of [
-				"success",
-				"warning",
-				"info",
-				"destructive",
-				"violet",
-				"pink",
-			]) {
-				const mid = tokens[name] as Oklch;
-				const ink = tokens[`${name}-ink`] as Oklch;
-				for (const backdrop of [background, card]) {
-					// Ink text on a `bg-{name}/15` surface, blended the way browsers do.
-					const surface = compositeOver(
-						oklch(mid.l, mid.c, mid.h, 0.15),
-						backdrop,
-					);
-					const ratio = contrastRgb(oklchToSrgb(ink), surface);
-					expect(`${name} ink: ${ratio >= 4.5 ? "ok" : ratio.toFixed(2)}`).toBe(
-						`${name} ink: ok`,
-					);
-				}
-				// Icons and borders drawn in the mid colour need 3:1, amber is a known exception.
-				const iconMin = name === "warning" ? 1.8 : 3;
-				const ratio = contrastOn(mid, background);
-				expect(
-					`${name} icon: ${ratio >= iconMin ? "ok" : ratio.toFixed(2)}`,
-				).toBe(`${name} icon: ok`);
-			}
+		test(`${label} is readable`, () => {
+			const problems = paletteContrastProblems(tokens).filter(
+				(problem) => !KNOWN_EXCEPTIONS.has(`${label}: ${problem}`),
+			);
+			expect(problems).toEqual([]);
 		});
 	}
 
