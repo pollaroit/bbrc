@@ -6,6 +6,8 @@ import { getOgFonts } from "./fonts";
 export type OgFact = {
 	label: string;
 	value: string;
+	/** Small muted line under the value, e.g. "from 3 of 5 books". */
+	hint?: string;
 	/** Optional visual under the value. */
 	meter?:
 		| { kind: "rating"; value: number }
@@ -38,7 +40,7 @@ const WIDTH = 1200;
 const HEIGHT = 630;
 const FRAME = 28;
 const HEADER_H = 64;
-const FOOTER_H = 140;
+const FOOTER_H = 152;
 
 const INK = "#fafafa";
 const MUTED = "rgba(250, 250, 250, 0.6)";
@@ -401,7 +403,7 @@ export async function renderOgImage(
 									justifyContent: "flex-start",
 									flex: 1,
 									minWidth: 0,
-									padding: "24px 28px 0",
+									padding: "20px 28px 0",
 									borderLeft: index === 0 ? "none" : line,
 								}}
 							>
@@ -436,6 +438,18 @@ export async function renderOgImage(
 									<RatingBlocks value={fact.meter.value} />
 								) : fact.meter?.kind === "progress" ? (
 									<ProgressBar ratio={fact.meter.ratio} />
+								) : null}
+								{fact.hint ? (
+									<span
+										style={{
+											marginTop: 8,
+											fontSize: 16,
+											color: MUTED,
+											whiteSpace: "nowrap",
+										}}
+									>
+										{fact.hint}
+									</span>
 								) : null}
 							</div>
 						))

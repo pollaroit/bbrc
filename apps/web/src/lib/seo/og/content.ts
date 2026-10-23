@@ -4,7 +4,10 @@ import { loadAuthorCatalog } from "@bbrc/api/modules/author/author-catalog";
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
 import { getFeedbackBySlug } from "@bbrc/api/modules/feedback/feedback.service";
-import { getGoalBySlug } from "@bbrc/api/modules/goal/goal.service";
+import {
+	getGoalBySlug,
+	listGoalsByUsername,
+} from "@bbrc/api/modules/goal/goal.service";
 import {
 	LEADERBOARD_KIND_META,
 	LEADERBOARD_PERIOD_META,
@@ -22,10 +25,14 @@ import { contentPlainText, formatSittingSlugLabel } from "@bbrc/shared";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { parseLeaderboardPathname } from "@/lib/leaderboard/paths";
 import { postAttachmentLabel } from "@/lib/post-attachment-label";
-import { truncateDescription } from "@/lib/seo/metadata";
 import { DEFAULT_DESCRIPTION } from "@/lib/seo/site";
 import { db } from "@/services";
-import { formatOgDate, truncateOgLine } from "./helpers";
+import {
+	formatOgClubDateTime,
+	formatOgDate,
+	truncateAtWord,
+	truncateOgLine,
+} from "./helpers";
 import { ogImageData, ogImagesData } from "./images";
 import type { OgFact, OgImageContent } from "./template";
 
@@ -33,22 +40,37 @@ const anonymousSession = null;
 
 const num = (value: number) => value.toLocaleString("en-US");
 
-function fact(label: string, value: string, meter?: OgFact["meter"]): OgFact {
-	return { label, value, meter };
+function fact(
+	label: string,
+	value: string,
+	meter?: OgFact["meter"],
+	hint?: string,
+): OgFact {
+	return { label, value, meter, hint };
 }
 
-/** Drops markdown link and emphasis syntax so excerpts read as prose. */
+const rating = (value: number): OgFact["meter"] => ({ kind: "rating", value });
+const outOfFive = (value: number) => `${value.toFixed(1)} / 5`;
+
+/** Turns a markdown/HTML-ish description into plain prose. */
 function stripMarkdown(text: string): string {
 	return text
-		.replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
-		.replace(/[*_`#>]+/g, "")
+		.replace(/<br\s*\/?>/gi, " ")
+		.replace(/<[^>]+>/g, "")
+		.replace(/&nbsp;/g, " ")
+		.replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+		.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+		.replace(/\[\d+\]/g, "")
+		.replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, "")
+		.replace(/^[-=_*]{3,}\s*$/gm, " ")
+		.replace(/(\*\*|__|\*|_|`)/g, "")
 		.replace(/\s+/g, " ")
 		.trim();
 }
 
 /** Plain text from stored rich content, never the raw JSON. */
-function plain(raw: string | null | undefined, max = 220): string {
-	return raw ? truncateOgLine(contentPlainText(raw), max) : "";
+function plain(raw: string | null | undefined, max = 170): string {
+	return raw ? truncateAtWord(contentPlainText(raw), max) : "";
 }
 
 function notFound(kind: string, what: string): OgImageContent {
@@ -349,6 +371,59 @@ const BOOK_TAB_OG: Record<
 	},
 };
 
+/** The fourth card changes with the tab: each page gets the figure that fits it. */
+async function bookTabFact(
+	tab: string | undefined,
+	book: { slug: string; authors: string[]; olid: string | null },
+	reviewCount: number,
+): Promise<OgFact | null> {
+	const where = { book: { slug: book.slug } };
+
+	switch (tab) {
+		case "documents": {
+			const count = await db.document.count({
+				where: { ...where, status: "approved" },
+			});
+			return fact("Documents", num(count));
+		}
+		case "shelves": {
+			const count = await db.shelfBook.count({
+				where: { ...where, shelf: { status: "active" } },
+			});
+			return fact("On shelves", num(count));
+		}
+		case "reads": {
+			const count = await db.read.count({ where });
+			return fact("Reads", num(count));
+		}
+		case "favorites": {
+			const count = await db.favorite.count({ where });
+			return fact("Favorites", num(count));
+		}
+		case "quizzes": {
+			const count = await db.quizSubmission.count({
+				where: { status: "submitted", quiz: { book: { slug: book.slug } } },
+			});
+			return fact("Quiz scores", num(count));
+		}
+		case "editions": {
+			if (!book.olid) return null;
+			const editions = await fetchWorkEditionTotalCount(book.olid);
+			return editions != null && editions > 0
+				? fact("Editions", num(editions))
+				: null;
+		}
+		case "more": {
+			const others = await db.book.count({
+				where: { authors: { hasSome: book.authors }, slug: { not: book.slug } },
+			});
+			return fact("More by author", num(others));
+		}
+		default:
+			return fact("Reviews", num(reviewCount));
+	}
+}
+
 async function resolveBookOg(
 	slug: string,
 	tab?: string,
@@ -360,50 +435,51 @@ async function resolveBookOg(
 			db.feedback.count({ where: { book: { slug } } }),
 			coverMedia(book.coverId),
 		]);
+		const tabMeta = tab && tabIsLeaf ? BOOK_TAB_OG[tab] : undefined;
+		const fourth =
+			(await bookTabFact(tabMeta ? tab : undefined, book, reviewCount)) ??
+			fact("Reviews", num(reviewCount));
 
 		const facts: OgFact[] = [];
 		if (book.averageRating != null) {
 			facts.push(
-				fact("Club rating", `${book.averageRating.toFixed(1)} / 5`, {
-					kind: "rating",
-					value: book.averageRating,
-				}),
+				fact(
+					"Club rating",
+					outOfFive(book.averageRating),
+					rating(book.averageRating),
+				),
 			);
 		} else if (book.openLibraryRating != null) {
 			facts.push(
-				fact("Open Library", `${book.openLibraryRating.toFixed(1)} / 5`, {
-					kind: "rating",
-					value: book.openLibraryRating,
-				}),
+				fact(
+					"Open Library",
+					outOfFive(book.openLibraryRating),
+					rating(book.openLibraryRating),
+				),
 			);
 		}
-		if (book.pages) {
-			facts.push(fact("Pages", num(book.pages)));
+		const length = [
+			book.pages ? `${num(book.pages)} p` : null,
+			book.publishedIn ? String(book.publishedIn) : null,
+		].filter((part): part is string => part != null);
+		if (length.length > 0) {
+			facts.push(fact("Length · Published", length.join(" · ")));
 		}
-		if (book.publishedIn) {
-			facts.push(fact("First published", String(book.publishedIn)));
-		}
-		facts.push(fact("Reviews", num(reviewCount)));
+		facts.push(fourth);
 
-		const tabMeta = tab && tabIsLeaf ? BOOK_TAB_OG[tab] : undefined;
-
-		if (tab === "editions" && tabMeta && book.olid) {
-			const editions = await fetchWorkEditionTotalCount(book.olid);
-			if (editions != null && editions > 0) {
-				facts.splice(3, 1, fact("Editions", num(editions)));
-			}
-		}
+		const description = stripMarkdown(book.excerpt ?? "");
 
 		return {
 			kind: "Book",
 			title: book.title,
 			subtitle: formatBookAuthors(book.authors),
-			body: truncateDescription(
-				tabMeta
-					? tabMeta.description(book.title)
-					: stripMarkdown(book.excerpt ?? "") ||
+			body: tabMeta
+				? tabMeta.description(book.title)
+				: truncateAtWord(
+						description ||
 							"In the BBRC library, with member reviews and reads.",
-			),
+						220,
+					),
 			badge: tabMeta?.label ?? book.status.replaceAll("_", " "),
 			media,
 			facts: facts.slice(0, 4),
@@ -415,13 +491,31 @@ async function resolveBookOg(
 
 async function resolveAuthorDetailOg(slug: string): Promise<OgImageContent> {
 	const author = await getAuthorPage(slug, db);
-	const topFan = author.biggestFans[0];
-	const books = await db.book.findMany({
-		where: { authors: { has: author.name } },
-		orderBy: { createdAt: "desc" },
-		take: 6,
-		select: { coverId: true },
-	});
+	const by = { authors: { has: author.name } };
+	const onBook = { book: by };
+
+	const [books, reads, readers, reviews] = await Promise.all([
+		db.book.findMany({
+			where: by,
+			orderBy: { createdAt: "desc" },
+			select: { pages: true, coverId: true },
+		}),
+		db.read.count({ where: onBook }),
+		db.read.findMany({
+			where: onBook,
+			distinct: ["userId"],
+			select: { userId: true },
+		}),
+		db.feedback.aggregate({
+			where: onBook,
+			_avg: { rating: true },
+			_count: { _all: true },
+		}),
+	]);
+
+	const pages = books.reduce((sum, row) => sum + (row.pages ?? 0), 0);
+	const average = reviews._avg.rating;
+	const perBook = books.length > 0 ? reads / books.length : 0;
 
 	return {
 		kind: "Author",
@@ -430,14 +524,22 @@ async function resolveAuthorDetailOg(slug: string): Promise<OgImageContent> {
 		body: "Club reads, reviews and related authors.",
 		media: await coversMedia(books.map((row) => row.coverId)),
 		facts: [
-			fact("Catalog books", num(author.bookCount)),
-			topFan
-				? fact("Top fan average", `${topFan.averageRating.toFixed(1)} / 5`, {
-						kind: "rating",
-						value: topFan.averageRating,
-					})
-				: fact("Top fan", "None yet"),
-			fact("Similar authors", num(author.similarAuthors.length)),
+			fact("Total pages", num(pages)),
+			average != null
+				? fact(
+						"Avg rating",
+						outOfFive(average),
+						rating(average),
+						`from ${num(reviews._count._all)} ${reviews._count._all === 1 ? "review" : "reviews"}`,
+					)
+				: fact("Avg rating", "No reviews"),
+			fact("Readers", num(readers.length)),
+			fact(
+				"Total reads",
+				num(reads),
+				undefined,
+				`${perBook.toFixed(1)} per book`,
+			),
 		],
 	};
 }
@@ -445,23 +547,45 @@ async function resolveAuthorDetailOg(slug: string): Promise<OgImageContent> {
 async function resolveSeriesDetailOg(slug: string): Promise<OgImageContent> {
 	const series = await getSeriesBySlug(slug, db);
 	const first = series.books[0]?.book;
+	const volumes = await db.book.findMany({
+		where: { seriesMembership: { series: { slug } } },
+		select: { pages: true, averageRating: true },
+	});
+
+	const pages = volumes.reduce((sum, row) => sum + (row.pages ?? 0), 0);
+	const rated = volumes.filter((row) => row.averageRating != null);
+	const average =
+		rated.length > 0
+			? rated.reduce((sum, row) => sum + (row.averageRating ?? 0), 0) /
+				rated.length
+			: null;
+
+	const facts: OgFact[] = [
+		fact("Volumes", num(series.bookCount)),
+		fact("Total pages", num(pages)),
+	];
+	if (average != null) {
+		facts.push(
+			fact(
+				"Club rating",
+				outOfFive(average),
+				rating(average),
+				`${rated.length} of ${volumes.length} rated`,
+			),
+		);
+	}
 
 	return {
 		kind: "Series",
 		title: series.title,
 		subtitle: first ? formatBookAuthors(first.authors) : undefined,
-		body: truncateOgLine(
+		body: truncateAtWord(
 			series.description?.trim() ||
 				"Numbered club reading order, from the first volume on.",
 			200,
 		),
 		media: await coversMedia(series.books.map((entry) => entry.book.coverId)),
-		facts: [
-			fact("Volumes", num(series.bookCount)),
-			first?.publishedIn != null
-				? fact("Volume 1", String(first.publishedIn))
-				: fact("Order", "Club order"),
-		],
+		facts,
 	};
 }
 
@@ -626,19 +750,49 @@ async function resolveMemberOg(
 ): Promise<OgImageContent> {
 	try {
 		const user = await getUserByUsername({ username }, db);
-		const [posts, reviews, reads, sittings, shelves, goals] = await Promise.all(
-			[
-				db.post.count({ where: { author: { username } } }),
-				db.feedback.count({ where: { author: { username } } }),
-				db.read.count({ where: { user: { username } } }),
-				db.participation.count({ where: { user: { username } } }),
-				db.shelf.count({ where: { user: { username }, status: "active" } }),
-				db.goal.count({ where: { user: { username } } }),
-			],
+		const byUser = { user: { username } };
+		const [
+			posts,
+			comments,
+			reviews,
+			givenRatings,
+			readRows,
+			sittings,
+			shelves,
+			goalList,
+		] = await Promise.all([
+			db.post.count({ where: { author: { username } } }),
+			db.comment.count({ where: { author: { username } } }),
+			db.feedback.count({ where: { author: { username } } }),
+			db.feedback.aggregate({
+				where: { author: { username } },
+				_avg: { rating: true },
+			}),
+			db.read.findMany({
+				where: byUser,
+				select: { book: { select: { pages: true } } },
+			}),
+			db.participation.count({ where: byUser }),
+			db.shelf.count({ where: { ...byUser, status: "active" } }),
+			listGoalsByUsername(username, null, db),
+		]);
+
+		const reads = readRows.length;
+		const pagesRead = readRows.reduce(
+			(sum, row) => sum + (row.book.pages ?? 0),
+			0,
 		);
+		const avgGiven = givenRatings._avg.rating;
+		const goals = goalList.items.length;
+		const goalsDone = goalList.items.filter((item) => item.isComplete).length;
+		const goalsActive = goalList.active.length;
 
 		const bio = plain(user.profile.bio, 160);
 		const levels = `${user.xpLevel.label} · ${user.rpLevel.label}`;
+		const givenFact =
+			avgGiven != null
+				? fact("Avg rating given", outOfFive(avgGiven), rating(avgGiven))
+				: fact("Avg rating given", "No ratings");
 
 		const facts: Record<MemberSection, OgFact[]> = {
 			overview: [
@@ -647,12 +801,26 @@ async function resolveMemberOg(
 				fact("Reads", num(reads)),
 				fact("Sittings", num(sittings)),
 			],
-			posts: [fact("Posts", num(posts)), fact("XP", num(user.xp))],
-			feedbacks: [fact("Reviews", num(reviews)), fact("Reads", num(reads))],
-			stats: [
-				fact("Reads", num(reads)),
+			posts: [
+				fact("Posts", num(posts)),
+				fact("Comments", num(comments)),
+				fact("XP", num(user.xp)),
+			],
+			feedbacks: [
 				fact("Reviews", num(reviews)),
-				fact("Sittings", num(sittings)),
+				givenFact,
+				fact("Reads", num(reads)),
+			],
+			stats: [
+				fact("Books read", num(reads)),
+				fact("Pages read", num(pagesRead)),
+				givenFact,
+				fact(
+					"Best streak",
+					`${user.readingStreak.best} ${user.readingStreak.best === 1 ? "sitting" : "sittings"}`,
+					undefined,
+					`now ${user.readingStreak.current}`,
+				),
 			],
 			xp: [
 				fact("XP", num(user.xp)),
@@ -668,8 +836,14 @@ async function resolveMemberOg(
 				fact("Public shelves", num(shelves)),
 				fact("Reads", num(reads)),
 			],
-			goals: [fact("Reading goals", num(goals)), fact("Reads", num(reads))],
+			goals: [
+				fact("Goals", num(goals)),
+				fact("Completed", num(goalsDone)),
+				fact("In progress", num(goalsActive)),
+			],
 		};
+
+		const statsLine = `${num(reviews)} ${reviews === 1 ? "review" : "reviews"} · ${num(sittings)} ${sittings === 1 ? "sitting" : "sittings"} · ${num(shelves)} ${shelves === 1 ? "shelf" : "shelves"}`;
 
 		return {
 			kind: "Member",
@@ -678,7 +852,12 @@ async function resolveMemberOg(
 				section === "overview"
 					? `@${user.username} · ${levels}`
 					: `@${user.username}`,
-			body: section === "overview" && bio ? bio : undefined,
+			body:
+				section === "overview" && bio
+					? bio
+					: section === "stats"
+						? statsLine
+						: undefined,
 			badge:
 				MEMBER_SECTION_BADGE[section] ?? (user.isAdmin ? "Admin" : undefined),
 			media: await avatarMedia(user),
@@ -815,7 +994,7 @@ async function resolveSittingOg(
 							fact("Voted", `${poll.voterCount} of ${participants}`),
 							fact("Books", num(options.length)),
 							fact("Picks each", picks),
-							fact("Closes", formatOgDate(poll.deadline)),
+							fact("Closes", formatOgClubDateTime(poll.deadline)),
 						]
 					: [
 							fact("Voted", `${poll.voterCount} of ${participants}`),
@@ -853,7 +1032,10 @@ async function resolveSittingOg(
 			facts.push(
 				fact("Books on poll", num(options.length)),
 				fact("Voted", poll ? `${poll.voterCount} of ${participants}` : "—"),
-				fact("Voting closes", formatOgDate(poll?.deadline ?? sitting.deadline)),
+				fact(
+					"Voting closes",
+					formatOgClubDateTime(poll?.deadline ?? sitting.deadline),
+				),
 			);
 		} else {
 			facts.push(
@@ -863,7 +1045,7 @@ async function resolveSittingOg(
 				}),
 				fact(
 					sitting.status === "finished" ? "Ended" : "Reading ends",
-					formatOgDate(sitting.deadline),
+					formatOgClubDateTime(sitting.deadline),
 				),
 				sitting.stats.averageRating != null
 					? fact(
