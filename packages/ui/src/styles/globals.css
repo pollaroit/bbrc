@@ -109,15 +109,17 @@
 	 * Corner rounding is a member preference. "None" (the default, and the
 	 * club's own look) squares everything, including pills and avatars.
 	 */
-	html:not([data-radius]) *,
-	html:not([data-radius]) *::before,
-	html:not([data-radius]) *::after,
-	html[data-radius="none"] *,
-	html[data-radius="none"] *::before,
-	html[data-radius="none"] *::after {
+	html:not([data-radius]) *:not([data-round]),
+	html:not([data-radius]) *:not([data-round])::before,
+	html:not([data-radius]) *:not([data-round])::after,
+	html[data-radius="none"] *:not([data-round]),
+	html[data-radius="none"] *:not([data-round])::before,
+	html[data-radius="none"] *:not([data-round])::after {
 		/* biome-ignore lint/complexity/noImportantStyles: radius "none" squares every element */
 		border-radius: 0 !important;
 	}
+
+	/* Elements marked data-round stay round at every setting (circular flags). */
 
 	/* Boxes built from plain borders follow the member's radius too. */
 	html[data-radius]:not([data-radius="none"]) .border {
