@@ -1,4 +1,5 @@
 import { protectedProcedure, publicProcedure } from "../../procedures";
+import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import {
 	AddFavoriteInputSchema,
 	AddFavoriteOutputSchema,
@@ -52,6 +53,7 @@ export const favoriteRouter = {
 			getBookFavoriteState(input, context.session.user.id, context.db),
 		),
 	add: protectedProcedure
+		.use(checkAchievementsAfter("library"))
 		.input(AddFavoriteInputSchema)
 		.output(AddFavoriteOutputSchema)
 		.handler(async ({ input, context }) =>

@@ -22,7 +22,13 @@ import { getShelfBySlug } from "@bbrc/api/modules/shelf/shelf.service";
 import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.schema";
 import { getSittingBySlug } from "@bbrc/api/modules/sitting/sitting.service";
 import { getUserByUsername } from "@bbrc/api/modules/user/user.service";
-import { contentPlainText, formatSittingSlugLabel } from "@bbrc/shared";
+import {
+	ACHIEVEMENT_CATEGORY_LABELS,
+	ACHIEVEMENTS,
+	contentPlainText,
+	describeTier,
+	formatSittingSlugLabel,
+} from "@bbrc/shared";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { parseLeaderboardPathname } from "@/lib/leaderboard/paths";
 import { postAttachmentLabel } from "@/lib/post-attachment-label";
@@ -764,7 +770,8 @@ type MemberSection =
 	| "xp"
 	| "rp"
 	| "shelves"
-	| "goals";
+	| "goals"
+	| "achievements";
 
 const MEMBER_SECTION_BADGE: Record<MemberSection, string | undefined> = {
 	overview: undefined,
@@ -775,6 +782,7 @@ const MEMBER_SECTION_BADGE: Record<MemberSection, string | undefined> = {
 	rp: "Reading points",
 	shelves: "Shelves",
 	goals: "Goals",
+	achievements: "Achievements",
 };
 
 async function resolveMemberOg(
@@ -827,6 +835,8 @@ async function resolveMemberOg(
 				? fact("Avg rating given", outOfFive(avgGiven), rating(avgGiven))
 				: fact("Avg rating given", "No ratings");
 
+		const achievementsEarned = await countMemberAchievements(username);
+
 		const facts: Record<MemberSection, OgFact[]> = {
 			overview: [
 				fact("XP", num(user.xp)),
@@ -873,6 +883,11 @@ async function resolveMemberOg(
 				fact("Goals", num(goals)),
 				fact("Completed", num(goalsDone)),
 				fact("In progress", num(goalsActive)),
+			],
+			achievements: [
+				fact("Achievements", num(achievementsEarned)),
+				fact("Reads", num(reads)),
+				fact("Sittings", num(sittings)),
 			],
 		};
 
@@ -1116,6 +1131,94 @@ async function resolveSittingOg(
 }
 
 // ---------------------------------------------------------------------------
+// Achievements
+// ---------------------------------------------------------------------------
+
+/** Distinct achievements a member has earned; 0 if the table is unavailable. */
+async function countMemberAchievements(username: string): Promise<number> {
+	try {
+		const rows = await db.userAchievement.findMany({
+			where: { user: { username }, revokedAt: null },
+			select: { achievementKey: true },
+			distinct: ["achievementKey"],
+		});
+		return rows.length;
+	} catch {
+		return 0;
+	}
+}
+
+async function resolveAchievementsListOg(): Promise<OgImageContent> {
+	const listed = ACHIEVEMENTS.filter((item) => !item.isHidden);
+	const tiers = ACHIEVEMENTS.reduce(
+		(sum, item) => sum + item.thresholds.length,
+		0,
+	);
+	let earned = 0;
+	try {
+		earned = await db.userAchievement.count({ where: { revokedAt: null } });
+	} catch {
+		earned = 0;
+	}
+
+	return {
+		kind: "Achievements",
+		title: "Achievements",
+		body: "Badges for what you read, finish and share. Pin your favorites to your profile.",
+		facts: [
+			fact("Achievements", num(listed.length)),
+			fact("Badges to earn", num(tiers)),
+			fact("Hidden", num(ACHIEVEMENTS.length - listed.length)),
+			fact("Earned so far", num(earned)),
+		],
+	};
+}
+
+async function resolveAchievementOg(slug: string): Promise<OgImageContent> {
+	const definition = ACHIEVEMENTS.find((item) => item.slug === slug);
+	if (!definition) {
+		return notFound("Achievement", "Achievement");
+	}
+	if (definition.isHidden) {
+		return {
+			kind: "Achievements",
+			title: "Hidden achievement",
+			body: "Earn it to find out what it is.",
+			badge: "Hidden",
+		};
+	}
+
+	let earnedBy = 0;
+	try {
+		const rows = await db.userAchievement.findMany({
+			where: {
+				achievementKey: definition.key,
+				revokedAt: null,
+				user: { isHidden: false },
+			},
+			select: { userId: true },
+			distinct: ["userId"],
+		});
+		earnedBy = rows.length;
+	} catch {
+		earnedBy = 0;
+	}
+
+	const last = definition.thresholds.at(-1) ?? 0;
+	return {
+		kind: "Achievement",
+		title: definition.name,
+		body: describeTier(definition, 1),
+		badge: ACHIEVEMENT_CATEGORY_LABELS[definition.category],
+		facts: [
+			fact("Tiers", num(definition.thresholds.length)),
+			fact("Top tier", num(last)),
+			fact("Earned by", num(earnedBy)),
+		],
+	};
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
@@ -1134,6 +1237,7 @@ export async function resolveOgImageContent(
 	if (staticKey === "sittings") return resolveSittingsListOg();
 	if (staticKey === "series") return resolveSeriesListOg();
 	if (staticKey === "users") return resolveMembersListOg();
+	if (staticKey === "achievements") return resolveAchievementsListOg();
 	if (staticKey === "authors") return resolveAuthorsListOg();
 	if (staticKey === "leaderboard" || staticKey.startsWith("leaderboard/")) {
 		const route = parseLeaderboardPathname(`/${staticKey}`);
@@ -1197,6 +1301,10 @@ export async function resolveOgImageContent(
 		return resolveBookOg(slug, rest[0], rest.length === 1);
 	}
 
+	if (section === "achievements") {
+		return resolveAchievementOg(slug);
+	}
+
 	if (section === "posts") {
 		if (rest[0] === "comments" && rest[1]) {
 			return resolveCommentOg({
@@ -1224,6 +1332,7 @@ export async function resolveOgImageContent(
 			xp: "xp",
 			rp: "rp",
 			goals: "goals",
+			achievements: "achievements",
 		};
 		return resolveMemberOg(slug, sections[rest[0] ?? ""] ?? "overview");
 	}

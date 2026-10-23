@@ -1,5 +1,6 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
 import { revalidateFeedsIsr, revalidatePostIsr } from "../../revalidate-isr";
+import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import {
 	CreatePostInputSchema,
 	CreatePostOutputSchema,
@@ -43,6 +44,7 @@ export const postRouter = {
 			getPostAttachmentPreview(input, context.db),
 		),
 	create: notBannedProcedure
+		.use(checkAchievementsAfter("posts"))
 		.input(CreatePostInputSchema)
 		.output(CreatePostOutputSchema)
 		.handler(async ({ input, context }) => {

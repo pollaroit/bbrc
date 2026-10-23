@@ -4,6 +4,7 @@ import {
 	publicProcedure,
 } from "../../procedures";
 import { revalidateBookIsr } from "../../revalidate-isr";
+import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import {
 	CreateFeedbackInputSchema,
 	CreateFeedbackOutputSchema,
@@ -56,6 +57,7 @@ export const feedbackRouter = {
 			getBookFeedbackState(input, context.session.user.id, context.db),
 		),
 	create: notBannedProcedure
+		.use(checkAchievementsAfter("reviews"))
 		.input(CreateFeedbackInputSchema)
 		.output(CreateFeedbackOutputSchema)
 		.handler(async ({ input, context }) => {

@@ -14,6 +14,7 @@ export const NOTIFICATION_KINDS = [
 	"document_submitted",
 	"document_approved",
 	"document_rejected",
+	"achievement_earned",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -33,6 +34,7 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
 	document_submitted: "Document submitted",
 	document_approved: "Document approved",
 	document_rejected: "Document rejected",
+	achievement_earned: "Achievement earned",
 };
 
 export const NOTIFICATION_KIND_GROUPS = {
@@ -47,6 +49,7 @@ export const NOTIFICATION_KIND_GROUPS = {
 		"reaction_on_your_post",
 		"document_approved",
 		"document_rejected",
+		"achievement_earned",
 	] as const satisfies readonly NotificationKind[],
 	sitting: [
 		"sitting_poll_started",

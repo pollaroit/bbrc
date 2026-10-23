@@ -5,6 +5,7 @@ import {
 	splitFilterSegments,
 } from "@bbrc/shared";
 import {
+	Award,
 	BookOpen,
 	BookPlus,
 	Clapperboard,
@@ -91,6 +92,7 @@ const PROFILE_TABS = [
 	{ key: "feedbacks", label: "Feedbacks", aliases: ["reviews"] },
 	{ key: "shelves", label: "Shelves", aliases: [] },
 	{ key: "goals", label: "Goals", aliases: [] },
+	{ key: "achievements", label: "Achievements", aliases: ["badges"] },
 	{ key: "stats", label: "Stats", aliases: [] },
 	{ key: "xp", label: "XP history", aliases: [] },
 	{ key: "rp", label: "RP history", aliases: [] },
@@ -303,6 +305,16 @@ export function buildSearchCommands(): SearchCommand[] {
 			requires: {},
 			action: navigate("/sittings"),
 			suggested: true,
+		},
+		{
+			id: "achievements",
+			keyword: "achievements",
+			aliases: ["badges"],
+			label: "Achievements",
+			description: "Badges you can earn",
+			icon: Award,
+			requires: {},
+			action: navigate("/achievements"),
 		},
 		{
 			id: "reels",

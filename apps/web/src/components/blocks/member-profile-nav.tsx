@@ -20,6 +20,7 @@ type ProfileSegment =
 	| "feedbacks"
 	| "shelves"
 	| "goals"
+	| "achievements"
 	| "reels";
 
 const tabs: { segment: ProfileSegment; label: string; ownOnly?: boolean }[] = [
@@ -31,6 +32,7 @@ const tabs: { segment: ProfileSegment; label: string; ownOnly?: boolean }[] = [
 	{ segment: "feedbacks", label: "Feedbacks" },
 	{ segment: "shelves", label: "Shelves" },
 	{ segment: "goals", label: "Goals" },
+	{ segment: "achievements", label: "Achievements" },
 	{ segment: "reels", label: "Reels", ownOnly: true },
 ];
 

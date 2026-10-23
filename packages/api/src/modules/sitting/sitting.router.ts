@@ -10,6 +10,8 @@ import {
 	revalidateBooksCatalogIsr,
 	revalidateSittingIsr,
 } from "../../revalidate-isr";
+import { evaluateSittingMembersAchievements } from "../achievement/achievement.service";
+import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import {
 	CreateSittingInputSchema,
 	CreateSittingOutputSchema,
@@ -141,6 +143,7 @@ export const sittingRouter = {
 			return sitting;
 		}),
 	submitPollVotes: notBannedProcedure
+		.use(checkAchievementsAfter("votes"))
 		.input(SubmitPollVotesInputSchema)
 		.output(SubmitPollVotesOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -185,6 +188,7 @@ export const sittingRouter = {
 		.output(TransitionSittingOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await transitionSitting(input, context.db);
+			await evaluateSittingMembersAchievements(context.db, result.slug);
 			revalidateSittingIsr(context, result.slug);
 			// The chosen book's status changes with the phase, so its pages and the
 			// catalog need refreshing too.
@@ -203,6 +207,7 @@ export const sittingRouter = {
 			return result;
 		}),
 	updateMyParticipationProgress: notBannedProcedure
+		.use(checkAchievementsAfter("sittings"))
 		.input(UpdateMyParticipationProgressInputSchema)
 		.output(UpdateMyParticipationProgressOutputSchema)
 		.handler(async ({ input, context }) =>

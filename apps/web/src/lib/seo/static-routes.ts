@@ -14,6 +14,7 @@ export const STATIC_APP_ROUTES = [
 	{ path: "/shelves", changeFrequency: "daily" as const, priority: 0.85 },
 	{ path: "/sittings", changeFrequency: "daily" as const, priority: 0.9 },
 	{ path: "/users", changeFrequency: "weekly" as const, priority: 0.8 },
+	{ path: "/achievements", changeFrequency: "weekly" as const, priority: 0.7 },
 	...LEADERBOARD_SITEMAP_ROUTES,
 ] as const;
 

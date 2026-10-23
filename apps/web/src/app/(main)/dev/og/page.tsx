@@ -238,6 +238,8 @@ export default async function OgDevPage() {
 			label: "Members",
 			entries: [
 				entry("users", "People list", "/users", ""),
+				entry("achievements", "Achievements list", "/achievements", ""),
+				entry("achievement", "Achievement", "/achievements/bookworm", ""),
 				entry("user", "Member overview", u ? `/users/${u}` : null, noUser),
 				entry(
 					"user-avatar",
@@ -254,6 +256,7 @@ export default async function OgDevPage() {
 						["rp", "Reading points"],
 						["goals", "Goals"],
 						["shelves", "Shelves"],
+						["achievements", "Achievements"],
 					] as const
 				).map(([segment, label]) =>
 					entry(

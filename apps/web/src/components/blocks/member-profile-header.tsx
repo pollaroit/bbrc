@@ -11,6 +11,7 @@ import Link from "next/link";
 import { MemberProfileAbout } from "@/components/blocks/member-profile-about";
 import { MemberProfileCardDialog } from "@/components/blocks/member-profile-card-dialog";
 import { MemberProfileNumbers } from "@/components/blocks/member-profile-numbers";
+import { PinnedAchievements } from "@/components/blocks/pinned-achievements";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
 
@@ -85,6 +86,8 @@ export function MemberProfileHeader({
 							) : null}
 						</div>
 					</div>
+
+					<PinnedAchievements username={user.username} />
 
 					<MemberProfileAbout
 						profile={user.profile}

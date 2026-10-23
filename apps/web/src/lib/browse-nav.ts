@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+	Award,
 	Clapperboard,
 	Layers,
 	LayoutList,
@@ -49,6 +50,13 @@ export const browseNavItems: BrowseNavItem[] = [
 		section: "club",
 	},
 	{
+		label: "Achievements",
+		href: "/achievements" as Route,
+		icon: Award,
+		description: "Badges you can earn",
+		section: "club",
+	},
+	{
 		label: "Sittings",
 		href: "/sittings" as Route,
 		icon: Sofa,
@@ -78,7 +86,6 @@ export type BrowseNavPlaceholderItem = {
 };
 
 export const browseNavPlaceholderItems: BrowseNavPlaceholderItem[] = [
-	{ label: "Achievements", description: "Coming soon" },
 	{ label: "Club stats", description: "Coming soon" },
 ];
 

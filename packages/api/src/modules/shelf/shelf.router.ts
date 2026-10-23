@@ -7,6 +7,7 @@ import {
 	revalidateBookIsr,
 	revalidateUserShelvesIsr,
 } from "../../revalidate-isr";
+import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import { viewerFromSession } from "../user/user-visibility";
 import {
 	AddBookToShelfInputSchema,
@@ -73,6 +74,7 @@ export const shelfRouter = {
 			),
 		),
 	create: notBannedProcedure
+		.use(checkAchievementsAfter("shelves"))
 		.input(CreateShelfInputSchema)
 		.output(CreateShelfOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -120,6 +122,7 @@ export const shelfRouter = {
 			return result;
 		}),
 	addBook: notBannedProcedure
+		.use(checkAchievementsAfter("shelves"))
 		.input(AddBookToShelfInputSchema)
 		.output(AddBookToShelfOutputSchema)
 		.handler(async ({ input, context }) => {

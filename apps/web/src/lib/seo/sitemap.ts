@@ -1,4 +1,5 @@
 import type { Database } from "@bbrc/db";
+import { ACHIEVEMENTS } from "@bbrc/shared";
 import type { MetadataRoute } from "next";
 import { absoluteUrl } from "./site";
 import { STATIC_APP_ROUTES } from "./static-routes";
@@ -82,6 +83,15 @@ export async function buildAppSitemap(
 				"monthly",
 				0.5,
 			),
+		),
+		...ACHIEVEMENTS.filter((achievement) => !achievement.isHidden).map(
+			(achievement) =>
+				entry(
+					absoluteUrl(`/achievements/${achievement.slug}`),
+					now,
+					"monthly",
+					0.4,
+				),
 		),
 		...shelves.map((shelf) =>
 			entry(

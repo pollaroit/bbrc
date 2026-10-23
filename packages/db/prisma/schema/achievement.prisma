@@ -1,0 +1,34 @@
+/// One earned tier of one achievement. Achievements themselves are defined in code
+/// (`@bbrc/shared` achievements/definitions.ts); only awards live here. Awards are sticky:
+/// they stay when the activity behind them is later removed, and admins can revoke them.
+model UserAchievement {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Key from the code registry, for example `bookworm`.
+  achievementKey String @map("achievement_key")
+  /// 1-based tier within the achievement.
+  tier           Int
+  /// "" for all-time achievements, the year (for example `2026`) for yearly ones.
+  periodKey      String @default("") @map("period_key")
+
+  /// When the threshold was actually reached (can be long before the award row was created).
+  earnedAt DateTime @map("earned_at")
+
+  /// Set by an admin to take an award away; the evaluator never re-awards a revoked row.
+  revokedAt     DateTime? @map("revoked_at")
+  revokedReason String?   @map("revoked_reason")
+
+  /// Position (0 to 3) in the member's profile showcase; null when not pinned.
+  pinOrder Int? @map("pin_order")
+
+  @@unique([userId, achievementKey, tier, periodKey])
+  @@index([userId])
+  @@index([achievementKey])
+  @@map("user_achievement")
+}
