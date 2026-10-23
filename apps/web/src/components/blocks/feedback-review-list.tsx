@@ -161,6 +161,7 @@ export function FeedbackReviewList({
 													rating={entry.rating}
 													review={entry.review}
 													isSpoiler={entry.isSpoiler}
+													feedbackSlug={entry.slug}
 												/>
 												<LoadingButton
 													type="button"

@@ -1,6 +1,5 @@
 "use client";
 
-import type { GetBookFeedbackListOutput } from "@bbrc/api/modules/feedback/feedback.schema";
 import {
 	contentPlainText,
 	type FeedbackRatingStep,
@@ -31,9 +30,17 @@ import { FeedbackHalfStarRating } from "@/components/blocks/feedback-half-star-r
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { authClient } from "@/lib/auth-client";
 import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
+import {
+	applyFeedbackCreate,
+	applyFeedbackUpdate,
+	confirmFeedbackCreate,
+	myFeedbackSlug,
+	restoreFeedbackQueries,
+	snapshotFeedbackQueries,
+} from "@/lib/feedback/optimistic-feedback";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
 import { createPendingSlug } from "@/lib/optimistic/infinite-lists";
-import { orpc, queryClient } from "@/utils/orpc";
+import { orpc } from "@/utils/orpc";
 
 const FEEDBACK_REVIEW_MAX_PLAIN = 500;
 
@@ -49,6 +56,8 @@ type FeedbackFormDialogProps = {
 	onOpenChange: (open: boolean) => void;
 	mode?: "create" | "edit";
 	initialValues?: FeedbackFormInitialValues;
+	/** Slug of the review being edited, so every cached view of it can update. */
+	feedbackSlug?: string;
 	/** When false, stay on the current page after save (e.g. sitting page). */
 	navigateToReview?: boolean;
 };
@@ -59,6 +68,7 @@ export function FeedbackFormDialog({
 	onOpenChange,
 	mode = "create",
 	initialValues,
+	feedbackSlug,
 	navigateToReview = true,
 }: FeedbackFormDialogProps) {
 	const router = useRouter();
@@ -85,25 +95,6 @@ export function FeedbackFormDialog({
 		}
 	}, [open, isEdit, initialValues]);
 
-	const listKey = orpc.feedback.getBookFeedbackList.key({
-		input: { bookSlug },
-	});
-	const stateKey = orpc.feedback.getBookFeedbackState.queryKey({
-		input: bookSlug,
-	});
-
-	type ReviewEntry = NonNullable<
-		ReturnType<typeof queryClient.getQueryData<GetBookFeedbackListOutput>>
-	>[number];
-
-	/** Applies `change` to every cached review list of this book. */
-	function updateReviewLists(change: (list: ReviewEntry[]) => ReviewEntry[]) {
-		queryClient.setQueriesData<GetBookFeedbackListOutput>(
-			{ queryKey: listKey },
-			(old) => (Array.isArray(old) ? change(old) : old),
-		);
-	}
-
 	const createMutation = useMutation(
 		orpc.feedback.create.mutationOptions({
 			scope: { id: `feedback-${bookSlug}` },
@@ -111,56 +102,32 @@ export function FeedbackFormDialog({
 				const user = session?.user;
 				const pendingSlug = createPendingSlug();
 				const draft = { rating, review, isSpoiler };
-
-				await Promise.all([
-					queryClient.cancelQueries({ queryKey: listKey }),
-					queryClient.cancelQueries({ queryKey: stateKey }),
-				]);
-				const previousState = queryClient.getQueryData(stateKey);
+				const snapshot = await snapshotFeedbackQueries();
 
 				if (user) {
-					const entry: ReviewEntry = {
-						slug: pendingSlug,
-						authorId: user.id,
-						username: user.username as string,
-						name: user.name,
-						image: user.image ?? null,
-						rating: variables.rating,
-						review: variables.review ?? "",
-						isSpoiler: Boolean(variables.isSpoiler),
-						createdAt: new Date(),
-						likeCount: 0,
-						likedByMe: false,
-						commentCount: 0,
-					};
-					updateReviewLists((list) => [entry, ...list]);
+					applyFeedbackCreate({
+						bookSlug,
+						pendingSlug,
+						author: {
+							id: user.id,
+							username: user.username as string,
+							name: user.name,
+							image: user.image ?? null,
+						},
+						values: {
+							rating: variables.rating,
+							review: variables.review ?? "",
+							isSpoiler: Boolean(variables.isSpoiler),
+						},
+					});
 				}
 
-				queryClient.setQueryData(stateKey, (old) =>
-					old
-						? {
-								...old,
-								canSubmit: false,
-								myFeedback: {
-									slug: pendingSlug,
-									rating: variables.rating,
-									review: variables.review ?? "",
-									isSpoiler: Boolean(variables.isSpoiler),
-									createdAt: new Date(),
-								},
-							}
-						: old,
-				);
-
 				onOpenChange(false);
-				return { pendingSlug, draft, previousState };
+				return { pendingSlug, draft, snapshot };
 			},
 			onError: (error, _variables, context) => {
 				if (context) {
-					updateReviewLists((list) =>
-						list.filter((entry) => entry.slug !== context.pendingSlug),
-					);
-					queryClient.setQueryData(stateKey, context.previousState);
+					restoreFeedbackQueries(context.snapshot);
 					setRating(context.draft.rating);
 					setReview(context.draft.review);
 					setIsSpoiler(context.draft.isSpoiler);
@@ -169,18 +136,7 @@ export function FeedbackFormDialog({
 				toast.error(error.message);
 			},
 			onSuccess: (result, _variables, context) => {
-				updateReviewLists((list) =>
-					list.map((entry) =>
-						entry.slug === context.pendingSlug
-							? { ...entry, slug: result.slug }
-							: entry,
-					),
-				);
-				queryClient.setQueryData(stateKey, (old) =>
-					old?.myFeedback
-						? { ...old, myFeedback: { ...old.myFeedback, slug: result.slug } }
-						: old,
-				);
+				confirmFeedbackCreate(bookSlug, context.pendingSlug, result.slug);
 				if (result.xpAwarded > 0) {
 					toast.success(`Feedback saved (+${result.xpAwarded} XP)`);
 				}
@@ -200,54 +156,28 @@ export function FeedbackFormDialog({
 		orpc.feedback.update.mutationOptions({
 			scope: { id: `feedback-${bookSlug}` },
 			onMutate: async (variables) => {
-				await Promise.all([
-					queryClient.cancelQueries({ queryKey: listKey }),
-					queryClient.cancelQueries({ queryKey: stateKey }),
-				]);
-				const previousState = queryClient.getQueryData(stateKey);
-				const previousLists =
-					queryClient.getQueriesData<GetBookFeedbackListOutput>({
-						queryKey: listKey,
-					});
-				const mySlug = previousState?.myFeedback?.slug;
+				const snapshot = await snapshotFeedbackQueries();
+				const targetSlug = feedbackSlug ?? myFeedbackSlug(bookSlug);
 
-				if (mySlug) {
-					updateReviewLists((list) =>
-						list.map((entry) =>
-							entry.slug === mySlug
-								? {
-										...entry,
-										rating: variables.rating,
-										review: variables.review ?? entry.review,
-										isSpoiler: variables.isSpoiler ?? entry.isSpoiler,
-									}
-								: entry,
-						),
-					);
+				if (targetSlug) {
+					applyFeedbackUpdate({
+						bookSlug,
+						feedbackSlug: targetSlug,
+						values: {
+							rating: variables.rating,
+							review: variables.review ?? initialValues?.review ?? "",
+							isSpoiler:
+								variables.isSpoiler ?? initialValues?.isSpoiler ?? false,
+						},
+					});
 				}
-				queryClient.setQueryData(stateKey, (old) =>
-					old?.myFeedback
-						? {
-								...old,
-								myFeedback: {
-									...old.myFeedback,
-									rating: variables.rating,
-									review: variables.review ?? old.myFeedback.review,
-									isSpoiler: variables.isSpoiler ?? old.myFeedback.isSpoiler,
-								},
-							}
-						: old,
-				);
 
 				onOpenChange(false);
-				return { previousState, previousLists };
+				return { snapshot };
 			},
 			onError: (error, _variables, context) => {
 				if (context) {
-					queryClient.setQueryData(stateKey, context.previousState);
-					for (const [key, data] of context.previousLists) {
-						queryClient.setQueryData(key, data);
-					}
+					restoreFeedbackQueries(context.snapshot);
 					onOpenChange(true);
 				}
 				toast.error(error.message);

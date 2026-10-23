@@ -20,6 +20,7 @@ type FeedbackEditIconButtonProps = {
 	rating: number;
 	review: string;
 	isSpoiler: boolean;
+	feedbackSlug?: string;
 	className?: string;
 };
 
@@ -28,6 +29,7 @@ export function FeedbackEditIconButton({
 	rating,
 	review,
 	isSpoiler,
+	feedbackSlug,
 	className,
 }: FeedbackEditIconButtonProps) {
 	const [open, setOpen] = useState(false);
@@ -74,6 +76,7 @@ export function FeedbackEditIconButton({
 				onOpenChange={setOpen}
 				mode="edit"
 				initialValues={initialValues}
+				feedbackSlug={feedbackSlug}
 				navigateToReview={false}
 			/>
 		</>

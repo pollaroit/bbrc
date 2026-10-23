@@ -109,6 +109,7 @@ export function BookWriteFeedbackButton({
 				onOpenChange={setOpen}
 				mode={isEdit ? "edit" : "create"}
 				initialValues={initialValues}
+				feedbackSlug={stateQuery.data?.myFeedback?.slug}
 				navigateToReview={navigateToReview}
 			/>
 		</>
