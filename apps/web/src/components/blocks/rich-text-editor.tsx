@@ -115,6 +115,7 @@ export function RichTextEditor({
 					heading: { levels: [1] },
 					blockquote: {},
 					link: false,
+					underline: false,
 				}),
 				Underline,
 				LinkExtension.configure({
@@ -221,7 +222,10 @@ export function RichTextEditor({
 	}, [editor]);
 
 	useEffect(() => {
-		if (!editor) {
+		// A new `instanceKey` destroys the previous editor; this effect can still
+		// fire with that dead instance (its `commands` are gone) in the same pass
+		// that the form clears `value`. The replacement editor starts from `value`.
+		if (!editor || editor.isDestroyed) {
 			return;
 		}
 		const current = tiptapJsonToStoredContent(editor.getJSON());
