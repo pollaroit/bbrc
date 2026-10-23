@@ -17,7 +17,7 @@ export const ACHIEVEMENTS: readonly AchievementDefinition[] = [
 		icon: "BookOpenCheck",
 		metric: "reads",
 		period: "all",
-		thresholds: [1, 5, 15, 40, 100],
+		thresholds: [1, 10, 25, 100, 500],
 		unit: books,
 		needs: ["reads"],
 	},

@@ -5,6 +5,7 @@ import {
 	type AchievementDefinition,
 	achievementProgress,
 	describeTier,
+	type EarnedTier,
 	evaluateAchievements,
 	FACT_SECTIONS,
 	type FactSection,
@@ -38,29 +39,13 @@ function tiersOf(definition: AchievementDefinition) {
 	}));
 }
 
-/**
- * Re-checks a member's achievements and saves any newly reached tiers.
- * Awards are sticky and revoked ones are never re-awarded. Pass `sections`
- * after an action to look only at what it could have changed.
- */
-export async function evaluateAchievementsForUser(
+/** Saves tiers the member has reached but has no award row for yet, and notifies about fresh ones. */
+async function saveNewAwards(
 	db: Database,
 	userId: string,
-	options: { sections?: readonly FactSection[]; now?: Date } = {},
+	earned: EarnedTier[],
+	now: Date,
 ): Promise<{ key: string; tier: number }[]> {
-	const now = options.now ?? new Date();
-	const sections = options.sections?.length
-		? new Set(options.sections)
-		: ALL_SECTIONS;
-
-	const facts = await loadAchievementFacts(db, userId, sections, now);
-	if (!facts) {
-		return [];
-	}
-
-	const earned = evaluateAchievements(facts, {
-		sections: options.sections?.length ? options.sections : undefined,
-	});
 	if (earned.length === 0) {
 		return [];
 	}
@@ -118,6 +103,32 @@ export async function evaluateAchievementsForUser(
 	return fresh.map((item) => ({ key: item.key, tier: item.tier }));
 }
 
+/**
+ * Re-checks a member's achievements and saves any newly reached tiers.
+ * Awards are sticky and revoked ones are never re-awarded. Pass `sections`
+ * after an action to look only at what it could have changed.
+ */
+export async function evaluateAchievementsForUser(
+	db: Database,
+	userId: string,
+	options: { sections?: readonly FactSection[]; now?: Date } = {},
+): Promise<{ key: string; tier: number }[]> {
+	const now = options.now ?? new Date();
+	const sections = options.sections?.length
+		? new Set(options.sections)
+		: ALL_SECTIONS;
+
+	const facts = await loadAchievementFacts(db, userId, sections, now);
+	if (!facts) {
+		return [];
+	}
+
+	const earned = evaluateAchievements(facts, {
+		sections: options.sections?.length ? options.sections : undefined,
+	});
+	return saveNewAwards(db, userId, earned, now);
+}
+
 /** Daily sweep for achievements that depend on time or on other members (anniversaries, likes, year ends, approvals). */
 export async function sweepAchievements(
 	db: Database,
@@ -154,18 +165,26 @@ async function earnedCountsByTier(db: Database) {
 	return counts;
 }
 
+/**
+ * The member's standing on every achievement. Anything they have already
+ * earned but that was never saved (for example members who joined before
+ * achievements existed) is saved first, so tier and progress always agree.
+ */
 async function viewerState(
 	db: Database,
 	userId: string,
 ): Promise<Map<string, NonNullable<AchievementSummary["viewer"]>>> {
-	const [facts, awards] = await Promise.all([
-		loadAchievementFacts(db, userId, ALL_SECTIONS),
-		db.userAchievement.findMany({
-			where: { userId, revokedAt: null },
-			select: { achievementKey: true, tier: true, earnedAt: true },
-			orderBy: { earnedAt: "asc" },
-		}),
-	]);
+	const now = new Date();
+	const facts = await loadAchievementFacts(db, userId, ALL_SECTIONS, now);
+	if (facts) {
+		await saveNewAwards(db, userId, evaluateAchievements(facts), now);
+	}
+
+	const awards = await db.userAchievement.findMany({
+		where: { userId, revokedAt: null },
+		select: { achievementKey: true, tier: true, earnedAt: true },
+		orderBy: { earnedAt: "asc" },
+	});
 
 	const progress = facts ? achievementProgress(facts) : [];
 	const state = new Map<string, NonNullable<AchievementSummary["viewer"]>>();
@@ -175,6 +194,7 @@ async function viewerState(
 			tier: 0,
 			value: item.value,
 			next: item.next,
+			nextTier: item.next == null ? null : item.tier + 1,
 			earnedAtByTier: {},
 		});
 	}
@@ -183,6 +203,7 @@ async function viewerState(
 			tier: 0,
 			value: 0,
 			next: null,
+			nextTier: null,
 			earnedAtByTier: {},
 		};
 		current.tier = Math.max(current.tier, award.tier);
@@ -326,6 +347,12 @@ export async function getUserAchievements(
 	const isOwner = Boolean(user && viewerId === user.id);
 	if (!user || (user.isHidden && !isOwner && !session?.user.isAdmin)) {
 		throw new ORPCError("NOT_FOUND", { message: "Member not found" });
+	}
+
+	// A member who has never been checked (joined before achievements existed) is
+	// brought up to date the first time anyone looks at their profile.
+	if ((await db.userAchievement.count({ where: { userId: user.id } })) === 0) {
+		await evaluateAchievementsForUser(db, user.id);
 	}
 
 	const awards = await db.userAchievement.findMany({

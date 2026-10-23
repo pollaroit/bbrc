@@ -1,7 +1,7 @@
 import type { AchievementSummary } from "@bbrc/api/modules/achievement/achievement.schema";
 import { ACHIEVEMENTS, describeTier, tierName } from "@bbrc/shared";
 import { notFound } from "next/navigation";
-import { AchievementCard } from "@/components/blocks/achievements-catalog";
+import { AchievementRow } from "@/components/blocks/achievement-row";
 
 /** Builds a card model from the registry with made-up progress, so every state can be seen. */
 function sample(index: number): AchievementSummary {
@@ -37,6 +37,7 @@ function sample(index: number): AchievementSummary {
 			tier: earned,
 			value: state === 1 && next ? Math.ceil(next / 2) : next ? next - 1 : 0,
 			next,
+			nextTier: next ? earned + 1 : null,
 			earnedAtByTier: {},
 		},
 	};
@@ -58,10 +59,10 @@ export default function AchievementsDevPage() {
 					fully earned), to check badges and tiers under any palette.
 				</p>
 			</div>
-			<ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+			<ul className="border-border border-t">
 				{ACHIEVEMENTS.map((definition, index) => (
-					<li key={definition.key} className="min-h-0">
-						<AchievementCard item={sample(index)} memberCount={14} />
+					<li key={definition.key}>
+						<AchievementRow item={sample(index)} memberCount={14} />
 					</li>
 				))}
 			</ul>

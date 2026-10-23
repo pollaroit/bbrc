@@ -38,6 +38,7 @@
 @theme inline {
 	--animate-like-pop: like-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
 	--animate-like-ring: like-ring 480ms ease-out forwards;
+	--animate-tier-rise: tier-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 	--font-sans: var(--app-font-body);
 	--color-sidebar-ring: var(--sidebar-ring);
 	--color-sidebar-border: var(--sidebar-border);
@@ -155,6 +156,17 @@ button {
 	}
 	100% {
 		transform: scale(1);
+	}
+}
+
+@keyframes tier-rise {
+	from {
+		opacity: 0;
+		transform: scaleY(0.2);
+	}
+	to {
+		opacity: 1;
+		transform: scaleY(1);
 	}
 }
 

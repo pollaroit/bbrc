@@ -85,9 +85,10 @@ describe("definitions", () => {
 
 	test("descriptions read naturally", () => {
 		const bookworm = getAchievement("bookworm");
+		const third = bookworm?.thresholds[2] ?? 0;
 		expect(bookworm && describeTier(bookworm, 1)).toBe("Mark 1 book as read.");
 		expect(bookworm && describeTier(bookworm, 3)).toBe(
-			"Mark 15 books as read.",
+			`Mark ${third} books as read.`,
 		);
 		expect(bookworm && tierName(bookworm, 1)).toBe("Bronze");
 		const single = getAchievement("founding_member");
@@ -97,13 +98,14 @@ describe("definitions", () => {
 
 describe("evaluateAchievements", () => {
 	test("earns tiers on the date the threshold was crossed", () => {
-		const reads = [1, 2, 3, 4, 5, 6].map((n) =>
-			read(`b${n}`, `2026-0${n}-05T10:00:00Z`),
+		const secondTier = getAchievement("bookworm")?.thresholds[1] ?? 0;
+		const reads = Array.from({ length: secondTier + 1 }, (_, n) =>
+			read(`b${n}`, new Date(Date.UTC(2026, 0, 1 + n, 10)).toISOString()),
 		);
 		const earned = earnedOf(facts({ reads }), "bookworm");
 		expect(earned.map((item) => item.tier)).toEqual([1, 2]);
-		expect(earned[0]?.earnedAt).toEqual(d("2026-01-05T10:00:00Z"));
-		expect(earned[1]?.earnedAt).toEqual(d("2026-05-05T10:00:00Z"));
+		expect(earned[0]?.earnedAt).toEqual(d("2026-01-01T10:00:00Z"));
+		expect(earned[1]?.earnedAt).toEqual(reads[secondTier - 1]?.at);
 	});
 
 	test("yearly achievements are tracked per year", () => {

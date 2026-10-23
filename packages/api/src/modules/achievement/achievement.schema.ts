@@ -18,6 +18,8 @@ export const AchievementViewerSchema = zod.object({
 	/** Progress this year for yearly achievements, otherwise all-time. */
 	value: zod.number(),
 	next: zod.number().nullable(),
+	/** The tier `next` belongs to; for yearly achievements this is about the current year. */
+	nextTier: zod.number().int().nullable(),
 	earnedAtByTier: zod.record(zod.string(), zod.string()),
 });
 
