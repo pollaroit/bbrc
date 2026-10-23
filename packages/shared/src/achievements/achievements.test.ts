@@ -85,8 +85,11 @@ describe("definitions", () => {
 
 	test("descriptions read naturally", () => {
 		const bookworm = getAchievement("bookworm");
+		const first = bookworm?.thresholds[0] ?? 0;
 		const third = bookworm?.thresholds[2] ?? 0;
-		expect(bookworm && describeTier(bookworm, 1)).toBe("Mark 1 book as read.");
+		expect(bookworm && describeTier(bookworm, 1)).toBe(
+			`Mark ${first} ${first === 1 ? "book" : "books"} as read.`,
+		);
 		expect(bookworm && describeTier(bookworm, 3)).toBe(
 			`Mark ${third} books as read.`,
 		);
@@ -98,13 +101,14 @@ describe("definitions", () => {
 
 describe("evaluateAchievements", () => {
 	test("earns tiers on the date the threshold was crossed", () => {
+		const firstTier = getAchievement("bookworm")?.thresholds[0] ?? 0;
 		const secondTier = getAchievement("bookworm")?.thresholds[1] ?? 0;
 		const reads = Array.from({ length: secondTier + 1 }, (_, n) =>
 			read(`b${n}`, new Date(Date.UTC(2026, 0, 1 + n, 10)).toISOString()),
 		);
 		const earned = earnedOf(facts({ reads }), "bookworm");
 		expect(earned.map((item) => item.tier)).toEqual([1, 2]);
-		expect(earned[0]?.earnedAt).toEqual(d("2026-01-01T10:00:00Z"));
+		expect(earned[0]?.earnedAt).toEqual(reads[firstTier - 1]?.at);
 		expect(earned[1]?.earnedAt).toEqual(reads[secondTier - 1]?.at);
 	});
 
@@ -246,7 +250,12 @@ describe("evaluateAchievements", () => {
 	});
 
 	test("sections limit what is evaluated", () => {
-		const f = facts({ reads: [read("a", "2026-01-01T00:00:00Z")] });
+		const needed = getAchievement("bookworm")?.thresholds[0] ?? 1;
+		const f = facts({
+			reads: Array.from({ length: needed }, (_, n) =>
+				read(`a${n}`, new Date(Date.UTC(2026, 0, 1 + n)).toISOString()),
+			),
+		});
 		const onlyPosts = evaluateAchievements(f, { sections: ["posts"] });
 		expect(onlyPosts.some((item) => item.key === "bookworm")).toBe(false);
 		const onlyReads = evaluateAchievements(f, { sections: ["reads"] });

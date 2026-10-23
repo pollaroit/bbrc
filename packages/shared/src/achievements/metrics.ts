@@ -516,6 +516,6 @@ export const METRICS: Record<MetricKey, Metric> = {
 };
 
 /** The first this-many members to join count as founding members. */
-export const FOUNDING_MEMBER_COUNT = 15;
+export const FOUNDING_MEMBER_COUNT = 10;
 
 export { DAY_MS };
