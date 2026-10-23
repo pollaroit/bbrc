@@ -1,7 +1,7 @@
 "use client";
 
 import type { ListApprovedDocumentsByBookOutput } from "@bbrc/api/modules/document/document.schema";
-import { documentLanguageLabel } from "@bbrc/shared";
+import { documentFormatLabel, documentLanguageLabel } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { FileText } from "lucide-react";
 import type { Route } from "next";
@@ -43,7 +43,7 @@ export function BookDocumentsSection({
 
 			{documents.length === 0 ? (
 				<p className="border border-border border-dashed px-4 py-6 text-center text-muted-foreground text-sm">
-					No approved PDFs for {bookTitle} yet.
+					No approved documents for {bookTitle} yet.
 					{session?.user ? (
 						<>
 							{" "}
@@ -73,6 +73,7 @@ export function BookDocumentsSection({
 									<span className="line-clamp-2">{doc.name}</span>
 								</p>
 								<p className="text-muted-foreground text-xs">
+									{documentFormatLabel(doc.documentUrl)} ·{" "}
 									{documentLanguageLabel(doc.language)} ·{" "}
 									<Link
 										href={`/users/${doc.uploader.username}` as Route}
@@ -96,7 +97,7 @@ export function BookDocumentsSection({
 								variant="outline"
 								className="mt-auto w-fit"
 							>
-								Download PDF
+								Download {documentFormatLabel(doc.documentUrl)}
 							</Button>
 						</li>
 					))}

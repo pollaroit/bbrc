@@ -60,7 +60,7 @@ export function UserDocumentsSheet({
 				<SheetContent side="right" className={listingSideSheetContentClassName}>
 					<ListingSideSheetHeader
 						title="Your documents"
-						description="PDFs you submitted for club books and their review status."
+						description="Documents you submitted for club books and their review status."
 					/>
 					<ListingSideSheetBody>
 						{!data?.count ? (

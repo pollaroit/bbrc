@@ -1,8 +1,10 @@
 import type { Session } from "@bbrc/auth";
+import { DOCUMENT_FORMATS, documentFormatFromMime } from "@bbrc/shared";
 import {
 	buildObjectKey,
 	buildPublicObjectUrl,
 	createR2Client,
+	DOCUMENT_KEY_EXTENSION_PATTERN,
 	deleteObject,
 	getStorageEnv,
 	headObject,
@@ -52,12 +54,20 @@ function toObjectKeyParams(
 				username,
 				shelfSlug: input.shelfSlug,
 			};
-		case "book-document":
+		case "book-document": {
+			const format = documentFormatFromMime(input.contentType);
+			if (!format) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Only PDF, DOCX and EPUB files are allowed",
+				});
+			}
 			return {
 				kind: "book-document",
 				bookSlug: input.bookSlug,
 				documentSlug: input.documentSlug,
+				extension: DOCUMENT_FORMATS[format].extension,
 			};
+		}
 		default: {
 			const _exhaustive: never = input;
 			return _exhaustive;
@@ -119,7 +129,7 @@ function assertKeyAllowedForSession(key: string, session: Session): void {
 			new RegExp(`^${storageEnv}/posts/[a-z0-9_]+/image\\.png$`).test(key) ||
 			new RegExp(`^${storageEnv}/comments/[a-z0-9_]+/image\\.png$`).test(key) ||
 			new RegExp(
-				`^${storageEnv}/books/[a-z0-9_]+/documents/[a-z0-9_]+\\.pdf$`,
+				`^${storageEnv}/books/[a-z0-9_]+/documents/[a-z0-9_]+\\.(pdf|docx|epub)$`,
 			).test(key);
 		if (adminAllowed) {
 			return;
@@ -197,7 +207,7 @@ export async function commitUpload(input: CommitUploadInput, session: Session) {
 		});
 	}
 
-	const maxSize = input.key.endsWith(".pdf")
+	const maxSize = DOCUMENT_KEY_EXTENSION_PATTERN.test(input.key)
 		? MAX_DOCUMENT_SIZE
 		: MAX_IMAGE_SIZE;
 	if (head.contentLength > maxSize) {

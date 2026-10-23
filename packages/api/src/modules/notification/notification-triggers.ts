@@ -230,7 +230,7 @@ export async function notifyDocumentSubmitted(
 		recipientUserIds,
 		excludeUserIds: [submitterUserId],
 		title: "Document submitted",
-		body: `${memberDisplayName(submitter)} submitted a PDF for “${bookTitle}”.`,
+		body: `${memberDisplayName(submitter)} submitted a document for “${bookTitle}”.`,
 		href: `/books/${bookSlug}`,
 		adminNtfy: true,
 	});
@@ -246,7 +246,7 @@ export async function notifyDocumentApproved(
 		kind: "document_approved",
 		recipientUserIds: [authorUserId],
 		title: "Document approved",
-		body: `Your PDF for “${bookTitle}” was approved.`,
+		body: `Your document for “${bookTitle}” was approved.`,
 		href: `/books/${bookSlug}`,
 	});
 }
@@ -262,7 +262,7 @@ export async function notifyDocumentRejected(
 		kind: "document_rejected",
 		recipientUserIds: [authorUserId],
 		title: "Document rejected",
-		body: `Your PDF for “${bookTitle}” was rejected: ${reason}`,
+		body: `Your document for “${bookTitle}” was rejected: ${reason}`,
 		href: `/books/${bookSlug}`,
 	});
 }
