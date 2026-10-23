@@ -68,26 +68,60 @@ function highlightFor(person: PeopleListItem, isViewer: boolean): Highlight {
 	return { label: "Member", className: "bg-muted/30 text-muted-foreground" };
 }
 
+const stripLinkClassName =
+	"inline-flex min-w-0 items-center transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none";
+
 function Stat({
 	icon: Icon,
 	value,
 	title,
+	href,
 }: {
 	icon: LucideIcon;
 	value: number | string;
 	title: string;
+	href: Route;
 }) {
 	return (
-		<span
-			className="inline-flex shrink-0 items-center gap-0.5 tabular-nums"
+		<Link
+			href={href}
+			className={cn(stripLinkClassName, "shrink-0 gap-0.5 tabular-nums")}
 			title={title}
+			aria-label={`${title}: ${value}`}
 		>
 			<Icon className="size-3.5 shrink-0" aria-hidden />
-			<span aria-hidden>{value}</span>
-			<span className="sr-only">
-				{title}: {value}
+			<span>{value}</span>
+		</Link>
+	);
+}
+
+function LevelLink({
+	href,
+	level,
+	points,
+	unit,
+	title,
+}: {
+	href: Route;
+	level: string;
+	points: number;
+	unit: string;
+	title: string;
+}) {
+	return (
+		<Link
+			href={href}
+			className={cn(
+				stripLinkClassName,
+				"min-w-0 flex-1 justify-between gap-2 px-3 py-1.5",
+			)}
+			title={title}
+		>
+			<span className="truncate font-medium text-foreground">{level}</span>
+			<span className="shrink-0 tabular-nums">
+				{points} {unit}
 			</span>
-		</span>
+		</Link>
 	);
 }
 
@@ -159,34 +193,53 @@ export function PeopleCard({ person, isViewer = false }: PeopleCardProps) {
 				</div>
 			</div>
 
-			<div className="relative z-2 flex flex-col gap-1 border-border border-t bg-muted/10 px-3 py-1.5 text-muted-foreground text-xs tabular-nums">
-				<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
-					<span title={`${person.xp} experience points`}>
-						{person.xpLevel.label} · {person.xp} XP
-					</span>
-					<span title={`${person.rp} reading points`}>
-						{person.rpLevel.label} · {person.rp} RP
-					</span>
-				</div>
-				<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
-					<Stat icon={BookOpen} value={person.reads} title="Books read" />
-					<Stat
-						icon={MessageSquareText}
-						value={person.reviews}
-						title="Reviews"
-					/>
-					<Stat icon={PenLine} value={person.posts} title="Posts" />
-					<Stat
-						icon={Sofa}
-						value={person.sittingsFinished}
-						title="Sittings finished"
-					/>
-					<Stat
-						icon={Flame}
-						value={person.streak.current}
-						title="Current reading streak"
-					/>
-				</div>
+			<div className="relative z-2 flex divide-x divide-border border-border border-t bg-muted/10 text-muted-foreground text-xs">
+				<LevelLink
+					href={`/users/${person.username}/xp` as Route}
+					level={person.xpLevel.label}
+					points={person.xp}
+					unit="XP"
+					title={`${person.xp} experience points`}
+				/>
+				<LevelLink
+					href={`/users/${person.username}/rp` as Route}
+					level={person.rpLevel.label}
+					points={person.rp}
+					unit="RP"
+					title={`${person.rp} reading points`}
+				/>
+			</div>
+			<div className="relative z-2 flex flex-nowrap items-center justify-between gap-1 border-border border-t bg-muted/10 px-3 py-1.5 text-muted-foreground text-xs tabular-nums">
+				<Stat
+					icon={BookOpen}
+					value={person.reads}
+					title="Books read"
+					href={`/users/${person.username}/reads` as Route}
+				/>
+				<Stat
+					icon={MessageSquareText}
+					value={person.reviews}
+					title="Reviews"
+					href={`/users/${person.username}/feedbacks` as Route}
+				/>
+				<Stat
+					icon={PenLine}
+					value={person.posts}
+					title="Posts"
+					href={`/users/${person.username}/posts` as Route}
+				/>
+				<Stat
+					icon={Sofa}
+					value={person.sittingsFinished}
+					title="Sittings finished"
+					href={`/users/${person.username}/sittings` as Route}
+				/>
+				<Stat
+					icon={Flame}
+					value={person.streak.current}
+					title="Current reading streak"
+					href={`/users/${person.username}/sittings` as Route}
+				/>
 			</div>
 		</article>
 	);
