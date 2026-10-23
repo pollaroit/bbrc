@@ -1,5 +1,6 @@
 "use client";
 
+import type { GetBookFeedbackListOutput } from "@bbrc/api/modules/feedback/feedback.schema";
 import {
 	contentPlainText,
 	type FeedbackRatingStep,
@@ -28,9 +29,11 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { FeedbackHalfStarRating } from "@/components/blocks/feedback-half-star-rating";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
+import { authClient } from "@/lib/auth-client";
 import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
-import { orpc } from "@/utils/orpc";
+import { createPendingSlug } from "@/lib/optimistic/infinite-lists";
+import { orpc, queryClient } from "@/utils/orpc";
 
 const FEEDBACK_REVIEW_MAX_PLAIN = 500;
 
@@ -59,6 +62,7 @@ export function FeedbackFormDialog({
 	navigateToReview = true,
 }: FeedbackFormDialogProps) {
 	const router = useRouter();
+	const { data: session } = authClient.useSession();
 	const isEdit = mode === "edit";
 	const [rating, setRating] = useState<FeedbackRatingStep>(4);
 	const [review, setReview] = useState("");
@@ -81,42 +85,186 @@ export function FeedbackFormDialog({
 		}
 	}, [open, isEdit, initialValues]);
 
+	const listKey = orpc.feedback.getBookFeedbackList.key({
+		input: { bookSlug },
+	});
+	const stateKey = orpc.feedback.getBookFeedbackState.queryKey({
+		input: bookSlug,
+	});
+
+	type ReviewEntry = NonNullable<
+		ReturnType<typeof queryClient.getQueryData<GetBookFeedbackListOutput>>
+	>[number];
+
+	/** Applies `change` to every cached review list of this book. */
+	function updateReviewLists(change: (list: ReviewEntry[]) => ReviewEntry[]) {
+		queryClient.setQueriesData<GetBookFeedbackListOutput>(
+			{ queryKey: listKey },
+			(old) => (Array.isArray(old) ? change(old) : old),
+		);
+	}
+
 	const createMutation = useMutation(
 		orpc.feedback.create.mutationOptions({
-			onSuccess: async (result) => {
-				toast.success(
-					result.xpAwarded > 0
-						? `Feedback saved (+${result.xpAwarded} XP)`
-						: "Feedback saved",
+			scope: { id: `feedback-${bookSlug}` },
+			onMutate: async (variables) => {
+				const user = session?.user;
+				const pendingSlug = createPendingSlug();
+				const draft = { rating, review, isSpoiler };
+
+				await Promise.all([
+					queryClient.cancelQueries({ queryKey: listKey }),
+					queryClient.cancelQueries({ queryKey: stateKey }),
+				]);
+				const previousState = queryClient.getQueryData(stateKey);
+
+				if (user) {
+					const entry: ReviewEntry = {
+						slug: pendingSlug,
+						authorId: user.id,
+						username: user.username as string,
+						name: user.name,
+						image: user.image ?? null,
+						rating: variables.rating,
+						review: variables.review ?? "",
+						isSpoiler: Boolean(variables.isSpoiler),
+						createdAt: new Date(),
+						likeCount: 0,
+						likedByMe: false,
+						commentCount: 0,
+					};
+					updateReviewLists((list) => [entry, ...list]);
+				}
+
+				queryClient.setQueryData(stateKey, (old) =>
+					old
+						? {
+								...old,
+								canSubmit: false,
+								myFeedback: {
+									slug: pendingSlug,
+									rating: variables.rating,
+									review: variables.review ?? "",
+									isSpoiler: Boolean(variables.isSpoiler),
+									createdAt: new Date(),
+								},
+							}
+						: old,
 				);
-				await invalidateFeedbackQueries();
-				await invalidateUserPointQueries();
+
 				onOpenChange(false);
+				return { pendingSlug, draft, previousState };
+			},
+			onError: (error, _variables, context) => {
+				if (context) {
+					updateReviewLists((list) =>
+						list.filter((entry) => entry.slug !== context.pendingSlug),
+					);
+					queryClient.setQueryData(stateKey, context.previousState);
+					setRating(context.draft.rating);
+					setReview(context.draft.review);
+					setIsSpoiler(context.draft.isSpoiler);
+					onOpenChange(true);
+				}
+				toast.error(error.message);
+			},
+			onSuccess: (result, _variables, context) => {
+				updateReviewLists((list) =>
+					list.map((entry) =>
+						entry.slug === context.pendingSlug
+							? { ...entry, slug: result.slug }
+							: entry,
+					),
+				);
+				queryClient.setQueryData(stateKey, (old) =>
+					old?.myFeedback
+						? { ...old, myFeedback: { ...old.myFeedback, slug: result.slug } }
+						: old,
+				);
+				if (result.xpAwarded > 0) {
+					toast.success(`Feedback saved (+${result.xpAwarded} XP)`);
+				}
+				void invalidateUserPointQueries();
 				if (navigateToReview) {
 					router.push(`/books/${bookSlug}/feedbacks/${result.slug}` as Route);
 				}
 				router.refresh();
 			},
-			onError: (error) => toast.error(error.message),
+			onSettled: () => {
+				void invalidateFeedbackQueries();
+			},
 		}),
 	);
 
 	const updateMutation = useMutation(
 		orpc.feedback.update.mutationOptions({
-			onSuccess: async (result) => {
-				toast.success("Feedback updated");
-				await invalidateFeedbackQueries();
+			scope: { id: `feedback-${bookSlug}` },
+			onMutate: async (variables) => {
+				await Promise.all([
+					queryClient.cancelQueries({ queryKey: listKey }),
+					queryClient.cancelQueries({ queryKey: stateKey }),
+				]);
+				const previousState = queryClient.getQueryData(stateKey);
+				const previousLists =
+					queryClient.getQueriesData<GetBookFeedbackListOutput>({
+						queryKey: listKey,
+					});
+				const mySlug = previousState?.myFeedback?.slug;
+
+				if (mySlug) {
+					updateReviewLists((list) =>
+						list.map((entry) =>
+							entry.slug === mySlug
+								? {
+										...entry,
+										rating: variables.rating,
+										review: variables.review ?? entry.review,
+										isSpoiler: variables.isSpoiler ?? entry.isSpoiler,
+									}
+								: entry,
+						),
+					);
+				}
+				queryClient.setQueryData(stateKey, (old) =>
+					old?.myFeedback
+						? {
+								...old,
+								myFeedback: {
+									...old.myFeedback,
+									rating: variables.rating,
+									review: variables.review ?? old.myFeedback.review,
+									isSpoiler: variables.isSpoiler ?? old.myFeedback.isSpoiler,
+								},
+							}
+						: old,
+				);
+
 				onOpenChange(false);
+				return { previousState, previousLists };
+			},
+			onError: (error, _variables, context) => {
+				if (context) {
+					queryClient.setQueryData(stateKey, context.previousState);
+					for (const [key, data] of context.previousLists) {
+						queryClient.setQueryData(key, data);
+					}
+					onOpenChange(true);
+				}
+				toast.error(error.message);
+			},
+			onSuccess: (result) => {
 				if (navigateToReview) {
 					router.push(`/books/${bookSlug}/feedbacks/${result.slug}` as Route);
 				}
 				router.refresh();
 			},
-			onError: (error) => toast.error(error.message),
+			onSettled: () => {
+				void invalidateFeedbackQueries();
+			},
 		}),
 	);
 
-	const pending = createMutation.isPending || updateMutation.isPending;
+	const pending = false;
 
 	function handleSubmit() {
 		const plain = contentPlainText(review).trim();
