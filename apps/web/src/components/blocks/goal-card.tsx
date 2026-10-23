@@ -22,15 +22,14 @@ export function GoalCard({ username, goal }: GoalCardProps) {
 			href={href}
 			className={cn(
 				"flex h-full flex-col gap-4 border border-border p-4 transition-colors hover:bg-muted/40",
-				goal.isComplete &&
-					"border-emerald-600/50 bg-emerald-500/5 dark:border-emerald-500/40 dark:bg-emerald-500/10",
+				goal.isComplete && "border-success/50 bg-success/5",
 			)}
 		>
 			<div className="flex items-start justify-between gap-3">
 				<h3 className="font-semibold leading-snug">{goal.title}</h3>
 				<div className="flex shrink-0 items-center gap-2">
 					{goal.isComplete ? (
-						<Badge className="border-emerald-600/30 bg-emerald-600 text-white dark:bg-emerald-500">
+						<Badge className="border-success/30 bg-success text-white">
 							Complete
 						</Badge>
 					) : null}

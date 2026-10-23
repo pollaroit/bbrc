@@ -99,14 +99,14 @@ function highlightFor(person: PeopleListItem, isViewer: boolean): Highlight {
 	if (person.readingNow) {
 		return {
 			label: "Reading in a sitting now",
-			className: "bg-sky-600/10 text-sky-950 dark:text-sky-200",
+			className: "bg-info/10 text-info-ink",
 			href: `/sittings/${person.readingNow.sittingSlug}` as Route,
 		};
 	}
 	if (person.status === "warned") {
 		return {
 			label: "Warned",
-			className: "bg-amber-600/10 text-amber-950 dark:text-amber-200",
+			className: "bg-warning/10 text-warning-ink",
 		};
 	}
 	if (isViewer) {
@@ -115,7 +115,7 @@ function highlightFor(person: PeopleListItem, isViewer: boolean): Highlight {
 	if (person.isAdmin) {
 		return {
 			label: "Administrator",
-			className: "bg-amber-600/10 text-amber-950 dark:text-amber-200",
+			className: "bg-warning/10 text-warning-ink",
 		};
 	}
 	const ageDays =
@@ -123,7 +123,7 @@ function highlightFor(person: PeopleListItem, isViewer: boolean): Highlight {
 	if (ageDays <= NEW_MEMBER_DAYS) {
 		return {
 			label: "New here",
-			className: "bg-emerald-600/10 text-emerald-900 dark:text-emerald-200",
+			className: "bg-success/10 text-success-ink",
 		};
 	}
 	return { label: "Member", className: "bg-muted/30 text-muted-foreground" };
@@ -253,7 +253,7 @@ export function PeopleCard({
 							<span className="truncate">{person.name}</span>
 							{person.isAdmin ? (
 								<Crown
-									className="size-4 shrink-0 text-amber-600 dark:text-amber-400"
+									className="size-4 shrink-0 text-warning"
 									aria-label="Administrator"
 								/>
 							) : null}

@@ -13,7 +13,7 @@ export function FactStatusBadge({
 			<Badge
 				variant="outline"
 				className={cn(
-					"border-emerald-700/35 bg-emerald-600/10 font-normal text-emerald-950 dark:text-emerald-200",
+					"border-success/35 bg-success/10 font-normal text-success-ink",
 					className,
 				)}
 			>

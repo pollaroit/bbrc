@@ -92,7 +92,7 @@ export function FeedbackHalfStarRating({
 				}
 				aria-disabled={disabled}
 				className={cn(
-					"flex w-fit cursor-pointer touch-none select-none items-center outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-2",
+					"flex w-fit cursor-pointer touch-none select-none items-center outline-none focus-visible:ring-2 focus-visible:ring-warning/60 focus-visible:ring-offset-2",
 					disabled && "pointer-events-none opacity-50",
 				)}
 				style={{ gap: STAR_GAP }}
@@ -152,7 +152,7 @@ export function FeedbackHalfStarRating({
 							/>
 							<Star
 								className={cn(
-									"absolute inset-0 size-full fill-amber-400 text-amber-500 transition-opacity dark:fill-amber-400 dark:text-amber-400",
+									"absolute inset-0 size-full fill-warning text-warning transition-opacity",
 									hover != null && "opacity-70",
 								)}
 								strokeWidth={1.5}

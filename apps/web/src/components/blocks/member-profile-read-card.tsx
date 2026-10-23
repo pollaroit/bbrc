@@ -76,7 +76,7 @@ export function MemberProfileReadCard({ item }: { item: Item }) {
 							title="Their rating"
 						>
 							<Star
-								className="size-3.5 fill-amber-500 text-amber-500"
+								className="size-3.5 fill-warning text-warning"
 								aria-hidden
 							/>
 							{item.rating.toFixed(1)}

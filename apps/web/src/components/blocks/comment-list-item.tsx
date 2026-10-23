@@ -309,7 +309,7 @@ function CommentListItemViewInner({
 						<div
 							className={cn(
 								"mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground",
-								isCompact ? "text-[11px]" : "text-xs",
+								isCompact ? "text-2xs" : "text-xs",
 							)}
 						>
 							<Link
@@ -380,19 +380,19 @@ function CommentListItemViewInner({
 							className="min-w-0"
 							imageClassName={isCompact ? "size-6" : undefined}
 							titleClassName={isCompact ? "text-xs" : undefined}
-							descriptionClassName={isCompact ? "text-[11px]" : undefined}
+							descriptionClassName={isCompact ? "text-2xs" : undefined}
 						/>
 					</Link>
 					<div className="flex shrink-0 items-center gap-2">
 						<div
 							className={cn(
 								"text-right text-muted-foreground",
-								isCompact ? "text-[11px]" : "text-xs",
+								isCompact ? "text-2xs" : "text-xs",
 							)}
 						>
 							<RelativeTime date={comment.createdAt} />
 							{editedAt ? (
-								<p className="text-[11px]">
+								<p className="text-2xs">
 									edited <RelativeTime date={editedAt} className="inline" />
 								</p>
 							) : null}

@@ -4,6 +4,7 @@ import type { SpoilerContentKind } from "@bbrc/shared";
 import { isSpoilerRevealed, markSpoilerRevealed } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { useState } from "react";
+import { usePreferences } from "@/lib/preferences/use-preferences";
 import { cn } from "@/lib/utils";
 
 type SpoilerContentGateProps = {
@@ -27,7 +28,10 @@ export function SpoilerContentGate({
 		isSpoilerRevealed(username, kind, identifier),
 	);
 
-	if (!isSpoiler || revealed) {
+	// Members can choose to see spoilers without tapping; applies after hydration.
+	const { reading } = usePreferences();
+
+	if (!isSpoiler || revealed || reading.spoilers === "show") {
 		return <div className={className}>{children}</div>;
 	}
 

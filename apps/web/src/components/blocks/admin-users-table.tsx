@@ -148,7 +148,7 @@ export function AdminUsersTable() {
 														) : null}
 														{user.isAdmin ? (
 															<Crown
-																className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+																className="size-3.5 shrink-0 text-warning"
 																aria-label="Administrator"
 															/>
 														) : null}

@@ -131,7 +131,7 @@ export function RichContentView({
 	return (
 		<div
 			className={cn(
-				"rich-content-view space-y-2 text-sm leading-relaxed",
+				"rich-content-view space-y-2 font-reading text-sm leading-relaxed",
 				className,
 			)}
 		>

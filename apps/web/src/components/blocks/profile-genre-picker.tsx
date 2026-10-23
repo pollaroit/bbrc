@@ -57,10 +57,10 @@ export function ProfileGenrePicker({
 							title={genre.description}
 							onClick={() => toggleGenre(genre.slug)}
 							className={cn(
-								"border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500/50 disabled:opacity-50",
+								"border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink/50 disabled:opacity-50",
 								active
-									? "border-pink-600 bg-pink-500 text-white hover:bg-pink-600"
-									: "border-border hover:border-pink-300 hover:bg-pink-50 dark:hover:bg-pink-950/40",
+									? "border-pink bg-pink text-white hover:bg-pink"
+									: "border-border hover:border-pink/40 hover:bg-pink/15",
 							)}
 						>
 							{genre.name}
@@ -76,10 +76,10 @@ export function ProfileGenrePicker({
 											disabled={disabled}
 											onClick={() => toggleSubgenre(sub.slug)}
 											className={cn(
-												"border px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500/50 disabled:opacity-50",
+												"border px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink/50 disabled:opacity-50",
 												subActive
-													? "border-pink-500 bg-pink-100 text-pink-900 dark:bg-pink-950 dark:text-pink-100"
-													: "border-pink-300 border-dashed text-pink-800 hover:bg-pink-50 dark:border-pink-800 dark:text-pink-200 dark:hover:bg-pink-950/40",
+													? "border-pink bg-pink/15 text-pink-ink"
+													: "border-pink/40 border-dashed text-pink-ink hover:bg-pink/15",
 											)}
 										>
 											{sub.name}

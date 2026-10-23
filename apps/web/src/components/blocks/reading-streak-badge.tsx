@@ -38,7 +38,7 @@ export function ReadingStreakBadge({
 				<Flame
 					className={cn(
 						"size-3.5 shrink-0",
-						streak.current > 0 && "text-orange-600 dark:text-orange-400",
+						streak.current > 0 && "text-warning",
 					)}
 					aria-hidden
 				/>

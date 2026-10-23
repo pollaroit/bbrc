@@ -250,7 +250,7 @@ export function SittingDeadlinesRow({ sitting }: SittingAdminDeadlinesProps) {
 								<p
 									className={
 										calculatedDeadlineInPast
-											? "text-amber-600 text-xs dark:text-amber-500"
+											? "text-warning text-xs"
 											: "text-muted-foreground text-xs"
 									}
 								>

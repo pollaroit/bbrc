@@ -26,6 +26,15 @@ import {
 	getUserProfileCard,
 } from "./user.service";
 import {
+	GetMyPreferencesOutputSchema,
+	UpdateMyPreferencesInputSchema,
+	UpdateMyPreferencesOutputSchema,
+} from "./user-preferences.schema";
+import {
+	getMyPreferences,
+	updateMyPreferences,
+} from "./user-preferences.service";
+import {
 	GetMyProfileOutputSchema,
 	UpdateMyProfileInputSchema,
 	UpdateMyProfileOutputSchema,
@@ -120,6 +129,17 @@ export const userRouter = {
 		.output(GetMyProfileOutputSchema)
 		.handler(async ({ context }) =>
 			getProfileByUserId(context.session.user.id, context.db),
+		),
+	getMyPreferences: protectedProcedure
+		.output(GetMyPreferencesOutputSchema)
+		.handler(async ({ context }) =>
+			getMyPreferences(context.session.user.id, context.db),
+		),
+	updateMyPreferences: protectedProcedure
+		.input(UpdateMyPreferencesInputSchema)
+		.output(UpdateMyPreferencesOutputSchema)
+		.handler(async ({ input, context }) =>
+			updateMyPreferences(context.session.user.id, input, context.db),
 		),
 	updateMyProfile: protectedProcedure
 		.input(UpdateMyProfileInputSchema)

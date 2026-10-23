@@ -55,7 +55,7 @@ function BookCoverMedia({
 			{src ? (
 				<img src={src} alt="" width={40} height={60} className="object-cover" />
 			) : (
-				<span className="text-[10px] text-muted-foreground">—</span>
+				<span className="text-3xs text-muted-foreground">—</span>
 			)}
 		</AttachmentMedia>
 	);
@@ -80,7 +80,7 @@ function ShelfCoverMedia({
 	if (ids.length === 0) {
 		return (
 			<AttachmentMedia variant="icon">
-				<span className="text-[10px] text-muted-foreground">Shelf</span>
+				<span className="text-3xs text-muted-foreground">Shelf</span>
 			</AttachmentMedia>
 		);
 	}
@@ -124,7 +124,7 @@ function PostAttachmentBookCard({
 				<div className="mt-1 flex flex-wrap items-center gap-1.5">
 					<BookStatusBadge status={book.status} />
 					{rating ? (
-						<span className="text-[11px] text-muted-foreground tabular-nums">
+						<span className="text-2xs text-muted-foreground tabular-nums">
 							{rating} club avg
 						</span>
 					) : null}
@@ -194,7 +194,7 @@ function PostAttachmentSittingCard({
 						: ""}
 				</AttachmentDescription>
 				{deadlineLabel ? (
-					<p className="mt-0.5 text-[11px] text-muted-foreground">
+					<p className="mt-0.5 text-2xs text-muted-foreground">
 						{deadlineLabel}
 					</p>
 				) : null}
@@ -239,10 +239,10 @@ function PostAttachmentFeedbackCard({
 				<AttachmentDescription>
 					{feedback.author.name} · {formatFeedbackRating(feedback.rating)} / 5
 				</AttachmentDescription>
-				<p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground leading-snug">
+				<p className="mt-0.5 line-clamp-2 text-2xs text-muted-foreground leading-snug">
 					{contentPlainText(feedback.review)}
 				</p>
-				<div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground tabular-nums">
+				<div className="mt-1 flex items-center gap-3 text-2xs text-muted-foreground tabular-nums">
 					<span className="inline-flex items-center gap-0.5">
 						<ThumbsUp className="size-3" aria-hidden />
 						{feedback.likeCount}
@@ -267,7 +267,7 @@ function PostAttachmentPostCard({
 	return (
 		<AttachmentLinkFrame href={href}>
 			<AttachmentMedia variant="icon">
-				<span className="text-[10px] text-muted-foreground">Post</span>
+				<span className="text-3xs text-muted-foreground">Post</span>
 			</AttachmentMedia>
 			<AttachmentContent>
 				<AttachmentTitle>{post.contentPreview}</AttachmentTitle>
@@ -300,13 +300,13 @@ function PostAttachmentCommentCard({
 					{comment.author.name} · @{comment.author.username}
 				</AttachmentDescription>
 				{comment.contextPost ? (
-					<p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
+					<p className="mt-0.5 line-clamp-1 text-2xs text-muted-foreground">
 						On post by {comment.contextPost.author.name}:{" "}
 						{comment.contextPost.contentPreview}
 					</p>
 				) : null}
 				{comment.parentComment ? (
-					<p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
+					<p className="mt-0.5 line-clamp-1 text-2xs text-muted-foreground">
 						Reply to {comment.parentComment.author.name}:{" "}
 						{comment.parentComment.contentPreview}
 					</p>

@@ -32,6 +32,7 @@ import {
 	useQueryStates,
 } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
+import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { authClient } from "@/lib/auth-client";
@@ -46,7 +47,6 @@ import {
 	filterAndSortBookSittings,
 	ordinal,
 } from "@/lib/book-sittings";
-import { formatClubDateTime } from "@/lib/club-timezone";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -456,9 +456,11 @@ function PollRow({ item, mark }: { item: BookSittingItem; mark: Mark }) {
 				{open ? (
 					<p className="text-muted-foreground text-sm">
 						Voting is open. {plural(item.voters, "member")} voted so far
-						{item.pollDeadline
-							? `, closes ${formatClubDateTime(new Date(item.pollDeadline))}`
-							: ""}
+						{item.pollDeadline ? (
+							<>
+								, closes <ClubDateTime value={item.pollDeadline} />
+							</>
+						) : null}
 						. Results show once it closes.
 					</p>
 				) : (

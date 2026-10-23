@@ -19,22 +19,7 @@ import {
 	SidebarSeparator,
 	SidebarTrigger,
 } from "@bbrc/ui/components/sidebar";
-import {
-	BookOpen,
-	ChevronRight,
-	FileStack,
-	FileText,
-	Home,
-	LayoutDashboard,
-	Library,
-	ListChecks,
-	ListOrdered,
-	MessageCircle,
-	MessageSquareQuote,
-	Sparkles,
-	Users,
-	UsersRound,
-} from "lucide-react";
+import { ChevronRight, Home } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

@@ -103,7 +103,7 @@ export function MemberProfileNumbers({
 									className={cn(
 										"size-5 shrink-0",
 										streak.current > 0
-											? "text-orange-600 dark:text-orange-400"
+											? "text-warning"
 											: "text-muted-foreground",
 									)}
 									aria-hidden

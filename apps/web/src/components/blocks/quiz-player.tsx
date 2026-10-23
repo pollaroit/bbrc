@@ -423,7 +423,7 @@ export function QuizPlayer({
 			{header}
 
 			<div
-				className="flex items-start gap-2 border border-amber-600/40 bg-amber-50 px-3 py-2 text-amber-950 text-xs dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-100"
+				className="flex items-start gap-2 border border-warning/40 bg-warning/15 px-3 py-2 text-warning-ink text-xs"
 				role="note"
 			>
 				<AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />

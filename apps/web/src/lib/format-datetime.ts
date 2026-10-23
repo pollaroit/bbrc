@@ -39,7 +39,8 @@ export function formatDateTime(value: Date | string): string {
 
 export function formatDateTimeInTimeZone(
 	value: Date | string,
-	timeZone: string,
+	timeZone: string | undefined,
+	options: { hour12?: boolean; showZone?: boolean } = {},
 ): string {
 	const date = typeof value === "string" ? new Date(value) : value;
 
@@ -51,8 +52,16 @@ export function formatDateTimeInTimeZone(
 		new Intl.DateTimeFormat(undefined, {
 			dateStyle: "medium",
 			timeStyle: "short",
-			timeZone,
-		}).format(date),
+			...(timeZone ? { timeZone } : {}),
+			...(options.hour12 === undefined ? {} : { hour12: options.hour12 }),
+		}).format(date) +
+			(options.showZone
+				? ` ${
+						new Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
+							.formatToParts(date)
+							.find((part) => part.type === "timeZoneName")?.value ?? ""
+					}`
+				: ""),
 	);
 }
 

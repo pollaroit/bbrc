@@ -1,12 +1,12 @@
 "use client";
 
-import { useTheme } from "next-themes";
 import { useEffect } from "react";
-import { isEditableTarget, nextThemeAfterToggle } from "@/lib/theme-toggle";
+import { useColorMode } from "@/lib/preferences/use-color-mode";
+import { isEditableTarget } from "@/lib/theme-toggle";
 
 /** Press `d` to toggle light/dark when not focused in an editable field. */
 export function ThemeHotkey() {
-	const { resolvedTheme, setTheme } = useTheme();
+	const { toggle } = useColorMode();
 
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
@@ -24,12 +24,12 @@ export function ThemeHotkey() {
 			}
 
 			event.preventDefault();
-			setTheme(nextThemeAfterToggle(resolvedTheme));
+			toggle();
 		};
 
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [resolvedTheme, setTheme]);
+	}, [toggle]);
 
 	return null;
 }

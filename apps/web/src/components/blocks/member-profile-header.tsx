@@ -43,7 +43,7 @@ export function MemberProfileHeader({
 									<span className="truncate">{user.name}</span>
 									{user.isAdmin ? (
 										<Crown
-											className="size-5 shrink-0 text-amber-600 dark:text-amber-400"
+											className="size-5 shrink-0 text-warning"
 											aria-label="Administrator"
 										/>
 									) : null}

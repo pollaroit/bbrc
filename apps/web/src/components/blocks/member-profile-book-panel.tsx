@@ -85,7 +85,7 @@ export function MemberProfileBookPanel({
 															sizes="96px"
 														/>
 													) : (
-														<span className="flex size-full items-center justify-center px-1 text-center text-[10px] text-muted-foreground">
+														<span className="flex size-full items-center justify-center px-1 text-center text-3xs text-muted-foreground">
 															No cover
 														</span>
 													)}

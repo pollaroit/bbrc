@@ -32,12 +32,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BookRequestedByLine } from "@/components/blocks/book-requested-by";
+import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { PollOptionReadersDialog } from "@/components/blocks/poll-option-readers-dialog";
 import { PollOptionVotersDialog } from "@/components/blocks/poll-option-voters-dialog";
 import { PollVotesByVoterSection } from "@/components/blocks/poll-votes-by-voter-section";
 import { authClient } from "@/lib/auth-client";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
-import { formatClubDateTime } from "@/lib/club-timezone";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
 import { formatPollPageRange } from "@/lib/poll-page-range";
 import { readingEstimateLabel } from "@/lib/reading-estimate";
@@ -81,11 +81,11 @@ function votePointsRowTintClass(points: 1 | 2 | 3, active: boolean): string {
 	}
 
 	if (points === 3) {
-		return "bg-amber-50/80 dark:bg-amber-950/25";
+		return "bg-warning/80";
 	}
 
 	if (points === 2) {
-		return "bg-slate-100/90 dark:bg-slate-900/40";
+		return "bg-muted";
 	}
 
 	return "bg-muted/25";
@@ -93,11 +93,11 @@ function votePointsRowTintClass(points: 1 | 2 | 3, active: boolean): string {
 
 function votePointsBadgeClass(points: 1 | 2 | 3): string {
 	if (points === 3) {
-		return "border-amber-600/60 bg-amber-100 text-amber-950 dark:border-amber-500/50 dark:bg-amber-950/60 dark:text-amber-50";
+		return "border-warning/60 bg-warning/15 text-warning-ink";
 	}
 
 	if (points === 2) {
-		return "border-slate-500/60 bg-slate-200 text-slate-900 dark:border-slate-400/50 dark:bg-slate-800 dark:text-slate-100";
+		return "border-border bg-muted text-foreground";
 	}
 
 	return "";
@@ -109,11 +109,11 @@ function voteChipButtonClass(selected: boolean, points: 1 | 2 | 3): string {
 	}
 
 	if (points === 3) {
-		return "border-amber-600 bg-amber-100 font-semibold text-amber-950 ring-2 ring-amber-600/70 dark:border-amber-500 dark:bg-amber-950/50 dark:text-amber-50 dark:ring-amber-500/60";
+		return "border-warning bg-warning/15 font-semibold text-warning-ink ring-2 ring-warning/70";
 	}
 
 	if (points === 2) {
-		return "border-slate-500 bg-slate-200 font-semibold text-slate-900 ring-2 ring-slate-500/70 dark:border-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-400/60";
+		return "border-border bg-muted font-semibold text-foreground ring-2 ring-border";
 	}
 
 	return "border-primary bg-primary/15 font-semibold text-foreground ring-2 ring-primary/70";
@@ -382,7 +382,7 @@ export function SittingPollSection({
 					<div>
 						<dt className="text-muted-foreground text-xs">Poll deadline</dt>
 						<dd className="font-medium text-sm">
-							{formatClubDateTime(poll.deadline)}
+							<ClubDateTime value={poll.deadline} />
 						</dd>
 					</div>
 					<div>
@@ -505,11 +505,11 @@ export function SittingPollSection({
 									canEditSelection &&
 										checked &&
 										draftPoints === 3 &&
-										"border-amber-600/50 dark:border-amber-500/40",
+										"border-warning/50",
 									canEditSelection &&
 										checked &&
 										draftPoints === 2 &&
-										"border-slate-500/50 dark:border-slate-400/40",
+										"border-border",
 									canEditSelection &&
 										checked &&
 										draftPoints === 1 &&
@@ -575,7 +575,7 @@ export function SittingPollSection({
 												sizes="96px"
 											/>
 										) : (
-											<div className="flex size-full items-center justify-center text-[10px] text-muted-foreground">
+											<div className="flex size-full items-center justify-center text-3xs text-muted-foreground">
 												No cover
 											</div>
 										)}
@@ -594,7 +594,7 @@ export function SittingPollSection({
 											</Link>
 											{option.viewerHasRead ? (
 												<span
-													className="inline-flex shrink-0 text-emerald-700 dark:text-emerald-400"
+													className="inline-flex shrink-0 text-success-ink"
 													title="You read this book"
 												>
 													<BookCheck className="size-4" aria-hidden />

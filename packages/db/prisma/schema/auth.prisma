@@ -19,6 +19,8 @@ model User {
   usernameLastUpdatedAt DateTime?  @map("username_last_updated_at")
   /// New reads start with the current month and year filled in.
   readDateDefaultsToNow Boolean    @default(true) @map("read_date_defaults_to_now")
+  /// Look and feel (palette, fonts, sizes) plus display preferences; validated by `normalizePreferences`.
+  preferences           Json?
   /// @zod.email("Invalid email address")
   email                 String     @unique
   emailVerified         Boolean    @default(false) @map("email_verified")
