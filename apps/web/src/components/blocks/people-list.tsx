@@ -126,6 +126,7 @@ export function PeopleList() {
 						<PeopleCard
 							person={person}
 							isViewer={session?.user?.id === person.id}
+							sortBy={params.sortBy}
 						/>
 					</li>
 				))}

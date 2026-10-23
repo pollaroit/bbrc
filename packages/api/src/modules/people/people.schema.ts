@@ -87,6 +87,12 @@ export const PeopleListItemSchema = zod.object({
 	reviews: zod.number().int().min(0),
 	posts: zod.number().int().min(0),
 	sittingsFinished: zod.number().int().min(0),
+	sittingsJoined: zod.number().int().min(0),
+	shelves: zod.number().int().min(0),
+	favorites: zod.number().int().min(0),
+	quizzesTaken: zod.number().int().min(0),
+	documentsShared: zod.number().int().min(0),
+	authorsRead: zod.number().int().min(0),
 	streak: zod.object({
 		current: zod.number().int().min(0),
 		best: zod.number().int().min(0),

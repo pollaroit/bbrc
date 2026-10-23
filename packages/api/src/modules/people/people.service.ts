@@ -41,7 +41,18 @@ const userListSelect = {
 	profile: {
 		select: { bio: true, location: true, favoriteGenres: true },
 	},
-	_count: { select: { reads: true, feedbacks: true, posts: true } },
+	_count: {
+		select: {
+			reads: true,
+			feedbacks: true,
+			posts: true,
+			favorites: true,
+			shelves: { where: { status: "active" } },
+			quizSubmissions: { where: { status: "submitted" } },
+			documents: { where: { status: "approved" } },
+			participations: { where: { removedAt: null } },
+		},
+	},
 } satisfies Prisma.UserSelect;
 
 type PeopleRow = Prisma.UserGetPayload<{ select: typeof userListSelect }>;
@@ -312,7 +323,7 @@ async function buildItems(
 	db: Database,
 ): Promise<PeopleListItem[]> {
 	const ids = rows.map((row) => row.id);
-	const [streaks, ratings, reading] = await Promise.all([
+	const [streaks, ratings, reading, authorCounts] = await Promise.all([
 		loadStreaks(ids, db),
 		db.feedback.groupBy({
 			by: ["authorId"],
@@ -332,6 +343,7 @@ async function buildItems(
 				sitting: { select: { slug: true } },
 			},
 		}),
+		loadDistinctAuthorCounts(ids, db),
 	]);
 	const ratingByUser = new Map(
 		ratings.map((row) => [row.authorId, row._avg.rating]),
@@ -369,6 +381,12 @@ async function buildItems(
 			reviews: row._count.feedbacks,
 			posts: row._count.posts,
 			sittingsFinished: streak?.finished ?? 0,
+			sittingsJoined: row._count.participations,
+			shelves: row._count.shelves,
+			favorites: row._count.favorites,
+			quizzesTaken: row._count.quizSubmissions,
+			documentsShared: row._count.documents,
+			authorsRead: authorCounts.get(row.id) ?? 0,
 			streak: { current: streak?.current ?? 0, best: streak?.best ?? 0 },
 			averageRatingGiven:
 				average != null ? Math.round(average * 100) / 100 : null,

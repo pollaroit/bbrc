@@ -12,15 +12,76 @@ import {
 import type { Route } from "next";
 import Link from "next/link";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import type { PeopleSortField } from "@/lib/listing/people-listing";
 import { cn } from "@/lib/utils";
 
 type PeopleCardProps = {
 	person: PeopleListItem;
 	/** True for the signed-in member's own card. */
 	isViewer?: boolean;
+	/** The grid's current sort; figures that have no room on the card appear in the top strip when sorted by. */
+	sortBy?: PeopleSortField;
 };
 
 const NEW_MEMBER_DAYS = 14;
+
+type SortMetric = { label: string; value: string; href?: string };
+
+/** Sorts whose figure is not already on the card (the strips cover xp, rp, reads, reviews, posts, sittings and streak). */
+function sortMetricFor(
+	person: PeopleListItem,
+	sortBy: PeopleSortField | undefined,
+): SortMetric | null {
+	const base = `/users/${person.username}`;
+	switch (sortBy) {
+		case "averageRating":
+			return {
+				label: "Avg rating given",
+				value:
+					person.averageRatingGiven != null
+						? person.averageRatingGiven.toFixed(2)
+						: "—",
+				href: `${base}/feedbacks`,
+			};
+		case "authors":
+			return {
+				label: "Authors read",
+				value: String(person.authorsRead),
+				href: `${base}/reads`,
+			};
+		case "participations":
+			return {
+				label: "Sittings joined",
+				value: String(person.sittingsJoined),
+				href: `${base}/sittings`,
+			};
+		case "shelves":
+			return {
+				label: "Shelves",
+				value: String(person.shelves),
+				href: `${base}/shelves`,
+			};
+		case "favorites":
+			return {
+				label: "Favorites",
+				value: String(person.favorites),
+				href: base,
+			};
+		case "quizzes":
+			return {
+				label: "Quizzes taken",
+				value: String(person.quizzesTaken),
+				href: `${base}/quizzes`,
+			};
+		case "documents":
+			return {
+				label: "Documents shared",
+				value: String(person.documentsShared),
+			};
+		default:
+			return null;
+	}
+}
 
 const joinedFormat = new Intl.DateTimeFormat("en", {
 	month: "short",
@@ -125,9 +186,14 @@ function LevelLink({
 	);
 }
 
-export function PeopleCard({ person, isViewer = false }: PeopleCardProps) {
+export function PeopleCard({
+	person,
+	isViewer = false,
+	sortBy,
+}: PeopleCardProps) {
 	const profileHref = `/users/${person.username}` as Route;
 	const highlight = highlightFor(person, isViewer);
+	const metric = sortMetricFor(person, sortBy);
 	const about =
 		person.bio ??
 		(person.favoriteGenres.length > 0
@@ -152,9 +218,26 @@ export function PeopleCard({ person, isViewer = false }: PeopleCardProps) {
 				) : (
 					<span className="min-w-0 truncate">{highlight.label}</span>
 				)}
-				<span className="shrink-0 font-normal opacity-80">
-					Joined {joinedFormat.format(new Date(person.createdAt))}
-				</span>
+				{metric ? (
+					metric.href ? (
+						<Link
+							href={metric.href as Route}
+							className="shrink-0 tabular-nums underline-offset-4 hover:underline"
+						>
+							<span className="font-normal opacity-80">{metric.label} </span>
+							<span className="font-semibold">{metric.value}</span>
+						</Link>
+					) : (
+						<span className="shrink-0 tabular-nums">
+							<span className="font-normal opacity-80">{metric.label} </span>
+							<span className="font-semibold">{metric.value}</span>
+						</span>
+					)
+				) : (
+					<span className="shrink-0 font-normal opacity-80">
+						Joined {joinedFormat.format(new Date(person.createdAt))}
+					</span>
+				)}
 			</div>
 
 			<div className="relative flex min-h-[8rem] flex-1">
