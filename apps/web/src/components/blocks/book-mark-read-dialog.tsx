@@ -37,7 +37,7 @@ import {
 	READ_DATE_MONTHS,
 	readDateMonthLabel,
 } from "@/lib/read-date-months";
-import { orpc } from "@/utils/orpc";
+import { orpc, queryClient } from "@/utils/orpc";
 
 type BookMarkReadDialogProps = {
 	bookSlug: string;
@@ -101,29 +101,144 @@ export function BookMarkReadDialog({
 		);
 	}, [open, stateQuery.data]);
 
+	const readStateKey = orpc.read.getBookReadState.queryKey({
+		input: { bookSlug },
+	});
+	const engagementKey = orpc.favorite.getViewerLibraryEngagement.queryKey();
+
+	/** Applies the change to the caches right away; returns what to restore on failure. */
+	async function applyReadOptimistically(next: {
+		hasRead: boolean;
+		readEndYear?: number | null;
+		readEndMonth?: number | null;
+		withFeedback?: { rating: number } | null;
+	}) {
+		await Promise.all([
+			queryClient.cancelQueries({ queryKey: readStateKey }),
+			queryClient.cancelQueries({ queryKey: engagementKey }),
+		]);
+
+		const previousState = queryClient.getQueryData(readStateKey);
+		const previousEngagement = queryClient.getQueryData(engagementKey);
+
+		queryClient.setQueryData(readStateKey, {
+			hasRead: next.hasRead,
+			hasFeedback: next.hasRead
+				? Boolean(previousState?.hasFeedback || next.withFeedback)
+				: Boolean(previousState?.hasFeedback),
+			readEndYear: next.hasRead
+				? next.readEndYear === undefined
+					? (previousState?.readEndYear ?? null)
+					: next.readEndYear
+				: null,
+			readEndMonth: next.hasRead
+				? next.readEndMonth === undefined
+					? (previousState?.readEndMonth ?? null)
+					: next.readEndMonth
+				: null,
+			editionId: next.hasRead ? (previousState?.editionId ?? null) : null,
+		});
+
+		queryClient.setQueryData(engagementKey, (old) => {
+			if (!old) {
+				return old;
+			}
+			const readSlugs = old.readSlugs.filter((slug) => slug !== bookSlug);
+			return {
+				...old,
+				readSlugs: next.hasRead ? [...readSlugs, bookSlug] : readSlugs,
+				...(next.withFeedback
+					? {
+							feedbackBookSlugs: [
+								...old.feedbackBookSlugs.filter((slug) => slug !== bookSlug),
+								bookSlug,
+							],
+							feedbackRatings: [
+								...old.feedbackRatings.filter((r) => r.bookSlug !== bookSlug),
+								{ bookSlug, rating: next.withFeedback.rating },
+							],
+						}
+					: {}),
+			};
+		});
+
+		// The book page's "Reads (n)" tab moves with the change.
+		if (Boolean(previousState?.hasRead) !== next.hasRead) {
+			queryClient.setQueriesData(
+				{ queryKey: orpc.read.listForBook.key({ input: { bookSlug } }) },
+				(old: { total?: number } | undefined) =>
+					old && typeof old.total === "number"
+						? {
+								...old,
+								total: Math.max(0, old.total + (next.hasRead ? 1 : -1)),
+							}
+						: old,
+			);
+		}
+
+		return { previousState, previousEngagement };
+	}
+
+	function restoreRead(
+		snapshot: Awaited<ReturnType<typeof applyReadOptimistically>> | undefined,
+	) {
+		if (!snapshot) {
+			return;
+		}
+		queryClient.setQueryData(readStateKey, snapshot.previousState);
+		queryClient.setQueryData(engagementKey, snapshot.previousEngagement);
+	}
+
+	function refreshReadQueries(includeFeedback: boolean) {
+		void invalidateReadQueries(bookSlug);
+		if (includeFeedback) {
+			void invalidateFeedbackQueries();
+		}
+	}
+
 	const saveMutation = useMutation(
 		orpc.read.setRead.mutationOptions({
-			onSuccess: async () => {
-				toast.success("Saved your read");
-				await invalidateReadQueries(bookSlug);
-				await invalidateFeedbackQueries();
+			// One save at a time per book, in click order.
+			scope: { id: `read-${bookSlug}` },
+			onMutate: async (variables) => {
+				const snapshot = await applyReadOptimistically({
+					hasRead: true,
+					readEndYear: variables.readEndYear,
+					readEndMonth: variables.readEndMonth,
+					withFeedback:
+						"feedbackRating" in variables && variables.feedbackRating != null
+							? { rating: variables.feedbackRating }
+							: null,
+				});
 				onOpenChange(false);
+				return snapshot;
 			},
-			onError: (error) => {
-				toast.error(error.message || "Could not save read");
+			onError: (error, _variables, snapshot) => {
+				restoreRead(snapshot);
+				toast.error(error.message || "Could not save your read");
+			},
+			onSettled: (_data, _error, variables) => {
+				refreshReadQueries(
+					"feedbackRating" in variables && variables.feedbackRating != null,
+				);
 			},
 		}),
 	);
 
 	const removeMutation = useMutation(
 		orpc.read.removeRead.mutationOptions({
-			onSuccess: async () => {
-				toast.success("Removed read");
-				await invalidateReadQueries(bookSlug);
+			scope: { id: `read-${bookSlug}` },
+			onMutate: async () => {
+				const snapshot = await applyReadOptimistically({ hasRead: false });
 				onOpenChange(false);
+				return snapshot;
 			},
-			onError: (error) => {
-				toast.error(error.message || "Could not remove read");
+			onError: (error, _variables, snapshot) => {
+				restoreRead(snapshot);
+				toast.error(error.message || "Could not remove your read");
+			},
+			onSettled: () => {
+				refreshReadQueries(false);
 			},
 		}),
 	);
