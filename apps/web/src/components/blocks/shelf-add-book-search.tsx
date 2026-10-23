@@ -3,11 +3,11 @@
 import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
 import { Input } from "@bbrc/ui/components/input";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
@@ -44,24 +44,62 @@ export function ShelfAddBookSearch({
 		enabled: !atCap && trimmed.length >= 2,
 	});
 
+	const shelfKey = orpc.shelf.getBySlug.queryKey({
+		input: { username, shelfSlug },
+	});
+	/** Book details for the optimistic row, keyed by slug, set right before mutating. */
+	const pendingBooksRef = useRef(
+		new Map<
+			string,
+			{ slug: string; title: string; authors: string[]; coverId: number | null }
+		>(),
+	);
+
 	const addMutation = useMutation(
 		orpc.shelf.addBook.mutationOptions({
-			onSuccess: async () => {
-				toast.success("Book added to shelf.");
-				await queryClient.invalidateQueries({
-					queryKey: orpc.shelf.getBySlug.key({
-						input: { username, shelfSlug },
-					}),
-				});
-				await queryClient.invalidateQueries({
+			// Adds to this shelf run one at a time, in click order.
+			scope: { id: `shelf-${shelfSlug}` },
+			onMutate: async (variables) => {
+				await queryClient.cancelQueries({ queryKey: shelfKey });
+				const previous = queryClient.getQueryData(shelfKey);
+				const book = pendingBooksRef.current.get(variables.bookSlug);
+
+				if (previous && book) {
+					queryClient.setQueryData(shelfKey, {
+						...previous,
+						bookCount: previous.bookCount + 1,
+						books: [
+							...previous.books,
+							{ position: previous.books.length, book },
+						],
+					});
+				}
+
+				return { previous };
+			},
+			onError: (error, variables, context) => {
+				// Only roll back this book, so other quick adds stay in place.
+				queryClient.setQueryData(shelfKey, (current) =>
+					current
+						? {
+								...current,
+								bookCount: Math.max(0, current.bookCount - 1),
+								books: current.books.filter(
+									(entry) => entry.book.slug !== variables.bookSlug,
+								),
+							}
+						: (context?.previous ?? current),
+				);
+				toast.error(error.message ?? "Could not add book.");
+			},
+			onSettled: () => {
+				void queryClient.invalidateQueries({ queryKey: shelfKey });
+				void queryClient.invalidateQueries({
 					queryKey: orpc.shelf.listByUsername.key(),
 				});
-				await queryClient.invalidateQueries({
+				void queryClient.invalidateQueries({
 					queryKey: orpc.shelf.listForBook.key(),
 				});
-			},
-			onError: (error) => {
-				toast.error(error.message ?? "Could not add book.");
 			},
 		}),
 	);
@@ -132,9 +170,6 @@ export function ShelfAddBookSearch({
 					) : (
 						books.map((book) => {
 							const coverSrc = bookCoverUrl(book.coverId);
-							const adding =
-								addMutation.isPending &&
-								addMutation.variables?.bookSlug === book.slug;
 							return (
 								<li
 									key={book.slug}
@@ -142,10 +177,15 @@ export function ShelfAddBookSearch({
 								>
 									<button
 										type="button"
-										disabled={addMutation.isPending}
 										aria-label={`Add ${book.title} to shelf`}
 										className="flex min-h-14 w-full items-center gap-3 p-2 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none disabled:opacity-60"
 										onClick={() => {
+											pendingBooksRef.current.set(book.slug, {
+												slug: book.slug,
+												title: book.title,
+												authors: book.authors,
+												coverId: book.coverId ?? null,
+											});
 											addMutation.mutate({
 												shelfSlug,
 												bookSlug: book.slug,
@@ -171,17 +211,10 @@ export function ShelfAddBookSearch({
 												{formatBookAuthors(book.authors)}
 											</span>
 										</span>
-										{adding ? (
-											<Loader2
-												className="size-4 shrink-0 animate-spin text-muted-foreground"
-												aria-hidden
-											/>
-										) : (
-											<Plus
-												className="size-4 shrink-0 text-muted-foreground"
-												aria-hidden
-											/>
-										)}
+										<Plus
+											className="size-4 shrink-0 text-muted-foreground"
+											aria-hidden
+										/>
 									</button>
 								</li>
 							);
