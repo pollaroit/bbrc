@@ -26,6 +26,8 @@ export const CommentSlugImageInputSchema = ImageUploadBodySchema.extend({
 });
 
 export const ShelfSlugImageInputSchema = ImageUploadBodySchema.extend({
+	/** Owner of the shelf when the member is a collaborator rather than the owner. */
+	ownerUsername: z.string().min(3).max(20).optional(),
 	shelfSlug: z.string().min(3).max(60),
 });
 
@@ -38,5 +40,6 @@ export const CommentSlugOnlySchema = z.object({
 });
 
 export const ShelfSlugOnlySchema = z.object({
+	ownerUsername: z.string().min(3).max(20).optional(),
 	shelfSlug: z.string().min(3).max(60),
 });

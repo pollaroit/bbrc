@@ -8,7 +8,7 @@ export type EntityImageUploadTarget =
 	| { target: "avatar" }
 	| { target: "post-image"; postSlug: string }
 	| { target: "comment-image"; commentSlug: string }
-	| { target: "shelf-cover"; shelfSlug: string };
+	| { target: "shelf-cover"; shelfSlug: string; ownerUsername?: string };
 
 export type EntityImageUploadResult = {
 	publicUrl: string;
@@ -41,6 +41,9 @@ export async function uploadEntityImage(
 		formData.append("commentSlug", target.commentSlug);
 	} else if (target.target === "shelf-cover") {
 		formData.append("shelfSlug", target.shelfSlug);
+		if (target.ownerUsername) {
+			formData.append("ownerUsername", target.ownerUsername);
+		}
 	}
 
 	const response = await fetch("/api/storage/upload", {

@@ -11,6 +11,44 @@ enum ShelfType {
   unordered
 }
 
+enum ShelfPermission {
+  add_book
+  remove_book
+  edit_notes
+  edit_title
+  edit_description
+  edit_cover
+  edit_type
+  edit_status
+  edit_ordering_on_simple
+  edit_ordering_on_ranked
+  view_non_public
+  delete_shelf
+  add_collaborator
+  remove_collaborator
+  edit_permissions
+}
+
+enum ShelfInvitationStatus {
+  pending
+  accepted
+  rejected
+  cancelled
+}
+
+enum ShelfActivityKind {
+  book_added
+  book_removed
+  books_reordered
+  notes_edited
+  shelf_updated
+  collaborator_joined
+  collaborator_left
+  collaborator_removed
+  permissions_changed
+  ownership_transferred
+}
+
 model Shelf {
   /// @zod.uuid("Invalid UUID")
   id        String   @id @default(uuid())
@@ -40,6 +78,9 @@ model Shelf {
 
   books           ShelfBook[]
   postAttachments PostAttachment[]
+  collaborators   ShelfCollaborator[]
+  invitations     ShelfInvitation[]
+  activities      ShelfActivity[]
 
   @@unique([userId, slug])
   @@index([userId, status])
@@ -67,9 +108,93 @@ model ShelfBook {
   /// @zod.max(500, "Notes must be at most 500 characters long").nullish()
   notes String? @db.Text
 
+  /// Who put the book on the shelf (null only if that member was deleted).
+  addedById String? @map("added_by_id")
+  addedBy   User?   @relation("ShelfBookAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+
+  /// Who last changed this entry (added it, edited its notes or moved it).
+  updatedById String? @map("updated_by_id")
+  updatedBy   User?   @relation("ShelfBookUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
   @@unique([shelfId, bookId])
   @@unique([shelfId, position])
   @@index([bookId])
   @@index([shelfId, position])
   @@map("shelf_book")
+}
+
+/// A member who can help edit someone else's shelf. The owner is never a row here.
+model ShelfCollaborator {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  shelfId String @map("shelf_id")
+  shelf   Shelf  @relation(fields: [shelfId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation("ShelfCollaboratorUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  permissions ShelfPermission[]
+
+  invitedById String? @map("invited_by_id")
+  invitedBy   User?   @relation("ShelfCollaboratorInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@unique([shelfId, userId])
+  @@index([userId])
+  @@map("shelf_collaborator")
+}
+
+model ShelfInvitation {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  shelfId String @map("shelf_id")
+  shelf   Shelf  @relation(fields: [shelfId], references: [id], onDelete: Cascade)
+
+  inviteeId String @map("invitee_id")
+  invitee   User   @relation("ShelfInvitationInvitee", fields: [inviteeId], references: [id], onDelete: Cascade)
+
+  invitedById String @map("invited_by_id")
+  invitedBy   User   @relation("ShelfInvitationInviter", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  permissions ShelfPermission[]
+  status      ShelfInvitationStatus @default(pending)
+
+  /// Secret in the invitation link; only the invitee's signed-in account can use it.
+  token String @unique
+
+  expiresAt   DateTime  @map("expires_at")
+  respondedAt DateTime? @map("responded_at")
+
+  @@index([shelfId, status])
+  @@index([inviteeId, status])
+  @@map("shelf_invitation")
+}
+
+/// What collaborators did on a shelf; shown to people who manage it.
+model ShelfActivity {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  shelfId String @map("shelf_id")
+  shelf   Shelf  @relation(fields: [shelfId], references: [id], onDelete: Cascade)
+
+  actorId String? @map("actor_id")
+  actor   User?   @relation("ShelfActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  kind ShelfActivityKind
+
+  targetUserId String? @map("target_user_id")
+  targetUser   User?   @relation("ShelfActivityTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  /// Book title and slug, counts, or permission names; kept so the log still reads after a book is removed.
+  meta Json?
+
+  @@index([shelfId, createdAt])
+  @@map("shelf_activity")
 }

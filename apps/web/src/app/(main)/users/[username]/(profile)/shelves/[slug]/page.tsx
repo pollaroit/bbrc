@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MemberShelfDetail } from "@/components/blocks/member-shelf-detail";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import {
 	loadShelfBySlugForPage,
 	loadUserByUsernameForPage,
@@ -44,5 +45,9 @@ export default async function ShelfDetailPage({
 }: PageProps<"/users/[username]/shelves/[slug]">) {
 	const { username, slug } = await params;
 
-	return <MemberShelfDetail username={username} shelfSlug={slug} />;
+	return (
+		<ListingSearchParamsBoundary>
+			<MemberShelfDetail username={username} shelfSlug={slug} />
+		</ListingSearchParamsBoundary>
+	);
 }

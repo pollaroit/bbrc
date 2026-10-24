@@ -1,4 +1,6 @@
 import {
+	shelfCollabFilterLabels,
+	shelfCollabFilters,
 	shelfRangeableFields,
 	shelfSortableFields,
 	shelfTypeFilterLabels,
@@ -27,6 +29,7 @@ export const shelfSortByLabels = {
 	updatedAt: "Last updated",
 	title: "Title",
 	"books._count": "Book count",
+	"collaborators._count": "Collaborators",
 } as const satisfies FieldLabels<(typeof shelfSortableFields)[number]>;
 
 export const shelfRangeByLabels = {
@@ -34,7 +37,7 @@ export const shelfRangeByLabels = {
 	updatedAt: "Last updated",
 } as const satisfies FieldLabels<(typeof shelfRangeableFields)[number]>;
 
-export { shelfTypeFilterLabels };
+export { shelfCollabFilterLabels, shelfCollabFilters, shelfTypeFilterLabels };
 
 export const shelvesListingSearchParams = {
 	search: searchParser.withOptions({ shallow: false, throttleMs: 400 }),
@@ -51,6 +54,9 @@ export const shelvesListingSearchParams = {
 		shallow: false,
 	}),
 	minBooks: parseAsInteger.withOptions({ shallow: false }),
+	collab: parseAsStringLiteral(shelfCollabFilters).withOptions({
+		shallow: false,
+	}),
 };
 
 export function useShelvesListingSearchParams() {
@@ -72,6 +78,7 @@ export function toShelfListCallInput(
 		rangeMin: params.rangeMin,
 		rangeMax: params.rangeMax,
 		types: params.types,
+		collab: params.collab ?? undefined,
 		minBooks: params.minBooks ?? undefined,
 		limit: 24,
 	}) as Partial<GetShelfListInput>;
@@ -90,6 +97,10 @@ export function countShelvesSheetFilters(
 		count += 1;
 	}
 
+	if (params.collab != null) {
+		count += 1;
+	}
+
 	if (
 		params.rangeBy != null &&
 		(params.rangeMin != null || params.rangeMax != null)
@@ -105,6 +116,7 @@ export function clearShelvesSheetFilters(
 ) {
 	void setParams({
 		types: null,
+		collab: null,
 		minBooks: null,
 		rangeBy: null,
 		rangeMin: null,

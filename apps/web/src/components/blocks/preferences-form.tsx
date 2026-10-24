@@ -199,6 +199,55 @@ function ReadingSection() {
 	);
 }
 
+function ShelvesSection() {
+	const { data: session } = authClient.useSession();
+	const signedIn = Boolean(session?.user);
+
+	const preferenceQuery = useQuery({
+		...orpc.shelf.collab.getInvitePreference.queryOptions(),
+		enabled: signedIn,
+	});
+	const key = orpc.shelf.collab.getInvitePreference.queryKey();
+	const mutation = useMutation(
+		orpc.shelf.collab.setInvitePreference.mutationOptions({
+			onMutate: async (variables) => {
+				await queryClient.cancelQueries({ queryKey: key });
+				const previous = queryClient.getQueryData(key);
+				queryClient.setQueryData(key, variables);
+				return { previous };
+			},
+			onError: (_error, _variables, context) => {
+				queryClient.setQueryData(key, context?.previous);
+				toast.error("Could not save that setting.");
+			},
+			onSettled: () => {
+				void queryClient.invalidateQueries({ queryKey: key });
+			},
+		}),
+	);
+
+	return (
+		<PreferencesSection
+			id="shelves"
+			title="Shelves"
+			description="How other members can work with you on shelves."
+		>
+			<SwitchRow
+				id="pref-shelf-invites"
+				label="Allow people to invite me to collaborate on shelves"
+				hint={
+					signedIn
+						? "When this is off, nobody can invite you. Shelves you already collaborate on are not affected."
+						: "Sign in to change this one."
+				}
+				checked={preferenceQuery.data?.allowInvites ?? true}
+				disabled={!signedIn || preferenceQuery.isPending}
+				onChange={(allowInvites) => mutation.mutate({ allowInvites })}
+			/>
+		</PreferencesSection>
+	);
+}
+
 function TimeSection() {
 	const { time } = usePreferences();
 	const sample = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -345,6 +394,7 @@ const sections = [
 	{ id: "appearance", label: "Appearance" },
 	{ id: "accessibility", label: "Accessibility" },
 	{ id: "reading", label: "Reading" },
+	{ id: "shelves", label: "Shelves" },
 	{ id: "time", label: "Time and format" },
 	{ id: "search", label: "Search" },
 	{ id: "sync", label: "Sync and reset" },
@@ -380,6 +430,7 @@ export function PreferencesForm() {
 			<PreferencesAppearance />
 			<AccessibilitySection />
 			<ReadingSection />
+			<ShelvesSection />
 			<TimeSection />
 			<SearchSection />
 			<SyncSection />

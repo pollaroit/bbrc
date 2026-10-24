@@ -78,7 +78,6 @@ export function CreateShelfForm({ username }: CreateShelfFormProps) {
 				<MemberProfileShelfCard
 					preview
 					showStatus
-					username={username}
 					shelf={{
 						id: "preview",
 						slug: "preview",
@@ -90,6 +89,9 @@ export function CreateShelfForm({ username }: CreateShelfFormProps) {
 						bookCount: addBookSlug ? 1 : 0,
 						updatedAt: new Date(),
 						coverPreviewCoverIds: [],
+						role: "owner",
+						owner: { username, name: username },
+						collaboratorCount: 0,
 					}}
 				/>
 			}

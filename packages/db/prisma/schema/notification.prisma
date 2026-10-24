@@ -14,6 +14,8 @@ enum NotificationKind {
   document_approved
   document_rejected
   achievement_earned
+  shelf_invitation
+  shelf_collaboration
 }
 
 model Notification {

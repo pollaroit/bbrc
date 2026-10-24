@@ -388,7 +388,9 @@ export function MemberProfileOverview({
 							{shelfItems.map((shelf) => (
 								<li key={shelf.id}>
 									<Link
-										href={`${base}/shelves/${shelf.slug}` as Route}
+										href={
+											`/users/${shelf.owner.username}/shelves/${shelf.slug}` as Route
+										}
 										className={rowLinkClass}
 									>
 										<ShelfCover
@@ -401,6 +403,9 @@ export function MemberProfileOverview({
 												{shelf.title}
 											</span>
 											<span className="text-muted-foreground text-xs tabular-nums">
+												{shelf.role === "collaborator"
+													? `Collaborating · by ${shelf.owner.name} · `
+													: ""}
 												{shelf.bookCount}{" "}
 												{shelf.bookCount === 1 ? "book" : "books"} · updated{" "}
 												<RelativeTime

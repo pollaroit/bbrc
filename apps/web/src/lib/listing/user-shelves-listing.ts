@@ -27,7 +27,11 @@ export const userShelfTypeLabels = {
 	unordered: "List",
 } as const satisfies Record<UserShelfType, string>;
 
+export const userShelfRoles = ["all", "owned", "shared"] as const;
+export type UserShelfRole = (typeof userShelfRoles)[number];
+
 export const userShelfListingParams = {
+	role: parseAsStringLiteral(userShelfRoles).withDefault("all"),
 	search: parseAsString,
 	sortBy: parseAsStringLiteral(userShelfSortFields).withDefault("updatedAt"),
 	sortDirection: sortDirectionParser.withDefault("desc"),
@@ -45,7 +49,8 @@ export type UserShelfListingParams = ReturnType<
 export function hasActiveUserShelfFilters(params: UserShelfListingParams) {
 	return (
 		Boolean(params.search?.trim()) ||
-		Boolean(params.types && params.types.length > 0)
+		Boolean(params.types && params.types.length > 0) ||
+		params.role !== "all"
 	);
 }
 
@@ -59,6 +64,12 @@ export function filterAndSortShelves(
 
 	return items
 		.filter((shelf) => {
+			if (params.role === "owned" && shelf.role !== "owner") {
+				return false;
+			}
+			if (params.role === "shared" && shelf.role !== "collaborator") {
+				return false;
+			}
 			if (params.types?.length && !params.types.includes(shelf.type)) {
 				return false;
 			}

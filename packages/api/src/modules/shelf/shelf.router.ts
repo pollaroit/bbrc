@@ -29,6 +29,9 @@ import {
 	RemoveBookFromShelfOutputSchema,
 	ReorderShelfBooksInputSchema,
 	ReorderShelfBooksOutputSchema,
+	ShelfOverviewSchema,
+	UpdateBookNotesInputSchema,
+	UpdateBookNotesOutputSchema,
 	UpdateShelfInputSchema,
 	UpdateShelfOutputSchema,
 } from "./shelf.schema";
@@ -38,19 +41,25 @@ import {
 	deleteShelf,
 	getShelfBySlug,
 	getShelfList,
+	getShelfOverview,
 	listMyEditableShelves,
 	listShelvesByUsername,
 	listShelvesForBook,
 	removeBookFromShelf,
 	reorderShelfBooks,
+	updateBookNotes,
 	updateShelf,
 } from "./shelf.service";
+import { shelfCollabRouter } from "./shelf-collab.router";
 
 export const shelfRouter = {
 	getList: publicProcedure
 		.input(GetShelfListInputSchema)
 		.output(GetShelfListOutputSchema)
 		.handler(async ({ input, context }) => getShelfList(input, context.db)),
+	overview: publicProcedure
+		.output(ShelfOverviewSchema)
+		.handler(async ({ context }) => getShelfOverview(context.db)),
 	listByUsername: publicProcedure
 		.input(ListShelvesByUsernameInputSchema)
 		.output(ListShelvesByUsernameOutputSchema)
@@ -93,7 +102,7 @@ export const shelfRouter = {
 			}
 			return result;
 		}),
-	update: notBannedProcedure
+	update: protectedProcedure
 		.input(UpdateShelfInputSchema)
 		.output(UpdateShelfOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -104,12 +113,12 @@ export const shelfRouter = {
 			);
 			revalidateUserShelvesIsr(
 				context,
-				context.session.user.username,
+				input.ownerUsername ?? context.session.user.username,
 				result.slug,
 			);
 			return result;
 		}),
-	delete: notBannedProcedure
+	delete: protectedProcedure
 		.input(DeleteShelfInputSchema)
 		.output(DeleteShelfOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -118,63 +127,80 @@ export const shelfRouter = {
 				context.session.user.id,
 				context.db,
 			);
-			revalidateUserShelvesIsr(context, context.session.user.username);
+			revalidateUserShelvesIsr(
+				context,
+				input.ownerUsername ?? context.session.user.username,
+			);
 			return result;
 		}),
-	addBook: notBannedProcedure
+	addBook: protectedProcedure
 		.use(checkAchievementsAfter("shelves"))
 		.input(AddBookToShelfInputSchema)
 		.output(AddBookToShelfOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await addBookToShelf(
-				input.shelfSlug,
-				input.bookSlug,
+				input,
 				context.session.user.id,
 				context.db,
 			);
 			revalidateUserShelvesIsr(
 				context,
-				context.session.user.username,
+				input.ownerUsername ?? context.session.user.username,
 				input.shelfSlug,
 			);
 			revalidateBookIsr(context, input.bookSlug);
 			return result;
 		}),
-	removeBook: notBannedProcedure
+	removeBook: protectedProcedure
 		.input(RemoveBookFromShelfInputSchema)
 		.output(RemoveBookFromShelfOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await removeBookFromShelf(
-				input.shelfSlug,
-				input.bookSlug,
+				input,
 				context.session.user.id,
 				context.db,
 			);
 			revalidateUserShelvesIsr(
 				context,
-				context.session.user.username,
+				input.ownerUsername ?? context.session.user.username,
 				input.shelfSlug,
 			);
 			revalidateBookIsr(context, input.bookSlug);
 			return result;
 		}),
-	reorderBooks: notBannedProcedure
+	reorderBooks: protectedProcedure
 		.input(ReorderShelfBooksInputSchema)
 		.output(ReorderShelfBooksOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await reorderShelfBooks(
-				input.shelfSlug,
-				input.bookSlugs,
+				input,
 				context.session.user.id,
 				context.db,
 			);
 			revalidateUserShelvesIsr(
 				context,
-				context.session.user.username,
+				input.ownerUsername ?? context.session.user.username,
 				input.shelfSlug,
 			);
 			return result;
 		}),
+	updateBookNotes: protectedProcedure
+		.input(UpdateBookNotesInputSchema)
+		.output(UpdateBookNotesOutputSchema)
+		.handler(async ({ input, context }) => {
+			const result = await updateBookNotes(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			revalidateUserShelvesIsr(
+				context,
+				input.ownerUsername ?? context.session.user.username,
+				input.shelfSlug,
+			);
+			return result;
+		}),
+	collab: shelfCollabRouter,
 	listForBook: publicProcedure
 		.input(ListShelvesForBookInputSchema)
 		.output(ListShelvesForBookOutputSchema)

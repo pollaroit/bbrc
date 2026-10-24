@@ -11,6 +11,7 @@ export const shelfSortableFields = [
 	"updatedAt",
 	"title",
 	"books._count",
+	"collaborators._count",
 ] as const;
 
 export const shelfListSorting = defineSorting<
@@ -20,6 +21,9 @@ export const shelfListSorting = defineSorting<
 	orderBy: {
 		"books._count": (direction) => ({
 			books: { _count: direction },
+		}),
+		"collaborators._count": (direction) => ({
+			collaborators: { _count: direction },
 		}),
 	},
 });
@@ -66,9 +70,17 @@ export const shelfTypeFilterLabels = {
 	unordered: "Simple list",
 } as const satisfies Record<(typeof shelfTypes)[number], string>;
 
+export const shelfCollabFilters = ["shared", "solo"] as const;
+
+export const shelfCollabFilterLabels = {
+	shared: "Built together",
+	solo: "Made by one person",
+} as const satisfies Record<(typeof shelfCollabFilters)[number], string>;
+
 export const shelfListFiltersSchema = z
 	.object({
 		types: z.array(z.enum(shelfTypes)),
+		collab: z.enum(shelfCollabFilters),
 		minBooks: z.number().int().min(1).max(500),
 	})
 	.partial();

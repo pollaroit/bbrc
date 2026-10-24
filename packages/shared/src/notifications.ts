@@ -15,6 +15,8 @@ export const NOTIFICATION_KINDS = [
 	"document_approved",
 	"document_rejected",
 	"achievement_earned",
+	"shelf_invitation",
+	"shelf_collaboration",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -35,6 +37,8 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
 	document_approved: "Document approved",
 	document_rejected: "Document rejected",
 	achievement_earned: "Achievement earned",
+	shelf_invitation: "Shelf invitation",
+	shelf_collaboration: "Shelf collaboration",
 };
 
 export const NOTIFICATION_KIND_GROUPS = {
@@ -50,6 +54,8 @@ export const NOTIFICATION_KIND_GROUPS = {
 		"document_approved",
 		"document_rejected",
 		"achievement_earned",
+		"shelf_invitation",
+		"shelf_collaboration",
 	] as const satisfies readonly NotificationKind[],
 	sitting: [
 		"sitting_poll_started",
@@ -68,6 +74,7 @@ export const NOTIFICATION_KINDS_PUSH_ENABLED_BY_DEFAULT = [
 	"book_added_to_library",
 	"comment_on_your_post",
 	"reply_to_your_comment",
+	"shelf_invitation",
 	"sitting_poll_started",
 	"sitting_poll_closed",
 	"sitting_finished",
