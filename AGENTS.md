@@ -35,3 +35,20 @@ Members can pick a palette, fonts and text size (`/settings/preferences`), so UI
 - Only awards are stored (`UserAchievement`). They are sticky: removing a read later does not take a badge away. Admins can revoke an award; revoked awards are never re-awarded. Achievements are cosmetic (no XP).
 - Awards are checked after the member's own actions through the `checkAchievementsAfter(...sections)` middleware on mutations (add it to any new mutation that changes activity), after a sitting changes phase, and by a daily sweep at `POST /api/cron/achievements` (schedule it in QStash; it also covers likes received, anniversaries and finished years).
 - Use theme tokens for badge colours (see `achievement-badge.tsx`); `/dev/achievements` shows every card.
+
+## Post polls and post settings
+
+- A poll is part of a post (`PostPoll`, options and votes in `post-poll.prisma`); the post text is the question. A post with a poll has no image and no other attachment, and its text is required. Polls are created with the post (`post.create` takes `poll`) and cannot be added later.
+- Types are single, multiple (min/max) and ranking (Borda points; the top position earns `maxChoices` points). Options are free text or one kind of thing (book, author, series, country, member): a poll uses one kind, and members who add options add the same kind. Authors and countries have no tables, so their options store a slug or code plus a name snapshot.
+- Pure rules (visibility, ballot layers, tallies, setup validation) live in `packages/shared/src/post-polls.ts` and are unit-tested. Results visibility (everyone, voters, owner, after deadline) and ballot privacy (secret, turnout, owner, voters, public) are separate settings; ballots are never shown to someone who cannot see the results.
+- Poll state is computed from the deadline and `closedAt`; there is no cron for closing. The "poll ended" notification is sent once, lazily when anyone reads the poll or by the daily `/api/cron/achievements` sweep.
+- Every poll action updates the screen first (`apps/web/src/lib/poll/use-poll.ts`, `optimistic.ts`): add new actions there so feeds, the post page and the poll query stay in step (`syncPoll`).
+- Posts have `allowLikes`, `allowComments`, `allowShares` (default true). The API refuses likes, comments and shares-in-posts when they are off; the UI hides the matching controls.
+- Members can opt out of being used as a poll option (`allowPollOptions`, Preferences > Polls).
+
+## Links in rich text
+
+- A link is either inline (a `link` node inside a sentence) or a standalone preview card (an `embed` block, at most 3 per document, enforced in `validateRichDocument`). In the editor the card is the `linkCard` TipTap node (`apps/web/src/lib/tiptap-link-card.tsx`).
+- On-site links are relative paths mapped to an `InternalLinkRef` (`internalLinkRefFromHref` never treats a full URL as on-site; the client turns same-origin URLs into paths first with `toSitePath`). Their previews come from one batched call, `linkPreview.resolve`, which hides drafts, hidden members and spoiler text.
+- Outside links are https only and never fetched from the server: the card shows host and path, and pointing at an outside link says it opens another site.
+- Render links with `RichInlineLink` and `LinkPreviewCard` / `ExternalLinkCard` rather than bare anchors, so hover previews and the "opens another website" cue stay consistent.

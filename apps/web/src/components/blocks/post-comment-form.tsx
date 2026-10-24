@@ -31,6 +31,8 @@ type PostCommentFormProps = {
 	feedbackSlug?: string;
 	parentSlug?: string;
 	replyToUsername?: string;
+	/** Shown instead of the username: "Reply to Ann". */
+	replyToName?: string;
 	onCancelReply?: () => void;
 	onCommentCreated?: () => void;
 	/** Called the moment a reply is sent, so the parent can close the reply box. */
@@ -70,6 +72,7 @@ export function PostCommentForm({
 	feedbackSlug,
 	parentSlug,
 	replyToUsername,
+	replyToName,
 	onCancelReply,
 	onCommentCreated,
 	onSubmitted,
@@ -92,6 +95,7 @@ export function PostCommentForm({
 	const [shouldFocusEditor, setShouldFocusEditor] = useState(
 		Boolean(parentSlug || replyToUsername || autoFocus),
 	);
+	const replyLabel = replyToName ?? replyToUsername;
 	const fieldId = parentSlug
 		? `comment-reply-${parentSlug}`
 		: feedbackSlug
@@ -132,6 +136,50 @@ export function PostCommentForm({
 						: old,
 			);
 		}
+	}
+
+	/** The post in every cached feed, so its preview and count change at once. */
+	function patchFeedPost(
+		change: (item: {
+			commentCount: number;
+			topComments: {
+				slug: string;
+				replyCount: number;
+				latestReply: { slug: string } | null;
+			}[];
+		}) => unknown,
+	) {
+		if (!postSlug) return [];
+		const snapshots = queryClient.getQueriesData({
+			queryKey: orpc.post.getPostList.key(),
+		});
+		for (const [key, data] of snapshots) {
+			const list = data as
+				| { pages: { items: { slug: string }[] }[]; pageParams: unknown[] }
+				| undefined;
+			if (!list?.pages) continue;
+			queryClient.setQueryData(key, {
+				...list,
+				pages: list.pages.map((page) => ({
+					...page,
+					items: page.items.map((item) =>
+						item.slug === postSlug
+							? change(
+									item as unknown as {
+										commentCount: number;
+										topComments: {
+											slug: string;
+											replyCount: number;
+											latestReply: { slug: string } | null;
+										}[];
+									},
+								)
+							: item,
+					),
+				})),
+			});
+		}
+		return snapshots;
 	}
 
 	const createMutation = useMutation(
@@ -177,6 +225,43 @@ export function PostCommentForm({
 					);
 				}
 				adjustCommentCount(1);
+				const pendingPreview = user
+					? {
+							slug: pendingSlug,
+							content: variables.content,
+							imageUrl: null,
+							isSpoiler: Boolean(variables.isSpoiler),
+							createdAt: new Date(),
+							author: {
+								username: user.username as string,
+								name: user.name,
+								image: user.image ?? null,
+							},
+							likeCount: 0,
+							likedByMe: false,
+						}
+					: null;
+				const feedSnapshots = patchFeedPost((item) => ({
+					...item,
+					commentCount: item.commentCount + 1,
+					topComments: !pendingPreview
+						? item.topComments
+						: variables.parentSlug
+							? // A reply shows under the comment it answers.
+								item.topComments.map((comment) =>
+									comment.slug === variables.parentSlug
+										? {
+												...comment,
+												replyCount: comment.replyCount + 1,
+												latestReply: pendingPreview,
+											}
+										: comment,
+								)
+							: [
+									{ ...pendingPreview, replyCount: 0, latestReply: null },
+									...item.topComments,
+								].slice(0, 3),
+				}));
 
 				// The form is free again right away; the draft comes back on failure.
 				setImageFile(null);
@@ -191,12 +276,15 @@ export function PostCommentForm({
 				}
 				onSubmitted?.();
 
-				return { pendingSlug, draft };
+				return { pendingSlug, draft, feedSnapshots };
 			},
 			onError: (error, _variables, context) => {
 				if (context) {
 					removeFromLists(commentListKey, context.pendingSlug);
 					adjustCommentCount(-1);
+					for (const [key, data] of context.feedSnapshots) {
+						queryClient.setQueryData(key, data);
+					}
 					setContent(context.draft.content);
 					setIsSpoiler(context.draft.isSpoiler);
 					setImageFile(context.draft.imageFile);
@@ -214,6 +302,18 @@ export function PostCommentForm({
 			},
 			onSuccess: async (result, _variables, context) => {
 				swapListItemSlug(commentListKey, context.pendingSlug, result.slug);
+				patchFeedPost((item) => ({
+					...item,
+					topComments: item.topComments.map((comment) => ({
+						...comment,
+						...(comment.slug === context.pendingSlug
+							? { slug: result.slug }
+							: {}),
+						...(comment.latestReply?.slug === context.pendingSlug
+							? { latestReply: { ...comment.latestReply, slug: result.slug } }
+							: {}),
+					})),
+				}));
 				const file = context.draft.imageFile;
 
 				if (file) {
@@ -297,7 +397,7 @@ export function PostCommentForm({
 					setEditorEpoch((epoch) => epoch + 1);
 				}}
 			>
-				{replyToUsername ? `Reply to @${replyToUsername}` : "Write a comment…"}
+				{replyLabel ? `Reply to ${replyLabel}` : "Write a comment…"}
 			</button>
 		);
 	}
@@ -317,7 +417,7 @@ export function PostCommentForm({
 					htmlFor={fieldId}
 					className={compact ? "text-xs" : undefined}
 				>
-					{replyToUsername ? `Reply to @${replyToUsername}` : "Add a comment"}
+					{replyLabel ? `Reply to ${replyLabel}` : "Add a comment"}
 				</FieldLabel>
 				<RichTextEditor
 					id={fieldId}

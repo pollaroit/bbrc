@@ -1,18 +1,19 @@
+"use client";
+
 import type { GetPostListOutput } from "@bbrc/api/modules/post/post.schema";
 import { contentPlainText } from "@bbrc/shared";
-import {
-	Card,
-	CardContent,
-	CardFooter,
-	CardHeader,
-} from "@bbrc/ui/components/card";
-import { MessageCircle } from "lucide-react";
+import { Button } from "@bbrc/ui/components/button";
+import { CornerDownRight, MessageCircle } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { useState } from "react";
 import { CommentListItemView } from "@/components/blocks/comment-list-item";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
+import { PostCommentForm } from "@/components/blocks/post-comment-form";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
+import { PostOwnerMenu } from "@/components/blocks/post-owner-menu";
+import { PostPoll } from "@/components/blocks/post-poll";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
@@ -28,31 +29,152 @@ type PostCardProps = {
 	className?: string;
 };
 
-function PostCardInner({ post, className }: PostCardProps) {
+/** Comments under a post in the feed: a peek, a quick reply, and the way to the full thread. */
+function PostCardComments({ post }: { post: PostCardPost }) {
 	const postHref = `/posts/${post.slug}` as Route;
-	const profileHref = `/users/${post.author.username}` as Route;
+	const [open, setOpen] = useState(false);
+	const [replyingTo, setReplyingTo] = useState<string | null>(null);
+	const shown = open ? post.topComments : post.topComments.slice(0, 1);
+	const hidden = post.commentCount - shown.length;
+
+	if (!post.allowComments && post.commentCount === 0) {
+		return null;
+	}
 
 	return (
-		<Card size="sm" className={cn("overflow-hidden", className)}>
-			<CardHeader className="flex flex-row items-start justify-between gap-3 border-b">
-				<Link href={profileHref} className="min-w-0 outline-offset-2">
+		<div className="flex flex-col gap-3 border-border border-t bg-muted/20 px-4 py-3">
+			{shown.length > 0 ? (
+				<ul className="flex flex-col divide-y divide-border/60">
+					{shown.map((comment) => (
+						<li key={comment.slug} className="py-2.5 first:pt-0 last:pb-0">
+							<CommentListItemView
+								comment={comment}
+								variant="compact"
+								layout="thread"
+								postSlug={post.slug}
+								canReply={post.allowComments && !isPendingSlug(comment.slug)}
+								onReply={() => setReplyingTo(comment.slug)}
+							/>
+							{comment.replyCount > 0 && comment.latestReply ? (
+								<div className="ms-8 mt-2 flex flex-col gap-1.5 border-border border-s-2 ps-3">
+									<p className="flex items-center gap-2 text-2xs text-muted-foreground">
+										<CornerDownRight className="size-3" aria-hidden />
+										<span>Latest reply</span>
+										<Link
+											href={
+												`/posts/${post.slug}/comments/${comment.slug}` as Route
+											}
+											className="font-medium text-foreground underline-offset-4 hover:underline"
+										>
+											{comment.replyCount === 1
+												? "1 reply"
+												: `View all ${comment.replyCount} replies`}
+										</Link>
+									</p>
+									<CommentListItemView
+										comment={{
+											...comment.latestReply,
+											replyCount: 0,
+											latestReply: null,
+										}}
+										variant="compact"
+										layout="thread"
+										postSlug={post.slug}
+									/>
+								</div>
+							) : null}
+							{replyingTo === comment.slug ? (
+								<div className="mt-2 ps-8">
+									<PostCommentForm
+										postSlug={post.slug}
+										parentSlug={comment.slug}
+										replyToUsername={comment.author.username}
+										replyToName={comment.author.name}
+										compact
+										onCancelReply={() => setReplyingTo(null)}
+										onSubmitted={() => setReplyingTo(null)}
+										onSubmitFailed={() => setReplyingTo(comment.slug)}
+									/>
+								</div>
+							) : null}
+						</li>
+					))}
+				</ul>
+			) : null}
+
+			{post.allowComments ? (
+				open ? (
+					<PostCommentForm
+						postSlug={post.slug}
+						compact
+						autoFocus
+						onCommentCreated={() => setOpen(false)}
+					/>
+				) : (
+					<button
+						type="button"
+						onClick={() => setOpen(true)}
+						className="flex items-center gap-2 border border-border bg-background px-3 py-2 text-start text-muted-foreground text-sm transition-colors hover:border-foreground/40 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+					>
+						<MessageCircle className="size-4" aria-hidden />
+						Write a comment…
+					</button>
+				)
+			) : (
+				<p className="text-muted-foreground text-xs">
+					Comments are turned off for this post.
+				</p>
+			)}
+
+			{hidden > 0 ? (
+				<Link
+					href={`${postHref}#comments` as Route}
+					className="w-fit text-muted-foreground text-xs underline-offset-4 transition-colors hover:text-foreground hover:underline"
+				>
+					View all {post.commentCount} comments
+				</Link>
+			) : null}
+		</div>
+	);
+}
+
+function PostCardInner({ post, className }: PostCardProps) {
+	const postHref = `/posts/${post.slug}` as Route;
+
+	return (
+		<article
+			className={cn(
+				"flex flex-col overflow-hidden border border-border bg-card",
+				className,
+			)}
+		>
+			<header className="flex items-start justify-between gap-3 px-4 pt-4">
+				<Link
+					href={`/users/${post.author.username}` as Route}
+					className="min-w-0 outline-offset-2"
+				>
 					<UserPanel user={post.author} className="min-w-0 items-start" />
 				</Link>
-				<div className="shrink-0 text-right text-muted-foreground text-xs">
+				<div className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
 					<Link
 						href={postHref}
-						className="block transition-colors hover:text-foreground"
+						className="transition-colors hover:text-foreground"
 					>
 						<RelativeTime
 							date={post.createdAt}
 							className="text-muted-foreground text-xs"
 						/>
+						{post.editedAt ? <span className="ps-1">· edited</span> : null}
 					</Link>
-					{post.editedAt ? <p className="text-2xs">edited</p> : null}
+					<PostOwnerMenu
+						slug={post.slug}
+						authorUsername={post.author.username}
+						hasPoll={post.poll != null}
+					/>
 				</div>
-			</CardHeader>
+			</header>
 
-			<CardContent className="relative flex flex-col gap-3">
+			<div className="relative flex flex-col gap-3 px-4 py-3">
 				<Link
 					href={postHref}
 					className="absolute inset-0 z-0"
@@ -88,56 +210,50 @@ function PostCardInner({ post, className }: PostCardProps) {
 						/>
 					</div>
 				) : null}
-			</CardContent>
 
-			<CardFooter className="flex flex-col items-stretch gap-3 border-t bg-muted/10">
-				<div className="flex flex-wrap items-center gap-4 text-muted-foreground text-sm">
+				{post.poll ? (
+					<PostPoll
+						postSlug={post.slug}
+						initial={post.poll}
+						className="relative z-[1]"
+					/>
+				) : null}
+			</div>
+
+			<div className="flex items-center gap-1 px-2 pb-2 text-muted-foreground text-sm">
+				{post.allowLikes ? (
 					<PostLikeEngagement
 						postSlug={post.slug}
 						initialLikeCount={post.likeCount}
 						initialLikedByMe={post.likedByMe}
 					/>
-					<Link
-						href={`${postHref}#comments` as Route}
-						className="inline-flex items-center gap-1.5 tabular-nums transition-colors hover:text-foreground"
-					>
-						<MessageCircle className="size-4" aria-hidden />
-						{post.commentCount}
-					</Link>
-					<ResourceShareMenu
-						path={`/posts/${post.slug}`}
-						shareText={shareSnippet(contentPlainText(post.content))}
-						label="Share post"
-						shareInPost={{ kind: "post", slug: post.slug }}
-					/>
-				</div>
+				) : (
+					<span className="px-2 text-xs">Likes off</span>
+				)}
+				<Button
+					render={<Link href={`${postHref}#comments` as Route} />}
+					nativeButton={false}
+					variant="ghost"
+					size="sm"
+					className="gap-1.5 tabular-nums"
+					aria-label={`${post.commentCount} comments`}
+				>
+					<MessageCircle className="size-4" aria-hidden />
+					{post.commentCount}
+				</Button>
+				<ResourceShareMenu
+					path={`/posts/${post.slug}`}
+					shareText={shareSnippet(contentPlainText(post.content))}
+					label="Share post"
+					shareInPost={
+						post.allowShares ? { kind: "post", slug: post.slug } : undefined
+					}
+					className="ms-auto"
+				/>
+			</div>
 
-				{post.topComments.length > 0 ? (
-					<div className="border border-border bg-background px-3 pt-3 pb-1 sm:px-4">
-						<ul className="flex flex-col divide-y divide-border/60">
-							{post.topComments.map((comment) => (
-								<li key={comment.slug} className="py-3 first:pt-0 last:pb-2">
-									<CommentListItemView
-										comment={comment}
-										variant="compact"
-										layout="thread"
-										postSlug={post.slug}
-									/>
-								</li>
-							))}
-						</ul>
-						{post.commentCount > post.topComments.length ? (
-							<Link
-								href={`${postHref}#comments` as Route}
-								className="block border-border border-t py-2.5 text-center text-muted-foreground text-xs transition-colors hover:text-foreground"
-							>
-								View all {post.commentCount} comments
-							</Link>
-						) : null}
-					</div>
-				) : null}
-			</CardFooter>
-		</Card>
+			<PostCardComments post={post} />
+		</article>
 	);
 }
 

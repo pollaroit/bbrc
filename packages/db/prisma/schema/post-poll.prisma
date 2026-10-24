@@ -1,0 +1,162 @@
+enum PostPollType {
+  single
+  multiple
+  ranking
+}
+
+enum PostPollOptionKind {
+  text
+  book
+  author
+  series
+  country
+  user
+}
+
+/// Who can see the tallies: everyone, only people who voted, only the owner, or everyone once the poll has ended.
+enum PostPollResultsVisibility {
+  everyone
+  voters
+  owner
+  after_deadline
+}
+
+/// How much of each ballot is visible, from fully secret to public names per option.
+enum PostPollBallotVisibility {
+  secret
+  turnout
+  owner
+  voters
+  public
+}
+
+/// A poll attached to a post. The post's text is the question.
+model PostPoll {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  postId String @unique @map("post_id")
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  type       PostPollType
+  /// Fewest options a ballot may pick (or rank).
+  minChoices Int          @default(1) @map("min_choices")
+  /// Most options a ballot may pick (or rank); 1 for single choice.
+  maxChoices Int          @default(1) @map("max_choices")
+
+  /// What every option of this poll is: free text or one kind of thing from the club.
+  optionKind PostPollOptionKind @map("option_kind")
+
+  allowUserOptions  Boolean @default(false) @map("allow_user_options")
+  /// Per member, counting only options members added themselves.
+  maxOptionsPerUser Int?    @map("max_options_per_user")
+  /// Across all members, counting only options members added themselves.
+  maxOptionsTotal   Int?    @map("max_options_total")
+
+  resultsVisibility PostPollResultsVisibility @default(everyone) @map("results_visibility")
+  ballotVisibility  PostPollBallotVisibility  @default(owner) @map("ballot_visibility")
+  allowVoteChange   Boolean                   @default(true) @map("allow_vote_change")
+
+  deadline        DateTime?
+  /// Set when the owner ends the poll early.
+  closedAt        DateTime? @map("closed_at")
+  /// Set once the "poll ended" notification went out, so it is only sent once.
+  endedNotifiedAt DateTime? @map("ended_notified_at")
+
+  options PostPollOption[]
+  votes   PostPollVote[]
+  ballots PostPollBallot[]
+
+  @@map("post_poll")
+}
+
+model PostPollOption {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pollId String   @map("poll_id")
+  poll   PostPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  kind PostPollOptionKind
+
+  /// Text of the option, or the name of what it points to when that is deleted later.
+  label String
+
+  bookId String? @map("book_id")
+  book   Book?   @relation(fields: [bookId], references: [id], onDelete: SetNull)
+
+  seriesId String? @map("series_id")
+  series   Series? @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+
+  userId String? @map("user_id")
+  user   User?   @relation("PostPollOptionUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  /// Author slug or country code, for kinds that have no table of their own.
+  refKey String? @map("ref_key")
+
+  /// Lower-case text, or `kind:id`, so the same thing cannot be added twice.
+  dedupeKey String @map("dedupe_key")
+
+  position Int
+
+  /// Added by a member other than the poll owner (counts toward the add limits).
+  userAdded Boolean @default(false) @map("user_added")
+  addedById String? @map("added_by_id")
+  addedBy   User?   @relation("PostPollOptionAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+
+  votes PostPollVote[]
+
+  @@unique([pollId, dedupeKey])
+  @@index([pollId, position])
+  @@map("post_poll_option")
+}
+
+/// One row per option on a member's ballot. Ranking ballots also carry the position.
+model PostPollVote {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  pollId String   @map("poll_id")
+  poll   PostPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  optionId String         @map("option_id")
+  option   PostPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation("PostPollVoter", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 1-based position on a ranking ballot; null for single and multiple choice.
+  rank Int?
+
+  @@unique([optionId, userId])
+  @@unique([pollId, userId, rank])
+  @@index([pollId, userId])
+  @@map("post_poll_vote")
+}
+
+/// One row per member who voted: when they first voted and how often they changed their mind.
+model PostPollBallot {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  /// When the member first voted.
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  pollId String   @map("poll_id")
+  poll   PostPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation("PostPollBallotVoter", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// How many times they replaced their vote after the first one.
+  changes   Int       @default(0)
+  changedAt DateTime? @map("changed_at")
+
+  @@unique([pollId, userId])
+  @@map("post_poll_ballot")
+}

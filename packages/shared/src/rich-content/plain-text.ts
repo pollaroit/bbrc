@@ -24,7 +24,9 @@ function inlinePlainText(inline: RichInline[]): string {
 
 export function richDocumentPlainText(doc: RichDocument): string {
 	return doc.blocks
-		.map((block) => inlinePlainText(block.inline))
+		.map((block) =>
+			block.t === "embed" ? block.label : inlinePlainText(block.inline),
+		)
 		.filter((line) => line.length > 0)
 		.join("\n");
 }

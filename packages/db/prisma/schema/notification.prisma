@@ -16,6 +16,8 @@ enum NotificationKind {
   achievement_earned
   shelf_invitation
   shelf_collaboration
+  poll_vote
+  poll_ended
 }
 
 model Notification {

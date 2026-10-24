@@ -3,34 +3,35 @@
 import type { PostAttachmentInput } from "@bbrc/api/modules/post/post-attachment.schema";
 import { Button } from "@bbrc/ui/components/button";
 import { Input } from "@bbrc/ui/components/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@bbrc/ui/components/select";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
-import { Search, X } from "lucide-react";
+import { BookOpen, Feather, Library, Search, UserRound, X } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
-import {
-	ClubBookPicker,
-	type ClubBookPickerValue,
-} from "@/components/blocks/club-book-picker";
 import { PostAttachmentComposePreview } from "@/components/blocks/post-attachment-compose-preview";
+import { ShelfCover } from "@/components/blocks/shelf-cover";
+import { UserAvatar } from "@/components/blocks/user-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
 export type PostAttachmentComposeValue = PostAttachmentInput | null;
 
-type PickerKind = "book" | "shelf" | "user";
+type PickerKind = "book" | "shelf" | "author" | "user";
 
-const KIND_LABELS: Record<PickerKind, string> = {
-	book: "Book",
-	shelf: "Shelf",
-	user: "Member",
+const KINDS: { id: PickerKind; label: string; icon: typeof BookOpen }[] = [
+	{ id: "book", label: "Book", icon: BookOpen },
+	{ id: "shelf", label: "Shelf", icon: Library },
+	{ id: "author", label: "Author", icon: Feather },
+	{ id: "user", label: "Member", icon: UserRound },
+];
+
+const PLACEHOLDERS: Record<PickerKind, string> = {
+	book: "Search the library by title or author…",
+	shelf: "Search shelves by title or owner…",
+	author: "Search authors by name…",
+	user: "Search members by name or username…",
 };
 
 type PostAttachmentComposePickerProps = {
@@ -40,241 +41,337 @@ type PostAttachmentComposePickerProps = {
 	className?: string;
 };
 
-function ShelfAttachmentSearch({
+function ResultRow({
+	onClick,
+	disabled,
+	children,
+}: {
+	onClick: () => void;
+	disabled?: boolean;
+	children: React.ReactNode;
+}) {
+	return (
+		<li>
+			<button
+				type="button"
+				disabled={disabled}
+				onClick={onClick}
+				className="flex w-full items-center gap-3 p-2.5 text-start transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none disabled:opacity-50"
+			>
+				{children}
+			</button>
+		</li>
+	);
+}
+
+function BookResults({
+	query,
 	onPick,
 	disabled,
 }: {
-	onPick: (input: Extract<PostAttachmentInput, { kind: "shelf" }>) => void;
+	query: string;
+	onPick: (input: PostAttachmentInput) => void;
 	disabled?: boolean;
 }) {
-	const [searchInput, setSearchInput] = useState("");
-	const debounced = useDebouncedValue(searchInput, 300);
-	const trimmed = debounced.trim();
+	const books = useQuery({
+		...orpc.book.getBookList.queryOptions({
+			input: {
+				limit: 8,
+				sortBy: "title",
+				sortDirection: "asc",
+				search: query,
+			},
+		}),
+		enabled: query.length > 0,
+	});
+	return (
+		<Results
+			pending={books.isPending}
+			empty={(books.data?.items.length ?? 0) === 0}
+			emptyText="No books found."
+		>
+			{books.data?.items.map((book) => {
+				const cover = bookCoverUrl(book.coverId, "S");
+				return (
+					<ResultRow
+						key={book.slug}
+						disabled={disabled}
+						onClick={() => onPick({ kind: "book", slug: book.slug })}
+					>
+						<span className="relative block aspect-2/3 w-8 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10">
+							{cover ? (
+								<Image
+									src={cover}
+									alt=""
+									fill
+									className="object-cover"
+									sizes="32px"
+								/>
+							) : null}
+						</span>
+						<span className="flex min-w-0 flex-col">
+							<span className="truncate font-medium text-sm">{book.title}</span>
+							<span className="truncate text-muted-foreground text-xs">
+								{formatBookAuthors(book.authors)}
+							</span>
+						</span>
+					</ResultRow>
+				);
+			})}
+		</Results>
+	);
+}
 
-	const query = useQuery({
+function ShelfResults({
+	query,
+	onPick,
+	disabled,
+}: {
+	query: string;
+	onPick: (input: PostAttachmentInput) => void;
+	disabled?: boolean;
+}) {
+	const shelves = useQuery({
 		...orpc.shelf.getList.queryOptions({
 			input: {
 				limit: 8,
 				sortBy: "updatedAt",
 				sortDirection: "desc",
-				...(trimmed.length > 0 ? { search: trimmed } : {}),
+				search: query,
 			},
 		}),
-		enabled: trimmed.length > 0,
+		enabled: query.length > 0,
 	});
-
-	const items = query.data?.items ?? [];
-
 	return (
-		<div className="flex flex-col gap-2">
-			<div className="relative">
-				<Search
-					className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-					aria-hidden
-				/>
-				<Input
-					value={searchInput}
-					onChange={(event) => setSearchInput(event.target.value)}
-					placeholder="Search shelves by title or owner…"
-					className="ps-8"
-					autoComplete="off"
+		<Results
+			pending={shelves.isPending}
+			empty={(shelves.data?.items.length ?? 0) === 0}
+			emptyText="No shelves found."
+		>
+			{shelves.data?.items.map((shelf) => (
+				<ResultRow
+					key={shelf.id}
 					disabled={disabled}
-				/>
-			</div>
-			{query.isLoading && trimmed.length > 0 ? (
-				<Skeleton className="h-10 w-full" />
-			) : null}
-			{trimmed.length > 0 && !query.isLoading && items.length === 0 ? (
-				<p className="text-center text-muted-foreground text-xs">
-					No shelves found.
-				</p>
-			) : null}
-			<ul className="flex max-h-48 flex-col gap-1 overflow-y-auto border bg-background p-1">
-				{items.map((shelf) => (
-					<li key={shelf.id}>
-						<Button
-							type="button"
-							variant="ghost"
-							className="h-auto w-full justify-start px-2 py-2 text-left"
-							onClick={() =>
-								onPick({
-									kind: "shelf",
-									ownerUsername: shelf.owner.username,
-									slug: shelf.slug,
-								})
-							}
-						>
-							<span className="line-clamp-1 font-medium text-sm">
-								{shelf.title}
-							</span>
-							<span className="ms-2 shrink-0 text-muted-foreground text-xs">
-								@{shelf.owner.username}
-							</span>
-						</Button>
-					</li>
-				))}
-			</ul>
-		</div>
+					onClick={() =>
+						onPick({
+							kind: "shelf",
+							ownerUsername: shelf.owner.username,
+							slug: shelf.slug,
+						})
+					}
+				>
+					<ShelfCover
+						coverIds={shelf.coverPreviewCoverIds}
+						coverImageUrl={shelf.coverImageUrl}
+						size="sm"
+						className="size-11"
+					/>
+					<span className="flex min-w-0 flex-col">
+						<span className="truncate font-medium text-sm">{shelf.title}</span>
+						<span className="truncate text-muted-foreground text-xs">
+							by {shelf.owner.name} · {shelf.bookCount}{" "}
+							{shelf.bookCount === 1 ? "book" : "books"}
+						</span>
+					</span>
+				</ResultRow>
+			))}
+		</Results>
 	);
 }
 
-function UserAttachmentSearch({
+/** Members and authors, found through the same search the poll builder uses. */
+function PersonResults({
+	kind,
+	query,
 	onPick,
 	disabled,
 }: {
-	onPick: (input: Extract<PostAttachmentInput, { kind: "user" }>) => void;
+	kind: "author" | "user";
+	query: string;
+	onPick: (input: PostAttachmentInput) => void;
 	disabled?: boolean;
 }) {
-	const [searchInput, setSearchInput] = useState("");
-	const debounced = useDebouncedValue(searchInput, 300);
-	const trimmed = debounced.trim();
-
-	const query = useQuery({
-		...orpc.user.getUserList.queryOptions({
-			input: {
-				limit: 8,
-				...(trimmed.length > 0 ? { search: trimmed } : {}),
-			},
+	const found = useQuery({
+		...orpc.postPoll.searchTargets.queryOptions({
+			input: { kind, query, purpose: "attachment" },
 		}),
-		enabled: trimmed.length > 0,
+		enabled: query.length > 0,
 	});
-
-	const items = query.data?.items ?? [];
-
 	return (
-		<div className="flex flex-col gap-2">
-			<div className="relative">
-				<Search
-					className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-					aria-hidden
-				/>
-				<Input
-					value={searchInput}
-					onChange={(event) => setSearchInput(event.target.value)}
-					placeholder="Search members…"
-					className="ps-8"
-					autoComplete="off"
-					disabled={disabled}
-				/>
-			</div>
-			{query.isLoading && trimmed.length > 0 ? (
-				<Skeleton className="h-10 w-full" />
-			) : null}
-			{trimmed.length > 0 && !query.isLoading && items.length === 0 ? (
-				<p className="text-center text-muted-foreground text-xs">
-					No members found.
-				</p>
-			) : null}
-			<ul className="flex max-h-48 flex-col gap-1 overflow-y-auto border bg-background p-1">
-				{items.map((user) => (
-					<li key={user.username}>
-						<Button
-							type="button"
-							variant="ghost"
-							className="h-auto w-full justify-start px-2 py-2 text-left"
-							onClick={() => onPick({ kind: "user", username: user.username })}
-						>
-							<span className="font-medium text-sm">{user.name}</span>
-							<span className="ms-2 text-muted-foreground text-xs">
-								@{user.username}
+		<Results
+			pending={found.isPending}
+			empty={(found.data?.items.length ?? 0) === 0}
+			emptyText={kind === "user" ? "No members found." : "No authors found."}
+		>
+			{found.data?.items.map((item) => (
+				<ResultRow
+					key={item.key}
+					disabled={disabled || item.disabledReason != null}
+					onClick={() =>
+						onPick(
+							kind === "user"
+								? { kind: "user", username: item.key }
+								: { kind: "author", slug: item.key },
+						)
+					}
+				>
+					{kind === "user" ? (
+						<UserAvatar
+							user={{ name: item.label, image: item.image }}
+							className="size-9"
+						/>
+					) : (
+						<span className="grid size-9 shrink-0 place-items-center bg-muted">
+							<Feather className="size-4 text-muted-foreground" aria-hidden />
+						</span>
+					)}
+					<span className="flex min-w-0 flex-1 flex-col">
+						<span className="truncate font-medium text-sm">{item.label}</span>
+						{item.sublabel ? (
+							<span className="truncate text-muted-foreground text-xs">
+								{item.sublabel}
 							</span>
-						</Button>
-					</li>
-				))}
-			</ul>
-		</div>
+						) : null}
+					</span>
+					{item.disabledReason ? (
+						<span className="shrink-0 text-muted-foreground text-xs">
+							{item.disabledReason}
+						</span>
+					) : null}
+				</ResultRow>
+			))}
+		</Results>
 	);
 }
 
+function Results({
+	pending,
+	empty,
+	emptyText,
+	children,
+}: {
+	pending: boolean;
+	empty: boolean;
+	emptyText: string;
+	children: React.ReactNode;
+}) {
+	if (pending) {
+		return <Skeleton className="h-16 w-full" aria-hidden />;
+	}
+	if (empty) {
+		return <p className="text-muted-foreground text-sm">{emptyText}</p>;
+	}
+	return (
+		<ul className="max-h-64 divide-y divide-border overflow-y-auto border border-border bg-background">
+			{children}
+		</ul>
+	);
+}
+
+/** Pick one book, shelf or member to attach: choose the kind, search, tap a result. */
 export function PostAttachmentComposePicker({
 	value,
 	onChange,
 	disabled,
 	className,
 }: PostAttachmentComposePickerProps) {
-	const [draftKind, setDraftKind] = useState<PickerKind | "none">(
-		value?.kind === "book" || value?.kind === "shelf" || value?.kind === "user"
+	const [kind, setKind] = useState<PickerKind>(
+		value?.kind === "book" ||
+			value?.kind === "shelf" ||
+			value?.kind === "author" ||
+			value?.kind === "user"
 			? value.kind
-			: "none",
+			: "book",
 	);
-	const [bookPicker, setBookPicker] = useState<ClubBookPickerValue>(null);
+	const [search, setSearch] = useState("");
+	const query = useDebouncedValue(search.trim(), 250);
 
-	function clearAttachment() {
-		setBookPicker(null);
-		setDraftKind("none");
-		onChange(null);
+	if (value) {
+		return (
+			<div className={cn("flex min-w-0 flex-col gap-2", className)}>
+				<PostAttachmentComposePreview input={value} />
+				<Button
+					type="button"
+					variant="outline"
+					size="sm"
+					className="w-fit"
+					disabled={disabled}
+					onClick={() => {
+						setSearch("");
+						onChange(null);
+					}}
+				>
+					<X data-icon="inline-start" aria-hidden />
+					Remove attachment
+				</Button>
+			</div>
+		);
 	}
 
+	const pick = (input: PostAttachmentInput) => {
+		setSearch("");
+		onChange(input);
+	};
+
 	return (
-		<div className={cn("flex flex-col gap-3", className)}>
-			{value ? (
-				<div className="flex flex-col gap-2">
-					<PostAttachmentComposePreview input={value} />
-					<Button
+		<div
+			className={cn(
+				"flex min-w-0 flex-col gap-3 border border-border p-3",
+				className,
+			)}
+		>
+			<fieldset className="flex flex-wrap gap-2">
+				<legend className="sr-only">What to attach</legend>
+				{KINDS.map(({ id, label, icon: Icon }) => (
+					<button
+						key={id}
 						type="button"
-						variant="outline"
-						size="sm"
-						className="w-fit"
+						aria-pressed={kind === id}
 						disabled={disabled}
-						onClick={clearAttachment}
-					>
-						<X className="size-4" aria-hidden />
-						Remove attachment
-					</Button>
-				</div>
-			) : (
-				<>
-					<Select
-						value={draftKind === "none" ? "none" : draftKind}
-						onValueChange={(next) => {
-							const kind = next as PickerKind | "none";
-							setDraftKind(kind);
-							setBookPicker(null);
-							if (kind === "none") {
-								onChange(null);
-							}
+						onClick={() => {
+							setKind(id);
+							setSearch("");
 						}}
-						disabled={disabled}
+						className={cn(
+							"inline-flex items-center gap-1.5 border px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-ring",
+							kind === id
+								? "border-foreground bg-muted/50"
+								: "border-border text-muted-foreground hover:text-foreground",
+						)}
 					>
-						<SelectTrigger className="w-full">
-							<SelectValue placeholder="Attach something (optional)" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="none">Nothing attached</SelectItem>
-							{(Object.keys(KIND_LABELS) as PickerKind[]).map((kind) => (
-								<SelectItem key={kind} value={kind}>
-									{KIND_LABELS[kind]}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
+						<Icon className="size-4" aria-hidden />
+						{label}
+					</button>
+				))}
+			</fieldset>
 
-					{draftKind === "book" ? (
-						<ClubBookPicker
-							value={bookPicker}
-							onChange={(book) => {
-								setBookPicker(book);
-								if (book) {
-									onChange({ kind: "book", slug: book.slug });
-								}
-							}}
-						/>
-					) : null}
+			<div className="relative">
+				<Search
+					className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+					aria-hidden
+				/>
+				<Input
+					value={search}
+					onChange={(event) => setSearch(event.target.value)}
+					placeholder={PLACEHOLDERS[kind]}
+					aria-label={PLACEHOLDERS[kind]}
+					className="ps-9"
+					autoComplete="off"
+					disabled={disabled}
+				/>
+			</div>
 
-					{draftKind === "shelf" ? (
-						<ShelfAttachmentSearch
-							disabled={disabled}
-							onPick={(input) => onChange(input)}
-						/>
-					) : null}
-
-					{draftKind === "user" ? (
-						<UserAttachmentSearch
-							disabled={disabled}
-							onPick={(input) => onChange(input)}
-						/>
-					) : null}
-				</>
+			{query.length === 0 ? null : kind === "book" ? (
+				<BookResults query={query} onPick={pick} disabled={disabled} />
+			) : kind === "shelf" ? (
+				<ShelfResults query={query} onPick={pick} disabled={disabled} />
+			) : (
+				<PersonResults
+					kind={kind}
+					query={query}
+					onPick={pick}
+					disabled={disabled}
+				/>
 			)}
 		</div>
 	);

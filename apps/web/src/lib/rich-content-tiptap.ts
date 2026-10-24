@@ -8,6 +8,7 @@ import {
 	type TextMark,
 } from "@bbrc/shared";
 import type { JSONContent } from "@tiptap/react";
+import { toSitePath } from "@/lib/link-preview/site-path";
 
 function marksFromTiptap(marks: JSONContent["marks"]): TextMark[] | undefined {
 	if (!marks?.length) {
@@ -45,7 +46,7 @@ function inlineFromTiptap(nodes: JSONContent[] | undefined): RichInline[] {
 					t: "link",
 					href,
 					label: text || href,
-					internal: internalLinkRefFromHref(href) ?? undefined,
+					internal: internalLinkRefFromHref(toSitePath(href)) ?? undefined,
 				});
 				continue;
 			}
@@ -64,6 +65,18 @@ export function tiptapJsonToRichDocument(json: JSONContent): RichDocument {
 	const blocks: RichBlock[] = [];
 
 	for (const node of json.content ?? []) {
+		if (node.type === "linkCard") {
+			const href = String(node.attrs?.href ?? "").trim();
+			if (href) {
+				blocks.push({
+					t: "embed",
+					href,
+					label: String(node.attrs?.label ?? "").trim() || href,
+					internal: internalLinkRefFromHref(toSitePath(href)) ?? undefined,
+				});
+			}
+			continue;
+		}
 		if (node.type === "paragraph") {
 			blocks.push({ t: "p", inline: inlineFromTiptap(node.content) });
 			continue;
@@ -161,7 +174,13 @@ function blockNode(
 export function richDocumentToTiptapContent(doc: RichDocument): JSONContent {
 	return {
 		type: "doc",
-		content: doc.blocks.map((block) => {
+		content: doc.blocks.map((block): JSONContent => {
+			if (block.t === "embed") {
+				return {
+					type: "linkCard",
+					attrs: { href: block.href, label: block.label },
+				};
+			}
 			const inline = tiptapInlineFromRich(block.inline);
 			if (block.t === "h") {
 				return blockNode("heading", inline, 1);

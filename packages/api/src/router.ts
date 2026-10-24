@@ -14,9 +14,11 @@ import { goalRouter } from "./modules/goal/goal.router";
 import { healthRouter } from "./modules/health/health.router";
 import { leaderboardRouter } from "./modules/leaderboard/leaderboard.router";
 import { likeRouter } from "./modules/like/like.router";
+import { linkPreviewRouter } from "./modules/link-preview/link-preview.router";
 import { notificationRouter } from "./modules/notification/notification.router";
 import { peopleRouter } from "./modules/people/people.router";
 import { postRouter } from "./modules/post/post.router";
+import { postPollRouter } from "./modules/post-poll/post-poll.router";
 import { quizRouter } from "./modules/quiz/quiz.router";
 import { readRouter } from "./modules/read/read.router";
 import { rpRouter } from "./modules/rp/rp.router";
@@ -50,6 +52,8 @@ export const appRouter = {
 	quiz: quizRouter,
 	read: readRouter,
 	series: seriesRouter,
+	linkPreview: linkPreviewRouter,
+	postPoll: postPollRouter,
 	shelf: shelfRouter,
 	storage: storageRouter,
 	sitting: sittingRouter,

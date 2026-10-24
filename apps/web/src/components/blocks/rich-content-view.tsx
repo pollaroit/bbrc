@@ -1,14 +1,13 @@
 "use client";
 
 import {
-	hrefFromInternalLinkRef,
 	parseStoredContent,
 	type RichInline,
 	type TextMark,
 } from "@bbrc/shared";
-import type { Route } from "next";
-import Link from "next/link";
 import { Fragment } from "react";
+import { LinkPreviewCard } from "@/components/blocks/link-preview-card";
+import { RichInlineLink } from "@/components/blocks/rich-inline-link";
 import { cn } from "@/lib/utils";
 
 type RichContentViewProps = {
@@ -16,11 +15,9 @@ type RichContentViewProps = {
 	className?: string;
 	/** Elevate links for click targets inside stretched card links (feed). */
 	interactiveLinks?: boolean;
+	/** Smaller link cards, for comments and other tight spaces. */
+	compact?: boolean;
 };
-
-/** Always visible — not tied to interactiveLinks (feed cards, comments, detail). */
-const richLinkClass =
-	"font-medium text-primary underline underline-offset-2 decoration-primary/50 hover:decoration-primary";
 
 const richLinkInteractiveClass = "pointer-events-auto relative z-[2]";
 
@@ -59,10 +56,9 @@ function renderInline(
 ) {
 	return inline.map((node, index) => {
 		const key = `${keyPrefix}-${index}`;
-		const linkClass = cn(
-			richLinkClass,
-			interactiveLinks && richLinkInteractiveClass,
-		);
+		const interactiveClass = interactiveLinks
+			? richLinkInteractiveClass
+			: undefined;
 
 		switch (node.t) {
 			case "text": {
@@ -73,46 +69,26 @@ function renderInline(
 			}
 			case "mention":
 				return (
-					<Link
+					<RichInlineLink
 						key={key}
-						href={`/users/${node.username}` as Route}
-						className={linkClass}
-						onClick={(event) => event.stopPropagation()}
+						href={`/users/${node.username}`}
+						tone="member"
+						className={interactiveClass}
 					>
 						@{node.username}
-					</Link>
+					</RichInlineLink>
 				);
-			case "link": {
-				const href = node.internal
-					? hrefFromInternalLinkRef(node.internal)
-					: node.href;
-				const isExternal = !node.internal && /^https:\/\//i.test(href);
-				if (node.internal) {
-					return (
-						<Link
-							key={key}
-							href={href as Route}
-							className={linkClass}
-							onClick={(event) => event.stopPropagation()}
-						>
-							{node.label}
-						</Link>
-					);
-				}
+			case "link":
 				return (
-					<a
+					<RichInlineLink
 						key={key}
-						href={href}
-						className={linkClass}
-						onClick={(event) => event.stopPropagation()}
-						{...(isExternal
-							? { target: "_blank", rel: "noopener noreferrer" }
-							: {})}
+						href={node.href}
+						internal={node.internal}
+						className={interactiveClass}
 					>
 						{node.label}
-					</a>
+					</RichInlineLink>
 				);
-			}
 			default: {
 				const _exhaustive: never = node;
 				return _exhaustive;
@@ -125,6 +101,7 @@ export function RichContentView({
 	content,
 	className,
 	interactiveLinks = false,
+	compact = false,
 }: RichContentViewProps) {
 	const doc = parseStoredContent(content);
 
@@ -136,6 +113,22 @@ export function RichContentView({
 			)}
 		>
 			{doc.blocks.map((block, blockIndex) => {
+				if (block.t === "embed") {
+					return (
+						<LinkPreviewCard
+							key={`block-${blockIndex}`}
+							href={block.href}
+							internal={block.internal}
+							label={block.label}
+							variant={compact ? "compact" : "card"}
+							className={cn(
+								"my-1 w-full max-w-xl",
+								interactiveLinks && richLinkInteractiveClass,
+							)}
+						/>
+					);
+				}
+
 				const inline = renderInline(
 					block.inline,
 					`b${blockIndex}`,

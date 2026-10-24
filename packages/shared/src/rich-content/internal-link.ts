@@ -1,28 +1,22 @@
 import type { InternalLinkRef } from "./types";
 
-/** Map in-app paths to structured refs for rich link embeds. */
+/**
+ * Map in-app paths to structured refs for rich link embeds. Only relative paths
+ * count: a full URL could point at any site, so the client turns same-site
+ * URLs into paths first (see `toSitePath` in the web app).
+ */
 export function internalLinkRefFromHref(href: string): InternalLinkRef | null {
 	let path = href.trim();
-	if (!path) {
-		return null;
-	}
-
-	try {
-		if (path.startsWith("http://") || path.startsWith("https://")) {
-			const url = new URL(path);
-			if (url.pathname.startsWith("/")) {
-				path = url.pathname;
-			} else {
-				return null;
-			}
-		}
-	} catch {
+	if (!path || path.startsWith("//")) {
 		return null;
 	}
 
 	if (!path.startsWith("/")) {
 		return null;
 	}
+
+	// Query strings and anchors do not change what the link points at.
+	path = path.split(/[?#]/)[0] ?? path;
 
 	const segments = path.split("/").filter(Boolean);
 	if (segments.length === 0) {
@@ -95,6 +89,10 @@ export function internalLinkRefFromHref(href: string): InternalLinkRef | null {
 		return { kind: "sitting", slug: segments[1]! };
 	}
 
+	if (segments[0] === "authors" && segments.length === 2) {
+		return { kind: "author", slug: segments[1]! };
+	}
+
 	return null;
 }
 
@@ -116,6 +114,8 @@ export function hrefFromInternalLinkRef(ref: InternalLinkRef): string {
 			return `/users/${ref.username}/shelves/${ref.slug}`;
 		case "sitting":
 			return `/sittings/${ref.slug}`;
+		case "author":
+			return `/authors/${ref.slug}`;
 		default: {
 			const _exhaustive: never = ref;
 			return _exhaustive;

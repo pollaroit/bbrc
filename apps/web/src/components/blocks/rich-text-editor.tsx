@@ -5,24 +5,44 @@ import { Button } from "@bbrc/ui/components/button";
 import LinkExtension from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
-import { EditorContent, useEditor } from "@tiptap/react";
+import {
+	type Editor,
+	EditorContent,
+	useEditor,
+	useEditorState,
+} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
 	Bold,
+	ExternalLink,
+	Globe,
 	Heading1,
 	Italic,
 	Link2,
+	PanelTop,
+	Pencil,
 	Quote,
 	Underline as UnderlineIcon,
+	X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { RichTextLinkDialog } from "@/components/blocks/rich-text-link-dialog";
+import {
+	RichTextLinkDialog,
+	type RichTextLinkDialogResult,
+} from "@/components/blocks/rich-text-link-dialog";
+import {
+	describeExternalUrl,
+	internalRefOf,
+	toSitePath,
+} from "@/lib/link-preview/site-path";
+import { useLinkPreview } from "@/lib/link-preview/use-link-preview";
 import {
 	EMPTY_TIPTAP_DOC,
 	storedContentToTiptapJson,
 	tiptapJsonToStoredContent,
 } from "@/lib/rich-content-tiptap";
 import { isAllowedRichLinkHref } from "@/lib/rich-link";
+import { LinkCard } from "@/lib/tiptap-link-card";
 import { cn } from "@/lib/utils";
 
 type RichTextEditorProps = {
@@ -84,6 +104,141 @@ function ToolbarButton({
 	);
 }
 
+/** Shows where the link under the cursor goes, with the things you usually want to do next. */
+function LinkContextBar({
+	editor,
+	onEdit,
+}: {
+	editor: Editor;
+	onEdit: () => void;
+}) {
+	const { active, href } = useEditorState({
+		editor,
+		selector: (ctx) => ({
+			active: ctx.editor.isActive("link"),
+			href: (ctx.editor.getAttributes("link").href as string | undefined) ?? "",
+		}),
+	});
+	const ref = internalRefOf(href);
+	const preview = useLinkPreview(ref, { enabled: active && ref != null });
+
+	if (!active || !href) {
+		return null;
+	}
+
+	const external = ref == null;
+	const site = toSitePath(href);
+	const { host, path } = external
+		? describeExternalUrl(href)
+		: { host: "", path: "" };
+	const title =
+		preview.data?.status === "ok" ? preview.data.title : external ? host : site;
+	const subtitle =
+		preview.data?.status === "ok"
+			? preview.data.kindLabel
+			: external
+				? path || "Web link"
+				: "On BBRC";
+
+	function turnIntoCard() {
+		editor.chain().focus().extendMarkRange("link").run();
+		const { from, to } = editor.state.selection;
+		const text = editor.state.doc.textBetween(from, to, " ");
+		const $from = editor.state.selection.$from;
+		const card = { type: "linkCard", attrs: { href, label: text || title } };
+
+		if ($from.parent.textContent.trim() === text.trim()) {
+			// The link is the whole line: the card replaces it.
+			editor
+				.chain()
+				.focus()
+				.insertContentAt({ from: $from.before(), to: $from.after() }, card)
+				.run();
+			return;
+		}
+		// Link inside a sentence: keep the sentence, add the card after it.
+		editor
+			.chain()
+			.focus()
+			.unsetLink()
+			.insertContentAt($from.after(), card)
+			.run();
+	}
+
+	return (
+		<div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-border border-b bg-muted/30 px-2.5 py-1.5 text-xs">
+			<span className="flex min-w-0 flex-1 items-center gap-2">
+				{external ? (
+					<Globe
+						className="size-3.5 shrink-0 text-muted-foreground"
+						aria-hidden
+					/>
+				) : (
+					<Link2
+						className="size-3.5 shrink-0 text-muted-foreground"
+						aria-hidden
+					/>
+				)}
+				<span className="truncate font-medium">{title}</span>
+				<span className="hidden truncate text-muted-foreground sm:inline">
+					{subtitle}
+				</span>
+			</span>
+			<span className="flex shrink-0 items-center gap-0.5">
+				<Button
+					type="button"
+					size="xs"
+					variant="ghost"
+					onClick={turnIntoCard}
+					title="Show this link as a preview card"
+				>
+					<PanelTop data-icon="inline-start" aria-hidden />
+					Card
+				</Button>
+				<Button
+					type="button"
+					size="xs"
+					variant="ghost"
+					onClick={onEdit}
+					title="Edit link"
+				>
+					<Pencil data-icon="inline-start" aria-hidden />
+					Edit
+				</Button>
+				<Button
+					type="button"
+					size="icon-xs"
+					variant="ghost"
+					aria-label="Open link in a new tab"
+					title="Open link"
+					render={
+						<a
+							href={external ? href : site}
+							target="_blank"
+							rel="noopener noreferrer"
+						/>
+					}
+					nativeButton={false}
+				>
+					<ExternalLink className="size-3.5" aria-hidden />
+				</Button>
+				<Button
+					type="button"
+					size="icon-xs"
+					variant="ghost"
+					aria-label="Remove link"
+					title="Remove link"
+					onClick={() =>
+						editor.chain().focus().extendMarkRange("link").unsetLink().run()
+					}
+				>
+					<X className="size-3.5" aria-hidden />
+				</Button>
+			</span>
+		</div>
+	);
+}
+
 export function RichTextEditor({
 	id,
 	instanceKey = "default",
@@ -132,9 +287,11 @@ export function RichTextEditor({
 					validate: (href) => isAllowedRichLinkHref(href),
 					shouldAutoLink: (url) => url.startsWith("https://"),
 					HTMLAttributes: {
-						class: "text-primary underline underline-offset-2",
+						class:
+							"text-primary underline decoration-primary/40 decoration-1 underline-offset-[3px]",
 					},
 				}),
+				LinkCard,
 				Placeholder.configure({ placeholder }),
 			],
 			content: initialEditorDoc(value),
@@ -158,7 +315,7 @@ export function RichTextEditor({
 						"max-w-none px-3 py-2 text-sm leading-relaxed focus:outline-none",
 						minHeightClassName,
 						"[&_blockquote]:border-border [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground [&_h1]:font-semibold [&_h1]:text-lg",
-						"[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2",
+						"[&_a]:font-medium [&_a]:text-primary [&_a]:underline [&_a]:decoration-1 [&_a]:decoration-primary/40 [&_a]:underline-offset-[3px]",
 					),
 				},
 			},
@@ -284,31 +441,47 @@ export function RichTextEditor({
 		return editor.state.doc.textBetween(from, to, " ");
 	};
 
-	const applyLink = (href: string, label: string) => {
-		const { empty } = editor.state.selection;
+	const applyLink = ({ href, label, display }: RichTextLinkDialogResult) => {
 		const text = label.trim() || href;
-		if (empty) {
+		const internal = href.startsWith("/");
+		const linkMark = {
+			type: "link",
+			attrs: {
+				href,
+				target: internal ? null : "_blank",
+				rel: internal ? null : "noopener noreferrer",
+			},
+		};
+
+		if (display === "card") {
 			editor
 				.chain()
 				.focus()
-				.insertContent({
-					type: "text",
-					text,
-					marks: [
-						{
-							type: "link",
-							attrs: {
-								href,
-								target: href.startsWith("/") ? null : "_blank",
-								rel: href.startsWith("/") ? null : "noopener noreferrer",
-							},
-						},
-					],
-				})
+				.insertContent({ type: "linkCard", attrs: { href, label: text } })
 				.run();
 			return;
 		}
-		editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
+
+		// Editing the link the cursor is in: replace it, text and address.
+		if (editor.isActive("link")) {
+			editor
+				.chain()
+				.focus()
+				.extendMarkRange("link")
+				.insertContent({ type: "text", text, marks: [linkMark] })
+				.run();
+			return;
+		}
+
+		if (editor.state.selection.empty) {
+			editor
+				.chain()
+				.focus()
+				.insertContent({ type: "text", text, marks: [linkMark] })
+				.run();
+			return;
+		}
+		editor.chain().focus().setLink({ href }).run();
 	};
 
 	return (
@@ -372,6 +545,7 @@ export function RichTextEditor({
 						<Link2 className="size-4" aria-hidden />
 					</ToolbarButton>
 				</div>
+				<LinkContextBar editor={editor} onEdit={openLinkDialog} />
 				<EditorContent editor={editor} />
 				<p className="border-border border-t px-3 py-1.5 text-muted-foreground text-xs tabular-nums">
 					{plainLength}/{maxPlainLength}
@@ -383,7 +557,8 @@ export function RichTextEditor({
 				onOpenChange={setLinkDialogOpen}
 				initialHref={editor.getAttributes("link").href as string | undefined}
 				initialLabel={selectionLabel() || undefined}
-				onApply={({ href, label }) => applyLink(href, label)}
+				hasSelection={!editor.state.selection.empty && !editor.isActive("link")}
+				onApply={applyLink}
 				onRemove={() =>
 					editor.chain().focus().extendMarkRange("link").unsetLink().run()
 				}

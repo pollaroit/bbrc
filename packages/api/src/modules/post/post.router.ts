@@ -1,4 +1,8 @@
-import { notBannedProcedure, publicProcedure } from "../../procedures";
+import {
+	notBannedProcedure,
+	protectedProcedure,
+	publicProcedure,
+} from "../../procedures";
 import { revalidateFeedsIsr, revalidatePostIsr } from "../../revalidate-isr";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import {
@@ -10,6 +14,7 @@ import {
 	GetPostBySlugOutputSchema,
 	GetPostListInputSchema,
 	GetPostListOutputSchema,
+	PostAttachmentPreferenceSchema,
 	PreviewPostAttachmentInputSchema,
 	PreviewPostAttachmentOutputSchema,
 	UpdatePostInputSchema,
@@ -18,13 +23,30 @@ import {
 import {
 	createPost,
 	deletePost,
+	getPostAttachmentPreference,
 	getPostBySlug,
 	getPostList,
+	setPostAttachmentPreference,
 	updatePost,
 } from "./post.service";
 import { getPostAttachmentPreview } from "./post-attachment.service";
 
 export const postRouter = {
+	getAttachmentPreference: protectedProcedure
+		.output(PostAttachmentPreferenceSchema)
+		.handler(async ({ context }) =>
+			getPostAttachmentPreference(context.session.user.id, context.db),
+		),
+	setAttachmentPreference: protectedProcedure
+		.input(PostAttachmentPreferenceSchema)
+		.output(PostAttachmentPreferenceSchema)
+		.handler(async ({ input, context }) =>
+			setPostAttachmentPreference(
+				input.allowPostAttachment,
+				context.session.user.id,
+				context.db,
+			),
+		),
 	getPostList: publicProcedure
 		.input(GetPostListInputSchema)
 		.output(GetPostListOutputSchema)
@@ -41,7 +63,7 @@ export const postRouter = {
 		.input(PreviewPostAttachmentInputSchema)
 		.output(PreviewPostAttachmentOutputSchema)
 		.handler(async ({ input, context }) =>
-			getPostAttachmentPreview(input, context.db),
+			getPostAttachmentPreview(input, context.db, context.session?.user.id),
 		),
 	create: notBannedProcedure
 		.use(checkAchievementsAfter("posts"))

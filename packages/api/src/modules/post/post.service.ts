@@ -13,6 +13,11 @@ import { ORPCError } from "@orpc/server";
 import { assertNormalizedSocialContent } from "../../lib/rich-content";
 import { mergeWhereFragments } from "../../utils/searching";
 import { notifyMemberPosted } from "../notification/notification-triggers";
+import {
+	createPostPoll,
+	loadPollViews,
+	pollViewer,
+} from "../post-poll/post-poll.service";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import {
 	assertContentNotVisible,
@@ -86,8 +91,14 @@ const topCommentSelect = {
 	_count: {
 		select: {
 			likes: true,
+			replies: true,
 		},
 	},
+} as const;
+
+const replyPreviewSelect = {
+	...topCommentSelect,
+	parentId: true,
 } as const;
 
 type TopCommentRow = Prisma.CommentGetPayload<{
@@ -183,11 +194,29 @@ async function loadTopCommentsByPostId(
 	});
 
 	const grouped = groupTopComments(comments, limit);
-	const previewCommentIds = [...grouped.values()].flatMap((rows) =>
-		rows.map((row) => row.id),
-	);
+	const previewComments = [...grouped.values()].flat();
+
+	// The newest reply under each previewed comment.
+	const replyRows =
+		previewComments.length > 0
+			? await db.comment.findMany({
+					where: { parentId: { in: previewComments.map((row) => row.id) } },
+					orderBy: { createdAt: "desc" },
+					select: replyPreviewSelect,
+				})
+			: [];
+	const latestReplyByParent = new Map<string, (typeof replyRows)[number]>();
+	for (const reply of replyRows) {
+		if (reply.parentId && !latestReplyByParent.has(reply.parentId)) {
+			latestReplyByParent.set(reply.parentId, reply);
+		}
+	}
+
 	const likedCommentIds = await loadLikedCommentIds(
-		previewCommentIds,
+		[
+			...previewComments.map((row) => row.id),
+			...[...latestReplyByParent.values()].map((row) => row.id),
+		],
 		userId,
 		db,
 	);
@@ -197,16 +226,32 @@ async function loadTopCommentsByPostId(
 	for (const [postId, rows] of grouped) {
 		result.set(
 			postId,
-			rows.map((row) => ({
-				slug: row.slug,
-				content: row.content,
-				imageUrl: row.imageUrl,
-				isSpoiler: row.isSpoiler,
-				createdAt: row.createdAt,
-				author: row.author,
-				likeCount: row._count.likes,
-				likedByMe: likedCommentIds.has(row.id),
-			})),
+			rows.map((row) => {
+				const reply = latestReplyByParent.get(row.id);
+				return {
+					slug: row.slug,
+					content: row.content,
+					imageUrl: row.imageUrl,
+					isSpoiler: row.isSpoiler,
+					createdAt: row.createdAt,
+					author: row.author,
+					likeCount: row._count.likes,
+					likedByMe: likedCommentIds.has(row.id),
+					replyCount: row._count.replies,
+					latestReply: reply
+						? {
+								slug: reply.slug,
+								content: reply.content,
+								imageUrl: reply.imageUrl,
+								isSpoiler: reply.isSpoiler,
+								createdAt: reply.createdAt,
+								author: reply.author,
+								likeCount: reply._count.likes,
+								likedByMe: likedCommentIds.has(reply.id),
+							}
+						: null,
+				};
+			}),
 		);
 	}
 
@@ -217,12 +262,17 @@ function mapPostListRow(
 	row: PostListRow,
 	likedPostIds: Set<string>,
 	topCommentsByPostId: Map<string, PostListItem["topComments"]>,
+	polls: Map<string, PostListItem["poll"]>,
 ): PostListItem {
 	return {
 		slug: row.slug,
 		content: row.content,
 		imageUrl: row.imageUrl,
 		isSpoiler: row.isSpoiler,
+		allowLikes: row.allowLikes,
+		allowComments: row.allowComments,
+		allowShares: row.allowShares,
+		poll: polls.get(row.id) ?? null,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -239,16 +289,24 @@ function mapPostListRow(
 
 async function mapPostDetailRow(
 	row: PostDetailRow,
-	userId: string | null,
+	session: Session | null,
 	db: Database,
 ): Promise<GetPostBySlugOutput> {
-	const likedPostIds = await loadLikedPostIds([row.id], userId, db);
+	const userId = viewerUserId(session);
+	const [likedPostIds, polls] = await Promise.all([
+		loadLikedPostIds([row.id], userId, db),
+		loadPollViews(db, [row.id], pollViewer(session)),
+	]);
 
 	return {
 		slug: row.slug,
 		content: row.content,
 		imageUrl: row.imageUrl,
 		isSpoiler: row.isSpoiler,
+		allowLikes: row.allowLikes,
+		allowComments: row.allowComments,
+		allowShares: row.allowShares,
+		poll: polls.get(row.id) ?? null,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -318,17 +376,19 @@ async function fetchPostsBySlugsInOrder(
 
 async function hydratePostListPage(
 	rows: PostListRow[],
-	userId: string | null,
+	session: Session | null,
 	db: Database,
 ): Promise<PostListItem[]> {
 	const postIds = rows.map((row) => row.id);
-	const [likedPostIds, topCommentsByPostId] = await Promise.all([
+	const userId = viewerUserId(session);
+	const [likedPostIds, topCommentsByPostId, polls] = await Promise.all([
 		loadLikedPostIds(postIds, userId, db),
 		loadTopCommentsByPostId(postIds, userId, db),
+		loadPollViews(db, postIds, pollViewer(session)),
 	]);
 
 	return rows.map((row) =>
-		mapPostListRow(row, likedPostIds, topCommentsByPostId),
+		mapPostListRow(row, likedPostIds, topCommentsByPostId, polls),
 	);
 }
 
@@ -352,7 +412,6 @@ export async function getPostList(
 	session: Session | null,
 ): Promise<GetPostListOutput> {
 	const searching = postListSearching.from(input);
-	const userId = viewerUserId(session);
 	const limit = input.limit ?? 10;
 	const overfetch = limit + 1;
 	const { feedSort, feedRange } = resolveFeedMode(input);
@@ -391,7 +450,7 @@ export async function getPostList(
 				: null;
 
 		return {
-			items: await hydratePostListPage(rows, userId, db),
+			items: await hydratePostListPage(rows, session, db),
 			metadata: listPageMetadata({
 				limit,
 				hasNextPage: ranked.length > limit,
@@ -430,7 +489,7 @@ export async function getPostList(
 			: null;
 
 	return {
-		items: await hydratePostListPage(pageRows, userId, db),
+		items: await hydratePostListPage(pageRows, session, db),
 		metadata: listPageMetadata({
 			limit,
 			hasNextPage,
@@ -469,7 +528,7 @@ export async function getPostBySlug(
 		{ slug },
 	);
 
-	return mapPostDetailRow(post, viewerUserId(session), db);
+	return mapPostDetailRow(post, session, db);
 }
 
 function resolveCreateAttachment(
@@ -494,6 +553,12 @@ export async function createPost(
 	const content = assertNormalizedSocialContent(input.content);
 	const attachmentInput = resolveCreateAttachment(input);
 
+	if (input.poll && attachmentInput) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "A post with a poll cannot have another attachment.",
+		});
+	}
+
 	const result = await db.$transaction(async (tx) => {
 		const slug = await generatePostSlug(content, tx);
 
@@ -501,6 +566,9 @@ export async function createPost(
 			data: {
 				content,
 				isSpoiler: input.isSpoiler ?? false,
+				allowLikes: input.allowLikes ?? true,
+				allowComments: input.allowComments ?? true,
+				allowShares: input.allowShares ?? true,
 				slug,
 				authorId: userId,
 				attachedBookId: null,
@@ -508,10 +576,15 @@ export async function createPost(
 			select: { id: true, slug: true },
 		});
 
+		if (input.poll) {
+			await createPostPoll(tx, post.id, userId, input.poll);
+		}
+
 		const attachedBookId = await syncPostAttachment(
 			post.id,
 			attachmentInput ?? null,
 			tx,
+			userId,
 		);
 		await tx.post.update({
 			where: { id: post.id },
@@ -537,7 +610,13 @@ export async function updatePost(
 ): Promise<UpdatePostOutput> {
 	const post = await db.post.findUnique({
 		where: { slug: input.slug },
-		select: { id: true, authorId: true, content: true },
+		select: {
+			id: true,
+			authorId: true,
+			content: true,
+			imageUrl: true,
+			poll: { select: { id: true } },
+		},
 	});
 
 	if (!post) {
@@ -548,6 +627,12 @@ export async function updatePost(
 	}
 
 	assertPostAuthor(post, userId);
+
+	if (post.poll && input.attachment) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "A post with a poll cannot have another attachment.",
+		});
+	}
 
 	const normalizedContent =
 		input.content != null
@@ -570,6 +655,7 @@ export async function updatePost(
 			post.id,
 			attachmentPatch,
 			tx,
+			userId,
 		);
 
 		await tx.post.update({
@@ -578,6 +664,15 @@ export async function updatePost(
 				...(normalizedContent != null ? { content: normalizedContent } : {}),
 				...(input.isSpoiler !== undefined
 					? { isSpoiler: input.isSpoiler }
+					: {}),
+				...(input.allowLikes !== undefined
+					? { allowLikes: input.allowLikes }
+					: {}),
+				...(input.allowComments !== undefined
+					? { allowComments: input.allowComments }
+					: {}),
+				...(input.allowShares !== undefined
+					? { allowShares: input.allowShares }
 					: {}),
 				...(contentChanged ? { editedAt: new Date() } : {}),
 				...(attachedBookId !== undefined
@@ -617,4 +712,28 @@ export async function deletePost(
 	});
 
 	return { slug: input.slug, deleted: true };
+}
+
+export async function getPostAttachmentPreference(
+	userId: string,
+	db: Database,
+) {
+	const user = await db.user.findUnique({
+		where: { id: userId },
+		select: { allowPostAttachment: true },
+	});
+	return { allowPostAttachment: user?.allowPostAttachment ?? true };
+}
+
+export async function setPostAttachmentPreference(
+	allowPostAttachment: boolean,
+	userId: string,
+	db: Database,
+) {
+	const user = await db.user.update({
+		where: { id: userId },
+		data: { allowPostAttachment },
+		select: { allowPostAttachment: true },
+	});
+	return { allowPostAttachment: user.allowPostAttachment };
 }

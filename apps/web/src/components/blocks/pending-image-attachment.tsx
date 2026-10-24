@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FullWidthImagePreview } from "@/components/blocks/full-width-image-preview";
+import {
+	FullWidthImagePreview,
+	type ImagePreviewSize,
+} from "@/components/blocks/full-width-image-preview";
 import type { ImageUploadKind } from "@/lib/storage/image-upload-profile";
 import { useImageCropCompressFlow } from "@/lib/storage/use-image-crop-compress-flow";
 
@@ -11,6 +14,9 @@ export type PendingImageAttachmentProps = {
 	onFileChange: (file: File | null) => void;
 	disabled?: boolean;
 	inputRef: React.RefObject<HTMLInputElement | null>;
+	/** Bleed to the parent's edges (only for parents that have 1.5rem padding). */
+	bleed?: boolean;
+	size?: ImagePreviewSize;
 };
 
 function kindForVariant(variant: "post" | "comment"): ImageUploadKind {
@@ -70,6 +76,8 @@ export function PendingImageAttachment({
 	onFileChange,
 	disabled,
 	inputRef,
+	bleed,
+	size,
 }: PendingImageAttachmentProps) {
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -105,8 +113,9 @@ export function PendingImageAttachment({
 				alt={
 					variant === "comment" ? "Comment image preview" : "Post image preview"
 				}
-				compact={variant === "comment"}
-				bleed={variant === "post"}
+				compact={size == null && variant === "comment"}
+				size={size}
+				bleed={bleed ?? variant === "post"}
 				disabled={disabled}
 				onReplace={openPicker}
 				onRemove={clearFile}

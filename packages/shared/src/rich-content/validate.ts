@@ -1,6 +1,9 @@
 import { internalLinkRefFromHref } from "./internal-link";
 import type { RichBlock, RichDocument, RichInline } from "./types";
 
+/** Preview cards per document; extra ones fall back to a plain link. */
+export const RICH_EMBED_LIMIT = 3;
+
 function sanitizeInline(inline: RichInline[]): RichInline[] {
 	return inline.map((node) => {
 		switch (node.t) {
@@ -31,6 +34,16 @@ function sanitizeInline(inline: RichInline[]): RichInline[] {
 }
 
 function sanitizeBlock(block: RichBlock): RichBlock {
+	if (block.t === "embed") {
+		const href = block.href.trim();
+		const label = block.label.trim() || href;
+		const internal =
+			block.internal ?? internalLinkRefFromHref(href) ?? undefined;
+		if (!internal && !/^https:\/\//i.test(href)) {
+			return { t: "p", inline: [{ t: "text", s: label }] };
+		}
+		return { t: "embed", href, label, internal };
+	}
 	return {
 		t: block.t,
 		inline: sanitizeInline(block.inline),
@@ -41,9 +54,30 @@ export function validateRichDocument(doc: RichDocument): RichDocument {
 	if (doc.v !== 1 || !Array.isArray(doc.blocks)) {
 		throw new Error("Invalid rich document");
 	}
+	let embeds = 0;
 	return {
 		v: 1,
-		blocks: doc.blocks.map(sanitizeBlock),
+		blocks: doc.blocks.map(sanitizeBlock).map((block): RichBlock => {
+			if (block.t !== "embed") {
+				return block;
+			}
+			embeds += 1;
+			if (embeds <= RICH_EMBED_LIMIT) {
+				return block;
+			}
+			// Too many cards: keep the link, drop the card.
+			return {
+				t: "p",
+				inline: [
+					{
+						t: "link",
+						href: block.href,
+						label: block.label,
+						internal: block.internal,
+					},
+				],
+			};
+		}),
 	};
 }
 

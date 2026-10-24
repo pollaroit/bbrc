@@ -14,7 +14,8 @@ model Series {
   /// @zod.max(2000, "Description must be at most 2000 characters long").nullish()
   description String? @db.Text
 
-  books SeriesBook[]
+  books       SeriesBook[]
+  pollOptions PostPollOption[]
 
   @@index([title])
   @@map("series")

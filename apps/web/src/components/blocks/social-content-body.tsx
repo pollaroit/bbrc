@@ -13,6 +13,7 @@ type SocialContentBodyProps = {
 	identifier: string;
 	className?: string;
 	interactiveLinks?: boolean;
+	compact?: boolean;
 };
 
 export function SocialContentBody({
@@ -22,6 +23,7 @@ export function SocialContentBody({
 	identifier,
 	className,
 	interactiveLinks = false,
+	compact = false,
 }: SocialContentBodyProps) {
 	const session = authClient.useSession();
 	const username = session.data?.user.username ?? null;
@@ -36,6 +38,7 @@ export function SocialContentBody({
 			<RichContentView
 				content={content}
 				interactiveLinks={interactiveLinks}
+				compact={compact}
 				className={className}
 			/>
 		</SpoilerContentGate>

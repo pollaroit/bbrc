@@ -294,6 +294,17 @@ export async function createComment(
 	const postId = input.postSlug
 		? await loadPostIdBySlug(input.postSlug, db)
 		: null;
+	if (postId) {
+		const post = await db.post.findUnique({
+			where: { id: postId },
+			select: { allowComments: true },
+		});
+		if (post && !post.allowComments) {
+			throw new ORPCError("FORBIDDEN", {
+				message: "Comments are turned off for this post.",
+			});
+		}
+	}
 	const feedbackId = input.feedbackSlug
 		? await loadFeedbackIdBySlug(input.feedbackSlug, db)
 		: null;

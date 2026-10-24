@@ -1,6 +1,7 @@
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import { contentPlainText, formatSittingDisplayName } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import { findAuthorBySlug } from "../../lib/authors";
 import {
 	POST_ATTACHMENT_TRUNCATE,
 	type PostAttachmentInput,
@@ -150,6 +151,15 @@ function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
 				},
 			};
 		}
+		case "author": {
+			if (!row.authorSlug || !row.authorName) {
+				throw new Error("Author attachment missing author");
+			}
+			return {
+				kind: "author",
+				author: { slug: row.authorSlug, name: row.authorName },
+			};
+		}
 		default: {
 			const _exhaustive: never = row.kind;
 			throw new Error(`Unknown attachment kind: ${_exhaustive}`);
@@ -177,6 +187,8 @@ type DbLike = Database | DatabaseTransaction;
 export async function resolvePostAttachmentCreateData(
 	input: PostAttachmentInput,
 	db: DbLike,
+	/** Who is attaching it; a member can always attach themselves. */
+	actorId?: string,
 ): Promise<Prisma.PostAttachmentCreateWithoutPostInput> {
 	switch (input.kind) {
 		case "book": {
@@ -223,12 +235,17 @@ export async function resolvePostAttachmentCreateData(
 		case "user": {
 			const user = await db.user.findUnique({
 				where: { username: input.username },
-				select: { id: true },
+				select: { id: true, name: true, allowPostAttachment: true },
 			});
 			if (!user) {
 				throw new ORPCError("NOT_FOUND", {
 					message: "Member not found",
 					data: { username: input.username },
+				});
+			}
+			if (!user.allowPostAttachment && user.id !== actorId) {
+				throw new ORPCError("FORBIDDEN", {
+					message: `${user.name} does not allow being attached to posts.`,
 				});
 			}
 			return { kind: "user", member: { connect: { id: user.id } } };
@@ -249,12 +266,17 @@ export async function resolvePostAttachmentCreateData(
 		case "post": {
 			const attachedPost = await db.post.findUnique({
 				where: { slug: input.slug },
-				select: { id: true },
+				select: { id: true, allowShares: true },
 			});
 			if (!attachedPost) {
 				throw new ORPCError("NOT_FOUND", {
 					message: "Post not found",
 					data: { slug: input.slug },
+				});
+			}
+			if (!attachedPost.allowShares) {
+				throw new ORPCError("FORBIDDEN", {
+					message: "Sharing is turned off for that post.",
 				});
 			}
 			return {
@@ -275,6 +297,20 @@ export async function resolvePostAttachmentCreateData(
 			}
 			return { kind: "comment", comment: { connect: { id: comment.id } } };
 		}
+		case "author": {
+			const author = await findAuthorBySlug(db as Database, input.slug);
+			if (!author) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Author not found",
+					data: { slug: input.slug },
+				});
+			}
+			return {
+				kind: "author",
+				authorSlug: author.slug,
+				authorName: author.name,
+			};
+		}
 		default: {
 			const _exhaustive: never = input;
 			throw new Error(`Unknown attachment kind: ${_exhaustive}`);
@@ -290,11 +326,14 @@ const emptyAttachmentRelations = {
 	feedback: null,
 	attachedPost: null,
 	comment: null,
+	authorSlug: null,
+	authorName: null,
 } as const;
 
 async function loadAttachmentPreviewRow(
 	input: PostAttachmentInput,
 	db: Database,
+	actorId?: string,
 ): Promise<PostAttachmentRow> {
 	switch (input.kind) {
 		case "book": {
@@ -339,7 +378,11 @@ async function loadAttachmentPreviewRow(
 		case "user": {
 			const member = await db.user.findUnique({
 				where: { username: input.username },
-				select: postAttachmentSelect.member.select,
+				select: {
+					...postAttachmentSelect.member.select,
+					id: true,
+					allowPostAttachment: true,
+				},
 			});
 			if (!member) {
 				throw new ORPCError("NOT_FOUND", {
@@ -347,15 +390,19 @@ async function loadAttachmentPreviewRow(
 					data: { username: input.username },
 				});
 			}
+			if (!member.allowPostAttachment && member.id !== actorId) {
+				throw new ORPCError("FORBIDDEN", {
+					message: `${member.name} does not allow being attached to posts.`,
+				});
+			}
 			return {
 				kind: "user",
-				member,
-				book: null,
-				shelf: null,
-				sitting: null,
-				feedback: null,
-				attachedPost: null,
-				comment: null,
+				...emptyAttachmentRelations,
+				member: {
+					username: member.username,
+					name: member.name,
+					image: member.image,
+				},
 			};
 		}
 		case "feedback": {
@@ -369,16 +416,7 @@ async function loadAttachmentPreviewRow(
 					data: { slug: input.slug },
 				});
 			}
-			return {
-				kind: "feedback",
-				feedback,
-				book: null,
-				shelf: null,
-				sitting: null,
-				member: null,
-				attachedPost: null,
-				comment: null,
-			};
+			return { kind: "feedback", ...emptyAttachmentRelations, feedback };
 		}
 		case "post": {
 			const attachedPost = await db.post.findUnique({
@@ -391,16 +429,7 @@ async function loadAttachmentPreviewRow(
 					data: { slug: input.slug },
 				});
 			}
-			return {
-				kind: "post",
-				attachedPost,
-				book: null,
-				shelf: null,
-				sitting: null,
-				member: null,
-				feedback: null,
-				comment: null,
-			};
+			return { kind: "post", ...emptyAttachmentRelations, attachedPost };
 		}
 		case "comment": {
 			const comment = await db.comment.findUnique({
@@ -413,15 +442,21 @@ async function loadAttachmentPreviewRow(
 					data: { slug: input.slug },
 				});
 			}
+			return { kind: "comment", ...emptyAttachmentRelations, comment };
+		}
+		case "author": {
+			const author = await findAuthorBySlug(db, input.slug);
+			if (!author) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Author not found",
+					data: { slug: input.slug },
+				});
+			}
 			return {
-				kind: "comment",
-				comment,
-				book: null,
-				shelf: null,
-				sitting: null,
-				member: null,
-				feedback: null,
-				attachedPost: null,
+				kind: "author",
+				...emptyAttachmentRelations,
+				authorSlug: author.slug,
+				authorName: author.name,
 			};
 		}
 		default: {
@@ -434,8 +469,9 @@ async function loadAttachmentPreviewRow(
 export async function getPostAttachmentPreview(
 	input: PostAttachmentInput,
 	db: Database,
+	actorId?: string,
 ): Promise<PostAttachmentOutput> {
-	const row = await loadAttachmentPreviewRow(input, db);
+	const row = await loadAttachmentPreviewRow(input, db, actorId);
 	return mapAttachmentRow(row);
 }
 
@@ -443,6 +479,7 @@ export async function syncPostAttachment(
 	postId: string,
 	attachment: PostAttachmentInput | null | undefined,
 	db: DbLike,
+	actorId?: string,
 ): Promise<string | null | undefined> {
 	if (attachment === undefined) {
 		return undefined;
@@ -454,7 +491,7 @@ export async function syncPostAttachment(
 		return null;
 	}
 
-	const data = await resolvePostAttachmentCreateData(attachment, db);
+	const data = await resolvePostAttachmentCreateData(attachment, db, actorId);
 	await db.postAttachment.create({
 		data: {
 			post: { connect: { id: postId } },

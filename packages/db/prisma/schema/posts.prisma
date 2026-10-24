@@ -10,13 +10,20 @@ model Post {
 
   isSpoiler Boolean @default(false) @map("is_spoiler")
 
+  /// Members can like the post.
+  allowLikes    Boolean @default(true) @map("allow_likes")
+  /// Members can comment on the post.
+  allowComments Boolean @default(true) @map("allow_comments")
+  /// Members can share the post inside their own posts (links still work anywhere).
+  allowShares   Boolean @default(true) @map("allow_shares")
+
   /// Public R2 URL for optional post image.
   /// @zod.max(2048).nullish()
   imageUrl String? @map("image_url")
 
   /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
   /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
-  slug    String @unique
+  slug String @unique
 
   /// @zod.uuid("Invalid user id")
   authorId String @map("author_id")
@@ -26,7 +33,8 @@ model Post {
   attachedBookId String? @map("attached_book_id")
   attachedBook   Book?   @relation(fields: [attachedBookId], references: [id], onDelete: SetNull)
 
-  attachment PostAttachment?
+  attachment          PostAttachment?
+  poll                PostPoll?
   quotedInAttachments PostAttachment[] @relation("QuotedPostAttachment")
 
   likes    Like[]
@@ -45,6 +53,7 @@ enum PostAttachmentKind {
   feedback
   post
   comment
+  author
 }
 
 model PostAttachment {
@@ -66,7 +75,7 @@ model PostAttachment {
   shelf   Shelf?  @relation(fields: [shelfId], references: [id], onDelete: SetNull)
 
   /// @zod.uuid("Invalid sitting id")
-  sittingId String? @map("sitting_id")
+  sittingId String?  @map("sitting_id")
   sitting   Sitting? @relation(fields: [sittingId], references: [id], onDelete: SetNull)
 
   /// @zod.uuid("Invalid user id")
@@ -74,7 +83,7 @@ model PostAttachment {
   member   User?   @relation("PostAttachmentMember", fields: [memberId], references: [id], onDelete: SetNull)
 
   /// @zod.uuid("Invalid feedback id")
-  feedbackId String? @map("feedback_id")
+  feedbackId String?   @map("feedback_id")
   feedback   Feedback? @relation(fields: [feedbackId], references: [id], onDelete: SetNull)
 
   /// @zod.uuid("Invalid post id")
@@ -82,8 +91,12 @@ model PostAttachment {
   attachedPost   Post?   @relation("QuotedPostAttachment", fields: [attachedPostId], references: [id], onDelete: SetNull)
 
   /// @zod.uuid("Invalid comment id")
-  commentId String? @map("comment_id")
+  commentId String?  @map("comment_id")
   comment   Comment? @relation(fields: [commentId], references: [id], onDelete: SetNull)
+
+  /// Authors have no table of their own: the slug and the name at the time it was attached.
+  authorSlug String? @map("author_slug")
+  authorName String? @map("author_name")
 
   @@index([kind])
   @@map("post_attachment")
@@ -144,7 +157,7 @@ model Comment {
 
   /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
   /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
-  slug    String @unique
+  slug String @unique
 
   /// @zod.uuid("Invalid user id")
   authorId String @map("author_id")
@@ -159,14 +172,14 @@ model Comment {
   feedback   Feedback? @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
 
   /// @zod.uuid("Invalid parent comment id")
-  parentId String?  @map("parent_id")
-  parent   Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId String?   @map("parent_id")
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies  Comment[] @relation("CommentReplies")
 
   /// @zod.int().min(0).max(4)
   depth Int @default(0)
 
-  likes Like[]
+  likes           Like[]
   postAttachments PostAttachment[]
 
   @@index([authorId])

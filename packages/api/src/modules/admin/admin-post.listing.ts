@@ -18,6 +18,7 @@ export const postAttachmentKindValues = [
 	"feedback",
 	"post",
 	"comment",
+	"author",
 ] as const;
 
 export const adminPostSortableFields = [...postSortableFields] as const;

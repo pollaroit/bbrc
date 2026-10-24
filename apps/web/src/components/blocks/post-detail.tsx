@@ -9,8 +9,9 @@ import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
 import { PostCommentFocusSection } from "@/components/blocks/post-comment-focus-section";
 import { PostCommentsSection } from "@/components/blocks/post-comments-section";
-import { PostEditLink } from "@/components/blocks/post-edit-link";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
+import { PostOwnerMenu } from "@/components/blocks/post-owner-menu";
+import { PostPoll } from "@/components/blocks/post-poll";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
@@ -57,9 +58,11 @@ export function PostDetail({
 								</p>
 							) : null}
 						</div>
-						<PostEditLink
+						<PostOwnerMenu
 							slug={post.slug}
 							authorUsername={post.author.username}
+							hasPoll={post.poll != null}
+							afterDeleteHref={"/" as Route}
 						/>
 					</div>
 				</CardHeader>
@@ -89,12 +92,18 @@ export function PostDetail({
 						/>
 					) : null}
 
+					{post.poll ? <PostPoll postSlug={post.slug} /> : null}
+
 					<div className="flex flex-wrap items-center gap-4 border-t pt-4 text-muted-foreground text-sm">
-						<PostLikeEngagement
-							postSlug={post.slug}
-							initialLikeCount={post.likeCount}
-							initialLikedByMe={post.likedByMe}
-						/>
+						{post.allowLikes ? (
+							<PostLikeEngagement
+								postSlug={post.slug}
+								initialLikeCount={post.likeCount}
+								initialLikedByMe={post.likedByMe}
+							/>
+						) : (
+							<span className="text-xs">Likes off</span>
+						)}
 						<Link
 							href={`/posts/${post.slug}#comments` as Route}
 							className="inline-flex items-center gap-1.5 tabular-nums transition-colors hover:text-foreground"
@@ -106,7 +115,9 @@ export function PostDetail({
 							path={`/posts/${post.slug}`}
 							shareText={shareSnippet(contentPlainText(post.content))}
 							label="Share post"
-							shareInPost={{ kind: "post", slug: post.slug }}
+							shareInPost={
+								post.allowShares ? { kind: "post", slug: post.slug } : undefined
+							}
 							size="md"
 						/>
 					</div>
@@ -129,7 +140,10 @@ export function PostDetail({
 					</Button>
 				</>
 			) : showCommentsSection ? (
-				<PostCommentsSection postSlug={post.slug} />
+				<PostCommentsSection
+					postSlug={post.slug}
+					allowComments={post.allowComments}
+				/>
 			) : null}
 		</div>
 	);
