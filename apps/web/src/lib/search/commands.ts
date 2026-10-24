@@ -113,6 +113,12 @@ const SETTINGS_PAGES = [
 		description: "Name, bio, photo and links",
 	},
 	{
+		key: "preferences",
+		label: "Preferences",
+		description:
+			"Look, text size, joins, invites and what others can do with you",
+	},
+	{
 		key: "notifications",
 		label: "Notification settings",
 		description: "What you hear about",
@@ -223,7 +229,7 @@ export function buildSearchCommands(): SearchCommand[] {
 		{
 			id: "settings",
 			keyword: "settings",
-			aliases: ["preferences"],
+			aliases: [],
 			label: "Settings",
 			description: "Your account settings",
 			icon: Settings,

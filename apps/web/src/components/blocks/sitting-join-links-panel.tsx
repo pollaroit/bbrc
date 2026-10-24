@@ -9,10 +9,15 @@ import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { Input } from "@bbrc/ui/components/input";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
+import { Switch } from "@bbrc/ui/components/switch";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Copy, Link2, QrCode as QrIcon, Share2, XCircle } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
+import {
+	DateTimePicker,
+	type DateTimePreset,
+} from "@/components/blocks/date-time-picker";
 import { QrCode } from "@/components/blocks/qr-code";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -36,15 +41,20 @@ function formatDate(value: Date | string) {
 	});
 }
 
-function toLocalInput(date: Date) {
-	const pad = (n: number) => String(n).padStart(2, "0");
-	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
+const EXPIRY_PRESETS: readonly DateTimePreset[] = [
+	{ label: "1 day", days: 1 },
+	{ label: "3 days", days: 3 },
+	{ label: "7 days", days: 7 },
+	{ label: "30 days", days: 30 },
+];
 
 function defaultExpiry() {
-	return toLocalInput(
-		new Date(Date.now() + DEFAULT_INVITE_LINK_DAYS * 24 * 60 * 60 * 1000),
+	const date = new Date(
+		Date.now() + DEFAULT_INVITE_LINK_DAYS * 24 * 60 * 60 * 1000,
 	);
+	date.setSeconds(0, 0);
+	date.setMinutes(Math.ceil(date.getMinutes() / 5) * 5);
+	return date;
 }
 
 export function SittingJoinLinksPanel({
@@ -58,7 +68,7 @@ export function SittingJoinLinksPanel({
 	});
 	const list = useQuery(listOptions);
 	const [label, setLabel] = useState("");
-	const [expires, setExpires] = useState(defaultExpiry);
+	const [expires, setExpires] = useState<Date>(defaultExpiry);
 	const [neverExpires, setNeverExpires] = useState(false);
 	const [maxUses, setMaxUses] = useState("");
 	const [qrFor, setQrFor] = useState<string | null>(null);
@@ -138,7 +148,7 @@ export function SittingJoinLinksPanel({
 					create.mutate({
 						sittingSlug,
 						label: label.trim() || undefined,
-						expiresAt: neverExpires ? null : new Date(expires),
+						expiresAt: neverExpires ? null : expires,
 						maxUses: maxUses ? Number(maxUses) : null,
 					});
 				}}
@@ -149,7 +159,7 @@ export function SittingJoinLinksPanel({
 						htmlFor={`${uid}-label`}
 						className="flex flex-col gap-1.5 text-sm"
 					>
-						Name (only you see it)
+						Name (only organisers see it)
 						<Input
 							id={`${uid}-label`}
 							value={label}
@@ -175,28 +185,31 @@ export function SittingJoinLinksPanel({
 							inputMode="numeric"
 						/>
 					</label>
-					<label
-						htmlFor={`${uid}-expires`}
-						className="flex flex-col gap-1.5 text-sm sm:col-span-2"
-					>
-						Stops working on
-						<Input
-							id={`${uid}-expires`}
-							type="datetime-local"
-							value={expires}
-							disabled={neverExpires}
-							onChange={(event) => setExpires(event.target.value)}
-						/>
-					</label>
 				</div>
-				<label className="flex items-center gap-2 text-sm">
-					<input
-						type="checkbox"
-						checked={neverExpires}
-						onChange={(event) => setNeverExpires(event.target.checked)}
+				<div className="flex flex-col gap-2 border-border border-t pt-3">
+					<div className="flex items-center justify-between gap-3">
+						<label htmlFor={`${uid}-expires`} className="font-medium text-sm">
+							Stops working on
+						</label>
+						<span className="flex items-center gap-2 text-muted-foreground text-xs">
+							<label htmlFor={`${uid}-never`}>Never expires</label>
+							<Switch
+								id={`${uid}-never`}
+								checked={neverExpires}
+								onCheckedChange={setNeverExpires}
+							/>
+						</span>
+					</div>
+					<DateTimePicker
+						id={`${uid}-expires`}
+						value={neverExpires ? null : expires}
+						onChange={setExpires}
+						min={new Date()}
+						presets={EXPIRY_PRESETS}
+						disabled={neverExpires}
+						placeholder="Never expires"
 					/>
-					Never expires
-				</label>
+				</div>
 				<div className="flex items-center justify-between gap-3">
 					<p className="text-muted-foreground text-xs">
 						{atLimit
@@ -207,7 +220,9 @@ export function SittingJoinLinksPanel({
 						type="submit"
 						size="sm"
 						disabled={
-							create.isPending || atLimit || (!neverExpires && !expires)
+							create.isPending ||
+							atLimit ||
+							(!neverExpires && expires.getTime() <= Date.now())
 						}
 					>
 						<Link2 data-icon="inline-start" aria-hidden />

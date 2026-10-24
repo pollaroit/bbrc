@@ -14,7 +14,6 @@ import { LogOut, UserPlus } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
-import { SittingJoinManagerButton } from "@/components/blocks/sitting-join-manager-button";
 import { SittingReadingRisk } from "@/components/blocks/sitting-reading-risk";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
@@ -143,7 +142,6 @@ export function SittingJoinControls({
 						Leave
 					</Button>
 				) : null}
-				<SittingJoinManagerButton sittingSlug={sittingSlug} />
 				{note ? (
 					<span className="text-muted-foreground text-xs">
 						{note}{" "}

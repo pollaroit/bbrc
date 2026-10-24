@@ -42,6 +42,12 @@ export const USER_INNER_PAGES: InnerPage[] = [
 	},
 	{ id: "shelves", label: "Shelves", path: "shelves" },
 	{ id: "goals", label: "Goals", path: "goals" },
+	{
+		id: "achievements",
+		label: "Achievements",
+		path: "achievements",
+		aliases: ["badges"],
+	},
 	{ id: "stats", label: "Stats", path: "stats", aliases: ["statistics"] },
 	{ id: "xp", label: "XP", path: "xp" },
 	{ id: "rp", label: "RP", path: "rp" },
