@@ -29,6 +29,8 @@ type CommentThreadListProps = {
 	focusRootSlug?: string | null;
 	/** Always show nested replies; hide expand/collapse toggles. */
 	expandAllReplies?: boolean;
+	/** False when replies are turned off for the post (reply buttons are hidden). */
+	allowReplies?: boolean;
 };
 
 function defaultThreadExpanded(depth: number): boolean {
@@ -46,6 +48,7 @@ function CommentThreadNode({
 	onCommentCreated,
 	isLastSibling,
 	expandAllReplies = false,
+	allowReplies = true,
 }: {
 	node: CommentTreeNode;
 	postSlug?: string;
@@ -57,6 +60,7 @@ function CommentThreadNode({
 	onCommentCreated: () => void;
 	isLastSibling: boolean;
 	expandAllReplies?: boolean;
+	allowReplies?: boolean;
 }) {
 	const hasReplies = node.children.length > 0;
 	const descendantCount = countDescendants(node);
@@ -104,7 +108,7 @@ function CommentThreadNode({
 					postSlug={postSlug}
 					bookSlug={bookSlug}
 					feedbackContextSlug={feedbackContextSlug}
-					canReply={canReplyAtDepth(node.depth)}
+					canReply={allowReplies && canReplyAtDepth(node.depth)}
 					onReply={() => onReply(node.slug)}
 				/>
 
@@ -166,6 +170,7 @@ function CommentThreadNode({
 								onCommentCreated={onCommentCreated}
 								isLastSibling={index === node.children.length - 1}
 								expandAllReplies={expandAllReplies}
+								allowReplies={allowReplies}
 							/>
 						))}
 					</ul>
@@ -186,6 +191,7 @@ export function CommentThreadList({
 	onCommentCreated,
 	focusRootSlug = null,
 	expandAllReplies = false,
+	allowReplies = true,
 }: CommentThreadListProps) {
 	if (focusRootSlug) {
 		const focused = extractCommentSubtree(comments, focusRootSlug);
@@ -206,6 +212,7 @@ export function CommentThreadList({
 					onCommentCreated={onCommentCreated}
 					isLastSibling
 					expandAllReplies={expandAllReplies}
+					allowReplies={allowReplies}
 				/>
 			</ul>
 		);
@@ -228,6 +235,7 @@ export function CommentThreadList({
 					onCommentCreated={onCommentCreated}
 					isLastSibling={index === roots.length - 1}
 					expandAllReplies={expandAllReplies}
+					allowReplies={allowReplies}
 				/>
 			))}
 		</ul>

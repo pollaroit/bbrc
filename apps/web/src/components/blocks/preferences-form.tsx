@@ -248,6 +248,55 @@ function ShelvesSection() {
 	);
 }
 
+function PollsSection() {
+	const { data: session } = authClient.useSession();
+	const signedIn = Boolean(session?.user);
+
+	const preferenceQuery = useQuery({
+		...orpc.postPoll.getPreference.queryOptions(),
+		enabled: signedIn,
+	});
+	const key = orpc.postPoll.getPreference.queryKey();
+	const mutation = useMutation(
+		orpc.postPoll.setPreference.mutationOptions({
+			onMutate: async (variables) => {
+				await queryClient.cancelQueries({ queryKey: key });
+				const previous = queryClient.getQueryData(key);
+				queryClient.setQueryData(key, variables);
+				return { previous };
+			},
+			onError: (_error, _variables, context) => {
+				queryClient.setQueryData(key, context?.previous);
+				toast.error("Could not save that setting.");
+			},
+			onSettled: () => {
+				void queryClient.invalidateQueries({ queryKey: key });
+			},
+		}),
+	);
+
+	return (
+		<PreferencesSection
+			id="polls"
+			title="Polls"
+			description="How other members can include you in their polls."
+		>
+			<SwitchRow
+				id="pref-poll-options"
+				label="Allow people to use me as an option in polls"
+				hint={
+					signedIn
+						? "When this is off, nobody can pick you as a poll option. Polls that already include you stay as they are."
+						: "Sign in to change this one."
+				}
+				checked={preferenceQuery.data?.allowPollOptions ?? true}
+				disabled={!signedIn || preferenceQuery.isPending}
+				onChange={(allowPollOptions) => mutation.mutate({ allowPollOptions })}
+			/>
+		</PreferencesSection>
+	);
+}
+
 function TimeSection() {
 	const { time } = usePreferences();
 	const sample = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -395,6 +444,7 @@ const sections = [
 	{ id: "accessibility", label: "Accessibility" },
 	{ id: "reading", label: "Reading" },
 	{ id: "shelves", label: "Shelves" },
+	{ id: "polls", label: "Polls" },
 	{ id: "time", label: "Time and format" },
 	{ id: "search", label: "Search" },
 	{ id: "sync", label: "Sync and reset" },
@@ -431,6 +481,7 @@ export function PreferencesForm() {
 			<AccessibilitySection />
 			<ReadingSection />
 			<ShelvesSection />
+			<PollsSection />
 			<TimeSection />
 			<SearchSection />
 			<SyncSection />

@@ -3,7 +3,6 @@
 import type { PostAttachmentInput } from "@bbrc/api/modules/post/post-attachment.schema";
 import { contentPlainText } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
-import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -12,11 +11,16 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
-import { Field, FieldLabel } from "@bbrc/ui/components/field";
-import { Label } from "@bbrc/ui/components/label";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import {
+	BarChart3,
+	ChevronDown,
+	ImagePlus,
+	Link2,
+	Plus,
+	Settings2,
+} from "lucide-react";
 import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -27,11 +31,25 @@ import {
 	usePendingImageInput,
 } from "@/components/blocks/pending-image-attachment";
 import {
+	emptyPollDraft,
+	PollBuilder,
+	type PollDraft,
+	pollDraftProblem,
+	pollDraftToInput,
+	pollDraftToPreview,
+} from "@/components/blocks/poll-builder";
+import {
 	PostAttachmentComposePicker,
 	type PostAttachmentComposeValue,
 } from "@/components/blocks/post-attachment-compose-picker";
+import {
+	DEFAULT_POST_SETTINGS,
+	type PostSettings,
+	PostSettingsFields,
+} from "@/components/blocks/post-settings-fields";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { uploadImageForEntity } from "@/components/blocks/single-image-upload-field";
+import { UserAvatar } from "@/components/blocks/user-avatar";
 import { authClient } from "@/lib/auth-client";
 import {
 	createPendingSlug,
@@ -42,16 +60,42 @@ import {
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
-function resetComposeForm(
-	setContent: (value: string) => void,
-	setAttachment: (value: PostAttachmentComposeValue) => void,
-	setImageFile: (value: File | null) => void,
-	setIsSpoiler: (value: boolean) => void,
-) {
-	setContent("");
-	setAttachment(null);
-	setImageFile(null);
-	setIsSpoiler(false);
+type ToolButtonProps = {
+	icon: React.ReactNode;
+	label: string;
+	active?: boolean;
+	disabled?: boolean;
+	reason?: string;
+	onClick: () => void;
+};
+
+/** One of the "add to your post" buttons. Greyed out with a reason when another one is in use. */
+function ToolButton({
+	icon,
+	label,
+	active,
+	disabled,
+	reason,
+	onClick,
+}: ToolButtonProps) {
+	return (
+		<button
+			type="button"
+			aria-pressed={active}
+			disabled={disabled}
+			title={disabled ? reason : undefined}
+			onClick={onClick}
+			className={cn(
+				"inline-flex items-center gap-1.5 border px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-40",
+				active
+					? "border-foreground bg-foreground text-background"
+					: "border-border hover:bg-muted/50",
+			)}
+		>
+			{icon}
+			{label}
+		</button>
+	);
 }
 
 type ComposePostDialogProps = {
@@ -71,10 +115,14 @@ export function ComposePostDialog({
 	const pathname = usePathname();
 	const { data: session } = authClient.useSession();
 	const [content, setContent] = useState("");
-	const [isSpoiler, setIsSpoiler] = useState(false);
+	const [settings, setSettings] = useState<PostSettings>(DEFAULT_POST_SETTINGS);
+	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [attachment, setAttachment] =
 		useState<PostAttachmentComposeValue>(null);
+	const [attachmentOpen, setAttachmentOpen] = useState(false);
 	const [imageFile, setImageFile] = useState<File | null>(null);
+	const [pollOn, setPollOn] = useState(false);
+	const [pollDraft, setPollDraft] = useState<PollDraft>(emptyPollDraft);
 	const imageInput = usePendingImageInput(setImageFile, { variant: "post" });
 
 	useEffect(() => {
@@ -83,7 +131,24 @@ export function ComposePostDialog({
 		}
 	}, [open, initialAttachment]);
 
+	function reset() {
+		setContent("");
+		setSettings(DEFAULT_POST_SETTINGS);
+		setSettingsOpen(false);
+		setAttachment(null);
+		setAttachmentOpen(false);
+		setImageFile(null);
+		setPollOn(false);
+		setPollDraft(emptyPollDraft());
+		if (imageInput.inputRef.current) {
+			imageInput.inputRef.current.value = "";
+		}
+	}
+
 	const postListKey = orpc.post.getPostList.key();
+	const hasMedia = imageFile != null || attachment != null;
+	const plain = contentPlainText(content).trim();
+	const pollProblem = pollOn ? pollDraftProblem(pollDraft) : null;
 
 	const createMutation = useMutation(
 		orpc.post.create.mutationOptions({
@@ -92,12 +157,24 @@ export function ComposePostDialog({
 			onMutate: async (variables) => {
 				const user = session?.user;
 				const pendingSlug = createPendingSlug();
-				const draft = { content, isSpoiler, attachment, imageFile };
+				const draft = {
+					content,
+					settings,
+					attachment,
+					imageFile,
+					pollOn,
+					pollDraft,
+				};
 				const submittedFrom = pathname;
 
 				await queryClient.cancelQueries({ queryKey: postListKey });
 
 				if (user) {
+					const author = {
+						username: user.username as string,
+						name: user.name,
+						image: user.image ?? null,
+					};
 					prependToLists(
 						postListKey,
 						{
@@ -105,14 +182,16 @@ export function ComposePostDialog({
 							content: variables.content,
 							imageUrl: null,
 							isSpoiler: Boolean(variables.isSpoiler),
+							allowLikes: variables.allowLikes ?? true,
+							allowComments: variables.allowComments ?? true,
+							allowShares: variables.allowShares ?? true,
 							createdAt: new Date(),
 							editedAt: null,
-							author: {
-								username: user.username as string,
-								name: user.name,
-								image: user.image ?? null,
-							},
+							author,
 							attachment: null,
+							poll: draft.pollOn
+								? pollDraftToPreview(draft.pollDraft, author)
+								: null,
 							likeCount: 0,
 							commentCount: 0,
 							likedByMe: false,
@@ -128,10 +207,7 @@ export function ComposePostDialog({
 				}
 
 				// Close the composer at once; the draft returns if this fails.
-				resetComposeForm(setContent, setAttachment, setImageFile, setIsSpoiler);
-				if (imageInput.inputRef.current) {
-					imageInput.inputRef.current.value = "";
-				}
+				reset();
 				onOpenChange(false);
 
 				return { pendingSlug, draft, submittedFrom };
@@ -140,9 +216,11 @@ export function ComposePostDialog({
 				if (context) {
 					removeFromLists(postListKey, context.pendingSlug);
 					setContent(context.draft.content);
-					setIsSpoiler(context.draft.isSpoiler);
+					setSettings(context.draft.settings);
 					setAttachment(context.draft.attachment);
 					setImageFile(context.draft.imageFile);
+					setPollOn(context.draft.pollOn);
+					setPollDraft(context.draft.pollDraft);
 					onOpenChange(true);
 				}
 				toast.error(error.message);
@@ -193,120 +271,203 @@ export function ComposePostDialog({
 		}),
 	);
 
+	function submit() {
+		if (plain.length < 1) {
+			toast.error("Write something first.");
+			return;
+		}
+		if (plain.length > 5000) {
+			toast.error("Content must be at most 5000 characters");
+			return;
+		}
+		if (pollProblem) {
+			toast.error(pollProblem);
+			return;
+		}
+
+		createMutation.mutate({
+			content,
+			isSpoiler: settings.isSpoiler,
+			allowLikes: settings.allowLikes,
+			allowComments: settings.allowComments,
+			allowShares: settings.allowShares,
+			...(pollOn
+				? { poll: pollDraftToInput(pollDraft) }
+				: attachment
+					? { attachment }
+					: {}),
+		});
+	}
+
+	const user = session?.user;
+	const customSettings =
+		settings.isSpoiler ||
+		!settings.allowLikes ||
+		!settings.allowComments ||
+		!settings.allowShares;
+
 	return (
 		<Dialog
 			open={open}
 			onOpenChange={(nextOpen) => {
 				onOpenChange(nextOpen);
 				if (!nextOpen) {
-					resetComposeForm(
-						setContent,
-						setAttachment,
-						setImageFile,
-						setIsSpoiler,
-					);
+					reset();
 					onClosed?.();
-					if (imageInput.inputRef.current) {
-						imageInput.inputRef.current.value = "";
-					}
 				}
 			}}
 		>
-			<DialogContent className="flex max-h-[min(90vh,720px)] max-w-xl flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
-				<DialogHeader className="border-border border-b p-6">
-					<DialogTitle>Share an update</DialogTitle>
-					<DialogDescription>
-						Post to the club feed. Optionally attach a book, shelf, or member—or
-						use Share → Share in post on any resource.
-					</DialogDescription>
+			<DialogContent className="flex max-h-[min(92vh,820px)] max-w-xl flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+				<DialogHeader className="flex-row items-center gap-3 border-border border-b px-5 py-4">
+					{user ? (
+						<UserAvatar
+							user={{ name: user.name, image: user.image ?? null }}
+							className="size-9"
+						/>
+					) : null}
+					<div className="flex min-w-0 flex-col gap-0.5 text-start">
+						<DialogTitle className="text-base">New post</DialogTitle>
+						<DialogDescription className="truncate text-xs">
+							{pollOn
+								? "Your text is the question. Add the options below."
+								: "Share an update with the club."}
+						</DialogDescription>
+					</div>
 				</DialogHeader>
 
 				<form
-					className="flex flex-col gap-4 overflow-y-auto p-6"
+					className="flex min-h-0 flex-1 flex-col"
 					onSubmit={(event) => {
 						event.preventDefault();
-
-						const plain = contentPlainText(content).trim();
-						if (plain.length < 1) {
-							toast.error("Content must be at least 1 character long");
-							return;
-						}
-						if (plain.length > 5000) {
-							toast.error("Content must be at most 5000 characters");
-							return;
-						}
-
-						createMutation.mutate({
-							content,
-							isSpoiler,
-							...(attachment ? { attachment } : {}),
-						});
+						submit();
 					}}
 				>
-					{imageInput.input}
-					{imageInput.cropDialog}
-					<Field>
-						<FieldLabel htmlFor="compose-post-content">Post</FieldLabel>
+					<div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
+						{imageInput.input}
+						{imageInput.cropDialog}
+
 						<RichTextEditor
 							instanceKey={open ? "compose-open" : "compose-closed"}
 							id="compose-post-content"
 							value={content}
 							onChange={setContent}
 							disabled={false}
-							placeholder="What are you reading or thinking about?"
+							placeholder={
+								pollOn
+									? "Ask your question…"
+									: "What are you reading or thinking about?"
+							}
 						/>
-						<div className="mt-2">
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								disabled={false}
-								onClick={imageInput.openPicker}
-							>
-								{imageFile ? "Change photo" : "Add photo"}
-							</Button>
-						</div>
-					</Field>
 
-					<div className="flex items-center gap-2">
-						<Checkbox
-							id="compose-post-spoiler"
-							checked={isSpoiler}
-							onCheckedChange={(checked) => setIsSpoiler(checked === true)}
-							disabled={false}
-						/>
-						<Label htmlFor="compose-post-spoiler" className="text-sm">
-							Mark entire post as spoiler
-						</Label>
+						<div
+							className="flex flex-wrap items-center gap-2"
+							role="toolbar"
+							aria-label="Add to your post"
+						>
+							<span className="pe-1 text-muted-foreground text-xs">Add</span>
+							<ToolButton
+								icon={<ImagePlus className="size-4" aria-hidden />}
+								label={imageFile ? "Change photo" : "Photo"}
+								active={imageFile != null}
+								disabled={pollOn}
+								reason="A poll replaces photos and attachments."
+								onClick={imageInput.openPicker}
+							/>
+							<ToolButton
+								icon={<Link2 className="size-4" aria-hidden />}
+								label="Attachment"
+								active={attachmentOpen || attachment != null}
+								disabled={pollOn}
+								reason="A poll replaces photos and attachments."
+								onClick={() => setAttachmentOpen((current) => !current)}
+							/>
+							<ToolButton
+								icon={<BarChart3 className="size-4" aria-hidden />}
+								label="Poll"
+								active={pollOn}
+								disabled={hasMedia}
+								reason="Remove the photo or attachment to add a poll."
+								onClick={() => {
+									setPollOn((current) => !current);
+									setAttachmentOpen(false);
+								}}
+							/>
+						</div>
+
+						{imageFile ? (
+							<PendingImageAttachment
+								variant="post"
+								file={imageFile}
+								onFileChange={setImageFile}
+								disabled={false}
+								inputRef={imageInput.inputRef}
+							/>
+						) : null}
+
+						{attachmentOpen || attachment ? (
+							<PostAttachmentComposePicker
+								value={attachment}
+								onChange={setAttachment}
+								disabled={false}
+							/>
+						) : null}
+
+						{pollOn ? (
+							<PollBuilder draft={pollDraft} onChange={setPollDraft} />
+						) : null}
+
+						<div className="flex flex-col gap-2">
+							<button
+								type="button"
+								aria-expanded={settingsOpen}
+								onClick={() => setSettingsOpen((current) => !current)}
+								className="flex w-fit items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+							>
+								<Settings2 className="size-4" aria-hidden />
+								Post settings
+								{customSettings ? (
+									<span className="text-foreground text-xs">· changed</span>
+								) : null}
+								<ChevronDown
+									className={cn(
+										"size-4 transition-transform",
+										settingsOpen && "rotate-180",
+									)}
+									aria-hidden
+								/>
+							</button>
+							{settingsOpen ? (
+								<PostSettingsFields value={settings} onChange={setSettings} />
+							) : null}
+						</div>
 					</div>
 
-					<Field>
-						<FieldLabel>Attachment</FieldLabel>
-						<PostAttachmentComposePicker
-							value={attachment}
-							onChange={setAttachment}
-							disabled={false}
-						/>
-					</Field>
-
-					{imageFile ? (
-						<PendingImageAttachment
-							variant="post"
-							file={imageFile}
-							onFileChange={setImageFile}
-							disabled={false}
-							inputRef={imageInput.inputRef}
-						/>
-					) : null}
-
-					<DialogFooter className="border-border border-t p-6 pt-4">
-						<LoadingButton
-							type="submit"
-							loading={false}
-							disabled={contentPlainText(content).trim().length < 1}
+					<DialogFooter className="flex-row items-center justify-between gap-3 border-border border-t px-5 py-3 sm:justify-between">
+						<p
+							className={cn(
+								"min-w-0 truncate text-xs",
+								pollProblem ? "text-destructive" : "text-muted-foreground",
+							)}
+							aria-live="polite"
 						>
-							Post
-						</LoadingButton>
+							{pollProblem ?? (plain.length > 0 ? `${plain.length}/5000` : "")}
+						</p>
+						<div className="flex shrink-0 items-center gap-2">
+							<Button
+								type="button"
+								variant="ghost"
+								onClick={() => onOpenChange(false)}
+							>
+								Cancel
+							</Button>
+							<LoadingButton
+								type="submit"
+								loading={false}
+								disabled={plain.length < 1 || pollProblem != null}
+							>
+								Post
+							</LoadingButton>
+						</div>
 					</DialogFooter>
 				</form>
 			</DialogContent>
