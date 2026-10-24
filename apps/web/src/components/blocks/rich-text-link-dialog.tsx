@@ -1,6 +1,7 @@
 "use client";
 
 import type { GlobalSearchHit } from "@bbrc/api/modules/search/global-search.schema";
+import { internalLinkRefFromHref } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
@@ -10,19 +11,29 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
-import { Field, FieldGroup, FieldLabel } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
+import { Check, Globe, Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { GlobalSearchThumb } from "@/components/blocks/global-search-thumb";
+import {
+	ExternalLinkCard,
+	LinkPreviewCard,
+} from "@/components/blocks/link-preview-card";
+import { SegmentedControl } from "@/components/blocks/segmented-control";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { isAllowedRichLinkHref, normalizeHttpsUrl } from "@/lib/rich-link";
+import { describeExternalUrl, toSitePath } from "@/lib/link-preview/site-path";
+import { normalizeHttpsUrl } from "@/lib/rich-link";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
+
+export type RichTextLinkDisplay = "link" | "card";
 
 export type RichTextLinkDialogResult = {
 	href: string;
 	label: string;
+	display: RichTextLinkDisplay;
 };
 
 type RichTextLinkDialogProps = {
@@ -30,190 +41,304 @@ type RichTextLinkDialogProps = {
 	onOpenChange: (open: boolean) => void;
 	initialHref?: string;
 	initialLabel?: string;
+	/** Text is selected in the editor, so the link wraps it and no label is needed. */
+	hasSelection?: boolean;
 	onApply: (result: RichTextLinkDialogResult) => void;
 	onRemove?: () => void;
 };
 
-const INTERNAL_HIT_TYPES = new Set([
-	"book",
-	"user",
-	"post",
-	"feedback",
-	"comment",
-	"shelf",
-]);
+type Tab = "site" | "web";
+
+/** Accepts `example.com/page` as well as `https://example.com/page`. */
+function toHttpsUrl(input: string): string | null {
+	const trimmed = input.trim();
+	if (!trimmed) return null;
+	const direct = normalizeHttpsUrl(trimmed);
+	if (direct) return direct;
+	if (
+		!/^[a-z][a-z0-9+.-]*:/i.test(trimmed) &&
+		/^[^\s/]+\.[^\s/]{2,}/.test(trimmed)
+	) {
+		return normalizeHttpsUrl(`https://${trimmed}`);
+	}
+	return null;
+}
 
 export function RichTextLinkDialog({
 	open,
 	onOpenChange,
 	initialHref = "",
 	initialLabel = "",
+	hasSelection = false,
 	onApply,
 	onRemove,
 }: RichTextLinkDialogProps) {
-	const [mode, setMode] = useState<"external" | "internal">("external");
-	const [url, setUrl] = useState("");
+	const [tab, setTab] = useState<Tab>("site");
+	const [display, setDisplay] = useState<RichTextLinkDisplay>("link");
 	const [label, setLabel] = useState("");
 	const [search, setSearch] = useState("");
-	const debouncedSearch = useDebouncedValue(search, 300);
-	const trimmedSearch = debouncedSearch.trim();
-	const canSearch = trimmedSearch.length >= 2;
+	const [url, setUrl] = useState("");
+	const [picked, setPicked] = useState<{
+		href: string;
+		title: string;
+	} | null>(null);
+	const debouncedSearch = useDebouncedValue(search.trim(), 250);
+	const editing = initialHref.trim().length > 0;
 
 	useEffect(() => {
-		if (!open) {
-			return;
-		}
-		const href = initialHref.trim();
-		if (href.startsWith("/")) {
-			setMode("internal");
-		} else {
-			setMode("external");
-			setUrl(href.startsWith("https://") ? href : "");
-		}
+		if (!open) return;
+		const href = toSitePath(initialHref);
+		setDisplay("link");
 		setLabel(initialLabel);
 		setSearch("");
+		setUrl("");
+		setPicked(null);
+		if (href.startsWith("/")) {
+			setTab("site");
+			setPicked({ href, title: initialLabel || href });
+		} else if (href) {
+			setTab("web");
+			setUrl(href);
+		} else {
+			setTab("site");
+		}
 	}, [open, initialHref, initialLabel]);
 
-	const searchQuery = useQuery({
+	// A pasted address of a page on this site counts as an on-site link.
+	const pastedSitePath = (() => {
+		const path = toSitePath(search.trim());
+		return path.startsWith("/") && internalLinkRefFromHref(path) ? path : null;
+	})();
+
+	const hits = useQuery({
 		...orpc.globalSearch.search.queryOptions({
-			input: { query: trimmedSearch },
+			input: { query: debouncedSearch },
 		}),
-		enabled: open && mode === "internal" && canSearch,
+		enabled: open && tab === "site" && debouncedSearch.length >= 2 && !picked,
 	});
+	const results = (hits.data?.items ?? [])
+		.filter((hit) => internalLinkRefFromHref(hit.href) != null)
+		.slice(0, 8);
 
-	const internalHits =
-		searchQuery.data?.items.filter((item) =>
-			INTERNAL_HIT_TYPES.has(item.type),
-		) ?? [];
+	const webUrl = toHttpsUrl(url);
+	const webSitePath =
+		webUrl && toSitePath(webUrl).startsWith("/") ? toSitePath(webUrl) : null;
+	const target =
+		tab === "site"
+			? (picked?.href ?? null)
+			: webSitePath
+				? webSitePath
+				: webUrl;
+	const targetTitle =
+		tab === "site"
+			? picked?.title
+			: webUrl
+				? describeExternalUrl(webUrl).host
+				: "";
 
-	function applyExternal() {
-		const normalized = normalizeHttpsUrl(url);
-		if (!normalized) {
-			return;
-		}
-		const text = label.trim() || normalized;
-		onApply({ href: normalized, label: text });
+	function apply() {
+		if (!target) return;
+		onApply({
+			href: target,
+			label: label.trim() || targetTitle || target,
+			display,
+		});
 		onOpenChange(false);
 	}
 
-	function applyInternal(hit: GlobalSearchHit) {
-		if (!isAllowedRichLinkHref(hit.href)) {
-			return;
-		}
-		const text = label.trim() || hit.title;
-		onApply({ href: hit.href, label: text });
-		onOpenChange(false);
+	function pickHit(hit: GlobalSearchHit) {
+		setPicked({ href: hit.href, title: hit.title });
+		setSearch("");
 	}
-
-	const externalValid = normalizeHttpsUrl(url) != null;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-md">
+			<DialogContent className="max-h-[90vh] gap-4 overflow-y-auto sm:max-w-lg">
 				<DialogHeader>
-					<DialogTitle>Insert link</DialogTitle>
+					<DialogTitle>{editing ? "Edit link" : "Add a link"}</DialogTitle>
 					<DialogDescription>
-						External links must use HTTPS. On-site links search books, posts,
-						members, and more.
+						Link to a page on BBRC, or to another website.
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="flex gap-1 border border-border bg-muted/20 p-1">
-					<Button
-						type="button"
-						size="sm"
-						variant={mode === "external" ? "secondary" : "ghost"}
-						className="flex-1"
-						onClick={() => setMode("external")}
-					>
-						External (HTTPS)
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant={mode === "internal" ? "secondary" : "ghost"}
-						className="flex-1"
-						onClick={() => setMode("internal")}
-					>
-						On-site
-					</Button>
-				</div>
+				<SegmentedControl<Tab>
+					label="Where the link goes"
+					value={tab}
+					onChange={setTab}
+					options={[
+						{ id: "site", label: "On BBRC" },
+						{ id: "web", label: "Web" },
+					]}
+				/>
 
-				<FieldGroup>
-					<Field>
-						<FieldLabel htmlFor="rich-link-label">Display text</FieldLabel>
-						<Input
-							id="rich-link-label"
-							value={label}
-							onChange={(event) => setLabel(event.target.value)}
-							placeholder="Link label"
-						/>
-					</Field>
-
-					{mode === "external" ? (
-						<Field>
-							<FieldLabel htmlFor="rich-link-url">URL</FieldLabel>
-							<Input
-								id="rich-link-url"
-								value={url}
-								onChange={(event) => setUrl(event.target.value)}
-								placeholder="https://…"
-								inputMode="url"
-								autoComplete="off"
-							/>
-						</Field>
-					) : (
-						<Field>
-							<FieldLabel htmlFor="rich-link-search">Search</FieldLabel>
-							<Input
-								id="rich-link-search"
-								value={search}
-								onChange={(event) => setSearch(event.target.value)}
-								placeholder="Book, post, member…"
-								autoComplete="off"
-							/>
-							<div className="mt-2 max-h-48 overflow-y-auto border border-border">
-								{!canSearch ? (
-									<p className="px-3 py-2 text-muted-foreground text-xs">
-										Type at least 2 characters to search.
+				{tab === "site" ? (
+					<div className="flex flex-col gap-3">
+						{picked ? (
+							<div className="flex flex-col gap-2">
+								<LinkPreviewCard
+									href={picked.href}
+									variant="compact"
+									asStatic
+								/>
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="w-fit"
+									onClick={() => setPicked(null)}
+								>
+									Choose something else
+								</Button>
+							</div>
+						) : (
+							<>
+								<div className="relative">
+									<Search
+										className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+										aria-hidden
+									/>
+									<Input
+										value={search}
+										onChange={(event) => setSearch(event.target.value)}
+										placeholder="Search books, members, posts, shelves…"
+										aria-label="Search BBRC"
+										autoComplete="off"
+										autoFocus
+										className="ps-9"
+									/>
+								</div>
+								{pastedSitePath ? (
+									<button
+										type="button"
+										onClick={() => {
+											setPicked({
+												href: pastedSitePath,
+												title: pastedSitePath,
+											});
+											setSearch("");
+										}}
+										className="flex items-center gap-2 border border-border border-dashed p-3 text-start text-sm transition-colors hover:bg-muted/40"
+									>
+										<Check className="size-4" aria-hidden />
+										Use this BBRC page
+									</button>
+								) : null}
+								{debouncedSearch.length < 2 ? (
+									<p className="text-muted-foreground text-sm">
+										Type at least 2 letters, or paste the address of a BBRC
+										page.
 									</p>
-								) : searchQuery.isFetching ? (
-									<div className="space-y-2 p-2">
-										<Skeleton className="h-8 w-full" />
-										<Skeleton className="h-8 w-full" />
-									</div>
-								) : internalHits.length === 0 ? (
-									<p className="px-3 py-2 text-muted-foreground text-xs">
-										No on-site matches.
+								) : hits.isFetching ? (
+									<Skeleton className="h-24 w-full" aria-hidden />
+								) : results.length === 0 ? (
+									<p className="text-muted-foreground text-sm">
+										Nothing on BBRC matches “{debouncedSearch}”.
 									</p>
 								) : (
-									<ul>
-										{internalHits.map((hit) => (
+									<ul className="max-h-64 divide-y divide-border overflow-y-auto border border-border">
+										{results.map((hit) => (
 											<li key={`${hit.type}-${hit.href}`}>
 												<button
 													type="button"
-													className={cn(
-														"flex w-full flex-col gap-0.5 px-3 py-2 text-left text-sm",
-														"hover:bg-muted/60",
-													)}
-													onClick={() => applyInternal(hit)}
+													onClick={() => pickHit(hit)}
+													className="flex w-full items-center gap-3 p-2.5 text-start transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none"
 												>
-													<span className="font-medium">{hit.title}</span>
-													<span className="text-muted-foreground text-xs">
-														{hit.description} · {hit.href}
+													<GlobalSearchThumb hit={hit} />
+													<span className="flex min-w-0 flex-col">
+														<span className="truncate font-medium text-sm">
+															{hit.title}
+														</span>
+														<span className="truncate text-muted-foreground text-xs">
+															{hit.description}
+														</span>
 													</span>
 												</button>
 											</li>
 										))}
 									</ul>
 								)}
-							</div>
-						</Field>
-					)}
-				</FieldGroup>
+							</>
+						)}
+					</div>
+				) : (
+					<div className="flex flex-col gap-3">
+						<div className="relative">
+							<Globe
+								className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+								aria-hidden
+							/>
+							<Input
+								value={url}
+								onChange={(event) => setUrl(event.target.value)}
+								placeholder="example.com/article"
+								aria-label="Web address"
+								inputMode="url"
+								autoComplete="off"
+								autoFocus
+								className="ps-9"
+								aria-invalid={url.trim().length > 0 && webUrl == null}
+							/>
+						</div>
+						{url.trim().length > 0 && webUrl == null ? (
+							<p className="text-destructive text-xs">
+								Enter a secure address, like https://example.com. Only https
+								links are allowed.
+							</p>
+						) : null}
+						{webSitePath ? (
+							<LinkPreviewCard href={webSitePath} variant="compact" asStatic />
+						) : webUrl ? (
+							<ExternalLinkCard href={webUrl} variant="compact" asStatic />
+						) : null}
+					</div>
+				)}
+
+				<div className="flex flex-col gap-3 border-border border-t pt-4">
+					<label
+						htmlFor="rich-link-label"
+						className="flex flex-col gap-1.5 font-medium text-sm"
+					>
+						Text to show
+						<Input
+							id="rich-link-label"
+							value={label}
+							onChange={(event) => setLabel(event.target.value)}
+							placeholder={
+								hasSelection && display === "link"
+									? "Uses the text you selected"
+									: (targetTitle ?? "The name of the link")
+							}
+							disabled={hasSelection && display === "link"}
+							autoComplete="off"
+						/>
+					</label>
+
+					<div className="flex flex-col gap-1.5">
+						<span className="font-medium text-sm">Show it as</span>
+						<SegmentedControl<RichTextLinkDisplay>
+							label="Show the link as"
+							value={display}
+							onChange={setDisplay}
+							options={[
+								{ id: "link", label: "Link in text" },
+								{ id: "card", label: "Preview card" },
+							]}
+						/>
+						<p
+							className={cn(
+								"text-muted-foreground text-xs",
+								display === "card" && "text-foreground",
+							)}
+						>
+							{display === "card"
+								? "A card on its own line, with a picture and details. Up to 3 per post."
+								: "Underlined text inside your sentence. Pointing at it shows a preview."}
+						</p>
+					</div>
+				</div>
 
 				<DialogFooter className="gap-2 sm:justify-between">
-					{onRemove && initialHref ? (
+					{onRemove && editing ? (
 						<Button
 							type="button"
 							variant="ghost"
@@ -236,15 +361,9 @@ export function RichTextLinkDialog({
 						>
 							Cancel
 						</Button>
-						{mode === "external" ? (
-							<Button
-								type="button"
-								disabled={!externalValid}
-								onClick={applyExternal}
-							>
-								Apply
-							</Button>
-						) : null}
+						<Button type="button" disabled={!target} onClick={apply}>
+							{editing ? "Update" : "Add link"}
+						</Button>
 					</div>
 				</DialogFooter>
 			</DialogContent>

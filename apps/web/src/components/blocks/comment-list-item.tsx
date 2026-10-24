@@ -263,6 +263,7 @@ function CommentListItemViewInner({
 				kind={commentKind}
 				identifier={commentIdentifier}
 				interactiveLinks
+				compact={isCompact}
 				className={cn(
 					isCompact &&
 						"max-h-[4.75rem] overflow-hidden [mask-image:linear-gradient(180deg,#000_70%,transparent)]",

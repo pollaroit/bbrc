@@ -45,3 +45,10 @@ Members can pick a palette, fonts and text size (`/settings/preferences`), so UI
 - Every poll action updates the screen first (`apps/web/src/lib/poll/use-poll.ts`, `optimistic.ts`): add new actions there so feeds, the post page and the poll query stay in step (`syncPoll`).
 - Posts have `allowLikes`, `allowComments`, `allowShares` (default true). The API refuses likes, comments and shares-in-posts when they are off; the UI hides the matching controls.
 - Members can opt out of being used as a poll option (`allowPollOptions`, Preferences > Polls).
+
+## Links in rich text
+
+- A link is either inline (a `link` node inside a sentence) or a standalone preview card (an `embed` block, at most 3 per document, enforced in `validateRichDocument`). In the editor the card is the `linkCard` TipTap node (`apps/web/src/lib/tiptap-link-card.tsx`).
+- On-site links are relative paths mapped to an `InternalLinkRef` (`internalLinkRefFromHref` never treats a full URL as on-site; the client turns same-origin URLs into paths first with `toSitePath`). Their previews come from one batched call, `linkPreview.resolve`, which hides drafts, hidden members and spoiler text.
+- Outside links are https only and never fetched from the server: the card shows host and path, and pointing at an outside link says it opens another site.
+- Render links with `RichInlineLink` and `LinkPreviewCard` / `ExternalLinkCard` rather than bare anchors, so hover previews and the "opens another website" cue stay consistent.
