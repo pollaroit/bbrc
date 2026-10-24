@@ -13,16 +13,21 @@ import { UserPlus } from "lucide-react";
 import { useState } from "react";
 import { SittingReadingRisk } from "@/components/blocks/sitting-reading-risk";
 import { useSittingJoinActions } from "@/lib/sitting/join-cache";
+import { cn } from "@/lib/utils";
 
 /** A compact Join button for a sitting card. Reading asks for the risk tick first. */
 export function SittingCardJoinButton({
 	slug,
 	status,
 	deadline,
+	className,
+	variant = "outline",
 }: {
 	slug: string;
 	status: "voting" | "reading" | "finished";
 	deadline: Date | string;
+	className?: string;
+	variant?: "outline" | "default";
 }) {
 	const { join } = useSittingJoinActions(slug);
 	const [open, setOpen] = useState(false);
@@ -38,8 +43,8 @@ export function SittingCardJoinButton({
 		<>
 			<Button
 				size="sm"
-				variant="outline"
-				className="relative z-10"
+				variant={variant}
+				className={cn("relative z-10", className)}
 				disabled={join.isPending}
 				onClick={() => (status === "reading" ? setOpen(true) : submit())}
 			>
