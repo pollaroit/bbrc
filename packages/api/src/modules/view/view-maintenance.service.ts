@@ -3,6 +3,7 @@ import {
 	clubDayKey,
 	clubWeekdayHour,
 	resolveClubTimeZone,
+	richContentPreview,
 	VIEW_RETENTION_DAYS,
 } from "@bbrc/shared";
 import { dispatchNotification } from "../notification/notification.service";
@@ -91,6 +92,7 @@ export async function removeOrphanedViews(db: Database): Promise<number> {
 type DigestRow = {
 	owner_id: string;
 	title: string;
+	kind: string;
 	href: string;
 	views: number;
 };
@@ -122,31 +124,35 @@ export async function sendWeeklyViewsDigest(
 			GROUP BY 1, 2
 		), items AS (
 			SELECT r.views, p.author_id AS owner_id,
-				left(regexp_replace(p.content, '\\s+', ' ', 'g'), 60) AS title,
+				p.content AS title, 'post' AS kind,
 				'/posts/' || p.slug || '/insights' AS href
 			FROM recent r JOIN post p ON r.resource = 'post' AND p.id = r.resource_id
 			UNION ALL
-			SELECT r.views, f.author_id, 'Review of ' || b.title,
+			SELECT r.views, f.author_id, 'Review of ' || b.title, 'other',
 				'/books/' || b.slug || '/feedbacks/' || f.slug || '/insights'
 			FROM recent r JOIN feedback f ON r.resource = 'review' AND f.id = r.resource_id
 			JOIN book b ON b.id = f.book_id
 			UNION ALL
-			SELECT r.views, s.user_id, s.title,
+			SELECT r.views, s.user_id, s.title, 'other',
 				'/users/' || u.username || '/shelves/' || s.slug || '/insights'
 			FROM recent r JOIN shelf s ON r.resource = 'shelf' AND s.id = r.resource_id
 			JOIN "user" u ON u.id = s.user_id
 			UNION ALL
-			SELECT r.views, u.id, 'Your profile', '/users/' || u.username || '/insights'
+			SELECT r.views, u.id, 'Your profile', 'other', '/users/' || u.username || '/insights'
 			FROM recent r JOIN "user" u ON r.resource = 'user' AND u.id = r.resource_id
 		)
-		SELECT i.owner_id, i.title, i.href, i.views
+		SELECT i.owner_id, i.title, i.kind, i.href, i.views
 		FROM items i JOIN "user" u ON u.id = i.owner_id AND u.status <> 'banned'`;
 
 	const byOwner = new Map<
 		string,
 		{ total: number; top: DigestRow; items: number }
 	>();
-	for (const row of rows) {
+	for (const raw of rows) {
+		const row =
+			raw.kind === "post"
+				? { ...raw, title: richContentPreview(raw.title, 60) || "A post" }
+				: raw;
 		if (skip.has(row.owner_id)) continue;
 		const entry = byOwner.get(row.owner_id);
 		if (!entry) {

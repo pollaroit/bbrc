@@ -4,6 +4,7 @@ import {
 	milestonesCrossed,
 	parseUserAgent,
 	resolveClubTimeZone,
+	richContentPreview,
 	VIEW_BATCH_MAX,
 	VIEW_DEDUPE_MS,
 	VIEW_HOURLY_LIMIT,
@@ -41,6 +42,7 @@ export type RecordViewsResult = {
 
 /** What the item is called in a notification, and where its insights live. */
 export type ViewTargetInfo = {
+	createdAt: Date | null;
 	title: string;
 	href: string;
 	insightsHref: string;
@@ -302,6 +304,7 @@ export async function describeViewTarget(
 		});
 		return row
 			? {
+					createdAt: null,
 					id: row.id,
 					title: row.title,
 					href: `/books/${row.slug}`,
@@ -314,10 +317,17 @@ export async function describeViewTarget(
 	if (resource === "post") {
 		const row = await db.post.findUnique({
 			where: { slug: ref },
-			select: { id: true, slug: true, authorId: true, content: true },
+			select: {
+				id: true,
+				slug: true,
+				authorId: true,
+				content: true,
+				createdAt: true,
+			},
 		});
 		return row
 			? {
+					createdAt: row.createdAt,
 					id: row.id,
 					title: excerpt(row.content),
 					href: `/posts/${row.slug}`,
@@ -334,11 +344,13 @@ export async function describeViewTarget(
 				id: true,
 				slug: true,
 				authorId: true,
+				createdAt: true,
 				book: { select: { slug: true, title: true } },
 			},
 		});
 		return row
 			? {
+					createdAt: row.createdAt,
 					id: row.id,
 					title: `Review of ${row.book.title}`,
 					href: `/books/${row.book.slug}/feedbacks/${row.slug}`,
@@ -355,6 +367,7 @@ export async function describeViewTarget(
 		});
 		return row
 			? {
+					createdAt: null,
 					id: row.id,
 					title: row.name,
 					href: `/users/${row.username}`,
@@ -373,11 +386,13 @@ export async function describeViewTarget(
 			slug: true,
 			title: true,
 			userId: true,
+			createdAt: true,
 			collaborators: { select: { userId: true } },
 		},
 	});
 	return row
 		? {
+				createdAt: row.createdAt,
 				id: row.id,
 				title: row.title,
 				href: `/users/${username}/shelves/${row.slug}`,
@@ -389,8 +404,7 @@ export async function describeViewTarget(
 }
 
 function excerpt(content: string) {
-	const text = content.replace(/\s+/g, " ").trim();
-	return text.length > 70 ? `${text.slice(0, 67)}…` : text || "Your post";
+	return richContentPreview(content, 70) || "Your post";
 }
 
 async function notifyMilestone(db: Database, target: Target, mark: number) {

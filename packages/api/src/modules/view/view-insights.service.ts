@@ -4,12 +4,14 @@ import {
 	dayKeysBetween,
 	insightRangeDays,
 	resolveClubTimeZone,
+	richContentPreview,
 	VIEW_RETENTION_DAYS,
 	VIEW_SOURCE_LABELS,
 	type ViewResourceKind,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import type {
+	AdminViewList,
 	AdminViewsOverview,
 	Trending,
 	ViewCounts,
@@ -445,6 +447,193 @@ async function funnelFor(
 	return { viewers, onShelves, reads, favourites, reviews };
 }
 
+// ── More insights ──────────────────────────────────────────────────────────
+
+async function referrersBetween(
+	db: Database,
+	scope: Prisma.Sql,
+	from: Date,
+	to: Date,
+): Promise<Breakdown> {
+	const rows = await db.$queryRaw<{ key: string; views: number }[]>`
+		SELECT referrer_host AS key, count(*)::int AS views FROM view
+		WHERE ${filterSql(scope, from, to)} AND referrer_host IS NOT NULL
+		GROUP BY 1 ORDER BY 2 DESC LIMIT 8`;
+	return rows.map((row) => ({
+		key: row.key,
+		label: row.key,
+		views: row.views,
+	}));
+}
+
+async function sourceFunnelBetween(
+	db: Database,
+	scope: Prisma.Sql,
+	from: Date,
+	to: Date,
+): Promise<ViewInsights["sourceFunnel"]> {
+	const rows = await db.$queryRaw<
+		{ key: string; imps: number; opens: number }[]
+	>`
+		SELECT source::text AS key,
+			count(*) FILTER (WHERE kind = 'list')::int AS imps,
+			count(*) FILTER (WHERE kind = 'detail')::int AS opens
+		FROM view WHERE ${filterSql(scope, from, to)}
+		GROUP BY 1`;
+	return rows
+		.filter((row) => row.imps + row.opens > 0)
+		.sort((a, b) => b.imps + b.opens - (a.imps + a.opens))
+		.map((row) => ({
+			key: row.key,
+			label: labelFor("source", row.key),
+			impressions: row.imps,
+			opens: row.opens,
+		}));
+}
+
+async function loyaltyBetween(
+	db: Database,
+	scope: Prisma.Sql,
+	from: Date,
+	to: Date,
+): Promise<ViewInsights["loyalty"]> {
+	const rows = await db.$queryRaw<
+		{ once: number; twice: number; few: number; many: number }[]
+	>`
+		SELECT
+			count(*) FILTER (WHERE n = 1)::int AS once,
+			count(*) FILTER (WHERE n = 2)::int AS twice,
+			count(*) FILTER (WHERE n BETWEEN 3 AND 5)::int AS few,
+			count(*) FILTER (WHERE n >= 6)::int AS many
+		FROM (
+			SELECT count(*) AS n FROM view
+			WHERE ${filterSql(scope, from, to)} AND kind = 'detail'
+			GROUP BY coalesce(viewer_user_id, visitor_id)
+		) t`;
+	const row = rows[0];
+	return {
+		once: row?.once ?? 0,
+		twice: row?.twice ?? 0,
+		threeToFive: row?.few ?? 0,
+		sixOrMore: row?.many ?? 0,
+	};
+}
+
+async function lifecycleFor(
+	db: Database,
+	scope: Prisma.Sql,
+	publishedAt: Date | null,
+): Promise<ViewInsights["lifecycle"]> {
+	// Older items have lost their first days to the 90-day window.
+	if (
+		!publishedAt ||
+		publishedAt.getTime() < Date.now() - VIEW_RETENTION_DAYS * DAY_MS
+	) {
+		return null;
+	}
+	const day1 = new Date(publishedAt.getTime() + DAY_MS);
+	const day3 = new Date(publishedAt.getTime() + 3 * DAY_MS);
+	const day7 = new Date(publishedAt.getTime() + 7 * DAY_MS);
+	const rows = await db.$queryRaw<
+		{ d1: number; d3: number; d7: number; total: number }[]
+	>`
+		SELECT
+			count(*) FILTER (WHERE created_at < ${day1})::int AS d1,
+			count(*) FILTER (WHERE created_at < ${day3})::int AS d3,
+			count(*) FILTER (WHERE created_at < ${day7})::int AS d7,
+			count(*)::int AS total
+		FROM view WHERE ${scope} AND is_owner = false AND kind = 'detail'
+			AND created_at >= ${publishedAt}`;
+	const row = rows[0];
+	return {
+		publishedAt,
+		firstDay: row?.d1 ?? 0,
+		firstThreeDays: row?.d3 ?? 0,
+		firstWeek: row?.d7 ?? 0,
+		total: row?.total ?? 0,
+	};
+}
+
+async function mentionsFor(
+	db: Database,
+	resource: ViewResourceKind,
+	id: string,
+): Promise<ViewInsights["mentions"]> {
+	const where =
+		resource === "post"
+			? { attachedPostId: id }
+			: resource === "review"
+				? { feedbackId: id }
+				: resource === "shelf"
+					? { shelfId: id }
+					: resource === "book"
+						? { bookId: id }
+						: { memberId: id };
+	const visible = { post: { author: { isHidden: false } } };
+	const [total, recent] = await Promise.all([
+		db.postAttachment.count({ where: { ...where, ...visible } }),
+		db.postAttachment.findMany({
+			where: { ...where, ...visible },
+			orderBy: { createdAt: "desc" },
+			take: 5,
+			select: {
+				createdAt: true,
+				post: {
+					select: {
+						slug: true,
+						author: { select: { username: true, name: true } },
+					},
+				},
+			},
+		}),
+	]);
+	return {
+		total,
+		recent: recent.map((row) => ({
+			href: `/posts/${row.post.slug}`,
+			username: row.post.author.username,
+			name: row.post.author.name,
+			at: row.createdAt,
+		})),
+	};
+}
+
+async function ownComparisonFor(
+	db: Database,
+	resource: ViewResourceKind,
+	resourceId: string,
+	ownerId: string | null,
+): Promise<ViewInsights["ownComparison"]> {
+	if (!ownerId) return null;
+	let rows: { id: string; opens: number }[];
+	if (resource === "post") {
+		rows = await db.$queryRaw`
+			SELECT p.id, coalesce(t.opens, 0)::int AS opens FROM post p
+			LEFT JOIN view_total t ON t.resource = 'post' AND t.resource_id = p.id
+			WHERE p.author_id = ${ownerId}`;
+	} else if (resource === "review") {
+		rows = await db.$queryRaw`
+			SELECT f.id, coalesce(t.opens, 0)::int AS opens FROM feedback f
+			LEFT JOIN view_total t ON t.resource = 'review' AND t.resource_id = f.id
+			WHERE f.author_id = ${ownerId}`;
+	} else if (resource === "shelf") {
+		rows = await db.$queryRaw`
+			SELECT s.id, coalesce(t.opens, 0)::int AS opens FROM shelf s
+			LEFT JOIN view_total t ON t.resource = 'shelf' AND t.resource_id = s.id
+			WHERE s.user_id = ${ownerId} AND s.status = 'active'`;
+	} else {
+		return null;
+	}
+	if (rows.length < 2) return null;
+	const mine = rows.find((row) => row.id === resourceId)?.opens ?? 0;
+	const average = rows.reduce((sum, row) => sum + row.opens, 0) / rows.length;
+	return {
+		averageOpens: Math.round(average * 10) / 10,
+		rank: rows.filter((row) => row.opens > mine).length + 1,
+		outOf: rows.length,
+	};
+}
+
 function canOpenInsights(
 	resource: ViewResourceKind,
 	actor: Actor,
@@ -593,11 +782,29 @@ export async function getViewInsights(
 			byDay.get(day) ?? { day, opens: 0, impressions: 0, uniqueViewers: 0 },
 	);
 
-	const [engagement, funnel] = await Promise.all([
+	const rawFrom = days == null || days >= VIEW_RETENTION_DAYS ? heatFrom : from;
+	const [
+		engagement,
+		funnel,
+		referrers,
+		sourceFunnel,
+		loyalty,
+		lifecycle,
+		mentions,
+		memberCount,
+		ownComparison,
+	] = await Promise.all([
 		engagementFor(db, resource, id, from, totals.opens),
 		resource === "book"
 			? funnelFor(db, id, from, raw.detailViewers)
 			: Promise.resolve(null),
+		referrersBetween(db, scope, rawFrom, tomorrow),
+		sourceFunnelBetween(db, scope, rawFrom, tomorrow),
+		loyaltyBetween(db, scope, rawFrom, tomorrow),
+		lifecycleFor(db, scope, info.createdAt),
+		mentionsFor(db, resource, id),
+		db.user.count({ where: { status: { not: "banned" }, isHidden: false } }),
+		ownComparisonFor(db, resource, id, info.ownerId),
 	]);
 
 	return {
@@ -633,6 +840,13 @@ export async function getViewInsights(
 		comparison,
 		engagement,
 		funnel,
+		referrers,
+		sourceFunnel,
+		loyalty,
+		lifecycle,
+		mentions,
+		reach: { viewers: totals.memberViewers, members: memberCount },
+		ownComparison,
 		approximate,
 		allTimeOpens: totalRow?.opens ?? 0,
 	};
@@ -711,11 +925,11 @@ export async function getTrending(
 	return {
 		items: posts
 			.map((post) => {
-				const text = post.content.replace(/\s+/g, " ").trim();
+				const text = richContentPreview(post.content, 90);
 				return {
 					ref: post.slug,
 					href: `/posts/${post.slug}`,
-					title: text.length > 90 ? `${text.slice(0, 87)}…` : text || "A post",
+					title: text || "A post",
 					subtitle: post.author.name,
 					coverId: null,
 					views: views.get(post.id) ?? 0,
@@ -749,11 +963,11 @@ async function titlesFor(
 			where: { id: { in: ids } },
 			select: { id: true, slug: true, content: true },
 		})) {
-			const text = row.content.replace(/\s+/g, " ").trim();
+			const text = richContentPreview(row.content, 70);
 			map.set(row.id, {
 				ref: row.slug,
 				href: `/posts/${row.slug}`,
-				title: text.length > 70 ? `${text.slice(0, 67)}…` : text || "A post",
+				title: text || "A post",
 			});
 		}
 	} else if (resource === "review") {
@@ -924,5 +1138,104 @@ export async function getAdminViewsOverview(
 					]
 				: [];
 		}),
+	};
+}
+
+// ── Admin list of raw views ────────────────────────────────────────────────
+
+export async function listAdminViews(
+	db: Database,
+	input: {
+		page: number;
+		pageSize: number;
+		resource?: ViewResourceKind;
+		kind?: "detail" | "list";
+		viewer: "all" | "member" | "guest";
+		source?: ViewInsights["sourceFunnel"][number]["key"];
+		includeOwn: boolean;
+	},
+): Promise<AdminViewList> {
+	const where = {
+		...(input.resource ? { resource: input.resource } : {}),
+		...(input.kind ? { kind: input.kind } : {}),
+		...(input.source ? { source: input.source as never } : {}),
+		...(input.viewer === "member"
+			? { viewerUserId: { not: null } }
+			: input.viewer === "guest"
+				? { viewerUserId: null }
+				: {}),
+		...(input.includeOwn ? {} : { isOwner: false }),
+	};
+	const [total, rows] = await Promise.all([
+		db.view.count({ where }),
+		db.view.findMany({
+			where,
+			orderBy: { createdAt: "desc" },
+			skip: (input.page - 1) * input.pageSize,
+			take: input.pageSize,
+			select: {
+				id: true,
+				createdAt: true,
+				resource: true,
+				resourceId: true,
+				kind: true,
+				source: true,
+				isOwner: true,
+				visitorId: true,
+				device: true,
+				browser: true,
+				os: true,
+				country: true,
+				referrerHost: true,
+				viewer: { select: { username: true, name: true, image: true } },
+			},
+		}),
+	]);
+
+	const idsByResource = new Map<ViewResourceKind, Set<string>>();
+	for (const row of rows) {
+		const set = idsByResource.get(row.resource) ?? new Set<string>();
+		set.add(row.resourceId);
+		idsByResource.set(row.resource, set);
+	}
+	const titles = new Map<string, { title: string; href: string }>();
+	await Promise.all(
+		[...idsByResource.entries()].map(async ([resource, ids]) => {
+			const found = await titlesFor(db, resource, [...ids]);
+			for (const [id, value] of found) {
+				titles.set(`${resource}|${id}`, {
+					title: value.title,
+					href: value.href,
+				});
+			}
+		}),
+	);
+
+	return {
+		total,
+		page: input.page,
+		pageSize: input.pageSize,
+		items: rows.map((row) => ({
+			id: row.id,
+			at: row.createdAt,
+			resource: row.resource,
+			kind: row.kind,
+			source: row.source,
+			isOwner: row.isOwner,
+			viewer: row.viewer
+				? {
+						username: row.viewer.username,
+						name: row.viewer.name,
+						image: row.viewer.image ?? null,
+					}
+				: null,
+			guestTag: row.visitorId.replace(/^h:/, "").slice(0, 6),
+			item: titles.get(`${row.resource}|${row.resourceId}`) ?? null,
+			device: row.device,
+			browser: row.browser,
+			os: row.os,
+			country: row.country,
+			referrerHost: row.referrerHost,
+		})),
 	};
 }

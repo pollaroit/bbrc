@@ -149,6 +149,56 @@ export const InsightsOutputSchema = zod.object({
 			reviews: Count,
 		})
 		.nullable(),
+	/** Other websites that sent people here (last 90 days). */
+	referrers: zod.array(InsightBreakdownRowSchema),
+	/** Per place people came from: glances in lists vs opens. */
+	sourceFunnel: zod.array(
+		zod.object({
+			key: zod.string(),
+			label: zod.string(),
+			impressions: Count,
+			opens: Count,
+		}),
+	),
+	/** How many times each viewer opened it. */
+	loyalty: zod.object({
+		once: Count,
+		twice: Count,
+		threeToFive: Count,
+		sixOrMore: Count,
+	}),
+	/** Opens in the first day, three days and week after it was published. */
+	lifecycle: zod
+		.object({
+			publishedAt: zod.coerce.date(),
+			firstDay: Count,
+			firstThreeDays: Count,
+			firstWeek: Count,
+			total: Count,
+		})
+		.nullable(),
+	/** Posts that quoted or attached this item. */
+	mentions: zod.object({
+		total: Count,
+		recent: zod.array(
+			zod.object({
+				href: zod.string(),
+				username: zod.string(),
+				name: zod.string(),
+				at: zod.coerce.date(),
+			}),
+		),
+	}),
+	/** How many of the club's members have looked at it. */
+	reach: zod.object({ viewers: Count, members: Count }),
+	/** Against the author's other posts, reviews or shelves (all-time opens). */
+	ownComparison: zod
+		.object({
+			averageOpens: zod.number(),
+			rank: Count,
+			outOf: Count,
+		})
+		.nullable(),
 	/** True when part of the figures are summed from days older than 90 days. */
 	approximate: zod.boolean(),
 	/** Total opens ever (for the public count). */
@@ -230,3 +280,45 @@ export const AdminOverviewOutputSchema = zod.object({
 	),
 });
 export type AdminViewsOverview = z.infer<typeof AdminOverviewOutputSchema>;
+
+export const AdminViewListInputSchema = zod.object({
+	page: zod.number().int().min(1).default(1),
+	pageSize: zod.number().int().min(10).max(100).default(25),
+	resource: ViewResourceSchema.optional(),
+	kind: ViewKindSchema.optional(),
+	viewer: zod.enum(["all", "member", "guest"]).default("all"),
+	source: ViewSourceSchema.optional(),
+	/** Also show views the owner made of their own things. */
+	includeOwn: zod.boolean().default(false),
+});
+export const AdminViewListOutputSchema = zod.object({
+	items: zod.array(
+		zod.object({
+			id: zod.string(),
+			at: zod.coerce.date(),
+			resource: ViewResourceSchema,
+			kind: ViewKindSchema,
+			source: ViewSourceSchema,
+			isOwner: zod.boolean(),
+			viewer: zod
+				.object({
+					username: zod.string(),
+					name: zod.string(),
+					image: zod.string().nullable(),
+				})
+				.nullable(),
+			/** Short, stable tag for a guest (the first characters of their id). */
+			guestTag: zod.string(),
+			item: zod.object({ title: zod.string(), href: zod.string() }).nullable(),
+			device: zod.string().nullable(),
+			browser: zod.string().nullable(),
+			os: zod.string().nullable(),
+			country: zod.string().nullable(),
+			referrerHost: zod.string().nullable(),
+		}),
+	),
+	total: Count,
+	page: Count,
+	pageSize: Count,
+});
+export type AdminViewList = z.infer<typeof AdminViewListOutputSchema>;

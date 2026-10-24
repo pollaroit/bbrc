@@ -6,6 +6,8 @@ import {
 import {
 	AdminOverviewInputSchema,
 	AdminOverviewOutputSchema,
+	AdminViewListInputSchema,
+	AdminViewListOutputSchema,
 	InsightsInputSchema,
 	InsightsOutputSchema,
 	TrendingInputSchema,
@@ -18,6 +20,7 @@ import {
 	getTrending,
 	getViewCounts,
 	getViewInsights,
+	listAdminViews,
 } from "./view-insights.service";
 
 /**
@@ -51,4 +54,8 @@ export const viewRouter = {
 		.handler(({ input, context }) =>
 			getAdminViewsOverview(context.db, input.range),
 		),
+	adminList: adminProcedure
+		.input(AdminViewListInputSchema)
+		.output(AdminViewListOutputSchema)
+		.handler(({ input, context }) => listAdminViews(context.db, input)),
 };
