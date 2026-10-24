@@ -130,7 +130,7 @@ export const CreatePollInputSchema = zod.object({
 	maxOptionsPerUser: zod.number().int().min(1).max(optionsLimit).nullish(),
 	maxOptionsTotal: zod.number().int().min(1).max(optionsLimit).nullish(),
 	resultsVisibility: PollResultsVisibilitySchema.default("everyone"),
-	ballotVisibility: PollBallotVisibilitySchema.default("turnout"),
+	ballotVisibility: PollBallotVisibilitySchema.default("owner"),
 	allowVoteChange: zod.boolean().default(true),
 	deadline: zod.coerce.date().nullish(),
 });
@@ -215,7 +215,10 @@ export const PollStatsSchema = zod.object({
 	totalVoters: zod.number().int(),
 	turnoutRate: zod.number(),
 	totalSelections: zod.number().int(),
+	/** Members who replaced their vote at least once. */
 	changedVotes: zod.number().int(),
+	/** All replacements added up. */
+	totalChanges: zod.number().int(),
 	firstVoteAt: zod.coerce.date().nullable(),
 	lastVoteAt: zod.coerce.date().nullable(),
 	/** Voters per day, oldest first, in club time. */
@@ -256,6 +259,7 @@ export const PollStatsSchema = zod.object({
 			PollMemberSchema.extend({
 				votedAt: zod.coerce.date(),
 				changedAt: zod.coerce.date().nullable(),
+				changes: zod.number().int(),
 				/** The options they chose, in order; null when ballots are not visible. */
 				choices: zod.array(zod.string()).nullable(),
 			}),

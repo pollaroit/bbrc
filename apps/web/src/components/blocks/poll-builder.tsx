@@ -78,7 +78,7 @@ export function emptyPollDraft(): PollDraft {
 		maxOptionsPerUser: 2,
 		maxOptionsTotal: 6,
 		resultsVisibility: "everyone",
-		ballotVisibility: "turnout",
+		ballotVisibility: "owner",
 		allowVoteChange: true,
 		deadline: null,
 	};

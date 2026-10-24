@@ -88,6 +88,7 @@ model User {
   shelfActivityTargets      ShelfActivity[]     @relation("ShelfActivityTarget")
 
   pollVotes           PostPollVote[]   @relation("PostPollVoter")
+  pollBallots         PostPollBallot[] @relation("PostPollBallotVoter")
   pollOptionsAdded    PostPollOption[] @relation("PostPollOptionAddedBy")
   pollOptionsAsOption PostPollOption[] @relation("PostPollOptionUser")
 

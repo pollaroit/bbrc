@@ -56,7 +56,7 @@ model PostPoll {
   maxOptionsTotal   Int?    @map("max_options_total")
 
   resultsVisibility PostPollResultsVisibility @default(everyone) @map("results_visibility")
-  ballotVisibility  PostPollBallotVisibility  @default(turnout) @map("ballot_visibility")
+  ballotVisibility  PostPollBallotVisibility  @default(owner) @map("ballot_visibility")
   allowVoteChange   Boolean                   @default(true) @map("allow_vote_change")
 
   deadline        DateTime?
@@ -67,6 +67,7 @@ model PostPoll {
 
   options PostPollOption[]
   votes   PostPollVote[]
+  ballots PostPollBallot[]
 
   @@map("post_poll")
 }
@@ -136,4 +137,26 @@ model PostPollVote {
   @@unique([pollId, userId, rank])
   @@index([pollId, userId])
   @@map("post_poll_vote")
+}
+
+/// One row per member who voted: when they first voted and how often they changed their mind.
+model PostPollBallot {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  /// When the member first voted.
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  pollId String   @map("poll_id")
+  poll   PostPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation("PostPollBallotVoter", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// How many times they replaced their vote after the first one.
+  changes   Int       @default(0)
+  changedAt DateTime? @map("changed_at")
+
+  @@unique([pollId, userId])
+  @@map("post_poll_ballot")
 }

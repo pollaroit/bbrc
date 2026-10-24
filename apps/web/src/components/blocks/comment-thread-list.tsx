@@ -121,6 +121,7 @@ function CommentThreadNode({
 								: {})}
 							parentSlug={node.slug}
 							replyToUsername={node.author.username}
+							replyToName={node.author.name}
 							onCancelReply={onCancelReply}
 							compact
 							autoFocus

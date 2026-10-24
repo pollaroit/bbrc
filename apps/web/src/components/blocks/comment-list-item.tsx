@@ -321,9 +321,6 @@ function CommentListItemViewInner({
 							>
 								{comment.author.name}
 							</Link>
-							<span className="text-muted-foreground">
-								@{comment.author.username}
-							</span>
 							<span aria-hidden>·</span>
 							<RelativeTime date={comment.createdAt} />
 							{editedAt ? (

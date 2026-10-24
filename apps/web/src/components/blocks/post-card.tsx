@@ -33,6 +33,7 @@ type PostCardProps = {
 function PostCardComments({ post }: { post: PostCardPost }) {
 	const postHref = `/posts/${post.slug}` as Route;
 	const [open, setOpen] = useState(false);
+	const [replyingTo, setReplyingTo] = useState<string | null>(null);
 	const shown = open ? post.topComments : post.topComments.slice(0, 1);
 	const hidden = post.commentCount - shown.length;
 
@@ -51,7 +52,23 @@ function PostCardComments({ post }: { post: PostCardPost }) {
 								variant="compact"
 								layout="thread"
 								postSlug={post.slug}
+								canReply={post.allowComments && !isPendingSlug(comment.slug)}
+								onReply={() => setReplyingTo(comment.slug)}
 							/>
+							{replyingTo === comment.slug ? (
+								<div className="mt-2 ps-8">
+									<PostCommentForm
+										postSlug={post.slug}
+										parentSlug={comment.slug}
+										replyToUsername={comment.author.username}
+										replyToName={comment.author.name}
+										compact
+										onCancelReply={() => setReplyingTo(null)}
+										onSubmitted={() => setReplyingTo(null)}
+										onSubmitFailed={() => setReplyingTo(comment.slug)}
+									/>
+								</div>
+							) : null}
 						</li>
 					))}
 				</ul>

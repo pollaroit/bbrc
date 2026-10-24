@@ -721,6 +721,18 @@ export async function removePollOption(
 	}
 
 	await db.postPollOption.delete({ where: { id: optionId } });
+	// Voters whose whole ballot was that option are no longer voters.
+	const stillVoting = await db.postPollVote.findMany({
+		where: { pollId: row.id },
+		select: { userId: true },
+		distinct: ["userId"],
+	});
+	await db.postPollBallot.deleteMany({
+		where: {
+			pollId: row.id,
+			userId: { notIn: stillVoting.map((vote) => vote.userId) },
+		},
+	});
 	return getPollView(db, postSlug, session);
 }
 
@@ -763,6 +775,12 @@ export async function votePoll(
 				userId,
 				rank: row.type === "ranking" ? index + 1 : null,
 			})),
+		});
+		// Votes are replaced wholesale, so the ballot remembers the first vote and each change.
+		await tx.postPollBallot.upsert({
+			where: { pollId_userId: { pollId: row.id, userId } },
+			create: { pollId: row.id, userId },
+			update: { changes: { increment: 1 }, changedAt: new Date() },
 		});
 	});
 
@@ -808,7 +826,10 @@ export async function retractVote(
 			message: "Votes cannot be changed on this poll.",
 		});
 	}
-	await db.postPollVote.deleteMany({ where: { pollId: row.id, userId } });
+	await db.$transaction([
+		db.postPollVote.deleteMany({ where: { pollId: row.id, userId } }),
+		db.postPollBallot.deleteMany({ where: { pollId: row.id, userId } }),
+	]);
 	return getPollView(db, postSlug, session);
 }
 
@@ -1121,9 +1142,16 @@ export async function getPollStats(
 	}
 	void session;
 
-	const eligibleMembers = await db.user.count({
-		where: visibleOnSiteUserWhere,
-	});
+	const [eligibleMembers, ballotRows] = await Promise.all([
+		db.user.count({ where: visibleOnSiteUserWhere }),
+		db.postPollBallot.findMany({
+			where: { pollId: row.id },
+			select: { userId: true, createdAt: true, changes: true, changedAt: true },
+		}),
+	]);
+	const ballotByUser = new Map(
+		ballotRows.map((ballot) => [ballot.userId, ballot]),
+	);
 	const zone = resolveClubTimeZone();
 	const isoDay = (date: Date) => {
 		const parts = getZonedParts(date, zone);
@@ -1146,13 +1174,18 @@ export async function getPollStats(
 
 	const entries = [...ballots.values()].map((ballot) => {
 		const rows = [...ballot.rows].sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
-		const firstAt = new Date(
-			Math.min(...rows.map((r) => r.createdAt.getTime())),
-		);
-		const lastAt = new Date(
-			Math.max(...rows.map((r) => r.updatedAt.getTime())),
-		);
-		return { ...ballot, rows, firstAt, lastAt };
+		const meta = ballotByUser.get(rows[0]?.userId ?? "");
+		// Without a ballot record (older votes) fall back to the vote rows.
+		const firstAt =
+			meta?.createdAt ??
+			new Date(Math.min(...rows.map((r) => r.createdAt.getTime())));
+		return {
+			...ballot,
+			rows,
+			firstAt,
+			changes: meta?.changes ?? 0,
+			changedAt: meta?.changedAt ?? null,
+		};
 	});
 
 	const perDay = new Map<string, number>();
@@ -1204,14 +1237,15 @@ export async function getPollStats(
 		totalVoters: entries.length,
 		turnoutRate: eligibleMembers > 0 ? entries.length / eligibleMembers : 0,
 		totalSelections: row.votes.length,
-		changedVotes: entries.filter(
-			(entry) => entry.lastAt.getTime() - entry.firstAt.getTime() > 1000,
-		).length,
+		changedVotes: entries.filter((entry) => entry.changes > 0).length,
+		totalChanges: entries.reduce((sum, entry) => sum + entry.changes, 0),
 		firstVoteAt: entries.length
 			? new Date(Math.min(...entries.map((e) => e.firstAt.getTime())))
 			: null,
 		lastVoteAt: entries.length
-			? new Date(Math.max(...entries.map((e) => e.lastAt.getTime())))
+			? new Date(
+					Math.max(...entries.map((e) => (e.changedAt ?? e.firstAt).getTime())),
+				)
 			: null,
 		timeline,
 		hours,
@@ -1233,10 +1267,8 @@ export async function getPollStats(
 					.map((entry) => ({
 						...toMember(entry.user),
 						votedAt: entry.firstAt,
-						changedAt:
-							entry.lastAt.getTime() - entry.firstAt.getTime() > 1000
-								? entry.lastAt
-								: null,
+						changedAt: entry.changes > 0 ? entry.changedAt : null,
+						changes: entry.changes,
 						choices:
 							access === "ballots" ? entry.rows.map((r) => r.optionId) : null,
 					}))

@@ -13,14 +13,7 @@ import {
 } from "@bbrc/ui/components/dialog";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
-import {
-	BarChart3,
-	ChevronDown,
-	ImagePlus,
-	Link2,
-	Plus,
-	Settings2,
-} from "lucide-react";
+import { BarChart3, ImagePlus, Link2, Plus, Settings2 } from "lucide-react";
 import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -69,7 +62,7 @@ type ToolButtonProps = {
 	onClick: () => void;
 };
 
-/** One of the "add to your post" buttons. Greyed out with a reason when another one is in use. */
+/** An icon button in the composer's toolbar. Greyed out with a reason when another one is in use. */
 function ToolButton({
 	icon,
 	label,
@@ -82,18 +75,18 @@ function ToolButton({
 		<button
 			type="button"
 			aria-pressed={active}
+			aria-label={label}
 			disabled={disabled}
-			title={disabled ? reason : undefined}
+			title={disabled ? reason : label}
 			onClick={onClick}
 			className={cn(
-				"inline-flex items-center gap-1.5 border px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-40",
+				"grid size-9 place-items-center border transition-colors focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-40",
 				active
 					? "border-foreground bg-foreground text-background"
-					: "border-border hover:bg-muted/50",
+					: "border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground",
 			)}
 		>
 			{icon}
-			{label}
 		</button>
 	);
 }
@@ -197,8 +190,8 @@ export function ComposePostDialog({
 							likedByMe: false,
 							topComments: [],
 						},
+						// Every feed the post belongs in, whatever it is sorted by.
 						(input) =>
-							input.feedSort === "recent" &&
 							(input.authorUsername == null ||
 								input.authorUsername === user.username) &&
 							input.hasAttachedBook == null &&
@@ -359,41 +352,6 @@ export function ComposePostDialog({
 							}
 						/>
 
-						<div
-							className="flex flex-wrap items-center gap-2"
-							role="toolbar"
-							aria-label="Add to your post"
-						>
-							<span className="pe-1 text-muted-foreground text-xs">Add</span>
-							<ToolButton
-								icon={<ImagePlus className="size-4" aria-hidden />}
-								label={imageFile ? "Change photo" : "Photo"}
-								active={imageFile != null}
-								disabled={pollOn}
-								reason="A poll replaces photos and attachments."
-								onClick={imageInput.openPicker}
-							/>
-							<ToolButton
-								icon={<Link2 className="size-4" aria-hidden />}
-								label="Attachment"
-								active={attachmentOpen || attachment != null}
-								disabled={pollOn}
-								reason="A poll replaces photos and attachments."
-								onClick={() => setAttachmentOpen((current) => !current)}
-							/>
-							<ToolButton
-								icon={<BarChart3 className="size-4" aria-hidden />}
-								label="Poll"
-								active={pollOn}
-								disabled={hasMedia}
-								reason="Remove the photo or attachment to add a poll."
-								onClick={() => {
-									setPollOn((current) => !current);
-									setAttachmentOpen(false);
-								}}
-							/>
-						</div>
-
 						{imageFile ? (
 							<PendingImageAttachment
 								variant="post"
@@ -401,6 +359,8 @@ export function ComposePostDialog({
 								onFileChange={setImageFile}
 								disabled={false}
 								inputRef={imageInput.inputRef}
+								bleed={false}
+								size="compact"
 							/>
 						) : null}
 
@@ -416,57 +376,72 @@ export function ComposePostDialog({
 							<PollBuilder draft={pollDraft} onChange={setPollDraft} />
 						) : null}
 
-						<div className="flex flex-col gap-2">
-							<button
-								type="button"
-								aria-expanded={settingsOpen}
-								onClick={() => setSettingsOpen((current) => !current)}
-								className="flex w-fit items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-							>
-								<Settings2 className="size-4" aria-hidden />
-								Post settings
-								{customSettings ? (
-									<span className="text-foreground text-xs">· changed</span>
-								) : null}
-								<ChevronDown
-									className={cn(
-										"size-4 transition-transform",
-										settingsOpen && "rotate-180",
-									)}
-									aria-hidden
-								/>
-							</button>
-							{settingsOpen ? (
-								<PostSettingsFields value={settings} onChange={setSettings} />
-							) : null}
-						</div>
+						{settingsOpen ? (
+							<PostSettingsFields value={settings} onChange={setSettings} />
+						) : null}
 					</div>
 
-					<DialogFooter className="flex-row items-center justify-between gap-3 border-border border-t px-5 py-3 sm:justify-between">
-						<p
-							className={cn(
-								"min-w-0 truncate text-xs",
-								pollProblem ? "text-destructive" : "text-muted-foreground",
-							)}
-							aria-live="polite"
-						>
-							{pollProblem ?? (plain.length > 0 ? `${plain.length}/5000` : "")}
-						</p>
-						<div className="flex shrink-0 items-center gap-2">
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() => onOpenChange(false)}
+					<DialogFooter className="flex-col gap-2 border-border border-t px-5 py-3 sm:flex-col sm:items-stretch">
+						{pollProblem ? (
+							<p className="text-destructive text-xs" aria-live="polite">
+								{pollProblem}
+							</p>
+						) : null}
+						<div className="flex items-center justify-between gap-3">
+							<div
+								className="flex items-center gap-1"
+								role="toolbar"
+								aria-label="Add to your post"
 							>
-								Cancel
-							</Button>
-							<LoadingButton
-								type="submit"
-								loading={false}
-								disabled={plain.length < 1 || pollProblem != null}
-							>
-								Post
-							</LoadingButton>
+								<ToolButton
+									icon={<ImagePlus className="size-[18px]" aria-hidden />}
+									label={imageFile ? "Change photo" : "Add a photo"}
+									active={imageFile != null}
+									disabled={pollOn}
+									reason="A poll replaces photos and attachments."
+									onClick={imageInput.openPicker}
+								/>
+								<ToolButton
+									icon={<Link2 className="size-[18px]" aria-hidden />}
+									label="Attach a book, shelf or member"
+									active={attachmentOpen || attachment != null}
+									disabled={pollOn}
+									reason="A poll replaces photos and attachments."
+									onClick={() => setAttachmentOpen((current) => !current)}
+								/>
+								<ToolButton
+									icon={<BarChart3 className="size-[18px]" aria-hidden />}
+									label="Add a poll"
+									active={pollOn}
+									disabled={hasMedia}
+									reason="Remove the photo or attachment to add a poll."
+									onClick={() => {
+										setPollOn((current) => !current);
+										setAttachmentOpen(false);
+									}}
+								/>
+								<span className="mx-1 h-5 w-px bg-border" aria-hidden />
+								<ToolButton
+									icon={<Settings2 className="size-[18px]" aria-hidden />}
+									label={
+										customSettings ? "Post settings (changed)" : "Post settings"
+									}
+									active={settingsOpen || customSettings}
+									onClick={() => setSettingsOpen((current) => !current)}
+								/>
+							</div>
+							<div className="flex shrink-0 items-center gap-3">
+								<span className="hidden text-muted-foreground text-xs tabular-nums sm:inline">
+									{plain.length > 0 ? `${plain.length}/5000` : ""}
+								</span>
+								<LoadingButton
+									type="submit"
+									loading={false}
+									disabled={plain.length < 1 || pollProblem != null}
+								>
+									Post
+								</LoadingButton>
+							</div>
 						</div>
 					</DialogFooter>
 				</form>

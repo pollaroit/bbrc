@@ -40,6 +40,7 @@ import {
 	type PollTargetPick,
 	PollTargetPicker,
 } from "@/components/blocks/poll-target-picker";
+import { PollVotersDialog } from "@/components/blocks/poll-voters-dialog";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
@@ -155,6 +156,7 @@ function PollBody({
 	const [removeTarget, setRemoveTarget] = useState<PollOption | null>(null);
 	const [closeOpen, setCloseOpen] = useState(false);
 	const [deadlineOpen, setDeadlineOpen] = useState(false);
+	const [votersFor, setVotersFor] = useState<PollOption | null>(null);
 
 	const { viewer } = poll;
 	const ended = poll.ended || (poll.deadline != null && poll.deadline <= now);
@@ -413,32 +415,34 @@ function PollBody({
 							</div>
 
 							{option.voters && option.voters.length > 0 ? (
-								<p
-									className="flex items-center gap-1.5 px-3 pb-2 text-muted-foreground text-xs"
-									title={option.voters.map((voter) => voter.name).join(", ")}
+								<button
+									type="button"
+									onClick={() => setVotersFor(option)}
+									className="ms-[2.75rem] mb-2 flex max-w-[calc(100%-3.5rem)] items-center gap-2 text-muted-foreground text-xs transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+									aria-label={`See who chose ${option.label}`}
 								>
-									<span className="flex -space-x-1">
-										{option.voters.slice(0, 6).map((voter) => (
+									<span className="flex shrink-0 -space-x-1.5">
+										{option.voters.slice(0, 4).map((voter) => (
 											<UserAvatar
 												key={voter.username}
 												user={voter}
-												className="size-4 ring-2 ring-background"
+												className="size-5 ring-2 ring-background"
 											/>
 										))}
 									</span>
 									<span className="truncate">
 										{option.voters
-											.slice(0, 3)
+											.slice(0, 2)
 											.map((voter) => voter.name)
 											.join(", ")}
-										{option.voters.length > 3
-											? ` +${option.voters.length - 3}`
+										{option.voters.length > 2
+											? ` and ${option.voters.length - 2} more`
 											: ""}
 									</span>
-								</p>
+								</button>
 							) : null}
 							{option.userAdded && option.addedBy ? (
-								<p className="px-3 pb-2 text-2xs text-muted-foreground">
+								<p className="px-3 ps-[2.75rem] pb-2 text-2xs text-muted-foreground">
 									Added by {option.addedBy.name}
 								</p>
 							) : null}
@@ -619,6 +623,16 @@ function PollBody({
 					</p>
 				) : null}
 			</footer>
+
+			<PollVotersDialog
+				open={votersFor != null}
+				onOpenChange={(next) => !next && setVotersFor(null)}
+				title={votersFor?.label ?? ""}
+				voters={(votersFor?.voters ?? []).map((voter) => ({
+					...voter,
+					rank: poll.type === "ranking" ? voter.rank : null,
+				}))}
+			/>
 
 			<DestructiveConfirmDialog
 				open={removeTarget != null}

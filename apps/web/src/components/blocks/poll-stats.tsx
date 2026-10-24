@@ -31,6 +31,10 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { PollOptionContent } from "@/components/blocks/poll-option-content";
+import {
+	type PollVoterRow,
+	PollVotersDialog,
+} from "@/components/blocks/poll-voters-dialog";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
@@ -143,6 +147,7 @@ export function PollStats({ postSlug }: { postSlug: string }) {
 		retry: false,
 	});
 	const [closing, setClosing] = useState(false);
+	const [votersForId, setVotersForId] = useState<string | null>(null);
 
 	const closeMutation = useMutation(
 		orpc.postPoll.close.mutationOptions({
@@ -213,6 +218,24 @@ export function PollStats({ postSlug }: { postSlug: string }) {
 	const ballotLabel = POST_POLL_BALLOT_LABELS[poll.ballotVisibility];
 	const resultsLabel = POST_POLL_RESULTS_LABELS[poll.resultsVisibility];
 	const empty = data.totalVoters === 0;
+	const canListVoters = data.voters?.some((voter) => voter.choices != null);
+
+	function votersOf(optionId: string): PollVoterRow[] {
+		return (data?.voters ?? [])
+			.filter((voter) => voter.choices?.includes(optionId))
+			.map((voter) => ({
+				username: voter.username,
+				name: voter.name,
+				image: voter.image,
+				rank:
+					poll.type === "ranking"
+						? (voter.choices?.indexOf(optionId) ?? -1) + 1
+						: null,
+				votedAt: voter.votedAt,
+			}))
+			.sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
+	}
+	const votersFor = votersForId ? labels.get(votersForId) : null;
 
 	return (
 		<div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -278,6 +301,11 @@ export function PollStats({ postSlug }: { postSlug: string }) {
 				<Kpi
 					label="Changed their vote"
 					value={data.changedVotes.toLocaleString()}
+					hint={
+						data.totalChanges > 0
+							? `${data.totalChanges.toLocaleString()} ${data.totalChanges === 1 ? "change" : "changes"} in all`
+							: "Nobody yet"
+					}
 				/>
 				<Kpi
 					label="Voting window"
@@ -346,10 +374,27 @@ export function PollStats({ postSlug }: { postSlug: string }) {
 										<span className="font-semibold text-base text-foreground">
 											{percent(result?.share ?? 0)}
 										</span>
-										<span>
-											{result?.voters ?? 0}{" "}
-											{result?.voters === 1 ? "voter" : "voters"}
-										</span>
+										{canListVoters && (result?.voters ?? 0) > 0 ? (
+											<button
+												type="button"
+												onClick={() => setVotersForId(option.id)}
+												className="underline decoration-dotted underline-offset-4 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+											>
+												{result?.voters ?? 0}{" "}
+												{result?.voters === 1 ? "voter" : "voters"}
+											</button>
+										) : (
+											<span
+												title={
+													(result?.voters ?? 0) > 0
+														? "Ballot privacy keeps who chose what private."
+														: undefined
+												}
+											>
+												{result?.voters ?? 0}{" "}
+												{result?.voters === 1 ? "voter" : "voters"}
+											</span>
+										)}
 										{ranking && result ? (
 											<>
 												<span>{result.points} points</span>
@@ -638,6 +683,12 @@ export function PollStats({ postSlug }: { postSlug: string }) {
 				confirmLabel="Close poll"
 				loading={closeMutation.isPending}
 				onConfirm={() => closeMutation.mutate({ postSlug })}
+			/>
+			<PollVotersDialog
+				open={votersFor != null}
+				onOpenChange={(next) => !next && setVotersForId(null)}
+				title={votersFor?.label ?? ""}
+				voters={votersForId ? votersOf(votersForId) : []}
 			/>
 		</div>
 	);
