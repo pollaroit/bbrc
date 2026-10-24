@@ -147,7 +147,13 @@ export const storageRouter = {
 		.input(ShelfSlugImageInputSchema)
 		.output(ImageUploadInitOutputSchema)
 		.handler(async ({ input, context }) =>
-			initShelfCoverUpload(input.shelfSlug, input, context.session, context.db),
+			initShelfCoverUpload(
+				input.shelfSlug,
+				input.ownerUsername,
+				input,
+				context.session,
+				context.db,
+			),
 		),
 	commitShelfCoverUpload: notBannedProcedure
 		.input(ShelfSlugImageInputSchema)
@@ -155,6 +161,7 @@ export const storageRouter = {
 		.handler(async ({ input, context }) =>
 			commitShelfCoverUpload(
 				input.shelfSlug,
+				input.ownerUsername,
 				input,
 				context.session,
 				context.db,
@@ -167,6 +174,7 @@ export const storageRouter = {
 		.handler(async ({ input, context }) =>
 			removeShelfCoverUpload(
 				input.shelfSlug,
+				input.ownerUsername,
 				context.session,
 				context.db,
 				context,

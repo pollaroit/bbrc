@@ -39,7 +39,8 @@ export function BookAddToShelfDialog({
 	tooltipSide = "top",
 }: BookAddToShelfDialogProps) {
 	const [open, setOpen] = useState(false);
-	const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+	/** `owner/slug`: the same slug can exist under several owners. */
+	const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
 	const shelvesQuery = useQuery({
 		...orpc.shelf.listMineEditable.queryOptions({
@@ -55,7 +56,7 @@ export function BookAddToShelfDialog({
 	const addMutation = useMutation(
 		orpc.shelf.addBook.mutationOptions({
 			// Adds to the same shelf run one at a time, in click order.
-			scope: { id: `shelf-${selectedSlug ?? "none"}` },
+			scope: { id: `shelf-${selectedKey ?? "none"}` },
 			onMutate: async (variables) => {
 				await queryClient.cancelQueries({ queryKey: editableKey });
 				const previous = queryClient.getQueryData(editableKey);
@@ -65,7 +66,8 @@ export function BookAddToShelfDialog({
 						? {
 								...old,
 								items: old.items.map((shelf) =>
-									shelf.slug === variables.shelfSlug
+									shelf.slug === variables.shelfSlug &&
+									shelf.ownerUsername === (variables.ownerUsername ?? username)
 										? {
 												...shelf,
 												containsBook: true,
@@ -78,7 +80,7 @@ export function BookAddToShelfDialog({
 				);
 
 				setOpen(false);
-				setSelectedSlug(null);
+				setSelectedKey(null);
 				return { previous };
 			},
 			onError: (error, _variables, context) => {
@@ -145,7 +147,8 @@ export function BookAddToShelfDialog({
 				<DialogHeader>
 					<DialogTitle>Add to shelf</DialogTitle>
 					<DialogDescription>
-						Pick a draft or active shelf. Each shelf holds up to {max} books.
+						Pick a draft or active shelf, yours or one you collaborate on. Each
+						shelf holds up to {max} books.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -161,14 +164,15 @@ export function BookAddToShelfDialog({
 							const atCap = shelf.bookCount >= max;
 							const onShelf = shelf.containsBook;
 							const disabled = atCap || onShelf;
-							const selected = selectedSlug === shelf.slug;
+							const key = `${shelf.ownerUsername}/${shelf.slug}`;
+							const selected = selectedKey === key;
 
 							return (
-								<li key={shelf.slug}>
+								<li key={`${shelf.ownerUsername}/${shelf.slug}`}>
 									<button
 										type="button"
 										disabled={disabled}
-										onClick={() => setSelectedSlug(shelf.slug)}
+										onClick={() => setSelectedKey(key)}
 										className={cn(
 											"w-full border border-border p-3 text-left transition-colors",
 											selected && "border-foreground ring-1 ring-foreground",
@@ -178,6 +182,7 @@ export function BookAddToShelfDialog({
 									>
 										<p className="font-medium leading-snug">{shelf.title}</p>
 										<p className="text-muted-foreground text-xs">
+											{shelf.isOwner ? "" : `By @${shelf.ownerUsername} · `}
 											{shelf.bookCount}/{max} books
 											{shelf.status === "draft" ? ", draft" : ""}
 											{onShelf ? ", already on shelf" : ""}
@@ -193,10 +198,18 @@ export function BookAddToShelfDialog({
 				<DialogFooter className="flex-col gap-2 sm:flex-col sm:items-stretch">
 					<Button
 						type="button"
-						disabled={!selectedSlug}
+						disabled={!selectedKey}
 						onClick={() => {
-							if (!selectedSlug) return;
-							addMutation.mutate({ shelfSlug: selectedSlug, bookSlug });
+							const chosen = items.find(
+								(shelf) =>
+									`${shelf.ownerUsername}/${shelf.slug}` === selectedKey,
+							);
+							if (!chosen) return;
+							addMutation.mutate({
+								ownerUsername: chosen.ownerUsername,
+								shelfSlug: chosen.slug,
+								bookSlug,
+							});
 						}}
 					>
 						Add book

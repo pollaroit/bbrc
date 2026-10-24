@@ -26,6 +26,7 @@ const DirectUploadTargetSchema = z.discriminatedUnion("target", [
 	}),
 	z.object({
 		target: z.literal("shelf-cover"),
+		ownerUsername: z.string().min(3).max(20).optional(),
 		shelfSlug: z.string().min(3).max(60),
 	}),
 ]);
@@ -119,6 +120,7 @@ export async function handleDirectImageUpload(
 			case "shelf-cover":
 				result = await uploadShelfCoverDirect(
 					input.shelfSlug,
+					input.ownerUsername,
 					payload,
 					session,
 					context.db,
@@ -142,7 +144,12 @@ export function parseDirectUploadTarget(
 	}
 
 	const fields: Record<string, string> = { target };
-	for (const key of ["postSlug", "commentSlug", "shelfSlug"] as const) {
+	for (const key of [
+		"postSlug",
+		"commentSlug",
+		"shelfSlug",
+		"ownerUsername",
+	] as const) {
 		const value = formData.get(key);
 		if (typeof value === "string" && value.length > 0) {
 			fields[key] = value;

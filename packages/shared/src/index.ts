@@ -24,6 +24,7 @@ export * from "./reading-deadline";
 export * from "./reading-streak";
 export * from "./rich-content";
 export * from "./scheduled-deadlines";
+export * from "./shelf-collab";
 export * from "./shelves";
 export * from "./sitting-display";
 export * from "./slug";

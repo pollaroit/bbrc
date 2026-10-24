@@ -1,5 +1,6 @@
 "use client";
 
+import { reorderPermissionFor, resolveShelfPermissions } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
@@ -84,7 +85,7 @@ function SortableBookRow({
 				shelfSlug={shelfSlug}
 				rank={rank}
 				showRank
-				isOwner={false}
+				canRemove={false}
 				book={book}
 				sortable
 				dragHandleProps={{ ...attributes, ...listeners }}
@@ -202,7 +203,14 @@ export function ShelfReorderEditor({
 		return <Skeleton className="h-48 w-full" />;
 	}
 
-	if (shelfQuery.isError || !shelfQuery.data?.isOwner) {
+	const canReorder = shelfQuery.data
+		? resolveShelfPermissions(
+				shelfQuery.data.viewer.role === "owner",
+				shelfQuery.data.viewer.permissions,
+			).has(reorderPermissionFor(shelfQuery.data.type))
+		: false;
+
+	if (shelfQuery.isError || !shelfQuery.data || !canReorder) {
 		return (
 			<p className="text-destructive text-sm" role="alert">
 				{shelfQuery.error?.message ?? "You cannot reorder this shelf."}
@@ -243,6 +251,7 @@ export function ShelfReorderEditor({
 						loading={reorderMutation.isPending}
 						onClick={() => {
 							reorderMutation.mutate({
+								ownerUsername: username,
 								shelfSlug,
 								bookSlugs: order.map((b) => b.slug),
 							});
@@ -266,7 +275,7 @@ export function ShelfReorderEditor({
 								shelfSlug={shelfSlug}
 								rank={index + 1}
 								showRank
-								isOwner={false}
+								canRemove={false}
 								book={book}
 								actions={
 									<span className="flex shrink-0 gap-1">

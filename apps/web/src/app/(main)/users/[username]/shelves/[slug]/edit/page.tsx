@@ -34,7 +34,7 @@ export default async function EditShelfPage({
 		headers: await headers(),
 	});
 
-	if (!session?.user || session.user.username !== username) {
+	if (!session?.user) {
 		redirect(`/users/${username}/shelves/${slug}` as Route);
 	}
 

@@ -5,7 +5,7 @@ import {
 	UserSchema,
 } from "@bbrc/schemas";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
-import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
+import { MAX_BOOKS_PER_SHELF, SHELF_PERMISSIONS } from "@bbrc/shared";
 import type { z } from "zod";
 import zod from "zod";
 import {
@@ -18,8 +18,26 @@ import {
 export const ShelfStatusSchema = zod.enum(["draft", "active", "archived"]);
 export const ShelfTypeSchema = zod.enum(["ordered", "unordered"]);
 
+export const ShelfPermissionSchema = zod.enum(SHELF_PERMISSIONS);
+
+export const ShelfMemberRefSchema = zod.object({
+	username: UserSchema.shape.username,
+	name: UserSchema.shape.name,
+	image: zod
+		.string()
+		.nullish()
+		.transform((value) => value ?? null),
+});
+
+/** Optional owner of the shelf; omitted means the signed-in member's own shelf. */
+const OwnerUsernameSchema = UserSchema.shape.username.optional();
+
 export const ShelfBookOnShelfSchema = zod.object({
 	position: zod.number().int().min(0),
+	notes: zod.string().nullable(),
+	addedAt: zod.coerce.date(),
+	addedBy: ShelfMemberRefSchema.nullable(),
+	updatedBy: ShelfMemberRefSchema.nullable(),
 	book: BookSchema.pick({
 		slug: true,
 		title: true,
@@ -79,9 +97,19 @@ export {
 	shelfTypeFilterLabels,
 } from "./shelf.listing";
 
+export const ShelfViewerSchema = zod.object({
+	role: zod.enum(["owner", "collaborator", "visitor"]),
+	permissions: zod.array(ShelfPermissionSchema),
+	/** Set when the viewer has an open invitation to this shelf. */
+	pendingInvitationId: zod.string().nullable(),
+});
+
 export const ShelfDetailSchema = ShelfListItemSchema.extend({
 	books: zod.array(ShelfBookOnShelfSchema),
 	isOwner: zod.boolean(),
+	owner: ShelfMemberRefSchema,
+	collaborators: zod.array(ShelfMemberRefSchema),
+	viewer: ShelfViewerSchema,
 });
 
 export const ListShelvesByUsernameInputSchema = zod.object({
@@ -89,8 +117,18 @@ export const ListShelvesByUsernameInputSchema = zod.object({
 	status: ShelfStatusSchema.optional(),
 });
 
+export const MemberShelfListItemSchema = ShelfListItemSchema.extend({
+	/** `owner` when the member made the shelf, `collaborator` when they help edit it. */
+	role: zod.enum(["owner", "collaborator"]),
+	owner: zod.object({
+		username: UserSchema.shape.username,
+		name: UserSchema.shape.name,
+	}),
+	collaboratorCount: zod.number().int().min(0),
+});
+
 export const ListShelvesByUsernameOutputSchema = zod.object({
-	items: zod.array(ShelfListItemSchema),
+	items: zod.array(MemberShelfListItemSchema),
 	isOwner: zod.boolean(),
 });
 
@@ -124,6 +162,7 @@ export type CreateShelfInput = z.infer<typeof CreateShelfInputSchema>;
 export type CreateShelfOutput = z.infer<typeof CreateShelfOutputSchema>;
 
 export const UpdateShelfInputSchema = zod.object({
+	ownerUsername: OwnerUsernameSchema,
 	shelfSlug: zod.string().min(3).max(60),
 	title: zod.string().min(1).max(120).optional(),
 	description: zod.string().max(2000).nullish(),
@@ -136,6 +175,7 @@ export const UpdateShelfOutputSchema = ShelfListItemSchema;
 export type UpdateShelfInput = z.infer<typeof UpdateShelfInputSchema>;
 
 export const DeleteShelfInputSchema = zod.object({
+	ownerUsername: OwnerUsernameSchema,
 	shelfSlug: zod.string().min(3).max(60),
 	/** Required when the shelf has books. Must match shelf title exactly. */
 	confirmTitle: zod.string().optional(),
@@ -148,6 +188,7 @@ export const DeleteShelfOutputSchema = zod.object({
 export type DeleteShelfInput = z.infer<typeof DeleteShelfInputSchema>;
 
 export const AddBookToShelfInputSchema = zod.object({
+	ownerUsername: OwnerUsernameSchema,
 	shelfSlug: zod.string().min(3).max(60),
 	bookSlug: BookSchema.shape.slug,
 });
@@ -158,6 +199,7 @@ export const AddBookToShelfOutputSchema = zod.object({
 });
 
 export const RemoveBookFromShelfInputSchema = zod.object({
+	ownerUsername: OwnerUsernameSchema,
 	shelfSlug: zod.string().min(3).max(60),
 	bookSlug: BookSchema.shape.slug,
 });
@@ -167,12 +209,24 @@ export const RemoveBookFromShelfOutputSchema = zod.object({
 });
 
 export const ReorderShelfBooksInputSchema = zod.object({
+	ownerUsername: OwnerUsernameSchema,
 	shelfSlug: zod.string().min(3).max(60),
 	bookSlugs: zod.array(BookSchema.shape.slug).min(1).max(MAX_BOOKS_PER_SHELF),
 });
 
 export const ReorderShelfBooksOutputSchema = zod.object({
 	updated: zod.literal(true),
+});
+
+export const UpdateBookNotesInputSchema = zod.object({
+	ownerUsername: OwnerUsernameSchema,
+	shelfSlug: zod.string().min(3).max(60),
+	bookSlug: BookSchema.shape.slug,
+	notes: zod.string().max(500).nullable(),
+});
+
+export const UpdateBookNotesOutputSchema = zod.object({
+	notes: zod.string().nullable(),
 });
 
 export const ListShelvesForBookInputSchema = zod.object({
@@ -204,6 +258,9 @@ export const ListMyEditableShelvesOutputSchema = zod.object({
 			status: ShelfStatusSchema,
 			bookCount: zod.number().int().min(0).max(MAX_BOOKS_PER_SHELF),
 			containsBook: zod.boolean(),
+			/** Whose shelf it is; differs from the viewer for shelves they collaborate on. */
+			ownerUsername: UserSchema.shape.username,
+			isOwner: zod.boolean(),
 		}),
 	),
 	maxBooksPerShelf: zod.literal(MAX_BOOKS_PER_SHELF),
@@ -236,8 +293,16 @@ export const shelfListItemWithCoverSelect = {
 	books: shelfCoverPreviewSelect,
 } as const;
 
+const memberRefSelect = {
+	select: { username: true, name: true, image: true },
+} as const;
+
 export const shelfBookSelect = {
 	position: true,
+	notes: true,
+	createdAt: true,
+	addedBy: memberRefSelect,
+	updatedBy: memberRefSelect,
 	book: {
 		select: {
 			slug: true,

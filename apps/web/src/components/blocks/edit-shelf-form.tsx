@@ -1,6 +1,6 @@
 "use client";
 
-import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
+import { MAX_BOOKS_PER_SHELF, resolveShelfPermissions } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Field } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
@@ -51,7 +51,7 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 	const [type, setType] = useState<"ordered" | "unordered">("unordered");
 
 	useEffect(() => {
-		if (!shelfQuery.data?.isOwner) return;
+		if (!shelfQuery.data) return;
 		setTitle(shelfQuery.data.title);
 		setDescription(shelfQuery.data.description ?? "");
 		setStatus(shelfQuery.data.status);
@@ -83,7 +83,21 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 		return <Skeleton className="h-96 w-full max-w-2xl" />;
 	}
 
-	if (shelfQuery.isError || !shelfQuery.data?.isOwner) {
+	const permissions = shelfQuery.data
+		? resolveShelfPermissions(
+				shelfQuery.data.viewer.role === "owner",
+				shelfQuery.data.viewer.permissions,
+			)
+		: null;
+	const canTitle = permissions?.has("edit_title") ?? false;
+	const canDescription = permissions?.has("edit_description") ?? false;
+	const canCover = permissions?.has("edit_cover") ?? false;
+	const canStatus = permissions?.has("edit_status") ?? false;
+	const canType = permissions?.has("edit_type") ?? false;
+	const canEditAnything =
+		canTitle || canDescription || canCover || canStatus || canType;
+
+	if (shelfQuery.isError || !shelfQuery.data || !canEditAnything) {
 		return (
 			<p className="text-destructive text-sm" role="alert">
 				{shelfQuery.error?.message ?? "You cannot edit this shelf."}
@@ -111,9 +125,11 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 				<MemberProfileShelfCard
 					preview
 					showStatus
-					username={username}
 					shelf={{
 						...shelf,
+						role: shelf.viewer.role === "owner" ? "owner" : "collaborator",
+						owner: { username: shelf.owner.username, name: shelf.owner.name },
+						collaboratorCount: shelf.collaborators.length,
 						title: trimmedTitle || "Untitled shelf",
 						description: description.trim() || null,
 						status,
@@ -128,6 +144,7 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 					return;
 				}
 				updateMutation.mutate({
+					ownerUsername: username,
 					shelfSlug,
 					title: trimmedTitle,
 					description: description.trim() || null,
@@ -167,6 +184,7 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 						id={titleId}
 						value={title}
 						onChange={(e) => setTitle(e.target.value)}
+						disabled={!canTitle}
 						maxLength={120}
 						placeholder="e.g. Books I want to read this year"
 						autoComplete="off"
@@ -189,6 +207,7 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 						id={descriptionId}
 						value={description}
 						onChange={(e) => setDescription(e.target.value)}
+						disabled={!canDescription}
 						maxLength={2000}
 						rows={4}
 						placeholder="What is this list for? A sentence or two is enough."
@@ -197,62 +216,72 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 				</Field>
 			</ShelfEditorSection>
 
-			<ShelfEditorSection title="Cover">
-				<SingleImageUploadField
-					label="Cover image"
-					description="Optional. Replaces the book-grid cover on lists and the shelf page."
-					currentUrl={shelf.coverImageUrl}
-					uploadTarget={{
-						target: "shelf-cover",
-						shelfSlug,
-					}}
-					onRemove={async () => {
-						await orpc.storage.removeShelfCoverUpload.call({ shelfSlug });
-					}}
-					onSuccess={async () => {
-						await queryClient.invalidateQueries({
-							queryKey: orpc.shelf.getBySlug.key({
-								input: { username, shelfSlug },
-							}),
-						});
-						await queryClient.invalidateQueries({
-							queryKey: orpc.shelf.listByUsername.key(),
-						});
-						router.refresh();
-					}}
-				/>
-			</ShelfEditorSection>
+			{canCover ? (
+				<ShelfEditorSection title="Cover">
+					<SingleImageUploadField
+						label="Cover image"
+						description="Optional. Replaces the book-grid cover on lists and the shelf page."
+						currentUrl={shelf.coverImageUrl}
+						uploadTarget={{
+							target: "shelf-cover",
+							shelfSlug,
+							ownerUsername: username,
+						}}
+						onRemove={async () => {
+							await orpc.storage.removeShelfCoverUpload.call({
+								shelfSlug,
+								ownerUsername: username,
+							});
+						}}
+						onSuccess={async () => {
+							await queryClient.invalidateQueries({
+								queryKey: orpc.shelf.getBySlug.key({
+									input: { username, shelfSlug },
+								}),
+							});
+							await queryClient.invalidateQueries({
+								queryKey: orpc.shelf.listByUsername.key(),
+							});
+							router.refresh();
+						}}
+					/>
+				</ShelfEditorSection>
+			) : null}
 
-			<ShelfEditorSection
-				title="Visibility"
-				description={
-					shelf.status !== "draft"
-						? "This shelf has been public or archived before, so it cannot go back to draft."
-						: undefined
-				}
-			>
-				<ShelfOptionPicker
-					name="edit-shelf-visibility"
-					label="Who can see this shelf?"
-					value={status}
-					options={visibilityOptions}
-					columns={visibilityOptions.length === 3 ? 3 : 2}
-					onChange={setStatus}
-				/>
-			</ShelfEditorSection>
+			{canStatus ? (
+				<ShelfEditorSection
+					title="Visibility"
+					description={
+						shelf.status !== "draft"
+							? "This shelf has been public or archived before, so it cannot go back to draft."
+							: undefined
+					}
+				>
+					<ShelfOptionPicker
+						name="edit-shelf-visibility"
+						label="Who can see this shelf?"
+						value={status}
+						options={visibilityOptions}
+						columns={visibilityOptions.length === 3 ? 3 : 2}
+						onChange={setStatus}
+					/>
+				</ShelfEditorSection>
+			) : null}
 
-			<ShelfEditorSection
-				title="Display"
-				description={`Reorder from the shelf page. Up to ${MAX_BOOKS_PER_SHELF} books per shelf.`}
-			>
-				<ShelfOptionPicker
-					name="edit-shelf-type"
-					label="How should books appear?"
-					value={type}
-					options={[...shelfTypeOptions]}
-					onChange={setType}
-				/>
-			</ShelfEditorSection>
+			{canType ? (
+				<ShelfEditorSection
+					title="Display"
+					description={`Reorder from the shelf page. Up to ${MAX_BOOKS_PER_SHELF} books per shelf.`}
+				>
+					<ShelfOptionPicker
+						name="edit-shelf-type"
+						label="How should books appear?"
+						value={type}
+						options={[...shelfTypeOptions]}
+						onChange={setType}
+					/>
+				</ShelfEditorSection>
+			) : null}
 		</ShelfEditorShell>
 	);
 }

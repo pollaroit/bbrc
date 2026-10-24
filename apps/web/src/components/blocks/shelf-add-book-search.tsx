@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { authClient } from "@/lib/auth-client";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -26,6 +27,7 @@ export function ShelfAddBookSearch({
 	bookCount,
 	onShelfSlugs,
 }: ShelfAddBookSearchProps) {
+	const { data: session } = authClient.useSession();
 	const [searchInput, setSearchInput] = useState("");
 	const debouncedQuery = useDebouncedValue(searchInput, 300);
 	const trimmed = debouncedQuery.trim();
@@ -70,7 +72,20 @@ export function ShelfAddBookSearch({
 						bookCount: previous.bookCount + 1,
 						books: [
 							...previous.books,
-							{ position: previous.books.length, book },
+							{
+								position: previous.books.length,
+								notes: null,
+								addedAt: new Date(),
+								addedBy: session?.user
+									? {
+											username: session.user.username,
+											name: session.user.name,
+											image: session.user.image ?? null,
+										}
+									: null,
+								updatedBy: null,
+								book,
+							},
 						],
 					});
 				}
@@ -187,6 +202,7 @@ export function ShelfAddBookSearch({
 												coverId: book.coverId ?? null,
 											});
 											addMutation.mutate({
+												ownerUsername: username,
 												shelfSlug,
 												bookSlug: book.slug,
 											});

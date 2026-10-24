@@ -1,5 +1,9 @@
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
-import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
+import {
+	MAX_BOOKS_PER_SHELF,
+	reorderPermissionFor,
+	resolveShelfPermissions,
+} from "@bbrc/shared";
 import type { z } from "zod";
 import type { ShelfStatusSchema } from "./shelf.schema";
 
@@ -11,6 +15,7 @@ import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import {
 	assertMemberVisible,
 	type ViewerContext,
+	visibleOnSiteUserWhere,
 } from "../user/user-visibility";
 import { awardShelfXp } from "../xp/xp.service";
 import { shelfListSorting } from "./shelf.listing";
@@ -33,7 +38,14 @@ import {
 	shelfListItemSelect,
 	shelfListItemWithCoverSelect,
 } from "./shelf.schema";
+import {
+	canViewShelf,
+	loadShelfAccess,
+	logShelfActivity,
+	requireShelfPermission,
+} from "./shelf-access";
 import { buildPublicShelfListWhere } from "./shelf-list-where";
+import { displayName, notifyShelfCollaboration } from "./shelf-notify";
 import { generateShelfSlug } from "./shelf-slug";
 
 const COVER_PREVIEW_LIMIT = 4;
@@ -58,7 +70,7 @@ function withStableShelfOrderBy(
 	return [orderBy, { id: sortDirection }];
 }
 
-async function loadCoverPreviewMap(
+export async function loadCoverPreviewMap(
 	shelfIds: string[],
 	db: Database,
 ): Promise<Map<string, (number | null)[]>> {
@@ -96,7 +108,13 @@ async function loadUserByUsername(
 ) {
 	const user = await db.user.findUnique({
 		where: { username },
-		select: { id: true, username: true, isHidden: true },
+		select: {
+			id: true,
+			username: true,
+			name: true,
+			image: true,
+			isHidden: true,
+		},
 	});
 
 	assertMemberVisible(user, viewer);
@@ -110,7 +128,7 @@ async function loadBookBySlug(
 ) {
 	const book = await db.book.findUnique({
 		where: { slug },
-		select: { id: true, slug: true },
+		select: { id: true, slug: true, title: true },
 	});
 
 	if (!book) {
@@ -123,55 +141,15 @@ async function loadBookBySlug(
 	return book;
 }
 
-async function loadOwnedShelf(
-	shelfSlug: string,
-	userId: string,
-	db: Database | DatabaseTransaction,
-) {
-	const shelf = await db.shelf.findFirst({
-		where: { userId, slug: shelfSlug },
-		select: {
-			id: true,
-			slug: true,
-			title: true,
-			description: true,
-			coverImageUrl: true,
-			status: true,
-			type: true,
-			userId: true,
-			updatedAt: true,
-			_count: { select: { books: true } },
-		},
-	});
-
-	if (!shelf) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Shelf not found",
-			data: { shelfSlug },
-		});
-	}
-
-	return shelf;
-}
-
 function viewerIsOwner(viewerUserId: string | undefined, ownerId: string) {
 	return viewerUserId != null && viewerUserId === ownerId;
 }
 
-function assertCanViewShelf(
-	shelf: { status: ShelfStatus; userId: string },
-	viewerUserId: string | undefined,
-) {
-	if (shelf.status === "active") {
-		return;
-	}
-
-	if (!viewerIsOwner(viewerUserId, shelf.userId)) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Shelf not found",
-		});
-	}
-}
+const memberShelfSelect = {
+	...shelfListItemSelect,
+	_count: { select: { books: true, collaborators: true } },
+	user: { select: { username: true, name: true } },
+} as const;
 
 export async function listShelvesByUsername(
 	username: string,
@@ -183,32 +161,63 @@ export async function listShelvesByUsername(
 	const viewerUserId = viewer?.userId;
 	const isOwner = viewerIsOwner(viewerUserId, user.id);
 
-	let statusFilter: ShelfStatus | undefined;
+	const statusFilter: ShelfStatus | undefined = isOwner ? status : "active";
 
-	if (isOwner && status) {
-		statusFilter = status;
-	} else if (isOwner && !status) {
-		statusFilter = undefined;
-	} else {
-		statusFilter = "active";
-	}
+	const [ownedRows, sharedRows] = await Promise.all([
+		db.shelf.findMany({
+			where: { userId: user.id, status: statusFilter },
+			orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
+			select: memberShelfSelect,
+		}),
+		db.shelf.findMany({
+			where: {
+				collaborators: { some: { userId: user.id } },
+				status: statusFilter,
+				user: visibleOnSiteUserWhere,
+			},
+			orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
+			select: {
+				...memberShelfSelect,
+				collaborators: {
+					where: { userId: user.id },
+					select: { permissions: true },
+				},
+			},
+		}),
+	]);
 
-	const rows = await db.shelf.findMany({
-		where: {
-			userId: user.id,
-			status: statusFilter,
-		},
-		orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
-		select: shelfListItemSelect,
-	});
+	// Someone else's draft or archived shelf only shows up for the collaborator
+	// who was allowed to see it.
+	const visibleShared = sharedRows.filter(
+		(row) =>
+			row.status === "active" ||
+			(isOwner &&
+				row.collaborators.some((collab) =>
+					collab.permissions.includes("view_non_public"),
+				)),
+	);
+
+	const rows = [
+		...ownedRows.map((row) => ({ row, role: "owner" as const })),
+		...visibleShared.map((row) => ({ row, role: "collaborator" as const })),
+	].sort(
+		(a, b) =>
+			b.row.updatedAt.getTime() - a.row.updatedAt.getTime() ||
+			a.row.title.localeCompare(b.row.title),
+	);
 
 	const coverMap = await loadCoverPreviewMap(
-		rows.map((row) => row.id),
+		rows.map(({ row }) => row.id),
 		db,
 	);
 
 	return {
-		items: rows.map((row) => mapShelfListItem(row, coverMap.get(row.id) ?? [])),
+		items: rows.map(({ row, role }) => ({
+			...mapShelfListItem(row, coverMap.get(row.id) ?? []),
+			role,
+			owner: { username: row.user.username, name: row.user.name },
+			collaboratorCount: row._count.collaborators,
+		})),
 		isOwner,
 	};
 }
@@ -231,6 +240,23 @@ export async function getShelfBySlug(
 				orderBy: { position: "asc" },
 				select: shelfBookSelect,
 			},
+			collaborators: {
+				orderBy: { createdAt: "asc" },
+				select: {
+					userId: true,
+					permissions: true,
+					user: { select: { username: true, name: true, image: true } },
+				},
+			},
+			invitations: {
+				where: {
+					inviteeId: viewerUserId ?? "",
+					status: "pending",
+					expiresAt: { gt: new Date() },
+				},
+				select: { id: true },
+				take: 1,
+			},
 		},
 	});
 
@@ -241,16 +267,44 @@ export async function getShelfBySlug(
 		});
 	}
 
-	assertCanViewShelf(shelf, viewerUserId);
-
 	const isOwner = viewerIsOwner(viewerUserId, shelf.userId);
+	const mine = shelf.collaborators.find(
+		(collab) => collab.userId === viewerUserId,
+	);
+	const permissions = resolveShelfPermissions(isOwner, mine?.permissions ?? []);
+	const pendingInvitationId = shelf.invitations[0]?.id ?? null;
+
+	if (
+		!canViewShelf(shelf, {
+			userId: viewerUserId,
+			permissions,
+			hasPendingInvitation: pendingInvitationId != null,
+		})
+	) {
+		throw new ORPCError("NOT_FOUND", { message: "Shelf not found" });
+	}
+
 	const coverMap = await loadCoverPreviewMap([shelf.id], db);
 	const coverPreviewCoverIds = coverMap.get(shelf.id) ?? [];
 
 	return {
 		...mapShelfListItem(shelf, coverPreviewCoverIds),
-		books: shelf.books,
+		books: shelf.books.map((row) => ({
+			position: row.position,
+			notes: row.notes,
+			addedAt: row.createdAt,
+			addedBy: row.addedBy,
+			updatedBy: row.updatedBy,
+			book: row.book,
+		})),
 		isOwner,
+		owner: { username: user.username, name: user.name, image: user.image },
+		collaborators: shelf.collaborators.map((collab) => collab.user),
+		viewer: {
+			role: isOwner ? "owner" : mine ? "collaborator" : "visitor",
+			permissions: [...permissions],
+			pendingInvitationId,
+		},
 	};
 }
 
@@ -313,6 +367,8 @@ export async function createShelf(
 					shelfId: shelf.id,
 					bookId: book.id,
 					position: 0,
+					addedById: userId,
+					updatedById: userId,
 				},
 			});
 		}
@@ -328,17 +384,33 @@ export async function updateShelf(
 	userId: string,
 	db: Database,
 ) {
-	const shelf = await loadOwnedShelf(input.shelfSlug, userId, db);
+	const access = await loadShelfAccess(db, {
+		ownerUsername: input.ownerUsername,
+		shelfSlug: input.shelfSlug,
+		actorId: userId,
+	});
+	const { shelf } = access;
 
+	// Each field needs its own permission, but only when it actually changes,
+	// because the edit form always sends every field.
 	const data: Prisma.ShelfUpdateInput = {};
+	const changed: string[] = [];
 
-	if (input.title !== undefined) {
+	if (input.title !== undefined && input.title.trim() !== shelf.title) {
+		requireShelfPermission(access, "edit_title");
 		data.title = input.title.trim();
+		changed.push("title");
 	}
-	if (input.description !== undefined) {
+	if (
+		input.description !== undefined &&
+		(input.description?.trim() || null) !== shelf.description
+	) {
+		requireShelfPermission(access, "edit_description");
 		data.description = input.description?.trim() || null;
+		changed.push("description");
 	}
-	if (input.status !== undefined) {
+	if (input.status !== undefined && input.status !== shelf.status) {
+		requireShelfPermission(access, "edit_status");
 		if (input.status === "draft" && shelf.status !== "draft") {
 			throw new ORPCError("BAD_REQUEST", {
 				message:
@@ -346,15 +418,31 @@ export async function updateShelf(
 			});
 		}
 		data.status = input.status;
+		changed.push("visibility");
 	}
-	if (input.type !== undefined) {
+	if (input.type !== undefined && input.type !== shelf.type) {
+		requireShelfPermission(access, "edit_type");
 		data.type = input.type;
+		changed.push("type");
 	}
 
-	const updated = await db.shelf.update({
-		where: { id: shelf.id },
-		data,
-		select: shelfListItemSelect,
+	if (changed.length === 0) {
+		return mapShelfListItem(shelf);
+	}
+
+	const updated = await db.$transaction(async (tx) => {
+		const row = await tx.shelf.update({
+			where: { id: shelf.id },
+			data,
+			select: shelfListItemSelect,
+		});
+		await logShelfActivity(tx, {
+			shelfId: shelf.id,
+			actorId: userId,
+			kind: "shelf_updated",
+			meta: { fields: changed },
+		});
+		return row;
 	});
 
 	return mapShelfListItem(updated);
@@ -365,7 +453,13 @@ export async function deleteShelf(
 	userId: string,
 	db: Database,
 ) {
-	const shelf = await loadOwnedShelf(input.shelfSlug, userId, db);
+	const access = await loadShelfAccess(db, {
+		ownerUsername: input.ownerUsername,
+		shelfSlug: input.shelfSlug,
+		actorId: userId,
+	});
+	requireShelfPermission(access, "delete_shelf");
+	const { shelf } = access;
 
 	if (shelf._count.books > 0) {
 		const confirm = input.confirmTitle?.trim();
@@ -376,9 +470,27 @@ export async function deleteShelf(
 		}
 	}
 
+	const [collaborators, actor] = await Promise.all([
+		db.shelfCollaborator.findMany({
+			where: { shelfId: shelf.id },
+			select: { userId: true },
+		}),
+		db.user.findUnique({
+			where: { id: userId },
+			select: { name: true, username: true },
+		}),
+	]);
+
 	await tryDeleteR2PublicUrl(shelf.coverImageUrl);
 
 	await db.shelf.delete({ where: { id: shelf.id } });
+
+	await notifyShelfCollaboration(db, {
+		recipientUserIds: [shelf.userId, ...collaborators.map((row) => row.userId)],
+		excludeUserIds: [userId],
+		title: "A shared shelf was deleted",
+		body: `${actor ? displayName(actor) : "Someone"} deleted "${shelf.title}".`,
+	});
 
 	return { removed: true as const };
 }
@@ -396,14 +508,19 @@ async function nextShelfPosition(
 }
 
 export async function addBookToShelf(
-	shelfSlug: string,
-	bookSlug: string,
+	input: { ownerUsername?: string; shelfSlug: string; bookSlug: string },
 	userId: string,
 	db: Database,
 ) {
-	await db.$transaction(async (tx) => {
-		const shelf = await loadOwnedShelf(shelfSlug, userId, tx);
-		const book = await loadBookBySlug(bookSlug, tx);
+	const bookCount = await db.$transaction(async (tx) => {
+		const access = await loadShelfAccess(tx, {
+			ownerUsername: input.ownerUsername,
+			shelfSlug: input.shelfSlug,
+			actorId: userId,
+		});
+		requireShelfPermission(access, "add_book");
+		const { shelf } = access;
+		const book = await loadBookBySlug(input.bookSlug, tx);
 
 		const existing = await tx.shelfBook.findUnique({
 			where: {
@@ -415,7 +532,7 @@ export async function addBookToShelf(
 		// Idempotent: a book that is already on the shelf is a success, so a
 		// repeated click or a retry never errors the second time.
 		if (existing) {
-			return;
+			return shelf._count.books;
 		}
 
 		if (shelf._count.books >= MAX_BOOKS_PER_SHELF) {
@@ -431,6 +548,8 @@ export async function addBookToShelf(
 				shelfId: shelf.id,
 				bookId: book.id,
 				position,
+				addedById: userId,
+				updatedById: userId,
 			},
 		});
 
@@ -438,25 +557,34 @@ export async function addBookToShelf(
 			where: { id: shelf.id },
 			data: { updatedAt: new Date() },
 		});
+
+		await logShelfActivity(tx, {
+			shelfId: shelf.id,
+			actorId: userId,
+			kind: "book_added",
+			meta: { title: book.title, slug: book.slug },
+		});
+
+		return shelf._count.books + 1;
 	});
 
-	const shelf = await loadOwnedShelf(shelfSlug, userId, db);
-
-	return {
-		added: true as const,
-		bookCount: shelf._count.books,
-	};
+	return { added: true as const, bookCount };
 }
 
 export async function removeBookFromShelf(
-	shelfSlug: string,
-	bookSlug: string,
+	input: { ownerUsername?: string; shelfSlug: string; bookSlug: string },
 	userId: string,
 	db: Database,
 ) {
 	await db.$transaction(async (tx) => {
-		const shelf = await loadOwnedShelf(shelfSlug, userId, tx);
-		const book = await loadBookBySlug(bookSlug, tx);
+		const access = await loadShelfAccess(tx, {
+			ownerUsername: input.ownerUsername,
+			shelfSlug: input.shelfSlug,
+			actorId: userId,
+		});
+		requireShelfPermission(access, "remove_book");
+		const { shelf } = access;
+		const book = await loadBookBySlug(input.bookSlug, tx);
 
 		const deleted = await tx.shelfBook.deleteMany({
 			where: { shelfId: shelf.id, bookId: book.id },
@@ -491,24 +619,38 @@ export async function removeBookFromShelf(
 			where: { id: shelf.id },
 			data: { updatedAt: new Date() },
 		});
+
+		await logShelfActivity(tx, {
+			shelfId: shelf.id,
+			actorId: userId,
+			kind: "book_removed",
+			meta: { title: book.title, slug: book.slug },
+		});
 	});
 
 	return { removed: true as const };
 }
 
 export async function reorderShelfBooks(
-	shelfSlug: string,
-	bookSlugs: string[],
+	input: { ownerUsername?: string; shelfSlug: string; bookSlugs: string[] },
 	userId: string,
 	db: Database,
 ) {
 	await db.$transaction(async (tx) => {
-		const shelf = await loadOwnedShelf(shelfSlug, userId, tx);
+		const access = await loadShelfAccess(tx, {
+			ownerUsername: input.ownerUsername,
+			shelfSlug: input.shelfSlug,
+			actorId: userId,
+		});
+		requireShelfPermission(access, reorderPermissionFor(access.shelf.type));
+		const { shelf } = access;
+		const bookSlugs = input.bookSlugs;
 
 		const rows = await tx.shelfBook.findMany({
 			where: { shelfId: shelf.id },
 			select: {
 				bookId: true,
+				position: true,
 				book: { select: { slug: true } },
 			},
 		});
@@ -521,6 +663,9 @@ export async function reorderShelfBooks(
 
 		const slugToBookId = new Map(
 			rows.map((row) => [row.book.slug, row.bookId]),
+		);
+		const previousPosition = new Map(
+			rows.map((row) => [row.bookId, row.position]),
 		);
 		const orderedBookIds: string[] = [];
 
@@ -552,7 +697,10 @@ export async function reorderShelfBooks(
 			});
 		}
 
+		let moved = 0;
 		for (const [i, bookId] of orderedBookIds.entries()) {
+			const didMove = previousPosition.get(bookId) !== i;
+			if (didMove) moved += 1;
 			await tx.shelfBook.update({
 				where: {
 					shelfId_bookId: {
@@ -560,7 +708,7 @@ export async function reorderShelfBooks(
 						bookId,
 					},
 				},
-				data: { position: i },
+				data: { position: i, ...(didMove ? { updatedById: userId } : {}) },
 			});
 		}
 
@@ -568,9 +716,70 @@ export async function reorderShelfBooks(
 			where: { id: shelf.id },
 			data: { updatedAt: new Date() },
 		});
+
+		if (moved > 0) {
+			await logShelfActivity(tx, {
+				shelfId: shelf.id,
+				actorId: userId,
+				kind: "books_reordered",
+				meta: { moved },
+			});
+		}
 	});
 
 	return { updated: true as const };
+}
+
+export async function updateBookNotes(
+	input: {
+		ownerUsername?: string;
+		shelfSlug: string;
+		bookSlug: string;
+		notes: string | null;
+	},
+	userId: string,
+	db: Database,
+) {
+	return db.$transaction(async (tx) => {
+		const access = await loadShelfAccess(tx, {
+			ownerUsername: input.ownerUsername,
+			shelfSlug: input.shelfSlug,
+			actorId: userId,
+		});
+		requireShelfPermission(access, "edit_notes");
+		const book = await loadBookBySlug(input.bookSlug, tx);
+		const notes = input.notes?.trim() || null;
+
+		const existing = await tx.shelfBook.findUnique({
+			where: {
+				shelfId_bookId: { shelfId: access.shelf.id, bookId: book.id },
+			},
+			select: { notes: true },
+		});
+		if (!existing) {
+			throw new ORPCError("NOT_FOUND", {
+				message: "That book is not on this shelf.",
+			});
+		}
+		if (existing.notes === notes) {
+			return { notes };
+		}
+
+		await tx.shelfBook.update({
+			where: {
+				shelfId_bookId: { shelfId: access.shelf.id, bookId: book.id },
+			},
+			data: { notes, updatedById: userId },
+		});
+		await logShelfActivity(tx, {
+			shelfId: access.shelf.id,
+			actorId: userId,
+			kind: "notes_edited",
+			meta: { title: book.title, slug: book.slug },
+		});
+
+		return { notes };
+	});
 }
 
 export async function listShelvesForBook(
@@ -623,8 +832,15 @@ export async function listMyEditableShelves(
 
 	const rows = await db.shelf.findMany({
 		where: {
-			userId,
 			status: { in: ["draft", "active"] },
+			OR: [
+				{ userId },
+				{
+					collaborators: {
+						some: { userId, permissions: { has: "add_book" } },
+					},
+				},
+			],
 		},
 		orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
 		select: {
@@ -632,6 +848,8 @@ export async function listMyEditableShelves(
 			slug: true,
 			title: true,
 			status: true,
+			userId: true,
+			user: { select: { username: true } },
 			_count: { select: { books: true } },
 		},
 	});
@@ -657,6 +875,8 @@ export async function listMyEditableShelves(
 			status: row.status,
 			bookCount: row._count.books,
 			containsBook: containsShelfIds.has(row.id),
+			ownerUsername: row.user.username,
+			isOwner: row.userId === userId,
 		})),
 		maxBooksPerShelf: MAX_BOOKS_PER_SHELF,
 	};

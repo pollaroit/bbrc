@@ -9,6 +9,9 @@ import type { Route } from "next";
 import Link from "next/link";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { MemberProfileShelfCard } from "@/components/blocks/member-profile-shelf-card";
+import { SegmentedControl } from "@/components/blocks/segmented-control";
+import { ShelfInvitationActions } from "@/components/blocks/shelf-invitation-actions";
+import { UserAvatar } from "@/components/blocks/user-avatar";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
 import { ListingSearch } from "@/components/listing/listing-search";
@@ -17,6 +20,7 @@ import { authClient } from "@/lib/auth-client";
 import {
 	filterAndSortShelves,
 	hasActiveUserShelfFilters,
+	type UserShelfRole,
 	userShelfSortByLabels,
 	userShelfSortFields,
 	userShelfTypeLabels,
@@ -45,6 +49,11 @@ export function UserShelvesList({ username }: UserShelvesListProps) {
 	const [params, setParams] = useUserShelfListingParams();
 
 	const isOwner = !sessionPending && session?.user.username === username;
+
+	const invitationsQuery = useQuery({
+		...orpc.shelf.collab.myInvitations.queryOptions(),
+		enabled: isOwner,
+	});
 
 	const listQuery = useQuery(
 		orpc.shelf.listByUsername.queryOptions({
@@ -76,6 +85,12 @@ export function UserShelvesList({ username }: UserShelvesListProps) {
 	const { items, isOwner: ownerFromApi } = listQuery.data;
 	const showOwnerChrome = isOwner && ownerFromApi;
 	const visible = filterAndSortShelves(items, params);
+	const sharedCount = items.filter(
+		(shelf) => shelf.role === "collaborator",
+	).length;
+	const invitations = showOwnerChrome
+		? (invitationsQuery.data?.items ?? [])
+		: [];
 	const filtered = hasActiveUserShelfFilters(params);
 
 	return (
@@ -103,6 +118,66 @@ export function UserShelvesList({ username }: UserShelvesListProps) {
 						New shelf
 					</Button>
 				</div>
+			) : null}
+
+			{invitations.length > 0 ? (
+				<section
+					aria-label="Shelf invitations"
+					className="flex flex-col gap-2 border border-foreground p-4"
+				>
+					<h2 className="font-medium text-sm">
+						{invitations.length === 1
+							? "You have a shelf invitation"
+							: `You have ${invitations.length} shelf invitations`}
+					</h2>
+					<ul className="divide-y divide-border">
+						{invitations.map((invitation) => (
+							<li
+								key={invitation.id}
+								className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+							>
+								<span className="flex min-w-0 items-center gap-3">
+									<UserAvatar user={invitation.invitedBy} className="size-8" />
+									<span className="min-w-0">
+										<Link
+											href={`/shelf-invitations/${invitation.token}` as Route}
+											className="block truncate font-medium text-sm underline-offset-4 hover:underline"
+										>
+											{invitation.shelfTitle}
+										</Link>
+										<span className="block truncate text-muted-foreground text-xs">
+											From {invitation.invitedBy.name}
+										</span>
+									</span>
+								</span>
+								<ShelfInvitationActions
+									invitationId={invitation.id}
+									declineHref={`/users/${username}/shelves` as Route}
+									size="sm"
+								/>
+							</li>
+						))}
+					</ul>
+				</section>
+			) : null}
+
+			{sharedCount > 0 ? (
+				<SegmentedControl<UserShelfRole>
+					label="Whose shelves"
+					value={params.role}
+					onChange={(role) => {
+						void setParams({ role: role === "all" ? null : role });
+					}}
+					options={[
+						{ id: "all", label: "All", count: items.length },
+						{
+							id: "owned",
+							label: isOwner ? "Mine" : "Created",
+							count: items.length - sharedCount,
+						},
+						{ id: "shared", label: "Collaborating", count: sharedCount },
+					]}
+				/>
 			) : null}
 
 			{items.length > 0 ? (
@@ -133,7 +208,7 @@ export function UserShelvesList({ username }: UserShelvesListProps) {
 							description="Show only ranked shelves or plain lists."
 							activeFilterCount={params.types?.length ? 1 : 0}
 							onClear={() => {
-								void setParams({ types: null });
+								void setParams({ types: null, role: null });
 							}}
 							appearance="library"
 						>
@@ -195,7 +270,6 @@ export function UserShelvesList({ username }: UserShelvesListProps) {
 						<li key={shelf.id}>
 							<MemberProfileShelfCard
 								shelf={shelf}
-								username={username}
 								showStatus={showOwnerChrome}
 							/>
 						</li>

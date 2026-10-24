@@ -29,6 +29,8 @@ import {
 	RemoveBookFromShelfOutputSchema,
 	ReorderShelfBooksInputSchema,
 	ReorderShelfBooksOutputSchema,
+	UpdateBookNotesInputSchema,
+	UpdateBookNotesOutputSchema,
 	UpdateShelfInputSchema,
 	UpdateShelfOutputSchema,
 } from "./shelf.schema";
@@ -43,8 +45,10 @@ import {
 	listShelvesForBook,
 	removeBookFromShelf,
 	reorderShelfBooks,
+	updateBookNotes,
 	updateShelf,
 } from "./shelf.service";
+import { shelfCollabRouter } from "./shelf-collab.router";
 
 export const shelfRouter = {
 	getList: publicProcedure
@@ -104,7 +108,7 @@ export const shelfRouter = {
 			);
 			revalidateUserShelvesIsr(
 				context,
-				context.session.user.username,
+				input.ownerUsername ?? context.session.user.username,
 				result.slug,
 			);
 			return result;
@@ -118,7 +122,10 @@ export const shelfRouter = {
 				context.session.user.id,
 				context.db,
 			);
-			revalidateUserShelvesIsr(context, context.session.user.username);
+			revalidateUserShelvesIsr(
+				context,
+				input.ownerUsername ?? context.session.user.username,
+			);
 			return result;
 		}),
 	addBook: notBannedProcedure
@@ -127,14 +134,13 @@ export const shelfRouter = {
 		.output(AddBookToShelfOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await addBookToShelf(
-				input.shelfSlug,
-				input.bookSlug,
+				input,
 				context.session.user.id,
 				context.db,
 			);
 			revalidateUserShelvesIsr(
 				context,
-				context.session.user.username,
+				input.ownerUsername ?? context.session.user.username,
 				input.shelfSlug,
 			);
 			revalidateBookIsr(context, input.bookSlug);
@@ -145,14 +151,13 @@ export const shelfRouter = {
 		.output(RemoveBookFromShelfOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await removeBookFromShelf(
-				input.shelfSlug,
-				input.bookSlug,
+				input,
 				context.session.user.id,
 				context.db,
 			);
 			revalidateUserShelvesIsr(
 				context,
-				context.session.user.username,
+				input.ownerUsername ?? context.session.user.username,
 				input.shelfSlug,
 			);
 			revalidateBookIsr(context, input.bookSlug);
@@ -163,18 +168,34 @@ export const shelfRouter = {
 		.output(ReorderShelfBooksOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await reorderShelfBooks(
-				input.shelfSlug,
-				input.bookSlugs,
+				input,
 				context.session.user.id,
 				context.db,
 			);
 			revalidateUserShelvesIsr(
 				context,
-				context.session.user.username,
+				input.ownerUsername ?? context.session.user.username,
 				input.shelfSlug,
 			);
 			return result;
 		}),
+	updateBookNotes: notBannedProcedure
+		.input(UpdateBookNotesInputSchema)
+		.output(UpdateBookNotesOutputSchema)
+		.handler(async ({ input, context }) => {
+			const result = await updateBookNotes(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			revalidateUserShelvesIsr(
+				context,
+				input.ownerUsername ?? context.session.user.username,
+				input.shelfSlug,
+			);
+			return result;
+		}),
+	collab: shelfCollabRouter,
 	listForBook: publicProcedure
 		.input(ListShelvesForBookInputSchema)
 		.output(ListShelvesForBookOutputSchema)

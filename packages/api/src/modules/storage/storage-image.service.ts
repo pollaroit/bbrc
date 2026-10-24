@@ -20,6 +20,7 @@ import {
 	revalidateUserIsr,
 	revalidateUserShelvesIsr,
 } from "../../revalidate-isr";
+import { loadShelfAccess, requireShelfPermission } from "../shelf/shelf-access";
 import type { ImageUploadBodySchema } from "./storage-image.schema";
 import { tryDeleteR2PublicUrl } from "./storage-r2-cleanup";
 
@@ -214,6 +215,7 @@ export async function uploadAvatarDirect(
 
 export async function uploadShelfCoverDirect(
 	shelfSlug: string,
+	ownerUsername: string | undefined,
 	file: {
 		buffer: Buffer;
 		contentType: AllowedImageMimeType;
@@ -223,7 +225,12 @@ export async function uploadShelfCoverDirect(
 	db: Database,
 	context: Context,
 ) {
-	const shelf = await loadOwnedShelf(shelfSlug, session.user.id, db);
+	const shelf = await loadCoverEditableShelf(
+		shelfSlug,
+		ownerUsername,
+		session.user.id,
+		db,
+	);
 	const storageEnv = getStorageEnv();
 	const key = buildObjectKey(storageEnv, {
 		kind: "shelf-cover",
@@ -349,21 +356,26 @@ async function loadOwnedComment(slug: string, userId: string, db: Database) {
 	return comment;
 }
 
-async function loadOwnedShelf(shelfSlug: string, userId: string, db: Database) {
-	const shelf = await db.shelf.findFirst({
-		where: { userId, slug: shelfSlug },
-		select: {
-			id: true,
-			slug: true,
-			userId: true,
-			coverImageUrl: true,
-			user: { select: { username: true } },
-		},
+/** The shelf, once the member is known to be allowed to change its cover. */
+async function loadCoverEditableShelf(
+	shelfSlug: string,
+	ownerUsername: string | undefined,
+	userId: string,
+	db: Database,
+) {
+	const access = await loadShelfAccess(db, {
+		ownerUsername,
+		shelfSlug,
+		actorId: userId,
 	});
-	if (!shelf) {
-		throw new ORPCError("NOT_FOUND", { message: "Shelf not found" });
-	}
-	return shelf;
+	requireShelfPermission(access, "edit_cover");
+	return {
+		id: access.shelf.id,
+		slug: access.shelf.slug,
+		userId: access.shelf.userId,
+		coverImageUrl: access.shelf.coverImageUrl,
+		user: { username: access.owner.username },
+	};
 }
 
 export async function initPostImageUpload(
@@ -488,11 +500,17 @@ export async function removeCommentImage(
 
 export async function initShelfCoverUpload(
 	shelfSlug: string,
+	ownerUsername: string | undefined,
 	body: ImageUploadBody,
 	session: Session,
 	db: Database,
 ) {
-	const shelf = await loadOwnedShelf(shelfSlug, session.user.id, db);
+	const shelf = await loadCoverEditableShelf(
+		shelfSlug,
+		ownerUsername,
+		session.user.id,
+		db,
+	);
 	const storageEnv = getStorageEnv();
 	const key = buildObjectKey(storageEnv, {
 		kind: "shelf-cover",
@@ -504,12 +522,18 @@ export async function initShelfCoverUpload(
 
 export async function commitShelfCoverUpload(
 	shelfSlug: string,
+	ownerUsername: string | undefined,
 	body: ImageUploadBody,
 	session: Session,
 	db: Database,
 	context: Context,
 ) {
-	const shelf = await loadOwnedShelf(shelfSlug, session.user.id, db);
+	const shelf = await loadCoverEditableShelf(
+		shelfSlug,
+		ownerUsername,
+		session.user.id,
+		db,
+	);
 	const storageEnv = getStorageEnv();
 	const key = buildObjectKey(storageEnv, {
 		kind: "shelf-cover",
@@ -531,11 +555,17 @@ export async function commitShelfCoverUpload(
 
 export async function removeShelfCoverUpload(
 	shelfSlug: string,
+	ownerUsername: string | undefined,
 	session: Session,
 	db: Database,
 	context: Context,
 ) {
-	const shelf = await loadOwnedShelf(shelfSlug, session.user.id, db);
+	const shelf = await loadCoverEditableShelf(
+		shelfSlug,
+		ownerUsername,
+		session.user.id,
+		db,
+	);
 
 	await db.shelf.update({
 		where: { id: shelf.id },
