@@ -1,5 +1,6 @@
 "use client";
 
+import type { ViewInsights } from "@bbrc/api/modules/view/view.schema";
 import {
 	INSIGHT_RANGES,
 	type InsightRange,
@@ -13,19 +14,87 @@ import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useState } from "react";
 import { SegmentedControl } from "@/components/blocks/segmented-control";
 import { orpc } from "@/utils/orpc";
-import { InsightBreakdowns } from "./insight-breakdowns";
+import {
+	InsightCountries,
+	InsightReferrers,
+	InsightSources,
+	InsightTechnology,
+} from "./insight-breakdowns";
 import {
 	InsightAudience,
 	InsightComparison,
 	InsightEngagement,
 	InsightFunnel,
 } from "./insight-cards";
+import {
+	InsightHighlights,
+	InsightLifecycle,
+	InsightLoyalty,
+	InsightMentions,
+	InsightOwnComparison,
+	InsightReach,
+	InsightSourceRates,
+	InsightWeekdays,
+} from "./insight-extras";
 import { RANGE_OPTIONS, RANGE_PHRASE } from "./insight-format";
 import { InsightHeatmap } from "./insight-heatmap";
 import { InsightPanel } from "./insight-panel";
 import { InsightStatStrip } from "./insight-stats";
 import { InsightViewers } from "./insight-viewers";
 import type { ChartMetric } from "./views-chart";
+
+const TABS = [
+	"overview",
+	"audience",
+	"sources",
+	"timing",
+	"performance",
+	"technology",
+] as const;
+type InsightTab = (typeof TABS)[number];
+
+const TAB_LABELS: Record<InsightTab, string> = {
+	overview: "Overview",
+	audience: "Audience",
+	sources: "Sources",
+	timing: "Timing",
+	performance: "Performance",
+	technology: "Technology",
+};
+
+/** A group is only offered when it has something to show. */
+function tabsFor(insights: ViewInsights): InsightTab[] {
+	const hasHeat = insights.heatmap.some((line) =>
+		line.some((value) => value > 0),
+	);
+	const tabs: InsightTab[] = ["overview", "audience"];
+	if (
+		insights.sources.length > 0 ||
+		insights.referrers.length > 0 ||
+		insights.sourceFunnel.length > 0
+	) {
+		tabs.push("sources");
+	}
+	if (hasHeat || insights.lifecycle) tabs.push("timing");
+	if (
+		insights.comparison ||
+		insights.ownComparison ||
+		insights.engagement ||
+		insights.funnel ||
+		insights.mentions.total > 0
+	) {
+		tabs.push("performance");
+	}
+	if (
+		insights.devices.length +
+			insights.browsers.length +
+			insights.systems.length >
+		0
+	) {
+		tabs.push("technology");
+	}
+	return tabs;
+}
 
 // Recharts is the heaviest part of the page, so it loads only when insights open.
 const ViewsChart = dynamic(
@@ -123,6 +192,10 @@ export function ViewInsightsView({
 			.withDefault("30d")
 			.withOptions({ history: "replace" }),
 	);
+	const [tabParam, setTab] = useQueryState(
+		"tab",
+		parseAsStringLiteral(TABS).withOptions({ history: "replace" }),
+	);
 	const [metric, setMetric] = useState<ChartMetric>("opens");
 
 	const query = useQuery({
@@ -135,6 +208,9 @@ export function ViewInsightsView({
 	const insights = query.data;
 	const compareLabel =
 		range === "7d" ? "the 7 days before" : "the 30 days before";
+	const tabs = insights ? tabsFor(insights) : [];
+	const activeTab: InsightTab =
+		tabParam && tabs.includes(tabParam) ? tabParam : "overview";
 
 	return (
 		<div className="flex flex-col gap-5">
@@ -177,57 +253,112 @@ export function ViewInsightsView({
 						compareLabel={compareLabel}
 					/>
 
-					<InsightPanel
-						title="Views over time"
-						description="One point per day, in club time."
-						action={
-							<SegmentedControl<ChartMetric>
-								label="Metric"
-								value={metric}
-								options={METRICS}
-								onChange={setMetric}
-							/>
-						}
-					>
-						<ViewsChart series={insights.series} metric={metric} />
-					</InsightPanel>
+					<SegmentedControl<InsightTab>
+						label="Insight group"
+						value={activeTab}
+						options={tabs.map((id) => ({ id, label: TAB_LABELS[id] }))}
+						onChange={(next) => void setTab(next)}
+					/>
 
-					<div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-						<InsightHeatmap
-							grid={insights.heatmap}
-							bestSlots={insights.bestSlots}
-						/>
-						<div className="flex min-w-0 flex-col gap-4">
+					{activeTab === "overview" ? (
+						<>
+							<InsightPanel
+								title="Views over time"
+								description="One point per day, in club time."
+								action={
+									<SegmentedControl<ChartMetric>
+										label="Metric"
+										value={metric}
+										options={METRICS}
+										onChange={setMetric}
+									/>
+								}
+							>
+								<ViewsChart series={insights.series} metric={metric} />
+							</InsightPanel>
+							<InsightHighlights insights={insights} />
+						</>
+					) : null}
+
+					{activeTab === "audience" ? (
+						<div className="grid gap-4 lg:grid-cols-2">
+							<InsightReach
+								reach={insights.reach}
+								resource={insights.resource}
+							/>
+							<InsightAudience audience={insights.audience} />
+							<InsightLoyalty loyalty={insights.loyalty} />
+							<InsightCountries rows={insights.countries} />
+							{insights.canSeeViewers &&
+							insights.topViewers &&
+							insights.recentViewers ? (
+								<div className="lg:col-span-2">
+									<InsightViewers
+										top={insights.topViewers}
+										recent={insights.recentViewers}
+									/>
+								</div>
+							) : null}
+						</div>
+					) : null}
+
+					{activeTab === "sources" ? (
+						<div className="grid gap-4 lg:grid-cols-2">
+							<InsightSources rows={insights.sources} />
+							<InsightSourceRates rows={insights.sourceFunnel} />
+							{insights.referrers.length > 0 ? (
+								<InsightReferrers rows={insights.referrers} />
+							) : null}
+						</div>
+					) : null}
+
+					{activeTab === "timing" ? (
+						<>
+							<InsightHeatmap
+								grid={insights.heatmap}
+								bestSlots={insights.bestSlots}
+							/>
+							<div className="grid gap-4 lg:grid-cols-2">
+								<InsightWeekdays grid={insights.heatmap} />
+								{insights.lifecycle ? (
+									<InsightLifecycle
+										lifecycle={insights.lifecycle}
+										resource={insights.resource}
+									/>
+								) : null}
+							</div>
+						</>
+					) : null}
+
+					{activeTab === "performance" ? (
+						<div className="grid gap-4 lg:grid-cols-2">
 							{insights.comparison ? (
 								<InsightComparison
 									comparison={insights.comparison}
 									resource={insights.resource}
 								/>
 							) : null}
-							<InsightAudience audience={insights.audience} />
-						</div>
-					</div>
-
-					{insights.engagement || insights.funnel ? (
-						<div className="grid gap-4">
+							{insights.ownComparison ? (
+								<InsightOwnComparison
+									own={insights.ownComparison}
+									resource={insights.resource}
+									allTimeOpens={insights.allTimeOpens}
+								/>
+							) : null}
 							{insights.engagement ? (
 								<InsightEngagement engagement={insights.engagement} />
 							) : null}
 							{insights.funnel ? (
-								<InsightFunnel funnel={insights.funnel} />
+								<div className="lg:col-span-2">
+									<InsightFunnel funnel={insights.funnel} />
+								</div>
 							) : null}
+							<InsightMentions mentions={insights.mentions} />
 						</div>
 					) : null}
 
-					<InsightBreakdowns insights={insights} />
-
-					{insights.canSeeViewers &&
-					insights.topViewers &&
-					insights.recentViewers ? (
-						<InsightViewers
-							top={insights.topViewers}
-							recent={insights.recentViewers}
-						/>
+					{activeTab === "technology" ? (
+						<InsightTechnology insights={insights} />
 					) : null}
 
 					{insights.approximate ? (

@@ -68,7 +68,7 @@ const resources = [
 	{
 		href: "/admin/views" as Route,
 		title: "Views",
-		description: "Site-wide traffic, top content, sources, and active members.",
+		description: "Site-wide views, a list of every view, and audience stats.",
 	},
 	{
 		href: "/admin/facts/create" as Route,

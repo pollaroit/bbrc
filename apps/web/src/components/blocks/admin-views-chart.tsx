@@ -26,8 +26,10 @@ const dayLabel = new Intl.DateTimeFormat(undefined, {
 /** Daily opens, list impressions and unique viewers. Loaded on demand (recharts is heavy). */
 export default function AdminViewsChart({
 	series,
+	className = "h-64 w-full",
 }: {
 	series: AdminViewsOverview["series"];
+	className?: string;
 }) {
 	const data = useMemo(
 		() =>
@@ -39,7 +41,7 @@ export default function AdminViewsChart({
 	);
 
 	return (
-		<ChartContainer config={config} className="h-64 w-full">
+		<ChartContainer config={config} className={className}>
 			<LineChart data={data} margin={{ left: 0, right: 8, top: 8 }}>
 				<CartesianGrid vertical={false} />
 				<XAxis

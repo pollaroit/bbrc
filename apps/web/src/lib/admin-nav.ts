@@ -302,6 +302,16 @@ export const adminNavSections: AdminNavSection[] = [
 				label: "Overview",
 				isActive: (pathname) => pathname === "/admin/views",
 			},
+			{
+				href: "/admin/views/list" as Route,
+				label: "List",
+				isActive: (pathname) => pathname.startsWith("/admin/views/list"),
+			},
+			{
+				href: "/admin/views/stats" as Route,
+				label: "Stats",
+				isActive: (pathname) => pathname.startsWith("/admin/views/stats"),
+			},
 		],
 	},
 	{

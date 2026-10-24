@@ -5,7 +5,7 @@ import { InsightPanel } from "./insight-panel";
 type Rows = ViewInsights["sources"];
 
 /** Horizontal bars, longest first, with the share of all views beside each. */
-function BarList({ rows }: { rows: Rows }) {
+export function BarList({ rows }: { rows: Rows }) {
 	const total = rows.reduce((sum, row) => sum + row.views, 0);
 	const max = Math.max(1, ...rows.map((row) => row.views));
 	if (rows.length === 0) {
@@ -36,21 +36,43 @@ function BarList({ rows }: { rows: Rows }) {
 	);
 }
 
-export function InsightBreakdowns({ insights }: { insights: ViewInsights }) {
+export function InsightSources({ rows }: { rows: Rows }) {
+	return (
+		<InsightPanel
+			title="Where views come from"
+			description="The page people were on before they got here."
+		>
+			<BarList rows={rows} />
+		</InsightPanel>
+	);
+}
+
+export function InsightCountries({ rows }: { rows: Rows }) {
+	return (
+		<InsightPanel
+			title="Countries"
+			description="From the visitor's connection."
+		>
+			<BarList rows={rows} />
+		</InsightPanel>
+	);
+}
+
+export function InsightReferrers({ rows }: { rows: Rows }) {
+	return (
+		<InsightPanel
+			title="Websites that sent people here"
+			description="Other sites people came from, over the last 90 days. Host names only."
+		>
+			<BarList rows={rows} />
+		</InsightPanel>
+	);
+}
+
+/** Devices, browsers and systems side by side. */
+export function InsightTechnology({ insights }: { insights: ViewInsights }) {
 	return (
 		<div className="grid gap-4 md:grid-cols-2">
-			<InsightPanel
-				title="Where views come from"
-				description="The page people were on before they got here."
-			>
-				<BarList rows={insights.sources} />
-			</InsightPanel>
-			<InsightPanel
-				title="Countries"
-				description="From the visitor's connection."
-			>
-				<BarList rows={insights.countries} />
-			</InsightPanel>
 			<InsightPanel title="Devices">
 				<BarList rows={insights.devices} />
 			</InsightPanel>
