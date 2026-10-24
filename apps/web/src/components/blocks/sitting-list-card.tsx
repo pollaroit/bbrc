@@ -7,6 +7,7 @@ import { BookOpen, CheckCheck, Users } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { SittingCardJoinButton } from "@/components/blocks/sitting-card-join-button";
 import {
 	progressCardClassName,
 	ReadingTimeline,
@@ -14,12 +15,18 @@ import {
 } from "@/components/blocks/sitting-card-parts";
 import { progressLabels } from "@/components/blocks/sitting-participation-progress";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
+import { authClient } from "@/lib/auth-client";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { cn } from "@/lib/utils";
 
 type Sitting = GetSittingListOutput["items"][number];
 
 export function SittingListCard({ sitting }: { sitting: Sitting }) {
+	const { data: session } = authClient.useSession();
+	const canJoin =
+		Boolean(session?.user) &&
+		sitting.joinOpen &&
+		sitting.viewerProgress == null;
 	const book = sitting.selectedBook;
 	const coverSrc = book ? bookCoverUrl(book.coverId) : null;
 	const sittingName = formatSittingSlugLabel(sitting.slug);
@@ -109,7 +116,13 @@ export function SittingListCard({ sitting }: { sitting: Sitting }) {
 						<p className="text-xs">You: {progressLabels[viewerProgress]}</p>
 					) : null}
 				</div>
-				{isVoting ? (
+				{canJoin ? (
+					<SittingCardJoinButton
+						slug={sitting.slug}
+						status={sitting.status}
+						deadline={sitting.deadline ?? sitting.createdAt}
+					/>
+				) : isVoting ? (
 					viewerProgress != null ? (
 						<Button
 							size="sm"

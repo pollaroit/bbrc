@@ -68,6 +68,8 @@ export async function telegramAnnouncePollOpen(
 		select: {
 			id: true,
 			slug: true,
+			joinType: true,
+			joinInVoting: true,
 			telegramPollOpenSentAt: true,
 			poll: {
 				select: {
@@ -103,12 +105,19 @@ export async function telegramAnnouncePollOpen(
 		"Participants",
 	);
 
+	// Anyone can join a public sitting while voting, so say how.
+	const joinLine =
+		sitting.joinType === "public" && sitting.joinInVoting
+			? `Not in yet? <a href="${absoluteUrl(`/sittings/${sitting.slug}`)}">Join the sitting</a>`
+			: null;
+
 	const text = [
 		`<b>Poll open</b> — ${label}`,
 		`Closes: ${deadline} (club time)`,
 		`Options: ${sitting.poll._count.options} · Participants: ${sitting.participants.length}`,
 		participantBlock,
 		`<a href="${voteUrl}">Vote now</a>`,
+		joinLine,
 	]
 		.filter((line): line is string => line != null)
 		.join("\n\n");

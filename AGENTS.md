@@ -52,3 +52,12 @@ Members can pick a palette, fonts and text size (`/settings/preferences`), so UI
 - On-site links are relative paths mapped to an `InternalLinkRef` (`internalLinkRefFromHref` never treats a full URL as on-site; the client turns same-origin URLs into paths first with `toSitePath`). Their previews come from one batched call, `linkPreview.resolve`, which hides drafts, hidden members and spoiler text.
 - Outside links are https only and never fetched from the server: the card shows host and path, and pointing at an outside link says it opens another site.
 - Render links with `RichInlineLink` and `LinkPreviewCard` / `ExternalLinkCard` rather than bare anchors, so hover previews and the "opens another website" cue stay consistent.
+
+## Sitting joins
+
+- A sitting has a join type: **public** (anyone, with a Join button and the feed card), **unlisted** (invitation link or QR code only) or **private** (organisers add people, or invite them to accept). Sittings that existed before joins were added are private; new ones default to public.
+- Self-joining (button, link, QR) follows the sitting's join window: "voting" and "reading" can each be on, and reading closes after a percentage of the reading period (`readingJoinCutoff` in `packages/shared/src/sitting-joins.ts`). Organisers adding someone, and members accepting an invitation, ignore the window but never join a finished sitting.
+- Members can leave only while voting. Someone an organiser removed (`removedAt`) cannot rejoin by themselves. Banned and hidden members cannot join.
+- Invitation links (`SittingInviteLink`) have an optional label, expiry and use limit, count who opened them (once each) and who joined (`Participation.joinSource` and `inviteLinkId`). Claiming a use is one SQL statement so the last use cannot go to two people.
+- Members can turn off "add me automatically" (`allowSittingAutoAdd`) and "invite me" (`allowSittingInvites`), both on by default. Organisers cannot add someone who opted out; they can invite them (accept/decline) unless invites are off too.
+- Join notices to organisers are grouped into one notification per sitting for a few hours. Add any new join path through `addParticipation`/`afterJoin` in `sitting-join.service.ts` so XP, welcome and organiser notices stay consistent.

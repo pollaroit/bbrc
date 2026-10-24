@@ -7,7 +7,12 @@ import {
 	CreateSittingInputSchema,
 	type PreviewSittingPollOptionsInput,
 } from "@bbrc/api/modules/sitting/sitting.schema";
-import { defaultPollDeadline, normalizeBookCountryCodes } from "@bbrc/shared";
+import { SittingJoinConfigSchema } from "@bbrc/api/modules/sitting/sitting-join.schema";
+import {
+	DEFAULT_SITTING_JOIN_CONFIG,
+	defaultPollDeadline,
+	normalizeBookCountryCodes,
+} from "@bbrc/shared";
 import zod from "zod";
 import { buildListCallInput } from "@/lib/listing/build-list-call-input";
 
@@ -29,6 +34,8 @@ export const CreateSittingFormSchema = zod
 	.object({
 		pollDeadline: zod.date(),
 		participantUserIds: zod.array(zod.string().uuid()).min(1),
+		/** Who can join by themselves, and when. */
+		join: SittingJoinConfigSchema,
 		poll: zod.object({
 			minPages: optionalInt,
 			maxPages: optionalInt,
@@ -106,6 +113,7 @@ export function livePollInputFromForm(
 	const poll = pollFromFormValues({
 		pollDeadline: new Date(),
 		participantUserIds: [],
+		join: DEFAULT_SITTING_JOIN_CONFIG,
 		poll: parsed.data,
 	});
 
@@ -179,6 +187,7 @@ export function toCreateSittingInput(
 	return {
 		pollDeadline: values.pollDeadline,
 		participantUserIds: values.participantUserIds,
+		join: values.join,
 		poll: pollFromFormValues(values),
 		optionBookIds,
 	};
@@ -187,6 +196,7 @@ export function toCreateSittingInput(
 export const defaultCreateSittingFormValues: CreateSittingFormValues = {
 	pollDeadline: defaultCreatePollDeadline(),
 	participantUserIds: [],
+	join: DEFAULT_SITTING_JOIN_CONFIG,
 	poll: {
 		take: 10,
 		minChoices: 1,

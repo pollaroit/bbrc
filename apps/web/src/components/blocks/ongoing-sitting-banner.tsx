@@ -1,10 +1,7 @@
 import type { GetOngoingSittingOutput } from "@bbrc/api/modules/sitting/sitting.schema";
-import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { Progress, ProgressLabel } from "@bbrc/ui/components/progress";
-import { ArrowRight } from "lucide-react";
-import type { Route } from "next";
-import Link from "next/link";
+import { OngoingSittingAction } from "@/components/blocks/ongoing-sitting-action";
 import { SittingParticipantAvatarStack } from "@/components/blocks/sitting-participant-avatar-stack";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
 import { formatBookAuthors } from "@/lib/book-cover";
@@ -20,11 +17,6 @@ type OngoingSittingBannerProps = {
 };
 
 export function OngoingSittingBanner({ sitting }: OngoingSittingBannerProps) {
-	const href =
-		sitting.status === "voting"
-			? (`/sittings/${sitting.slug}/vote` as Route)
-			: (`/sittings/${sitting.slug}` as Route);
-
 	const phaseDeadline = getSittingPhaseDeadline(sitting);
 	const deadlineLabel = getSittingPhaseDeadlineLabel(sitting);
 	const deadlineProgress = getSittingDeadlineProgress(sitting);
@@ -88,15 +80,11 @@ export function OngoingSittingBanner({ sitting }: OngoingSittingBannerProps) {
 				</div>
 
 				<div className="flex justify-end pt-1">
-					<Button
-						render={<Link href={href} />}
-						nativeButton={false}
-						size="sm"
-						className="w-full md:w-auto"
-					>
-						{sitting.status === "voting" ? "Vote in poll" : "Open sitting"}
-						<ArrowRight data-icon="inline-end" />
-					</Button>
+					<OngoingSittingAction
+						slug={sitting.slug}
+						status={sitting.status}
+						deadline={phaseDeadline ?? sitting.createdAt}
+					/>
 				</div>
 			</CardContent>
 		</Card>

@@ -77,6 +77,7 @@ import {
 	updateParticipation,
 	updateSittingDeadlines,
 } from "./sitting.service";
+import { sittingJoinRouter } from "./sitting-join.router";
 
 export const sittingRouter = {
 	getSittingList: publicProcedure
@@ -134,11 +135,16 @@ export const sittingRouter = {
 			async ({ input, context }) =>
 				await shuffleSittingPollPreviewOptions(input, context.db),
 		),
+	join: sittingJoinRouter,
 	createSitting: adminProcedure
 		.input(CreateSittingInputSchema)
 		.output(CreateSittingOutputSchema)
 		.handler(async ({ input, context }) => {
-			const sitting = await createSitting(input, context.db);
+			const sitting = await createSitting(
+				input,
+				context.db,
+				context.session.user.id,
+			);
 			revalidateSittingIsr(context, sitting.slug);
 			return sitting;
 		}),
@@ -225,7 +231,11 @@ export const sittingRouter = {
 		.input(SittingParticipantMutationInputSchema)
 		.output(SittingParticipantMutationOutputSchema)
 		.handler(async ({ input, context }) => {
-			const result = await addSittingParticipant(input, context.db);
+			const result = await addSittingParticipant(
+				input,
+				context.db,
+				context.session.user.id,
+			);
 			revalidateSittingIsr(context, input.slug);
 			return result;
 		}),

@@ -12,6 +12,7 @@ import {
 	generateUniqueSlug,
 	pollChipRankFromGrants,
 	resolveClubTimeZone,
+	selfJoinWindow,
 	sittingReadingDeadlinePlaceholder,
 	snapPollDeadlineOnOrAfter,
 	validatePollVoteSubmission,
@@ -27,6 +28,7 @@ import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
 import { getBookListFields } from "../book/book.schema";
 import { loadLikedFeedbackIdsForViewer } from "../feedback/feedback.service";
+import { dispatchNotification } from "../notification/notification.service";
 import {
 	notifyParticipantFinishedBook,
 	notifySittingFinished,
@@ -107,6 +109,7 @@ import {
 	type UpdateSittingDeadlinesOutput,
 } from "./sitting.schema";
 import { applyFinishedSittingParticipantEffects } from "./sitting-finish-participant-effects";
+import { withJoinDefaults } from "./sitting-join.service";
 import { insertPollChipGrantsForParticipants } from "./sitting-poll-chip-grants";
 import {
 	assertParticipantsExist,
@@ -260,6 +263,18 @@ function mapSittingListRow(
 		selectedBook: row.selectedBook,
 		poll: row.poll,
 		viewerProgress,
+		joinType: row.joinType,
+		joinOpen:
+			row.joinType === "public" &&
+			selfJoinWindow({
+				status: row.status,
+				readingStartedAt: row.readingStartedAt,
+				deadline: row.deadline,
+				joinType: row.joinType,
+				joinInVoting: row.joinInVoting,
+				joinInReading: row.joinInReading,
+				joinReadingUntilPercent: row.joinReadingUntilPercent,
+			}).open,
 	};
 }
 
@@ -1179,6 +1194,7 @@ export async function shuffleSittingPollPreviewOptions(
 export async function createSitting(
 	input: CreateSittingInput,
 	db: Database,
+	createdById?: string,
 ): Promise<CreateSittingOutput> {
 	const ongoing = await db.sitting.findFirst({
 		where: sittingOngoingWhere(),
@@ -1191,6 +1207,10 @@ export async function createSitting(
 			data: { slug: ongoing.slug },
 		});
 	}
+
+	await assertMembersAllowBeingAdded(db, input.participantUserIds, createdById);
+
+	const joinConfig = withJoinDefaults(input.join);
 
 	const context = await loadPollDrawContext(
 		input.participantUserIds,
@@ -1226,6 +1246,11 @@ export async function createSitting(
 					slug: sittingSlug,
 					deadline: sittingDeadline,
 					status: "voting",
+					joinType: joinConfig.joinType,
+					joinInVoting: joinConfig.joinInVoting,
+					joinInReading: joinConfig.joinInReading,
+					joinReadingUntilPercent: joinConfig.joinReadingUntilPercent,
+					createdById: createdById ?? null,
 				},
 				select: { id: true, slug: true },
 			});
@@ -1930,9 +1955,31 @@ function assertSittingAcceptsParticipantChanges(status: string) {
 	}
 }
 
+/** Members who turned off "add me automatically" cannot be picked; they can be invited instead. */
+async function assertMembersAllowBeingAdded(
+	db: Database,
+	userIds: string[],
+	actorId?: string,
+) {
+	const blocked = await db.user.findMany({
+		where: {
+			id: { in: userIds, ...(actorId ? { not: actorId } : {}) },
+			allowSittingAutoAdd: false,
+		},
+		select: { name: true, username: true },
+	});
+	if (blocked.length > 0) {
+		const names = blocked.map((user) => user.name || user.username).join(", ");
+		throw new ORPCError("BAD_REQUEST", {
+			message: `${names} ${blocked.length === 1 ? "does" : "do"} not allow being added to sittings. Invite ${blocked.length === 1 ? "them" : "them"} once the sitting exists instead.`,
+		});
+	}
+}
+
 export async function addSittingParticipant(
 	input: SittingParticipantMutationInput,
 	db: Database,
+	actorId?: string,
 ): Promise<SittingParticipantMutationOutput> {
 	const sitting = await db.sitting.findUnique({
 		where: { slug: input.slug },
@@ -1954,7 +2001,14 @@ export async function addSittingParticipant(
 
 	const user = await db.user.findUnique({
 		where: { id: input.userId },
-		select: { id: true, status: true, isHidden: true },
+		select: {
+			id: true,
+			name: true,
+			username: true,
+			status: true,
+			isHidden: true,
+			allowSittingAutoAdd: true,
+		},
 	});
 
 	if (!user) {
@@ -1966,6 +2020,12 @@ export async function addSittingParticipant(
 	if (user.isHidden) {
 		throw new ORPCError("NOT_FOUND", {
 			message: "User not found",
+		});
+	}
+
+	if (!user.allowSittingAutoAdd && user.id !== actorId) {
+		throw new ORPCError("FORBIDDEN", {
+			message: `${user.name || user.username} does not allow being added to sittings. Send them an invitation instead.`,
 		});
 	}
 
@@ -2003,6 +2063,9 @@ export async function addSittingParticipant(
 				data: {
 					removedAt: null,
 					progress: "not_started",
+					joinedAt: new Date(),
+					joinSource: "organiser",
+					inviteLinkId: null,
 				},
 			});
 		} else {
@@ -2020,7 +2083,38 @@ export async function addSittingParticipant(
 		);
 	});
 
+	if (input.userId !== actorId) {
+		void notifyAddedToSitting(db, input.slug, input.userId);
+	}
+
 	return { ok: true };
+}
+
+async function notifyAddedToSitting(
+	db: Database,
+	slug: string,
+	userId: string,
+) {
+	try {
+		const sitting = await db.sitting.findUnique({
+			where: { slug },
+			select: {
+				slug: true,
+				status: true,
+				selectedBook: { select: { title: true } },
+			},
+		});
+		if (!sitting) return;
+		await dispatchNotification(db, {
+			kind: "sitting_added",
+			recipientUserIds: [userId],
+			title: "You were added to a sitting",
+			body: `An organiser added you to ${formatSittingDisplayName(sitting.slug, sitting.status, sitting.selectedBook?.title ?? null)}.`,
+			href: `/sittings/${sitting.slug}`,
+		});
+	} catch (error) {
+		console.error("sitting added notification failed", error);
+	}
 }
 
 export async function removeSittingParticipant(

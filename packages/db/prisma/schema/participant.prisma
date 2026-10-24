@@ -5,6 +5,13 @@ enum Progress {
   dnf
 }
 
+enum ParticipationJoinSource {
+  organiser
+  button
+  link
+  invitation
+}
+
 model Participation {
   /// @zod.uuid("Invalid UUID")
   id        String   @id @default(uuid())
@@ -23,6 +30,13 @@ model Participation {
 
   /// Set when an admin removes someone mid-sitting; row kept for history and XP ledger.
   removedAt DateTime? @map("removed_at")
+
+  /// When the member joined (set again if they are re-added).
+  joinedAt   DateTime                @default(now()) @map("joined_at")
+  joinSource ParticipationJoinSource @default(organiser) @map("join_source")
+
+  inviteLinkId String?            @map("invite_link_id")
+  inviteLink   SittingInviteLink? @relation(fields: [inviteLinkId], references: [id], onDelete: SetNull)
 
   @@unique([userId, sittingId])
   @@index([userId])

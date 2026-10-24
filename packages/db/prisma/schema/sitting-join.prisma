@@ -1,0 +1,78 @@
+/// A shareable link (and QR code) that lets people join a sitting.
+model SittingInviteLink {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  sittingId String  @map("sitting_id")
+  sitting   Sitting @relation(fields: [sittingId], references: [id], onDelete: Cascade)
+
+  /// Secret part of the link.
+  token String @unique
+
+  /// Short name so the creator can tell links apart ("Telegram group").
+  label String?
+
+  expiresAt DateTime? @map("expires_at")
+  /// How many people may join with it; null means no limit.
+  maxUses   Int?      @map("max_uses")
+  /// How many people joined with it.
+  uses      Int       @default(0)
+
+  /// Set when the creator ends the link early.
+  revokedAt DateTime? @map("revoked_at")
+
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation("SittingInviteLinkCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  participations Participation[]
+  visits         SittingInviteLinkVisit[]
+
+  @@index([sittingId])
+  @@map("sitting_invite_link")
+}
+
+/// Who opened a link, once each, so the creator can see opens next to joins.
+model SittingInviteLinkVisit {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  linkId String            @map("link_id")
+  link   SittingInviteLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation("SittingInviteLinkVisitor", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([linkId, userId])
+  @@map("sitting_invite_link_visit")
+}
+
+enum SittingInvitationStatus {
+  pending
+  accepted
+  declined
+  cancelled
+}
+
+/// An organiser asking a member to join, for members who do not allow being added.
+model SittingInvitation {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  sittingId String  @map("sitting_id")
+  sitting   Sitting @relation(fields: [sittingId], references: [id], onDelete: Cascade)
+
+  inviteeId String @map("invitee_id")
+  invitee   User   @relation("SittingInvitationInvitee", fields: [inviteeId], references: [id], onDelete: Cascade)
+
+  invitedById String? @map("invited_by_id")
+  invitedBy   User?   @relation("SittingInvitationInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  status      SittingInvitationStatus @default(pending)
+  respondedAt DateTime?               @map("responded_at")
+
+  @@index([sittingId, status])
+  @@index([inviteeId, status])
+  @@map("sitting_invitation")
+}

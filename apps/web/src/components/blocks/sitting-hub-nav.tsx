@@ -1,16 +1,18 @@
 "use client";
 
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
+import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { orpc } from "@/utils/orpc";
 
 type SittingHubNavProps = {
 	sitting: GetSittingBySlugOutput;
 };
 
-type Segment = "overview" | "participants" | "vote" | "reviews";
+type Segment = "overview" | "participants" | "vote" | "reviews" | "settings";
 
 function tabHref(slug: string, segment: Segment): Route {
 	return (
@@ -25,6 +27,7 @@ function activeSegment(pathname: string, slug: string): Segment {
 	if (pathname.startsWith(`${base}/vote`)) return "vote";
 	if (pathname.startsWith(`${base}/participants`)) return "participants";
 	if (pathname.startsWith(`${base}/reviews`)) return "reviews";
+	if (pathname.startsWith(`${base}/settings`)) return "settings";
 	return "overview";
 }
 
@@ -32,6 +35,13 @@ export function SittingHubNav({ sitting }: SittingHubNavProps) {
 	const pathname = usePathname();
 	const current = activeSegment(pathname, sitting.slug);
 	const hasPoll = sitting.poll != null;
+	// Same query the join controls use, so this costs no extra request.
+	const joinState = useQuery(
+		orpc.sitting.join.state.queryOptions({
+			input: { sittingSlug: sitting.slug },
+		}),
+	);
+	const canManage = joinState.data?.viewer.canManage === true;
 
 	const tabs: { segment: Segment; label: string }[] = [
 		{ segment: "overview", label: "Overview" },
@@ -47,6 +57,7 @@ export function SittingHubNav({ sitting }: SittingHubNavProps) {
 		...(sitting.selectedBook
 			? [{ segment: "reviews" as const, label: "Reviews" }]
 			: []),
+		...(canManage ? [{ segment: "settings" as const, label: "Settings" }] : []),
 	];
 
 	return (
