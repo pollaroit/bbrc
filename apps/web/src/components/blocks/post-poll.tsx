@@ -60,6 +60,59 @@ type PostPollProps = {
 	className?: string;
 };
 
+type StackVoter = {
+	username: string;
+	name: string;
+	image: string | null;
+	rank: number | null;
+};
+
+/** A few overlapping avatars and a +N chip; tapping opens the full list. */
+function VoterStack({
+	voters,
+	label,
+	onOpen,
+	showNames = false,
+}: {
+	voters: StackVoter[];
+	label: string;
+	onOpen: () => void;
+	showNames?: boolean;
+}) {
+	const shown = voters.slice(0, 3);
+	const extra = voters.length - shown.length;
+	return (
+		<button
+			type="button"
+			onClick={onOpen}
+			aria-label={label}
+			title={voters.map((voter) => voter.name).join(", ")}
+			className="group flex shrink-0 items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+		>
+			<span className="flex -space-x-1.5" aria-hidden>
+				{shown.map((voter) => (
+					<UserAvatar
+						key={voter.username}
+						user={voter}
+						className="size-5 ring-2 ring-background group-hover:ring-muted"
+					/>
+				))}
+				{extra > 0 ? (
+					<span className="z-0 grid h-5 min-w-5 place-items-center bg-muted px-1 text-3xs tabular-nums ring-2 ring-background">
+						+{extra}
+					</span>
+				) : null}
+			</span>
+			{showNames ? (
+				<span className="text-xs">
+					{shown.map((voter) => voter.name).join(", ")}
+					{extra > 0 ? ` and ${extra} more` : ""}
+				</span>
+			) : null}
+		</button>
+	);
+}
+
 function useNow(intervalMs = 60_000) {
 	const [now, setNow] = useState(() => new Date());
 	useEffect(() => {
@@ -157,6 +210,7 @@ function PollBody({
 	const [closeOpen, setCloseOpen] = useState(false);
 	const [deadlineOpen, setDeadlineOpen] = useState(false);
 	const [votersFor, setVotersFor] = useState<PollOption | null>(null);
+	const [turnoutOpen, setTurnoutOpen] = useState(false);
 
 	const { viewer } = poll;
 	const ended = poll.ended || (poll.deadline != null && poll.deadline <= now);
@@ -377,7 +431,14 @@ function PollBody({
 									<PollOptionContent option={option} />
 								</button>
 
-								<span className="relative z-[1] flex shrink-0 items-center gap-2">
+								<span className="relative z-[1] flex shrink-0 items-center gap-2.5">
+									{option.voters && option.voters.length > 0 ? (
+										<VoterStack
+											voters={option.voters}
+											label={`See who chose ${option.label}`}
+											onOpen={() => setVotersFor(option)}
+										/>
+									) : null}
 									{result ? (
 										<span className="text-end text-xs tabular-nums">
 											<span className="font-medium">
@@ -414,33 +475,6 @@ function PollBody({
 								</span>
 							</div>
 
-							{option.voters && option.voters.length > 0 ? (
-								<button
-									type="button"
-									onClick={() => setVotersFor(option)}
-									className="ms-[2.75rem] mb-2 flex max-w-[calc(100%-3.5rem)] items-center gap-2 text-muted-foreground text-xs transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-									aria-label={`See who chose ${option.label}`}
-								>
-									<span className="flex shrink-0 -space-x-1.5">
-										{option.voters.slice(0, 4).map((voter) => (
-											<UserAvatar
-												key={voter.username}
-												user={voter}
-												className="size-5 ring-2 ring-background"
-											/>
-										))}
-									</span>
-									<span className="truncate">
-										{option.voters
-											.slice(0, 2)
-											.map((voter) => voter.name)
-											.join(", ")}
-										{option.voters.length > 2
-											? ` and ${option.voters.length - 2} more`
-											: ""}
-									</span>
-								</button>
-							) : null}
 							{option.userAdded && option.addedBy ? (
 								<p className="px-3 ps-[2.75rem] pb-2 text-2xs text-muted-foreground">
 									Added by {option.addedBy.name}
@@ -600,27 +634,19 @@ function PollBody({
 				) : null}
 
 				{poll.turnout && poll.ballotAccess === "turnout" ? (
-					<p className="flex items-center gap-1.5 text-muted-foreground text-xs">
-						<span className="flex -space-x-1">
-							{poll.turnout.slice(0, 6).map((voter) => (
-								<UserAvatar
-									key={voter.username}
-									user={voter}
-									className="size-4 ring-2 ring-background"
-								/>
-							))}
-						</span>
-						<span>
-							{poll.turnout.length === 0
-								? "Nobody has voted yet."
-								: `Voted: ${poll.turnout
-										.slice(0, 3)
-										.map((voter) => voter.name)
-										.join(
-											", ",
-										)}${poll.turnout.length > 3 ? ` +${poll.turnout.length - 3}` : ""}`}
-						</span>
-					</p>
+					<div className="flex items-center gap-2 text-muted-foreground text-xs">
+						<span>Voted</span>
+						{poll.turnout.length === 0 ? (
+							<span>nobody yet</span>
+						) : (
+							<VoterStack
+								voters={poll.turnout.map((voter) => ({ ...voter, rank: null }))}
+								label="See who has voted"
+								onOpen={() => setTurnoutOpen(true)}
+								showNames
+							/>
+						)}
+					</div>
 				) : null}
 			</footer>
 
@@ -632,6 +658,14 @@ function PollBody({
 					...voter,
 					rank: poll.type === "ranking" ? voter.rank : null,
 				}))}
+			/>
+
+			<PollVotersDialog
+				open={turnoutOpen}
+				onOpenChange={setTurnoutOpen}
+				title="Who has voted"
+				description="Members who voted so far."
+				voters={poll.turnout ?? []}
 			/>
 
 			<DestructiveConfirmDialog

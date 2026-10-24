@@ -56,7 +56,7 @@ export const PostAttachedBookSchema = BookSchema.pick(
 );
 
 /** Short comment row shown under a post on the home feed. */
-export const PostCommentPreviewSchema = zod.object({
+const PostCommentPreviewBaseSchema = zod.object({
 	slug: CommentSchema.shape.slug,
 	content: CommentSchema.shape.content,
 	imageUrl: CommentSchema.shape.imageUrl,
@@ -65,6 +65,13 @@ export const PostCommentPreviewSchema = zod.object({
 	author: PostAuthorSchema,
 	likeCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
+});
+
+export const PostCommentPreviewSchema = PostCommentPreviewBaseSchema.extend({
+	/** Direct replies to this comment. */
+	replyCount: zod.number().int().min(0),
+	/** The newest reply, so a feed card can show the conversation continuing. */
+	latestReply: PostCommentPreviewBaseSchema.nullable(),
 });
 
 export const PostListItemSchema = PostSchema.pick({

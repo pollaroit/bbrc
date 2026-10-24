@@ -144,6 +144,8 @@ export function PostCommentForm({
 			commentCount: number;
 			topComments: {
 				slug: string;
+				replyCount: number;
+				latestReply: { slug: string } | null;
 			}[];
 		}) => unknown,
 	) {
@@ -165,7 +167,11 @@ export function PostCommentForm({
 							? change(
 									item as unknown as {
 										commentCount: number;
-										topComments: { slug: string }[];
+										topComments: {
+											slug: string;
+											replyCount: number;
+											latestReply: { slug: string } | null;
+										}[];
 									},
 								)
 							: item,
@@ -219,29 +225,42 @@ export function PostCommentForm({
 					);
 				}
 				adjustCommentCount(1);
+				const pendingPreview = user
+					? {
+							slug: pendingSlug,
+							content: variables.content,
+							imageUrl: null,
+							isSpoiler: Boolean(variables.isSpoiler),
+							createdAt: new Date(),
+							author: {
+								username: user.username as string,
+								name: user.name,
+								image: user.image ?? null,
+							},
+							likeCount: 0,
+							likedByMe: false,
+						}
+					: null;
 				const feedSnapshots = patchFeedPost((item) => ({
 					...item,
 					commentCount: item.commentCount + 1,
-					topComments:
-						user && !variables.parentSlug
-							? [
-									{
-										slug: pendingSlug,
-										content: variables.content,
-										imageUrl: null,
-										isSpoiler: Boolean(variables.isSpoiler),
-										createdAt: new Date(),
-										author: {
-											username: user.username as string,
-											name: user.name,
-											image: user.image ?? null,
-										},
-										likeCount: 0,
-										likedByMe: false,
-									},
+					topComments: !pendingPreview
+						? item.topComments
+						: variables.parentSlug
+							? // A reply shows under the comment it answers.
+								item.topComments.map((comment) =>
+									comment.slug === variables.parentSlug
+										? {
+												...comment,
+												replyCount: comment.replyCount + 1,
+												latestReply: pendingPreview,
+											}
+										: comment,
+								)
+							: [
+									{ ...pendingPreview, replyCount: 0, latestReply: null },
 									...item.topComments,
-								].slice(0, 3)
-							: item.topComments,
+								].slice(0, 3),
 				}));
 
 				// The form is free again right away; the draft comes back on failure.
@@ -285,11 +304,15 @@ export function PostCommentForm({
 				swapListItemSlug(commentListKey, context.pendingSlug, result.slug);
 				patchFeedPost((item) => ({
 					...item,
-					topComments: item.topComments.map((comment) =>
-						comment.slug === context.pendingSlug
-							? { ...comment, slug: result.slug }
-							: comment,
-					),
+					topComments: item.topComments.map((comment) => ({
+						...comment,
+						...(comment.slug === context.pendingSlug
+							? { slug: result.slug }
+							: {}),
+						...(comment.latestReply?.slug === context.pendingSlug
+							? { latestReply: { ...comment.latestReply, slug: result.slug } }
+							: {}),
+					})),
 				}));
 				const file = context.draft.imageFile;
 

@@ -91,8 +91,14 @@ const topCommentSelect = {
 	_count: {
 		select: {
 			likes: true,
+			replies: true,
 		},
 	},
+} as const;
+
+const replyPreviewSelect = {
+	...topCommentSelect,
+	parentId: true,
 } as const;
 
 type TopCommentRow = Prisma.CommentGetPayload<{
@@ -188,11 +194,29 @@ async function loadTopCommentsByPostId(
 	});
 
 	const grouped = groupTopComments(comments, limit);
-	const previewCommentIds = [...grouped.values()].flatMap((rows) =>
-		rows.map((row) => row.id),
-	);
+	const previewComments = [...grouped.values()].flat();
+
+	// The newest reply under each previewed comment.
+	const replyRows =
+		previewComments.length > 0
+			? await db.comment.findMany({
+					where: { parentId: { in: previewComments.map((row) => row.id) } },
+					orderBy: { createdAt: "desc" },
+					select: replyPreviewSelect,
+				})
+			: [];
+	const latestReplyByParent = new Map<string, (typeof replyRows)[number]>();
+	for (const reply of replyRows) {
+		if (reply.parentId && !latestReplyByParent.has(reply.parentId)) {
+			latestReplyByParent.set(reply.parentId, reply);
+		}
+	}
+
 	const likedCommentIds = await loadLikedCommentIds(
-		previewCommentIds,
+		[
+			...previewComments.map((row) => row.id),
+			...[...latestReplyByParent.values()].map((row) => row.id),
+		],
 		userId,
 		db,
 	);
@@ -202,16 +226,32 @@ async function loadTopCommentsByPostId(
 	for (const [postId, rows] of grouped) {
 		result.set(
 			postId,
-			rows.map((row) => ({
-				slug: row.slug,
-				content: row.content,
-				imageUrl: row.imageUrl,
-				isSpoiler: row.isSpoiler,
-				createdAt: row.createdAt,
-				author: row.author,
-				likeCount: row._count.likes,
-				likedByMe: likedCommentIds.has(row.id),
-			})),
+			rows.map((row) => {
+				const reply = latestReplyByParent.get(row.id);
+				return {
+					slug: row.slug,
+					content: row.content,
+					imageUrl: row.imageUrl,
+					isSpoiler: row.isSpoiler,
+					createdAt: row.createdAt,
+					author: row.author,
+					likeCount: row._count.likes,
+					likedByMe: likedCommentIds.has(row.id),
+					replyCount: row._count.replies,
+					latestReply: reply
+						? {
+								slug: reply.slug,
+								content: reply.content,
+								imageUrl: reply.imageUrl,
+								isSpoiler: reply.isSpoiler,
+								createdAt: reply.createdAt,
+								author: reply.author,
+								likeCount: reply._count.likes,
+								likedByMe: likedCommentIds.has(reply.id),
+							}
+						: null,
+				};
+			}),
 		);
 	}
 

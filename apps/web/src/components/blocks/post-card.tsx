@@ -3,7 +3,7 @@
 import type { GetPostListOutput } from "@bbrc/api/modules/post/post.schema";
 import { contentPlainText } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
-import { MessageCircle } from "lucide-react";
+import { CornerDownRight, MessageCircle } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
@@ -55,6 +55,34 @@ function PostCardComments({ post }: { post: PostCardPost }) {
 								canReply={post.allowComments && !isPendingSlug(comment.slug)}
 								onReply={() => setReplyingTo(comment.slug)}
 							/>
+							{comment.replyCount > 0 && comment.latestReply ? (
+								<div className="ms-8 mt-2 flex flex-col gap-1.5 border-border border-s-2 ps-3">
+									<p className="flex items-center gap-2 text-2xs text-muted-foreground">
+										<CornerDownRight className="size-3" aria-hidden />
+										<span>Latest reply</span>
+										<Link
+											href={
+												`/posts/${post.slug}/comments/${comment.slug}` as Route
+											}
+											className="font-medium text-foreground underline-offset-4 hover:underline"
+										>
+											{comment.replyCount === 1
+												? "1 reply"
+												: `View all ${comment.replyCount} replies`}
+										</Link>
+									</p>
+									<CommentListItemView
+										comment={{
+											...comment.latestReply,
+											replyCount: 0,
+											latestReply: null,
+										}}
+										variant="compact"
+										layout="thread"
+										postSlug={post.slug}
+									/>
+								</div>
+							) : null}
 							{replyingTo === comment.slug ? (
 								<div className="mt-2 ps-8">
 									<PostCommentForm

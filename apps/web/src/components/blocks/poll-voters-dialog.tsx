@@ -26,11 +26,14 @@ export function PollVotersDialog({
 	open,
 	onOpenChange,
 	title,
+	description,
 	voters,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	title: string;
+	/** Replaces the default "N members chose this." line. */
+	description?: string;
 	voters: PollVoterRow[];
 }) {
 	return (
@@ -39,8 +42,8 @@ export function PollVotersDialog({
 				<DialogHeader>
 					<DialogTitle className="line-clamp-2">{title}</DialogTitle>
 					<DialogDescription>
-						{voters.length} {voters.length === 1 ? "member" : "members"} chose
-						this.
+						{description ??
+							`${voters.length} ${voters.length === 1 ? "member" : "members"} chose this.`}
 					</DialogDescription>
 				</DialogHeader>
 				{voters.length === 0 ? (
