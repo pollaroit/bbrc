@@ -29,6 +29,7 @@ import {
 	RemoveBookFromShelfOutputSchema,
 	ReorderShelfBooksInputSchema,
 	ReorderShelfBooksOutputSchema,
+	ShelfOverviewSchema,
 	UpdateBookNotesInputSchema,
 	UpdateBookNotesOutputSchema,
 	UpdateShelfInputSchema,
@@ -40,6 +41,7 @@ import {
 	deleteShelf,
 	getShelfBySlug,
 	getShelfList,
+	getShelfOverview,
 	listMyEditableShelves,
 	listShelvesByUsername,
 	listShelvesForBook,
@@ -55,6 +57,9 @@ export const shelfRouter = {
 		.input(GetShelfListInputSchema)
 		.output(GetShelfListOutputSchema)
 		.handler(async ({ input, context }) => getShelfList(input, context.db)),
+	overview: publicProcedure
+		.output(ShelfOverviewSchema)
+		.handler(async ({ context }) => getShelfOverview(context.db)),
 	listByUsername: publicProcedure
 		.input(ListShelvesByUsernameInputSchema)
 		.output(ListShelvesByUsernameOutputSchema)
@@ -97,7 +102,7 @@ export const shelfRouter = {
 			}
 			return result;
 		}),
-	update: notBannedProcedure
+	update: protectedProcedure
 		.input(UpdateShelfInputSchema)
 		.output(UpdateShelfOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -113,7 +118,7 @@ export const shelfRouter = {
 			);
 			return result;
 		}),
-	delete: notBannedProcedure
+	delete: protectedProcedure
 		.input(DeleteShelfInputSchema)
 		.output(DeleteShelfOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -128,7 +133,7 @@ export const shelfRouter = {
 			);
 			return result;
 		}),
-	addBook: notBannedProcedure
+	addBook: protectedProcedure
 		.use(checkAchievementsAfter("shelves"))
 		.input(AddBookToShelfInputSchema)
 		.output(AddBookToShelfOutputSchema)
@@ -146,7 +151,7 @@ export const shelfRouter = {
 			revalidateBookIsr(context, input.bookSlug);
 			return result;
 		}),
-	removeBook: notBannedProcedure
+	removeBook: protectedProcedure
 		.input(RemoveBookFromShelfInputSchema)
 		.output(RemoveBookFromShelfOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -163,7 +168,7 @@ export const shelfRouter = {
 			revalidateBookIsr(context, input.bookSlug);
 			return result;
 		}),
-	reorderBooks: notBannedProcedure
+	reorderBooks: protectedProcedure
 		.input(ReorderShelfBooksInputSchema)
 		.output(ReorderShelfBooksOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -179,7 +184,7 @@ export const shelfRouter = {
 			);
 			return result;
 		}),
-	updateBookNotes: notBannedProcedure
+	updateBookNotes: protectedProcedure
 		.input(UpdateBookNotesInputSchema)
 		.output(UpdateBookNotesOutputSchema)
 		.handler(async ({ input, context }) => {

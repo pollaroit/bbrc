@@ -30,12 +30,14 @@ import {
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { ShelfAddBookSearch } from "@/components/blocks/shelf-add-book-search";
 import {
+	SHELF_DIALOG_TABS,
 	ShelfCollaboratorsDialog,
 	type ShelfDialogTab,
 } from "@/components/blocks/shelf-collaborators-dialog";
@@ -68,10 +70,11 @@ export function MemberShelfDetail({
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const [leaveOpen, setLeaveOpen] = useState(false);
 	const [confirmTitle, setConfirmTitle] = useState("");
-	const [dialog, setDialog] = useState<{
-		open: boolean;
-		tab: ShelfDialogTab;
-	}>({ open: false, tab: "people" });
+	// The open section lives in the address bar, so a reload brings it back.
+	const [dialogTab, setDialogTab] = useQueryState(
+		"collaborators",
+		parseAsStringLiteral(SHELF_DIALOG_TABS),
+	);
 	const [addedByFilter, setAddedByFilter] = useState<string | null>(null);
 
 	const shelfQuery = useQuery(
@@ -208,7 +211,7 @@ export function MemberShelfDetail({
 	const people = [owner, ...shelf.collaborators];
 
 	function openDialog(tab: ShelfDialogTab) {
-		setDialog({ open: true, tab });
+		void setDialogTab(tab);
 	}
 
 	return (
@@ -476,7 +479,7 @@ export function MemberShelfDetail({
 								canEditNotes={can("edit_notes")}
 								notes={row.notes}
 								addedBy={row.addedBy}
-								showAddedBy={showAddedBy}
+								addedAt={row.addedAt}
 								bordered={false}
 								book={{
 									...row.book,
@@ -490,15 +493,11 @@ export function MemberShelfDetail({
 
 			{signedIn ? (
 				<ShelfCollaboratorsDialog
-					key={dialog.tab}
 					ownerUsername={username}
 					shelfSlug={shelfSlug}
 					shelfTitle={shelf.title}
-					open={dialog.open}
-					onOpenChange={(open) =>
-						setDialog((current) => ({ ...current, open }))
-					}
-					initialTab={dialog.tab}
+					tab={dialogTab}
+					onTabChange={(next) => void setDialogTab(next)}
 				/>
 			) : null}
 

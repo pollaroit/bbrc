@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { notBannedProcedure } from "../../procedures";
+import { notBannedProcedure, protectedProcedure } from "../../procedures";
 import {
 	CommitUploadInputSchema,
 	CommitUploadOutputSchema,
@@ -143,7 +143,7 @@ export const storageRouter = {
 			),
 		),
 
-	initShelfCoverUpload: notBannedProcedure
+	initShelfCoverUpload: protectedProcedure
 		.input(ShelfSlugImageInputSchema)
 		.output(ImageUploadInitOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -155,7 +155,7 @@ export const storageRouter = {
 				context.db,
 			),
 		),
-	commitShelfCoverUpload: notBannedProcedure
+	commitShelfCoverUpload: protectedProcedure
 		.input(ShelfSlugImageInputSchema)
 		.output(ImageCommitOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -168,7 +168,7 @@ export const storageRouter = {
 				context,
 			),
 		),
-	removeShelfCoverUpload: notBannedProcedure
+	removeShelfCoverUpload: protectedProcedure
 		.input(ShelfSlugOnlySchema)
 		.output(z.object({ removed: z.literal(true) }))
 		.handler(async ({ input, context }) =>

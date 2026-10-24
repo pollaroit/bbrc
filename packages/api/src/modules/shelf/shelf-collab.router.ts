@@ -1,4 +1,4 @@
-import { notBannedProcedure, protectedProcedure } from "../../procedures";
+import { protectedProcedure } from "../../procedures";
 import { revalidateUserShelvesIsr } from "../../revalidate-isr";
 import {
 	CancelInvitationInputSchema,
@@ -41,13 +41,13 @@ import {
 } from "./shelf-collab.service";
 
 export const shelfCollabRouter = {
-	searchInvitable: notBannedProcedure
+	searchInvitable: protectedProcedure
 		.input(SearchInvitableInputSchema)
 		.output(SearchInvitableOutputSchema)
 		.handler(({ input, context }) =>
 			searchInvitableMembers(input, context.session.user.id, context.db),
 		),
-	invite: notBannedProcedure
+	invite: protectedProcedure
 		.input(InviteCollaboratorInputSchema)
 		.output(InviteCollaboratorOutputSchema)
 		.handler(({ input, context }) =>
@@ -64,7 +64,7 @@ export const shelfCollabRouter = {
 		.handler(({ context }) =>
 			listMyInvitations(context.session.user.id, context.db),
 		),
-	respond: notBannedProcedure
+	respond: protectedProcedure
 		.input(RespondToInvitationInputSchema)
 		.output(RespondToInvitationOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -77,7 +77,7 @@ export const shelfCollabRouter = {
 			revalidateUserShelvesIsr(context, context.session.user.username);
 			return result;
 		}),
-	cancelInvitation: notBannedProcedure
+	cancelInvitation: protectedProcedure
 		.input(CancelInvitationInputSchema)
 		.output(OkSchema)
 		.handler(({ input, context }) =>
@@ -89,7 +89,7 @@ export const shelfCollabRouter = {
 		.handler(({ input, context }) =>
 			listCollaborators(input, context.session.user.id, context.db),
 		),
-	updatePermissions: notBannedProcedure
+	updatePermissions: protectedProcedure
 		.input(UpdateCollaboratorInputSchema)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {
@@ -105,7 +105,7 @@ export const shelfCollabRouter = {
 			);
 			return result;
 		}),
-	remove: notBannedProcedure
+	remove: protectedProcedure
 		.input(RemoveCollaboratorInputSchema)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {
@@ -122,7 +122,7 @@ export const shelfCollabRouter = {
 			revalidateUserShelvesIsr(context, input.username);
 			return { ok };
 		}),
-	leave: notBannedProcedure
+	leave: protectedProcedure
 		.input(LeaveShelfInputSchema)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {
@@ -139,7 +139,7 @@ export const shelfCollabRouter = {
 			revalidateUserShelvesIsr(context, context.session.user.username);
 			return result;
 		}),
-	transferOwnership: notBannedProcedure
+	transferOwnership: protectedProcedure
 		.input(TransferShelfInputSchema)
 		.output(TransferShelfOutputSchema)
 		.handler(async ({ input, context }) => {

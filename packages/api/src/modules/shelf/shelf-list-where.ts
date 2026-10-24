@@ -47,6 +47,12 @@ export async function buildPublicShelfListWhere(
 		searching.use(),
 		{
 			type: input.types?.length ? { in: input.types } : undefined,
+			collaborators:
+				input.collab === "shared"
+					? { some: {} }
+					: input.collab === "solo"
+						? { none: {} }
+						: undefined,
 			id:
 				minBooksIds != null
 					? minBooksIds.length > 0

@@ -181,7 +181,6 @@ export async function inviteCollaborator(
 			name: true,
 			isHidden: true,
 			allowShelfInvites: true,
-			status: true,
 		},
 	});
 	if (!invitee || invitee.isHidden) {
@@ -195,11 +194,6 @@ export async function inviteCollaborator(
 	if (invitee.id === access.owner.id) {
 		throw new ORPCError("BAD_REQUEST", {
 			message: "That member already owns this shelf.",
-		});
-	}
-	if (invitee.status === "banned") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "That member cannot be invited.",
 		});
 	}
 	if (!invitee.allowShelfInvites) {

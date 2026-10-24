@@ -61,10 +61,10 @@ export const ShelfListItemSchema = zod.object({
 });
 
 export const PublicShelfListItemSchema = ShelfListItemSchema.extend({
-	owner: zod.object({
-		username: UserSchema.shape.username,
-		name: UserSchema.shape.name,
-	}),
+	owner: ShelfMemberRefSchema,
+	collaboratorCount: zod.number().int().min(0),
+	/** The first few collaborators, oldest first. */
+	collaborators: zod.array(ShelfMemberRefSchema),
 });
 
 export const GetShelfListInputSchema = shelfListFiltersSchema
@@ -234,11 +234,10 @@ export const ListShelvesForBookInputSchema = zod.object({
 });
 
 export const ShelfForBookListItemSchema = ShelfListItemSchema.extend({
-	owner: zod.object({
-		username: UserSchema.shape.username,
-		name: UserSchema.shape.name,
-	}),
+	owner: ShelfMemberRefSchema,
 	isOwner: zod.boolean(),
+	collaboratorCount: zod.number().int().min(0),
+	collaborators: zod.array(ShelfMemberRefSchema),
 });
 
 export const ListShelvesForBookOutputSchema = zod.object({
@@ -352,12 +351,39 @@ export function mapShelfListItem(
 	};
 }
 
+export const shelfCardCollaboratorsSelect = {
+	orderBy: { createdAt: "asc" as const },
+	take: 4,
+	select: {
+		user: { select: { username: true, name: true, image: true } },
+	},
+} as const;
+
 export const getShelfListFields = {
 	...shelfListItemSelect,
+	_count: { select: { books: true, collaborators: true } },
+	collaborators: shelfCardCollaboratorsSelect,
 	user: {
 		select: {
 			username: true,
 			name: true,
+			image: true,
 		},
 	},
 } as const;
+
+export const ShelfOverviewSchema = zod.object({
+	shelves: zod.number().int().min(0),
+	books: zod.number().int().min(0),
+	sharedShelves: zod.number().int().min(0),
+	collaborators: zod.number().int().min(0),
+	newest: zod
+		.object({
+			title: zod.string(),
+			slug: zod.string(),
+			ownerUsername: UserSchema.shape.username,
+		})
+		.nullable(),
+});
+
+export type ShelfOverview = z.infer<typeof ShelfOverviewSchema>;

@@ -29,12 +29,14 @@ import type {
 	ListMyEditableShelvesOutput,
 	ListShelvesByUsernameOutput,
 	ListShelvesForBookOutput,
+	ShelfOverview,
 	UpdateShelfInput,
 } from "./shelf.schema";
 import {
 	getShelfListFields,
 	mapShelfListItem,
 	shelfBookSelect,
+	shelfCardCollaboratorsSelect,
 	shelfListItemSelect,
 	shelfListItemWithCoverSelect,
 } from "./shelf.schema";
@@ -333,6 +335,8 @@ export async function getShelfList(
 		items: page.items.map((row) => ({
 			...mapShelfListItem(row, coverMap.get(row.id) ?? []),
 			owner: row.user,
+			collaboratorCount: row._count.collaborators,
+			collaborators: row.collaborators.map((collab) => collab.user),
 		})),
 		metadata: page.metadata,
 	};
@@ -800,8 +804,10 @@ export async function listShelvesForBook(
 		orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
 		select: {
 			...shelfListItemWithCoverSelect,
+			_count: { select: { books: true, collaborators: true } },
+			collaborators: shelfCardCollaboratorsSelect,
 			userId: true,
-			user: { select: { username: true, name: true } },
+			user: { select: { username: true, name: true, image: true } },
 		},
 	});
 
@@ -813,11 +819,10 @@ export async function listShelvesForBook(
 	return {
 		items: rows.map((row) => ({
 			...mapShelfListItem(row, coverMap.get(row.id) ?? []),
-			owner: {
-				username: row.user.username,
-				name: row.user.name,
-			},
+			owner: row.user,
 			isOwner: viewerUserId != null && row.userId === viewerUserId,
+			collaboratorCount: row._count.collaborators,
+			collaborators: row.collaborators.map((collab) => collab.user),
 		})),
 		maxBooksPerShelf: MAX_BOOKS_PER_SHELF,
 	};
@@ -879,5 +884,43 @@ export async function listMyEditableShelves(
 			isOwner: row.userId === userId,
 		})),
 		maxBooksPerShelf: MAX_BOOKS_PER_SHELF,
+	};
+}
+
+export async function getShelfOverview(db: Database): Promise<ShelfOverview> {
+	const where = { status: "active", user: visibleOnSiteUserWhere } as const;
+	const [shelves, books, sharedShelves, collaborators, newest] =
+		await Promise.all([
+			db.shelf.count({ where }),
+			db.shelfBook.count({ where: { shelf: where } }),
+			db.shelf.count({ where: { ...where, collaborators: { some: {} } } }),
+			db.shelfCollaborator.findMany({
+				where: { shelf: where },
+				distinct: ["userId"],
+				select: { userId: true },
+			}),
+			db.shelf.findFirst({
+				where,
+				orderBy: { createdAt: "desc" },
+				select: {
+					title: true,
+					slug: true,
+					user: { select: { username: true } },
+				},
+			}),
+		]);
+
+	return {
+		shelves,
+		books,
+		sharedShelves,
+		collaborators: collaborators.length,
+		newest: newest
+			? {
+					title: newest.title,
+					slug: newest.slug,
+					ownerUsername: newest.user.username,
+				}
+			: null,
 	};
 }
