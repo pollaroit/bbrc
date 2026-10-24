@@ -39,6 +39,7 @@ function emptyFacts(
 		favoriteTimes: [],
 		quizzes: [],
 		series: [],
+		views: { mostOpenedPost: null, mostOpenedReview: null, profileOpens: null },
 	};
 }
 
@@ -384,6 +385,39 @@ export async function loadAchievementFacts(
 					at: row.submittedAt ?? row.createdAt,
 					perfect: row.score === QUIZ_MAX_SCORE,
 				}));
+			})(),
+		);
+	}
+
+	if (want("views")) {
+		tasks.push(
+			(async () => {
+				// One query: the most opened post and review of the member, and their profile.
+				const rows = await db.$queryRaw<
+					{ kind: string; opens: number; updated_at: Date }[]
+				>`
+					SELECT DISTINCT ON (x.kind) x.kind, x.opens, x.updated_at FROM (
+						SELECT 'post' AS kind, t.opens, t.updated_at FROM view_total t
+						JOIN post p ON p.id = t.resource_id
+						WHERE t.resource = 'post' AND p.author_id = ${userId}
+						UNION ALL
+						SELECT 'review', t.opens, t.updated_at FROM view_total t
+						JOIN feedback f ON f.id = t.resource_id
+						WHERE t.resource = 'review' AND f.author_id = ${userId}
+						UNION ALL
+						SELECT 'user', t.opens, t.updated_at FROM view_total t
+						WHERE t.resource = 'user' AND t.resource_id = ${userId}
+					) x
+					ORDER BY x.kind, x.opens DESC`;
+				const pick = (kind: string) => {
+					const row = rows.find((item) => item.kind === kind);
+					return row ? { opens: row.opens, at: row.updated_at } : null;
+				};
+				facts.views = {
+					mostOpenedPost: pick("post"),
+					mostOpenedReview: pick("review"),
+					profileOpens: pick("user"),
+				};
 			})(),
 		);
 	}

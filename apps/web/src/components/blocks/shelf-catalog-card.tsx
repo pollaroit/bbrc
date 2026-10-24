@@ -1,7 +1,11 @@
+"use client";
+
+import type { ViewSourceName } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { useImpressionRef } from "@/components/blocks/track-impression";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { bookCoverUrl } from "@/lib/book-cover";
 import { cn } from "@/lib/utils";
@@ -115,16 +119,25 @@ export function ShelfCatalogCard({
 	shelf,
 	showStatus = false,
 	className,
+	impressionSource = "shelves",
 }: {
 	shelf: ShelfCatalogCardShelf;
 	/** Show draft and archived labels (for the owner's own views). */
 	showStatus?: boolean;
 	className?: string;
+	/** Where the card is listed, for view counts. */
+	impressionSource?: ViewSourceName;
 }) {
 	const href = `/users/${shelf.owner.username}/shelves/${shelf.slug}` as Route;
+	const countImpression = useImpressionRef(
+		"shelf",
+		`${shelf.owner.username}/${shelf.slug}`,
+		impressionSource,
+	);
 
 	return (
 		<article
+			ref={countImpression}
 			className={cn(
 				"group relative flex h-full flex-col border border-border bg-card transition-colors hover:border-foreground/50",
 				className,

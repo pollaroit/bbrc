@@ -1,3 +1,5 @@
+"use client";
+
 import type { PeopleListItem } from "@bbrc/api/modules/people/people.schema";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -11,6 +13,7 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { useImpressionRef } from "@/components/blocks/track-impression";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import type { PeopleSortField } from "@/lib/listing/people-listing";
 import { cn } from "@/lib/utils";
@@ -198,6 +201,7 @@ export function PeopleCard({
 	sortBy,
 }: PeopleCardProps) {
 	const profileHref = `/users/${person.username}` as Route;
+	const countImpression = useImpressionRef("user", person.username, "people");
 	const highlight = highlightFor(person, isViewer);
 	const metric = sortMetricFor(person, sortBy);
 	const about =
@@ -207,7 +211,10 @@ export function PeopleCard({
 			: null);
 
 	return (
-		<article className="relative flex h-full flex-col overflow-hidden border border-border bg-card transition-colors focus-within:bg-muted/20 hover:bg-muted/20">
+		<article
+			ref={countImpression}
+			className="relative flex h-full flex-col overflow-hidden border border-border bg-card transition-colors focus-within:bg-muted/20 hover:bg-muted/20"
+		>
 			<div
 				className={cn(
 					"relative z-2 flex items-center justify-between gap-2 border-border border-b px-3 py-1.5 font-medium text-xs",

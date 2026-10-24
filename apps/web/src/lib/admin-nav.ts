@@ -1,5 +1,6 @@
 import {
 	BookOpen,
+	Eye,
 	FileStack,
 	FileText,
 	LayoutDashboard,
@@ -286,6 +287,20 @@ export const adminNavSections: AdminNavSection[] = [
 				href: "/admin/quizzes/stats" as Route,
 				label: "Stats",
 				isActive: (pathname) => pathname.startsWith("/admin/quizzes/stats"),
+			},
+		],
+	},
+	{
+		id: "views",
+		label: "Views",
+		icon: Eye,
+		defaultHref: "/admin/views" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/views"),
+		children: [
+			{
+				href: "/admin/views" as Route,
+				label: "Overview",
+				isActive: (pathname) => pathname === "/admin/views",
 			},
 		],
 	},

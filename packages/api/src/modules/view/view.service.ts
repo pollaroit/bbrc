@@ -10,6 +10,7 @@ import {
 	type ViewKindName,
 	type ViewResourceKind,
 } from "@bbrc/shared";
+import { evaluateAchievementsForUser } from "../achievement/achievement.service";
 import { dispatchNotification } from "../notification/notification.service";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type { RecordViewItem } from "./view.schema";
@@ -394,6 +395,15 @@ function excerpt(content: string) {
 
 async function notifyMilestone(db: Database, target: Target, mark: number) {
 	if (!target.ownerId) return;
+	try {
+		// A milestone is when view-based achievements can newly be earned; the
+		// daily sweep covers everything in between.
+		await evaluateAchievementsForUser(db, target.ownerId, {
+			sections: ["views"],
+		});
+	} catch (error) {
+		console.error("view achievements failed", error);
+	}
 	try {
 		const info = await describeViewTargetById(db, target);
 		if (!info) return;

@@ -2,6 +2,7 @@ import { getFeedbackBySlug } from "@bbrc/api/modules/feedback/feedback.service";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FeedbackDetail } from "@/components/blocks/feedback-detail";
+import { TrackDetailView } from "@/components/blocks/track-detail-view";
 import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
@@ -57,7 +58,12 @@ export default async function BookFeedbackPage({
 			notFound();
 		}
 
-		return <FeedbackDetail feedback={feedback} />;
+		return (
+			<>
+				<TrackDetailView resource="review" itemRef={feedback.slug} />
+				<FeedbackDetail feedback={feedback} />
+			</>
+		);
 	} catch {
 		notFound();
 	}

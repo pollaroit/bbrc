@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { BooksLibraryPageHeader } from "@/components/blocks/books-library-page-header";
 import { BooksList } from "@/components/blocks/books-list";
+import { TrendingStrip } from "@/components/blocks/trending-strip";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { buildPageMetadata } from "@/lib/seo";
 
@@ -28,6 +29,7 @@ export default function BooksPage() {
 			<ListingSearchParamsBoundary>
 				<div className="flex flex-col gap-8">
 					<BooksLibraryPageHeader />
+					<TrendingStrip resource="book" />
 					<BooksList />
 				</div>
 			</ListingSearchParamsBoundary>

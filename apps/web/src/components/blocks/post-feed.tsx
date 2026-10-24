@@ -9,6 +9,7 @@ import {
 	toPostFeedListInput,
 	usePostFeedSearchParams,
 } from "@/lib/listing/post-feed-listing";
+import { useViewCounts } from "@/lib/views/use-view-counts";
 import { orpc } from "@/utils/orpc";
 
 const POST_FEED_LIMIT = 10;
@@ -70,6 +71,10 @@ export function PostFeed({
 	);
 
 	const posts = data?.pages.flatMap((page) => page.items) ?? [];
+	const viewCounts = useViewCounts(
+		"post",
+		posts.map((post) => post.slug),
+	);
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -97,7 +102,11 @@ export function PostFeed({
 				<ul className="flex flex-col gap-4">
 					{posts.map((post) => (
 						<li key={post.slug}>
-							<PostCard post={post} />
+							<PostCard
+								post={post}
+								impressionSource={authorUsername ? "profile" : "feed"}
+								viewCount={viewCounts[post.slug]}
+							/>
 						</li>
 					))}
 				</ul>

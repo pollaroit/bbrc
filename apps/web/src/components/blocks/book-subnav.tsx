@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
 import {
 	BOOK_DETAIL_TABS,
 	bookDetailTabFromPathname,
@@ -58,6 +59,11 @@ function tabLabel(
 export function BookSubnav({ slug, counts }: BookSubnavProps) {
 	const pathname = usePathname() ?? "";
 	const active = bookDetailTabFromPathname(slug, pathname);
+	// Insights are for signed-in members; the book pages themselves stay cacheable.
+	const { data: session } = authClient.useSession();
+	const tabs = BOOK_DETAIL_TABS.filter(
+		(tab) => tab.id !== "insights" || session?.user != null,
+	);
 
 	const readsCountQuery = useQuery(
 		orpc.read.listForBook.queryOptions({
@@ -84,7 +90,7 @@ export function BookSubnav({ slug, counts }: BookSubnavProps) {
 			className="flex flex-wrap gap-1 border-border border-b pb-0"
 			aria-label="Book sections"
 		>
-			{BOOK_DETAIL_TABS.map((tab) => {
+			{tabs.map((tab) => {
 				const href = tab.href(slug);
 				const isActive = tab.id === active;
 

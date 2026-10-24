@@ -20,6 +20,7 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
 	History,
+	LineChart,
 	ListOrdered,
 	LogOut,
 	MoreHorizontal,
@@ -175,6 +176,8 @@ export function MemberShelfDetail({
 	const isOwner = viewer.role === "owner";
 	const isCollaborator = viewer.role === "collaborator";
 	const signedIn = Boolean(session?.user);
+	const canSeeInsights =
+		isOwner || isCollaborator || session?.user.isAdmin === true;
 
 	const canEditDetails =
 		can("edit_title") ||
@@ -325,6 +328,14 @@ export function MemberShelfDetail({
 											>
 												<ListOrdered aria-hidden />
 												Reorder books
+											</DropdownMenuItem>
+										) : null}
+										{canSeeInsights ? (
+											<DropdownMenuItem
+												onClick={() => router.push(`${base}/insights` as Route)}
+											>
+												<LineChart aria-hidden />
+												Insights
 											</DropdownMenuItem>
 										) : null}
 										{signedIn ? (

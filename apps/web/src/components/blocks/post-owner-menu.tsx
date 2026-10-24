@@ -9,7 +9,13 @@ import {
 	DropdownMenuTrigger,
 } from "@bbrc/ui/components/dropdown-menu";
 import { useMutation } from "@tanstack/react-query";
-import { BarChart3, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import {
+	BarChart3,
+	LineChart,
+	MoreHorizontal,
+	Pencil,
+	Trash2,
+} from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -87,7 +93,7 @@ export function PostOwnerMenu({
 		session?.user.username === authorUsername;
 	const isAdmin = Boolean(session?.user.isAdmin);
 
-	if (!isAuthor && !(isAdmin && hasPoll)) {
+	if (!isAuthor && !isAdmin) {
 		return null;
 	}
 
@@ -116,6 +122,12 @@ export function PostOwnerMenu({
 							Edit post
 						</DropdownMenuItem>
 					) : null}
+					<DropdownMenuItem
+						render={<Link href={`/posts/${slug}/insights` as Route} />}
+					>
+						<LineChart aria-hidden />
+						Insights
+					</DropdownMenuItem>
 					{hasPoll ? (
 						<DropdownMenuItem
 							render={<Link href={`/posts/${slug}/poll/stats` as Route} />}

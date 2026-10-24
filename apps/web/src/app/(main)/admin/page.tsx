@@ -66,6 +66,11 @@ const resources = [
 		description: "Book document submissions, review status, and languages.",
 	},
 	{
+		href: "/admin/views" as Route,
+		title: "Views",
+		description: "Site-wide traffic, top content, sources, and active members.",
+	},
+	{
 		href: "/admin/facts/create" as Route,
 		title: "Fact reels",
 		description: "AI-assisted drafts and published reel inventory.",
