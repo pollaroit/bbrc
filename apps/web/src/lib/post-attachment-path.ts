@@ -17,6 +17,8 @@ export function postAttachmentHref(
 			return `/books/${attachment.feedback.book.slug}/feedbacks/${attachment.feedback.slug}` as Route;
 		case "post":
 			return `/posts/${attachment.post.slug}` as Route;
+		case "author":
+			return `/authors/${attachment.author.slug}` as Route;
 		case "comment": {
 			const { comment } = attachment;
 			if (comment.contextPost) {

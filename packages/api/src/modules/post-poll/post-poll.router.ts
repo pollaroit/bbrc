@@ -128,6 +128,7 @@ export const postPollRouter = {
 				input.kind,
 				input.query,
 				context.session.user.id,
+				input.purpose,
 			),
 		})),
 	getPreference: protectedProcedure

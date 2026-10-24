@@ -266,3 +266,7 @@ export const getPostBySlugFields = {
 		select: postAttachmentSelect,
 	},
 } as const;
+
+export const PostAttachmentPreferenceSchema = zod.object({
+	allowPostAttachment: zod.boolean(),
+});

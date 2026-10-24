@@ -89,6 +89,10 @@ export function internalLinkRefFromHref(href: string): InternalLinkRef | null {
 		return { kind: "sitting", slug: segments[1]! };
 	}
 
+	if (segments[0] === "authors" && segments.length === 2) {
+		return { kind: "author", slug: segments[1]! };
+	}
+
 	return null;
 }
 
@@ -110,6 +114,8 @@ export function hrefFromInternalLinkRef(ref: InternalLinkRef): string {
 			return `/users/${ref.username}/shelves/${ref.slug}`;
 		case "sitting":
 			return `/sittings/${ref.slug}`;
+		case "author":
+			return `/authors/${ref.slug}`;
 		default: {
 			const _exhaustive: never = ref;
 			return _exhaustive;

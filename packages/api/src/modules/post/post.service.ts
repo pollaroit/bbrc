@@ -584,6 +584,7 @@ export async function createPost(
 			post.id,
 			attachmentInput ?? null,
 			tx,
+			userId,
 		);
 		await tx.post.update({
 			where: { id: post.id },
@@ -654,6 +655,7 @@ export async function updatePost(
 			post.id,
 			attachmentPatch,
 			tx,
+			userId,
 		);
 
 		await tx.post.update({
@@ -710,4 +712,28 @@ export async function deletePost(
 	});
 
 	return { slug: input.slug, deleted: true };
+}
+
+export async function getPostAttachmentPreference(
+	userId: string,
+	db: Database,
+) {
+	const user = await db.user.findUnique({
+		where: { id: userId },
+		select: { allowPostAttachment: true },
+	});
+	return { allowPostAttachment: user?.allowPostAttachment ?? true };
+}
+
+export async function setPostAttachmentPreference(
+	allowPostAttachment: boolean,
+	userId: string,
+	db: Database,
+) {
+	const user = await db.user.update({
+		where: { id: userId },
+		data: { allowPostAttachment },
+		select: { allowPostAttachment: true },
+	});
+	return { allowPostAttachment: user.allowPostAttachment };
 }

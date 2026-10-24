@@ -23,6 +23,8 @@ model User {
   allowShelfInvites     Boolean    @default(true) @map("allow_shelf_invites")
   /// Other members may use this member as an option in their polls.
   allowPollOptions      Boolean    @default(true) @map("allow_poll_options")
+  /// Other members may attach this member to their posts.
+  allowPostAttachment   Boolean    @default(true) @map("allow_post_attachment")
   /// Look and feel (palette, fonts, sizes) plus display preferences; validated by `normalizePreferences`.
   preferences           Json?
   /// @zod.email("Invalid email address")

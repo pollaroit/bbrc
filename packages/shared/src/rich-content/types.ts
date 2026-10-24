@@ -15,7 +15,8 @@ export type InternalLinkRef =
 	| { kind: "feedback"; bookSlug: string; slug: string }
 	| { kind: "user"; username: string }
 	| { kind: "shelf"; username: string; slug: string }
-	| { kind: "sitting"; slug: string };
+	| { kind: "sitting"; slug: string }
+	| { kind: "author"; slug: string };
 
 export type RichInline =
 	| { t: "text"; s: string; m?: TextMark[] }

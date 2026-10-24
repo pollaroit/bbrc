@@ -53,6 +53,7 @@ enum PostAttachmentKind {
   feedback
   post
   comment
+  author
 }
 
 model PostAttachment {
@@ -92,6 +93,10 @@ model PostAttachment {
   /// @zod.uuid("Invalid comment id")
   commentId String?  @map("comment_id")
   comment   Comment? @relation(fields: [commentId], references: [id], onDelete: SetNull)
+
+  /// Authors have no table of their own: the slug and the name at the time it was attached.
+  authorSlug String? @map("author_slug")
+  authorName String? @map("author_name")
 
   @@index([kind])
   @@map("post_attachment")

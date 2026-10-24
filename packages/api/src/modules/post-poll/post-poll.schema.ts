@@ -179,6 +179,8 @@ export const ClosePollInputSchema = zod.object({ postSlug });
 export const SearchPollTargetsInputSchema = zod.object({
 	kind: PollOptionKindSchema.exclude(["text"]),
 	query: zod.string().trim().min(1).max(60),
+	/** Who is picking: a poll builder, or someone attaching to a post. Members can opt out of each. */
+	purpose: zod.enum(["poll", "attachment"]).default("poll"),
 });
 
 export const PollTargetSuggestionSchema = zod.object({

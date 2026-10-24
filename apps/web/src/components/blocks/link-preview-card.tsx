@@ -43,6 +43,7 @@ const KIND_ICON: Record<
 	user: UserRound,
 	shelf: Library,
 	sitting: CalendarDays,
+	author: PenLine,
 };
 
 /** A colour edge per kind makes cards easy to tell apart in a long thread. */
@@ -55,6 +56,7 @@ const KIND_EDGE: Record<LinkPreview["kind"], string> = {
 	user: "border-s-violet",
 	shelf: "border-s-success",
 	sitting: "border-s-pink",
+	author: "border-s-violet",
 };
 
 const shellClass: Record<LinkCardVariant, string> = {

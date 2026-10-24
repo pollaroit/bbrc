@@ -126,6 +126,14 @@ export const PostAttachmentCommentSchema = zod.object({
 	}),
 });
 
+export const PostAttachmentAuthorSchema = zod.object({
+	kind: zod.literal("author"),
+	author: zod.object({
+		slug: zod.string(),
+		name: zod.string(),
+	}),
+});
+
 export const PostAttachmentOutputSchema = zod.discriminatedUnion("kind", [
 	PostAttachmentBookSchema,
 	PostAttachmentShelfSchema,
@@ -134,6 +142,7 @@ export const PostAttachmentOutputSchema = zod.discriminatedUnion("kind", [
 	PostAttachmentFeedbackSchema,
 	PostAttachmentPostSchema,
 	PostAttachmentCommentSchema,
+	PostAttachmentAuthorSchema,
 ]);
 
 export type PostAttachmentOutput = zod.infer<typeof PostAttachmentOutputSchema>;
@@ -168,12 +177,19 @@ export const PostAttachmentInputSchema = zod.discriminatedUnion("kind", [
 		kind: zod.literal("comment"),
 		slug: CommentSchema.shape.slug,
 	}),
+	zod.object({
+		kind: zod.literal("author"),
+		/** The author's slug, as in /authors/[slug]. */
+		slug: zod.string().min(1).max(120),
+	}),
 ]);
 
 export type PostAttachmentInput = zod.infer<typeof PostAttachmentInputSchema>;
 
 export const postAttachmentSelect = {
 	kind: true,
+	authorSlug: true,
+	authorName: true,
 	book: {
 		select: postAttachedBookCardFields,
 	},

@@ -33,6 +33,13 @@ describe("rich content", () => {
 		});
 	});
 
+	it("detects author pages", () => {
+		expect(internalLinkRefFromHref("/authors/ursula_k_le_guin")).toEqual({
+			kind: "author",
+			slug: "ursula_k_le_guin",
+		});
+	});
+
 	it("ignores query strings and anchors on internal links", () => {
 		expect(internalLinkRefFromHref("/posts/hello?x=1#comments")).toEqual({
 			kind: "post",

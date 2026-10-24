@@ -997,6 +997,7 @@ export async function searchPollTargets(
 	kind: Exclude<PostPollOptionKind, "text">,
 	query: string,
 	actorId: string,
+	purpose: "poll" | "attachment" = "poll",
 ) {
 	const limit = 8;
 	const none = {
@@ -1080,6 +1081,7 @@ export async function searchPollTargets(
 			name: true,
 			image: true,
 			allowPollOptions: true,
+			allowPostAttachment: true,
 		},
 	});
 	return members.map((member) => ({
@@ -1089,9 +1091,14 @@ export async function searchPollTargets(
 		coverId: null,
 		image: member.image,
 		disabledReason:
-			member.allowPollOptions || member.id === actorId
+			member.id === actorId ||
+			(purpose === "poll"
+				? member.allowPollOptions
+				: member.allowPostAttachment)
 				? null
-				: "Does not allow being used in polls",
+				: purpose === "poll"
+					? "Does not allow being used in polls"
+					: "Does not allow being attached to posts",
 	}));
 }
 

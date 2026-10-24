@@ -297,6 +297,57 @@ function PollsSection() {
 	);
 }
 
+function PostsSection() {
+	const { data: session } = authClient.useSession();
+	const signedIn = Boolean(session?.user);
+
+	const preferenceQuery = useQuery({
+		...orpc.post.getAttachmentPreference.queryOptions(),
+		enabled: signedIn,
+	});
+	const key = orpc.post.getAttachmentPreference.queryKey();
+	const mutation = useMutation(
+		orpc.post.setAttachmentPreference.mutationOptions({
+			onMutate: async (variables) => {
+				await queryClient.cancelQueries({ queryKey: key });
+				const previous = queryClient.getQueryData(key);
+				queryClient.setQueryData(key, variables);
+				return { previous };
+			},
+			onError: (_error, _variables, context) => {
+				queryClient.setQueryData(key, context?.previous);
+				toast.error("Could not save that setting.");
+			},
+			onSettled: () => {
+				void queryClient.invalidateQueries({ queryKey: key });
+			},
+		}),
+	);
+
+	return (
+		<PreferencesSection
+			id="posts"
+			title="Posts"
+			description="How other members can mention you in their posts."
+		>
+			<SwitchRow
+				id="pref-post-attachment"
+				label="Allow people to attach me to their posts"
+				hint={
+					signedIn
+						? "When this is off, nobody can attach your profile to a post. Posts that already include you stay as they are."
+						: "Sign in to change this one."
+				}
+				checked={preferenceQuery.data?.allowPostAttachment ?? true}
+				disabled={!signedIn || preferenceQuery.isPending}
+				onChange={(allowPostAttachment) =>
+					mutation.mutate({ allowPostAttachment })
+				}
+			/>
+		</PreferencesSection>
+	);
+}
+
 function TimeSection() {
 	const { time } = usePreferences();
 	const sample = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -445,6 +496,7 @@ const sections = [
 	{ id: "reading", label: "Reading" },
 	{ id: "shelves", label: "Shelves" },
 	{ id: "polls", label: "Polls" },
+	{ id: "posts", label: "Posts" },
 	{ id: "time", label: "Time and format" },
 	{ id: "search", label: "Search" },
 	{ id: "sync", label: "Sync and reset" },
@@ -482,6 +534,7 @@ export function PreferencesForm() {
 			<ReadingSection />
 			<ShelvesSection />
 			<PollsSection />
+			<PostsSection />
 			<TimeSection />
 			<SearchSection />
 			<SyncSection />

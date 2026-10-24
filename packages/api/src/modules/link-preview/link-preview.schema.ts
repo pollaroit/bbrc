@@ -26,6 +26,7 @@ export const InternalLinkRefSchema = zod.discriminatedUnion("kind", [
 		slug: zod.string().max(200),
 	}),
 	zod.object({ kind: zod.literal("sitting"), slug: zod.string().max(200) }),
+	zod.object({ kind: zod.literal("author"), slug: zod.string().max(200) }),
 ]);
 
 export const LinkPreviewImageSchema = zod.discriminatedUnion("type", [
@@ -54,6 +55,7 @@ export const LinkPreviewSchema = zod.object({
 		"user",
 		"shelf",
 		"sitting",
+		"author",
 	]),
 	/** Human name of the kind: "Book", "Review", "Shelf". */
 	kindLabel: zod.string(),

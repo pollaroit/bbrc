@@ -17,6 +17,8 @@ export function postAttachmentLabel(attachment: PostAttachmentOutput): string {
 			return attachment.post.contentPreview;
 		case "comment":
 			return attachment.comment.contentPreview;
+		case "author":
+			return attachment.author.name;
 		default: {
 			const _exhaustive: never = attachment;
 			return _exhaustive;

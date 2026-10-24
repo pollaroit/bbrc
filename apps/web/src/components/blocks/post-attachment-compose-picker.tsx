@@ -5,7 +5,7 @@ import { Button } from "@bbrc/ui/components/button";
 import { Input } from "@bbrc/ui/components/input";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, Library, Search, UserRound, X } from "lucide-react";
+import { BookOpen, Feather, Library, Search, UserRound, X } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { PostAttachmentComposePreview } from "@/components/blocks/post-attachment-compose-preview";
@@ -18,17 +18,19 @@ import { orpc } from "@/utils/orpc";
 
 export type PostAttachmentComposeValue = PostAttachmentInput | null;
 
-type PickerKind = "book" | "shelf" | "user";
+type PickerKind = "book" | "shelf" | "author" | "user";
 
 const KINDS: { id: PickerKind; label: string; icon: typeof BookOpen }[] = [
 	{ id: "book", label: "Book", icon: BookOpen },
 	{ id: "shelf", label: "Shelf", icon: Library },
+	{ id: "author", label: "Author", icon: Feather },
 	{ id: "user", label: "Member", icon: UserRound },
 ];
 
 const PLACEHOLDERS: Record<PickerKind, string> = {
 	book: "Search the library by title or author…",
 	shelf: "Search shelves by title or owner…",
+	author: "Search authors by name…",
 	user: "Search members by name or username…",
 };
 
@@ -177,43 +179,65 @@ function ShelfResults({
 	);
 }
 
-function MemberResults({
+/** Members and authors, found through the same search the poll builder uses. */
+function PersonResults({
+	kind,
 	query,
 	onPick,
 	disabled,
 }: {
+	kind: "author" | "user";
 	query: string;
 	onPick: (input: PostAttachmentInput) => void;
 	disabled?: boolean;
 }) {
-	const members = useQuery({
-		...orpc.user.getUserList.queryOptions({
-			input: { limit: 8, search: query },
+	const found = useQuery({
+		...orpc.postPoll.searchTargets.queryOptions({
+			input: { kind, query, purpose: "attachment" },
 		}),
 		enabled: query.length > 0,
 	});
 	return (
 		<Results
-			pending={members.isPending}
-			empty={(members.data?.items.length ?? 0) === 0}
-			emptyText="No members found."
+			pending={found.isPending}
+			empty={(found.data?.items.length ?? 0) === 0}
+			emptyText={kind === "user" ? "No members found." : "No authors found."}
 		>
-			{members.data?.items.map((member) => (
+			{found.data?.items.map((item) => (
 				<ResultRow
-					key={member.username}
-					disabled={disabled}
-					onClick={() => onPick({ kind: "user", username: member.username })}
+					key={item.key}
+					disabled={disabled || item.disabledReason != null}
+					onClick={() =>
+						onPick(
+							kind === "user"
+								? { kind: "user", username: item.key }
+								: { kind: "author", slug: item.key },
+						)
+					}
 				>
-					<UserAvatar
-						user={{ name: member.name, image: member.image ?? null }}
-						className="size-9"
-					/>
-					<span className="flex min-w-0 flex-col">
-						<span className="truncate font-medium text-sm">{member.name}</span>
-						<span className="truncate text-muted-foreground text-xs">
-							@{member.username}
+					{kind === "user" ? (
+						<UserAvatar
+							user={{ name: item.label, image: item.image }}
+							className="size-9"
+						/>
+					) : (
+						<span className="grid size-9 shrink-0 place-items-center bg-muted">
+							<Feather className="size-4 text-muted-foreground" aria-hidden />
 						</span>
+					)}
+					<span className="flex min-w-0 flex-1 flex-col">
+						<span className="truncate font-medium text-sm">{item.label}</span>
+						{item.sublabel ? (
+							<span className="truncate text-muted-foreground text-xs">
+								{item.sublabel}
+							</span>
+						) : null}
 					</span>
+					{item.disabledReason ? (
+						<span className="shrink-0 text-muted-foreground text-xs">
+							{item.disabledReason}
+						</span>
+					) : null}
 				</ResultRow>
 			))}
 		</Results>
@@ -252,7 +276,10 @@ export function PostAttachmentComposePicker({
 	className,
 }: PostAttachmentComposePickerProps) {
 	const [kind, setKind] = useState<PickerKind>(
-		value?.kind === "book" || value?.kind === "shelf" || value?.kind === "user"
+		value?.kind === "book" ||
+			value?.kind === "shelf" ||
+			value?.kind === "author" ||
+			value?.kind === "user"
 			? value.kind
 			: "book",
 	);
@@ -339,7 +366,12 @@ export function PostAttachmentComposePicker({
 			) : kind === "shelf" ? (
 				<ShelfResults query={query} onPick={pick} disabled={disabled} />
 			) : (
-				<MemberResults query={query} onPick={pick} disabled={disabled} />
+				<PersonResults
+					kind={kind}
+					query={query}
+					onPick={pick}
+					disabled={disabled}
+				/>
 			)}
 		</div>
 	);

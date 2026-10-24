@@ -1,5 +1,6 @@
 import type { Database } from "@bbrc/db";
 import { hrefFromInternalLinkRef, richContentPreview } from "@bbrc/shared";
+import { authorBookSummary, findAuthorBySlug } from "../../lib/authors";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type { InternalLinkRefInput, LinkPreview } from "./link-preview.schema";
 
@@ -12,6 +13,7 @@ const KIND_LABELS: Record<LinkPreview["kind"], string> = {
 	user: "Member",
 	shelf: "Shelf",
 	sitting: "Sitting",
+	author: "Author",
 };
 
 const memberFields = { username: true, name: true, image: true } as const;
@@ -286,6 +288,21 @@ async function resolveOne(
 					coverIds: shelf.books.map((row) => row.book.coverId),
 					imageUrl: shelf.coverImageUrl,
 				},
+			};
+		}
+
+		case "author": {
+			const author = await findAuthorBySlug(db, ref.slug);
+			if (!author) return unavailable(ref);
+			const summary = await authorBookSummary(db, author.name);
+			return {
+				...base,
+				status: "ok",
+				title: author.name,
+				subtitle: "Author",
+				excerpt: null,
+				meta: [`${count(summary.bookCount, "book", "books")} in the library`],
+				image: { type: "mosaic", coverIds: summary.coverIds, imageUrl: null },
 			};
 		}
 

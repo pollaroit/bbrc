@@ -10,7 +10,7 @@ import {
 	AttachmentTitle,
 	AttachmentTrigger,
 } from "@bbrc/ui/components/attachment";
-import { BookOpen, MessageCircle, ThumbsUp } from "lucide-react";
+import { BookOpen, MessageCircle, ThumbsUp, UserRound } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
@@ -316,6 +316,24 @@ function PostAttachmentCommentCard({
 	);
 }
 
+function PostAttachmentAuthorCard({
+	author,
+}: {
+	author: Extract<PostAttachmentOutput, { kind: "author" }>["author"];
+}) {
+	return (
+		<AttachmentLinkFrame href={`/authors/${author.slug}` as Route}>
+			<AttachmentMedia variant="icon">
+				<UserRound className="size-5 text-muted-foreground" aria-hidden />
+			</AttachmentMedia>
+			<AttachmentContent>
+				<AttachmentTitle>{author.name}</AttachmentTitle>
+				<AttachmentDescription>Author · see their books</AttachmentDescription>
+			</AttachmentContent>
+		</AttachmentLinkFrame>
+	);
+}
+
 export function PostAttachmentCard({
 	attachment,
 	className,
@@ -359,6 +377,12 @@ export function PostAttachmentCard({
 			return (
 				<div className={className}>
 					<PostAttachmentCommentCard comment={attachment.comment} />
+				</div>
+			);
+		case "author":
+			return (
+				<div className={className}>
+					<PostAttachmentAuthorCard author={attachment.author} />
 				</div>
 			);
 		default: {

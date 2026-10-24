@@ -36,6 +36,7 @@ export const adminPostAttachmentKindLabels = {
 	feedback: "Feedback",
 	post: "Post",
 	comment: "Comment",
+	author: "Author",
 } as const satisfies Record<(typeof postAttachmentKindValues)[number], string>;
 
 export const adminPostSortByLabels = {
