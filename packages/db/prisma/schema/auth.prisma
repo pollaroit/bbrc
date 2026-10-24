@@ -21,6 +21,8 @@ model User {
   readDateDefaultsToNow Boolean    @default(true) @map("read_date_defaults_to_now")
   /// Other members may invite this member to collaborate on their shelves.
   allowShelfInvites     Boolean    @default(true) @map("allow_shelf_invites")
+  /// Other members may use this member as an option in their polls.
+  allowPollOptions      Boolean    @default(true) @map("allow_poll_options")
   /// Look and feel (palette, fonts, sizes) plus display preferences; validated by `normalizePreferences`.
   preferences           Json?
   /// @zod.email("Invalid email address")
@@ -84,6 +86,10 @@ model User {
   shelfBooksUpdated         ShelfBook[]         @relation("ShelfBookUpdatedBy")
   shelfActivities           ShelfActivity[]     @relation("ShelfActivityActor")
   shelfActivityTargets      ShelfActivity[]     @relation("ShelfActivityTarget")
+
+  pollVotes           PostPollVote[]   @relation("PostPollVoter")
+  pollOptionsAdded    PostPollOption[] @relation("PostPollOptionAddedBy")
+  pollOptionsAsOption PostPollOption[] @relation("PostPollOptionUser")
 
   @@map("user")
 }

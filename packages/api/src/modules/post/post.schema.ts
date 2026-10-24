@@ -10,6 +10,10 @@ import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import type { z } from "zod";
 import zod from "zod";
 import {
+	CreatePollInputSchema,
+	PostPollViewSchema,
+} from "../post-poll/post-poll.schema";
+import {
 	postListFiltersSchema,
 	postListRanging,
 	postListSearching,
@@ -70,9 +74,13 @@ export const PostListItemSchema = PostSchema.pick({
 	isSpoiler: true,
 	createdAt: true,
 	editedAt: true,
+	allowLikes: true,
+	allowComments: true,
+	allowShares: true,
 }).extend({
 	author: PostAuthorSchema,
 	attachment: PostAttachmentOutputSchema.nullable(),
+	poll: PostPollViewSchema.nullable(),
 	likeCount: zod.number().int().min(0),
 	commentCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
@@ -97,6 +105,9 @@ export const getPostListFields = {
 	content: true,
 	imageUrl: true,
 	isSpoiler: true,
+	allowLikes: true,
+	allowComments: true,
+	allowShares: true,
 	createdAt: true,
 	editedAt: true,
 	author: {
@@ -129,10 +140,15 @@ export const CreatePostInputSchema = PostSchema.pick({
 })
 	.extend({
 		isSpoiler: PostSchema.shape.isSpoiler.optional(),
+		allowLikes: PostSchema.shape.allowLikes.optional(),
+		allowComments: PostSchema.shape.allowComments.optional(),
+		allowShares: PostSchema.shape.allowShares.optional(),
 		attachedBookSlug: BookSchema.shape.slug.optional(),
 	})
 	.extend({
 		attachment: PostAttachmentInputSchema.optional(),
+		/** A poll replaces every other attachment and the image. */
+		poll: CreatePollInputSchema.optional(),
 	});
 
 export const CreatePostOutputSchema = PostSchema.pick({
@@ -155,6 +171,7 @@ export const GetPostBySlugOutputSchema = PostSchema.omit({
 }).extend({
 	author: PostAuthorSchema,
 	attachment: PostAttachmentOutputSchema.nullable(),
+	poll: PostPollViewSchema.nullable(),
 	likeCount: zod.number().int().min(0),
 	commentCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
@@ -168,8 +185,17 @@ export const UpdatePostInputSchema = PostSchema.pick({
 	slug: true,
 	content: true,
 	isSpoiler: true,
+	allowLikes: true,
+	allowComments: true,
+	allowShares: true,
 })
-	.partial({ content: true, isSpoiler: true })
+	.partial({
+		content: true,
+		isSpoiler: true,
+		allowLikes: true,
+		allowComments: true,
+		allowShares: true,
+	})
 	.extend({
 		/** Omit to leave unchanged; pass `null` to detach the book. */
 		attachedBookSlug: BookSchema.shape.slug.nullish(),
@@ -215,6 +241,9 @@ export const getPostBySlugFields = {
 	content: true,
 	imageUrl: true,
 	isSpoiler: true,
+	allowLikes: true,
+	allowComments: true,
+	allowShares: true,
 	createdAt: true,
 	updatedAt: true,
 	editedAt: true,

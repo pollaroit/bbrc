@@ -118,7 +118,7 @@ export async function uploadPostImageDirect(
 	db: Database,
 	context: Context,
 ) {
-	const post = await loadOwnedPost(postSlug, session.user.id, db);
+	const post = await loadOwnedPostForUpload(postSlug, session.user.id, db);
 	const storageEnv = getStorageEnv();
 	const key = buildObjectKey(storageEnv, {
 		kind: "post-image",
@@ -317,6 +317,25 @@ export async function clearAvatarUpload(
 	return { cleared: true as const };
 }
 
+/** Posts with a poll carry no image, so uploads for them are refused. */
+async function loadOwnedPostForUpload(
+	slug: string,
+	userId: string,
+	db: Database,
+) {
+	const post = await loadOwnedPost(slug, userId, db);
+	const poll = await db.postPoll.findFirst({
+		where: { postId: post.id },
+		select: { id: true },
+	});
+	if (poll) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "A post with a poll cannot have an image.",
+		});
+	}
+	return post;
+}
+
 async function loadOwnedPost(slug: string, userId: string, db: Database) {
 	const post = await db.post.findUnique({
 		where: { slug },
@@ -384,7 +403,7 @@ export async function initPostImageUpload(
 	session: Session,
 	db: Database,
 ) {
-	await loadOwnedPost(postSlug, session.user.id, db);
+	await loadOwnedPostForUpload(postSlug, session.user.id, db);
 	const storageEnv = getStorageEnv();
 	const key = buildObjectKey(storageEnv, {
 		kind: "post-image",
@@ -400,7 +419,7 @@ export async function commitPostImageUpload(
 	db: Database,
 	context: Context,
 ) {
-	const post = await loadOwnedPost(postSlug, session.user.id, db);
+	const post = await loadOwnedPostForUpload(postSlug, session.user.id, db);
 	const storageEnv = getStorageEnv();
 	const key = buildObjectKey(storageEnv, {
 		kind: "post-image",

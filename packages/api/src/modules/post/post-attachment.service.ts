@@ -249,12 +249,17 @@ export async function resolvePostAttachmentCreateData(
 		case "post": {
 			const attachedPost = await db.post.findUnique({
 				where: { slug: input.slug },
-				select: { id: true },
+				select: { id: true, allowShares: true },
 			});
 			if (!attachedPost) {
 				throw new ORPCError("NOT_FOUND", {
 					message: "Post not found",
 					data: { slug: input.slug },
+				});
+			}
+			if (!attachedPost.allowShares) {
+				throw new ORPCError("FORBIDDEN", {
+					message: "Sharing is turned off for that post.",
 				});
 			}
 			return {

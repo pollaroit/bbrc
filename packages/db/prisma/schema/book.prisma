@@ -18,23 +18,23 @@ model Book {
   slug String @unique
 
   /// @zod.min(1, "At least one author is required")
-  authors         String[]
+  authors           String[]
   /// @zod.min(1, "At least one page is required")
-  pages           Int
-  status          BookStatus @default(wishlist)
+  pages             Int
+  status            BookStatus @default(wishlist)
   /// @zod.min(0, "Open Library rating must be a non-negative number").max(5, "Open Library rating must be at most 5").nullish()
   openLibraryRating Float?     @map("open_library_rating")
   /// @zod.min(0, "Published in must be a non-negative number").refine((v) => v <= new Date().getFullYear(), { message: "Published in must be in the past" })
-  publishedIn     Int        @map("published_in")
+  publishedIn       Int        @map("published_in")
   /// @zod.min(0, "Average rating must be a non-negative number").max(5, "Average rating must be at most 5")
-  averageRating   Float?     @map("average_rating")
-  coverId         Int?       @map("cover_id")
+  averageRating     Float?     @map("average_rating")
+  coverId           Int?       @map("cover_id")
   /// @zod.max(4000, "Excerpt must be at most 4000 characters long").nullish()
-  excerpt         String?    @db.Text
+  excerpt           String?    @db.Text
 
   /// @zod.import(["import { isOpenLibraryOlid } from '@bbrc/shared'"])
   /// @zod.refine((v) => isOpenLibraryOlid(v), { message: "Invalid Open Library work ID" })
-  olid            String     @unique
+  olid String @unique
 
   subjectPeople String[] @default([]) @map("subject_people")
   subjectTimes  String[] @default([]) @map("subject_times")
@@ -42,13 +42,14 @@ model Book {
   /// Literary origin: modern sovereign states (ISO 3166-1 alpha-2), not story setting.
   countries     String[] @default([])
 
-  feedbacks Feedback[]
-  polls     PollOption[]
-  posts            Post[]
-  postAttachments  PostAttachment[]
-  favorites Favorite[]
-  shelfBooks ShelfBook[]
-  sittingsSelectedFor Sitting[] @relation("SittingSelectedBook")
+  feedbacks           Feedback[]
+  polls               PollOption[]
+  posts               Post[]
+  postAttachments     PostAttachment[]
+  favorites           Favorite[]
+  shelfBooks          ShelfBook[]
+  pollOptions         PostPollOption[]
+  sittingsSelectedFor Sitting[]           @relation("SittingSelectedBook")
   documents           Document[]
   reads               Read[]
   quiz                Quiz?

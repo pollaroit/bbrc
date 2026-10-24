@@ -17,6 +17,8 @@ export const NOTIFICATION_KINDS = [
 	"achievement_earned",
 	"shelf_invitation",
 	"shelf_collaboration",
+	"poll_vote",
+	"poll_ended",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -39,6 +41,8 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
 	achievement_earned: "Achievement earned",
 	shelf_invitation: "Shelf invitation",
 	shelf_collaboration: "Shelf collaboration",
+	poll_vote: "Votes on your poll",
+	poll_ended: "Poll ended",
 };
 
 export const NOTIFICATION_KIND_GROUPS = {
@@ -56,6 +60,8 @@ export const NOTIFICATION_KIND_GROUPS = {
 		"achievement_earned",
 		"shelf_invitation",
 		"shelf_collaboration",
+		"poll_vote",
+		"poll_ended",
 	] as const satisfies readonly NotificationKind[],
 	sitting: [
 		"sitting_poll_started",

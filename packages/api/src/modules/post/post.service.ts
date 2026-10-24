@@ -13,6 +13,11 @@ import { ORPCError } from "@orpc/server";
 import { assertNormalizedSocialContent } from "../../lib/rich-content";
 import { mergeWhereFragments } from "../../utils/searching";
 import { notifyMemberPosted } from "../notification/notification-triggers";
+import {
+	createPostPoll,
+	loadPollViews,
+	pollViewer,
+} from "../post-poll/post-poll.service";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import {
 	assertContentNotVisible,
@@ -217,12 +222,17 @@ function mapPostListRow(
 	row: PostListRow,
 	likedPostIds: Set<string>,
 	topCommentsByPostId: Map<string, PostListItem["topComments"]>,
+	polls: Map<string, PostListItem["poll"]>,
 ): PostListItem {
 	return {
 		slug: row.slug,
 		content: row.content,
 		imageUrl: row.imageUrl,
 		isSpoiler: row.isSpoiler,
+		allowLikes: row.allowLikes,
+		allowComments: row.allowComments,
+		allowShares: row.allowShares,
+		poll: polls.get(row.id) ?? null,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -239,16 +249,24 @@ function mapPostListRow(
 
 async function mapPostDetailRow(
 	row: PostDetailRow,
-	userId: string | null,
+	session: Session | null,
 	db: Database,
 ): Promise<GetPostBySlugOutput> {
-	const likedPostIds = await loadLikedPostIds([row.id], userId, db);
+	const userId = viewerUserId(session);
+	const [likedPostIds, polls] = await Promise.all([
+		loadLikedPostIds([row.id], userId, db),
+		loadPollViews(db, [row.id], pollViewer(session)),
+	]);
 
 	return {
 		slug: row.slug,
 		content: row.content,
 		imageUrl: row.imageUrl,
 		isSpoiler: row.isSpoiler,
+		allowLikes: row.allowLikes,
+		allowComments: row.allowComments,
+		allowShares: row.allowShares,
+		poll: polls.get(row.id) ?? null,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -318,17 +336,19 @@ async function fetchPostsBySlugsInOrder(
 
 async function hydratePostListPage(
 	rows: PostListRow[],
-	userId: string | null,
+	session: Session | null,
 	db: Database,
 ): Promise<PostListItem[]> {
 	const postIds = rows.map((row) => row.id);
-	const [likedPostIds, topCommentsByPostId] = await Promise.all([
+	const userId = viewerUserId(session);
+	const [likedPostIds, topCommentsByPostId, polls] = await Promise.all([
 		loadLikedPostIds(postIds, userId, db),
 		loadTopCommentsByPostId(postIds, userId, db),
+		loadPollViews(db, postIds, pollViewer(session)),
 	]);
 
 	return rows.map((row) =>
-		mapPostListRow(row, likedPostIds, topCommentsByPostId),
+		mapPostListRow(row, likedPostIds, topCommentsByPostId, polls),
 	);
 }
 
@@ -352,7 +372,6 @@ export async function getPostList(
 	session: Session | null,
 ): Promise<GetPostListOutput> {
 	const searching = postListSearching.from(input);
-	const userId = viewerUserId(session);
 	const limit = input.limit ?? 10;
 	const overfetch = limit + 1;
 	const { feedSort, feedRange } = resolveFeedMode(input);
@@ -391,7 +410,7 @@ export async function getPostList(
 				: null;
 
 		return {
-			items: await hydratePostListPage(rows, userId, db),
+			items: await hydratePostListPage(rows, session, db),
 			metadata: listPageMetadata({
 				limit,
 				hasNextPage: ranked.length > limit,
@@ -430,7 +449,7 @@ export async function getPostList(
 			: null;
 
 	return {
-		items: await hydratePostListPage(pageRows, userId, db),
+		items: await hydratePostListPage(pageRows, session, db),
 		metadata: listPageMetadata({
 			limit,
 			hasNextPage,
@@ -469,7 +488,7 @@ export async function getPostBySlug(
 		{ slug },
 	);
 
-	return mapPostDetailRow(post, viewerUserId(session), db);
+	return mapPostDetailRow(post, session, db);
 }
 
 function resolveCreateAttachment(
@@ -494,6 +513,12 @@ export async function createPost(
 	const content = assertNormalizedSocialContent(input.content);
 	const attachmentInput = resolveCreateAttachment(input);
 
+	if (input.poll && attachmentInput) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "A post with a poll cannot have another attachment.",
+		});
+	}
+
 	const result = await db.$transaction(async (tx) => {
 		const slug = await generatePostSlug(content, tx);
 
@@ -501,12 +526,19 @@ export async function createPost(
 			data: {
 				content,
 				isSpoiler: input.isSpoiler ?? false,
+				allowLikes: input.allowLikes ?? true,
+				allowComments: input.allowComments ?? true,
+				allowShares: input.allowShares ?? true,
 				slug,
 				authorId: userId,
 				attachedBookId: null,
 			},
 			select: { id: true, slug: true },
 		});
+
+		if (input.poll) {
+			await createPostPoll(tx, post.id, userId, input.poll);
+		}
 
 		const attachedBookId = await syncPostAttachment(
 			post.id,
@@ -537,7 +569,13 @@ export async function updatePost(
 ): Promise<UpdatePostOutput> {
 	const post = await db.post.findUnique({
 		where: { slug: input.slug },
-		select: { id: true, authorId: true, content: true },
+		select: {
+			id: true,
+			authorId: true,
+			content: true,
+			imageUrl: true,
+			poll: { select: { id: true } },
+		},
 	});
 
 	if (!post) {
@@ -548,6 +586,12 @@ export async function updatePost(
 	}
 
 	assertPostAuthor(post, userId);
+
+	if (post.poll && input.attachment) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "A post with a poll cannot have another attachment.",
+		});
+	}
 
 	const normalizedContent =
 		input.content != null
@@ -578,6 +622,15 @@ export async function updatePost(
 				...(normalizedContent != null ? { content: normalizedContent } : {}),
 				...(input.isSpoiler !== undefined
 					? { isSpoiler: input.isSpoiler }
+					: {}),
+				...(input.allowLikes !== undefined
+					? { allowLikes: input.allowLikes }
+					: {}),
+				...(input.allowComments !== undefined
+					? { allowComments: input.allowComments }
+					: {}),
+				...(input.allowShares !== undefined
+					? { allowShares: input.allowShares }
 					: {}),
 				...(contentChanged ? { editedAt: new Date() } : {}),
 				...(attachedBookId !== undefined

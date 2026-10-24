@@ -76,13 +76,19 @@ async function resolvePostTarget(
 ): Promise<LikeTarget> {
 	const post = await db.post.findUnique({
 		where: { slug: postSlug },
-		select: { id: true },
+		select: { id: true, allowLikes: true },
 	});
 
 	if (!post) {
 		throw new ORPCError("NOT_FOUND", {
 			message: "Post not found",
 			data: { slug: postSlug },
+		});
+	}
+
+	if (!post.allowLikes) {
+		throw new ORPCError("FORBIDDEN", {
+			message: "Likes are turned off for this post.",
 		});
 	}
 
