@@ -97,6 +97,8 @@ model User {
   pollBallots PostPollBallot[] @relation("PostPollBallotVoter")
 
   sittingsCreated            Sitting[]                @relation("SittingCreatedBy")
+  viewsMade                  View[]                   @relation("ViewViewer")
+  viewerSeen                 ViewerSeen[]             @relation("ViewerSeenUser")
   sittingInviteLinksCreated  SittingInviteLink[]      @relation("SittingInviteLinkCreator")
   sittingInviteLinkVisits    SittingInviteLinkVisit[] @relation("SittingInviteLinkVisitor")
   sittingInvitationsReceived SittingInvitation[]      @relation("SittingInvitationInvitee")

@@ -40,3 +40,4 @@ export * from "./user-profile";
 export * from "./user-stats";
 export * from "./username";
 export * from "./username-update";
+export * from "./views";

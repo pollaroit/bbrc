@@ -28,6 +28,7 @@ import { shelfRouter } from "./modules/shelf/shelf.router";
 import { sittingRouter } from "./modules/sitting/sitting.router";
 import { storageRouter } from "./modules/storage/storage.router";
 import { userRouter } from "./modules/user/user.router";
+import { viewRouter } from "./modules/view/view.router";
 import { xpRouter } from "./modules/xp/xp.router";
 
 export const appRouter = {
@@ -58,6 +59,7 @@ export const appRouter = {
 	storage: storageRouter,
 	sitting: sittingRouter,
 	user: userRouter,
+	view: viewRouter,
 	rp: rpRouter,
 	xp: xpRouter,
 };

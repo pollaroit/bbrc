@@ -1,0 +1,152 @@
+/// What kind of thing was viewed. The id is stored as a plain string, with no
+/// foreign key, so one table serves every kind (a nightly job removes rows
+/// whose item was deleted).
+enum ViewResource {
+  book
+  post
+  shelf
+  review
+  user
+
+  @@map("view_resource")
+}
+
+/// `detail` is opening the item's own page; `list` is seeing it in a list.
+enum ViewKind {
+  detail
+  list
+
+  @@map("view_kind")
+}
+
+/// The place the viewer came from.
+enum ViewSource {
+  feed
+  profile
+  shelves
+  books
+  people
+  book_reviews
+  sitting_reviews
+  sitting
+  search
+  notification
+  external
+  direct
+  other
+
+  @@map("view_source")
+}
+
+/// One counted view. Kept for 90 days, then rolled into `ViewDaily`.
+/// Bots are never stored. Views by the owner are stored but flagged.
+model View {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  resource   ViewResource
+  resourceId String       @map("resource_id")
+  kind       ViewKind
+  source     ViewSource   @default(other)
+
+  /// Set when the viewer was signed in.
+  viewerUserId String? @map("viewer_user_id")
+  viewer       User?   @relation("ViewViewer", fields: [viewerUserId], references: [id], onDelete: SetNull)
+
+  /// First-party cookie id (or a hash of IP and user agent when cookies are off).
+  visitorId String @map("visitor_id")
+
+  /// The owner of the item looked at their own thing: not counted in insights.
+  isOwner Boolean @default(false) @map("is_owner")
+
+  ip           String?
+  userAgent    String? @map("user_agent")
+  /// Two-letter country code from the host, when known.
+  country      String?
+  device       String?
+  browser      String?
+  os           String?
+  /// Host of the page that linked here, when it was another website.
+  referrerHost String? @map("referrer_host")
+
+  @@index([resource, resourceId, createdAt])
+  @@index([createdAt])
+  @@index([visitorId, createdAt])
+  @@index([viewerUserId, createdAt])
+  @@map("view")
+}
+
+/// Views that left the 90-day window, summed per day. Views only: they add up
+/// across days and breakdowns.
+model ViewDaily {
+  /// Day in the club's time zone.
+  day        DateTime     @db.Date
+  resource   ViewResource
+  resourceId String       @map("resource_id")
+  kind       ViewKind
+  source     ViewSource
+  isMember   Boolean      @map("is_member")
+  /// "unknown" when not known, so the column can be part of the key.
+  device     String
+  country    String
+  views      Int
+
+  @@id([day, resource, resourceId, kind, source, isMember, device, country])
+  @@index([resource, resourceId, day])
+  @@map("view_daily")
+}
+
+/// Distinct viewers per day (they do not add up across days, so they live apart).
+model ViewDailyUnique {
+  day            DateTime     @db.Date
+  resource       ViewResource
+  resourceId     String       @map("resource_id")
+  kind           ViewKind
+  memberViewers  Int          @map("member_viewers")
+  guestViewers   Int          @map("guest_viewers")
+  views          Int
+
+  @@id([day, resource, resourceId, kind])
+  @@index([resource, resourceId, day])
+  @@map("view_daily_unique")
+}
+
+/// Which signed-in members have looked at an item, forever: gives exact unique
+/// members, new vs returning and the top viewers past the 90 days.
+model ViewerSeen {
+  resource     ViewResource
+  resourceId   String       @map("resource_id")
+  userId       String       @map("user_id")
+  user         User         @relation("ViewerSeenUser", fields: [userId], references: [id], onDelete: Cascade)
+  firstSeenAt  DateTime     @map("first_seen_at")
+  lastSeenAt   DateTime     @map("last_seen_at")
+  views        Int          @default(1)
+
+  @@id([resource, resourceId, userId])
+  @@index([userId])
+  @@index([resource, resourceId, lastSeenAt])
+  @@map("viewer_seen")
+}
+
+/// Running totals for quick public counts (never counts the owner or bots).
+model ViewTotal {
+  resource    ViewResource
+  resourceId  String       @map("resource_id")
+  /// Opens of the item's own page.
+  opens       Int          @default(0)
+  /// Times it showed up in a list.
+  impressions Int          @default(0)
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@id([resource, resourceId])
+  @@map("view_total")
+}
+
+/// Bot requests that were dropped, per day (for the admin dashboard).
+model ViewBotDay {
+  day   DateTime @id @db.Date
+  count Int      @default(0)
+
+  @@map("view_bot_day")
+}

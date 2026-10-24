@@ -1,5 +1,6 @@
 import { sweepAchievements } from "@bbrc/api/modules/achievement/achievement.service";
 import { sweepEndedPolls } from "@bbrc/api/modules/post-poll/post-poll.service";
+import { sweepViews } from "@bbrc/api/modules/view/view-maintenance.service";
 import { NextResponse } from "next/server";
 import { isCronRequestAuthorized } from "@/lib/qstash/verify-cron-request";
 import { db } from "@/services";
@@ -8,10 +9,12 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 /**
- * Daily sweep (schedule it in QStash): also tells people about polls that ended
- * with nobody looking, and awards what only time or other members
- * can trigger, such as anniversaries, likes received, finished years and
- * approved documents. Safe to run any time: awards are never duplicated.
+ * Daily sweep (schedule it in QStash). It awards what only time or other
+ * members can trigger (anniversaries, likes received, finished years, approved
+ * documents), tells people about polls that ended with nobody looking, and runs
+ * the views chores: summing old views into daily rows, removing views of
+ * deleted items and the Monday views digest. Safe to run any time: awards and
+ * notices are never duplicated.
  */
 export async function POST(request: Request) {
 	const bodyText = await request.text();
@@ -21,12 +24,15 @@ export async function POST(request: Request) {
 	}
 
 	try {
+		// `sweepViews` catches its own failures, so it never blocks the rest.
+		const views = await sweepViews(db);
 		const result = await sweepAchievements(db);
 		const endedPolls = await sweepEndedPolls(db);
 		return NextResponse.json({
 			at: new Date().toISOString(),
 			...result,
 			endedPolls,
+			views,
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "Sweep failed";
