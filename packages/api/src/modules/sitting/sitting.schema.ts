@@ -33,6 +33,10 @@ import {
 	sittingListSearching,
 	sittingListSorting,
 } from "./sitting.listing";
+import {
+	CreateSittingJoinConfigSchema,
+	SittingJoinTypeSchema,
+} from "./sitting-join.schema";
 
 /** Deadlines read from the DB (create/update inputs still use Prisma “future” refines). */
 export const SittingStoredDeadlineSchema = zod.coerce.date();
@@ -185,6 +189,8 @@ function refinePollConfig(
 export const CreateSittingInputSchema = zod
 	.object({
 		pollDeadline: PollSchema.shape.deadline.optional(),
+		/** Who can join by themselves, and when. Defaults: public, voting and reading open. */
+		join: CreateSittingJoinConfigSchema.optional(),
 		participantUserIds: zod
 			.array(UserSchema.shape.id)
 			.min(1, "At least one participant is required"),
@@ -246,6 +252,11 @@ export const getSittingListFields = {
 	status: true,
 	deadline: true,
 	createdAt: true,
+	readingStartedAt: true,
+	joinType: true,
+	joinInVoting: true,
+	joinInReading: true,
+	joinReadingUntilPercent: true,
 	selectedBook: {
 		select: {
 			slug: true,
@@ -290,6 +301,9 @@ const SittingListItemSchema = SittingSchema.pick({
 		.nullable(),
 	/** The signed-in viewer's progress, or null when they are not a participant. */
 	viewerProgress: ProgressSchema.nullable(),
+	joinType: SittingJoinTypeSchema,
+	/** Anyone can join this one right now with the Join button. */
+	joinOpen: zod.boolean(),
 });
 
 export const GetSittingListOutputSchema = CursorPaginationOutputSchema(

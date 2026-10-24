@@ -348,6 +348,73 @@ function PostsSection() {
 	);
 }
 
+function SittingsSection() {
+	const { data: session } = authClient.useSession();
+	const signedIn = Boolean(session?.user);
+
+	const preferenceQuery = useQuery({
+		...orpc.sitting.join.preferences.get.queryOptions(),
+		enabled: signedIn,
+	});
+	const key = orpc.sitting.join.preferences.get.queryKey();
+	const mutation = useMutation(
+		orpc.sitting.join.preferences.set.mutationOptions({
+			onMutate: async (variables) => {
+				await queryClient.cancelQueries({ queryKey: key });
+				const previous = queryClient.getQueryData(key);
+				queryClient.setQueryData(key, variables);
+				return { previous };
+			},
+			onError: (_error, _variables, context) => {
+				queryClient.setQueryData(key, context?.previous);
+				toast.error("Could not save that setting.");
+			},
+			onSettled: () => {
+				void queryClient.invalidateQueries({ queryKey: key });
+			},
+		}),
+	);
+	const current = {
+		allowAutoAdd: preferenceQuery.data?.allowAutoAdd ?? true,
+		allowInvites: preferenceQuery.data?.allowInvites ?? true,
+	};
+	const hint = (text: string) =>
+		signedIn ? text : "Sign in to change this one.";
+
+	return (
+		<PreferencesSection
+			id="sittings"
+			title="Sittings"
+			description="How organisers can bring you into a sitting."
+		>
+			<SwitchRow
+				id="pref-sitting-auto-add"
+				label="Allow organisers to add me to sittings"
+				hint={hint(
+					"When this is off, organisers cannot add you directly. They can invite you instead, and you choose whether to accept. You can still join on your own.",
+				)}
+				checked={current.allowAutoAdd}
+				disabled={!signedIn || preferenceQuery.isPending}
+				onChange={(allowAutoAdd) =>
+					mutation.mutate({ ...current, allowAutoAdd })
+				}
+			/>
+			<SwitchRow
+				id="pref-sitting-invites"
+				label="Allow organisers to invite me to sittings"
+				hint={hint(
+					"When this is off, organisers cannot send you invitations either. You can still join with an invitation link or the Join button.",
+				)}
+				checked={current.allowInvites}
+				disabled={!signedIn || preferenceQuery.isPending}
+				onChange={(allowInvites) =>
+					mutation.mutate({ ...current, allowInvites })
+				}
+			/>
+		</PreferencesSection>
+	);
+}
+
 function TimeSection() {
 	const { time } = usePreferences();
 	const sample = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
@@ -497,6 +564,7 @@ const sections = [
 	{ id: "shelves", label: "Shelves" },
 	{ id: "polls", label: "Polls" },
 	{ id: "posts", label: "Posts" },
+	{ id: "sittings", label: "Sittings" },
 	{ id: "time", label: "Time and format" },
 	{ id: "search", label: "Search" },
 	{ id: "sync", label: "Sync and reset" },
@@ -535,6 +603,7 @@ export function PreferencesForm() {
 			<ShelvesSection />
 			<PollsSection />
 			<PostsSection />
+			<SittingsSection />
 			<TimeSection />
 			<SearchSection />
 			<SyncSection />

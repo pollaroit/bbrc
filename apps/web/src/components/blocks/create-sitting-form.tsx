@@ -1,6 +1,7 @@
 "use client";
 
 import type { PreviewSittingPollOptionsOutput } from "@bbrc/api/modules/sitting/sitting.schema";
+import { SITTING_JOIN_TYPE_LABELS } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	keepPreviousData,
@@ -21,6 +22,7 @@ import { CreateSittingPollFilters } from "@/components/blocks/create-sitting-pol
 import { CreateSittingPollReview } from "@/components/blocks/create-sitting-poll-review";
 import { CreateSittingSteps } from "@/components/blocks/create-sitting-steps";
 import { ShelfEditorSection } from "@/components/blocks/shelf-editor-shell";
+import { SittingJoinSettingsFields } from "@/components/blocks/sitting-join-settings-fields";
 import { useAppForm } from "@/hooks/use-app-form";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
@@ -108,6 +110,7 @@ export function CreateSittingForm() {
 
 	const selectedIds =
 		useWatch({ control: form.control, name: "participantUserIds" }) ?? [];
+	const joinConfig = useWatch({ control: form.control, name: "join" });
 
 	const previewMutation = useMutation(
 		orpc.sitting.previewSittingPollOptions.mutationOptions({
@@ -233,6 +236,18 @@ export function CreateSittingForm() {
 					</ShelfEditorSection>
 
 					<ShelfEditorSection
+						title="Joining"
+						description="Decide whether other members can join this sitting by themselves, and until when. The people you pick above are in either way."
+					>
+						<SittingJoinSettingsFields
+							value={joinConfig ?? defaultCreateSittingFormValues.join}
+							onChange={(next) => {
+								form.setValue("join", next, { shouldDirty: true });
+							}}
+						/>
+					</ShelfEditorSection>
+
+					<ShelfEditorSection
 						title="Voting closes"
 						description="Voting can end at 2PM, 5PM, 8PM or 11PM club time. The reading deadline is set from the winning book when reading starts."
 					>
@@ -278,6 +293,13 @@ export function CreateSittingForm() {
 						</SummaryRow>
 						<SummaryRow label="Voting closes">
 							{formatDateTime(pollDeadline)}
+						</SummaryRow>
+						<SummaryRow label="Joining">
+							{
+								SITTING_JOIN_TYPE_LABELS[
+									(joinConfig ?? defaultCreateSittingFormValues.join).joinType
+								].label
+							}
 						</SummaryRow>
 						<SummaryRow label="Book pool">
 							{pool ? (

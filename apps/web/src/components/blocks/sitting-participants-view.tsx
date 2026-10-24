@@ -1,6 +1,7 @@
 "use client";
 
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
+import type { ParticipantJoinInfo } from "@bbrc/api/modules/sitting/sitting-join.schema";
 import {
 	Avatar,
 	AvatarFallback,
@@ -8,6 +9,7 @@ import {
 } from "@bbrc/ui/components/avatar";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
+import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
@@ -28,6 +30,8 @@ import type { FieldLabels } from "@/lib/listing/labels";
 import { sortDirectionParser } from "@/lib/listing/parsers";
 import { formatPollChipRankLabel } from "@/lib/poll-chip-rank-label";
 import { cn } from "@/lib/utils";
+
+import { orpc } from "@/utils/orpc";
 
 type Sitting = GetSittingBySlugOutput;
 type Participant = Sitting["participants"][number];
@@ -61,7 +65,25 @@ const paramParsers = {
 	sortDirection: sortDirectionParser.withDefault("asc"),
 };
 
+type JoinInfo = ParticipantJoinInfo["items"][number];
+
+const JOIN_SOURCE_LABELS: Record<JoinInfo["source"], string> = {
+	organiser: "Added by an organiser",
+	button: "Joined with the button",
+	link: "Joined with a link",
+	invitation: "Accepted an invitation",
+};
+
+function describeJoin(info: JoinInfo) {
+	const how =
+		info.source === "link" && info.linkLabel
+			? `Joined with the link “${info.linkLabel}”`
+			: JOIN_SOURCE_LABELS[info.source];
+	return `${how} · ${new Date(info.joinedAt).toLocaleDateString(undefined, { dateStyle: "medium" })}`;
+}
+
 type RowProps = {
+	joinInfo?: JoinInfo;
 	sitting: Sitting;
 	participant: Participant;
 	viewerUserId: string;
@@ -72,6 +94,7 @@ type RowProps = {
 };
 
 function ParticipantRow({
+	joinInfo,
 	sitting,
 	participant,
 	viewerUserId,
@@ -126,6 +149,11 @@ function ParticipantRow({
 						@{participant.username} · {participant.rpLevel.label} ·{" "}
 						{participant.rp.toLocaleString()} RP
 					</p>
+					{joinInfo ? (
+						<p className="text-muted-foreground text-xs">
+							{describeJoin(joinInfo)}
+						</p>
+					) : null}
 					{chipLabel ? (
 						<p className="font-medium text-xs">{chipLabel}</p>
 					) : null}
@@ -217,6 +245,15 @@ export function SittingParticipantsView({
 	const [params, setParams] = useQueryStates(paramParsers);
 	const { canRemove, requestRemove, removeDialog } =
 		useParticipantRemoveDialog(sitting);
+	const joinInfo = useQuery({
+		...orpc.sitting.join.participantJoinInfo.queryOptions({
+			input: { sittingSlug: sitting.slug },
+		}),
+		enabled: isAdmin,
+	});
+	const joinInfoByUsername = new Map(
+		(joinInfo.data?.items ?? []).map((item) => [item.username, item]),
+	);
 
 	const isVoting = sitting.status === "voting";
 	const counts = sitting.stats.progressCounts;
@@ -352,6 +389,7 @@ export function SittingParticipantsView({
 			{me ? (
 				<ul className="border border-foreground/30 bg-muted/20">
 					<ParticipantRow
+						joinInfo={joinInfoByUsername.get(me.username)}
 						sitting={sitting}
 						participant={me}
 						viewerUserId={viewerUserId}
@@ -392,6 +430,7 @@ export function SittingParticipantsView({
 				<ul className="divide-y divide-border border border-border">
 					{visible.map((participant) => (
 						<ParticipantRow
+							joinInfo={joinInfoByUsername.get(participant.username)}
 							key={participant.userId}
 							sitting={sitting}
 							participant={participant}

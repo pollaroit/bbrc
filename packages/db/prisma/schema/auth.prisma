@@ -25,6 +25,10 @@ model User {
   allowPollOptions      Boolean    @default(true) @map("allow_poll_options")
   /// Other members may attach this member to their posts.
   allowPostAttachment   Boolean    @default(true) @map("allow_post_attachment")
+  /// Organisers may add this member to a sitting without asking.
+  allowSittingAutoAdd   Boolean    @default(true) @map("allow_sitting_auto_add")
+  /// Organisers may send this member an invitation to a sitting.
+  allowSittingInvites   Boolean    @default(true) @map("allow_sitting_invites")
   /// Look and feel (palette, fonts, sizes) plus display preferences; validated by `normalizePreferences`.
   preferences           Json?
   /// @zod.email("Invalid email address")
@@ -89,10 +93,16 @@ model User {
   shelfActivities           ShelfActivity[]     @relation("ShelfActivityActor")
   shelfActivityTargets      ShelfActivity[]     @relation("ShelfActivityTarget")
 
-  pollVotes           PostPollVote[]   @relation("PostPollVoter")
-  pollBallots         PostPollBallot[] @relation("PostPollBallotVoter")
-  pollOptionsAdded    PostPollOption[] @relation("PostPollOptionAddedBy")
-  pollOptionsAsOption PostPollOption[] @relation("PostPollOptionUser")
+  pollVotes   PostPollVote[]   @relation("PostPollVoter")
+  pollBallots PostPollBallot[] @relation("PostPollBallotVoter")
+
+  sittingsCreated            Sitting[]                @relation("SittingCreatedBy")
+  sittingInviteLinksCreated  SittingInviteLink[]      @relation("SittingInviteLinkCreator")
+  sittingInviteLinkVisits    SittingInviteLinkVisit[] @relation("SittingInviteLinkVisitor")
+  sittingInvitationsReceived SittingInvitation[]      @relation("SittingInvitationInvitee")
+  sittingInvitationsSent     SittingInvitation[]      @relation("SittingInvitationInviter")
+  pollOptionsAdded           PostPollOption[]         @relation("PostPollOptionAddedBy")
+  pollOptionsAsOption        PostPollOption[]         @relation("PostPollOptionUser")
 
   @@map("user")
 }

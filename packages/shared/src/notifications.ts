@@ -19,6 +19,10 @@ export const NOTIFICATION_KINDS = [
 	"shelf_collaboration",
 	"poll_vote",
 	"poll_ended",
+	"sitting_member_joined",
+	"sitting_invitation",
+	"sitting_added",
+	"sitting_welcome",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -43,6 +47,10 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
 	shelf_collaboration: "Shelf collaboration",
 	poll_vote: "Votes on your poll",
 	poll_ended: "Poll ended",
+	sitting_member_joined: "Someone joined your sitting",
+	sitting_invitation: "Sitting invitation",
+	sitting_added: "Added to a sitting",
+	sitting_welcome: "Welcome to a sitting",
 };
 
 export const NOTIFICATION_KIND_GROUPS = {
@@ -62,12 +70,16 @@ export const NOTIFICATION_KIND_GROUPS = {
 		"shelf_collaboration",
 		"poll_vote",
 		"poll_ended",
+		"sitting_invitation",
+		"sitting_added",
+		"sitting_welcome",
 	] as const satisfies readonly NotificationKind[],
 	sitting: [
 		"sitting_poll_started",
 		"sitting_poll_closed",
 		"participant_finished_book",
 		"sitting_finished",
+		"sitting_member_joined",
 	] as const satisfies readonly NotificationKind[],
 	admin: [
 		"book_requested",
@@ -81,6 +93,7 @@ export const NOTIFICATION_KINDS_PUSH_ENABLED_BY_DEFAULT = [
 	"comment_on_your_post",
 	"reply_to_your_comment",
 	"shelf_invitation",
+	"sitting_invitation",
 	"sitting_poll_started",
 	"sitting_poll_closed",
 	"sitting_finished",

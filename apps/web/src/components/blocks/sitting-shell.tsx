@@ -7,6 +7,7 @@ import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SittingAdminPanel } from "@/components/blocks/sitting-admin-panel";
 import { SittingHubNav } from "@/components/blocks/sitting-hub-nav";
+import { SittingJoinControls } from "@/components/blocks/sitting-join-controls";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
 import { SittingViewerAction } from "@/components/blocks/sitting-viewer-action";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
@@ -123,6 +124,12 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 						</p>
 					</div>
 				</div>
+
+				<SittingJoinControls
+					sittingSlug={sitting.slug}
+					status={sitting.status}
+					deadline={closesAt}
+				/>
 
 				<SittingViewerAction
 					sittingSlug={sitting.slug}

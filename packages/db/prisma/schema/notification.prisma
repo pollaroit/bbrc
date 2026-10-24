@@ -18,6 +18,10 @@ enum NotificationKind {
   shelf_collaboration
   poll_vote
   poll_ended
+  sitting_member_joined
+  sitting_invitation
+  sitting_added
+  sitting_welcome
 }
 
 model Notification {

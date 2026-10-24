@@ -4,6 +4,15 @@ enum SittingStatus {
   finished // reading finished, participants submit their feedback
 }
 
+enum SittingJoinType {
+  /// Anyone can join and sees a Join button.
+  public
+  /// Only people with an invitation link can join.
+  unlisted
+  /// Only the organisers add people.
+  private
+}
+
 model Sitting {
   /// @zod.uuid("Invalid UUID")
   id        String   @id @default(uuid())
@@ -26,11 +35,24 @@ model Sitting {
   /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
   slug String @unique
 
+  joinType                SittingJoinType @default(public) @map("join_type")
+  /// People can join by themselves while voting is open.
+  joinInVoting            Boolean         @default(true) @map("join_in_voting")
+  /// People can join by themselves while reading is open...
+  joinInReading           Boolean         @default(true) @map("join_in_reading")
+  /// ...until this share (10-100) of the reading period has passed.
+  joinReadingUntilPercent Int             @default(50) @map("join_reading_until_percent")
+
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation("SittingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
   /// @zod.uuid("Invalid book id")
   selectedBookId String? @map("selected_book_id")
   selectedBook   Book?   @relation("SittingSelectedBook", fields: [selectedBookId], references: [id], onDelete: SetNull)
 
   participants    Participation[]
+  inviteLinks     SittingInviteLink[]
+  invitations     SittingInvitation[]
   poll            Poll?
   rpEvents        RPEvent[]
   postAttachments PostAttachment[]
@@ -62,7 +84,7 @@ model Feedback {
 
   isSpoiler Boolean @default(false) @map("is_spoiler")
   /// @zod.min(0, "Rating must be a non-negative number").max(5, "Rating must be at most 5")
-  rating Float
+  rating    Float
 
   likes           Like[]
   comments        Comment[]
