@@ -1,5 +1,5 @@
 import type { Database } from "@bbrc/db";
-import { isbnPair } from "@bbrc/shared";
+import { isbnPair, newMemberEditionPublicId } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import {
@@ -174,8 +174,19 @@ export async function createBookEdition(
 	await assertNoDuplicate(db, book.id, isbn.isbn13);
 	if (input.coverUrl) assertOwnEditionCoverUrl(input.coverUrl);
 
+	let publicId = newMemberEditionPublicId();
+	for (let attempt = 0; attempt < 5; attempt++) {
+		const taken = await db.bookEdition.findUnique({
+			where: { publicId },
+			select: { id: true },
+		});
+		if (!taken) break;
+		publicId = newMemberEditionPublicId();
+	}
+
 	const created = await db.bookEdition.create({
 		data: {
+			publicId,
 			bookId: book.id,
 			createdById: actor.id,
 			title: input.title ?? null,

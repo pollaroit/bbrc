@@ -58,6 +58,8 @@ model Book {
   feedbacks           Feedback[]
   readings            Reading[]
   editions            BookEdition[]
+  editionTombstones   EditionTombstone[]
+  editionSnapshots    EditionSnapshot[]
   polls               PollOption[]
   posts               Post[]
   postAttachments     PostAttachment[]

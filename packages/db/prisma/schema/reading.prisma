@@ -24,6 +24,8 @@ model Reading {
   editionCoverId Int?        @map("edition_cover_id")
   /// @zod.max(200).nullish()
   editionLabel   String?     @map("edition_label")
+  /// The cover of a member edition at the time, so the card still has it if the edition is removed.
+  editionCoverUrl String?    @map("edition_cover_url")
   bookEditionId String?      @map("book_edition_id")
   bookEdition   BookEdition? @relation(fields: [bookEditionId], references: [id], onDelete: SetNull)
 
@@ -78,6 +80,8 @@ enum BookEditionStatus {
 model BookEdition {
   /// @zod.uuid("Invalid UUID")
   id        String   @id @default(uuid())
+  /// Short address used in URLs (`/books/dune/editions/m-7k2f9x9a`); the "m-" is added when it is shown.
+  publicId  String   @unique @map("public_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -118,11 +122,48 @@ model BookEdition {
   verifiedBy   User?             @relation("BookEditionVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
   verifiedAt   DateTime?         @map("verified_at")
 
+  /// An Open Library edition (OL…M) this one is the same as; readers of both then share one page.
+  openLibraryOlid String? @map("open_library_olid")
+
   readings Reading[]
   reads    Read[]
 
   @@unique([bookId, isbn13])
+  @@index([openLibraryOlid])
   @@index([bookId])
   @@index([createdById, createdAt])
   @@map("book_edition")
+}
+
+/// An address that used to be a member edition: it was deleted or merged, so the old
+/// link can say so (or redirect) instead of showing "not found".
+model EditionTombstone {
+  publicId String   @id @map("public_id")
+  bookId   String   @map("book_id")
+  book     Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  removedAt DateTime @default(now()) @map("removed_at")
+  /// Where the old address goes now (an Open Library edition id or `m-…`), when it was merged.
+  redirectKey String? @map("redirect_key")
+
+  @@index([bookId])
+  @@map("edition_tombstone")
+}
+
+/// What we know about an Open Library edition that members read, so its label and
+/// numbers survive Open Library being slow or changing the record.
+model EditionSnapshot {
+  olid          String   @id
+  bookId        String   @map("book_id")
+  book          Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  title         String?
+  language      String?
+  pages         Int?
+  coverId       Int?     @map("cover_id")
+  publisher     String?
+  publishedYear Int?     @map("published_year")
+  format        String?
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([bookId])
+  @@map("edition_snapshot")
 }
