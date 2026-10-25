@@ -192,7 +192,7 @@ export const bookRouter = {
 		.input(UpdateBookInputSchema)
 		.output(UpdateBookOutputSchema)
 		.handler(async ({ input, context }) => {
-			const book = await updateBook(input, context.db);
+			const book = await updateBook(input, context.db, context.session.user.id);
 			revalidateBookIsr(context, book.slug);
 			return book;
 		}),

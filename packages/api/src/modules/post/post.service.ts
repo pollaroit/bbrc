@@ -792,3 +792,49 @@ export async function setPostAttachmentPreference(
 	});
 	return { allowPostAttachment: user.allowPostAttachment };
 }
+
+/**
+ * Posts matching a `where`, newest first, in the same shape as the feed (for pages
+ * that show "posts about X", such as an author's posts tab). Members who are hidden
+ * never show.
+ */
+export async function getPostListForWhere(
+	input: { where: Prisma.PostWhereInput; limit: number; cursor?: string },
+	db: Database,
+	session: Session | null,
+): Promise<GetPostListOutput> {
+	const feedCursor = input.cursor ? decodePostFeedCursor(input.cursor) : null;
+	const recentCursor = feedCursor?.kind === "recent" ? feedCursor : null;
+
+	const rows = await db.post.findMany({
+		take: input.limit + 1,
+		where: mergeWhereFragments<Prisma.PostWhereInput>(
+			input.where,
+			{ author: visibleOnSiteUserWhere },
+			recentCursor ? buildRecentCursorWhere(recentCursor) : {},
+		),
+		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
+		select: postListSelect,
+	});
+
+	const hasNextPage = rows.length > input.limit;
+	const pageRows = hasNextPage ? rows.slice(0, input.limit) : rows;
+	const lastRow = pageRows.at(-1);
+
+	return {
+		items: await hydratePostListPage(pageRows, session, db),
+		metadata: listPageMetadata({
+			limit: input.limit,
+			hasNextPage,
+			cursor: input.cursor,
+			nextCursor:
+				hasNextPage && lastRow
+					? encodePostFeedCursor({
+							kind: "recent",
+							createdAt: lastRow.createdAt.toISOString(),
+							slug: lastRow.slug,
+						})
+					: null,
+		}),
+	};
+}

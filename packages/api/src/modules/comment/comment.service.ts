@@ -559,3 +559,44 @@ export async function deleteComment(
 
 	return { slug: input.slug, deleted: true };
 }
+
+/**
+ * Comments matching a `where`, newest first, in the list shape (for pages that show
+ * "comments on posts about X"). The cursor is the number of comments already shown.
+ */
+export async function getCommentListForWhere(
+	input: { where: Prisma.CommentWhereInput; limit: number; cursor?: string },
+	db: Database,
+	session: Session | null,
+): Promise<GetCommentListOutput> {
+	const parsed = input.cursor ? Number.parseInt(input.cursor, 10) : 0;
+	const skip = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+
+	const rows = await db.comment.findMany({
+		skip,
+		take: input.limit + 1,
+		where: mergeWhereFragments<Prisma.CommentWhereInput>(input.where, {
+			author: visibleOnSiteUserWhere,
+		}),
+		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
+		select: commentListSelect,
+	});
+
+	const hasNextPage = rows.length > input.limit;
+	const pageRows = hasNextPage ? rows.slice(0, input.limit) : rows;
+	const likedCommentIds = await loadLikedCommentIds(
+		pageRows.map((row) => row.id),
+		viewerUserId(session),
+		db,
+	);
+
+	return {
+		items: pageRows.map((row) => mapCommentListRow(row, likedCommentIds)),
+		metadata: {
+			limit: input.limit,
+			hasNextPage,
+			hasPreviousPage: skip > 0,
+			nextCursor: hasNextPage ? String(skip + pageRows.length) : null,
+		},
+	};
+}

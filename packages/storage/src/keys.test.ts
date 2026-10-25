@@ -48,6 +48,12 @@ describe("buildObjectKey", () => {
 		).toBe("production/books/editions/abc.webp");
 	});
 
+	test("author photo", () => {
+		expect(
+			buildObjectKey("production", { kind: "author-photo", photoUid: "abc" }),
+		).toBe("production/authors/abc.webp");
+	});
+
 	test("feedback image", () => {
 		expect(
 			buildObjectKey("production", {

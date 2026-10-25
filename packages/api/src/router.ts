@@ -3,6 +3,8 @@ import type { RouterClient } from "@orpc/server";
 import { achievementRouter } from "./modules/achievement/achievement.router";
 import { adminRouter } from "./modules/admin/admin.router";
 import { authorRouter } from "./modules/author/author.router";
+import { authorAdminRouter } from "./modules/author-admin/author-admin.router";
+import { authorBackfillRouter } from "./modules/author-backfill/author-backfill.router";
 import { bookRouter } from "./modules/book/book.router";
 import { bookDiscoverRouter } from "./modules/book-discover/book-discover.router";
 import { bookEditionRouter } from "./modules/book-edition/book-edition.router";
@@ -13,6 +15,7 @@ import { editionRouter } from "./modules/edition/edition.router";
 import { factRouter } from "./modules/fact/fact.router";
 import { favoriteRouter } from "./modules/favorite/favorite.router";
 import { feedbackRouter } from "./modules/feedback/feedback.router";
+import { followRouter } from "./modules/follow/follow.router";
 import { goalRouter } from "./modules/goal/goal.router";
 import { healthRouter } from "./modules/health/health.router";
 import { leaderboardRouter } from "./modules/leaderboard/leaderboard.router";
@@ -40,6 +43,8 @@ export const appRouter = {
 	achievement: achievementRouter,
 	admin: adminRouter,
 	author: authorRouter,
+	authorAdmin: authorAdminRouter,
+	authorBackfill: authorBackfillRouter,
 	health: healthRouter,
 	leaderboard: leaderboardRouter,
 	book: bookRouter,
@@ -52,6 +57,7 @@ export const appRouter = {
 	edition: editionRouter,
 	favorite: favoriteRouter,
 	feedback: feedbackRouter,
+	follow: followRouter,
 	goal: goalRouter,
 	globalSearch: globalSearchRouter,
 	like: likeRouter,
