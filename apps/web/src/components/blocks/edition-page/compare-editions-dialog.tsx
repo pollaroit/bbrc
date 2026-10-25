@@ -31,6 +31,14 @@ import { orpc } from "@/utils/orpc";
  *   used by the edition page: pick one or two others to compare with this one.
  */
 
+/** Header and footer stay put; only the middle scrolls, so the buttons are always on screen. */
+const DIALOG_SHELL =
+	"flex max-h-[90dvh] min-w-0 flex-col gap-3 overflow-hidden p-0 sm:max-w-3xl";
+const DIALOG_BODY =
+	"min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-4";
+const DIALOG_FOOTER =
+	"flex flex-wrap items-center justify-end gap-2 border-border border-t px-4 py-3";
+
 type Row = {
 	label: string;
 	value: (item: EditionSummary) => string;
@@ -67,22 +75,19 @@ function rowsFor(items: EditionSummary[]) {
 function EditionHead({
 	bookSlug,
 	item,
-	size = "w-16",
 }: {
 	bookSlug: string;
 	item: EditionSummary;
-	size?: string;
 }) {
 	const thumb = coverSrc(item.cover, "M");
 	return (
 		<Link
 			href={editionPath(bookSlug, item.key) as Route}
-			className="flex min-w-0 items-start gap-3 hover:bg-muted/40 sm:flex-col sm:gap-2"
+			className="flex min-w-0 flex-col items-start gap-1.5 hover:bg-muted/40"
 		>
 			<span
 				className={cn(
-					"relative block aspect-2/3 shrink-0",
-					size,
+					"relative block aspect-2/3 w-10 shrink-0 sm:w-14",
 					bookCoverFrameClassName,
 				)}
 			>
@@ -92,17 +97,17 @@ function EditionHead({
 						alt=""
 						fill
 						className="object-cover"
-						sizes="64px"
+						sizes="56px"
 					/>
 				) : null}
 			</span>
-			<span className="flex min-w-0 flex-col gap-1">
-				<span className="break-words font-medium leading-snug underline-offset-4 hover:underline">
+			<span className="flex min-w-0 flex-col gap-0.5">
+				<span className="line-clamp-3 break-words font-medium text-xs leading-snug underline-offset-4 hover:underline sm:text-sm">
 					{item.label}
 				</span>
 				{item.isClubFavourite ? (
-					<span className="inline-flex items-center gap-1 text-warning-ink text-xs">
-						<Star className="size-3" aria-hidden />
+					<span className="inline-flex items-center gap-1 text-3xs text-warning-ink sm:text-xs">
+						<Star className="size-3 shrink-0" aria-hidden />
 						Club favourite
 					</span>
 				) : null}
@@ -112,8 +117,8 @@ function EditionHead({
 }
 
 /**
- * Side by side from `sm` up; on a phone each edition is its own card (no sideways
- * scrolling), with the rows where the editions disagree tinted in both layouts.
+ * Editions side by side, compact enough to fit a phone without scrolling
+ * sideways. Rows where the editions disagree are tinted.
  */
 function CompareTable({
 	bookSlug,
@@ -123,27 +128,29 @@ function CompareTable({
 	items: EditionSummary[];
 }) {
 	const rows = rowsFor(items);
-	const columns = `minmax(5.5rem,7rem) repeat(${items.length}, minmax(0,1fr))`;
+	const columns = `minmax(4.25rem,6.5rem) repeat(${items.length}, minmax(0,1fr))`;
 	return (
 		<div className="w-full min-w-0 max-w-full">
 			<div
-				className="hidden w-full min-w-0 gap-px border border-border bg-border text-sm sm:grid"
+				className="grid w-full min-w-0 gap-px border border-border bg-border text-xs sm:text-sm"
 				style={{ gridTemplateColumns: columns }}
 			>
 				<div className="bg-card" />
 				{items.map((item) => (
-					<div key={item.key} className="min-w-0 bg-card p-3">
+					<div key={item.key} className="min-w-0 bg-card p-2 sm:p-3">
 						<EditionHead bookSlug={bookSlug} item={item} />
 					</div>
 				))}
 				{rows.map((row) => (
 					<div key={row.label} className="contents">
-						<div className="bg-card p-3 text-muted-foreground">{row.label}</div>
+						<div className="bg-card p-2 text-muted-foreground sm:p-3">
+							{row.label}
+						</div>
 						{row.values.map((value, index) => (
 							<div
 								key={items[index]?.key ?? index}
 								className={cn(
-									"min-w-0 break-words bg-card p-3 tabular-nums",
+									"min-w-0 break-words bg-card p-2 tabular-nums sm:p-3",
 									row.differs && "bg-info/10",
 								)}
 							>
@@ -153,34 +160,6 @@ function CompareTable({
 					</div>
 				))}
 			</div>
-
-			<ul className="flex flex-col gap-3 sm:hidden">
-				{items.map((item, itemIndex) => (
-					<li
-						key={item.key}
-						className="flex min-w-0 flex-col gap-3 border border-border bg-card p-3 text-sm"
-					>
-						<EditionHead bookSlug={bookSlug} item={item} size="w-14" />
-						<dl className="grid grid-cols-[minmax(5rem,6rem)_minmax(0,1fr)] gap-px bg-border">
-							{rows.map((row) => (
-								<div key={row.label} className="contents">
-									<dt className="bg-card py-1.5 pe-2 text-muted-foreground">
-										{row.label}
-									</dt>
-									<dd
-										className={cn(
-											"min-w-0 break-words bg-card py-1.5 tabular-nums",
-											row.differs && "bg-info/10 ps-1.5",
-										)}
-									>
-										{row.values[itemIndex]}
-									</dd>
-								</div>
-							))}
-						</dl>
-					</li>
-				))}
-			</ul>
 			<p className="mt-2 text-muted-foreground text-xs">
 				Tinted rows are where the editions differ.
 			</p>
@@ -208,26 +187,37 @@ export function CompareEditionsDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-h-[90vh] min-w-0 gap-4 overflow-y-auto overflow-x-hidden sm:max-w-3xl">
-				<DialogHeader>
+			<DialogContent className={DIALOG_SHELL}>
+				<DialogHeader className="px-4 pt-4">
 					<DialogTitle>Compare editions</DialogTitle>
 					<DialogDescription>
 						Pages, language, who published it and how long members take.
 					</DialogDescription>
 				</DialogHeader>
-				{!ready ? (
-					<p className="text-muted-foreground text-sm">
-						Pick two or three editions to compare.
-					</p>
-				) : query.isPending ? (
-					<Skeleton className="h-64 w-full" aria-hidden />
-				) : query.isError ? (
-					<p className="text-destructive text-sm">
-						Could not compare these editions. Try again in a moment.
-					</p>
-				) : (
-					<CompareTable bookSlug={bookSlug} items={query.data.items} />
-				)}
+				<div className={DIALOG_BODY}>
+					{!ready ? (
+						<p className="text-muted-foreground text-sm">
+							Pick two or three editions to compare.
+						</p>
+					) : query.isPending ? (
+						<Skeleton className="h-64 w-full" aria-hidden />
+					) : query.isError ? (
+						<p className="text-destructive text-sm">
+							Could not compare these editions. Try again in a moment.
+						</p>
+					) : (
+						<CompareTable bookSlug={bookSlug} items={query.data.items} />
+					)}
+				</div>
+				<div className={DIALOG_FOOTER}>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => onOpenChange(false)}
+					>
+						Close
+					</Button>
+				</div>
 			</DialogContent>
 		</Dialog>
 	);
@@ -277,8 +267,8 @@ export function CompareEditionsButton({
 					if (!next) setComparing(false);
 				}}
 			>
-				<DialogContent className="max-h-[90vh] min-w-0 gap-4 overflow-y-auto overflow-x-hidden sm:max-w-3xl">
-					<DialogHeader>
+				<DialogContent className={DIALOG_SHELL}>
+					<DialogHeader className="px-4 pt-4">
 						<DialogTitle>Compare editions</DialogTitle>
 						<DialogDescription>
 							{comparing
@@ -286,15 +276,14 @@ export function CompareEditionsButton({
 								: "Pick one or two editions to put next to this one."}
 						</DialogDescription>
 					</DialogHeader>
-					{comparing ? (
-						<InlineCompare
-							bookSlug={bookSlug}
-							keys={[currentKey, ...picked]}
-							onBack={() => setComparing(false)}
-						/>
-					) : (
-						<div className="flex flex-col gap-3">
-							<ul className="flex max-h-72 flex-col divide-y divide-border overflow-y-auto border border-border">
+					<div className={DIALOG_BODY}>
+						{comparing ? (
+							<InlineCompare
+								bookSlug={bookSlug}
+								keys={[currentKey, ...picked]}
+							/>
+						) : (
+							<ul className="flex flex-col divide-y divide-border border border-border">
 								{candidates.map((item) => {
 									const checked = picked.includes(item.key);
 									const disabled = !checked && picked.length >= 2;
@@ -311,7 +300,7 @@ export function CompareEditionsButton({
 													checked={checked}
 													disabled={disabled}
 													onChange={() => toggle(item.key)}
-													className="size-4 accent-primary"
+													className="size-4 shrink-0 accent-primary"
 												/>
 												<span className="flex min-w-0 flex-col">
 													<span className="truncate font-medium">
@@ -332,7 +321,26 @@ export function CompareEditionsButton({
 									);
 								})}
 							</ul>
-							<div className="flex justify-end">
+						)}
+					</div>
+					<div className={DIALOG_FOOTER}>
+						{comparing ? (
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setComparing(false)}
+							>
+								Choose different editions
+							</Button>
+						) : (
+							<>
+								<Button
+									type="button"
+									variant="ghost"
+									onClick={() => setOpen(false)}
+								>
+									Cancel
+								</Button>
 								<Button
 									type="button"
 									disabled={picked.length === 0}
@@ -340,9 +348,9 @@ export function CompareEditionsButton({
 								>
 									Compare {picked.length + 1}
 								</Button>
-							</div>
-						</div>
-					)}
+							</>
+						)}
+					</div>
 				</DialogContent>
 			</Dialog>
 		</>
@@ -352,32 +360,21 @@ export function CompareEditionsButton({
 function InlineCompare({
 	bookSlug,
 	keys,
-	onBack,
 }: {
 	bookSlug: string;
 	keys: string[];
-	onBack: () => void;
 }) {
 	const query = useQuery({
 		...orpc.edition.compare.queryOptions({ input: { bookSlug, keys } }),
 		staleTime: 60_000,
 	});
-	return (
-		<div className="flex flex-col gap-3">
-			{query.isPending ? (
-				<Skeleton className="h-64 w-full" aria-hidden />
-			) : query.isError ? (
-				<p className="text-destructive text-sm">
-					Could not compare these editions. Try again in a moment.
-				</p>
-			) : (
-				<CompareTable bookSlug={bookSlug} items={query.data.items} />
-			)}
-			<div>
-				<Button type="button" variant="ghost" size="sm" onClick={onBack}>
-					Choose different editions
-				</Button>
-			</div>
-		</div>
+	return query.isPending ? (
+		<Skeleton className="h-64 w-full" aria-hidden />
+	) : query.isError ? (
+		<p className="text-destructive text-sm">
+			Could not compare these editions. Try again in a moment.
+		</p>
+	) : (
+		<CompareTable bookSlug={bookSlug} items={query.data.items} />
 	);
 }
