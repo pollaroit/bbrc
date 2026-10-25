@@ -20,6 +20,12 @@ const BOOK_TABS = [
 	"more",
 ] as const;
 
+function olidEditionPath(
+	row: { slug: string; olid: string | null } | null,
+): string | null {
+	return row?.olid ? `/books/${row.slug}/editions/${row.olid}` : null;
+}
+
 function entry(
 	id: string,
 	label: string,
@@ -53,6 +59,11 @@ export default async function OgDevPage() {
 		userWithAvatar,
 		shelf,
 		goal,
+		olEditionUse,
+		olEditionSnapshot,
+		memberEdition,
+		verifiedMemberEdition,
+		linkedMemberEdition,
 	] = await Promise.all([
 		db.book.findFirst({
 			where: { feedbacks: { some: {} }, excerpt: { not: null } },
@@ -126,7 +137,46 @@ export default async function OgDevPage() {
 			orderBy: { updatedAt: "desc" },
 			select: { slug: true, user: { select: { username: true } } },
 		}),
+		// An Open Library edition a member is reading or has read.
+		db.reading.findFirst({
+			where: { editionOlid: { not: null } },
+			orderBy: { updatedAt: "desc" },
+			select: { editionOlid: true, book: { select: { slug: true } } },
+		}),
+		db.editionSnapshot.findFirst({
+			orderBy: { updatedAt: "desc" },
+			select: { olid: true, book: { select: { slug: true } } },
+		}),
+		db.bookEdition.findFirst({
+			where: { status: "member", openLibraryOlid: null },
+			orderBy: { createdAt: "desc" },
+			select: { publicId: true, book: { select: { slug: true } } },
+		}),
+		db.bookEdition.findFirst({
+			where: { status: "verified", openLibraryOlid: null },
+			orderBy: { createdAt: "desc" },
+			select: { publicId: true, book: { select: { slug: true } } },
+		}),
+		db.bookEdition.findFirst({
+			where: { openLibraryOlid: { not: null } },
+			orderBy: { createdAt: "desc" },
+			select: {
+				openLibraryOlid: true,
+				book: { select: { slug: true } },
+			},
+		}),
 	]);
+
+	const openLibraryEdition = olidEditionPath(
+		olEditionUse
+			? { slug: olEditionUse.book.slug, olid: olEditionUse.editionOlid }
+			: olEditionSnapshot
+				? { slug: olEditionSnapshot.book.slug, olid: olEditionSnapshot.olid }
+				: null,
+	);
+	const memberEditionPath = (
+		row: { publicId: string; book: { slug: string } } | null,
+	) => (row ? `/books/${row.book.slug}/editions/m-${row.publicId}` : null);
 
 	const b = book?.slug;
 	const u = user?.username;
@@ -187,6 +237,32 @@ export default async function OgDevPage() {
 						b ? `/books/${b}/${tab}` : null,
 						noBook,
 					),
+				),
+				entry(
+					"edition-ol",
+					"Edition · Open Library",
+					openLibraryEdition,
+					"No member has picked an Open Library edition yet.",
+				),
+				entry(
+					"edition-member",
+					"Edition · member-added",
+					memberEditionPath(memberEdition),
+					"No member-added edition in this database.",
+				),
+				entry(
+					"edition-verified",
+					"Edition · member-added and verified",
+					memberEditionPath(verifiedMemberEdition),
+					"No verified member edition in this database.",
+				),
+				entry(
+					"edition-linked",
+					"Edition · linked to Open Library",
+					linkedMemberEdition?.openLibraryOlid
+						? `/books/${linkedMemberEdition.book.slug}/editions/${linkedMemberEdition.openLibraryOlid}`
+						: null,
+					"No member edition is linked to an Open Library edition yet.",
 				),
 				entry("book-edit", "Edit", b ? `/books/${b}/edit` : null, noBook),
 				entry("book-quiz", "Quiz", b ? `/books/${b}/quiz` : null, noBook),

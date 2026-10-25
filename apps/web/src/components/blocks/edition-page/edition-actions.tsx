@@ -4,6 +4,16 @@ import type {
 	EditionCore,
 	EditionPage,
 } from "@bbrc/api/modules/edition/edition.schema";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@bbrc/ui/components/alert-dialog";
 import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
@@ -51,6 +61,7 @@ export function EditionActions({
 	const { data: session } = authClient.useSession();
 	const signedIn = Boolean(session?.user);
 	const [readOpen, setReadOpen] = useState(false);
+	const [confirm, setConfirm] = useState<"start" | "switch" | null>(null);
 
 	const viewer = useQuery({
 		...orpc.edition.viewer.queryOptions({
@@ -161,7 +172,7 @@ export function EditionActions({
 								type="button"
 								size="sm"
 								disabled={!memberReady || start.isPending}
-								onClick={begin}
+								onClick={() => setConfirm("start")}
 							>
 								<BookOpen data-icon="inline-start" aria-hidden />
 								I'm reading this edition
@@ -172,7 +183,7 @@ export function EditionActions({
 								type="button"
 								size="sm"
 								disabled={!memberReady || switchEdition.isPending}
-								onClick={switchTo}
+								onClick={() => setConfirm("switch")}
 							>
 								<ArrowLeftRight data-icon="inline-start" aria-hidden />
 								Switch my reading to this edition
@@ -193,6 +204,49 @@ export function EditionActions({
 					</>
 				)}
 			</div>
+			<AlertDialog
+				open={confirm != null}
+				onOpenChange={(next) => {
+					if (!next) setConfirm(null);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{confirm === "switch"
+								? "Switch your reading to this edition?"
+								: "Start reading this edition?"}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							<span className="block font-medium text-foreground">
+								{book.title}
+							</span>
+							<span className="block">
+								{choice.editionLabel ?? edition.title ?? "This edition"}
+								{choice.totalPages ? ` · ${choice.totalPages} pages` : ""}
+							</span>
+							<span className="mt-2 block">
+								{confirm === "switch"
+									? "Your place in the book stays the same; only the edition and its page count change."
+									: "It appears on your home feed and, if you are in the sitting for this book, shows as in progress there. It stays on your wishlist until you finish it."}
+							</span>
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={() => {
+								const action = confirm;
+								setConfirm(null);
+								if (action === "switch") switchTo();
+								else begin();
+							}}
+						>
+							{confirm === "switch" ? "Switch edition" : "Start reading"}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 			{readOpen ? (
 				<BookMarkReadDialog
 					bookSlug={book.slug}

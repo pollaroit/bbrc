@@ -56,6 +56,65 @@ const ROWS: Row[] = [
 	},
 ];
 
+/** The differing rows, worked out once and used by both layouts. */
+function rowsFor(items: EditionSummary[]) {
+	return ROWS.map((row) => {
+		const values = items.map(row.value);
+		return { label: row.label, values, differs: new Set(values).size > 1 };
+	});
+}
+
+function EditionHead({
+	bookSlug,
+	item,
+	size = "w-16",
+}: {
+	bookSlug: string;
+	item: EditionSummary;
+	size?: string;
+}) {
+	const thumb = coverSrc(item.cover, "M");
+	return (
+		<Link
+			href={editionPath(bookSlug, item.key) as Route}
+			className="flex min-w-0 items-start gap-3 hover:bg-muted/40 sm:flex-col sm:gap-2"
+		>
+			<span
+				className={cn(
+					"relative block aspect-2/3 shrink-0",
+					size,
+					bookCoverFrameClassName,
+				)}
+			>
+				{thumb ? (
+					<Image
+						src={thumb}
+						alt=""
+						fill
+						className="object-cover"
+						sizes="64px"
+					/>
+				) : null}
+			</span>
+			<span className="flex min-w-0 flex-col gap-1">
+				<span className="break-words font-medium leading-snug underline-offset-4 hover:underline">
+					{item.label}
+				</span>
+				{item.isClubFavourite ? (
+					<span className="inline-flex items-center gap-1 text-warning-ink text-xs">
+						<Star className="size-3" aria-hidden />
+						Club favourite
+					</span>
+				) : null}
+			</span>
+		</Link>
+	);
+}
+
+/**
+ * Side by side from `sm` up; on a phone each edition is its own card (no sideways
+ * scrolling), with the rows where the editions disagree tinted in both layouts.
+ */
 function CompareTable({
 	bookSlug,
 	items,
@@ -63,77 +122,67 @@ function CompareTable({
 	bookSlug: string;
 	items: EditionSummary[];
 }) {
-	const columns = `minmax(6.5rem,8rem) repeat(${items.length}, minmax(9rem,1fr))`;
+	const rows = rowsFor(items);
+	const columns = `minmax(5.5rem,7rem) repeat(${items.length}, minmax(0,1fr))`;
 	return (
-		<div className="overflow-x-auto">
+		<div className="w-full min-w-0 max-w-full">
 			<div
-				className="grid min-w-max gap-px border border-border bg-border text-sm"
+				className="hidden w-full min-w-0 gap-px border border-border bg-border text-sm sm:grid"
 				style={{ gridTemplateColumns: columns }}
 			>
 				<div className="bg-card" />
-				{items.map((item) => {
-					const thumb = coverSrc(item.cover, "M");
-					return (
-						<Link
-							key={item.key}
-							href={editionPath(bookSlug, item.key) as Route}
-							className="flex flex-col items-start gap-2 bg-card p-3 hover:bg-muted/40"
-						>
-							<span
+				{items.map((item) => (
+					<div key={item.key} className="min-w-0 bg-card p-3">
+						<EditionHead bookSlug={bookSlug} item={item} />
+					</div>
+				))}
+				{rows.map((row) => (
+					<div key={row.label} className="contents">
+						<div className="bg-card p-3 text-muted-foreground">{row.label}</div>
+						{row.values.map((value, index) => (
+							<div
+								key={items[index]?.key ?? index}
 								className={cn(
-									"relative block aspect-2/3 w-16",
-									bookCoverFrameClassName,
+									"min-w-0 break-words bg-card p-3 tabular-nums",
+									row.differs && "bg-info/10",
 								)}
 							>
-								{thumb ? (
-									<Image
-										src={thumb}
-										alt=""
-										fill
-										className="object-cover"
-										sizes="64px"
-									/>
-								) : null}
-							</span>
-							<span className="flex flex-col gap-1">
-								<span className="font-medium leading-snug underline-offset-4 hover:underline">
-									{item.label}
-								</span>
-								{item.isClubFavourite ? (
-									<span className="inline-flex items-center gap-1 text-warning-ink text-xs">
-										<Star className="size-3" aria-hidden />
-										Club favourite
-									</span>
-								) : null}
-							</span>
-						</Link>
-					);
-				})}
-				{ROWS.map((row) => {
-					const values = items.map(row.value);
-					const differs = new Set(values).size > 1;
-					return (
-						<div key={row.label} className="contents">
-							<div className="bg-card p-3 text-muted-foreground">
-								{row.label}
+								{value}
 							</div>
-							{values.map((value, index) => (
-								<div
-									key={items[index]?.key ?? index}
-									className={cn(
-										"bg-card p-3 tabular-nums",
-										differs && "bg-info/10",
-									)}
-								>
-									{value}
+						))}
+					</div>
+				))}
+			</div>
+
+			<ul className="flex flex-col gap-3 sm:hidden">
+				{items.map((item, itemIndex) => (
+					<li
+						key={item.key}
+						className="flex min-w-0 flex-col gap-3 border border-border bg-card p-3 text-sm"
+					>
+						<EditionHead bookSlug={bookSlug} item={item} size="w-14" />
+						<dl className="grid grid-cols-[minmax(5rem,6rem)_minmax(0,1fr)] gap-px bg-border">
+							{rows.map((row) => (
+								<div key={row.label} className="contents">
+									<dt className="bg-card py-1.5 pe-2 text-muted-foreground">
+										{row.label}
+									</dt>
+									<dd
+										className={cn(
+											"min-w-0 break-words bg-card py-1.5 tabular-nums",
+											row.differs && "bg-info/10 ps-1.5",
+										)}
+									>
+										{row.values[itemIndex]}
+									</dd>
 								</div>
 							))}
-						</div>
-					);
-				})}
-			</div>
+						</dl>
+					</li>
+				))}
+			</ul>
 			<p className="mt-2 text-muted-foreground text-xs">
-				Tinted cells are where the editions differ.
+				Tinted rows are where the editions differ.
 			</p>
 		</div>
 	);
@@ -159,7 +208,7 @@ export function CompareEditionsDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-h-[90vh] gap-4 overflow-y-auto sm:max-w-3xl">
+			<DialogContent className="max-h-[90vh] min-w-0 gap-4 overflow-y-auto overflow-x-hidden sm:max-w-3xl">
 				<DialogHeader>
 					<DialogTitle>Compare editions</DialogTitle>
 					<DialogDescription>
@@ -228,7 +277,7 @@ export function CompareEditionsButton({
 					if (!next) setComparing(false);
 				}}
 			>
-				<DialogContent className="max-h-[90vh] gap-4 overflow-y-auto sm:max-w-3xl">
+				<DialogContent className="max-h-[90vh] min-w-0 gap-4 overflow-y-auto overflow-x-hidden sm:max-w-3xl">
 					<DialogHeader>
 						<DialogTitle>Compare editions</DialogTitle>
 						<DialogDescription>
