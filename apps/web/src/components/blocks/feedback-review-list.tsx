@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { EditionChip } from "@/components/blocks/edition-chip";
 import { FeedbackEditIconButton } from "@/components/blocks/feedback-edit-icon-button";
 import { FeedbackLikeEngagement } from "@/components/blocks/feedback-like-engagement";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
@@ -148,6 +149,11 @@ export function FeedbackReviewList({
 												)}
 											</div>
 										</div>
+										<EditionChip
+											bookSlug={bookSlug}
+											edition={entry.readEdition}
+											className="self-start"
+										/>
 										<div className="flex flex-wrap items-center gap-4 border-t pt-3 text-muted-foreground text-sm">
 											<FeedbackLikeEngagement
 												feedbackSlug={entry.slug}

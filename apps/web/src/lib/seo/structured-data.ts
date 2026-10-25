@@ -1,4 +1,8 @@
 import type { TGetBookBySlugOutputSchema } from "@bbrc/api/modules/book/book.schema";
+import type {
+	EditionCore,
+	EditionPage,
+} from "@bbrc/api/modules/edition/edition.schema";
 import { bookCoverUrl } from "@/lib/book-cover";
 import { absoluteUrl, SITE_NAME, SITE_SHORT_NAME } from "./site";
 
@@ -107,5 +111,86 @@ export function blogPostingJsonLd(input: {
 			"@type": "Organization",
 			name: SITE_NAME,
 		},
+	};
+}
+
+function schemaBookFormat(format: string | null): string | undefined {
+	const value = format?.toLowerCase() ?? "";
+	if (!value) return undefined;
+	if (value.includes("hard")) return "https://schema.org/Hardcover";
+	if (value.includes("paper") || value.includes("softcover")) {
+		return "https://schema.org/Paperback";
+	}
+	if (
+		value.includes("e-book") ||
+		value.includes("ebook") ||
+		value.includes("kindle")
+	) {
+		return "https://schema.org/EBook";
+	}
+	if (value.includes("audio")) return "https://schema.org/AudiobookFormat";
+	return undefined;
+}
+
+/** One edition of a book (its own page), pointing back at the work. */
+export function editionJsonLd(input: {
+	book: EditionPage["book"];
+	edition: EditionCore;
+	path: string;
+}): JsonLd {
+	const { book, edition } = input;
+	const cover = edition.covers[0];
+	const rawImage = cover?.url
+		? cover.url
+		: cover?.coverId != null
+			? `https://covers.openlibrary.org/b/id/${cover.coverId}-L.jpg`
+			: null;
+	const image = rawImage?.startsWith("/") ? absoluteUrl(rawImage) : rawImage;
+	const format = schemaBookFormat(edition.format);
+
+	return {
+		"@context": "https://schema.org",
+		"@type": "Book",
+		name: edition.title?.trim() || book.title,
+		url: absoluteUrl(input.path),
+		author: book.authors.map((name) => ({ "@type": "Person", name })),
+		exampleOfWork: {
+			"@type": "Book",
+			name: book.title,
+			url: absoluteUrl(`/books/${book.slug}`),
+		},
+		...(edition.editionName ? { bookEdition: edition.editionName } : {}),
+		...(format ? { bookFormat: format } : {}),
+		...(edition.isbn13 || edition.isbn10
+			? { isbn: edition.isbn13 ?? edition.isbn10 }
+			: {}),
+		...(edition.languageCode ? { inLanguage: edition.languageCode } : {}),
+		...(edition.pages ? { numberOfPages: edition.pages } : {}),
+		...(edition.publishers[0]
+			? { publisher: { "@type": "Organization", name: edition.publishers[0] } }
+			: {}),
+		...(edition.publishedYear
+			? { datePublished: String(edition.publishedYear) }
+			: {}),
+		...(edition.translator
+			? { translator: { "@type": "Person", name: edition.translator } }
+			: {}),
+		...(edition.description ? { description: edition.description } : {}),
+		...(image ? { image } : {}),
+	};
+}
+
+export function breadcrumbJsonLd(
+	items: { name: string; path: string }[],
+): JsonLd {
+	return {
+		"@context": "https://schema.org",
+		"@type": "BreadcrumbList",
+		itemListElement: items.map((item, index) => ({
+			"@type": "ListItem",
+			position: index + 1,
+			name: item.name,
+			item: absoluteUrl(item.path),
+		})),
 	};
 }

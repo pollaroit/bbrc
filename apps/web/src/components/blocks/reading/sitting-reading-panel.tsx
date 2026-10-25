@@ -5,9 +5,9 @@ import { BookCopy, BookOpen } from "lucide-react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useState } from "react";
+import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
 import { ReadingProgressControl } from "@/components/blocks/reading/reading-progress-control";
 import { bookCoverUrl } from "@/lib/book-cover";
-import { editionDisplayLabel } from "@/lib/reading/edition-text";
 import { useReadingState } from "@/lib/reading/use-reading";
 
 const StartReadingDialog = dynamic(
@@ -107,7 +107,11 @@ export function SittingReadingPanel({
 				<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 					<p className="font-medium text-sm">Your copy</p>
 					<p className="truncate text-muted-foreground text-xs">
-						{editionDisplayLabel(reading.edition, reading.totalPages)}
+						<EditionLabelLink
+							bookSlug={reading.book.slug}
+							edition={reading.edition}
+							totalPages={reading.totalPages}
+						/>
 					</p>
 				</div>
 				<Button

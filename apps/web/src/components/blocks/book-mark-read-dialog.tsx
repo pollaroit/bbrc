@@ -40,6 +40,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { FeedbackHalfStarRating } from "@/components/blocks/feedback-half-star-rating";
+import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { clubTimeZone } from "@/lib/club-timezone";
@@ -51,7 +52,6 @@ import {
 	READ_DATE_MONTHS,
 	readDateMonthLabel,
 } from "@/lib/read-date-months";
-import { editionDisplayLabel } from "@/lib/reading/edition-text";
 import {
 	invalidateReadingQueries,
 	useReadingState,
@@ -64,6 +64,16 @@ type BookMarkReadDialogProps = {
 	bookTitle: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	/**
+	 * An edition to record with the read (the edition page passes the one being
+	 * looked at). It wins over the edition of the member's current reading, and
+	 * is saved even when the book was already marked read.
+	 */
+	edition?: {
+		editionOlid: string | null;
+		bookEditionId: string | null;
+		label: string | null;
+	};
 };
 
 function parseOptionalInt(value: string): number | undefined {
@@ -103,6 +113,7 @@ export function BookMarkReadDialog({
 	bookTitle,
 	open,
 	onOpenChange,
+	edition,
 }: BookMarkReadDialogProps) {
 	const [endYear, setEndYear] = useState("");
 	const [endMonth, setEndMonth] = useState("");
@@ -495,8 +506,11 @@ export function BookMarkReadDialog({
 		}
 
 		// A new read keeps the edition the member was reading.
-		const editionFields =
-			!hasRead && reading?.edition
+		const editionFields = edition
+			? edition.bookEditionId
+				? { bookEditionId: edition.bookEditionId, editionId: null }
+				: { editionId: edition.editionOlid, bookEditionId: null }
+			: !hasRead && reading?.edition
 				? reading.edition.kind === "member"
 					? { bookEditionId: reading.edition.memberEditionId }
 					: { editionId: reading.edition.olid }
@@ -579,14 +593,31 @@ export function BookMarkReadDialog({
 					</DialogHeader>
 
 					<div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-5">
-						{reading && !hasRead ? (
+						{edition?.label ? (
+							<section
+								className="flex flex-col gap-1.5 border border-border bg-muted/30 p-3 text-sm"
+								aria-label="Edition"
+							>
+								<p className="flex items-center gap-2 font-medium">
+									<BookOpen className="size-4" aria-hidden />
+									{edition.label}
+								</p>
+								<p className="text-muted-foreground text-xs leading-relaxed">
+									This is the edition that will be saved with your read.
+								</p>
+							</section>
+						) : reading && !hasRead ? (
 							<section
 								className="flex flex-col gap-1.5 border border-border bg-muted/30 p-3 text-sm"
 								aria-label="Your reading"
 							>
 								<p className="flex items-center gap-2 font-medium">
-									<BookOpen className="size-4" aria-hidden />
-									{editionDisplayLabel(reading.edition, reading.totalPages)}
+									<BookOpen className="size-4 shrink-0" aria-hidden />
+									<EditionLabelLink
+										bookSlug={bookSlug}
+										edition={reading.edition}
+										totalPages={reading.totalPages}
+									/>
 								</p>
 								<p className="text-muted-foreground text-xs leading-relaxed">
 									{readingSummary(reading.startedAt)}

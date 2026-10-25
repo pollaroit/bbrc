@@ -9,6 +9,7 @@ import {
 } from "@bbrc/ui/components/empty";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
+import { EditionChip } from "@/components/blocks/edition-chip";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { formatReadFinishedMonthField } from "@/lib/format-read-date";
 import { cn } from "@/lib/utils";
@@ -22,7 +23,13 @@ type BookReadsPanelProps = {
 	initialData?: ListBookReadsOutput;
 };
 
-function BookReadsGrid({ data }: { data: ListBookReadsOutput }) {
+function BookReadsGrid({
+	bookSlug,
+	data,
+}: {
+	bookSlug: string;
+	data: ListBookReadsOutput;
+}) {
 	if (data.items.length === 0) {
 		return (
 			<Empty>
@@ -44,9 +51,19 @@ function BookReadsGrid({ data }: { data: ListBookReadsOutput }) {
 					className="flex h-full flex-col gap-3 border border-border p-4"
 				>
 					<UserPanel user={item.user} />
-					<p className="text-muted-foreground text-sm">
-						{formatReadFinishedMonthField(item.readEndYear, item.readEndMonth)}
-					</p>
+					<div className="flex min-w-0 flex-col items-start gap-1.5">
+						<p className="text-muted-foreground text-sm">
+							{formatReadFinishedMonthField(
+								item.readEndYear,
+								item.readEndMonth,
+							)}
+						</p>
+						<EditionChip
+							bookSlug={bookSlug}
+							edition={item.edition}
+							prefix="Read the"
+						/>
+					</div>
 				</li>
 			))}
 		</ul>
@@ -80,5 +97,5 @@ export function BookReadsPanel({ bookSlug, initialData }: BookReadsPanelProps) {
 		);
 	}
 
-	return <BookReadsGrid data={readsQuery.data} />;
+	return <BookReadsGrid bookSlug={bookSlug} data={readsQuery.data} />;
 }

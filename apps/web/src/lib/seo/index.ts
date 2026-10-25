@@ -33,6 +33,8 @@ export {
 	authorJsonLd,
 	blogPostingJsonLd,
 	bookJsonLd,
+	breadcrumbJsonLd,
+	editionJsonLd,
 	organizationJsonLd,
 	personJsonLd,
 	websiteJsonLd,

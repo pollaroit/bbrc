@@ -9,6 +9,7 @@ import { bookEditionRouter } from "./modules/book-edition/book-edition.router";
 import { bookRequestRouter } from "./modules/book-request/book-request.router";
 import { commentRouter } from "./modules/comment/comment.router";
 import { documentRouter } from "./modules/document/document.router";
+import { editionRouter } from "./modules/edition/edition.router";
 import { factRouter } from "./modules/fact/fact.router";
 import { favoriteRouter } from "./modules/favorite/favorite.router";
 import { feedbackRouter } from "./modules/feedback/feedback.router";
@@ -47,6 +48,7 @@ export const appRouter = {
 	comment: commentRouter,
 	document: documentRouter,
 	fact: factRouter,
+	edition: editionRouter,
 	favorite: favoriteRouter,
 	feedback: feedbackRouter,
 	goal: goalRouter,

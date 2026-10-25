@@ -1,6 +1,20 @@
 import type { Database } from "@bbrc/db";
-import { isbnPair } from "@bbrc/shared";
+import {
+	isbnPair,
+	isValidIsbn,
+	newMemberEditionPublicId,
+	normalizeIsbn,
+	openLibraryEditionKey,
+} from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import {
+	fetchOpenLibraryEditionFull,
+	resolveOpenLibraryEditionByIsbn,
+} from "../../lib/open-library/edition-full";
+import {
+	canonicalKeyOfMember,
+	editionLabelOf,
+} from "../edition/edition-support";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import {
 	type BookEditionItem,
@@ -12,6 +26,9 @@ type Actor = { id: string; isAdmin: boolean };
 
 const editionSelect = {
 	id: true,
+	publicId: true,
+	openLibraryOlid: true,
+	bookId: true,
 	title: true,
 	language: true,
 	pages: true,
@@ -38,6 +55,9 @@ const editionSelect = {
 
 type EditionRow = {
 	id: string;
+	publicId: string;
+	openLibraryOlid: string | null;
+	bookId: string;
 	title: string | null;
 	language: string;
 	pages: number;
@@ -62,6 +82,9 @@ function mapEdition(row: EditionRow, actor: Actor | null): BookEditionItem {
 	const isCreator = actor != null && row.createdById === actor.id;
 	return {
 		id: row.id,
+		publicId: row.publicId,
+		key: canonicalKeyOfMember(row),
+		openLibraryOlid: row.openLibraryOlid,
 		title: row.title,
 		language: row.language,
 		pages: row.pages,
@@ -174,8 +197,19 @@ export async function createBookEdition(
 	await assertNoDuplicate(db, book.id, isbn.isbn13);
 	if (input.coverUrl) assertOwnEditionCoverUrl(input.coverUrl);
 
+	let publicId = newMemberEditionPublicId();
+	for (let attempt = 0; attempt < 5; attempt++) {
+		const taken = await db.bookEdition.findUnique({
+			where: { publicId },
+			select: { id: true },
+		});
+		if (!taken) break;
+		publicId = newMemberEditionPublicId();
+	}
+
 	const created = await db.bookEdition.create({
 		data: {
+			publicId,
 			bookId: book.id,
 			createdById: actor.id,
 			title: input.title ?? null,
@@ -283,8 +317,46 @@ export async function deleteBookEdition(
 				"Members are using this edition, so only an admin can delete it.",
 		});
 	}
-	await db.bookEdition.delete({ where: { id } });
-	void tryDeleteR2PublicUrl(existing.coverUrl);
+	await db.$transaction(async (tx) => {
+		const full = await tx.bookEdition.findUnique({ where: { id } });
+		if (full) {
+			const label = editionLabelOf({
+				title: full.title,
+				publisher: full.publisher,
+				year: full.publishedYear,
+				language: full.language,
+				fallback: "Own edition",
+			});
+			// Readings keep what the edition looked like (and move to the linked Open Library edition, if any).
+			await tx.reading.updateMany({
+				where: { bookEditionId: id },
+				data: {
+					editionLabel: label,
+					editionCoverUrl: full.coverUrl,
+					...(full.openLibraryOlid
+						? { editionOlid: full.openLibraryOlid }
+						: {}),
+				},
+			});
+			if (full.openLibraryOlid) {
+				await tx.read.updateMany({
+					where: { bookEditionId: id },
+					data: { editionId: full.openLibraryOlid },
+				});
+			}
+			await tx.editionTombstone.upsert({
+				where: { publicId: full.publicId },
+				create: { publicId: full.publicId, bookId: full.bookId },
+				update: { removedAt: new Date(), redirectKey: null },
+			});
+		}
+		await tx.bookEdition.delete({ where: { id } });
+	});
+	// Our cover file is kept when readings still show it.
+	const stillShown = await db.reading.count({
+		where: { editionCoverUrl: existing.coverUrl ?? "__none__" },
+	});
+	if (stillShown === 0) void tryDeleteR2PublicUrl(existing.coverUrl);
 }
 
 export async function setBookEditionVerified(
@@ -349,6 +421,19 @@ export async function mergeBookEditions(
 		if (!into.publishedYear && from.publishedYear) {
 			fill.publishedYear = from.publishedYear;
 		}
+		// The old address keeps working: it points at the edition we kept.
+		await tx.editionTombstone.upsert({
+			where: { publicId: from.publicId },
+			create: {
+				publicId: from.publicId,
+				bookId: from.bookId,
+				redirectKey: canonicalKeyOfMember(into),
+			},
+			update: {
+				removedAt: new Date(),
+				redirectKey: canonicalKeyOfMember(into),
+			},
+		});
 		// The ISBN must be free before it can move.
 		await tx.bookEdition.delete({ where: { id: fromId } });
 		if (Object.keys(fill).length > 0) {
@@ -356,4 +441,104 @@ export async function mergeBookEditions(
 		}
 	});
 	if (!copiedCover) void tryDeleteR2PublicUrl(from.coverUrl);
+}
+
+/** Admin: say this member edition is the same as an Open Library one (or unlink them). */
+export async function linkBookEdition(
+	db: Database,
+	id: string,
+	openLibraryOlid: string | null,
+) {
+	const edition = await loadEdition(db, id);
+	const book = await db.book.findUnique({
+		where: { id: edition.bookId },
+		select: { olid: true },
+	});
+	if (openLibraryOlid == null) {
+		await db.bookEdition.update({
+			where: { id },
+			data: { openLibraryOlid: null },
+		});
+		return;
+	}
+	const full = await fetchOpenLibraryEditionFull(openLibraryOlid);
+	if (!full || (full.workOlid && full.workOlid !== book?.olid)) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "That Open Library edition was not found for this book.",
+		});
+	}
+	const taken = await db.bookEdition.findFirst({
+		where: { openLibraryOlid, NOT: { id } },
+		select: { id: true },
+	});
+	if (taken) {
+		throw new ORPCError("CONFLICT", {
+			message:
+				"Another member edition is already linked to that Open Library edition.",
+		});
+	}
+	await db.bookEdition.update({ where: { id }, data: { openLibraryOlid } });
+}
+
+/** Tells the add dialog when an ISBN already exists, so it can offer the existing edition. */
+export async function checkEditionIsbn(
+	db: Database,
+	bookSlug: string,
+	rawIsbn: string,
+) {
+	const empty = { openLibrary: null, member: null };
+	if (!isValidIsbn(rawIsbn)) return empty;
+	const isbn = normalizeIsbn(rawIsbn);
+	const book = await db.book.findUnique({
+		where: { slug: bookSlug },
+		select: { id: true, olid: true },
+	});
+	if (!book) throw new ORPCError("NOT_FOUND", { message: "Book not found" });
+
+	const pair = isbnPair(isbn);
+	const [memberRow, found] = await Promise.all([
+		db.bookEdition.findFirst({
+			where: {
+				bookId: book.id,
+				OR: [{ isbn13: pair.isbn13 ?? isbn }, { isbn10: pair.isbn10 ?? isbn }],
+			},
+			select: {
+				publicId: true,
+				openLibraryOlid: true,
+				title: true,
+				publisher: true,
+				publishedYear: true,
+				language: true,
+			},
+		}),
+		resolveOpenLibraryEditionByIsbn(isbn),
+	]);
+
+	return {
+		member: memberRow
+			? {
+					key: canonicalKeyOfMember(memberRow),
+					label: editionLabelOf({
+						title: memberRow.title,
+						publisher: memberRow.publisher,
+						year: memberRow.publishedYear,
+						language: memberRow.language,
+						fallback: "Member edition",
+					}),
+				}
+			: null,
+		openLibrary:
+			found && (!found.workOlid || found.workOlid === book.olid)
+				? {
+						key: openLibraryEditionKey(found.olid),
+						label: editionLabelOf({
+							title: found.title,
+							publisher: found.publishers[0] ?? null,
+							year: found.publishedYear,
+							language: found.languageKeys[0] ?? null,
+							fallback: found.olid,
+						}),
+					}
+				: null,
+	};
 }

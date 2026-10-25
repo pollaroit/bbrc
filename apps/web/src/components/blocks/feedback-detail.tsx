@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { EditionChip } from "@/components/blocks/edition-chip";
 import { FeedbackCommentFocusSection } from "@/components/blocks/feedback-comment-focus-section";
 import { FeedbackCommentsSection } from "@/components/blocks/feedback-comments-section";
 import { FeedbackDetailOwnerActions } from "@/components/blocks/feedback-detail-owner-actions";
@@ -71,6 +72,11 @@ export function FeedbackDetail({
 				</CardHeader>
 				<CardContent className="flex flex-col gap-4 pt-4">
 					<FeedbackReviewBody feedback={feedback} />
+					<EditionChip
+						bookSlug={feedback.bookSlug}
+						edition={feedback.readEdition}
+						className="self-start"
+					/>
 					<div className="flex flex-wrap items-center gap-4 border-t pt-4 text-muted-foreground text-sm">
 						<FeedbackDetailOwnerActions feedback={feedback} />
 						<FeedbackLikeEngagement

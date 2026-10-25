@@ -11,6 +11,7 @@ import { isFeedbackRatingStep } from "@bbrc/shared";
 import type { z } from "zod";
 import zod from "zod";
 import { PostAuthorSchema } from "../post/post.schema";
+import { ReadEditionRefSchema } from "../read/read-edition-ref";
 import {
 	userFeedbackFiltersSchema,
 	userFeedbackListRanging,
@@ -31,6 +32,8 @@ export const BookFeedbackReviewSchema = zod.object({
 	likeCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
 	commentCount: zod.number().int().min(0),
+	/** The edition the author read, when they picked one. */
+	readEdition: ReadEditionRefSchema.nullish(),
 });
 
 const FeedbackRatingStepSchema = FeedbackSchema.shape.rating.refine(
@@ -126,6 +129,7 @@ export const UserFeedbackListItemSchema = zod.object({
 	likeCount: zod.number().int().min(0),
 	commentCount: zod.number().int().min(0),
 	book: UserFeedbackBookSchema,
+	readEdition: ReadEditionRefSchema.nullish(),
 });
 
 export const GetUserFeedbackListInputSchema = userFeedbackFiltersSchema
@@ -171,6 +175,7 @@ export type GetUserFeedbackListOutput = z.infer<
 
 export const getUserFeedbackListFields = {
 	id: true,
+	bookId: true,
 	slug: true,
 	rating: true,
 	review: true,
@@ -204,6 +209,7 @@ export const GetFeedbackBySlugOutputSchema = FeedbackSchema.pick({
 	likedByMe: zod.boolean(),
 	commentCount: zod.number().int().min(0),
 	sittingSlug: BookSchema.shape.slug.nullable(),
+	readEdition: ReadEditionRefSchema.nullish(),
 });
 
 export type GetFeedbackBySlugInput = z.infer<

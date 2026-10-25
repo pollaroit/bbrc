@@ -40,6 +40,11 @@ import type {
 	SetReadPreferencesInput,
 } from "./read.schema";
 import { userReadListSelect } from "./read.schema";
+import {
+	loadEditionSnapshotLabels,
+	readEditionRef,
+	readEditionRefSelect,
+} from "./read-edition-ref";
 
 async function loadBookBySlug(slug: string, db: Database) {
 	const book = await db.book.findUnique({
@@ -404,6 +409,7 @@ export async function listBookReads(
 				readEndYear: true,
 				readEndMonth: true,
 				editionId: true,
+				bookEdition: readEditionRefSelect.bookEdition,
 				createdAt: true,
 				user: {
 					select: {
@@ -416,12 +422,18 @@ export async function listBookReads(
 		}),
 	]);
 
+	const snapshotLabels = await loadEditionSnapshotLabels(
+		db,
+		rows.flatMap((row) => (row.editionId ? [row.editionId] : [])),
+	);
+
 	return {
 		total,
 		items: rows.map((row) => ({
 			readEndYear: row.readEndYear,
 			readEndMonth: row.readEndMonth,
 			editionId: row.editionId,
+			edition: readEditionRef(row, snapshotLabels),
 			recordedAt: row.createdAt,
 			user: row.user,
 		})),
@@ -580,11 +592,17 @@ export async function listUserReads(
 		feedbacks.map((feedback) => [feedback.bookId, feedback.rating]),
 	);
 
+	const userSnapshotLabels = await loadEditionSnapshotLabels(
+		db,
+		page.items.flatMap((row) => (row.editionId ? [row.editionId] : [])),
+	);
+
 	return {
 		items: page.items.map((row) => ({
 			readEndYear: row.readEndYear,
 			readEndMonth: row.readEndMonth,
 			editionId: row.editionId,
+			edition: readEditionRef(row, userSnapshotLabels),
 			recordedAt: row.createdAt,
 			rating: ratingByBookId.get(row.book.id) ?? null,
 			book: {

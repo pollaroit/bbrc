@@ -93,3 +93,12 @@ Members can pick a palette, fonts and text size (`/settings/preferences`), so UI
 - **Editions** have two sources: Open Library (fetched live, the picked one is stored as `editionOlid` plus a label/cover snapshot) and member-added `BookEdition` rows (5 per member per day, ISBN-13 unique per book, admins verify/merge/delete). `Read` and `Reading` carry either.
 - **Pace and reminders**: `readingPace` / `readingStats` in `packages/shared` are pure and tested. The opt-in `reading_behind` notification is off by default (`NOTIFICATION_KINDS_OFF_BY_DEFAULT`); the daily sweep (`sweepReadingReminders`, inside `/api/cron/achievements`) sends at most one per member and book every 2 days.
 - Book list counters `readingNowCount` / `wishlistCount` are kept by `recomputeBookReadingCounters` and healed by the daily sweep.
+
+## Edition pages
+
+- Address: `/books/<slug>/editions/<key>`. The key is an Open Library edition id (`OL123M`), `m-<8 chars>` for a member-added edition (`BookEdition.publicId`), or an ISBN alias (`isbn-<digits>`) that redirects. Parse and build keys only with `packages/shared/src/edition-key.ts` (`parseEditionKey`, `canonicalEditionKey`). A member edition linked to an Open Library edition (`openLibraryOlid`) uses the Open Library address, and readers of both share that page.
+- Data (`packages/api/src/modules/edition/`): `edition.get` is public and cacheable (no names except a member edition's creator and review authors); `edition.readers` gives names only to signed-in members and follows the reading privacy settings; `edition.viewer` is the signed-in member's actions. Open Library data is fetched live through the cached helpers; an `EditionSnapshot` is saved for editions members use and is the fallback when Open Library is slow. Deleting or merging a member edition writes an `EditionTombstone` (old address redirects or shows "removed"), and readings keep a saved label and cover.
+- Reviews belong to the book, not the edition: the page shows the book's reviews by members who read that edition and the average they gave the book.
+- External links come from `editionExternalLinks` in `packages/shared` and stay free: Open Library, Internet Archive (direct item when Open Library knows one), WorldCat, Google Books preview, Goodreads, LibraryThing, Library of Congress.
+- SEO: `generateMetadata`, `editionJsonLd` + breadcrumbs, a dedicated OG card, sitemap entries for editions members use; removed pages and redirects are noindex.
+- Every place an edition is named links to its page (`EditionChip`, `editionHref`).
