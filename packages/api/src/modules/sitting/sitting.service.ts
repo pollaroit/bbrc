@@ -40,6 +40,10 @@ import {
 	ensureReadForSittingCompletion,
 	syncParticipationWithExistingReadsForSelectedBook,
 } from "../read/read.service";
+import {
+	ensureReadingForSitting,
+	syncParticipationWithActiveReadings,
+} from "../reading/reading.service";
 import { calculateRpPointsDelta } from "../rp/rp.service";
 import { userMemberLevelsFromPoints } from "../user/member-levels";
 import { loadActorSocialGate } from "../user/user-visibility";
@@ -859,6 +863,11 @@ export async function getSittingBySlug(
 			sitting.id,
 			sitting.selectedBookId,
 		);
+		await syncParticipationWithActiveReadings(
+			db,
+			sitting.id,
+			sitting.selectedBookId,
+		);
 	}
 
 	const userId = session?.user.id;
@@ -1535,6 +1544,11 @@ export async function transitionSitting(
 				sitting.id,
 				selectedOption.bookId,
 			);
+			await syncParticipationWithActiveReadings(
+				tx,
+				sitting.id,
+				selectedOption.bookId,
+			);
 
 			return sittingUpdate;
 		});
@@ -1749,6 +1763,7 @@ export async function updateMyParticipationProgress(
 		select: {
 			id: true,
 			status: true,
+			selectedBookId: true,
 			participants: {
 				where: { userId, ...activeParticipationWhere },
 				select: {
@@ -1804,6 +1819,15 @@ export async function updateMyParticipationProgress(
 	if (input.progress === "completed" && previousProgress !== "completed") {
 		void notifyParticipantFinishedBook(db, input.slug, userId);
 		await ensureReadForSittingCompletion(db, sitting.id, userId);
+	}
+
+	// "In progress" on the sitting means the member is reading the book.
+	if (
+		input.progress === "in_progress" &&
+		previousProgress !== "in_progress" &&
+		sitting.selectedBookId
+	) {
+		await ensureReadingForSitting(db, userId, sitting.selectedBookId);
 	}
 
 	return updated;

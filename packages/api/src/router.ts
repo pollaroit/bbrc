@@ -22,6 +22,7 @@ import { postRouter } from "./modules/post/post.router";
 import { postPollRouter } from "./modules/post-poll/post-poll.router";
 import { quizRouter } from "./modules/quiz/quiz.router";
 import { readRouter } from "./modules/read/read.router";
+import { readingRouter } from "./modules/reading/reading.router";
 import { rpRouter } from "./modules/rp/rp.router";
 import { globalSearchRouter } from "./modules/search/global-search.router";
 import { seriesRouter } from "./modules/series/series.router";
@@ -54,6 +55,7 @@ export const appRouter = {
 	post: postRouter,
 	quiz: quizRouter,
 	read: readRouter,
+	reading: readingRouter,
 	series: seriesRouter,
 	linkPreview: linkPreviewRouter,
 	postPoll: postPollRouter,

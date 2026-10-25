@@ -1,0 +1,128 @@
+/// A member reading a book right now (or, once `finishedAt` is set, a finished read-through).
+/// Abandoning deletes the row. At most one unfinished row per member and book
+/// (a partial unique index in the migration), and at most five at a time (checked in code).
+model Reading {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bookId String @map("book_id")
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  startedAt  DateTime  @default(now()) @map("started_at")
+  /// Set when the book is marked read.
+  finishedAt DateTime? @map("finished_at")
+
+  /// Open Library edition (OL…M) the member picked, if any.
+  /// @zod.max(20).nullish()
+  editionOlid   String?      @map("edition_olid")
+  /// What to show for an Open Library edition (it is not stored here): its cover and a short label like "Penguin · 2003 · eng".
+  editionCoverId Int?        @map("edition_cover_id")
+  /// @zod.max(200).nullish()
+  editionLabel   String?     @map("edition_label")
+  bookEditionId String?      @map("book_edition_id")
+  bookEdition   BookEdition? @relation(fields: [bookEditionId], references: [id], onDelete: SetNull)
+
+  /// Pages of the edition (from Open Library, our edition, or typed by hand); null = progress is a percentage only.
+  totalPages  Int? @map("total_pages")
+  currentPage Int? @map("current_page")
+  /// 0 to 100, always kept (derived from the page when the pages are known).
+  percent     Int  @default(0)
+
+  logs ReadingLog[]
+
+  @@index([userId, finishedAt])
+  @@index([bookId, finishedAt])
+  @@map("reading")
+}
+
+/// One progress update, so pace, streaks and finish dates can be worked out.
+model ReadingLog {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  readingId String  @map("reading_id")
+  reading   Reading @relation(fields: [readingId], references: [id], onDelete: Cascade)
+
+  percent Int  @default(0)
+  page    Int?
+
+  @@index([readingId, createdAt])
+  @@map("reading_log")
+}
+
+enum BookEditionFormat {
+  paperback
+  hardcover
+  ebook
+  audiobook
+  other
+
+  @@map("book_edition_format")
+}
+
+/// `member` = added by a member; `verified` = checked by an admin.
+enum BookEditionStatus {
+  member
+  verified
+
+  @@map("book_edition_status")
+}
+
+/// An edition members added because theirs is not on Open Library (the second edition source).
+model BookEdition {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  bookId String @map("book_id")
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation("BookEditionCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  /// Only when it differs from the work's title (a translated title, a subtitle).
+  /// @zod.max(300).nullish()
+  title String?
+  /// Open Library language code: eng, tur, rus or aze for now.
+  /// @zod.min(3).max(3)
+  language String @default("eng")
+
+  /// @zod.min(1).max(20000)
+  pages Int
+
+  /// Digits only (no hyphens).
+  isbn13 String? @map("isbn_13")
+  isbn10 String? @map("isbn_10")
+
+  /// @zod.max(200).nullish()
+  publisher     String?
+  publishedYear Int?    @map("published_year")
+  format        BookEditionFormat @default(paperback)
+  /// @zod.max(200).nullish()
+  translator    String?
+  /// A cover uploaded for this edition only (public R2 URL).
+  /// @zod.max(2048).nullish()
+  coverUrl      String? @map("cover_url")
+  /// @zod.max(300).nullish()
+  notes         String?
+
+  status       BookEditionStatus @default(member)
+  verifiedById String?           @map("verified_by_id")
+  verifiedBy   User?             @relation("BookEditionVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  verifiedAt   DateTime?         @map("verified_at")
+
+  readings Reading[]
+  reads    Read[]
+
+  @@unique([bookId, isbn13])
+  @@index([bookId])
+  @@index([createdById, createdAt])
+  @@map("book_edition")
+}

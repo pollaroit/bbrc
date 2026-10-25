@@ -1,6 +1,7 @@
 import type { Database } from "@bbrc/db";
 import {
 	defaultPushEnabledForKind,
+	isOffByDefaultKind,
 	NOTIFICATION_KIND_GROUPS,
 	NOTIFICATION_KIND_LABELS,
 	NOTIFICATION_KINDS,
@@ -61,8 +62,8 @@ export async function ensureNotificationPreferences(
 		data: missing.map((kind) => ({
 			userId,
 			kind: kindToDb(kind),
-			inAppEnabled: true,
-			pushEnabled: defaultPushEnabledForKind(kind),
+			inAppEnabled: !isOffByDefaultKind(kind),
+			pushEnabled: !isOffByDefaultKind(kind) && defaultPushEnabledForKind(kind),
 		})),
 	});
 }

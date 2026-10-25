@@ -17,6 +17,7 @@ import {
 	buildBookListWhereWithAuthors,
 } from "../book/book-list-where";
 import { createFeedback } from "../feedback/feedback.service";
+import { finalizeReadingForRead } from "../reading/reading.service";
 import { activeParticipationWhere } from "../sitting/participation-active";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import {
@@ -139,6 +140,7 @@ export async function ensureUserReadBook(
 			readEndMonth: finishMonth.month,
 		},
 	});
+	await finalizeReadingForRead(db, userId, bookId);
 }
 
 /** When a participant completes the sitting’s selected book during reading. */
@@ -319,6 +321,8 @@ export async function setRead(
 			},
 			data: { progress: "completed" },
 		});
+
+		await finalizeReadingForRead(tx, userId, book.id);
 
 		return saved;
 	});

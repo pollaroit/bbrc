@@ -24,6 +24,8 @@ export * from "./post-polls";
 export * from "./preferences";
 export * from "./read-finished-month";
 export * from "./reading-deadline";
+export * from "./reading-pace";
+export * from "./reading-stats";
 export * from "./reading-streak";
 export * from "./rich-content";
 export * from "./scheduled-deadlines";

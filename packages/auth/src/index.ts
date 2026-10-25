@@ -23,6 +23,32 @@ export function createAuth(env: AuthConfig, database: Database) {
 		secret: env.BETTER_AUTH_SECRET,
 		baseURL: env.BETTER_AUTH_URL,
 		plugins: [nextCookies()],
+		databaseHooks: {
+			user: {
+				create: {
+					after: async (user) => {
+						// Every member gets a private, ordered Wishlist shelf.
+						try {
+							await database.shelf.create({
+								data: {
+									userId: user.id,
+									slug: "wishlist",
+									title: "Wishlist",
+									description: "Books I want to read.",
+									status: "active",
+									type: "ordered",
+									visibility: "private",
+									isWishlist: true,
+								},
+							});
+						} catch (error) {
+							// Made on first use instead (ensureWishlistShelf).
+							console.error("Could not create the wishlist shelf", error);
+						}
+					},
+				},
+			},
+		},
 		user: {
 			additionalFields: {
 				isAdmin: {

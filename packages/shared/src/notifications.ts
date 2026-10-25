@@ -25,6 +25,7 @@ export const NOTIFICATION_KINDS = [
 	"sitting_welcome",
 	"view_milestone",
 	"views_digest",
+	"reading_behind",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -55,6 +56,7 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
 	sitting_welcome: "Welcome to a sitting",
 	view_milestone: "Your content reached a views milestone",
 	views_digest: "Your weekly views",
+	reading_behind: "You are behind your reading pace",
 };
 
 export const NOTIFICATION_KIND_GROUPS = {
@@ -79,6 +81,7 @@ export const NOTIFICATION_KIND_GROUPS = {
 		"sitting_welcome",
 		"view_milestone",
 		"views_digest",
+		"reading_behind",
 	] as const satisfies readonly NotificationKind[],
 	sitting: [
 		"sitting_poll_started",
@@ -108,6 +111,17 @@ export const NOTIFICATION_KINDS_PUSH_ENABLED_BY_DEFAULT = [
 	"document_approved",
 	"document_rejected",
 ] as const satisfies readonly NotificationKind[];
+
+/** Off for everyone until they switch it on (in Notification settings). */
+export const NOTIFICATION_KINDS_OFF_BY_DEFAULT = [
+	"reading_behind",
+] as const satisfies readonly NotificationKind[];
+
+const offByDefaultSet = new Set<string>(NOTIFICATION_KINDS_OFF_BY_DEFAULT);
+
+export function isOffByDefaultKind(kind: NotificationKind): boolean {
+	return offByDefaultSet.has(kind);
+}
 
 const pushEnabledByDefaultSet = new Set<string>(
 	NOTIFICATION_KINDS_PUSH_ENABLED_BY_DEFAULT,

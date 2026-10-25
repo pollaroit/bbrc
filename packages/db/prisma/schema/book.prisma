@@ -51,6 +51,8 @@ model Book {
   countries     String[] @default([])
 
   feedbacks           Feedback[]
+  readings            Reading[]
+  editions            BookEdition[]
   polls               PollOption[]
   posts               Post[]
   postAttachments     PostAttachment[]

@@ -27,6 +27,10 @@ model User {
   allowPostAttachment   Boolean    @default(true) @map("allow_post_attachment")
   /// Organisers may add this member to a sitting without asking.
   allowSittingAutoAdd   Boolean    @default(true) @map("allow_sitting_auto_add")
+  /// Others can see which books this member is reading right now.
+  showCurrentlyReading  Boolean    @default(true) @map("show_currently_reading")
+  /// Others can see how far along this member is (otherwise just "reading").
+  showReadingProgress   Boolean    @default(true) @map("show_reading_progress")
   /// Organisers may send this member an invitation to a sitting.
   allowSittingInvites   Boolean    @default(true) @map("allow_sitting_invites")
   /// Look and feel (palette, fonts, sizes) plus display preferences; validated by `normalizePreferences`.
@@ -97,6 +101,9 @@ model User {
   pollBallots PostPollBallot[] @relation("PostPollBallotVoter")
 
   sittingsCreated            Sitting[]                @relation("SittingCreatedBy")
+  readings                   Reading[]
+  bookEditionsCreated        BookEdition[]            @relation("BookEditionCreator")
+  bookEditionsVerified       BookEdition[]            @relation("BookEditionVerifier")
   bookRequestUpvotes         BookRequestUpvote[]      @relation("BookRequestUpvoter")
   bookDiscoverAsks           BookDiscoverAsk[]        @relation("BookDiscoverAskUser")
   viewsMade                  View[]                   @relation("ViewViewer")
