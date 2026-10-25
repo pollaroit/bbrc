@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
 import type { z } from "zod";
+import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { authClient } from "@/lib/auth-client";
@@ -97,7 +98,11 @@ export function BookReadersPanel({ bookSlug, bookTitle, bookPages }: Props) {
 			) : (
 				<ul className="grid gap-3 sm:grid-cols-2">
 					{items.map((reader) => (
-						<ReaderCard key={reader.username} reader={reader} />
+						<ReaderCard
+							key={reader.username}
+							bookSlug={bookSlug}
+							reader={reader}
+						/>
 					))}
 				</ul>
 			)}
@@ -128,7 +133,13 @@ export function BookReadersPanel({ bookSlug, bookTitle, bookPages }: Props) {
 	);
 }
 
-function ReaderCard({ reader }: { reader: Reader }) {
+function ReaderCard({
+	bookSlug,
+	reader,
+}: {
+	bookSlug: string;
+	reader: Reader;
+}) {
 	const showProgress = reader.percent != null;
 	return (
 		<li className="flex flex-col gap-3 border border-border p-4">
@@ -174,9 +185,18 @@ function ReaderCard({ reader }: { reader: Reader }) {
 			)}
 
 			<p className="truncate text-muted-foreground text-xs">
-				{reader.edition?.label
-					? `Edition: ${reader.edition.label}`
-					: editionDisplayLabel(null, reader.totalPages)}
+				{reader.edition?.label ? (
+					<>
+						Edition:{" "}
+						<EditionLabelLink
+							bookSlug={bookSlug}
+							edition={reader.edition}
+							totalPages={reader.totalPages}
+						/>
+					</>
+				) : (
+					editionDisplayLabel(null, reader.totalPages)
+				)}
 			</p>
 		</li>
 	);

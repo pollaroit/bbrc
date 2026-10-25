@@ -10,6 +10,7 @@ import {
 	userCompletedClubRead,
 } from "../book/book-read-eligibility";
 import { notifyMemberFeedbackOnBook } from "../notification/notification-triggers";
+import { loadReadEditionRefs } from "../read/read-edition-ref";
 import {
 	assertContentNotVisible,
 	loadActorSocialGate,
@@ -152,8 +153,13 @@ export async function getBookFeedbackList(
 		userId,
 		db,
 	);
+	const editionRefs = await loadReadEditionRefs(
+		db,
+		feedbacks.map((row) => ({ userId: row.authorId, bookId: book.id })),
+	);
 
 	return feedbacks.map((feedback) => ({
+		readEdition: editionRefs.get(`${feedback.authorId}|${book.id}`) ?? null,
 		slug: feedback.slug,
 		authorId: feedback.authorId,
 		username: feedback.author.username,
@@ -233,8 +239,14 @@ export async function getFeedbackBySlug(
 		select: { slug: true },
 		orderBy: { createdAt: "desc" },
 	});
+	const permalinkEdition = (
+		await loadReadEditionRefs(db, [
+			{ userId: feedback.authorId, bookId: feedback.bookId },
+		])
+	).get(`${feedback.authorId}|${feedback.bookId}`);
 
 	return {
+		readEdition: permalinkEdition ?? null,
 		slug: feedback.slug,
 		review: feedback.review,
 		isSpoiler: feedback.isSpoiler,
@@ -328,12 +340,17 @@ export async function getUserFeedbackList(
 	]);
 
 	const page = pagination.paginate(rows);
+	const userEditionRefs = await loadReadEditionRefs(
+		db,
+		page.items.map((row) => ({ userId: user.id, bookId: row.bookId })),
+	);
 
 	return {
-		items: page.items.map(({ _count, id: _id, ...item }) => ({
+		items: page.items.map(({ _count, id: _id, bookId, ...item }) => ({
 			...item,
 			likeCount: _count.likes,
 			commentCount: _count.comments,
+			readEdition: userEditionRefs.get(`${user.id}|${bookId}`) ?? null,
 		})),
 		metadata: {
 			...page.metadata,

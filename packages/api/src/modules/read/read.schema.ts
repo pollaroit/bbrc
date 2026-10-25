@@ -16,6 +16,7 @@ import {
 	userReadListSearching,
 	userReadListSorting,
 } from "./read.listing";
+import { ReadEditionRefSchema, readEditionRefSelect } from "./read-edition-ref";
 
 export const ReadEditionIdSchema = z.string().transform((value, ctx) => {
 	const olid = openLibraryEditionKeyToOlid(value);
@@ -162,6 +163,8 @@ export const BookReadListItemSchema = z.object({
 	readEndYear: z.number().int().nullable(),
 	readEndMonth: z.number().int().nullable(),
 	editionId: ReadEditionIdFieldSchema,
+	/** The edition's page address and a short label (null when no edition was picked). */
+	edition: ReadEditionRefSchema.nullish(),
 	recordedAt: z.coerce.date(),
 	user: z.object({
 		username: z.string(),
@@ -192,6 +195,7 @@ export const UserReadListItemSchema = z.object({
 	readEndYear: z.number().int().nullable(),
 	readEndMonth: z.number().int().nullable(),
 	editionId: ReadEditionIdFieldSchema,
+	edition: ReadEditionRefSchema.nullish(),
 	recordedAt: z.coerce.date(),
 	/** The member's own rating for this book, when they left feedback. */
 	rating: z.number().nullable(),
@@ -294,6 +298,7 @@ export const userReadListSelect = {
 	readEndYear: true,
 	readEndMonth: true,
 	editionId: true,
+	bookEdition: readEditionRefSelect.bookEdition,
 	createdAt: true,
 	book: {
 		select: {

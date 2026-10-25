@@ -68,6 +68,12 @@ export const ListBookEditionsInputSchema = z.object({
 
 export const BookEditionItemSchema = z.object({
 	id: z.string(),
+	/** The short address (without the "m-"). */
+	publicId: z.string(),
+	/** The address to link to: `m-<publicId>`, or the Open Library edition when they are linked. */
+	key: z.string(),
+	/** The Open Library edition this one is the same as, when an admin linked them. */
+	openLibraryOlid: z.string().nullable(),
 	title: z.string().nullable(),
 	language: z.string(),
 	pages: z.number().int(),
@@ -103,3 +109,24 @@ export const ListBookEditionsOutputSchema = z.object({
 });
 
 export const OkSchema = z.object({ ok: z.literal(true) });
+
+export const LinkBookEditionInputSchema = z.object({
+	id: z.string().uuid(),
+	/** null unlinks. */
+	openLibraryOlid: z
+		.string()
+		.regex(/^OL\d+M$/i)
+		.transform((value) => value.toUpperCase())
+		.nullable(),
+});
+
+export const CheckEditionIsbnInputSchema = z.object({
+	bookSlug: z.string().min(1).max(160),
+	isbn: z.string().trim().min(10).max(20),
+});
+export const CheckEditionIsbnOutputSchema = z.object({
+	/** The same ISBN is already an Open Library edition of this book. */
+	openLibrary: z.object({ key: z.string(), label: z.string() }).nullable(),
+	/** A member edition of this book already has it. */
+	member: z.object({ key: z.string(), label: z.string() }).nullable(),
+});

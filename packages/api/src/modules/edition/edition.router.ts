@@ -1,4 +1,3 @@
-import { ORPCError } from "@orpc/server";
 import { notBannedProcedure, publicProcedure } from "../../procedures";
 import {
 	EditionCompareInputSchema,
@@ -8,28 +7,49 @@ import {
 	EditionReadersOutputSchema,
 	EditionViewerOutputSchema,
 } from "./edition.schema";
-
-const notBuilt = () => {
-	throw new ORPCError("NOT_IMPLEMENTED", {
-		message: "The edition page is not built yet.",
-	});
-};
+import {
+	compareEditions,
+	getEdition,
+	getEditionReaders,
+	getEditionViewer,
+} from "./edition.service";
 
 export const editionRouter = {
 	get: publicProcedure
 		.input(EditionKeyInputSchema)
 		.output(EditionLookupSchema)
-		.handler(notBuilt),
+		.handler(({ input, context }) =>
+			getEdition(context.db, input.bookSlug, input.key),
+		),
 	readers: publicProcedure
 		.input(EditionKeyInputSchema)
 		.output(EditionReadersOutputSchema)
-		.handler(notBuilt),
+		.handler(({ input, context }) =>
+			getEditionReaders(
+				context.db,
+				context.session?.user.id ?? null,
+				input.bookSlug,
+				input.key,
+			),
+		),
 	viewer: notBannedProcedure
 		.input(EditionKeyInputSchema)
 		.output(EditionViewerOutputSchema)
-		.handler(notBuilt),
+		.handler(({ input, context }) =>
+			getEditionViewer(
+				context.db,
+				{
+					id: context.session.user.id,
+					isAdmin: Boolean(context.session.user.isAdmin),
+				},
+				input.bookSlug,
+				input.key,
+			),
+		),
 	compare: publicProcedure
 		.input(EditionCompareInputSchema)
 		.output(EditionCompareOutputSchema)
-		.handler(notBuilt),
+		.handler(({ input, context }) =>
+			compareEditions(context.db, input.bookSlug, input.keys),
+		),
 };

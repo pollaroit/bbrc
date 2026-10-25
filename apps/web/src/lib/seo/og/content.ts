@@ -30,6 +30,8 @@ import {
 	formatSittingSlugLabel,
 } from "@bbrc/shared";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { coverSrc, editionHeadline } from "@/lib/edition/format";
+import { loadEditionLookupForIsr } from "@/lib/edition/load-edition";
 import { parseLeaderboardPathname } from "@/lib/leaderboard/paths";
 import { postAttachmentLabel } from "@/lib/post-attachment-label";
 import { DEFAULT_DESCRIPTION } from "@/lib/seo/site";
@@ -1229,6 +1231,75 @@ async function resolveAchievementOg(slug: string): Promise<OgImageContent> {
 // Router
 // ---------------------------------------------------------------------------
 
+/** An edition's own card: its cover, language, format, pages and how many members read it. */
+async function resolveEditionOg(
+	slug: string,
+	key: string,
+): Promise<OgImageContent> {
+	try {
+		const lookup = await loadEditionLookupForIsr(slug, key);
+		if (lookup.kind === "redirect") {
+			return resolveEditionOg(slug, lookup.key);
+		}
+		if (lookup.kind !== "ok") {
+			return resolveBookOg(slug, "editions", false);
+		}
+		const { book, edition, stats } = lookup.page;
+		const headline = editionHeadline(book, edition);
+		const cover = edition.covers[0];
+		const [edCover, bookCover] = await Promise.all([
+			ogImageData(coverSrc(cover, "L")),
+			coverMedia(book.coverId),
+		]);
+		const readers = stats.finished + stats.readingNow;
+		const facts: OgFact[] = [
+			fact("Language", edition.language ?? "Not listed"),
+			fact(
+				"Format · Pages",
+				[edition.format, edition.pages ? `${num(edition.pages)} p` : null]
+					.filter(Boolean)
+					.join(" · ") || "Not listed",
+			),
+			fact(
+				"Published",
+				[edition.publishedYear, edition.publishers[0]]
+					.filter(Boolean)
+					.join(" · ") || "Not listed",
+			),
+			fact("Readers", num(readers)),
+		];
+		return {
+			kind: "Edition",
+			title: headline,
+			subtitle:
+				headline === book.title
+					? formatBookAuthors(book.authors)
+					: `${book.title} · ${formatBookAuthors(book.authors)}`,
+			body: truncateAtWord(
+				stripMarkdown(edition.description ?? "") ||
+					[
+						edition.editionName,
+						edition.translator ? `Translated by ${edition.translator}` : null,
+						edition.isbn13 ? `ISBN ${edition.isbn13}` : null,
+					]
+						.filter(Boolean)
+						.join(". ") ||
+					"One edition of this book, with the members who read it.",
+				200,
+			),
+			badge: edition.verified
+				? "Verified"
+				: edition.source === "member"
+					? "Member-added"
+					: "Open Library",
+			media: edCover ? { kind: "cover", src: edCover } : bookCover,
+			facts,
+		};
+	} catch {
+		return notFound("Edition", "Edition");
+	}
+}
+
 export async function resolveOgImageContent(
 	pathSegments: string[],
 ): Promise<OgImageContent> {
@@ -1291,6 +1362,9 @@ export async function resolveOgImageContent(
 		}
 		if (rest[0] === "feedbacks" && rest[1]) {
 			return resolveReviewOg(slug, rest[1]);
+		}
+		if (rest[0] === "editions" && rest[1] && rest.length === 2) {
+			return resolveEditionOg(slug, rest[1]);
 		}
 		if (rest[0] === "edit") {
 			const base = await resolveBookOg(slug);

@@ -1,7 +1,7 @@
 "use client";
 
 import type { SearchWorkEditionsOutput } from "@bbrc/api/modules/read/read.schema";
-import { openLibraryWorkPageUrl } from "@bbrc/shared";
+import { openLibraryEditionKey, openLibraryWorkPageUrl } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Empty,
@@ -12,9 +12,18 @@ import {
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
+import type { Route } from "next";
 import Image from "next/image";
+import Link from "next/link";
+import {
+	CompareBar,
+	EditionSelectBox,
+	type EditionSelection,
+	useEditionSelection,
+} from "@/components/blocks/book-editions/edition-select";
 import { MemberEditionsSection } from "@/components/blocks/book-editions/member-editions-section";
 import { bookCoverFrameClassName, bookCoverUrl } from "@/lib/book-cover";
+import { editionPath } from "@/lib/edition/format";
 import { useBookEditionsListingSearchParams } from "@/lib/listing/book-editions-listing";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
@@ -47,7 +56,15 @@ function EditionMetaRow({
 	);
 }
 
-function BookEditionsGrid({ data }: { data: SearchWorkEditionsOutput }) {
+function BookEditionsGrid({
+	data,
+	bookSlug,
+	selection,
+}: {
+	data: SearchWorkEditionsOutput;
+	bookSlug: string;
+	selection: EditionSelection;
+}) {
 	if (data.items.length === 0) {
 		return (
 			<Empty>
@@ -65,6 +82,8 @@ function BookEditionsGrid({ data }: { data: SearchWorkEditionsOutput }) {
 		<ul className={editionsGridClassName}>
 			{data.items.map((edition) => {
 				const coverSrc = bookCoverUrl(edition.coverId, "M");
+				const key = openLibraryEditionKey(edition.editionId);
+				const href = editionPath(bookSlug, key) as Route;
 
 				return (
 					<li
@@ -72,9 +91,11 @@ function BookEditionsGrid({ data }: { data: SearchWorkEditionsOutput }) {
 						className="flex h-full flex-col border border-border bg-card"
 					>
 						<div className="flex flex-col gap-4 p-4">
-							<div
+							<Link
+								href={href}
+								aria-label={`Open the edition page: ${edition.title}`}
 								className={cn(
-									"relative mx-auto aspect-2/3 w-full max-w-[9rem]",
+									"relative mx-auto block aspect-2/3 w-full max-w-[9rem]",
 									bookCoverFrameClassName,
 								)}
 							>
@@ -91,11 +112,16 @@ function BookEditionsGrid({ data }: { data: SearchWorkEditionsOutput }) {
 										No cover
 									</div>
 								)}
-							</div>
+							</Link>
 
 							<div className="flex min-w-0 flex-col gap-2">
 								<h3 className="font-medium text-sm leading-snug">
-									{edition.title}
+									<Link
+										href={href}
+										className="underline-offset-4 hover:underline"
+									>
+										{edition.title}
+									</Link>
 								</h3>
 								<EditionMetaRow
 									label="Published"
@@ -146,7 +172,19 @@ function BookEditionsGrid({ data }: { data: SearchWorkEditionsOutput }) {
 							</div>
 						</div>
 
-						<div className="mt-auto flex flex-wrap gap-2 border-border border-t p-3">
+						<div className="mt-auto flex flex-wrap items-center gap-2 border-border border-t p-3">
+							<Button
+								size="sm"
+								nativeButton={false}
+								render={<Link href={href} />}
+							>
+								View edition
+							</Button>
+							<EditionSelectBox
+								editionKey={key}
+								selection={selection}
+								className="ms-auto"
+							/>
 							<Button
 								variant="outline"
 								size="sm"
@@ -193,6 +231,7 @@ export function BookEditionsPanel({
 	workOlid,
 }: BookEditionsPanelProps) {
 	const [params, setParams] = useBookEditionsListingSearchParams();
+	const selection = useEditionSelection();
 
 	const editionsQuery = useQuery(
 		orpc.read.searchEditions.queryOptions({
@@ -212,7 +251,11 @@ export function BookEditionsPanel({
 	if (!workOlid) {
 		return (
 			<div className="flex flex-col gap-8">
-				<MemberEditionsSection bookSlug={bookSlug} bookTitle={bookTitle} />
+				<MemberEditionsSection
+					bookSlug={bookSlug}
+					bookTitle={bookTitle}
+					selection={selection}
+				/>
 				<Empty>
 					<EmptyHeader>
 						<EmptyTitle>No Open Library work linked</EmptyTitle>
@@ -222,13 +265,18 @@ export function BookEditionsPanel({
 						</EmptyDescription>
 					</EmptyHeader>
 				</Empty>
+				<CompareBar bookSlug={bookSlug} selection={selection} />
 			</div>
 		);
 	}
 
 	return (
 		<div className="flex flex-col gap-8">
-			<MemberEditionsSection bookSlug={bookSlug} bookTitle={bookTitle} />
+			<MemberEditionsSection
+				bookSlug={bookSlug}
+				bookTitle={bookTitle}
+				selection={selection}
+			/>
 			<h2 className="border-border border-t pt-6 font-semibold text-lg tracking-tight">
 				Open Library editions
 			</h2>
@@ -270,7 +318,11 @@ export function BookEditionsPanel({
 							? ` · Page ${editionsQuery.data.page} of ${editionsQuery.data.totalPages}`
 							: null}
 					</p>
-					<BookEditionsGrid data={editionsQuery.data} />
+					<BookEditionsGrid
+						data={editionsQuery.data}
+						bookSlug={bookSlug}
+						selection={selection}
+					/>
 					{editionsQuery.data.totalPages > 1 ? (
 						<div className="flex items-center justify-between gap-2 border border-border px-4 py-3">
 							<Button
@@ -298,6 +350,7 @@ export function BookEditionsPanel({
 					) : null}
 				</>
 			)}
+			<CompareBar bookSlug={bookSlug} selection={selection} />
 		</div>
 	);
 }

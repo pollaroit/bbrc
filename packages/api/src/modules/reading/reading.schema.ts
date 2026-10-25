@@ -3,6 +3,8 @@ import { z } from "zod";
 const Count = z.number().int().min(0);
 
 export const ReadingEditionSchema = z.object({
+	/** The edition's address for `/books/<slug>/editions/<key>`; null once a member edition was removed. */
+	key: z.string().nullable(),
 	kind: z.enum(["open_library", "member"]),
 	/** Open Library edition id (OL…M). */
 	olid: z.string().nullable(),

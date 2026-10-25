@@ -12,6 +12,7 @@ export * from "./document-file-check";
 export * from "./documents";
 export * from "./edition-key";
 export * from "./edition-language";
+export * from "./edition-links";
 export * from "./favorites";
 export * from "./feedback-rating";
 export * from "./genres";

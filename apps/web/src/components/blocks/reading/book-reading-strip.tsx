@@ -7,10 +7,10 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
 import { BookMarkReadDialog } from "@/components/blocks/book-mark-read-dialog";
+import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
 import { ReadingProgressControl } from "@/components/blocks/reading/reading-progress-control";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { authClient } from "@/lib/auth-client";
-import { editionDisplayLabel } from "@/lib/reading/edition-text";
 import { useReadingState } from "@/lib/reading/use-reading";
 
 const StartReadingDialog = dynamic(
@@ -54,7 +54,11 @@ export function BookReadingStrip({ bookSlug, bookTitle, bookPages }: Props) {
 				<div className="flex min-w-0 flex-col gap-0.5">
 					<p className="font-medium text-sm">You're reading this</p>
 					<p className="truncate text-muted-foreground text-xs">
-						{editionDisplayLabel(reading.edition, reading.totalPages)}
+						<EditionLabelLink
+							bookSlug={bookSlug}
+							edition={reading.edition}
+							totalPages={reading.totalPages}
+						/>
 						<span aria-hidden> · </span>
 						started <RelativeTime date={reading.startedAt} />
 					</p>

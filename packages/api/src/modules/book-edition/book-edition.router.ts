@@ -6,7 +6,10 @@ import {
 import {
 	BookEditionIdInputSchema,
 	BookEditionItemSchema,
+	CheckEditionIsbnInputSchema,
+	CheckEditionIsbnOutputSchema,
 	CreateBookEditionInputSchema,
+	LinkBookEditionInputSchema,
 	ListBookEditionsInputSchema,
 	ListBookEditionsOutputSchema,
 	MergeBookEditionsInputSchema,
@@ -14,8 +17,10 @@ import {
 	UpdateBookEditionInputSchema,
 } from "./book-edition.schema";
 import {
+	checkEditionIsbn,
 	createBookEdition,
 	deleteBookEdition,
+	linkBookEdition,
 	listBookEditions,
 	mergeBookEditions,
 	setBookEditionVerified,
@@ -90,4 +95,17 @@ export const bookEditionRouter = {
 			await mergeBookEditions(context.db, input.fromId, input.intoId);
 			return { ok: true as const };
 		}),
+	link: adminProcedure
+		.input(LinkBookEditionInputSchema)
+		.output(OkSchema)
+		.handler(async ({ input, context }) => {
+			await linkBookEdition(context.db, input.id, input.openLibraryOlid);
+			return { ok: true as const };
+		}),
+	checkIsbn: notBannedProcedure
+		.input(CheckEditionIsbnInputSchema)
+		.output(CheckEditionIsbnOutputSchema)
+		.handler(({ input, context }) =>
+			checkEditionIsbn(context.db, input.bookSlug, input.isbn),
+		),
 };

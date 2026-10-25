@@ -22,10 +22,10 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { type CSSProperties, useId, useState } from "react";
+import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
-import { editionDisplayLabel } from "@/lib/reading/edition-text";
 import { paceText, paceToneClass } from "@/lib/reading/pace-text";
 import {
 	useAbandonReading,
@@ -297,12 +297,11 @@ export function ReadingCard({
 						<span>
 							Started <RelativeTime date={reading.startedAt} />
 						</span>
-						<span
-							className="min-w-0 truncate"
-							title={editionDisplayLabel(reading.edition, reading.totalPages)}
-						>
-							{editionDisplayLabel(reading.edition, reading.totalPages)}
-						</span>
+						<EditionLabelLink
+							bookSlug={reading.book.slug}
+							edition={reading.edition}
+							totalPages={reading.totalPages}
+						/>
 						{readOnly ? null : (
 							<button
 								type="button"

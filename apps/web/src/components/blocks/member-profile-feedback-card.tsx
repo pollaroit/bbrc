@@ -6,6 +6,7 @@ import { Heart, MessageCircle, Star } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { EditionChip } from "@/components/blocks/edition-chip";
 import { FeedbackEditIconButton } from "@/components/blocks/feedback-edit-icon-button";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
@@ -93,6 +94,12 @@ export function MemberProfileFeedbackCard({
 						Rating only — no written review.
 					</p>
 				)}
+
+				<EditionChip
+					bookSlug={item.book.slug}
+					edition={item.readEdition}
+					className="self-start"
+				/>
 
 				<div className="relative z-10 mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground text-xs tabular-nums">
 					<RelativeTime

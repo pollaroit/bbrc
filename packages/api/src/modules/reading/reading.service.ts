@@ -1,5 +1,6 @@
 import type { Database, DatabaseTransaction } from "@bbrc/db";
 import {
+	canonicalEditionKey,
 	cleanEditionLabel,
 	clubDayKey,
 	formatEditionLanguage,
@@ -9,6 +10,8 @@ import {
 	resolveClubTimeZone,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import { snapshotOpenLibraryEdition } from "../edition/edition.service";
+import { editionLabelOf } from "../edition/edition-support";
 import { activeParticipationWhere } from "../sitting/participation-active";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import { recomputeBookReadingCounters } from "./book-reading-counters";
@@ -35,10 +38,13 @@ const readingSelect = {
 	editionOlid: true,
 	editionCoverId: true,
 	editionLabel: true,
+	editionCoverUrl: true,
 	bookEditionId: true,
 	bookEdition: {
 		select: {
 			id: true,
+			publicId: true,
+			openLibraryOlid: true,
 			title: true,
 			language: true,
 			pages: true,
@@ -75,8 +81,11 @@ type ReadingRow = {
 	editionOlid: string | null;
 	editionCoverId: number | null;
 	editionLabel: string | null;
+	editionCoverUrl: string | null;
 	bookEdition: {
 		id: string;
+		publicId: string;
+		openLibraryOlid: string | null;
 		title: string | null;
 		language: string;
 		pages: number;
@@ -105,6 +114,10 @@ export function mapEdition(row: ReadingRow): ReadingItem["edition"] {
 			formatEditionLanguage(edition.language),
 		].filter(Boolean);
 		return {
+			key: canonicalEditionKey({
+				publicId: edition.publicId,
+				linkedOlid: edition.openLibraryOlid,
+			}),
 			kind: "member",
 			olid: null,
 			memberEditionId: edition.id,
@@ -117,6 +130,7 @@ export function mapEdition(row: ReadingRow): ReadingItem["edition"] {
 	}
 	if (row.editionOlid) {
 		return {
+			key: canonicalEditionKey({ olid: row.editionOlid }),
 			kind: "open_library",
 			olid: row.editionOlid,
 			memberEditionId: null,
@@ -124,6 +138,20 @@ export function mapEdition(row: ReadingRow): ReadingItem["edition"] {
 			label: cleanEditionLabel(row.editionLabel),
 			coverId: row.editionCoverId,
 			coverUrl: null,
+			language: null,
+			pages: row.totalPages,
+		};
+	}
+	// A member edition that was removed: the saved label stays, but there is no page to link to.
+	if (row.editionLabel) {
+		return {
+			key: null,
+			kind: "member",
+			olid: null,
+			memberEditionId: null,
+			label: cleanEditionLabel(row.editionLabel),
+			coverId: null,
+			coverUrl: row.editionCoverUrl,
 			language: null,
 			pages: row.totalPages,
 		};
@@ -414,18 +442,43 @@ export async function startReading(
 			});
 		}
 
-		let memberEdition: { id: string; pages: number } | null = null;
+		let memberEdition: {
+			id: string;
+			pages: number;
+			label: string;
+			coverUrl: string | null;
+		} | null = null;
 		if (input.bookEditionId) {
 			const edition = await tx.bookEdition.findUnique({
 				where: { id: input.bookEditionId },
-				select: { id: true, bookId: true, pages: true },
+				select: {
+					id: true,
+					bookId: true,
+					pages: true,
+					title: true,
+					publisher: true,
+					publishedYear: true,
+					language: true,
+					coverUrl: true,
+				},
 			});
 			if (!edition || edition.bookId !== book.id) {
 				throw new ORPCError("BAD_REQUEST", {
 					message: "That edition belongs to another book.",
 				});
 			}
-			memberEdition = edition;
+			memberEdition = {
+				id: edition.id,
+				pages: edition.pages,
+				label: editionLabelOf({
+					title: edition.title,
+					publisher: edition.publisher,
+					year: edition.publishedYear,
+					language: edition.language,
+					fallback: "Own edition",
+				}),
+				coverUrl: edition.coverUrl,
+			};
 		}
 
 		// `null` means "no page count, track by percentage"; leaving it out uses the
@@ -439,7 +492,11 @@ export async function startReading(
 		const editionFields = {
 			editionOlid: memberEdition ? null : (input.editionOlid ?? null),
 			editionCoverId: memberEdition ? null : (input.editionCoverId ?? null),
-			editionLabel: memberEdition ? null : (input.editionLabel ?? null),
+			// A member edition's label and cover are saved too, so the card survives its removal.
+			editionLabel: memberEdition
+				? memberEdition.label
+				: (input.editionLabel ?? null),
+			editionCoverUrl: memberEdition?.coverUrl ?? null,
 			bookEditionId: memberEdition?.id ?? null,
 			totalPages,
 		};
@@ -485,6 +542,11 @@ export async function startReading(
 		await recomputeBookReadingCounters(tx, book.id);
 		return created;
 	});
+
+	// Keep a copy of the Open Library edition so its label and numbers survive Open Library changes.
+	if (input.editionOlid) {
+		snapshotOpenLibraryEdition(db, book.id, input.editionOlid);
+	}
 
 	const sittings = await sittingsFor(db, userId, [book.id]);
 	return mapReading(result, sittings.get(book.id), new Date());
@@ -563,10 +625,20 @@ export async function setReadingEdition(
 		});
 	}
 	let memberPages: number | null = null;
+	let memberLabel: string | null = null;
+	let memberCoverUrl: string | null = null;
 	if (input.bookEditionId) {
 		const edition = await db.bookEdition.findUnique({
 			where: { id: input.bookEditionId },
-			select: { bookId: true, pages: true },
+			select: {
+				bookId: true,
+				pages: true,
+				title: true,
+				publisher: true,
+				publishedYear: true,
+				language: true,
+				coverUrl: true,
+			},
 		});
 		if (!edition || edition.bookId !== row.book.id) {
 			throw new ORPCError("BAD_REQUEST", {
@@ -574,6 +646,14 @@ export async function setReadingEdition(
 			});
 		}
 		memberPages = edition.pages;
+		memberLabel = editionLabelOf({
+			title: edition.title,
+			publisher: edition.publisher,
+			year: edition.publishedYear,
+			language: edition.language,
+			fallback: "Own edition",
+		});
+		memberCoverUrl = edition.coverUrl;
 	}
 	// A number sets the pages, `null` clears them (percentage only, e.g. a PDF),
 	// and leaving it out keeps the current pages unless the new edition has its own.
@@ -588,7 +668,10 @@ export async function setReadingEdition(
 			editionCoverId: input.bookEditionId
 				? null
 				: (input.editionCoverId ?? null),
-			editionLabel: input.bookEditionId ? null : (input.editionLabel ?? null),
+			editionLabel: input.bookEditionId
+				? memberLabel
+				: (input.editionLabel ?? null),
+			editionCoverUrl: input.bookEditionId ? memberCoverUrl : null,
 			bookEditionId: input.bookEditionId ?? null,
 			totalPages,
 			// Keep the same place in the book, whatever the edition's length.
@@ -599,6 +682,9 @@ export async function setReadingEdition(
 		},
 		select: readingSelect,
 	});
+	if (input.editionOlid && !input.bookEditionId) {
+		snapshotOpenLibraryEdition(db, row.book.id, input.editionOlid);
+	}
 	const sittings = await sittingsFor(db, userId, [row.book.id]);
 	return mapReading(updated, sittings.get(row.book.id), new Date());
 }

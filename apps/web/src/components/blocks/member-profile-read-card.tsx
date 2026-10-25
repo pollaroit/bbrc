@@ -3,6 +3,7 @@ import { BookCheck, BookOpen, CalendarDays, Star } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { EditionChip } from "@/components/blocks/edition-chip";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatReadFinishedMonthField } from "@/lib/format-read-date";
 
@@ -51,6 +52,13 @@ export function MemberProfileReadCard({ item }: { item: Item }) {
 						</span>
 					) : null}
 				</div>
+
+				<EditionChip
+					bookSlug={book.slug}
+					edition={item.edition}
+					prefix="Read the"
+					className="self-start"
+				/>
 
 				<div className="mt-auto flex items-end justify-between gap-2">
 					<p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs tabular-nums">

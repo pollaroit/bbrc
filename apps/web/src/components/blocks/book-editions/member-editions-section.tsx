@@ -33,6 +33,7 @@ import {
 	Plus,
 	ShieldCheck,
 	ShieldOff,
+	Star,
 	Trash2,
 	Users,
 } from "lucide-react";
@@ -42,6 +43,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AddEditionDialog } from "@/components/blocks/book-editions/add-edition-dialog";
+import {
+	EditionSelectBox,
+	type EditionSelection,
+} from "@/components/blocks/book-editions/edition-select";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
@@ -50,15 +55,42 @@ import {
 	EDITION_FORMAT_LABELS,
 	languageLabel,
 } from "@/lib/book-edition/edition-meta";
+import { editionPath } from "@/lib/edition/format";
+import { memberEditionKeyOf } from "@/lib/edition/member-edition";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type ListData = { items: BookEditionItem[]; addsLeftToday: number | null };
 
-type Props = { bookSlug: string; bookTitle: string };
+type Props = {
+	bookSlug: string;
+	bookTitle: string;
+	/** Ticking editions to compare (shared with the Open Library list). */
+	selection?: EditionSelection;
+};
 
 const gridClassName =
 	"grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+
+function CoverFrame({
+	href,
+	children,
+}: {
+	href: Route | null;
+	children: React.ReactNode;
+}) {
+	const className = cn(
+		"relative mx-auto block aspect-2/3 w-full max-w-[9rem]",
+		bookCoverFrameClassName,
+	);
+	return href ? (
+		<Link href={href} className={className} aria-label="Open the edition page">
+			{children}
+		</Link>
+	) : (
+		<div className={className}>{children}</div>
+	);
+}
 
 function Row({
 	label,
@@ -76,7 +108,11 @@ function Row({
 	);
 }
 
-export function MemberEditionsSection({ bookSlug, bookTitle }: Props) {
+export function MemberEditionsSection({
+	bookSlug,
+	bookTitle,
+	selection,
+}: Props) {
 	const { data: session } = authClient.useSession();
 	const isAdmin = session?.user.isAdmin === true;
 	const signedIn = Boolean(session?.user);
@@ -177,6 +213,14 @@ export function MemberEditionsSection({ bookSlug, bookTitle }: Props) {
 
 	const items = query.data?.items ?? [];
 	const addsLeft = query.data?.addsLeftToday ?? null;
+	// The most read member edition, when it clearly leads (best effort: this list only
+	// knows member editions; the edition page compares them all).
+	const topReaders = Math.max(0, ...items.map((item) => item.readers));
+	const favouriteId =
+		topReaders >= 2 &&
+		items.filter((item) => item.readers === topReaders).length === 1
+			? (items.find((item) => item.readers === topReaders)?.id ?? null)
+			: null;
 
 	function focusEdition(id: string) {
 		setHighlight(id);
@@ -255,168 +299,205 @@ export function MemberEditionsSection({ bookSlug, bookTitle }: Props) {
 				</p>
 			) : (
 				<ul className={gridClassName}>
-					{items.map((edition) => (
-						<li
-							key={edition.id}
-							id={`edition-${edition.id}`}
-							className={cn(
-								"flex h-full flex-col border border-border bg-card transition-colors",
-								highlight === edition.id && "border-foreground bg-muted/40",
-							)}
-						>
-							<div className="flex flex-col gap-4 p-4">
-								<div
-									className={cn(
-										"relative mx-auto aspect-2/3 w-full max-w-[9rem]",
-										bookCoverFrameClassName,
-									)}
-								>
-									{edition.coverUrl ? (
-										<Image
-											src={edition.coverUrl}
-											alt=""
-											fill
-											className="object-cover"
-											sizes="144px"
-										/>
-									) : (
-										<div className="flex size-full items-center justify-center px-2 text-center text-muted-foreground text-xs">
-											No cover
-										</div>
-									)}
-								</div>
-								<div className="flex min-w-0 flex-col gap-2">
-									<div className="flex flex-wrap items-center gap-1.5">
-										{edition.status === "verified" ? (
-											<Badge
-												variant="secondary"
-												className="gap-1 text-success-ink"
-											>
-												<BadgeCheck className="size-3" aria-hidden />
-												Verified
-											</Badge>
+					{items.map((edition) => {
+						const memberKey = memberEditionKeyOf(edition);
+						const pageHref = memberKey
+							? (editionPath(bookSlug, memberKey) as Route)
+							: null;
+						return (
+							<li
+								key={edition.id}
+								id={`edition-${edition.id}`}
+								className={cn(
+									"flex h-full flex-col border border-border bg-card transition-colors",
+									highlight === edition.id && "border-foreground bg-muted/40",
+								)}
+							>
+								<div className="flex flex-col gap-4 p-4">
+									<CoverFrame href={pageHref}>
+										{edition.coverUrl ? (
+											<Image
+												src={edition.coverUrl}
+												alt=""
+												fill
+												className="object-cover"
+												sizes="144px"
+											/>
 										) : (
-											<Badge variant="outline">Member-added</Badge>
+											<div className="flex size-full items-center justify-center px-2 text-center text-muted-foreground text-xs">
+												No cover
+											</div>
 										)}
-										{edition.readers > 0 ? (
-											<span className="inline-flex items-center gap-1 text-muted-foreground text-xs tabular-nums">
-												<Users className="size-3" aria-hidden />
-												{edition.readers}{" "}
-												{edition.readers === 1 ? "reader" : "readers"}
-											</span>
+									</CoverFrame>
+									<div className="flex min-w-0 flex-col gap-2">
+										<div className="flex flex-wrap items-center gap-1.5">
+											{edition.status === "verified" ? (
+												<Badge
+													variant="secondary"
+													className="gap-1 text-success-ink"
+												>
+													<BadgeCheck className="size-3" aria-hidden />
+													Verified
+												</Badge>
+											) : (
+												<Badge variant="outline">Member-added</Badge>
+											)}
+											{favouriteId === edition.id ? (
+												<Badge
+													variant="secondary"
+													className="gap-1 bg-warning/10 text-warning-ink"
+												>
+													<Star className="size-3" aria-hidden />
+													Club favourite
+												</Badge>
+											) : null}
+											{edition.readers > 0 ? (
+												<span className="inline-flex items-center gap-1 text-muted-foreground text-xs tabular-nums">
+													<Users className="size-3" aria-hidden />
+													{edition.readers}{" "}
+													{edition.readers === 1 ? "reader" : "readers"}
+												</span>
+											) : null}
+										</div>
+										<h3 className="font-medium text-sm leading-snug">
+											{pageHref ? (
+												<Link
+													href={pageHref}
+													className="underline-offset-4 hover:underline"
+												>
+													{edition.title ?? bookTitle}
+												</Link>
+											) : (
+												(edition.title ?? bookTitle)
+											)}
+										</h3>
+										<Row
+											label="Language"
+											value={languageLabel(edition.language)}
+										/>
+										<Row
+											label="Format"
+											value={`${EDITION_FORMAT_LABELS[edition.format]} · ${edition.pages} pp.`}
+										/>
+										<Row
+											label="Publisher"
+											value={[edition.publisher, edition.publishedYear]
+												.filter(Boolean)
+												.join(", ")}
+										/>
+										<Row label="Translator" value={edition.translator} />
+										{edition.isbn13 ? (
+											<p className="font-mono text-muted-foreground text-xs">
+												ISBN-13 {edition.isbn13}
+											</p>
+										) : null}
+										{edition.notes ? (
+											<p className="text-muted-foreground text-xs leading-relaxed">
+												{edition.notes}
+											</p>
+										) : null}
+										{edition.createdBy ? (
+											<p className="text-muted-foreground text-xs">
+												Added by{" "}
+												<Link
+													href={`/users/${edition.createdBy.username}` as Route}
+													className="text-foreground underline-offset-4 hover:underline"
+												>
+													{edition.createdBy.name}
+												</Link>{" "}
+												<RelativeTime date={edition.createdAt} />
+											</p>
 										) : null}
 									</div>
-									<h3 className="font-medium text-sm leading-snug">
-										{edition.title ?? bookTitle}
-									</h3>
-									<Row
-										label="Language"
-										value={languageLabel(edition.language)}
-									/>
-									<Row
-										label="Format"
-										value={`${EDITION_FORMAT_LABELS[edition.format]} · ${edition.pages} pp.`}
-									/>
-									<Row
-										label="Publisher"
-										value={[edition.publisher, edition.publishedYear]
-											.filter(Boolean)
-											.join(", ")}
-									/>
-									<Row label="Translator" value={edition.translator} />
-									{edition.isbn13 ? (
-										<p className="font-mono text-muted-foreground text-xs">
-											ISBN-13 {edition.isbn13}
-										</p>
-									) : null}
-									{edition.notes ? (
-										<p className="text-muted-foreground text-xs leading-relaxed">
-											{edition.notes}
-										</p>
-									) : null}
-									{edition.createdBy ? (
-										<p className="text-muted-foreground text-xs">
-											Added by{" "}
-											<Link
-												href={`/users/${edition.createdBy.username}` as Route}
-												className="text-foreground underline-offset-4 hover:underline"
-											>
-												{edition.createdBy.name}
-											</Link>{" "}
-											<RelativeTime date={edition.createdAt} />
-										</p>
-									) : null}
 								</div>
-							</div>
 
-							{edition.canEdit || edition.canDelete || isAdmin ? (
-								<div className="mt-auto flex flex-wrap gap-1.5 border-border border-t p-3">
-									{edition.canEdit ? (
+								{pageHref && memberKey ? (
+									<div className="mt-auto flex flex-wrap items-center gap-2 border-border border-t p-3">
 										<Button
-											type="button"
 											size="sm"
-											variant="outline"
-											onClick={() => setEditing(edition)}
+											nativeButton={false}
+											render={<Link href={pageHref} />}
 										>
-											<Pencil data-icon="inline-start" aria-hidden />
-											Edit
+											View edition
 										</Button>
-									) : null}
-									{isAdmin ? (
-										<>
-											{edition.status === "verified" ? (
-												<Button
-													type="button"
-													size="sm"
-													variant="ghost"
-													onClick={() => unverify.mutate({ id: edition.id })}
-												>
-													<ShieldOff data-icon="inline-start" aria-hidden />
-													Unverify
-												</Button>
-											) : (
-												<Button
-													type="button"
-													size="sm"
-													variant="ghost"
-													onClick={() => verify.mutate({ id: edition.id })}
-												>
-													<ShieldCheck data-icon="inline-start" aria-hidden />
-													Verify
-												</Button>
-											)}
-											{items.length > 1 ? (
-												<Button
-													type="button"
-													size="sm"
-													variant="ghost"
-													onClick={() => {
-														setMergeInto("");
-														setMerging(edition);
-													}}
-												>
-													<GitMerge data-icon="inline-start" aria-hidden />
-													Merge
-												</Button>
-											) : null}
-										</>
-									) : null}
-									{edition.canDelete ? (
-										<Button
-											type="button"
-											size="sm"
-											variant="ghost"
-											className="ms-auto text-destructive"
-											onClick={() => setDeleting(edition)}
-										>
-											<Trash2 data-icon="inline-start" aria-hidden />
-											Delete
-										</Button>
-									) : null}
-								</div>
-							) : null}
-						</li>
-					))}
+										{selection ? (
+											<EditionSelectBox
+												editionKey={memberKey}
+												selection={selection}
+												className="ms-auto"
+											/>
+										) : null}
+									</div>
+								) : null}
+								{edition.canEdit || edition.canDelete || isAdmin ? (
+									<div className="mt-auto flex flex-wrap gap-1.5 border-border border-t p-3">
+										{edition.canEdit ? (
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												onClick={() => setEditing(edition)}
+											>
+												<Pencil data-icon="inline-start" aria-hidden />
+												Edit
+											</Button>
+										) : null}
+										{isAdmin ? (
+											<>
+												{edition.status === "verified" ? (
+													<Button
+														type="button"
+														size="sm"
+														variant="ghost"
+														onClick={() => unverify.mutate({ id: edition.id })}
+													>
+														<ShieldOff data-icon="inline-start" aria-hidden />
+														Unverify
+													</Button>
+												) : (
+													<Button
+														type="button"
+														size="sm"
+														variant="ghost"
+														onClick={() => verify.mutate({ id: edition.id })}
+													>
+														<ShieldCheck data-icon="inline-start" aria-hidden />
+														Verify
+													</Button>
+												)}
+												{items.length > 1 ? (
+													<Button
+														type="button"
+														size="sm"
+														variant="ghost"
+														onClick={() => {
+															setMergeInto("");
+															setMerging(edition);
+														}}
+													>
+														<GitMerge data-icon="inline-start" aria-hidden />
+														Merge
+													</Button>
+												) : null}
+											</>
+										) : null}
+										{edition.canDelete ? (
+											<Button
+												type="button"
+												size="sm"
+												variant="ghost"
+												className="ms-auto text-destructive"
+												onClick={() => setDeleting(edition)}
+											>
+												<Trash2 data-icon="inline-start" aria-hidden />
+												Delete
+											</Button>
+										) : null}
+									</div>
+								) : null}
+							</li>
+						);
+					})}
 				</ul>
 			)}
 
