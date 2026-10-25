@@ -56,17 +56,62 @@ export function authorJsonLd(input: {
 	name: string;
 	slug: string;
 	bookCount: number;
+	description?: string | null;
+	aliases?: string[];
+	birthDate?: string | null;
+	deathDate?: string | null;
+	birthPlace?: string | null;
+	deathPlace?: string | null;
+	nationalities?: string[];
+	gender?: "female" | "male" | "non_binary" | "other" | null;
+	image?: string | null;
+	sameAs?: string[];
 }): JsonLd {
+	const description =
+		input.description?.trim() ||
+		(input.bookCount > 0
+			? `${input.bookCount} ${input.bookCount === 1 ? "work" : "works"} in the BBRC catalog`
+			: null);
+	const genderLabel =
+		input.gender === "female"
+			? "Female"
+			: input.gender === "male"
+				? "Male"
+				: null;
+
 	return {
 		"@context": "https://schema.org",
 		"@type": "Person",
 		name: input.name,
 		url: absoluteUrl(`/authors/${input.slug}`),
-		...(input.bookCount > 0
+		...(description ? { description } : {}),
+		...(input.aliases?.length ? { alternateName: input.aliases } : {}),
+		...(input.birthDate ? { birthDate: input.birthDate } : {}),
+		...(input.deathDate ? { deathDate: input.deathDate } : {}),
+		...(input.birthPlace
+			? { birthPlace: { "@type": "Place", name: input.birthPlace } }
+			: {}),
+		...(input.deathPlace
+			? { deathPlace: { "@type": "Place", name: input.deathPlace } }
+			: {}),
+		...(input.nationalities?.length
 			? {
-					description: `${input.bookCount} ${input.bookCount === 1 ? "work" : "works"} in the BBRC catalog`,
+					nationality: input.nationalities.map((name) => ({
+						"@type": "Country",
+						name,
+					})),
 				}
 			: {}),
+		...(genderLabel ? { gender: genderLabel } : {}),
+		...(input.image
+			? {
+					image: input.image.startsWith("http")
+						? input.image
+						: absoluteUrl(input.image),
+				}
+			: {}),
+		...(input.sameAs?.length ? { sameAs: input.sameAs } : {}),
+		jobTitle: "Author",
 	};
 }
 

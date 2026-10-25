@@ -1,7 +1,12 @@
 import type { Database } from "@bbrc/db";
 import { authorNameToSlug, getBookCountryName } from "@bbrc/shared";
-import type { authorSortableFields } from "./author.listing";
-import type { AuthorListFilters } from "./author.schema";
+import type { z } from "zod";
+import type {
+	authorListFiltersSchema,
+	authorSortableFields,
+} from "./author.listing";
+
+type AuthorListFilters = z.infer<typeof authorListFiltersSchema>;
 
 export type AuthorSortField = (typeof authorSortableFields)[number];
 

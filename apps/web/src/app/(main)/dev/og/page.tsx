@@ -1,4 +1,3 @@
-import { authorNameToSlug } from "@bbrc/shared";
 import { notFound } from "next/navigation";
 import { leaderboardSitemapPaths } from "@/lib/leaderboard/paths";
 import { db } from "@/services";
@@ -167,6 +166,20 @@ export default async function OgDevPage() {
 		}),
 	]);
 
+	// Authors: one with a photo and one with books but no photo (covers fallback).
+	const [authorWithPhoto, authorWithoutPhoto] = await Promise.all([
+		db.author.findFirst({
+			where: { photoUrl: { not: null }, books: { some: {} } },
+			orderBy: { updatedAt: "desc" },
+			select: { slug: true },
+		}),
+		db.author.findFirst({
+			where: { photoUrl: null, books: { some: {} } },
+			orderBy: { updatedAt: "desc" },
+			select: { slug: true },
+		}),
+	]);
+
 	const openLibraryEdition = olidEditionPath(
 		olEditionUse
 			? { slug: olEditionUse.book.slug, olid: olEditionUse.editionOlid }
@@ -210,11 +223,15 @@ export default async function OgDevPage() {
 				entry("authors", "Authors list", "/authors", ""),
 				entry(
 					"author",
-					"Author",
-					b && book?.authors[0]
-						? `/authors/${authorNameToSlug(book.authors[0])}`
-						: null,
-					noBook,
+					"Author (with photo)",
+					authorWithPhoto ? `/authors/${authorWithPhoto.slug}` : null,
+					"No author with a photo in this database.",
+				),
+				entry(
+					"author-no-photo",
+					"Author (no photo, covers)",
+					authorWithoutPhoto ? `/authors/${authorWithoutPhoto.slug}` : null,
+					"No author without a photo in this database.",
 				),
 				entry("series-list", "Series list", "/series", ""),
 				entry(

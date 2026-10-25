@@ -304,6 +304,14 @@ export async function getBookBySlug(
 				},
 			},
 			readAfterPrerequisites: readAfterBookInclude,
+			authorLinks: {
+				orderBy: { position: "asc" },
+				select: {
+					author: {
+						select: { id: true, slug: true, name: true, photoUrl: true },
+					},
+				},
+			},
 			seriesMembership: {
 				select: {
 					position: true,
@@ -322,10 +330,12 @@ export async function getBookBySlug(
 		});
 	}
 
-	const { readAfterPrerequisites, seriesMembership, ...rest } = book;
+	const { readAfterPrerequisites, seriesMembership, authorLinks, ...rest } =
+		book;
 
 	return normalizeBookRecord({
 		...rest,
+		authorRefs: authorLinks.map((link) => link.author),
 		readAfterBooks: mapReadAfterBooks(readAfterPrerequisites),
 		series: mapBookSeriesSummary(seriesMembership),
 	});

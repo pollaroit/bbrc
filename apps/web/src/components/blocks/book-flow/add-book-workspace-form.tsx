@@ -44,7 +44,6 @@ import {
 	AddNewBookFormSchema,
 	type AddNewBookFormValues,
 	authorsToText,
-	parseAuthorsText,
 	toAddBookInput,
 } from "@/lib/add-book-form";
 import { fetchOpenLibraryEditionHints } from "@/lib/open-library/client";
@@ -52,6 +51,14 @@ import type { OpenLibrarySearchWork } from "@/lib/open-library/types";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 import { AfterAddOptions, type AfterAddPreferences } from "./after-add-options";
+import {
+	type AuthorChip,
+	AuthorChipInput,
+	authorChipNames,
+	authorChipsProblem,
+	chipsFromNames,
+	persistAuthorChips,
+} from "./author-chip-input";
 import { HotkeyChip } from "./book-flow-hotkeys-help";
 import { BookPreviewCard } from "./book-preview-card";
 import { BookQueueProgress } from "./book-queue";
@@ -299,23 +306,36 @@ export function AddBookWorkspaceForm({
 	}, [editionHints, form, work.description]);
 
 	const title = form.watch("title");
-	const authorsText = form.watch("authorsText");
+	const [authorChips, setAuthorChips] = useState<AuthorChip[]>(() =>
+		chipsFromNames(work.authors),
+	);
+	const [preparing, setPreparing] = useState(false);
+	const [authorProgress, setAuthorProgress] = useState<string | null>(null);
 	const publishedIn = form.watch("publishedIn");
 	const pages = form.watch("pages");
 	const excerpt = form.watch("excerpt");
 	const subjects = form.watch("subjects");
 	const subjectPeople = form.watch("subjectPeople");
 	const subjectTimes = form.watch("subjectTimes");
-	const authors = useMemo(() => parseAuthorsText(authorsText), [authorsText]);
+	const authors = useMemo(() => authorChipNames(authorChips), [authorChips]);
+	const authorsKey = authors.join("\n");
+	const onAuthorChipsChange = (next: AuthorChip[]) => {
+		setAuthorChips(next);
+		// The form keeps a names copy so the required-field check and errors stay in one place.
+		form.setValue("authorsText", authorChipNames(next).join(", "), {
+			shouldDirty: true,
+			shouldValidate: form.formState.isSubmitted,
+		});
+	};
 
 	// Countries of origin: suggested once the basics are in, until the admin edits them.
 	const debouncedOriginInput = useDebouncedValue(
-		{ title, authorsText, publishedIn, excerpt },
+		{ title, authorsKey, publishedIn, excerpt },
 		700,
 	);
 	const originAuthors = useMemo(
-		() => parseAuthorsText(debouncedOriginInput.authorsText),
-		[debouncedOriginInput.authorsText],
+		() => debouncedOriginInput.authorsKey.split("\n").filter(Boolean),
+		[debouncedOriginInput.authorsKey],
 	);
 	const canSuggestOrigin =
 		debouncedOriginInput.title.trim().length >= 2 && originAuthors.length > 0;
@@ -410,6 +430,12 @@ export function AddBookWorkspaceForm({
 
 	const submit = form.handleSubmit(
 		(values) => {
+			const chipProblem = authorChipsProblem(authorChips);
+			if (chipProblem) {
+				toast.error(chipProblem);
+				return;
+			}
+
 			const parsed = toAddBookInput({
 				...values,
 				coverId: cover.coverId,
@@ -453,7 +479,29 @@ export function AddBookWorkspaceForm({
 				toast.error(apiCheck.error.issues[0]?.message ?? "Invalid form data");
 				return;
 			}
-			addBookMutation.mutate(apiCheck.data);
+			// New authors are created first, in order; the book then links to the records.
+			setPreparing(true);
+			persistAuthorChips(authorChips, (done, total) =>
+				setAuthorProgress(`Creating authors (${done} of ${total})…`),
+			)
+				.then((authorIds) => {
+					addBookMutation.mutate({
+						...apiCheck.data,
+						authors: undefined,
+						authorIds,
+					});
+				})
+				.catch((error: unknown) => {
+					toast.error(
+						error instanceof Error
+							? error.message
+							: "Could not create the authors.",
+					);
+				})
+				.finally(() => {
+					setPreparing(false);
+					setAuthorProgress(null);
+				});
 		},
 		() => {
 			toast.error("Fix the highlighted fields and try again.");
@@ -461,7 +509,7 @@ export function AddBookWorkspaceForm({
 	);
 
 	const save = (next: boolean) => {
-		if (addBookMutation.isPending) return;
+		if (addBookMutation.isPending || preparing) return;
 		nextRef.current = next;
 		void submit();
 	};
@@ -486,7 +534,7 @@ export function AddBookWorkspaceForm({
 				? `#1 ${seriesSelection.draft.title}`
 				: null;
 
-	const saving = addBookMutation.isPending;
+	const saving = addBookMutation.isPending || preparing;
 
 	const header = (
 		<div className="flex flex-col gap-3">
@@ -563,18 +611,26 @@ export function AddBookWorkspaceForm({
 						Address:{" "}
 						<span className="font-mono">/books/{slugPreview || "…"}</span>
 					</p>
-					<form.Input
-						name="authorsText"
-						label="Authors"
-						render={(field, fieldState) => (
-							<Input
-								id={field.name}
-								placeholder="Author One, Author Two"
-								aria-invalid={fieldState.invalid}
-								{...field}
-							/>
+					<Field>
+						<FieldLabel htmlFor="authors">Authors</FieldLabel>
+						<AuthorChipInput
+							id="authors"
+							value={authorChips}
+							onChange={onAuthorChipsChange}
+							invalid={Boolean(form.formState.errors.authorsText)}
+							disabled={saving}
+						/>
+						{form.formState.errors.authorsText ? (
+							<p className="text-destructive text-xs" role="alert">
+								{form.formState.errors.authorsText.message}
+							</p>
+						) : (
+							<FieldDescription>
+								{authorProgress ??
+									"Each chip is an author of the library. Drag to set the order."}
+							</FieldDescription>
 						)}
-					/>
+					</Field>
 					<div className="grid gap-4 sm:grid-cols-3">
 						<div className="space-y-1">
 							<form.Input

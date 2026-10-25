@@ -1,3 +1,12 @@
+import {
+	getAuthor,
+	getAuthorAbout,
+} from "@bbrc/api/modules/author/author-directory.service";
+import {
+	getAuthorBooks,
+	getAuthorMore,
+	getAuthorStats,
+} from "@bbrc/api/modules/author/author-tabs.service";
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { getBookCatalogDiscovery } from "@bbrc/api/modules/book/book-catalog-discovery.service";
 import {
@@ -31,6 +40,36 @@ import { db } from "@/services";
  * `headers()` and breaks `revalidate` / `generateStaticParams` pages).
  */
 const anonymousSession = null;
+
+export const loadAuthorForIsr = cache((slug: string) =>
+	getAuthor(slug, db, anonymousSession),
+);
+
+export const loadAuthorAboutForIsr = cache((slug: string) =>
+	getAuthorAbout(slug, db, anonymousSession),
+);
+
+export const loadAuthorMoreForIsr = cache((slug: string) =>
+	getAuthorMore(slug, db, anonymousSession),
+);
+
+export const loadAuthorStatsForIsr = cache((slug: string) =>
+	getAuthorStats(slug, db, anonymousSession),
+);
+
+/** The author's best known books (most read first) for the overview and the timeline. */
+export const loadAuthorTopBooksForIsr = cache((slug: string) =>
+	getAuthorBooks(
+		{
+			slug,
+			limit: 100,
+			sortBy: "publishedIn",
+			sortDirection: "asc",
+		},
+		db,
+		anonymousSession,
+	),
+);
 
 export const loadBookBySlugForIsr = cache((slug: string) =>
 	getBookBySlug(slug, db),

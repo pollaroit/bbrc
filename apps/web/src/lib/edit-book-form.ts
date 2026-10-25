@@ -7,7 +7,7 @@ import type { SeriesPlacementValue } from "@bbrc/shared";
 import z from "zod";
 import type { AddBookSeriesSelection } from "@/components/blocks/add-book-series-field";
 import type { BookCoverValue } from "@/components/blocks/book-cover-field";
-import { authorsToText, parseAuthorsText } from "@/lib/add-book-form";
+import { authorsToText } from "@/lib/add-book-form";
 
 /**
  * Open Library lists dozens of subjects for popular books (most of this
@@ -192,6 +192,8 @@ export type EditBookUpdateExtras = {
 	initialCoverId: number | null;
 	cover: BookCoverValue;
 	initialSubjects: string[];
+	/** Author records in order; left out keeps the authors as they are. */
+	authorIds?: string[];
 	series?: UpdateBookSeries;
 };
 
@@ -209,7 +211,7 @@ export function toUpdateBookInput(
 	return UpdateBookInputSchema.parse({
 		slug,
 		title: values.title,
-		authors: parseAuthorsText(values.authorsText),
+		...(extras.authorIds ? { authorIds: extras.authorIds } : {}),
 		openLibraryRating: values.openLibraryRating ?? undefined,
 		excerpt: values.excerpt ?? undefined,
 		pages: values.pages,

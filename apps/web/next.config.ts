@@ -55,6 +55,12 @@ const nextConfig: NextConfig = {
 		return [
 			{ source: "/feed/posts.xml", destination: "/feed/posts" },
 			{ source: "/feed/books.xml", destination: "/feed/books" },
+			// The author pages are cached for everyone and hide authors without books; the edit
+			// screen lives in the admin area (so a brand-new author can be edited) at this address.
+			{
+				source: "/authors/:slug/edit",
+				destination: "/admin/authors/edit/:slug",
+			},
 		];
 	},
 	outputFileTracingIncludes: {

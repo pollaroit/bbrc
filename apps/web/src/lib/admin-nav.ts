@@ -1,6 +1,7 @@
 import {
 	BookOpen,
 	Eye,
+	Feather,
 	FileStack,
 	FileText,
 	LayoutDashboard,
@@ -90,6 +91,42 @@ export const adminNavSections: AdminNavSection[] = [
 				href: "/admin/books/stats" as Route,
 				label: "Stats",
 				isActive: (pathname) => pathname.startsWith("/admin/books/stats"),
+			},
+		],
+	},
+	{
+		id: "authors",
+		label: "Authors",
+		icon: Feather,
+		defaultHref: "/admin/authors" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/authors"),
+		children: [
+			{
+				href: "/admin/authors" as Route,
+				label: "Overview",
+				isActive: (pathname) => pathname === "/admin/authors",
+			},
+			{
+				href: "/admin/authors/list" as Route,
+				label: "List",
+				isActive: (pathname) =>
+					pathname.startsWith("/admin/authors/list") ||
+					pathname.startsWith("/admin/authors/edit"),
+			},
+			{
+				href: "/admin/authors/stats" as Route,
+				label: "Stats",
+				isActive: (pathname) => pathname.startsWith("/admin/authors/stats"),
+			},
+			{
+				href: "/admin/authors/review" as Route,
+				label: "Needs review",
+				isActive: (pathname) => pathname.startsWith("/admin/authors/review"),
+			},
+			{
+				href: "/admin/authors/backfill" as Route,
+				label: "Backfill",
+				isActive: (pathname) => pathname.startsWith("/admin/authors/backfill"),
 			},
 		],
 	},

@@ -327,6 +327,15 @@ export const GetBookBySlugOutputSchema = BookSchema.omit({
 	approvedById: true,
 }).extend({
 	requestedBy: BookRequestedBySchema.nullable(),
+	/** The work's author records in order (what the author chips load); `authors` is the names copy. */
+	authorRefs: z.array(
+		z.object({
+			id: z.string().uuid(),
+			slug: z.string(),
+			name: z.string(),
+			photoUrl: z.string().nullable(),
+		}),
+	),
 	readAfterBooks: z.array(
 		z.object({
 			slug: BookSchema.shape.slug,

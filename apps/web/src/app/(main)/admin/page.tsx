@@ -31,6 +31,11 @@ const resources = [
 		description: "Catalog overview, rankings, list, and stats.",
 	},
 	{
+		href: "/admin/authors" as Route,
+		title: "Authors",
+		description: "Author records, review queue, duplicates, and the backfill.",
+	},
+	{
 		href: "/admin/series" as Route,
 		title: "Series",
 		description: "Multi-book reading order and list badges.",

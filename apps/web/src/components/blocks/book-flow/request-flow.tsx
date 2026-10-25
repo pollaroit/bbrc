@@ -21,6 +21,7 @@ import { fetchOpenLibraryWorkByOlid } from "@/lib/open-library/client";
 import type { OpenLibrarySearchWork } from "@/lib/open-library/types";
 import { orpc, queryClient } from "@/utils/orpc";
 import { AfterAddOptions, useAfterAddPreferences } from "./after-add-options";
+import { AuthorChipList } from "./author-chip-input";
 import { BookFinder } from "./book-finder";
 import {
 	HotkeyChip,
@@ -195,6 +196,10 @@ function RequestConfirm({
 							can say “me too”, and you hear back when it is added or declined.
 						</p>
 					</header>
+					<div className="flex flex-col gap-1.5">
+						<h3 className="font-medium text-sm">Authors</h3>
+						<AuthorChipList names={work.authors} />
+					</div>
 					<RequestNoteField value={note} onChange={setNote} />
 					<AfterAddOptions
 						mode="request"

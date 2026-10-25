@@ -21,18 +21,7 @@ import {
 	AuthorSlugInputSchema,
 	AuthorStatsOutputSchema,
 	AuthorTabInputSchema,
-	GetAuthorListCountryFacetsInputSchema,
-	GetAuthorListCountryFacetsOutputSchema,
-	GetAuthorListInputSchema,
-	GetAuthorListOutputSchema,
-	GetAuthorPageInputSchema,
-	GetAuthorPageOutputSchema,
 } from "./author.schema";
-import {
-	getAuthorList,
-	getAuthorListCountryFacets,
-	getAuthorPage,
-} from "./author.service";
 import {
 	getAuthor,
 	getAuthorAbout,
@@ -143,24 +132,5 @@ export const authorRouter = {
 		.output(AuthorStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAuthorStats(input.slug, context.db, context.session),
-		),
-
-	// ── Legacy, name based: the old author pages still use these until the web moves ──
-	/** @deprecated use `get` */
-	getPage: publicProcedure
-		.input(GetAuthorPageInputSchema)
-		.output(GetAuthorPageOutputSchema)
-		.handler(async ({ input, context }) => getAuthorPage(input, context.db)),
-	/** @deprecated use `list` */
-	getList: publicProcedure
-		.input(GetAuthorListInputSchema)
-		.output(GetAuthorListOutputSchema)
-		.handler(async ({ input, context }) => getAuthorList(input, context.db)),
-	/** @deprecated use `nationalityFacets` */
-	getCountryFacets: publicProcedure
-		.input(GetAuthorListCountryFacetsInputSchema)
-		.output(GetAuthorListCountryFacetsOutputSchema)
-		.handler(async ({ input, context }) =>
-			getAuthorListCountryFacets(input, context.db),
 		),
 };

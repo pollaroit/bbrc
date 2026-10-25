@@ -9,6 +9,7 @@ import {
 	FieldDescription,
 	FieldError,
 	FieldGroup,
+	FieldLabel,
 	FieldLegend,
 } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
@@ -40,6 +41,15 @@ import {
 	HotkeyChip,
 	useBookFlowHotkeys,
 } from "@/components/blocks/book-flow";
+import {
+	type AuthorChip,
+	AuthorChipInput,
+	authorChipNames,
+	authorChipsProblem,
+	chipsFromNames,
+	chipsFromRefs,
+	persistAuthorChips,
+} from "@/components/blocks/book-flow/author-chip-input";
 import { BookOriginCountriesField } from "@/components/blocks/book-origin-countries-field";
 import {
 	BookReadAfterPicker,
@@ -56,7 +66,6 @@ import {
 } from "@/components/blocks/edit-book-hotkeys";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { useAppForm } from "@/hooks/use-app-form";
-import { parseAuthorsText } from "@/lib/add-book-form";
 import {
 	bookToEditFormValues,
 	bookToSeriesPlacement,
@@ -135,16 +144,37 @@ export function EditBookForm({ book }: EditBookFormProps) {
 	const savedRef = useRef(false);
 
 	const title = form.watch("title");
-	const authorsText = form.watch("authorsText");
+	const [authorChips, setAuthorChips] = useState<AuthorChip[]>(() =>
+		book.authorRefs.length > 0
+			? chipsFromRefs(book.authorRefs)
+			: chipsFromNames(book.authors),
+	);
+	const [preparing, setPreparing] = useState(false);
 	const excerpt = form.watch("excerpt");
 	const pages = form.watch("pages");
 	const publishedIn = form.watch("publishedIn");
 	const status = form.watch("status");
 	const subjects = form.watch("subjects");
-	const authors = useMemo(() => parseAuthorsText(authorsText), [authorsText]);
+	const authors = useMemo(() => authorChipNames(authorChips), [authorChips]);
+	const onAuthorChipsChange = (next: AuthorChip[]) => {
+		setAuthorChips(next);
+		form.setValue("authorsText", authorChipNames(next).join(", "), {
+			shouldValidate: form.formState.isSubmitted,
+		});
+	};
+	// Books that were never linked to author records are linked on their next save.
+	const needsAuthorLink = book.authorRefs.length === 0;
+	const authorsEdited =
+		authors.length !== book.authors.length ||
+		authors.some((name, index) => name !== book.authors[index]) ||
+		(!needsAuthorLink &&
+			authorChips.some(
+				(chip, index) => chip.authorId !== book.authorRefs[index]?.id,
+			));
 
 	const dirty =
 		form.formState.isDirty ||
+		authorsEdited ||
 		isCoverChanged(initialCoverId, cover) ||
 		isSeriesChanged({
 			initialSelection,
@@ -209,26 +239,49 @@ export function EditBookForm({ book }: EditBookFormProps) {
 
 	const onSubmit = form.handleSubmit(
 		(values) => {
-			updateBookMutation.mutate(
-				toUpdateBookInput(
-					book.slug,
-					{
-						...values,
-						readAfterBookSlugs: readAfterBooks.map((item) => item.slug),
-					},
-					{
-						initialCoverId,
-						cover,
-						initialSubjects: initialValues.subjects,
-						series: buildSeriesUpdate({
-							initialSelection,
-							initialPlacement,
-							selection: seriesSelection,
-							placement: seriesPlacement,
-						}),
-					},
-				),
-			);
+			const chipProblem = authorChipsProblem(authorChips);
+			if (chipProblem) {
+				toast.error(chipProblem);
+				return;
+			}
+			const send = (authorIds: string[] | undefined) =>
+				updateBookMutation.mutate(
+					toUpdateBookInput(
+						book.slug,
+						{
+							...values,
+							readAfterBookSlugs: readAfterBooks.map((item) => item.slug),
+						},
+						{
+							initialCoverId,
+							cover,
+							initialSubjects: initialValues.subjects,
+							authorIds,
+							series: buildSeriesUpdate({
+								initialSelection,
+								initialPlacement,
+								selection: seriesSelection,
+								placement: seriesPlacement,
+							}),
+						},
+					),
+				);
+			if (!authorsEdited && !needsAuthorLink) {
+				send(undefined);
+				return;
+			}
+			// New authors are created first, in order; the book then links to the records.
+			setPreparing(true);
+			persistAuthorChips(authorChips)
+				.then(send)
+				.catch((error: unknown) => {
+					toast.error(
+						error instanceof Error
+							? error.message
+							: "Could not create the authors.",
+					);
+				})
+				.finally(() => setPreparing(false));
 		},
 		(errors) => {
 			// Say exactly what is wrong, open that section and move to the field.
@@ -262,7 +315,8 @@ export function EditBookForm({ book }: EditBookFormProps) {
 	useBookFlowHotkeys(
 		{
 			save: () => {
-				if (dirty && !updateBookMutation.isPending) void onSubmit();
+				if (dirty && !updateBookMutation.isPending && !preparing)
+					void onSubmit();
 			},
 			back: requestLeave,
 			help: () => setHelpOpen(true),
@@ -379,18 +433,26 @@ export function EditBookForm({ book }: EditBookFormProps) {
 									</FieldDescription>
 								</Field>
 
-								<form.Input
-									name="authorsText"
-									label="Authors"
-									render={(field, fieldState) => (
-										<Input
-											id={field.name}
-											placeholder="Author One, Author Two"
-											aria-invalid={fieldState.invalid}
-											{...field}
-										/>
+								<Field>
+									<FieldLabel htmlFor="authors">Authors</FieldLabel>
+									<AuthorChipInput
+										id="authors"
+										value={authorChips}
+										onChange={onAuthorChipsChange}
+										invalid={Boolean(errors.authorsText)}
+										disabled={preparing || updateBookMutation.isPending}
+									/>
+									{errors.authorsText ? (
+										<p className="text-destructive text-xs" role="alert">
+											{errors.authorsText.message}
+										</p>
+									) : (
+										<FieldDescription>
+											Each chip is an author of the library. Drag to set the
+											order.
+										</FieldDescription>
 									)}
-								/>
+								</Field>
 
 								<div className="flex flex-col gap-2">
 									<form.Input
@@ -661,7 +723,7 @@ export function EditBookForm({ book }: EditBookFormProps) {
 							<form.Submit
 								className={cn("min-w-36 gap-2")}
 								disabled={!dirty}
-								loading={updateBookMutation.isPending}
+								loading={updateBookMutation.isPending || preparing}
 								loadingText="Saving…"
 							>
 								Save changes
