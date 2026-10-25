@@ -129,7 +129,8 @@ function BookCardMetaStrip({ book }: { book: BookCardBook }) {
 			<MetaStripStat
 				icon={Eye}
 				count={book.viewCount}
-				title={viewTitle}
+				title={`${viewTitle} · open insights`}
+				href={`/books/${slug}/insights` as Route}
 				compact
 			/>
 		</div>
