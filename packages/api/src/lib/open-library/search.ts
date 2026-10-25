@@ -45,6 +45,10 @@ function normalizeDoc(doc: SearchDoc): OpenLibrarySearchHit | null {
 export async function searchOpenLibraryWorks(
 	query: string,
 	limit: number,
+	options?: {
+		/** Open Library sort key, e.g. `already_read` or `rating`. */
+		sort?: string;
+	},
 ): Promise<OpenLibrarySearchHit[]> {
 	const trimmed = query.trim();
 	if (trimmed.length < 2) {
@@ -54,6 +58,9 @@ export async function searchOpenLibraryWorks(
 	const url = new URL(OPEN_LIBRARY_SEARCH_URL);
 	url.searchParams.set("q", trimmed);
 	url.searchParams.set("limit", String(limit));
+	if (options?.sort) {
+		url.searchParams.set("sort", options.sort);
+	}
 	url.searchParams.set(
 		"fields",
 		"key,title,author_name,cover_i,first_publish_year",

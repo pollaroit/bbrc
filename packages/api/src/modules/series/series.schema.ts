@@ -7,10 +7,19 @@ import {
 	seriesListSorting,
 } from "./series.listing";
 
+/** A place in a series: whole numbers, or a half step such as 1.5 (one decimal at most). */
+export const SeriesPositionSchema = zod
+	.number()
+	.min(0.1)
+	.max(9999)
+	.refine((value) => Math.round(value * 10) / 10 === value, {
+		message: "Use a whole number or one decimal, like 1.5",
+	});
+
 export const BookSeriesSummarySchema = zod.object({
 	slug: zod.string(),
 	title: zod.string(),
-	position: zod.number().int().min(1),
+	position: SeriesPositionSchema,
 });
 
 export type BookSeriesSummary = z.infer<typeof BookSeriesSummarySchema>;
@@ -44,7 +53,7 @@ export type GetSeriesListInput = z.infer<typeof GetSeriesListInputSchema>;
 export type GetSeriesListOutput = z.infer<typeof GetSeriesListOutputSchema>;
 
 export const SeriesBookOnSeriesSchema = zod.object({
-	position: zod.number().int().min(1),
+	position: SeriesPositionSchema,
 	book: BookSchema.pick({
 		slug: true,
 		title: true,
@@ -102,13 +111,17 @@ export const DeleteSeriesOutputSchema = zod.object({
 export const AddBookToSeriesInputSchema = zod.object({
 	seriesSlug: zod.string().min(1),
 	bookSlug: zod.string().min(1),
+	/** Where to put it; left out means the end. */
+	position: SeriesPositionSchema.optional(),
+	/** When the place is taken by a whole number, move the later books down by one. */
+	shiftLater: zod.boolean().optional(),
 });
 
 export type AddBookToSeriesInput = z.infer<typeof AddBookToSeriesInputSchema>;
 
 export const AddBookToSeriesOutputSchema = zod.object({
 	added: zod.literal(true),
-	position: zod.number().int().min(1),
+	position: SeriesPositionSchema,
 });
 
 export const RemoveBookFromSeriesInputSchema = zod.object({

@@ -29,6 +29,9 @@ model Book {
   /// @zod.min(0, "Average rating must be a non-negative number").max(5, "Average rating must be at most 5")
   averageRating     Float?     @map("average_rating")
   coverId           Int?       @map("cover_id")
+  /// A cover uploaded by an admin (public R2 URL, fixed 2:3). Wins over `coverId`.
+  /// @zod.max(2048).nullish()
+  customCoverUrl    String?    @map("custom_cover_url")
   /// @zod.max(4000, "Excerpt must be at most 4000 characters long").nullish()
   excerpt           String?    @db.Text
 

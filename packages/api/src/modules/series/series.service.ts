@@ -168,8 +168,13 @@ async function recompactSeriesPositions(
 	const rows = await tx.seriesBook.findMany({
 		where: { seriesId },
 		orderBy: { position: "asc" },
-		select: { id: true },
+		select: { id: true, position: true },
 	});
+
+	// A half step (1.5) is deliberate, so a series that has one keeps its numbers.
+	if (rows.some((row) => !Number.isInteger(row.position))) {
+		return;
+	}
 
 	for (const [index, row] of rows.entries()) {
 		await tx.seriesBook.update({
@@ -324,7 +329,7 @@ export async function appendBookToEndOfSeriesByBookId(
 		select: { position: true },
 	});
 
-	const position = (maxRow?.position ?? 0) + 1;
+	const position = Math.floor(maxRow?.position ?? 0) + 1;
 
 	await db.seriesBook.create({
 		data: {
@@ -394,6 +399,86 @@ export async function deleteSeries(input: DeleteSeriesInput, db: Database) {
 	return { deleted: true as const };
 }
 
+/**
+ * Puts a book at a chosen place in a series. With no place it goes to the end.
+ * When the place is taken, a whole number can push the later books down by one
+ * (`shiftLater`); a half step never moves anything and fails if it is taken.
+ */
+export async function placeBookInSeries(
+	db: Database | DatabaseTransaction,
+	params: {
+		bookId: string;
+		seriesSlug: string;
+		position?: number | null;
+		shiftLater?: boolean;
+	},
+) {
+	const series = await loadSeriesBySlugOrThrow(params.seriesSlug, db);
+	await assertBookNotInAnotherSeries(params.bookId, series.id, db);
+
+	const rows = await db.seriesBook.findMany({
+		where: { seriesId: series.id, NOT: { bookId: params.bookId } },
+		orderBy: { position: "asc" },
+		select: { id: true, position: true, book: { select: { title: true } } },
+	});
+
+	const last = rows.at(-1);
+	const position =
+		params.position ?? (last ? Math.floor(last.position) + 1 : 1);
+
+	const taken = rows.find((row) => row.position === position);
+	if (taken && (!params.shiftLater || !Number.isInteger(position))) {
+		throw new ORPCError("CONFLICT", {
+			message: `Place ${position} is taken by “${taken.book.title}”. Move the other books down or pick another place.`,
+			data: { position },
+		});
+	}
+
+	// Lift the book out first (a move), so its old number never blocks a shift.
+	await db.seriesBook.deleteMany({
+		where: { bookId: params.bookId, seriesId: series.id },
+	});
+
+	if (taken) {
+		// Latest first, so no two books ever share a number while they move.
+		const later = rows.filter((row) => row.position >= position).reverse();
+		for (const row of later) {
+			await db.seriesBook.update({
+				where: { id: row.id },
+				data: { position: row.position + 1 },
+			});
+		}
+	}
+
+	await db.seriesBook.create({
+		data: { seriesId: series.id, bookId: params.bookId, position },
+	});
+	await db.series.update({
+		where: { id: series.id },
+		data: { updatedAt: new Date() },
+	});
+
+	return { slug: series.slug, position };
+}
+
+/** Takes a book out of whatever series it is in (no-op when it is in none). */
+export async function detachBookFromSeries(
+	db: DatabaseTransaction,
+	bookId: string,
+) {
+	const membership = await db.seriesBook.findUnique({
+		where: { bookId },
+		select: { id: true, seriesId: true },
+	});
+	if (!membership) return;
+	await db.seriesBook.delete({ where: { id: membership.id } });
+	await recompactSeriesPositions(membership.seriesId, db);
+	await db.series.update({
+		where: { id: membership.seriesId },
+		data: { updatedAt: new Date() },
+	});
+}
+
 export async function addBookToSeries(
 	input: AddBookToSeriesInput,
 	db: Database,
@@ -401,11 +486,12 @@ export async function addBookToSeries(
 	const book = await loadBookBySlugOrThrow(input.bookSlug, db);
 
 	return db.$transaction(async (tx) => {
-		const result = await appendBookToEndOfSeriesByBookId(
-			book.id,
-			input.seriesSlug,
-			tx,
-		);
+		const result = await placeBookInSeries(tx, {
+			bookId: book.id,
+			seriesSlug: input.seriesSlug,
+			position: input.position,
+			shiftLater: input.shiftLater,
+		});
 		return { added: true as const, position: result.position };
 	});
 }

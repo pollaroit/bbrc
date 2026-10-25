@@ -18,6 +18,12 @@ export const CreateBookRequestInputSchema = z.object({
 		.array(z.string().trim().min(1))
 		.max(20, "At most 20 authors")
 		.default([]),
+	/** Why the member wants it (shown to admins). */
+	note: z
+		.string()
+		.trim()
+		.max(200, "Note must be at most 200 characters")
+		.optional(),
 });
 
 export const CreateBookRequestOutputSchema = z.object({
@@ -37,6 +43,9 @@ const PendingBookRequestItemSchema = z.object({
 	title: z.string(),
 	authors: z.array(z.string()),
 	createdAt: z.coerce.date(),
+	note: z.string().nullable(),
+	/** Members who said "me too" (the requester not included). */
+	upvoteCount: z.number().int().nonnegative(),
 	requester: z.object({
 		username: z.string(),
 		name: z.string().nullable(),
@@ -68,6 +77,8 @@ export const MyBookRequestItemSchema = z.object({
 	acceptanceNotes: z.string().nullable(),
 	rejectionReason: z.string().nullable(),
 	bookSlug: z.string().nullable(),
+	note: z.string().nullable(),
+	upvoteCount: z.number().int().nonnegative(),
 });
 
 export const ListMyBookRequestsOutputSchema = z.object({
@@ -97,4 +108,36 @@ export type RejectBookRequestInput = z.infer<
 >;
 export type RejectBookRequestOutput = z.infer<
 	typeof RejectBookRequestOutputSchema
+>;
+
+/** What every member sees: the open requests, ranked by "me too". */
+export const OpenBookRequestItemSchema = PendingBookRequestItemSchema.extend({
+	viewerUpvoted: z.boolean(),
+	isMine: z.boolean(),
+});
+
+export const ListOpenBookRequestsOutputSchema = z.object({
+	count: z.number().int().nonnegative(),
+	items: z.array(OpenBookRequestItemSchema),
+});
+
+export const UpvoteBookRequestInputSchema = z.object({
+	id: z.string().uuid(),
+	upvoted: z.boolean(),
+});
+
+export const UpvoteBookRequestOutputSchema = z.object({
+	id: z.string().uuid(),
+	upvoted: z.boolean(),
+	upvoteCount: z.number().int().nonnegative(),
+});
+
+export type ListOpenBookRequestsOutput = z.infer<
+	typeof ListOpenBookRequestsOutputSchema
+>;
+export type UpvoteBookRequestInput = z.infer<
+	typeof UpvoteBookRequestInputSchema
+>;
+export type UpvoteBookRequestOutput = z.infer<
+	typeof UpvoteBookRequestOutputSchema
 >;

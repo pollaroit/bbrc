@@ -10,6 +10,7 @@ import { z } from "zod";
 import {
 	BookSeriesSummarySchema,
 	CreateSeriesInputSchema,
+	SeriesPositionSchema,
 } from "../series/series.schema";
 import {
 	bookListFiltersSchema,
@@ -268,6 +269,14 @@ export const AddBookInputSchema = BookSchema.pick({
 		countries: bookCountriesSchema.optional(),
 		seriesSlug: BookSchema.shape.slug.optional(),
 		newSeries: CreateSeriesInputSchema.optional(),
+		/** Place in the series; left out means the end. */
+		seriesPosition: SeriesPositionSchema.optional(),
+		/** When the place is a taken whole number, move the later books down by one. */
+		shiftLater: z.boolean().optional(),
+		/** An uploaded cover (see the cover upload); wins over the Open Library one. */
+		customCoverUrl: z.string().url().max(2048).optional(),
+		/** Tell every member about the new book (default); false only tells the people who asked for it. */
+		notifyMembers: z.boolean().optional(),
 	})
 	.superRefine((value, ctx) => {
 		if (value.seriesSlug && value.newSeries) {
@@ -323,12 +332,32 @@ export const UpdateBookInputSchema = BookSchema.pick({
 	averageRating: true,
 	status: true,
 	slug: true,
+	subjects: true,
+	subjectPeople: true,
+	subjectTimes: true,
 })
 	.partial()
 	.required({ slug: true })
 	.extend({
 		readAfterBookSlugs: z.array(BookSchema.shape.slug).max(20).optional(),
 		countries: bookCountriesSchema.optional(),
+		/** A newly uploaded cover; null removes the uploaded cover. */
+		customCoverUrl: z.string().url().max(2048).nullish(),
+		/** Left out keeps the series as is; null takes the book out of its series. */
+		series: z
+			.object({
+				seriesSlug: BookSchema.shape.slug.optional(),
+				newSeries: CreateSeriesInputSchema.optional(),
+				position: SeriesPositionSchema.optional(),
+				shiftLater: z.boolean().optional(),
+			})
+			.refine(
+				(value) => Boolean(value.seriesSlug) !== Boolean(value.newSeries),
+				{
+					message: "Choose an existing series or a new one.",
+				},
+			)
+			.nullish(),
 	});
 
 export const UpdateBookOutputSchema = BookSchema.pick({

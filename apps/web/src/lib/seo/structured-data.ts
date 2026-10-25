@@ -29,7 +29,9 @@ export function websiteJsonLd(): JsonLd {
 }
 
 export function bookJsonLd(book: TGetBookBySlugOutputSchema): JsonLd {
-	const cover = bookCoverUrl(book.coverId, "L");
+	const rawCover = bookCoverUrl(book.coverId, "L");
+	// Uploaded covers are served from this site, so they need the full address.
+	const cover = rawCover?.startsWith("/") ? absoluteUrl(rawCover) : rawCover;
 
 	return {
 		"@context": "https://schema.org",

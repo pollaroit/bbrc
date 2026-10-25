@@ -35,6 +35,13 @@ import {
 	updateBook,
 } from "./book.service";
 import {
+	FindSimilarBooksInputSchema,
+	FindSimilarBooksOutputSchema,
+	SuggestBookDetailsInputSchema,
+	SuggestBookDetailsOutputSchema,
+} from "./book-assist.schema";
+import { findSimilarBooks, suggestBookDetails } from "./book-assist.service";
+import {
 	GetBookCatalogDiscoveryInputSchema,
 	GetBookCatalogDiscoveryOutputSchema,
 } from "./book-catalog-discovery.schema";
@@ -169,6 +176,14 @@ export const bookRouter = {
 		.input(SuggestBookOriginCountriesInputSchema)
 		.output(SuggestBookOriginCountriesOutputSchema)
 		.handler(async ({ input }) => suggestBookOriginCountries(input)),
+	findSimilar: adminProcedure
+		.input(FindSimilarBooksInputSchema)
+		.output(FindSimilarBooksOutputSchema)
+		.handler(async ({ input, context }) => findSimilarBooks(context.db, input)),
+	suggestDetails: adminProcedure
+		.input(SuggestBookDetailsInputSchema)
+		.output(SuggestBookDetailsOutputSchema)
+		.handler(async ({ input }) => suggestBookDetails(input)),
 	addBook: adminProcedure
 		.input(AddBookInputSchema)
 		.output(AddBookOutputSchema)

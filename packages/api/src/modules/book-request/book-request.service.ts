@@ -7,9 +7,12 @@ import type {
 	CreateBookRequestInput,
 	CreateBookRequestOutput,
 	ListMyBookRequestsOutput,
+	ListOpenBookRequestsOutput,
 	ListPendingBookRequestsOutput,
 	RejectBookRequestInput,
 	RejectBookRequestOutput,
+	UpvoteBookRequestInput,
+	UpvoteBookRequestOutput,
 } from "./book-request.schema";
 
 export async function createBookRequest(
@@ -55,6 +58,7 @@ export async function createBookRequest(
 				olid: input.olid,
 				title: input.title.trim(),
 				authors: input.authors,
+				note: input.note?.trim() || null,
 			},
 			select: { id: true, olid: true, title: true },
 		});
@@ -95,13 +99,19 @@ export async function listPendingBookRequests(
 ): Promise<ListPendingBookRequestsOutput> {
 	const rows = await db.bookRequest.findMany({
 		where: { status: "pending" },
-		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+		orderBy: [
+			{ upvotes: { _count: "desc" } },
+			{ createdAt: "desc" },
+			{ id: "desc" },
+		],
 		select: {
 			id: true,
 			olid: true,
 			title: true,
 			authors: true,
 			createdAt: true,
+			note: true,
+			_count: { select: { upvotes: true } },
 			user: {
 				select: { username: true, name: true },
 			},
@@ -125,12 +135,109 @@ export async function listPendingBookRequests(
 			title: resolveRequestTitle(row.title, row.olid, fetchedByOlid),
 			authors: row.authors,
 			createdAt: row.createdAt,
+			note: row.note,
+			upvoteCount: row._count.upvotes,
 			requester: {
 				username: row.user.username,
 				name: requesterDisplayName(row.user),
 			},
 		})),
 	};
+}
+
+export async function listOpenBookRequests(
+	viewerId: string,
+	db: Database,
+): Promise<ListOpenBookRequestsOutput> {
+	const rows = await db.bookRequest.findMany({
+		where: { status: "pending" },
+		orderBy: [
+			{ upvotes: { _count: "desc" } },
+			{ createdAt: "desc" },
+			{ id: "desc" },
+		],
+		select: {
+			id: true,
+			olid: true,
+			title: true,
+			authors: true,
+			createdAt: true,
+			note: true,
+			userId: true,
+			_count: { select: { upvotes: true } },
+			upvotes: { where: { userId: viewerId }, select: { userId: true } },
+			user: { select: { username: true, name: true } },
+		},
+	});
+
+	const missingOlids = [
+		...new Set(rows.filter((row) => !row.title?.trim()).map((row) => row.olid)),
+	];
+	const fetchedByOlid =
+		missingOlids.length > 0
+			? await fetchOpenLibraryWorkTitlesByOlid(missingOlids)
+			: new Map<string, string | null>();
+
+	return {
+		count: rows.length,
+		items: rows.map((row) => ({
+			id: row.id,
+			olid: row.olid,
+			title: resolveRequestTitle(row.title, row.olid, fetchedByOlid),
+			authors: row.authors,
+			createdAt: row.createdAt,
+			note: row.note,
+			upvoteCount: row._count.upvotes,
+			viewerUpvoted: row.upvotes.length > 0,
+			isMine: row.userId === viewerId,
+			requester: {
+				username: row.user.username,
+				name: requesterDisplayName(row.user),
+			},
+		})),
+	};
+}
+
+/** "Me too" on someone else's pending request; one per member, and it can be taken back. */
+export async function setBookRequestUpvote(
+	input: UpvoteBookRequestInput,
+	userId: string,
+	db: Database,
+): Promise<UpvoteBookRequestOutput> {
+	const request = await db.bookRequest.findUnique({
+		where: { id: input.id },
+		select: { status: true, userId: true },
+	});
+	if (!request) {
+		throw new ORPCError("NOT_FOUND", { message: "Book request not found" });
+	}
+	if (request.status !== "pending") {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "This request has already been answered.",
+		});
+	}
+	if (request.userId === userId) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "You already asked for this book.",
+		});
+	}
+
+	if (input.upvoted) {
+		await db.bookRequestUpvote.upsert({
+			where: { requestId_userId: { requestId: input.id, userId } },
+			create: { requestId: input.id, userId },
+			update: {},
+		});
+	} else {
+		await db.bookRequestUpvote.deleteMany({
+			where: { requestId: input.id, userId },
+		});
+	}
+
+	const upvoteCount = await db.bookRequestUpvote.count({
+		where: { requestId: input.id },
+	});
+	return { id: input.id, upvoted: input.upvoted, upvoteCount };
 }
 
 export async function listMyBookRequests(
@@ -149,6 +256,8 @@ export async function listMyBookRequests(
 			createdAt: true,
 			acceptanceNotes: true,
 			rejectionReason: true,
+			note: true,
+			_count: { select: { upvotes: true } },
 		},
 	});
 
@@ -181,6 +290,8 @@ export async function listMyBookRequests(
 			acceptanceNotes: row.acceptanceNotes,
 			rejectionReason: row.rejectionReason,
 			bookSlug: slugByOlid.get(row.olid) ?? null,
+			note: row.note,
+			upvoteCount: row._count.upvotes,
 		})),
 	};
 }

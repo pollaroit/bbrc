@@ -254,6 +254,36 @@ export async function uploadShelfCoverDirect(
 	return { publicUrl };
 }
 
+/**
+ * Uploads a finished book cover (already cropped to 2:3 by the browser) and
+ * returns its public URL. Admins only. The book itself is updated when the
+ * book is saved, so nothing is attached here.
+ */
+export async function uploadBookCoverDirect(
+	file: {
+		buffer: Buffer;
+		contentType: AllowedImageMimeType;
+		contentLength: number;
+	},
+	session: Session,
+) {
+	if (!session.user.isAdmin) {
+		throw new ORPCError("FORBIDDEN", {
+			message: "Only admins can upload book covers.",
+		});
+	}
+	const key = buildObjectKey(getStorageEnv(), {
+		kind: "book-cover",
+		coverUid: crypto.randomUUID(),
+	});
+	const body: ImageUploadBody = {
+		contentType: file.contentType,
+		contentLength: file.contentLength,
+	};
+	const publicUrl = await putImageAtKey(key, body, file.buffer);
+	return { publicUrl };
+}
+
 export async function initAvatarUpload(
 	body: ImageUploadBody,
 	session: Session,

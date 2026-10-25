@@ -9,6 +9,7 @@ import { z } from "zod";
 import type { Context } from "../../context";
 import {
 	uploadAvatarDirect,
+	uploadBookCoverDirect,
 	uploadCommentImageDirect,
 	uploadPostImageDirect,
 	uploadShelfCoverDirect,
@@ -24,6 +25,7 @@ const DirectUploadTargetSchema = z.discriminatedUnion("target", [
 		target: z.literal("comment-image"),
 		commentSlug: z.string().min(1),
 	}),
+	z.object({ target: z.literal("book-cover") }),
 	z.object({
 		target: z.literal("shelf-cover"),
 		ownerUsername: z.string().min(3).max(20).optional(),
@@ -116,6 +118,9 @@ export async function handleDirectImageUpload(
 					context.db,
 					context,
 				);
+				break;
+			case "book-cover":
+				result = await uploadBookCoverDirect(payload, session);
 				break;
 			case "shelf-cover":
 				result = await uploadShelfCoverDirect(
