@@ -428,27 +428,39 @@ export function RichTextEditor({
 		if (!editor || editor.isDestroyed) {
 			return;
 		}
-		const current = tiptapJsonToStoredContent(editor.getJSON());
-		const external = valueRef.current;
-		if (current === external) {
-			return;
-		}
-		if (
-			contentPlainText(current).trim() === contentPlainText(external).trim()
-		) {
-			return;
-		}
-		suppressOnChangeRef.current = true;
-		const nextDoc =
-			contentPlainText(external).trim().length === 0
-				? EMPTY_TIPTAP_DOC
-				: storedContentToTiptapJson(external);
-		editor.commands.setContent(nextDoc, { emitUpdate: false });
-		suppressOnChangeRef.current = false;
-		// Text put in from outside (a reply that starts with a mention): keep typing after it.
-		if (editor.isFocused) {
-			editor.commands.focus("end");
-		}
+		let cancelled = false;
+		// TipTap draws atom nodes (mentions) with React node views, which call
+		// `flushSync`. React forbids that while it is rendering or running an effect,
+		// so the change is applied right after this effect, in a microtask.
+		queueMicrotask(() => {
+			if (cancelled || editor.isDestroyed) {
+				return;
+			}
+			const current = tiptapJsonToStoredContent(editor.getJSON());
+			const external = valueRef.current;
+			if (current === external) {
+				return;
+			}
+			if (
+				contentPlainText(current).trim() === contentPlainText(external).trim()
+			) {
+				return;
+			}
+			suppressOnChangeRef.current = true;
+			const nextDoc =
+				contentPlainText(external).trim().length === 0
+					? EMPTY_TIPTAP_DOC
+					: storedContentToTiptapJson(external);
+			editor.commands.setContent(nextDoc, { emitUpdate: false });
+			suppressOnChangeRef.current = false;
+			// Text put in from outside (a reply that starts with a mention): keep typing after it.
+			if (editor.isFocused) {
+				editor.commands.focus("end");
+			}
+		});
+		return () => {
+			cancelled = true;
+		};
 	}, [editor, value]);
 
 	if (!editor) {
