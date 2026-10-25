@@ -1,4 +1,5 @@
 export * from "./achievements";
+export * from "./author-name";
 export * from "./author-slug";
 export * from "./book-catalog-similarity";
 export * from "./book-country";

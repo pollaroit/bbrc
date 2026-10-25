@@ -104,6 +104,9 @@ model User {
 
   sittingsCreated            Sitting[]                @relation("SittingCreatedBy")
   readings                   Reading[]
+  authorsCreated             Author[]                 @relation("AuthorCreator")
+  followsMade                Follow[]                 @relation("FollowsMade")
+  followedBy                 Follow[]                 @relation("FollowedBy")
   mentionsReceived           ContentMention[]         @relation("MentionedUser")
   mentionsMade               ContentMention[]         @relation("MentionAuthor")
   bookEditionsCreated        BookEdition[]            @relation("BookEditionCreator")

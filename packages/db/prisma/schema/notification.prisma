@@ -26,6 +26,7 @@ enum NotificationKind {
   views_digest
   reading_behind
   mention
+  author_new_book
 }
 
 model Notification {
