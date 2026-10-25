@@ -24,6 +24,8 @@ export const bookSortableFields = [
 	"reads._count",
 	"shelves._count",
 	"documents._count",
+	"viewCount",
+	"viewerCount",
 ] as const;
 
 export const bookListSorting = defineSorting<

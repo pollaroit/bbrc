@@ -36,6 +36,7 @@ import { resolveClubSittingSlug } from "./resolve-club-sitting-slug";
 
 const bookListSelect = {
 	...getBookListFields,
+	viewCount: true,
 	seriesMembership: {
 		select: {
 			position: true,

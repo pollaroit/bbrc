@@ -15,6 +15,7 @@ import { BookQuizButton } from "@/components/blocks/book-quiz-button";
 import { BookReadAfterLinks } from "@/components/blocks/book-read-after-links";
 import { BookRequestedByLine } from "@/components/blocks/book-requested-by";
 import { BookStatusBanner } from "@/components/blocks/book-status-badge";
+import { LiveViewCount } from "@/components/blocks/live-view-count";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { bookCoverFrameClassName, bookCoverUrl } from "@/lib/book-cover";
 import { cn } from "@/lib/utils";
@@ -128,6 +129,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 								className="text-sm leading-relaxed"
 							/>
 							<BookReadAfterLinks readAfterBooks={book.readAfterBooks} />
+							<LiveViewCount resource="book" itemRef={book.slug} />
 							{book.requestedBy ? (
 								<BookRequestedByLine requestedBy={book.requestedBy} />
 							) : null}

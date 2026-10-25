@@ -114,6 +114,12 @@ export const adminDocumentTabs = [
 	{ href: "/admin/documents/stats" as Route, label: "Stats" },
 ] as const;
 
+export const adminViewTabs = [
+	{ href: "/admin/views" as Route, label: "Overview" },
+	{ href: "/admin/views/list" as Route, label: "List" },
+	{ href: "/admin/views/stats" as Route, label: "Stats" },
+] as const;
+
 export const adminFactTabs = [
 	{ href: "/admin/facts/create" as Route, label: "Create" },
 	{ href: "/admin/facts/inventory" as Route, label: "Inventory" },

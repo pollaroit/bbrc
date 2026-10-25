@@ -72,6 +72,11 @@ model Shelf {
   status ShelfStatus @default(draft)
   type   ShelfType   @default(unordered)
 
+  /// Copy of the opens total (see `ViewTotal`), kept here so lists can sort by it.
+  viewCount   Int @default(0) @map("view_count")
+  /// Copy of the distinct people who opened it, for sorting.
+  viewerCount Int @default(0) @map("viewer_count")
+
   /// @zod.uuid("Invalid user id")
   userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)

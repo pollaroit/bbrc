@@ -26,6 +26,7 @@ export function ShelfGridCard({
 			shelf={shelf}
 			showStatus={showOwnerStatus && shelf.isOwner}
 			className={className}
+			impressionSource="books"
 		/>
 	);
 }

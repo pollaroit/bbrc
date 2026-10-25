@@ -1,7 +1,7 @@
 "use client";
 
 import type { GetPostListOutput } from "@bbrc/api/modules/post/post.schema";
-import { contentPlainText } from "@bbrc/shared";
+import { contentPlainText, type ViewSourceName } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { CornerDownRight, MessageCircle } from "lucide-react";
 import type { Route } from "next";
@@ -17,7 +17,9 @@ import { PostPoll } from "@/components/blocks/post-poll";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
+import { useImpressionRef } from "@/components/blocks/track-impression";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { ViewCountLabel } from "@/components/blocks/view-count-label";
 import { isPendingSlug } from "@/lib/optimistic/infinite-lists";
 import { shareSnippet } from "@/lib/share-snippet";
 import { cn } from "@/lib/utils";
@@ -27,6 +29,10 @@ export type PostCardPost = GetPostListOutput["items"][number];
 type PostCardProps = {
 	post: PostCardPost;
 	className?: string;
+	/** Where the card is listed, for view counts. */
+	impressionSource?: ViewSourceName;
+	/** Public opens of the post, when known. */
+	viewCount?: number;
 };
 
 /** Comments under a post in the feed: a peek, a quick reply, and the way to the full thread. */
@@ -138,11 +144,22 @@ function PostCardComments({ post }: { post: PostCardPost }) {
 	);
 }
 
-function PostCardInner({ post, className }: PostCardProps) {
+function PostCardInner({
+	post,
+	className,
+	impressionSource = "feed",
+	viewCount,
+}: PostCardProps) {
 	const postHref = `/posts/${post.slug}` as Route;
+	const countImpression = useImpressionRef(
+		"post",
+		isPendingSlug(post.slug) ? null : post.slug,
+		impressionSource,
+	);
 
 	return (
 		<article
+			ref={countImpression}
 			className={cn(
 				"flex flex-col overflow-hidden border border-border bg-card",
 				className,
@@ -241,6 +258,7 @@ function PostCardInner({ post, className }: PostCardProps) {
 					<MessageCircle className="size-4" aria-hidden />
 					{post.commentCount}
 				</Button>
+				<ViewCountLabel count={viewCount} className="px-2" />
 				<ResourceShareMenu
 					path={`/posts/${post.slug}`}
 					shareText={shareSnippet(contentPlainText(post.content))}

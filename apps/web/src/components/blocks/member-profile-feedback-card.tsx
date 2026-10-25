@@ -1,3 +1,5 @@
+"use client";
+
 import type { GetUserFeedbackListOutput } from "@bbrc/api/modules/feedback/feedback.schema";
 import { contentPlainText, formatFeedbackRating } from "@bbrc/shared";
 import { Heart, MessageCircle, Star } from "lucide-react";
@@ -8,6 +10,7 @@ import { FeedbackEditIconButton } from "@/components/blocks/feedback-edit-icon-b
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
+import { useImpressionRef } from "@/components/blocks/track-impression";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { shareSnippet } from "@/lib/share-snippet";
 
@@ -27,9 +30,13 @@ export function MemberProfileFeedbackCard({
 		`/books/${item.book.slug}/feedbacks/${item.slug}` as Route;
 	const coverSrc = bookCoverUrl(item.book.coverId, "M");
 	const hasReview = contentPlainText(item.review).trim().length > 0;
+	const countImpression = useImpressionRef("review", item.slug, "profile");
 
 	return (
-		<article className="relative flex h-full gap-3 border border-border p-3 transition-colors hover:bg-muted/40">
+		<article
+			ref={countImpression}
+			className="relative flex h-full gap-3 border border-border p-3 transition-colors hover:bg-muted/40"
+		>
 			<Link
 				href={feedbackHref}
 				className="absolute inset-0 z-0"

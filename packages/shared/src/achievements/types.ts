@@ -46,6 +46,7 @@ export const FACT_SECTIONS = [
 	"library",
 	"quizzes",
 	"profile",
+	"views",
 	"club",
 ] as const;
 export type FactSection = (typeof FACT_SECTIONS)[number];
@@ -90,6 +91,16 @@ export type GoalFact = { createdAt: Date; completedAt: Date | null };
 
 export type ShelfFact = { createdAt: Date; bookAddedTimes: Date[] };
 
+/** The most opens an item has had, and when its count last changed. */
+export type OpenedFact = { opens: number; at: Date };
+
+/** How often others opened the member's things (never counting their own opens or bots). */
+export type ViewFacts = {
+	mostOpenedPost: OpenedFact | null;
+	mostOpenedReview: OpenedFact | null;
+	profileOpens: OpenedFact | null;
+};
+
 export type SeriesFact = { id: string; bookIds: string[] };
 
 export type AchievementFacts = {
@@ -124,6 +135,7 @@ export type AchievementFacts = {
 	favoriteTimes: Date[];
 	quizzes: { at: Date; perfect: boolean }[];
 	series: SeriesFact[];
+	views: ViewFacts;
 };
 
 /** A cumulative value reached at a moment; values never go down. */
@@ -171,6 +183,9 @@ export type MetricKey =
 	| "goalsCreated"
 	| "goalsDone"
 	| "profile"
+	| "postOpens"
+	| "reviewOpens"
+	| "profileOpens"
 	| "founder"
 	| "tenure";
 

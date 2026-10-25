@@ -1,7 +1,11 @@
 "use client";
 
 import type { GetBookFeedbackListOutput } from "@bbrc/api/modules/feedback/feedback.schema";
-import { contentPlainText, formatFeedbackRating } from "@bbrc/shared";
+import {
+	contentPlainText,
+	formatFeedbackRating,
+	type ViewSourceName,
+} from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
@@ -16,6 +20,7 @@ import { FeedbackEditIconButton } from "@/components/blocks/feedback-edit-icon-b
 import { FeedbackLikeEngagement } from "@/components/blocks/feedback-like-engagement";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
+import { TrackImpression } from "@/components/blocks/track-impression";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
@@ -32,12 +37,15 @@ type FeedbackReviewListProps = {
 	bookSlug: string;
 	reviews: FeedbackReviewListItem[];
 	emptyMessage: string;
+	/** Where the list is shown, for view counts. */
+	impressionSource?: ViewSourceName;
 };
 
 export function FeedbackReviewList({
 	bookSlug,
 	reviews,
 	emptyMessage,
+	impressionSource = "book_reviews",
 }: FeedbackReviewListProps) {
 	const router = useRouter();
 	const { data: session } = authClient.useSession();
@@ -95,89 +103,95 @@ export function FeedbackReviewList({
 									Posting…
 								</span>
 							) : null}
-							<Card size="sm">
-								<CardContent className="flex flex-col gap-3">
-									<div className="flex flex-wrap items-start justify-between gap-3">
-										<Link
-											href={feedbackHref}
-											className="min-w-0 outline-offset-2"
-										>
-											<UserPanel user={entry} />
-										</Link>
-										<div className="flex flex-col items-end gap-1 text-right">
-											<Badge variant="outline" className="tabular-nums">
-												{formatFeedbackRating(entry.rating)} / 5
-											</Badge>
-											<p className="text-muted-foreground text-xs">
-												{formatDateTime(entry.createdAt)}
-											</p>
-										</div>
-									</div>
-									<div className="relative">
-										<Link
-											href={feedbackHref}
-											className="absolute inset-0 z-0"
-											aria-label={`Open review by ${entry.name}`}
-										/>
-										<div className="pointer-events-none relative z-[1] [&_*]:pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto">
-											{contentPlainText(entry.review).trim().length > 0 ? (
-												<SocialContentBody
-													content={entry.review}
-													isSpoiler={entry.isSpoiler}
-													kind="feedback"
-													identifier={entry.slug}
-													interactiveLinks
-												/>
-											) : (
-												<p className="text-muted-foreground text-sm italic">
-													Rating only — no written review.
+							<TrackImpression
+								resource="review"
+								itemRef={isPendingSlug(entry.slug) ? "" : entry.slug}
+								source={impressionSource}
+							>
+								<Card size="sm">
+									<CardContent className="flex flex-col gap-3">
+										<div className="flex flex-wrap items-start justify-between gap-3">
+											<Link
+												href={feedbackHref}
+												className="min-w-0 outline-offset-2"
+											>
+												<UserPanel user={entry} />
+											</Link>
+											<div className="flex flex-col items-end gap-1 text-right">
+												<Badge variant="outline" className="tabular-nums">
+													{formatFeedbackRating(entry.rating)} / 5
+												</Badge>
+												<p className="text-muted-foreground text-xs">
+													{formatDateTime(entry.createdAt)}
 												</p>
-											)}
+											</div>
 										</div>
-									</div>
-									<div className="flex flex-wrap items-center gap-4 border-t pt-3 text-muted-foreground text-sm">
-										<FeedbackLikeEngagement
-											feedbackSlug={entry.slug}
-											initialLikeCount={entry.likeCount}
-											initialLikedByMe={entry.likedByMe}
-										/>
-										<Link
-											href={commentsHref}
-											className="inline-flex items-center gap-1.5 tabular-nums transition-colors hover:text-foreground"
-										>
-											<MessageCircle className="size-4" aria-hidden />
-											{entry.commentCount}
-										</Link>
-										<ResourceShareMenu
-											path={`/books/${bookSlug}/feedbacks/${entry.slug}`}
-											shareText={shareSnippet(entry.review)}
-											label="Share review"
-											shareInPost={{ kind: "feedback", slug: entry.slug }}
-										/>
-										{isOwner ? (
-											<>
-												<FeedbackEditIconButton
-													bookSlug={bookSlug}
-													rating={entry.rating}
-													review={entry.review}
-													isSpoiler={entry.isSpoiler}
-													feedbackSlug={entry.slug}
-												/>
-												<LoadingButton
-													type="button"
-													variant="ghost"
-													size="sm"
-													className="h-8 px-2 text-destructive hover:text-destructive"
-													loading={deleteMutation.isPending}
-													onClick={() => setDeleteOpen(true)}
-												>
-													Delete
-												</LoadingButton>
-											</>
-										) : null}
-									</div>
-								</CardContent>
-							</Card>
+										<div className="relative">
+											<Link
+												href={feedbackHref}
+												className="absolute inset-0 z-0"
+												aria-label={`Open review by ${entry.name}`}
+											/>
+											<div className="pointer-events-none relative z-[1] [&_*]:pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto">
+												{contentPlainText(entry.review).trim().length > 0 ? (
+													<SocialContentBody
+														content={entry.review}
+														isSpoiler={entry.isSpoiler}
+														kind="feedback"
+														identifier={entry.slug}
+														interactiveLinks
+													/>
+												) : (
+													<p className="text-muted-foreground text-sm italic">
+														Rating only — no written review.
+													</p>
+												)}
+											</div>
+										</div>
+										<div className="flex flex-wrap items-center gap-4 border-t pt-3 text-muted-foreground text-sm">
+											<FeedbackLikeEngagement
+												feedbackSlug={entry.slug}
+												initialLikeCount={entry.likeCount}
+												initialLikedByMe={entry.likedByMe}
+											/>
+											<Link
+												href={commentsHref}
+												className="inline-flex items-center gap-1.5 tabular-nums transition-colors hover:text-foreground"
+											>
+												<MessageCircle className="size-4" aria-hidden />
+												{entry.commentCount}
+											</Link>
+											<ResourceShareMenu
+												path={`/books/${bookSlug}/feedbacks/${entry.slug}`}
+												shareText={shareSnippet(entry.review)}
+												label="Share review"
+												shareInPost={{ kind: "feedback", slug: entry.slug }}
+											/>
+											{isOwner ? (
+												<>
+													<FeedbackEditIconButton
+														bookSlug={bookSlug}
+														rating={entry.rating}
+														review={entry.review}
+														isSpoiler={entry.isSpoiler}
+														feedbackSlug={entry.slug}
+													/>
+													<LoadingButton
+														type="button"
+														variant="ghost"
+														size="sm"
+														className="h-8 px-2 text-destructive hover:text-destructive"
+														loading={deleteMutation.isPending}
+														onClick={() => setDeleteOpen(true)}
+													>
+														Delete
+													</LoadingButton>
+												</>
+											) : null}
+										</div>
+									</CardContent>
+								</Card>
+							</TrackImpression>
 						</li>
 					);
 				})}

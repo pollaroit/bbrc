@@ -36,6 +36,7 @@ function facts(overrides: Partial<AchievementFacts> = {}): AchievementFacts {
 		favoriteTimes: [],
 		quizzes: [],
 		series: [],
+		views: { mostOpenedPost: null, mostOpenedReview: null, profileOpens: null },
 		...overrides,
 	};
 }
@@ -265,5 +266,59 @@ describe("evaluateAchievements", () => {
 	test("nothing is awarded from the future", () => {
 		const f = facts({ reads: [read("a", "2027-01-01T00:00:00Z")] });
 		expect(earnedOf(f, "bookworm")).toEqual([]);
+	});
+});
+
+describe("views achievements", () => {
+	const opened = (opens: number) => ({ opens, at: d("2026-10-20T10:00:00Z") });
+
+	test("nothing without views", () => {
+		expect(earnedOf(facts(), "seen")).toEqual([]);
+		expect(earnedOf(facts(), "face_in_the_crowd")).toEqual([]);
+	});
+
+	test("the most opened post sets the tier", () => {
+		const f = facts({
+			views: {
+				mostOpenedPost: opened(300),
+				mostOpenedReview: null,
+				profileOpens: null,
+			},
+		});
+		expect(earnedOf(f, "seen").map((item) => item.tier)).toEqual([1, 2]);
+		expect(earnedOf(f, "well_read_review")).toEqual([]);
+	});
+
+	test("reviews and profile have their own counts", () => {
+		const f = facts({
+			views: {
+				mostOpenedPost: null,
+				mostOpenedReview: opened(100),
+				profileOpens: opened(25),
+			},
+		});
+		expect(earnedOf(f, "well_read_review").map((item) => item.tier)).toEqual([
+			1, 2,
+		]);
+		expect(earnedOf(f, "face_in_the_crowd").map((item) => item.tier)).toEqual([
+			1,
+		]);
+	});
+
+	test("they are earned at the time the count last changed", () => {
+		const f = facts({
+			views: {
+				mostOpenedPost: opened(60),
+				mostOpenedReview: null,
+				profileOpens: null,
+			},
+		});
+		expect(earnedOf(f, "seen")[0]?.earnedAt).toEqual(d("2026-10-20T10:00:00Z"));
+	});
+
+	test("they only need the views section", () => {
+		for (const key of ["seen", "well_read_review", "face_in_the_crowd"]) {
+			expect(getAchievement(key)?.needs).toEqual(["views"]);
+		}
 	});
 });

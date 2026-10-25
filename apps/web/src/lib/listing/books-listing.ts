@@ -58,6 +58,8 @@ export const bookSortByLabels = {
 	"reads._count": "Member reads",
 	"shelves._count": "Shelf placements",
 	"documents._count": "Documents",
+	viewCount: "Views",
+	viewerCount: "Viewers",
 } as const satisfies FieldLabels<(typeof bookSortableFields)[number]>;
 
 export const bookRangeByLabels = {

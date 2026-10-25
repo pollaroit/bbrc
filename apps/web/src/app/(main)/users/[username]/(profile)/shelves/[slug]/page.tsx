@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MemberShelfDetail } from "@/components/blocks/member-shelf-detail";
+import { TrackDetailView } from "@/components/blocks/track-detail-view";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import {
 	loadShelfBySlugForPage,
@@ -47,6 +48,7 @@ export default async function ShelfDetailPage({
 
 	return (
 		<ListingSearchParamsBoundary>
+			<TrackDetailView resource="shelf" itemRef={`${username}/${slug}`} />
 			<MemberShelfDetail username={username} shelfSlug={slug} />
 		</ListingSearchParamsBoundary>
 	);

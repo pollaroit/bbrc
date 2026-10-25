@@ -4,6 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 type MemberProfileNavProps = {
@@ -21,9 +22,16 @@ type ProfileSegment =
 	| "shelves"
 	| "goals"
 	| "achievements"
-	| "reels";
+	| "reels"
+	| "insights";
 
-const tabs: { segment: ProfileSegment; label: string; ownOnly?: boolean }[] = [
+const tabs: {
+	segment: ProfileSegment;
+	label: string;
+	ownOnly?: boolean;
+	/** Own profile, or an admin. */
+	ownOrAdmin?: boolean;
+}[] = [
 	{ segment: "overview", label: "Overview" },
 	{ segment: "sittings", label: "Sittings" },
 	{ segment: "reads", label: "Reads" },
@@ -34,6 +42,7 @@ const tabs: { segment: ProfileSegment; label: string; ownOnly?: boolean }[] = [
 	{ segment: "goals", label: "Goals" },
 	{ segment: "achievements", label: "Achievements" },
 	{ segment: "reels", label: "Reels", ownOnly: true },
+	{ segment: "insights", label: "Insights", ownOrAdmin: true },
 ];
 
 function tabHref(username: string, segment: ProfileSegment) {
@@ -61,6 +70,8 @@ export function MemberProfileNav({
 	isOwnProfile = false,
 }: MemberProfileNavProps) {
 	const pathname = usePathname();
+	const { data: session } = authClient.useSession();
+	const isAdmin = session?.user.isAdmin === true;
 	const current = activeSegment(pathname, username);
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	const [fade, setFade] = useState({ left: false, right: false });
@@ -106,7 +117,11 @@ export function MemberProfileNav({
 				className="flex overflow-x-auto px-3 [scrollbar-width:none] md:px-1 [&::-webkit-scrollbar]:hidden"
 			>
 				{tabs
-					.filter((tab) => !tab.ownOnly || isOwnProfile)
+					.filter(
+						(tab) =>
+							(!tab.ownOnly || isOwnProfile) &&
+							(!tab.ownOrAdmin || isOwnProfile || isAdmin),
+					)
 					.map((tab) => {
 						const active = tab.segment === current;
 						return (

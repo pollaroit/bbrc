@@ -27,6 +27,12 @@ export const BOOK_INNER_PAGES: InnerPage[] = [
 	{ id: "favorites", label: "Favorites", path: "favorites" },
 	{ id: "quizzes", label: "Quizzes", path: "quizzes", aliases: ["quiz"] },
 	{ id: "more", label: "More to read", path: "more", aliases: ["similar"] },
+	{
+		id: "insights",
+		label: "Insights",
+		path: "insights",
+		aliases: ["views", "analytics"],
+	},
 ];
 
 export const USER_INNER_PAGES: InnerPage[] = [

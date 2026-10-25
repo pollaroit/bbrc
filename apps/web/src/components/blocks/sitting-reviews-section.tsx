@@ -123,6 +123,7 @@ export function SittingReviewsSection({ sitting }: SittingReviewsSectionProps) {
 			</div>
 
 			<FeedbackReviewList
+				impressionSource="sitting_reviews"
 				bookSlug={bookSlug}
 				reviews={visible}
 				emptyMessage={

@@ -23,6 +23,8 @@ export const NOTIFICATION_KINDS = [
 	"sitting_invitation",
 	"sitting_added",
 	"sitting_welcome",
+	"view_milestone",
+	"views_digest",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -51,6 +53,8 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
 	sitting_invitation: "Sitting invitation",
 	sitting_added: "Added to a sitting",
 	sitting_welcome: "Welcome to a sitting",
+	view_milestone: "Your content reached a views milestone",
+	views_digest: "Your weekly views",
 };
 
 export const NOTIFICATION_KIND_GROUPS = {
@@ -73,6 +77,8 @@ export const NOTIFICATION_KIND_GROUPS = {
 		"sitting_invitation",
 		"sitting_added",
 		"sitting_welcome",
+		"view_milestone",
+		"views_digest",
 	] as const satisfies readonly NotificationKind[],
 	sitting: [
 		"sitting_poll_started",

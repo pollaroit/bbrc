@@ -1,5 +1,6 @@
 import { OngoingSittingBanner } from "@/components/blocks/ongoing-sitting-banner";
 import { PostFeed } from "@/components/blocks/post-feed";
+import { TrendingStrip } from "@/components/blocks/trending-strip";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { loadOngoingSittingForIsr } from "@/lib/isr-data";
 import { buildPageMetadata } from "@/lib/seo";
@@ -35,6 +36,8 @@ export default async function HomePage() {
 			</div>
 
 			{ongoing ? <OngoingSittingBanner sitting={ongoing} /> : null}
+
+			<TrendingStrip resource="post" className="-mt-2" />
 
 			<ListingSearchParamsBoundary>
 				<PostFeed showFeedControls />

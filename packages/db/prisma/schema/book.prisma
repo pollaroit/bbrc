@@ -36,6 +36,11 @@ model Book {
   /// @zod.refine((v) => isOpenLibraryOlid(v), { message: "Invalid Open Library work ID" })
   olid String @unique
 
+  /// Copy of the opens total (see `ViewTotal`), kept here so lists can sort by it.
+  viewCount   Int @default(0) @map("view_count")
+  /// Copy of the distinct people who opened it, for sorting.
+  viewerCount Int @default(0) @map("viewer_count")
+
   subjectPeople String[] @default([]) @map("subject_people")
   subjectTimes  String[] @default([]) @map("subject_times")
   subjects      String[] @default([])

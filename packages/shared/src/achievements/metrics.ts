@@ -90,6 +90,10 @@ const readEvents = (facts: AchievementFacts) =>
 const completedParticipations = (facts: AchievementFacts) =>
 	facts.participations.filter((item) => item.progress === "completed");
 
+function openedPoints(fact: { opens: number; at: Date } | null): Point[] {
+	return fact && fact.opens > 0 ? [{ at: fact.at, value: fact.opens }] : [];
+}
+
 export const METRICS: Record<MetricKey, Metric> = {
 	reads: (facts, inWindow) => countPoints(readEvents(facts), inWindow),
 
@@ -497,6 +501,11 @@ export const METRICS: Record<MetricKey, Metric> = {
 			{ at: facts.profile?.updatedAt ?? facts.user.createdAt, value: filled },
 		];
 	},
+
+	// Views are all-time: they ignore the yearly window, like tenure.
+	postOpens: (facts) => openedPoints(facts.views.mostOpenedPost),
+	reviewOpens: (facts) => openedPoints(facts.views.mostOpenedReview),
+	profileOpens: (facts) => openedPoints(facts.views.profileOpens),
 
 	founder: (facts) =>
 		facts.user.joinRank <= FOUNDING_MEMBER_COUNT

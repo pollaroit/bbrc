@@ -22,6 +22,8 @@ enum NotificationKind {
   sitting_invitation
   sitting_added
   sitting_welcome
+  view_milestone
+  views_digest
 }
 
 model Notification {

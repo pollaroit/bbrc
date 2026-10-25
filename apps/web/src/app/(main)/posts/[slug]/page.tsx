@@ -2,6 +2,7 @@ import { contentPlainText } from "@bbrc/shared";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PostDetail } from "@/components/blocks/post-detail";
+import { TrackDetailView } from "@/components/blocks/track-detail-view";
 import { loadPostBySlugForIsr } from "@/lib/isr-data";
 import {
 	blogPostingJsonLd,
@@ -56,6 +57,7 @@ export default async function PostPage({ params }: PageProps<"/posts/[slug]">) {
 						createdAt: post.createdAt,
 					})}
 				/>
+				<TrackDetailView resource="post" itemRef={post.slug} />
 				<PostDetail post={post} />
 			</>
 		);

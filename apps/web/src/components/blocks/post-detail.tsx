@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { LiveViewCount } from "@/components/blocks/live-view-count";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
 import { PostCommentFocusSection } from "@/components/blocks/post-comment-focus-section";
@@ -57,6 +58,11 @@ export function PostDetail({
 									<RelativeTime date={post.editedAt} className="inline" />
 								</p>
 							) : null}
+							<LiveViewCount
+								resource="post"
+								itemRef={post.slug}
+								className="mt-0.5 justify-end"
+							/>
 						</div>
 						<PostOwnerMenu
 							slug={post.slug}
