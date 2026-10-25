@@ -7,6 +7,7 @@ import {
 } from "@bbrc/shared";
 import { Fragment } from "react";
 import { LinkPreviewCard } from "@/components/blocks/link-preview-card";
+import { MentionInline } from "@/components/blocks/mention/mention-inline";
 import { RichInlineLink } from "@/components/blocks/rich-inline-link";
 import { cn } from "@/lib/utils";
 
@@ -69,14 +70,7 @@ function renderInline(
 			}
 			case "mention":
 				return (
-					<RichInlineLink
-						key={key}
-						href={`/users/${node.username}`}
-						tone="member"
-						className={interactiveClass}
-					>
-						@{node.username}
-					</RichInlineLink>
+					<MentionInline key={key} node={node} className={interactiveClass} />
 				);
 			case "link":
 				return (

@@ -28,6 +28,8 @@ model User {
   /// Organisers may add this member to a sitting without asking.
   allowSittingAutoAdd   Boolean    @default(true) @map("allow_sitting_auto_add")
   /// Others can see which books this member is reading right now.
+  /// Others can mention this member (the picker only offers members who allow it; existing mentions stay).
+  allowMentions         Boolean    @default(true) @map("allow_mentions")
   showCurrentlyReading  Boolean    @default(true) @map("show_currently_reading")
   /// Others can see how far along this member is (otherwise just "reading").
   showReadingProgress   Boolean    @default(true) @map("show_reading_progress")
@@ -102,6 +104,8 @@ model User {
 
   sittingsCreated            Sitting[]                @relation("SittingCreatedBy")
   readings                   Reading[]
+  mentionsReceived           ContentMention[]         @relation("MentionedUser")
+  mentionsMade               ContentMention[]         @relation("MentionAuthor")
   bookEditionsCreated        BookEdition[]            @relation("BookEditionCreator")
   bookEditionsVerified       BookEdition[]            @relation("BookEditionVerifier")
   bookRequestUpvotes         BookRequestUpvote[]      @relation("BookRequestUpvoter")

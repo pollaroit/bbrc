@@ -7,7 +7,7 @@
  * - `suggest`             optional slot (e.g. <SuggestSubjectsButton/>) shown beside the label.
  *
  * Enter or a comma adds the typed tag; Backspace on an empty box removes the last one.
- * Tags are trimmed, de-duplicated (ignoring case) and capped at 40.
+ * Tags are trimmed, de-duplicated (ignoring case) and capped at 200.
  */
 
 import {
@@ -19,7 +19,7 @@ import { Input } from "@bbrc/ui/components/input";
 import { X } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
 
-const MAX_TAGS = 40;
+const MAX_TAGS = 200;
 
 export function BookSubjectsField({
 	value,
@@ -43,7 +43,7 @@ export function BookSubjectsField({
 	}
 
 	return (
-		<Field className="gap-2">
+		<Field className="gap-2" id="subjects">
 			<div className="flex flex-wrap items-center justify-between gap-2">
 				<FieldLegend variant="label">Subjects</FieldLegend>
 				{suggest}

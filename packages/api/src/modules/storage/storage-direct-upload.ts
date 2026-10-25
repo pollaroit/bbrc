@@ -12,6 +12,7 @@ import {
 	uploadBookCoverDirect,
 	uploadCommentImageDirect,
 	uploadEditionCoverDirect,
+	uploadFeedbackImageDirect,
 	uploadPostImageDirect,
 	uploadShelfCoverDirect,
 } from "./storage-image.service";
@@ -21,6 +22,10 @@ const DirectUploadTargetSchema = z.discriminatedUnion("target", [
 	z.object({
 		target: z.literal("post-image"),
 		postSlug: z.string().min(1),
+	}),
+	z.object({
+		target: z.literal("feedback-image"),
+		feedbackSlug: z.string().min(1),
 	}),
 	z.object({
 		target: z.literal("comment-image"),
@@ -112,6 +117,15 @@ export async function handleDirectImageUpload(
 					context,
 				);
 				break;
+			case "feedback-image":
+				result = await uploadFeedbackImageDirect(
+					input.feedbackSlug,
+					payload,
+					session,
+					context.db,
+					context,
+				);
+				break;
 			case "comment-image":
 				result = await uploadCommentImageDirect(
 					input.commentSlug,
@@ -157,6 +171,7 @@ export function parseDirectUploadTarget(
 	for (const key of [
 		"postSlug",
 		"commentSlug",
+		"feedbackSlug",
 		"shelfSlug",
 		"ownerUsername",
 	] as const) {

@@ -8,6 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { EditionChip } from "@/components/blocks/edition-chip";
 import { FeedbackEditIconButton } from "@/components/blocks/feedback-edit-icon-button";
+import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
@@ -95,6 +96,20 @@ export function MemberProfileFeedbackCard({
 					</p>
 				)}
 
+				{item.imageUrl ? (
+					<Link
+						href={`/books/${item.book.slug}/feedbacks/${item.slug}` as Route}
+						className="relative z-10 block"
+					>
+						<PostAttachedImage
+							src={item.imageUrl}
+							alt=""
+							compact
+							className="mt-0"
+						/>
+					</Link>
+				) : null}
+
 				<EditionChip
 					bookSlug={item.book.slug}
 					edition={item.readEdition}
@@ -121,6 +136,7 @@ export function MemberProfileFeedbackCard({
 								rating={item.rating}
 								review={item.review}
 								isSpoiler={item.isSpoiler}
+								imageUrl={item.imageUrl}
 								feedbackSlug={item.slug}
 							/>
 						) : null}

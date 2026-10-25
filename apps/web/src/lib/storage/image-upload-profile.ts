@@ -5,7 +5,8 @@ export type ImageUploadKind =
 	| "avatar"
 	| "shelf-cover"
 	| "post-image"
-	| "comment-image";
+	| "comment-image"
+	| "feedback-image";
 
 export type ImageUploadProfile = {
 	kind: ImageUploadKind;
@@ -38,6 +39,13 @@ const profiles: Record<ImageUploadKind, ImageUploadProfile> = {
 		kind: "post-image",
 		maxEdge: 1920,
 		cropTitle: "Crop post photo",
+		cropDescription: "Adjust the frame, then upload a compressed image.",
+		outputMimeTypes: ["image/webp", "image/jpeg"],
+	},
+	"feedback-image": {
+		kind: "feedback-image",
+		maxEdge: 1600,
+		cropTitle: "Crop review photo",
 		cropDescription: "Adjust the frame, then upload a compressed image.",
 		outputMimeTypes: ["image/webp", "image/jpeg"],
 	},

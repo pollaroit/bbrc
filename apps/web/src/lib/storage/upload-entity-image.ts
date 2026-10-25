@@ -8,6 +8,7 @@ export type EntityImageUploadTarget =
 	| { target: "avatar" }
 	| { target: "post-image"; postSlug: string }
 	| { target: "comment-image"; commentSlug: string }
+	| { target: "feedback-image"; feedbackSlug: string }
 	| { target: "shelf-cover"; shelfSlug: string; ownerUsername?: string };
 
 export type EntityImageUploadResult = {
@@ -39,6 +40,8 @@ export async function uploadEntityImage(
 		formData.append("postSlug", target.postSlug);
 	} else if (target.target === "comment-image") {
 		formData.append("commentSlug", target.commentSlug);
+	} else if (target.target === "feedback-image") {
+		formData.append("feedbackSlug", target.feedbackSlug);
 	} else if (target.target === "shelf-cover") {
 		formData.append("shelfSlug", target.shelfSlug);
 		if (target.ownerUsername) {

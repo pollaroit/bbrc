@@ -9,7 +9,7 @@ import type { ImageUploadKind } from "@/lib/storage/image-upload-profile";
 import { useImageCropCompressFlow } from "@/lib/storage/use-image-crop-compress-flow";
 
 export type PendingImageAttachmentProps = {
-	variant: "post" | "comment";
+	variant: "post" | "comment" | "feedback";
 	file: File | null;
 	onFileChange: (file: File | null) => void;
 	disabled?: boolean;
@@ -19,13 +19,19 @@ export type PendingImageAttachmentProps = {
 	size?: ImagePreviewSize;
 };
 
-function kindForVariant(variant: "post" | "comment"): ImageUploadKind {
+function kindForVariant(
+	variant: "post" | "comment" | "feedback",
+): ImageUploadKind {
+	if (variant === "feedback") return "feedback-image";
 	return variant === "post" ? "post-image" : "comment-image";
 }
 
 export function usePendingImageInput(
 	onFileChange: (file: File | null) => void,
-	options?: { disabled?: boolean; variant?: "post" | "comment" },
+	options?: {
+		disabled?: boolean;
+		variant?: "post" | "comment" | "feedback";
+	},
 ) {
 	const inputRef = useRef<HTMLInputElement>(null);
 	const variant = options?.variant ?? "post";
@@ -111,9 +117,13 @@ export function PendingImageAttachment({
 			<FullWidthImagePreview
 				src={previewUrl}
 				alt={
-					variant === "comment" ? "Comment image preview" : "Post image preview"
+					variant === "comment"
+						? "Comment image preview"
+						: variant === "feedback"
+							? "Review image preview"
+							: "Post image preview"
 				}
-				compact={size == null && variant === "comment"}
+				compact={size == null && variant !== "post"}
 				size={size}
 				bleed={bleed ?? variant === "post"}
 				disabled={disabled}

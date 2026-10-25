@@ -121,6 +121,7 @@ export function RichTextLinkDialog({
 		.slice(0, 8);
 
 	const webUrl = toHttpsUrl(url);
+	const debouncedWebUrl = useDebouncedValue(webUrl, 700);
 	const webSitePath =
 		webUrl && toSitePath(webUrl).startsWith("/") ? toSitePath(webUrl) : null;
 	const target =
@@ -288,7 +289,13 @@ export function RichTextLinkDialog({
 						{webSitePath ? (
 							<LinkPreviewCard href={webSitePath} variant="compact" asStatic />
 						) : webUrl ? (
-							<ExternalLinkCard href={webUrl} variant="compact" asStatic />
+							<ExternalLinkCard
+								href={webUrl}
+								variant="compact"
+								asStatic
+								// Wait until the address stops changing before asking the server about it.
+								enabled={debouncedWebUrl === webUrl}
+							/>
 						) : null}
 					</div>
 				)}

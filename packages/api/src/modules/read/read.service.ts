@@ -249,21 +249,21 @@ async function maybeCreateFeedbackFromSetRead(
 	input: SetReadInput,
 	userId: string,
 	db: Database,
-): Promise<void> {
+): Promise<string | null> {
 	const rating = input.feedbackRating;
 	const reviewRaw = input.feedbackReview?.trim() ?? "";
 	const hasRating = rating != null;
 	const hasReview = contentPlainText(reviewRaw).trim().length > 0;
 
 	if (!hasRating && !hasReview) {
-		return;
+		return null;
 	}
 
 	if (!hasRating) {
-		return;
+		return null;
 	}
 
-	await createFeedback(
+	const created = await createFeedback(
 		{
 			bookSlug: input.bookSlug,
 			rating,
@@ -272,6 +272,7 @@ async function maybeCreateFeedbackFromSetRead(
 		userId,
 		db,
 	);
+	return created.slug;
 }
 
 export async function setRead(
@@ -352,7 +353,11 @@ export async function setRead(
 
 	void checkReadingAchievements(db, userId);
 
-	await maybeCreateFeedbackFromSetRead(input, userId, db);
+	const createdFeedbackSlug = await maybeCreateFeedbackFromSetRead(
+		input,
+		userId,
+		db,
+	);
 
 	const hasFeedback =
 		(await db.feedback.findFirst({
@@ -360,7 +365,10 @@ export async function setRead(
 			select: { id: true },
 		})) != null;
 
-	return mapReadRowToState(row, hasFeedback);
+	return {
+		...mapReadRowToState(row, hasFeedback),
+		createdFeedbackSlug,
+	};
 }
 
 export async function removeRead(

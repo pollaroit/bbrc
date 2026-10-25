@@ -4,6 +4,8 @@ import type { RichBlock, RichDocument, RichInline } from "./types";
 /** Preview cards per document; extra ones fall back to a plain link. */
 export const RICH_EMBED_LIMIT = 3;
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function sanitizeInline(inline: RichInline[]): RichInline[] {
 	return inline.map((node) => {
 		switch (node.t) {
@@ -24,7 +26,13 @@ function sanitizeInline(inline: RichInline[]): RichInline[] {
 				return { t: "link", href, label, internal };
 			}
 			case "mention":
-				return { t: "mention", username: node.username.toLowerCase() };
+				return {
+					t: "mention",
+					username: node.username.toLowerCase(),
+					userId:
+						node.userId && UUID.test(node.userId) ? node.userId : undefined,
+					name: node.name?.trim().slice(0, 80) || undefined,
+				};
 			default: {
 				const _exhaustive: never = node;
 				return _exhaustive;

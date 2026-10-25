@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
  *                 content  the fields: this is where the other components plug in
  *   actionBar   the buttons: use <BookWorkspaceActionBar leading trailing />
  *   initialOpenId  the section open first on phones (default: the first one)
+ *   openRequest    `{ id, nonce }`: open and scroll to a section from outside (for example
+ *                  the first section with a validation problem); change `nonce` to repeat
  * />
  */
 
@@ -44,6 +46,7 @@ type BookWorkspaceProps = {
 	sections: WorkspaceSection[];
 	actionBar: ReactNode;
 	initialOpenId?: string;
+	openRequest?: { id: string; nonce: number } | null;
 	className?: string;
 };
 
@@ -72,6 +75,7 @@ export function BookWorkspace({
 	sections,
 	actionBar,
 	initialOpenId,
+	openRequest,
 	className,
 }: BookWorkspaceProps) {
 	const uid = useId();
@@ -107,6 +111,11 @@ export function BookWorkspace({
 		for (const element of elements) observer.observe(element);
 		return () => observer.disconnect();
 	}, [idsKey, uid]);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: only a new request (nonce) opens a section
+	useEffect(() => {
+		if (openRequest) goTo(openRequest.id);
+	}, [openRequest?.nonce]);
 
 	function goTo(id: string) {
 		setOpenId(id);

@@ -19,6 +19,8 @@ export async function notifyMemberPosted(
 	db: Database,
 	authorId: string,
 	postSlug: string,
+	/** Members who already get a "mentioned you" notice for this post. */
+	alsoExclude: string[] = [],
 ): Promise<void> {
 	const [author, recipientUserIds] = await Promise.all([
 		db.user.findUnique({
@@ -35,7 +37,7 @@ export async function notifyMemberPosted(
 	await dispatchNotification(db, {
 		kind: "member_posted",
 		recipientUserIds,
-		excludeUserIds: [authorId],
+		excludeUserIds: [authorId, ...alsoExclude],
 		title: "New club post",
 		body: `${memberDisplayName(author)} shared a new post.`,
 		href: `/posts/${postSlug}`,
@@ -46,6 +48,8 @@ export async function notifyCommentOnYourPost(
 	db: Database,
 	postSlug: string,
 	commentAuthorId: string,
+	/** Members who already get a "mentioned you" notice for this comment. */
+	alsoExclude: string[] = [],
 ): Promise<void> {
 	const post = await db.post.findUnique({
 		where: { slug: postSlug },
@@ -71,7 +75,7 @@ export async function notifyCommentOnYourPost(
 	await dispatchNotification(db, {
 		kind: "comment_on_your_post",
 		recipientUserIds: [post.authorId],
-		excludeUserIds: [commentAuthorId],
+		excludeUserIds: [commentAuthorId, ...alsoExclude],
 		title: "New comment on your post",
 		body: `${memberDisplayName(commentAuthor)} commented on your post.`,
 		href: `/posts/${postSlug}`,
@@ -84,6 +88,8 @@ export async function notifyReplyToYourComment(
 	commentSlug: string,
 	replyAuthorId: string,
 	parentAuthorId: string | null,
+	/** Members who already get a "mentioned you" notice for this reply. */
+	alsoExclude: string[] = [],
 ): Promise<void> {
 	if (!parentAuthorId || parentAuthorId === replyAuthorId) {
 		return;
@@ -101,7 +107,7 @@ export async function notifyReplyToYourComment(
 	await dispatchNotification(db, {
 		kind: "reply_to_your_comment",
 		recipientUserIds: [parentAuthorId],
-		excludeUserIds: [replyAuthorId],
+		excludeUserIds: [replyAuthorId, ...alsoExclude],
 		title: "Reply to your comment",
 		body: `${memberDisplayName(replyAuthor)} replied to your comment.`,
 		href: `/posts/${postSlug}#comment-${commentSlug}`,
@@ -145,6 +151,8 @@ export async function notifyMemberFeedbackOnBook(
 	db: Database,
 	bookSlug: string,
 	authorId: string,
+	/** Members who already get a "mentioned you" notice for this review. */
+	alsoExclude: string[] = [],
 ): Promise<void> {
 	const [author, book, recipientUserIds] = await Promise.all([
 		db.user.findUnique({
@@ -165,7 +173,7 @@ export async function notifyMemberFeedbackOnBook(
 	await dispatchNotification(db, {
 		kind: "member_feedback_on_book",
 		recipientUserIds,
-		excludeUserIds: [authorId],
+		excludeUserIds: [authorId, ...alsoExclude],
 		title: "New book feedback",
 		body: `${memberDisplayName(author)} reviewed “${book.title}”.`,
 		href: `/books/${bookSlug}`,

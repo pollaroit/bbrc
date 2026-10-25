@@ -25,6 +25,7 @@ enum NotificationKind {
   view_milestone
   views_digest
   reading_behind
+  mention
 }
 
 model Notification {

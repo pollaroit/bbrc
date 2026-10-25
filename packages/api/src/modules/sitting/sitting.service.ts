@@ -444,6 +444,7 @@ async function loadSittingReviews(
 			rating: true,
 			review: true,
 			isSpoiler: true,
+			imageUrl: true,
 			createdAt: true,
 			authorId: true,
 			author: {
@@ -477,6 +478,7 @@ async function loadSittingReviews(
 		rating: feedback.rating,
 		review: feedback.review,
 		isSpoiler: feedback.isSpoiler,
+		imageUrl: feedback.imageUrl,
 		createdAt: feedback.createdAt,
 		likeCount: feedback._count.likes,
 		likedByMe: likedFeedbackIds.has(feedback.id),

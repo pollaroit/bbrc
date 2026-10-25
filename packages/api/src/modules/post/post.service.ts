@@ -12,6 +12,13 @@ import {
 import { ORPCError } from "@orpc/server";
 import { assertNormalizedSocialContent } from "../../lib/rich-content";
 import { mergeWhereFragments } from "../../utils/searching";
+import { warmLinkPreviewsInContent } from "../link-unfurl/link-unfurl.service";
+import {
+	loadMentionedIds,
+	notifyMentions,
+	prepareContentMentions,
+	syncContentMentions,
+} from "../mention/mention.service";
 import { notifyMemberPosted } from "../notification/notification-triggers";
 import {
 	createPostPoll,
@@ -550,7 +557,13 @@ export async function createPost(
 ): Promise<CreatePostOutput> {
 	await loadActorSocialGate(userId, db);
 
-	const content = assertNormalizedSocialContent(input.content);
+	const prepared = await prepareContentMentions(db, {
+		content: assertNormalizedSocialContent(input.content),
+		authorId: userId,
+	});
+	const content = prepared.content;
+	// Outside links get their preview ready now (bounded; never fails the save).
+	await warmLinkPreviewsInContent(db, userId, content);
 	const attachmentInput = resolveCreateAttachment(input);
 
 	if (input.poll && attachmentInput) {
@@ -595,12 +608,25 @@ export async function createPost(
 			? XP_AWARD.post
 			: 0;
 
-		return { slug: post.slug, xpAwarded };
+		const freshMentions = await syncContentMentions(tx, {
+			ref: { kind: "post", id: post.id },
+			authorId: userId,
+			mentioned: prepared.mentioned,
+		});
+
+		return { slug: post.slug, xpAwarded, freshMentions };
 	});
 
-	void notifyMemberPosted(db, userId, result.slug);
+	void notifyMentions(db, {
+		authorId: userId,
+		recipientIds: result.freshMentions,
+		content,
+		href: `/posts/${result.slug}`,
+	});
+	// A member who is mentioned gets the mention, not also the "new post" notice.
+	void notifyMemberPosted(db, userId, result.slug, result.freshMentions);
 
-	return result;
+	return { slug: result.slug, xpAwarded: result.xpAwarded };
 }
 
 export async function updatePost(
@@ -634,12 +660,24 @@ export async function updatePost(
 		});
 	}
 
-	const normalizedContent =
+	const preparedContent =
 		input.content != null
-			? assertNormalizedSocialContent(input.content)
+			? await prepareContentMentions(db, {
+					content: assertNormalizedSocialContent(input.content),
+					authorId: userId,
+					alreadyMentionedIds: await loadMentionedIds(db, {
+						kind: "post",
+						id: post.id,
+					}),
+				})
 			: undefined;
+	const normalizedContent = preparedContent?.content;
 	const contentChanged =
 		normalizedContent != null && normalizedContent !== post.content;
+	if (normalizedContent != null && contentChanged) {
+		await warmLinkPreviewsInContent(db, userId, normalizedContent);
+	}
+	let freshMentions: string[] = [];
 
 	let attachmentPatch: CreatePostInput["attachment"] | null | undefined;
 	if (input.attachment !== undefined) {
@@ -681,7 +719,24 @@ export async function updatePost(
 			},
 			select: { id: true },
 		});
+
+		if (preparedContent) {
+			freshMentions = await syncContentMentions(tx, {
+				ref: { kind: "post", id: post.id },
+				authorId: userId,
+				mentioned: preparedContent.mentioned,
+			});
+		}
 	});
+
+	if (normalizedContent != null) {
+		void notifyMentions(db, {
+			authorId: userId,
+			recipientIds: freshMentions,
+			content: normalizedContent,
+			href: `/posts/${input.slug}`,
+		});
+	}
 
 	return { slug: input.slug };
 }

@@ -165,6 +165,7 @@ export function EditPostForm({ post }: EditPostFormProps) {
 	});
 
 	function save() {
+		if (updateMutation.isPending) return;
 		const plain = contentPlainText(content).trim();
 		if (plain.length < 1) {
 			toast.error("Content must be at least 1 character long");
@@ -222,8 +223,10 @@ export function EditPostForm({ post }: EditPostFormProps) {
 						<RichTextEditor
 							id="edit-post-content"
 							instanceKey={post.slug}
+							mentionContext={{ postSlug: post.slug }}
 							value={content}
 							onChange={setContent}
+							onSubmitShortcut={save}
 							disabled={updateMutation.isPending}
 						/>
 					</Section>

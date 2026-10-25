@@ -744,6 +744,10 @@ async function resolveReviewOg(
 			return notFound("Review", "Review");
 		}
 		const book = await getBookBySlug(bookSlug, db);
+		// A review with its own photo shows that photo; otherwise the book cover.
+		const photo = feedback.imageUrl
+			? await ogImageData(feedback.imageUrl)
+			: null;
 
 		return {
 			kind: "Review",
@@ -751,7 +755,9 @@ async function resolveReviewOg(
 			subtitle: `@${feedback.author.username} · ${feedback.bookTitle}`,
 			body:
 				plain(feedback.review) || "Rated this book without a written review.",
-			media: await coverMedia(book.coverId),
+			media: photo
+				? ({ kind: "photo", src: photo } as const)
+				: await coverMedia(book.coverId),
 			facts: [
 				fact("Rating", `${feedback.rating.toFixed(1)} / 5`, {
 					kind: "rating",

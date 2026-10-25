@@ -78,3 +78,29 @@ export const ResolveLinkPreviewsOutputSchema = zod.object({
 
 export type LinkPreview = zod.infer<typeof LinkPreviewSchema>;
 export type InternalLinkRefInput = zod.infer<typeof InternalLinkRefSchema>;
+
+/** Outside links: what the page told us about itself, from our cache (see `link-unfurl`). */
+export const ExternalLinkPreviewSchema = zod.object({
+	/** The link, tidied (no tracking parameters), as the cache knows it. */
+	url: zod.string(),
+	/** "example.com". */
+	host: zod.string(),
+	/** `none` when the page gave nothing or could not be reached: show the plain card. */
+	status: zod.enum(["ok", "none"]),
+	title: zod.string().nullable(),
+	description: zod.string().nullable(),
+	siteName: zod.string().nullable(),
+	/** Our own small copy of the page's picture, never the other site's address. */
+	imageUrl: zod.string().nullable(),
+});
+
+export const ResolveExternalLinkPreviewsInputSchema = zod.object({
+	urls: zod.array(zod.string().url().max(2048)).min(1).max(12),
+});
+
+export const ResolveExternalLinkPreviewsOutputSchema = zod.object({
+	/** In the order of the request. */
+	items: zod.array(ExternalLinkPreviewSchema),
+});
+
+export type ExternalLinkPreview = zod.infer<typeof ExternalLinkPreviewSchema>;

@@ -11,15 +11,16 @@
 	},
 	"dependencies": {
 		"@bbrc/auth": "workspace:*",
-		"@bbrc/shared": "workspace:*",
 		"@bbrc/db": "workspace:*",
 		"@bbrc/schemas": "workspace:*",
+		"@bbrc/shared": "workspace:*",
 		"@bbrc/storage": "workspace:*",
 		"@orpc/client": "catalog:",
 		"@orpc/openapi": "catalog:",
 		"@orpc/server": "catalog:",
 		"@orpc/zod": "catalog:",
 		"better-auth": "catalog:",
+		"sharp": "0.35.5",
 		"zod": "catalog:"
 	},
 	"devDependencies": {

@@ -15,6 +15,8 @@ import {
 import {
 	CommentSlugImageInputSchema,
 	CommentSlugOnlySchema,
+	FeedbackSlugImageInputSchema,
+	FeedbackSlugOnlySchema,
 	ImageCommitOutputSchema,
 	ImageUploadBodySchema,
 	ImageUploadInitOutputSchema,
@@ -27,13 +29,16 @@ import {
 	clearAvatarUpload,
 	commitAvatarUpload,
 	commitCommentImageUpload,
+	commitFeedbackImageUpload,
 	commitPostImageUpload,
 	commitShelfCoverUpload,
 	initAvatarUpload,
 	initCommentImageUpload,
+	initFeedbackImageUpload,
 	initPostImageUpload,
 	initShelfCoverUpload,
 	removeCommentImage,
+	removeFeedbackImage,
 	removePostImage,
 	removeShelfCoverUpload,
 } from "./storage-image.service";
@@ -106,6 +111,41 @@ export const storageRouter = {
 		.output(z.object({ removed: z.literal(true) }))
 		.handler(async ({ input, context }) =>
 			removePostImage(input.postSlug, context.session, context.db, context),
+		),
+
+	initFeedbackImageUpload: notBannedProcedure
+		.input(FeedbackSlugImageInputSchema)
+		.output(ImageUploadInitOutputSchema)
+		.handler(async ({ input, context }) =>
+			initFeedbackImageUpload(
+				input.feedbackSlug,
+				input,
+				context.session,
+				context.db,
+			),
+		),
+	commitFeedbackImageUpload: notBannedProcedure
+		.input(FeedbackSlugImageInputSchema)
+		.output(ImageCommitOutputSchema)
+		.handler(async ({ input, context }) =>
+			commitFeedbackImageUpload(
+				input.feedbackSlug,
+				input,
+				context.session,
+				context.db,
+				context,
+			),
+		),
+	removeFeedbackImage: notBannedProcedure
+		.input(FeedbackSlugOnlySchema)
+		.output(z.object({ removed: z.literal(true) }))
+		.handler(async ({ input, context }) =>
+			removeFeedbackImage(
+				input.feedbackSlug,
+				context.session,
+				context.db,
+				context,
+			),
 		),
 
 	initCommentImageUpload: notBannedProcedure

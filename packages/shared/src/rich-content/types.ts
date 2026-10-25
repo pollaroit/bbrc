@@ -21,7 +21,12 @@ export type InternalLinkRef =
 export type RichInline =
 	| { t: "text"; s: string; m?: TextMark[] }
 	| { t: "link"; href: string; label: string; internal?: InternalLinkRef }
-	| { t: "mention"; username: string };
+	/**
+	 * A member mentioned with "@". `userId` and `name` are saved when it is written
+	 * (older mentions only have the username). On screen the member's current name
+	 * is shown when they still exist; otherwise the saved name, as plain text.
+	 */
+	| { t: "mention"; username: string; userId?: string; name?: string };
 
 /** A link shown on its own as a preview card instead of inside a sentence. */
 export type RichEmbedBlock = {

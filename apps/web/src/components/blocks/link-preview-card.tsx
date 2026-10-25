@@ -7,8 +7,8 @@ import {
 	ArrowUpRight,
 	BookOpen,
 	CalendarDays,
+	ExternalLink,
 	FileText,
-	Globe,
 	Library,
 	MessageCircle,
 	PenLine,
@@ -26,6 +26,7 @@ import {
 	describeExternalUrl,
 	internalRefOf,
 } from "@/lib/link-preview/site-path";
+import { useExternalLinkPreview } from "@/lib/link-preview/use-external-link-preview";
 import { useLinkPreview } from "@/lib/link-preview/use-link-preview";
 import { cn } from "@/lib/utils";
 
@@ -310,42 +311,171 @@ type ExternalLinkCardProps = {
 	asStatic?: boolean;
 	/** The link is to this site but its preview could not be loaded. */
 	sameSite?: boolean;
+	/** Ask for the page's preview only when true (hover cards wait until opened). */
+	enabled?: boolean;
 	className?: string;
 };
 
-/** An outside link: where it goes, with no data fetched from that site. */
+/** A tint per site, from a few theme tokens, so the letter badge is never one flat grey. */
+const BADGE_TINTS = [
+	"bg-info/10 text-info-ink",
+	"bg-success/10 text-success-ink",
+	"bg-warning/10 text-warning-ink",
+	"bg-violet/10 text-violet-ink",
+	"bg-pink/10 text-pink-ink",
+] as const;
+
+function badgeTint(host: string) {
+	let hash = 0;
+	for (const char of host) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+	return BADGE_TINTS[hash % BADGE_TINTS.length] as string;
+}
+
+/** The thumbnail: the page's picture (our copy), or a badge with the site's first letter. */
+function ExternalThumb({
+	imageUrl,
+	siteName,
+	host,
+	variant,
+}: {
+	imageUrl: string | null;
+	siteName: string | null;
+	host: string;
+	variant: LinkCardVariant;
+}) {
+	const size =
+		variant === "compact"
+			? "size-12"
+			: variant === "hover"
+				? "size-14"
+				: "size-20";
+	const letter = (siteName ?? host).trim().charAt(0).toUpperCase() || "?";
+
+	return (
+		<span
+			className={cn(
+				"relative grid shrink-0 place-items-center self-start overflow-hidden",
+				size,
+				imageUrl ? "bg-muted ring-1 ring-foreground/10" : badgeTint(host),
+			)}
+		>
+			{imageUrl ? (
+				<Image
+					src={imageUrl}
+					alt=""
+					fill
+					loading="lazy"
+					sizes="80px"
+					className="object-cover"
+				/>
+			) : (
+				<span
+					aria-hidden
+					className={cn(
+						"font-heading font-semibold",
+						variant === "card" ? "text-2xl" : "text-lg",
+					)}
+				>
+					{letter}
+				</span>
+			)}
+		</span>
+	);
+}
+
+/**
+ * An outside link. The card shows what the page says about itself (title,
+ * description, a small copy of its picture) when we have it, and otherwise just
+ * where it goes, with a letter badge. It always says it opens another website.
+ */
 export function ExternalLinkCard({
 	href,
 	label,
 	variant = "card",
 	asStatic = false,
 	sameSite = false,
+	enabled = true,
 	className,
 }: ExternalLinkCardProps) {
+	const query = useExternalLinkPreview(href, { enabled: enabled && !sameSite });
+	const preview = query.data?.status === "ok" ? query.data : null;
+	const loading =
+		!sameSite && enabled && query.isPending && /^https:/i.test(href);
+
 	const { host, path } = sameSite
 		? { host: href, path: "" }
 		: describeExternalUrl(href);
-	const title = label && label !== href ? label : host;
+	const own = label && label !== href && label !== host ? label : null;
+	const title = own ?? preview?.title ?? host;
+	const description =
+		own && preview?.title ? preview.title : preview?.description;
+	const siteName = preview?.siteName ?? null;
 	const small = variant === "compact";
+
+	if (loading) {
+		return (
+			<div
+				className={cn(
+					"flex gap-3",
+					shellClass[variant],
+					"border-s-border",
+					className,
+				)}
+				aria-busy="true"
+			>
+				<Skeleton
+					className={cn(
+						"shrink-0",
+						small ? "size-12" : variant === "hover" ? "size-14" : "size-20",
+					)}
+				/>
+				<div className="flex flex-1 flex-col gap-2">
+					<Skeleton className="h-3 w-24" />
+					<Skeleton className="h-4 w-3/4" />
+					{small ? null : <Skeleton className="h-3 w-1/2" />}
+				</div>
+			</div>
+		);
+	}
 
 	const content = (
 		<>
-			<span
-				className={cn(
-					"grid shrink-0 place-items-center self-start bg-muted text-muted-foreground",
-					small ? "size-9" : "size-12",
-				)}
-			>
-				<Globe className="size-5" aria-hidden />
-			</span>
+			<ExternalThumb
+				imageUrl={preview?.imageUrl ?? null}
+				siteName={siteName}
+				host={host}
+				variant={variant}
+			/>
 			<span className="flex min-w-0 flex-1 flex-col gap-1">
-				<span className="line-clamp-2 font-heading font-semibold text-sm leading-snug">
+				<span className="flex min-w-0 items-center gap-1 text-2xs text-muted-foreground">
+					<span className="truncate">
+						{siteName && siteName.toLowerCase() !== host.toLowerCase()
+							? `${siteName} · ${host}`
+							: sameSite
+								? href
+								: `${host}${small ? "" : path}`}
+					</span>
+					{sameSite ? null : (
+						<>
+							<ExternalLink className="size-3 shrink-0" aria-hidden />
+							<span className="sr-only">Opens another website</span>
+						</>
+					)}
+				</span>
+				<span
+					className={cn(
+						"font-heading font-semibold text-sm leading-snug",
+						small ? "line-clamp-1" : "line-clamp-2",
+					)}
+				>
 					{title}
 				</span>
-				<span className="truncate text-muted-foreground text-xs">
-					{sameSite ? href : `${host}${path}`}
-				</span>
-				{variant === "hover" ? (
+				{description && !small ? (
+					<span className="line-clamp-2 text-foreground/80 text-xs leading-relaxed">
+						{description}
+					</span>
+				) : null}
+				{variant === "hover" && !sameSite ? (
 					<span className="text-2xs text-muted-foreground">
 						Opens another website in a new tab.
 					</span>

@@ -20,6 +20,7 @@ type FeedbackEditIconButtonProps = {
 	rating: number;
 	review: string;
 	isSpoiler: boolean;
+	imageUrl?: string | null;
 	feedbackSlug?: string;
 	className?: string;
 };
@@ -29,6 +30,7 @@ export function FeedbackEditIconButton({
 	rating,
 	review,
 	isSpoiler,
+	imageUrl,
 	feedbackSlug,
 	className,
 }: FeedbackEditIconButtonProps) {
@@ -42,6 +44,7 @@ export function FeedbackEditIconButton({
 		rating,
 		review,
 		isSpoiler,
+		imageUrl: imageUrl ?? null,
 	};
 
 	return (

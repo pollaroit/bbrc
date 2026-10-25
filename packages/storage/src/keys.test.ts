@@ -30,6 +30,12 @@ describe("buildObjectKey", () => {
 		).toBe("production/comments/c1/image.png");
 	});
 
+	test("link preview", () => {
+		expect(
+			buildObjectKey("production", { kind: "link-preview", urlHash: "abc123" }),
+		).toBe("production/link-previews/abc123.webp");
+	});
+
 	test("book cover", () => {
 		expect(
 			buildObjectKey("production", { kind: "book-cover", coverUid: "abc" }),
@@ -40,6 +46,15 @@ describe("buildObjectKey", () => {
 		expect(
 			buildObjectKey("production", { kind: "edition-cover", coverUid: "abc" }),
 		).toBe("production/books/editions/abc.webp");
+	});
+
+	test("feedback image", () => {
+		expect(
+			buildObjectKey("production", {
+				kind: "feedback-image",
+				feedbackSlug: "r1",
+			}),
+		).toBe("production/feedbacks/r1/image.png");
 	});
 
 	test("shelf cover", () => {

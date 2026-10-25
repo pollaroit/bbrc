@@ -104,7 +104,7 @@ export function RichInlineLink({
 				<span className="sr-only"> (opens another website)</span>
 			</HoverCardTrigger>
 			<HoverCardContent>
-				<ExternalLinkCard href={href} variant="hover" asStatic />
+				<ExternalLinkCard href={href} variant="hover" asStatic enabled={open} />
 			</HoverCardContent>
 		</HoverCard>
 	);

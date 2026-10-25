@@ -82,6 +82,10 @@ model Feedback {
   /// @zod.max(5000, "Review must be at most 5000 characters long")
   review String
 
+  /// Public R2 URL for an optional review image (one, like a post).
+  /// @zod.max(2048).nullish()
+  imageUrl String? @map("image_url")
+
   isSpoiler Boolean @default(false) @map("is_spoiler")
   /// @zod.min(0, "Rating must be a non-negative number").max(5, "Rating must be at most 5")
   rating    Float
@@ -89,6 +93,7 @@ model Feedback {
   likes           Like[]
   comments        Comment[]
   postAttachments PostAttachment[]
+  mentions        ContentMention[]
 
   @@unique([authorId, bookId])
   @@index([bookId])

@@ -41,6 +41,10 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { FeedbackHalfStarRating } from "@/components/blocks/feedback-half-star-rating";
 import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
+import {
+	ReviewImageField,
+	uploadReviewImage,
+} from "@/components/blocks/review-image-field";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { clubTimeZone } from "@/lib/club-timezone";
@@ -124,6 +128,9 @@ export function BookMarkReadDialog({
 	const [shareToFeed, setShareToFeed] = useState(false);
 	/** What to do once the save lands (the dialog is already closed by then). */
 	const shareRef = useRef<{ text: string } | null>(null);
+	const [reviewImage, setReviewImage] = useState<File | null>(null);
+	/** The photo to attach once the review exists (state is cleared when the dialog closes). */
+	const reviewImageRef = useRef<File | null>(null);
 	/** Fill the form from the server once per opening, so a refetch never wipes typing. */
 	const initializedRef = useRef(false);
 	const reviewBlockRef = useRef<HTMLDivElement>(null);
@@ -187,6 +194,7 @@ export function BookMarkReadDialog({
 			initializedRef.current = false;
 			setFeedbackRating(null);
 			setFeedbackReview("");
+			setReviewImage(null);
 			setReviewOpen(false);
 			setShareToFeed(false);
 			return;
@@ -403,12 +411,19 @@ export function BookMarkReadDialog({
 					);
 				}
 				shareRef.current = null;
+				reviewImageRef.current = null;
 				toast.error(error.message || "Could not save your read");
 			},
-			onSuccess: () => {
+			onSuccess: (data) => {
 				const share = shareRef.current;
 				shareRef.current = null;
 				if (share) void shareFinishedBook(share.text);
+				const photo = reviewImageRef.current;
+				reviewImageRef.current = null;
+				// The review was created with the read; the photo goes on after it.
+				if (photo && data?.createdFeedbackSlug) {
+					void uploadReviewImage(photo, data.createdFeedbackSlug);
+				}
 			},
 			onSettled: (_data, _error, variables) => {
 				refreshReadQueries(
@@ -528,6 +543,8 @@ export function BookMarkReadDialog({
 		} else {
 			shareRef.current = null;
 		}
+
+		reviewImageRef.current = offerFeedback && hasRating ? reviewImage : null;
 
 		saveMutation.mutate({
 			bookSlug,
@@ -814,6 +831,13 @@ export function BookMarkReadDialog({
 												autoFocus
 												onSubmitShortcut={submitRead}
 											/>
+											<div className="border-border border-t px-3 py-2">
+												<ReviewImageField
+													mode="create"
+													file={reviewImage}
+													onFileChange={setReviewImage}
+												/>
+											</div>
 											<div className="flex items-center justify-between gap-3 border-border border-t bg-muted/20 px-3 py-1.5 text-muted-foreground text-xs">
 												<span>
 													{reviewLength > 0 && !feedbackRating

@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { EditionChip } from "@/components/blocks/edition-chip";
 import { FeedbackEditIconButton } from "@/components/blocks/feedback-edit-icon-button";
 import { FeedbackLikeEngagement } from "@/components/blocks/feedback-like-engagement";
+import { RemoveMyMentionMenu } from "@/components/blocks/mention/remove-my-mention";
+import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { TrackImpression } from "@/components/blocks/track-impression";
@@ -149,6 +151,16 @@ export function FeedbackReviewList({
 												)}
 											</div>
 										</div>
+										{entry.imageUrl ? (
+											<Link href={feedbackHref} className="block">
+												<PostAttachedImage
+													src={entry.imageUrl}
+													alt=""
+													compact
+													className="mt-0"
+												/>
+											</Link>
+										) : null}
 										<EditionChip
 											bookSlug={bookSlug}
 											edition={entry.readEdition}
@@ -173,6 +185,7 @@ export function FeedbackReviewList({
 												label="Share review"
 												shareInPost={{ kind: "feedback", slug: entry.slug }}
 											/>
+											<RemoveMyMentionMenu kind="review" slug={entry.slug} />
 											{isOwner ? (
 												<>
 													<FeedbackEditIconButton
@@ -180,6 +193,7 @@ export function FeedbackReviewList({
 														rating={entry.rating}
 														review={entry.review}
 														isSpoiler={entry.isSpoiler}
+														imageUrl={entry.imageUrl}
 														feedbackSlug={entry.slug}
 													/>
 													<LoadingButton

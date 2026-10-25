@@ -1,5 +1,8 @@
 import { publicProcedure } from "../../procedures";
+import { resolveExternalPreviews } from "../link-unfurl/link-unfurl.service";
 import {
+	ResolveExternalLinkPreviewsInputSchema,
+	ResolveExternalLinkPreviewsOutputSchema,
 	ResolveLinkPreviewsInputSchema,
 	ResolveLinkPreviewsOutputSchema,
 } from "./link-preview.schema";
@@ -19,6 +22,17 @@ export const linkPreviewRouter = {
 							isAdmin: context.session.user.isAdmin === true,
 						}
 					: null,
+			),
+		})),
+	/** Previews of outside links, read from the cache (see the `link-unfurl` module). */
+	resolveExternal: publicProcedure
+		.input(ResolveExternalLinkPreviewsInputSchema)
+		.output(ResolveExternalLinkPreviewsOutputSchema)
+		.handler(async ({ input, context }) => ({
+			items: await resolveExternalPreviews(
+				context.db,
+				input.urls,
+				context.session ? { userId: context.session.user.id } : null,
 			),
 		})),
 };

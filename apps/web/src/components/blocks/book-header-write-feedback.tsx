@@ -43,6 +43,7 @@ export function BookHeaderWriteFeedback({
 					rating: myFeedback.rating,
 					review: myFeedback.review,
 					isSpoiler: myFeedback.isSpoiler,
+					imageUrl: myFeedback.imageUrl ?? null,
 				}
 			: undefined;
 
@@ -57,6 +58,7 @@ export function BookHeaderWriteFeedback({
 				onOpenChange={setDialogOpen}
 				mode={isEdit ? "edit" : "create"}
 				initialValues={initialValues}
+				feedbackSlug={myFeedback?.slug}
 				navigateToReview={false}
 			/>
 		</>
