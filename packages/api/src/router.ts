@@ -4,6 +4,7 @@ import { achievementRouter } from "./modules/achievement/achievement.router";
 import { adminRouter } from "./modules/admin/admin.router";
 import { authorRouter } from "./modules/author/author.router";
 import { bookRouter } from "./modules/book/book.router";
+import { bookDiscoverRouter } from "./modules/book-discover/book-discover.router";
 import { bookRequestRouter } from "./modules/book-request/book-request.router";
 import { commentRouter } from "./modules/comment/comment.router";
 import { documentRouter } from "./modules/document/document.router";
@@ -38,6 +39,7 @@ export const appRouter = {
 	health: healthRouter,
 	leaderboard: leaderboardRouter,
 	book: bookRouter,
+	bookDiscover: bookDiscoverRouter,
 	bookRequest: bookRequestRouter,
 	comment: commentRouter,
 	document: documentRouter,

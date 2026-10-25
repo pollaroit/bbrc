@@ -37,7 +37,8 @@ model SeriesBook {
 
   /// 1-based order within the series.
   /// @zod.int().min(1)
-  position Int
+  /// Whole numbers normally; a half step (1.5) places a novella or prequel between two volumes.
+  position Float
 
   @@unique([seriesId, position])
   @@index([seriesId, position])

@@ -270,6 +270,7 @@ export async function notifyDocumentRejected(
 export async function notifyBookAddedToLibrary(
 	db: Database,
 	bookSlug: string,
+	options?: { onlyUserIds: string[] },
 ): Promise<void> {
 	const book = await db.book.findUnique({
 		where: { slug: bookSlug },
@@ -280,7 +281,9 @@ export async function notifyBookAddedToLibrary(
 		return;
 	}
 
-	const recipientUserIds = await listActiveMemberUserIds(db);
+	const recipientUserIds = options
+		? options.onlyUserIds
+		: await listActiveMemberUserIds(db);
 
 	await dispatchNotification(db, {
 		kind: "book_added_to_library",

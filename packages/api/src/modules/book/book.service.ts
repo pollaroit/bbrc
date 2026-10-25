@@ -3,10 +3,12 @@ import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { notifyBookAddedToLibrary } from "../notification/notification-triggers";
 import {
-	appendBookToEndOfSeriesByBookId,
 	createSeriesRecord,
+	detachBookFromSeries,
 	mapBookSeriesSummary,
+	placeBookInSeries,
 } from "../series/series.service";
+import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import { bookListSorting } from "./book.listing";
 import {
 	type GetBookListAuthorFacetsInput,
@@ -25,6 +27,7 @@ import {
 } from "./book.schema";
 import { listAuthorFacetsForBooks } from "./book-author-filter";
 import { listCountryFacetsForBooks } from "./book-country-filter";
+import { assertOwnCoverUrl, isClubCoverId, newClubCoverId } from "./book-cover";
 import { buildBookListWhereWithAuthors } from "./book-list-where";
 import {
 	mapReadAfterBooks,
@@ -331,10 +334,15 @@ export async function addBook(
 		readAfterBookSlugs,
 		seriesSlug,
 		newSeries,
+		seriesPosition,
+		shiftLater,
+		customCoverUrl,
+		notifyMembers,
 		...bookInput
 	} = input;
 	const trimmedAcceptanceNotes = acceptanceNotes?.trim() || null;
 
+	let interestedUserIds: string[] = [];
 	const book = await db.$transaction(async (tx) => {
 		const existing = await tx.book.findUnique({
 			where: { olid: bookInput.olid },
@@ -350,11 +358,29 @@ export async function addBook(
 
 		const slug = await generateBookSlug(bookInput.title, tx);
 
-		const pendingRequest = await tx.bookRequest.findFirst({
+		const pendingRequests = await tx.bookRequest.findMany({
 			where: { olid: bookInput.olid, status: "pending" },
 			orderBy: { createdAt: "asc" },
-			select: { userId: true },
+			select: { userId: true, upvotes: { select: { userId: true } } },
 		});
+		const pendingRequest = pendingRequests[0];
+		interestedUserIds = [
+			...new Set(
+				pendingRequests.flatMap((request) => [
+					request.userId,
+					...request.upvotes.map((vote) => vote.userId),
+				]),
+			),
+		];
+
+		let coverFields: { coverId?: number | null; customCoverUrl?: string } = {};
+		if (customCoverUrl) {
+			assertOwnCoverUrl(customCoverUrl);
+			coverFields = {
+				coverId: await newClubCoverId(tx),
+				customCoverUrl,
+			};
+		}
 
 		const book = await tx.book.create({
 			data: {
@@ -363,6 +389,7 @@ export async function addBook(
 				subjectTimes: bookInput.subjectTimes ?? [],
 				subjects: bookInput.subjects ?? [],
 				countries: bookInput.countries ?? [],
+				...coverFields,
 				slug,
 				approvedById: adminUserId,
 				requestedById: pendingRequest?.userId ?? null,
@@ -390,21 +417,32 @@ export async function addBook(
 
 		if (newSeries) {
 			const created = await createSeriesRecord(newSeries, tx);
-			await appendBookToEndOfSeriesByBookId(book.id, created.slug, tx);
+			await placeBookInSeries(tx, {
+				bookId: book.id,
+				seriesSlug: created.slug,
+				position: seriesPosition,
+				shiftLater,
+			});
 			attachedSeriesSlug = created.slug;
 		} else if (seriesSlug) {
-			const attached = await appendBookToEndOfSeriesByBookId(
-				book.id,
+			const attached = await placeBookInSeries(tx, {
+				bookId: book.id,
 				seriesSlug,
-				tx,
-			);
+				position: seriesPosition,
+				shiftLater,
+			});
 			attachedSeriesSlug = attached.slug;
 		}
 
 		return { ...book, seriesSlug: attachedSeriesSlug };
 	});
 
-	void notifyBookAddedToLibrary(db, book.slug);
+	// Quiet adds only tell the people who asked for the book (or said "me too").
+	void notifyBookAddedToLibrary(
+		db,
+		book.slug,
+		notifyMembers === false ? { onlyUserIds: interestedUserIds } : undefined,
+	);
 
 	return book;
 }
@@ -415,7 +453,7 @@ export async function updateBook(
 ): Promise<TUpdateBookOutputSchema> {
 	const book = await db.book.findUnique({
 		where: { slug: input.slug },
-		select: { id: true },
+		select: { id: true, coverId: true, customCoverUrl: true },
 	});
 
 	if (!book) {
@@ -427,20 +465,70 @@ export async function updateBook(
 		});
 	}
 
-	return await db.$transaction(async (tx) => {
-		const { slug, readAfterBookSlugs, ...data } = input;
+	let replacedCoverUrl: string | null = null;
+
+	const result = await db.$transaction(async (tx) => {
+		const { slug, readAfterBookSlugs, customCoverUrl, series, ...data } = input;
+		const coverFields: {
+			coverId?: number | null;
+			customCoverUrl?: string | null;
+		} = {};
+
+		if (customCoverUrl) {
+			assertOwnCoverUrl(customCoverUrl);
+			coverFields.coverId = await newClubCoverId(tx);
+			coverFields.customCoverUrl = customCoverUrl;
+			replacedCoverUrl = book.customCoverUrl;
+		} else if (customCoverUrl === null && book.customCoverUrl) {
+			// Removing the upload: fall back to the Open Library cover that was sent, if any.
+			coverFields.customCoverUrl = null;
+			if (data.coverId === undefined && isClubCoverId(book.coverId)) {
+				coverFields.coverId = null;
+			}
+			replacedCoverUrl = book.customCoverUrl;
+		}
 
 		await tx.book.update({
 			where: { id: book.id },
-			data,
+			data: { ...data, ...coverFields },
 		});
 
 		if (readAfterBookSlugs !== undefined) {
 			await syncBookReadAfterPrerequisites(book.id, readAfterBookSlugs, tx);
 		}
 
+		if (series === null) {
+			await detachBookFromSeries(tx, book.id);
+		} else if (series) {
+			let targetSlug = series.seriesSlug;
+			if (series.newSeries) {
+				await detachBookFromSeries(tx, book.id);
+				targetSlug = (await createSeriesRecord(series.newSeries, tx)).slug;
+			} else if (targetSlug) {
+				const current = await tx.seriesBook.findUnique({
+					where: { bookId: book.id },
+					select: { series: { select: { slug: true } } },
+				});
+				if (current && current.series.slug !== targetSlug) {
+					await detachBookFromSeries(tx, book.id);
+				}
+			}
+			if (targetSlug) {
+				await placeBookInSeries(tx, {
+					bookId: book.id,
+					seriesSlug: targetSlug,
+					position: series.position,
+					shiftLater: series.shiftLater,
+				});
+			}
+		}
+
 		return { slug };
 	});
+
+	void tryDeleteR2PublicUrl(replacedCoverUrl);
+
+	return result;
 }
 
 export async function removeBook(slug: string, db: Database): Promise<string> {

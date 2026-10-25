@@ -1,13 +1,15 @@
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { RequestBookForm } from "@/components/blocks/request-book-form";
+import { RequestFlow } from "@/components/blocks/book-flow/request-flow";
 import { RequestBookPageHeader } from "@/components/blocks/request-book-page-header";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { buildPageMetadata } from "@/lib/seo";
 import { auth } from "@/services";
 
 const REQUEST_BOOK_PAGE_DESCRIPTION =
-	"Search Open Library and ask admins to add a title to the BBRC club library. Members can suggest works that are not in our catalog yet.";
+	"Find a title on Open Library and ask admins to add it to the BBRC club library. See what other members want and say me too.";
 
 export const metadata: Metadata = buildPageMetadata({
 	title: "Request a book",
@@ -29,7 +31,22 @@ export default async function RequestBookPage() {
 	return (
 		<div className="flex flex-col gap-8">
 			<RequestBookPageHeader />
-			<RequestBookForm canRequest={canRequest} />
+			{canRequest ? (
+				<ListingSearchParamsBoundary>
+					<RequestFlow />
+				</ListingSearchParamsBoundary>
+			) : (
+				<p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
+					As an admin you add books directly from{" "}
+					<Link
+						href={"/books/new" as Route}
+						className="text-foreground underline"
+					>
+						Add a book
+					</Link>
+					. Members use this page to request titles for the library.
+				</p>
+			)}
 		</div>
 	);
 }

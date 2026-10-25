@@ -30,6 +30,12 @@ describe("buildObjectKey", () => {
 		).toBe("production/comments/c1/image.png");
 	});
 
+	test("book cover", () => {
+		expect(
+			buildObjectKey("production", { kind: "book-cover", coverUid: "abc" }),
+		).toBe("production/books/covers/abc.webp");
+	});
+
 	test("shelf cover", () => {
 		expect(
 			buildObjectKey("development", {

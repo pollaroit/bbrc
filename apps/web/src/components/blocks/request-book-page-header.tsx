@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export function RequestBookPageHeader() {
 	return (
-		<header className="flex flex-col gap-4 border-border border-b pb-6">
+		<header className="flex flex-col gap-3 border-border border-b pb-5">
 			<Button
 				render={<Link href={"/books" as Route} />}
 				nativeButton={false}
@@ -16,11 +16,16 @@ export function RequestBookPageHeader() {
 				<ArrowLeft className="size-4" />
 				Back to books
 			</Button>
-			<div className="space-y-1.5">
-				<h1 className="font-bold text-2xl tracking-tight">Request book</h1>
+			<div className="space-y-1">
+				<h1 className="font-bold text-2xl tracking-tight">Request a book</h1>
 				<p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
-					Search Open Library and ask admins to add a title to the club library.
-					You cannot edit bibliographic details on this page.
+					Find a title the club does not have yet and ask admins to add it. See
+					what others want, say “me too”, or look at suggestions made for you.
+					Press{" "}
+					<kbd className="border border-border bg-muted px-1 font-mono text-2xs">
+						?
+					</kbd>{" "}
+					for keyboard shortcuts.
 				</p>
 			</div>
 		</header>

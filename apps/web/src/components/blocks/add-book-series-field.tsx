@@ -2,6 +2,7 @@
 
 import type { CreateSeriesInput } from "@bbrc/api/modules/series/series.schema";
 import { CreateSeriesInputSchema } from "@bbrc/api/modules/series/series.schema";
+import type { SeriesPlacementValue } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
@@ -21,9 +22,10 @@ import {
 import { Input } from "@bbrc/ui/components/input";
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useQuery } from "@tanstack/react-query";
-import { Layers, Plus, Search, X } from "lucide-react";
+import { Layers, Plus, Search, Undo2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { SeriesPositionPicker } from "@/components/blocks/series-position-picker";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
@@ -32,15 +34,56 @@ export type AddBookSeriesSelection =
 	| { kind: "existing"; slug: string; title: string }
 	| { kind: "new"; draft: CreateSeriesInput };
 
+/** Where the book goes; `position: null` is the end of the series. */
+export type AddBookSeriesPlacement = SeriesPlacementValue;
+
+export const DEFAULT_SERIES_PLACEMENT: AddBookSeriesPlacement = {
+	position: null,
+	shiftLater: false,
+};
+
+/**
+ * Series chooser for the add and edit pages.
+ *
+ * - `selection`  the chosen series (existing or new), or `null` for none.
+ * - `placement` / `onPlacementChange`  where the book goes in an existing series
+ *   (see SeriesPositionPicker). Defaults to the end. Reset it to
+ *   DEFAULT_SERIES_PLACEMENT when the series changes (this field does it for you
+ *   when `onPlacementChange` is given).
+ * - `bookTitle`  shown on the marker in the order list.
+ * - `mode`  "add" (default) or "edit".
+ *
+ * Edit mode: start `selection` as the book's current series
+ * (`{ kind: "existing", slug, title }`) and pass the same value as
+ * `restoreSelection`. Clearing it then shows "will be removed from its series"
+ * with an Undo. Map the result to the update call like this:
+ *   - selection unchanged and placement unchanged -> leave `series` out
+ *   - selection null while the book had a series  -> `series: null`
+ *   - existing -> `series: { seriesSlug, position: placement.position ?? undefined, shiftLater: placement.shiftLater }`
+ *   - new      -> `series: { newSeries: draft }`
+ * Pass `excludeBookSlug` (the book being edited) so it can be moved within its own series.
+ */
 type AddBookSeriesFieldProps = {
 	selection: AddBookSeriesSelection | null;
 	onChange: (selection: AddBookSeriesSelection | null) => void;
+	placement?: AddBookSeriesPlacement;
+	onPlacementChange?: (placement: AddBookSeriesPlacement) => void;
+	bookTitle?: string;
+	mode?: "add" | "edit";
+	restoreSelection?: AddBookSeriesSelection | null;
+	excludeBookSlug?: string;
 	className?: string;
 };
 
 export function AddBookSeriesField({
 	selection,
 	onChange,
+	placement = DEFAULT_SERIES_PLACEMENT,
+	onPlacementChange,
+	bookTitle = "",
+	mode = "add",
+	restoreSelection = null,
+	excludeBookSlug,
 	className,
 }: AddBookSeriesFieldProps) {
 	const [searchInput, setSearchInput] = useState("");
@@ -90,12 +133,14 @@ export function AddBookSeriesField({
 		}
 
 		onChange({ kind: "new", draft: parsed.data });
+		onPlacementChange?.(DEFAULT_SERIES_PLACEMENT);
 		setCreateOpen(false);
 		setSearchInput("");
 	};
 
 	const selectExisting = (item: { slug: string; title: string }) => {
 		onChange({ kind: "existing", slug: item.slug, title: item.title });
+		onPlacementChange?.(DEFAULT_SERIES_PLACEMENT);
 		setSearchInput("");
 	};
 
@@ -104,8 +149,9 @@ export function AddBookSeriesField({
 			<div className="space-y-1">
 				<FieldLegend variant="label">Series (optional)</FieldLegend>
 				<FieldDescription>
-					Append this book as the last title in a series. New series are created
-					only when you save the book.
+					{mode === "edit"
+						? "Move this book within its series, to another series, or out of it."
+						: "Choose where this book goes in a series (the end by default). New series are created only when you save the book."}
 				</FieldDescription>
 			</div>
 
@@ -123,8 +169,10 @@ export function AddBookSeriesField({
 						</p>
 						<p className="text-muted-foreground text-xs">
 							{selection.kind === "existing"
-								? "Existing series · added at the end on save"
-								: "New series · created on save, book added last"}
+								? mode === "edit"
+									? "Existing series"
+									: "Existing series. Pick its place below."
+								: "New series, created on save. This book will be #1."}
 						</p>
 					</div>
 					<Button
@@ -132,12 +180,48 @@ export function AddBookSeriesField({
 						variant="ghost"
 						size="icon-xs"
 						aria-label="Clear series selection"
-						onClick={() => onChange(null)}
+						onClick={() => {
+							onChange(null);
+							onPlacementChange?.(DEFAULT_SERIES_PLACEMENT);
+						}}
 					>
 						<X className="size-3.5" aria-hidden />
 					</Button>
 				</div>
-			) : (
+			) : mode === "edit" && restoreSelection ? (
+				<div className="flex flex-wrap items-center gap-3 border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+					<p className="min-w-0 flex-1 text-warning-ink">
+						This book will be removed from{" "}
+						<span className="font-medium">
+							{restoreSelection.kind === "existing"
+								? restoreSelection.title
+								: restoreSelection.draft.title}
+						</span>{" "}
+						when you save.
+					</p>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={() => onChange(restoreSelection)}
+					>
+						<Undo2 data-icon="inline-start" />
+						Keep it
+					</Button>
+				</div>
+			) : null}
+
+			{selection?.kind === "existing" ? (
+				<SeriesPositionPicker
+					seriesSlug={selection.slug}
+					newBookTitle={bookTitle}
+					value={placement}
+					onChange={(next) => onPlacementChange?.(next)}
+					excludeBookSlug={excludeBookSlug}
+				/>
+			) : null}
+
+			{selection ? null : (
 				<>
 					<div className="relative">
 						<Search

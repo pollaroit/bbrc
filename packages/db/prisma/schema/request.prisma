@@ -25,13 +25,57 @@ model BookRequest {
   /// Author names from Open Library search at request time.
   authors String[] @default([]) @map("authors")
 
+  /// Why the member wants this book (shown to admins).
+  /// @zod.max(200, "Note must be at most 200 characters long").nullish()
+  note            String?
+
   status          BookRequestStatus @default(pending)
   /// @zod.max(200, "Rejection reason must be at most 200 characters long")
   rejectionReason String?
   /// @zod.max(200, "Acceptance notes must be at most 200 characters long")
   acceptanceNotes String?
 
+  upvotes BookRequestUpvote[]
+
   @@index([userId])
   @@index([olid])
   @@map("book_request")
+}
+
+/// A member saying "me too" on someone else's pending request.
+model BookRequestUpvote {
+  createdAt DateTime @default(now()) @map("created_at")
+
+  requestId String      @map("request_id")
+  request   BookRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation("BookRequestUpvoter", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([requestId, userId])
+  @@index([userId])
+  @@map("book_request_upvote")
+}
+
+/// Cached results of slow suggestion lookups (AI picks, Open Library lanes).
+model BookDiscoverCache {
+  key       String   @id
+  payload   Json
+  expiresAt DateTime @map("expires_at")
+
+  @@index([expiresAt])
+  @@map("book_discover_cache")
+}
+
+/// One "Ask AI" use, so members can be limited per day.
+model BookDiscoverAsk {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+  user   User   @relation("BookDiscoverAskUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("book_discover_ask")
 }
