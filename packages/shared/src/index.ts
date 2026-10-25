@@ -14,6 +14,7 @@ export * from "./favorites";
 export * from "./feedback-rating";
 export * from "./genres";
 export * from "./goals";
+export * from "./isbn";
 export * from "./isr-paths";
 export * from "./member-levels";
 export * from "./notifications";

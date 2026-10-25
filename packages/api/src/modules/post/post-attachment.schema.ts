@@ -52,6 +52,8 @@ export const PostAttachmentShelfSchema = zod.object({
 		ownerUsername: UserSchema.shape.username,
 		bookCount: zod.number().int().min(0),
 		coverPreviewCoverIds: zod.array(zod.number().nullable()).max(4),
+		/** The shelf was made private after it was shared: its details are hidden. */
+		isPrivate: zod.boolean().default(false),
 	}),
 });
 
@@ -198,6 +200,7 @@ export const postAttachmentSelect = {
 			slug: true,
 			title: true,
 			type: true,
+			visibility: true,
 			coverImageUrl: true,
 			user: {
 				select: { username: true },

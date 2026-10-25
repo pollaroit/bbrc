@@ -48,7 +48,11 @@ export default async function BookEditionsPage({
 		<div className="flex flex-col gap-6">
 			<ListingSearchParamsBoundary>
 				<BookEditionsToolbar />
-				<BookEditionsPanel bookSlug={slug} workOlid={book.olid} />
+				<BookEditionsPanel
+					bookSlug={slug}
+					bookTitle={book.title}
+					workOlid={book.olid}
+				/>
 			</ListingSearchParamsBoundary>
 		</div>
 	);

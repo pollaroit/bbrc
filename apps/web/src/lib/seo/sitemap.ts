@@ -45,7 +45,7 @@ export async function buildAppSitemap(
 				updatedAt: true,
 				user: { select: { username: true } },
 			},
-			where: { status: "active" },
+			where: { status: "active", visibility: "public", isWishlist: false },
 			orderBy: { updatedAt: "desc" },
 		}),
 	]);

@@ -19,6 +19,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { CreateSittingWishlistCandidates } from "@/components/blocks/create-sitting-wishlist-candidates";
 import { PollOptionReadersDialog } from "@/components/blocks/poll-option-readers-dialog";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import {
@@ -138,6 +139,32 @@ export function CreateSittingPollReview({
 	}
 
 	const lockedTotal = lockedBookIds.length;
+	const onPollBookIds = useMemo(
+		() => new Set(options.map((option) => option.book.id)),
+		[options],
+	);
+
+	/** Swaps a wished-for book in for the last book that has not been kept, and keeps it. */
+	function useWishlistCandidate(candidate: PreviewOption) {
+		if (onPollBookIds.has(candidate.book.id)) return;
+		const slot = [...options]
+			.reverse()
+			.find((option) => !lockedSet.has(option.book.id));
+		if (!slot) {
+			toast.error("Every book is kept. Unlock one to make room.");
+			return;
+		}
+		setOptions((current) =>
+			current.map((option) =>
+				option.book.id === slot.book.id ? candidate : option,
+			),
+		);
+		setLockedBookIds((current) => [
+			...current.filter((id) => id !== slot.book.id),
+			candidate.book.id,
+		]);
+		toast.success(`“${candidate.book.title}” is on the poll and kept.`);
+	}
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -347,6 +374,13 @@ export function CreateSittingPollReview({
 					);
 				})}
 			</ul>
+
+			<CreateSittingWishlistCandidates
+				previewInput={previewBase}
+				onPollBookIds={onPollBookIds}
+				disabled={previewBusy || confirmLoading}
+				onUse={useWishlistCandidate}
+			/>
 
 			<PollOptionReadersDialog
 				source="preview"

@@ -41,6 +41,7 @@ import {
 	shelfListItemWithCoverSelect,
 } from "./shelf.schema";
 import {
+	assertNotWishlist,
 	canViewShelf,
 	loadShelfAccess,
 	logShelfActivity,
@@ -49,6 +50,10 @@ import {
 import { buildPublicShelfListWhere } from "./shelf-list-where";
 import { displayName, notifyShelfCollaboration } from "./shelf-notify";
 import { generateShelfSlug } from "./shelf-slug";
+import {
+	publicShelfWhere,
+	WISHLIST_PROTECTED_MESSAGE,
+} from "./shelf-visibility";
 
 const COVER_PREVIEW_LIMIT = 4;
 
@@ -164,10 +169,18 @@ export async function listShelvesByUsername(
 	const isOwner = viewerIsOwner(viewerUserId, user.id);
 
 	const statusFilter: ShelfStatus | undefined = isOwner ? status : "active";
+	// Others only see public shelves; the Wishlist has its own tab, never in this list.
+	const visibilityFilter =
+		isOwner || viewer?.isAdmin ? {} : { visibility: "public" as const };
 
 	const [ownedRows, sharedRows] = await Promise.all([
 		db.shelf.findMany({
-			where: { userId: user.id, status: statusFilter },
+			where: {
+				userId: user.id,
+				status: statusFilter,
+				isWishlist: false,
+				...visibilityFilter,
+			},
 			orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
 			select: memberShelfSelect,
 		}),
@@ -175,6 +188,8 @@ export async function listShelvesByUsername(
 			where: {
 				collaborators: { some: { userId: user.id } },
 				status: statusFilter,
+				isWishlist: false,
+				...visibilityFilter,
 				user: visibleOnSiteUserWhere,
 			},
 			orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
@@ -281,6 +296,8 @@ export async function getShelfBySlug(
 			userId: viewerUserId,
 			permissions,
 			hasPendingInvitation: pendingInvitationId != null,
+			isCollaborator: mine != null,
+			isAdmin: viewer?.isAdmin === true,
 		})
 	) {
 		throw new ORPCError("NOT_FOUND", { message: "Shelf not found" });
@@ -358,6 +375,7 @@ export async function createShelf(
 				description: input.description?.trim() || null,
 				status: input.status ?? "draft",
 				type: input.type ?? "unordered",
+				visibility: input.visibility ?? "public",
 			},
 			select: { id: true, slug: true },
 		});
@@ -400,6 +418,21 @@ export async function updateShelf(
 	const data: Prisma.ShelfUpdateInput = {};
 	const changed: string[] = [];
 
+	// The Wishlist keeps its name, type, status and cover; only the description
+	// and who can see it can change.
+	if (shelf.isWishlist) {
+		const wantsTitle =
+			input.title !== undefined && input.title.trim() !== shelf.title;
+		const wantsStatus =
+			input.status !== undefined && input.status !== shelf.status;
+		const wantsType = input.type !== undefined && input.type !== shelf.type;
+		if (wantsTitle || wantsStatus || wantsType) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: WISHLIST_PROTECTED_MESSAGE,
+			});
+		}
+	}
+
 	if (input.title !== undefined && input.title.trim() !== shelf.title) {
 		requireShelfPermission(access, "edit_title");
 		data.title = input.title.trim();
@@ -422,12 +455,22 @@ export async function updateShelf(
 			});
 		}
 		data.status = input.status;
-		changed.push("visibility");
+		changed.push("status");
 	}
 	if (input.type !== undefined && input.type !== shelf.type) {
 		requireShelfPermission(access, "edit_type");
 		data.type = input.type;
 		changed.push("type");
+	}
+
+	if (input.visibility !== undefined && input.visibility !== shelf.visibility) {
+		if (!access.isOwner) {
+			throw new ORPCError("FORBIDDEN", {
+				message: "Only the owner can change who can see this shelf.",
+			});
+		}
+		data.visibility = input.visibility;
+		changed.push("visibility");
 	}
 
 	if (changed.length === 0) {
@@ -464,6 +507,7 @@ export async function deleteShelf(
 	});
 	requireShelfPermission(access, "delete_shelf");
 	const { shelf } = access;
+	assertNotWishlist(shelf, "Your Wishlist cannot be deleted.");
 
 	if (shelf._count.books > 0) {
 		const confirm = input.confirmTitle?.trim();
@@ -525,6 +569,19 @@ export async function addBookToShelf(
 		requireShelfPermission(access, "add_book");
 		const { shelf } = access;
 		const book = await loadBookBySlug(input.bookSlug, tx);
+		// Books you have read do not belong on your Wishlist.
+		if (shelf.isWishlist) {
+			const alreadyRead = await tx.read.findUnique({
+				where: { userId_bookId: { userId: shelf.userId, bookId: book.id } },
+				select: { userId: true },
+			});
+			if (alreadyRead) {
+				throw new ORPCError("BAD_REQUEST", {
+					message:
+						"You have already read this book, so it is not for the Wishlist.",
+				});
+			}
+		}
 
 		const existing = await tx.shelfBook.findUnique({
 			where: {
@@ -796,8 +853,9 @@ export async function listShelvesForBook(
 	const rows = await db.shelf.findMany({
 		where: {
 			books: { some: { bookId: book.id } },
+			isWishlist: false,
 			OR: [
-				{ status: "active", user: { isHidden: false } },
+				publicShelfWhere,
 				...(viewerUserId ? [{ userId: viewerUserId }] : []),
 			],
 		},
@@ -838,6 +896,7 @@ export async function listMyEditableShelves(
 	const rows = await db.shelf.findMany({
 		where: {
 			status: { in: ["draft", "active"] },
+			isWishlist: false,
 			OR: [
 				{ userId },
 				{
@@ -888,7 +947,7 @@ export async function listMyEditableShelves(
 }
 
 export async function getShelfOverview(db: Database): Promise<ShelfOverview> {
-	const where = { status: "active", user: visibleOnSiteUserWhere } as const;
+	const where = publicShelfWhere;
 	const [shelves, books, sharedShelves, collaborators, newest] =
 		await Promise.all([
 			db.shelf.count({ where }),

@@ -507,6 +507,31 @@ export const METRICS: Record<MetricKey, Metric> = {
 	reviewOpens: (facts) => openedPoints(facts.views.mostOpenedReview),
 	profileOpens: (facts) => openedPoints(facts.views.profileOpens),
 
+	// Reading sessions are all-time too, and never give XP, so they cannot be farmed.
+	paceSetter: (facts, inWindow) =>
+		countPoints(
+			facts.reading.onTimeFinishes.map((at) => ({ at, period: at })),
+			inWindow,
+		),
+	readingStreak: (facts) =>
+		facts.reading.longestStreak && facts.reading.longestStreak.days > 0
+			? [
+					{
+						at: facts.reading.longestStreak.at,
+						value: facts.reading.longestStreak.days,
+					},
+				]
+			: [],
+	wishlistKeeper: (facts) =>
+		facts.reading.wishlistSize > 0
+			? [
+					{
+						at: facts.reading.wishlistAt ?? facts.user.createdAt,
+						value: facts.reading.wishlistSize,
+					},
+				]
+			: [],
+
 	founder: (facts) =>
 		facts.user.joinRank <= FOUNDING_MEMBER_COUNT
 			? [{ at: facts.user.createdAt, value: 1 }]

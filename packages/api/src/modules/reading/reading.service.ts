@@ -9,6 +9,7 @@ import {
 import { ORPCError } from "@orpc/server";
 import { activeParticipationWhere } from "../sitting/participation-active";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
+import { recomputeBookReadingCounters } from "./book-reading-counters";
 import type {
 	ReadingBookState,
 	ReadingItem,
@@ -376,6 +377,7 @@ export async function ensureReadingForSitting(
 			currentPage: book && book.pages > 0 ? 0 : null,
 		},
 	});
+	await recomputeBookReadingCounters(db, bookId);
 }
 
 // ── Starting, updating, abandoning ─────────────────────────────────────────
@@ -473,6 +475,7 @@ export async function startReading(
 			select: readingSelect,
 		});
 		await syncSittingsOnStart(tx, userId, book.id);
+		await recomputeBookReadingCounters(tx, book.id);
 		return created;
 	});
 
@@ -603,6 +606,7 @@ export async function abandonReading(
 	await db.$transaction(async (tx) => {
 		await tx.reading.delete({ where: { id: row.id } });
 		await syncSittingsOnAbandon(tx, userId, row.book.id);
+		await recomputeBookReadingCounters(tx, row.book.id);
 	});
 }
 
@@ -645,6 +649,7 @@ export async function finalizeReadingForRead(
 		}
 	}
 	await removeBookFromWishlist(db, userId, bookId);
+	await recomputeBookReadingCounters(db, bookId);
 }
 
 // ── Who is reading ─────────────────────────────────────────────────────────

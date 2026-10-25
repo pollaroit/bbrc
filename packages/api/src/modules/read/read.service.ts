@@ -18,6 +18,7 @@ import {
 } from "../book/book-list-where";
 import { createFeedback } from "../feedback/feedback.service";
 import { finalizeReadingForRead } from "../reading/reading.service";
+import { checkReadingAchievements } from "../reading/reading-achievements";
 import { activeParticipationWhere } from "../sitting/participation-active";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import {
@@ -141,6 +142,7 @@ export async function ensureUserReadBook(
 		},
 	});
 	await finalizeReadingForRead(db, userId, bookId);
+	void checkReadingAchievements(db, userId);
 }
 
 /** When a participant completes the sitting’s selected book during reading. */
@@ -276,6 +278,20 @@ export async function setRead(
 
 	const finishFields = resolveFinishMonthFields(input);
 	const editionId = input.editionId === undefined ? undefined : input.editionId;
+	const bookEditionId =
+		input.bookEditionId === undefined ? undefined : input.bookEditionId;
+
+	if (bookEditionId) {
+		const edition = await db.bookEdition.findUnique({
+			where: { id: bookEditionId },
+			select: { bookId: true },
+		});
+		if (!edition || edition.bookId !== book.id) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "That edition belongs to another book.",
+			});
+		}
+	}
 
 	const row = await db.$transaction(async (tx) => {
 		const saved = await tx.read.upsert({
@@ -292,6 +308,7 @@ export async function setRead(
 						}
 					: {}),
 				...(editionId !== undefined ? { editionId } : {}),
+				...(bookEditionId !== undefined ? { bookEditionId } : {}),
 			},
 			update: {
 				...(finishFields !== undefined
@@ -301,6 +318,7 @@ export async function setRead(
 						}
 					: {}),
 				...(editionId !== undefined ? { editionId } : {}),
+				...(bookEditionId !== undefined ? { bookEditionId } : {}),
 			},
 			select: {
 				readEndYear: true,
@@ -326,6 +344,8 @@ export async function setRead(
 
 		return saved;
 	});
+
+	void checkReadingAchievements(db, userId);
 
 	await maybeCreateFeedbackFromSetRead(input, userId, db);
 

@@ -8,6 +8,7 @@ import type { Metadata } from "next";
 import { BookExcerptMarkdown } from "@/components/blocks/book-excerpt-markdown";
 import { BookLiteraryOrigin } from "@/components/blocks/book-literary-origin";
 import { BookSubjectGroup } from "@/components/blocks/book-subject-group";
+import { BookReadingCounts } from "@/components/blocks/reading/book-reading-counts";
 import { loadBookBySlugForIsr } from "@/lib/isr-data";
 import {
 	buildBookTabMetadata,
@@ -71,6 +72,7 @@ export default async function BookAboutPage({
 			) : null}
 
 			<section className="grid gap-3 sm:grid-cols-2">
+				<BookReadingCounts bookSlug={book.slug} />
 				<Card size="sm">
 					<CardHeader>
 						<CardTitle>Added to BBRC</CardTitle>

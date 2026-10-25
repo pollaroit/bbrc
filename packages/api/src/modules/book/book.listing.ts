@@ -26,6 +26,8 @@ export const bookSortableFields = [
 	"documents._count",
 	"viewCount",
 	"viewerCount",
+	"readingNowCount",
+	"wishlistCount",
 ] as const;
 
 export const bookListSorting = defineSorting<
@@ -87,6 +89,10 @@ export const bookListFiltersSchema = z
 		viewerFavorite: z.boolean(),
 		/** Reviewed (feedback) by the authenticated viewer. */
 		viewerReviewed: z.boolean(),
+		/** On the authenticated viewer's wishlist. */
+		viewerWishlist: z.boolean(),
+		/** The authenticated viewer is reading it now. */
+		viewerReading: z.boolean(),
 		minReads: z.number().int().min(0),
 		maxReads: z.number().int().min(0),
 		minFeedbacks: z.number().int().min(0),

@@ -21,6 +21,7 @@ import {
 } from "@/components/blocks/shelf-editor-shell";
 import {
 	ShelfOptionPicker,
+	shelfAccessOptions,
 	shelfTypeOptions,
 	shelfVisibilityCreateOptions,
 } from "@/components/blocks/shelf-form-options";
@@ -41,6 +42,7 @@ export function CreateShelfForm({ username }: CreateShelfFormProps) {
 	const [description, setDescription] = useState("");
 	const [status, setStatus] = useState<"draft" | "active">("draft");
 	const [type, setType] = useState<"ordered" | "unordered">("unordered");
+	const [access, setAccess] = useState<"public" | "private">("public");
 
 	const createMutation = useMutation(
 		orpc.shelf.create.mutationOptions({
@@ -86,6 +88,8 @@ export function CreateShelfForm({ username }: CreateShelfFormProps) {
 						coverImageUrl: null,
 						status,
 						type,
+						visibility: access,
+						isWishlist: false,
 						bookCount: addBookSlug ? 1 : 0,
 						updatedAt: new Date(),
 						coverPreviewCoverIds: [],
@@ -106,6 +110,7 @@ export function CreateShelfForm({ username }: CreateShelfFormProps) {
 					description: description.trim() || null,
 					status,
 					type,
+					visibility: access,
 					addBookSlug: addBookSlug ?? undefined,
 				});
 			}}
@@ -179,13 +184,26 @@ export function CreateShelfForm({ username }: CreateShelfFormProps) {
 				</Field>
 			</ShelfEditorSection>
 
-			<ShelfEditorSection title="Visibility">
+			<ShelfEditorSection title="Status">
 				<ShelfOptionPicker
-					name="shelf-visibility"
-					label="Who can see this shelf?"
+					name="shelf-status"
+					label="Is it ready to show?"
 					value={status}
 					options={[...shelfVisibilityCreateOptions]}
 					onChange={setStatus}
+				/>
+			</ShelfEditorSection>
+
+			<ShelfEditorSection
+				title="Who can see it"
+				description="You can change this any time. Private shelves can still be shared with collaborators."
+			>
+				<ShelfOptionPicker
+					name="shelf-access"
+					label="Who can open this shelf?"
+					value={access}
+					options={[...shelfAccessOptions]}
+					onChange={setAccess}
 				/>
 			</ShelfEditorSection>
 

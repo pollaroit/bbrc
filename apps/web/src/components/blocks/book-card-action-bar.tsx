@@ -6,6 +6,7 @@ import type { BookListFavoriteEngagement } from "@/components/blocks/book-favori
 import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
 import { BookMarkReadButton } from "@/components/blocks/book-mark-read-button";
 import { BookWriteFeedbackButton } from "@/components/blocks/book-write-feedback-button";
+import { BookWishlistButton } from "@/components/blocks/reading/book-wishlist-button";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +59,9 @@ export function BookCardActionBar({
 		return null;
 	}
 
+	// A book you have read has no wishlist.
+	const canWishlist = viewerHasRead === false;
+
 	const showFavorite =
 		listEngagement != null &&
 		(listEngagement.isFavorite || listEngagement.canFavorite);
@@ -92,6 +96,15 @@ export function BookCardActionBar({
 					tooltipSide={tooltipSide}
 				/>
 			</RailSlot>
+			{canWishlist ? (
+				<RailSlot>
+					<BookWishlistButton
+						bookSlug={bookSlug}
+						className={railIconClassName}
+						tooltipSide={tooltipSide}
+					/>
+				</RailSlot>
+			) : null}
 			{username ? (
 				<RailSlot>
 					<BookAddToShelfDialog
@@ -146,6 +159,7 @@ export function BookCardActionBar({
 				variant="icon"
 				listHasRead={viewerHasRead}
 			/>
+			{canWishlist ? <BookWishlistButton bookSlug={bookSlug} /> : null}
 			{username ? (
 				<BookAddToShelfDialog
 					bookSlug={bookSlug}

@@ -17,6 +17,7 @@ import {
 	QUIZ_MIN_SCORE,
 	QUIZ_SCORING,
 } from "../quiz/quiz-scoring";
+import { publicShelfWhere } from "../shelf/shelf-visibility";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type { GetBookStatsOutput } from "./book-stats.schema";
 
@@ -107,7 +108,7 @@ export async function getBookStats(
 		db.shelfBook.findMany({
 			where: {
 				bookId: book.id,
-				shelf: { status: "active", user: visibleOnSiteUserWhere },
+				shelf: publicShelfWhere,
 			},
 			select: { createdAt: true },
 		}),

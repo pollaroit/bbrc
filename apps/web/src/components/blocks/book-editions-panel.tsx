@@ -13,6 +13,7 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import Image from "next/image";
+import { MemberEditionsSection } from "@/components/blocks/book-editions/member-editions-section";
 import { bookCoverFrameClassName, bookCoverUrl } from "@/lib/book-cover";
 import { useBookEditionsListingSearchParams } from "@/lib/listing/book-editions-listing";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ const editionsGridClassName =
 
 type BookEditionsPanelProps = {
 	bookSlug: string;
+	bookTitle: string;
 	workOlid: string | null;
 };
 
@@ -187,6 +189,7 @@ function BookEditionsGrid({ data }: { data: SearchWorkEditionsOutput }) {
 
 export function BookEditionsPanel({
 	bookSlug,
+	bookTitle,
 	workOlid,
 }: BookEditionsPanelProps) {
 	const [params, setParams] = useBookEditionsListingSearchParams();
@@ -208,21 +211,28 @@ export function BookEditionsPanel({
 
 	if (!workOlid) {
 		return (
-			<Empty>
-				<EmptyHeader>
-					<EmptyTitle>No Open Library work linked</EmptyTitle>
-					<EmptyDescription>
-						This catalog entry does not have an Open Library work ID, so edition
-						data cannot be loaded.
-					</EmptyDescription>
-				</EmptyHeader>
-			</Empty>
+			<div className="flex flex-col gap-8">
+				<MemberEditionsSection bookSlug={bookSlug} bookTitle={bookTitle} />
+				<Empty>
+					<EmptyHeader>
+						<EmptyTitle>No Open Library work linked</EmptyTitle>
+						<EmptyDescription>
+							This catalog entry does not have an Open Library work ID, so Open
+							Library edition data cannot be loaded.
+						</EmptyDescription>
+					</EmptyHeader>
+				</Empty>
+			</div>
 		);
 	}
 
 	return (
-		<div className="flex flex-col gap-6">
-			<p className="text-muted-foreground text-sm leading-relaxed">
+		<div className="flex flex-col gap-8">
+			<MemberEditionsSection bookSlug={bookSlug} bookTitle={bookTitle} />
+			<h2 className="border-border border-t pt-6 font-semibold text-lg tracking-tight">
+				Open Library editions
+			</h2>
+			<p className="-mt-4 text-muted-foreground text-sm leading-relaxed">
 				Editions are loaded from Open Library for this work. Covers, publishers,
 				and dates come from community catalog data and may vary in completeness.{" "}
 				{workPageUrl ? (

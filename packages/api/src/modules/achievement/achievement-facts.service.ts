@@ -40,6 +40,12 @@ function emptyFacts(
 		quizzes: [],
 		series: [],
 		views: { mostOpenedPost: null, mostOpenedReview: null, profileOpens: null },
+		reading: {
+			onTimeFinishes: [],
+			longestStreak: null,
+			wishlistSize: 0,
+			wishlistAt: null,
+		},
 	};
 }
 
@@ -336,7 +342,7 @@ export async function loadAchievementFacts(
 		tasks.push(
 			(async () => {
 				const rows = await db.shelf.findMany({
-					where: { userId, status: "active" },
+					where: { userId, status: "active", isWishlist: false },
 					select: {
 						createdAt: true,
 						books: { select: { createdAt: true } },
@@ -417,6 +423,53 @@ export async function loadAchievementFacts(
 					mostOpenedPost: pick("post"),
 					mostOpenedReview: pick("review"),
 					profileOpens: pick("user"),
+				};
+			})(),
+		);
+	}
+
+	if (want("reading")) {
+		tasks.push(
+			(async () => {
+				const [onTime, logDays, wishlist] = await Promise.all([
+					// Finished a tracked book on or before the deadline of a sitting that picked it.
+					db.$queryRaw<{ finished_at: Date }[]>`
+						SELECT DISTINCT r.id, r.finished_at FROM reading r
+						JOIN sitting s ON s.selected_book_id = r.book_id AND s.deadline IS NOT NULL
+						JOIN participation p ON p.sitting_id = s.id AND p.user_id = r.user_id AND p.removed_at IS NULL
+						WHERE r.user_id = ${userId} AND r.finished_at IS NOT NULL
+							AND r.finished_at <= s.deadline
+						ORDER BY r.finished_at`,
+					// Days with at least one progress update, in the club's time zone.
+					db.$queryRaw<{ day: Date }[]>`
+						SELECT DISTINCT (l.created_at AT TIME ZONE ${resolveClubTimeZone()})::date AS day
+						FROM reading_log l JOIN reading r ON r.id = l.reading_id
+						WHERE r.user_id = ${userId}
+						ORDER BY day`,
+					db.shelf.findFirst({
+						where: { userId, isWishlist: true },
+						select: { updatedAt: true, _count: { select: { books: true } } },
+					}),
+				]);
+
+				let longest: { days: number; at: Date } | null = null;
+				let run = 0;
+				let previous: number | null = null;
+				for (const row of logDays) {
+					const time = row.day.getTime();
+					run =
+						previous != null && time - previous === 86_400_000 ? run + 1 : 1;
+					previous = time;
+					if (!longest || run > longest.days) {
+						longest = { days: run, at: row.day };
+					}
+				}
+
+				facts.reading = {
+					onTimeFinishes: onTime.map((row) => row.finished_at),
+					longestStreak: longest,
+					wishlistSize: wishlist?._count.books ?? 0,
+					wishlistAt: wishlist?.updatedAt ?? null,
 				};
 			})(),
 		);

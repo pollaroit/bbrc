@@ -243,6 +243,9 @@ export async function getUserStats(
 		db.shelf.count({
 			where: {
 				userId,
+				// The Wishlist is not a shelf the member made, and private shelves stay private.
+				isWishlist: false,
+				visibility: "public",
 				...(activityRange ? { createdAt: activityRange } : {}),
 			},
 		}),

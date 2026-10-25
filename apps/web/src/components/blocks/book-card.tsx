@@ -2,6 +2,7 @@ import type { GetBookListOutput } from "@bbrc/api/modules/book/book.schema";
 import type { LucideIcon } from "lucide-react";
 import {
 	BookCheck,
+	BookOpen,
 	Eye,
 	FileText,
 	Heart,
@@ -256,10 +257,22 @@ export function BookCard({
 								</p>
 							) : null}
 
-							<p className="mt-1.5 flex items-center gap-1.5 text-muted-foreground text-xs tabular-nums">
+							<p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-muted-foreground text-xs tabular-nums">
 								<span>{book.pages} pages</span>
 								<span aria-hidden>·</span>
 								<span>{book.publishedIn}</span>
+								{book.readingNowCount > 0 ? (
+									<>
+										<span aria-hidden>·</span>
+										<span
+											className="inline-flex items-center gap-1 text-info-ink"
+											title={`${book.readingNowCount} ${book.readingNowCount === 1 ? "member is" : "members are"} reading this now`}
+										>
+											<BookOpen className="size-3" aria-hidden />
+											{book.readingNowCount} reading
+										</span>
+									</>
+								) : null}
 							</p>
 
 							<BookCardRatingRow

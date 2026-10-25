@@ -10,6 +10,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { GoalProgressBar } from "@/components/blocks/goal-progress-bar";
 import { MemberProfileSittingCard } from "@/components/blocks/member-profile-sitting-card";
+import { ProfileCurrentReading } from "@/components/blocks/reading/profile-current-reading";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ShelfCover } from "@/components/blocks/shelf-cover";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
@@ -99,6 +100,15 @@ function snippet(text: string, max = 160) {
 export function MemberProfileOverview({
 	username,
 }: MemberProfileOverviewProps) {
+	return (
+		<div className="flex flex-col gap-8">
+			<ProfileCurrentReading username={username} />
+			<OverviewSections username={username} />
+		</div>
+	);
+}
+
+function OverviewSections({ username }: MemberProfileOverviewProps) {
 	const base = `/users/${username}`;
 
 	const sittings = useQuery(

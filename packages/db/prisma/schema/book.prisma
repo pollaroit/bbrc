@@ -44,6 +44,11 @@ model Book {
   /// Copy of the distinct people who opened it, for sorting.
   viewerCount Int @default(0) @map("viewer_count")
 
+  /// Members reading it right now (visible members only); a copy kept so lists can sort by it.
+  readingNowCount Int @default(0) @map("reading_now_count")
+  /// Members with it on their wishlist (visible members only); a copy kept so lists can sort by it.
+  wishlistCount   Int @default(0) @map("wishlist_count")
+
   subjectPeople String[] @default([]) @map("subject_people")
   subjectTimes  String[] @default([]) @map("subject_times")
   subjects      String[] @default([])

@@ -8,3 +8,72 @@ html.standalone-pwa {
 html.standalone-pwa body {
 	overscroll-behavior-y: none;
 }
+
+/* The reading progress slider: a native range input, so touch, mouse and keyboard all work. */
+.reading-range {
+	--progress: 0%;
+	-webkit-appearance: none;
+	appearance: none;
+	width: 100%;
+	height: 1.5rem;
+	background: transparent;
+	cursor: pointer;
+	touch-action: pan-y;
+}
+
+.reading-range:disabled {
+	cursor: default;
+}
+
+.reading-range::-webkit-slider-runnable-track {
+	height: 0.5rem;
+	background: linear-gradient(
+		to right,
+		var(--primary) var(--progress),
+		var(--muted) var(--progress)
+	);
+}
+
+.reading-range::-moz-range-track {
+	height: 0.5rem;
+	background: var(--muted);
+}
+
+.reading-range::-moz-range-progress {
+	height: 0.5rem;
+	background: var(--primary);
+}
+
+.reading-range::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 0.875rem;
+	height: 1.25rem;
+	margin-top: -0.375rem;
+	background: var(--foreground);
+	border: 2px solid var(--background);
+	box-shadow: 0 0 0 1px var(--foreground);
+}
+
+.reading-range::-moz-range-thumb {
+	width: 0.875rem;
+	height: 1.25rem;
+	background: var(--foreground);
+	border: 2px solid var(--background);
+	box-shadow: 0 0 0 1px var(--foreground);
+	border-radius: 0;
+}
+
+.reading-range:focus-visible {
+	outline: none;
+}
+
+.reading-range:focus-visible::-webkit-slider-thumb {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
+.reading-range:focus-visible::-moz-range-thumb {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}

@@ -10,7 +10,13 @@ import {
 	AttachmentTitle,
 	AttachmentTrigger,
 } from "@bbrc/ui/components/attachment";
-import { BookOpen, MessageCircle, ThumbsUp, UserRound } from "lucide-react";
+import {
+	BookOpen,
+	Lock,
+	MessageCircle,
+	ThumbsUp,
+	UserRound,
+} from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
@@ -140,6 +146,23 @@ function PostAttachmentShelfCard({
 	shelf: Extract<PostAttachmentOutput, { kind: "shelf" }>["shelf"];
 }) {
 	const href = `/users/${shelf.ownerUsername}/shelves/${shelf.slug}` as Route;
+
+	// The owner made it private after sharing: nothing about it shows here.
+	if (shelf.isPrivate) {
+		return (
+			<AttachmentLinkFrame href={href}>
+				<AttachmentMedia variant="icon">
+					<Lock className="size-5 text-muted-foreground" aria-hidden />
+				</AttachmentMedia>
+				<AttachmentContent>
+					<AttachmentTitle>Private shelf</AttachmentTitle>
+					<AttachmentDescription>
+						Only {shelf.ownerUsername} and their collaborators can open it now.
+					</AttachmentDescription>
+				</AttachmentContent>
+			</AttachmentLinkFrame>
+		);
+	}
 
 	return (
 		<AttachmentLinkFrame href={href}>

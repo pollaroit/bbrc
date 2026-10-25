@@ -3,6 +3,8 @@ import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { activeParticipationWhere } from "../sitting/participation-active";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
+import { recomputeBookReadingCounters } from "./book-reading-counters";
+import { checkReadingAchievements } from "./reading-achievements";
 
 type Db = Database | DatabaseTransaction;
 
@@ -69,6 +71,16 @@ export async function addToWishlist(
 	userId: string,
 	bookSlug: string,
 ) {
+	const result = await addToWishlistInTransaction(db, userId, bookSlug);
+	void checkReadingAchievements(db, userId);
+	return result;
+}
+
+async function addToWishlistInTransaction(
+	db: Database,
+	userId: string,
+	bookSlug: string,
+) {
 	return db.$transaction(async (tx) => {
 		const book = await tx.book.findUnique({
 			where: { slug: bookSlug },
@@ -115,6 +127,7 @@ export async function addToWishlist(
 			where: { id: shelf.id },
 			data: { updatedAt: new Date() },
 		});
+		await recomputeBookReadingCounters(tx, book.id);
 		return { inWishlist: true, count: count + 1 };
 	});
 }
@@ -148,33 +161,23 @@ export async function removeBookFromWishlist(
 	userId: string,
 	bookId: string,
 ) {
-	await db.shelfBook.deleteMany({
+	const removed = await db.shelfBook.deleteMany({
 		where: { bookId, shelf: { userId, isWishlist: true } },
 	});
+	if (removed.count > 0) await recomputeBookReadingCounters(db, bookId);
 }
 
 /**
- * Books the sitting's members have on their wishlists, most wanted first.
- * Counts only: it never says whose wishlist.
+ * Books these members have on their wishlists, most wanted first. Counts only:
+ * it never says whose wishlist. `onlyBookIds` limits it to books that could be
+ * chosen (for a poll, the books that pass its filters).
  */
-export async function wishlistPopularityForSitting(
+export async function wishlistPopularityForUsers(
 	db: Database,
-	sittingSlug: string,
+	userIds: string[],
 	limit: number,
+	onlyBookIds?: string[],
 ) {
-	const sitting = await db.sitting.findUnique({
-		where: { slug: sittingSlug },
-		select: {
-			participants: {
-				where: { ...activeParticipationWhere },
-				select: { userId: true },
-			},
-		},
-	});
-	if (!sitting) {
-		throw new ORPCError("NOT_FOUND", { message: "Sitting not found" });
-	}
-	const userIds = sitting.participants.map((row) => row.userId);
 	if (userIds.length === 0) return { items: [] };
 
 	const grouped = await db.shelfBook.groupBy({
@@ -185,6 +188,7 @@ export async function wishlistPopularityForSitting(
 				userId: { in: userIds },
 				user: { ...visibleOnSiteUserWhere },
 			},
+			bookId: onlyBookIds ? { in: onlyBookIds } : undefined,
 			// Books they have already read are not candidates.
 			book: { reads: { none: { userId: { in: userIds } } } },
 		},
@@ -205,6 +209,7 @@ export async function wishlistPopularityForSitting(
 			return book
 				? [
 						{
+							id: book.id,
 							slug: book.slug,
 							title: book.title,
 							authors: book.authors,
@@ -214,5 +219,33 @@ export async function wishlistPopularityForSitting(
 					]
 				: [];
 		}),
+	};
+}
+
+/** The same for a sitting's current participants. */
+export async function wishlistPopularityForSitting(
+	db: Database,
+	sittingSlug: string,
+	limit: number,
+) {
+	const sitting = await db.sitting.findUnique({
+		where: { slug: sittingSlug },
+		select: {
+			participants: {
+				where: { ...activeParticipationWhere },
+				select: { userId: true },
+			},
+		},
+	});
+	if (!sitting) {
+		throw new ORPCError("NOT_FOUND", { message: "Sitting not found" });
+	}
+	const { items } = await wishlistPopularityForUsers(
+		db,
+		sitting.participants.map((row) => row.userId),
+		limit,
+	);
+	return {
+		items: items.map(({ id: _id, ...item }) => item),
 	};
 }

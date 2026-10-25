@@ -20,7 +20,11 @@ import {
 	revalidateUserIsr,
 	revalidateUserShelvesIsr,
 } from "../../revalidate-isr";
-import { loadShelfAccess, requireShelfPermission } from "../shelf/shelf-access";
+import {
+	assertNotWishlist,
+	loadShelfAccess,
+	requireShelfPermission,
+} from "../shelf/shelf-access";
 import type { ImageUploadBodySchema } from "./storage-image.schema";
 import { tryDeleteR2PublicUrl } from "./storage-r2-cleanup";
 
@@ -284,6 +288,36 @@ export async function uploadBookCoverDirect(
 	return { publicUrl };
 }
 
+/**
+ * Uploads a finished edition cover (cropped to 2:3 by the browser) and returns
+ * its public URL. Any signed-in member who is not banned; the edition itself
+ * is saved separately.
+ */
+export async function uploadEditionCoverDirect(
+	file: {
+		buffer: Buffer;
+		contentType: AllowedImageMimeType;
+		contentLength: number;
+	},
+	session: Session,
+) {
+	if (session.user.status === "banned") {
+		throw new ORPCError("FORBIDDEN", {
+			message: "Your account cannot upload covers.",
+		});
+	}
+	const key = buildObjectKey(getStorageEnv(), {
+		kind: "edition-cover",
+		coverUid: crypto.randomUUID(),
+	});
+	const body: ImageUploadBody = {
+		contentType: file.contentType,
+		contentLength: file.contentLength,
+	};
+	const publicUrl = await putImageAtKey(key, body, file.buffer);
+	return { publicUrl };
+}
+
 export async function initAvatarUpload(
 	body: ImageUploadBody,
 	session: Session,
@@ -418,6 +452,10 @@ async function loadCoverEditableShelf(
 		actorId: userId,
 	});
 	requireShelfPermission(access, "edit_cover");
+	assertNotWishlist(
+		access.shelf,
+		"Your Wishlist keeps its own look, so it has no custom cover.",
+	);
 	return {
 		id: access.shelf.id,
 		slug: access.shelf.slug,

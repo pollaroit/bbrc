@@ -173,6 +173,8 @@ export const BookListItemSchema = BookSchema.pick(getBookListFields).extend({
 	favoriteCount: z.number().int().min(0),
 	/** How many times the book page was opened (never counts the owner or bots). */
 	viewCount: z.number().int().min(0),
+	/** Members reading it right now (visible members only). */
+	readingNowCount: z.number().int().min(0),
 	/** Sitting slug when status is reading or completed and a club sitting selected this book. */
 	clubSittingSlug: z.string().nullable(),
 	series: BookSeriesSummarySchema.nullable(),

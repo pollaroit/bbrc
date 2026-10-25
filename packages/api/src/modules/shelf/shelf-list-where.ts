@@ -1,12 +1,12 @@
 import type { Database, Prisma } from "@bbrc/db";
 import type { z } from "zod";
 import { mergeWhereFragments } from "../../utils/searching";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import {
 	type shelfListFiltersSchema,
 	shelfListRanging,
 	shelfListSearching,
 } from "./shelf.listing";
+import { publicShelfWhere } from "./shelf-visibility";
 
 type ShelfListFilters = z.infer<typeof shelfListFiltersSchema>;
 
@@ -42,7 +42,7 @@ export async function buildPublicShelfListWhere(
 	}
 
 	return mergeWhereFragments<Prisma.ShelfWhereInput>(
-		{ status: "active", user: visibleOnSiteUserWhere },
+		publicShelfWhere,
 		ranging.use(),
 		searching.use(),
 		{

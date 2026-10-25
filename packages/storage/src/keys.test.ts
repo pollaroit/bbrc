@@ -36,6 +36,12 @@ describe("buildObjectKey", () => {
 		).toBe("production/books/covers/abc.webp");
 	});
 
+	test("edition cover", () => {
+		expect(
+			buildObjectKey("production", { kind: "edition-cover", coverUid: "abc" }),
+		).toBe("production/books/editions/abc.webp");
+	});
+
 	test("shelf cover", () => {
 		expect(
 			buildObjectKey("development", {

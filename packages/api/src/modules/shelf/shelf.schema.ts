@@ -17,6 +17,8 @@ import {
 
 export const ShelfStatusSchema = zod.enum(["draft", "active", "archived"]);
 export const ShelfTypeSchema = zod.enum(["ordered", "unordered"]);
+/** Public: anyone can open it. Private: only the owner, collaborators and admins. */
+export const ShelfVisibilitySchema = zod.enum(["public", "private"]);
 
 export const ShelfPermissionSchema = zod.enum(SHELF_PERMISSIONS);
 
@@ -54,6 +56,9 @@ export const ShelfListItemSchema = zod.object({
 	coverImageUrl: zod.string().max(2048).nullable(),
 	status: ShelfStatusSchema,
 	type: ShelfTypeSchema,
+	visibility: ShelfVisibilitySchema,
+	/** The member's special Wishlist shelf. */
+	isWishlist: zod.boolean(),
 	bookCount: zod.number().int().min(0),
 	updatedAt: zod.coerce.date(),
 	/** First up to 4 book covers by shelf order; not stored on Shelf. */
@@ -150,6 +155,7 @@ export const CreateShelfInputSchema = zod.object({
 	description: zod.string().max(2000).nullish(),
 	status: ShelfStatusSchema.optional(),
 	type: ShelfTypeSchema.optional(),
+	visibility: ShelfVisibilitySchema.optional(),
 	/** When set, add this catalog book after create (e.g. from book detail). */
 	addBookSlug: BookSchema.shape.slug.optional(),
 });
@@ -168,6 +174,8 @@ export const UpdateShelfInputSchema = zod.object({
 	description: zod.string().max(2000).nullish(),
 	status: ShelfStatusSchema.optional(),
 	type: ShelfTypeSchema.optional(),
+	/** Only the owner can change who can see the shelf. */
+	visibility: ShelfVisibilitySchema.optional(),
 });
 
 export const UpdateShelfOutputSchema = ShelfListItemSchema;
@@ -277,6 +285,8 @@ export const shelfListItemSelect = {
 	coverImageUrl: true,
 	status: true,
 	type: true,
+	visibility: true,
+	isWishlist: true,
 	updatedAt: true,
 	_count: { select: { books: true } },
 } as const;
@@ -330,6 +340,8 @@ export function mapShelfListItem(
 		coverImageUrl: string | null;
 		status: z.infer<typeof ShelfStatusSchema>;
 		type: z.infer<typeof ShelfTypeSchema>;
+		visibility: z.infer<typeof ShelfVisibilitySchema>;
+		isWishlist: boolean;
 		updatedAt: Date;
 		_count: { books: number };
 		books?: { book: { coverId: number | null } }[];
@@ -344,6 +356,8 @@ export function mapShelfListItem(
 		coverImageUrl: row.coverImageUrl,
 		status: row.status,
 		type: row.type,
+		visibility: row.visibility,
+		isWishlist: row.isWishlist,
 		bookCount: row._count.books,
 		updatedAt: row.updatedAt,
 		coverPreviewCoverIds:

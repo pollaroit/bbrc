@@ -710,7 +710,7 @@ export async function getAdminBookStats(
 				select: {
 					favorites: true,
 					feedbacks: true,
-					shelfBooks: true,
+					shelfBooks: { where: { shelf: { isWishlist: false } } },
 					postAttachments: true,
 				},
 			},

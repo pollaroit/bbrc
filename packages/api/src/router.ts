@@ -5,6 +5,7 @@ import { adminRouter } from "./modules/admin/admin.router";
 import { authorRouter } from "./modules/author/author.router";
 import { bookRouter } from "./modules/book/book.router";
 import { bookDiscoverRouter } from "./modules/book-discover/book-discover.router";
+import { bookEditionRouter } from "./modules/book-edition/book-edition.router";
 import { bookRequestRouter } from "./modules/book-request/book-request.router";
 import { commentRouter } from "./modules/comment/comment.router";
 import { documentRouter } from "./modules/document/document.router";
@@ -41,6 +42,7 @@ export const appRouter = {
 	leaderboard: leaderboardRouter,
 	book: bookRouter,
 	bookDiscover: bookDiscoverRouter,
+	bookEdition: bookEditionRouter,
 	bookRequest: bookRequestRouter,
 	comment: commentRouter,
 	document: documentRouter,

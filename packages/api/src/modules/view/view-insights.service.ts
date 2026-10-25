@@ -620,7 +620,7 @@ async function ownComparisonFor(
 		rows = await db.$queryRaw`
 			SELECT s.id, coalesce(t.opens, 0)::int AS opens FROM shelf s
 			LEFT JOIN view_total t ON t.resource = 'shelf' AND t.resource_id = s.id
-			WHERE s.user_id = ${ownerId} AND s.status = 'active'`;
+			WHERE s.user_id = ${ownerId} AND s.status = 'active' AND NOT s.is_wishlist`;
 	} else {
 		return null;
 	}

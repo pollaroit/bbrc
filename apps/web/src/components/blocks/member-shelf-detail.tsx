@@ -19,9 +19,11 @@ import { Label } from "@bbrc/ui/components/label";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
+	Heart,
 	History,
 	LineChart,
 	ListOrdered,
+	Lock,
 	LogOut,
 	MoreHorizontal,
 	Pencil,
@@ -175,6 +177,9 @@ export function MemberShelfDetail({
 
 	const isOwner = viewer.role === "owner";
 	const isCollaborator = viewer.role === "collaborator";
+	// The Wishlist cannot be deleted, shared or renamed: its menu is smaller.
+	const isWishlist = shelf.isWishlist;
+	const isPrivate = shelf.visibility === "private";
 	const signedIn = Boolean(session?.user);
 	const canSeeInsights =
 		isOwner || isCollaborator || session?.user.isAdmin === true;
@@ -191,7 +196,7 @@ export function MemberShelfDetail({
 	const hasMenu =
 		canEditDetails ||
 		canReorder ||
-		can("delete_shelf") ||
+		(can("delete_shelf") && !isWishlist) ||
 		isCollaborator ||
 		canSeeActivity ||
 		signedIn;
@@ -253,7 +258,44 @@ export function MemberShelfDetail({
 				</p>
 			) : null}
 
-			{(isOwner || isCollaborator) && shelf.status !== "active" ? (
+			{isWishlist && isOwner ? (
+				<div className="flex flex-col gap-1.5 border border-border bg-muted/30 px-4 py-3 text-sm">
+					<p className="flex items-center gap-2 font-medium">
+						<Heart className="size-4" aria-hidden />
+						This is your Wishlist
+					</p>
+					<p className="text-muted-foreground leading-relaxed">
+						Books you want to read, in the order you want to read them.{" "}
+						{isPrivate
+							? "It is private: only you can open it."
+							: "It is public: anyone with the link can open it."}{" "}
+						<Link
+							href={`${base}/edit` as Route}
+							className="text-foreground underline underline-offset-4"
+						>
+							Change who can see it
+						</Link>
+						.
+					</p>
+				</div>
+			) : null}
+
+			{!isWishlist && isPrivate && (isOwner || isCollaborator) ? (
+				<p className="flex items-start gap-2 border border-border bg-muted/30 px-4 py-3 text-sm">
+					<Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+					<span>
+						{isOwner && shelf.collaborators.length === 0
+							? "This shelf is private. Only you can open it."
+							: isOwner
+								? "This shelf is private. Only you and your collaborators can open it."
+								: "This shelf is private. Only the owner and collaborators can open it."}
+					</span>
+				</p>
+			) : null}
+
+			{!isWishlist &&
+			(isOwner || isCollaborator) &&
+			shelf.status !== "active" ? (
 				<p className="border border-border bg-muted/30 px-4 py-3 text-sm">
 					{isOwner && shelf.collaborators.length === 0
 						? `Only you can see this shelf while it is ${shelf.status}.`
@@ -274,14 +316,27 @@ export function MemberShelfDetail({
 							<h1 className="font-semibold text-xl tracking-tight sm:text-2xl">
 								{shelf.title}
 							</h1>
-							<Badge
-								variant={shelf.type === "ordered" ? "secondary" : "outline"}
-							>
-								{shelf.type === "ordered" ? "Ranked" : "List"}
-							</Badge>
+							{isWishlist ? (
+								<Badge variant="secondary" className="gap-1">
+									<Heart aria-hidden />
+									Wishlist
+								</Badge>
+							) : (
+								<Badge
+									variant={shelf.type === "ordered" ? "secondary" : "outline"}
+								>
+									{shelf.type === "ordered" ? "Ranked" : "List"}
+								</Badge>
+							)}
+							{isPrivate ? (
+								<Badge variant="outline" className="gap-1">
+									<Lock aria-hidden />
+									Private
+								</Badge>
+							) : null}
 						</div>
 						<div className="flex shrink-0 divide-x divide-border border border-border">
-							{shelf.status === "active" ? (
+							{shelf.status === "active" && !isPrivate ? (
 								<ResourceShareMenu
 									path={base}
 									shareText={shelf.title}
@@ -317,7 +372,7 @@ export function MemberShelfDetail({
 												onClick={() => router.push(`${base}/edit` as Route)}
 											>
 												<Pencil aria-hidden />
-												Edit shelf
+												{isWishlist ? "Edit Wishlist" : "Edit shelf"}
 											</DropdownMenuItem>
 										) : null}
 										{canReorder ? (
@@ -338,7 +393,7 @@ export function MemberShelfDetail({
 												Insights
 											</DropdownMenuItem>
 										) : null}
-										{signedIn ? (
+										{signedIn && !isWishlist ? (
 											<DropdownMenuItem onClick={() => openDialog("people")}>
 												<Users aria-hidden />
 												Collaborators
@@ -362,7 +417,7 @@ export function MemberShelfDetail({
 												</DropdownMenuItem>
 											</>
 										) : null}
-										{can("delete_shelf") ? (
+										{can("delete_shelf") && !isWishlist ? (
 											<>
 												<DropdownMenuSeparator />
 												<DropdownMenuItem
@@ -386,13 +441,15 @@ export function MemberShelfDetail({
 					) : null}
 
 					<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-						<CollaboratorStrip
-							people={people}
-							ownerName={owner.name}
-							collaboratorCount={shelf.collaborators.length}
-							onOpen={signedIn ? () => openDialog("people") : undefined}
-						/>
-						{can("add_collaborator") ? (
+						{isWishlist ? null : (
+							<CollaboratorStrip
+								people={people}
+								ownerName={owner.name}
+								collaboratorCount={shelf.collaborators.length}
+								onOpen={signedIn ? () => openDialog("people") : undefined}
+							/>
+						)}
+						{can("add_collaborator") && !isWishlist ? (
 							<Button
 								type="button"
 								size="sm"

@@ -1,5 +1,6 @@
 import { sweepAchievements } from "@bbrc/api/modules/achievement/achievement.service";
 import { sweepEndedPolls } from "@bbrc/api/modules/post-poll/post-poll.service";
+import { sweepReadingReminders } from "@bbrc/api/modules/reading/reading-reminders.service";
 import { sweepViews } from "@bbrc/api/modules/view/view-maintenance.service";
 import { NextResponse } from "next/server";
 import { isCronRequestAuthorized } from "@/lib/qstash/verify-cron-request";
@@ -26,6 +27,13 @@ export async function POST(request: Request) {
 	try {
 		// `sweepViews` catches its own failures, so it never blocks the rest.
 		const views = await sweepViews(db);
+		// Opt-in "you are behind your reading pace" reminders; a failure must not stop the rest.
+		let readingReminders = 0;
+		try {
+			readingReminders = await sweepReadingReminders(db);
+		} catch (error) {
+			console.error("reading reminders failed", error);
+		}
 		const result = await sweepAchievements(db);
 		const endedPolls = await sweepEndedPolls(db);
 		return NextResponse.json({
@@ -33,6 +41,7 @@ export async function POST(request: Request) {
 			...result,
 			endedPolls,
 			views,
+			readingReminders,
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "Sweep failed";

@@ -197,7 +197,15 @@ export async function getUserProfileCard(
 		db.read.count({ where: { userId: user.id } }),
 		db.feedback.count({ where: { authorId: user.id } }),
 		db.participation.count({ where: { userId: user.id } }),
-		db.shelf.count({ where: { userId: user.id } }),
+		db.shelf.count({
+			where: {
+				userId: user.id,
+				isWishlist: false,
+				...(viewer?.userId === user.id || viewer?.isAdmin
+					? {}
+					: { visibility: "public" as const }),
+			},
+		}),
 		loadReadingStreakForUser(user.id, db),
 	]);
 

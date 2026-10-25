@@ -191,6 +191,7 @@ async function userIdsWithMinRelationCount(
 		case "shelves": {
 			const rows = await db.shelf.groupBy({
 				by: ["userId"],
+				where: { isWishlist: false },
 				_count: { _all: true },
 				having: { userId: { _count: { gte: min } } },
 			});

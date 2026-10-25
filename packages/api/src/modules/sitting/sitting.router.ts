@@ -78,6 +78,11 @@ import {
 	updateSittingDeadlines,
 } from "./sitting.service";
 import { sittingJoinRouter } from "./sitting-join.router";
+import {
+	WishlistPollCandidatesInputSchema,
+	WishlistPollCandidatesOutputSchema,
+} from "./sitting-wishlist-candidates.schema";
+import { wishlistPollCandidates } from "./sitting-wishlist-candidates.service";
 
 export const sittingRouter = {
 	getSittingList: publicProcedure
@@ -113,6 +118,13 @@ export const sittingRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await getSittingPollPoolSize(input, context.db),
+		),
+	wishlistPollCandidates: adminProcedure
+		.input(WishlistPollCandidatesInputSchema)
+		.output(WishlistPollCandidatesOutputSchema)
+		.handler(
+			async ({ input, context }) =>
+				await wishlistPollCandidates(input, context.db),
 		),
 	previewSittingPollOptions: adminProcedure
 		.input(PreviewSittingPollOptionsInputSchema)

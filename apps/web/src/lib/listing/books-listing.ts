@@ -60,6 +60,8 @@ export const bookSortByLabels = {
 	"documents._count": "Documents",
 	viewCount: "Views",
 	viewerCount: "Viewers",
+	readingNowCount: "Reading now",
+	wishlistCount: "Most wishlisted",
 } as const satisfies FieldLabels<(typeof bookSortableFields)[number]>;
 
 export const bookRangeByLabels = {
@@ -110,12 +112,16 @@ export const bookListingSearchParams = {
 	}),
 	viewerFavorite: booleanFilterParser.withOptions({ shallow: false }),
 	viewerReviewed: booleanFilterParser.withOptions({ shallow: false }),
+	viewerWishlist: booleanFilterParser.withOptions({ shallow: false }),
+	viewerReading: booleanFilterParser.withOptions({ shallow: false }),
 };
 
 export const viewerBookFilterLabels = {
 	viewerRead: "Read",
 	viewerFavorite: "Favorite",
 	viewerReviewed: "Reviewed",
+	viewerWishlist: "On my wishlist",
+	viewerReading: "Reading now",
 } as const;
 
 export function useBookListingSearchParams() {
@@ -196,6 +202,8 @@ export function toBookListCallInput(
 		viewerRead: params.viewerRead ?? undefined,
 		viewerFavorite: params.viewerFavorite === true ? true : undefined,
 		viewerReviewed: params.viewerReviewed === true ? true : undefined,
+		viewerWishlist: params.viewerWishlist === true ? true : undefined,
+		viewerReading: params.viewerReading === true ? true : undefined,
 		limit: 24,
 	}) as Partial<GetBookListInput>;
 }
@@ -312,6 +320,14 @@ export function countBookSheetFilters(params: BookListingSearchParams): number {
 		count += 1;
 	}
 
+	if (params.viewerWishlist === true) {
+		count += 1;
+	}
+
+	if (params.viewerReading === true) {
+		count += 1;
+	}
+
 	return count;
 }
 
@@ -342,5 +358,7 @@ export function clearBookSheetFilters(
 		viewerRead: null,
 		viewerFavorite: null,
 		viewerReviewed: null,
+		viewerWishlist: null,
+		viewerReading: null,
 	});
 }

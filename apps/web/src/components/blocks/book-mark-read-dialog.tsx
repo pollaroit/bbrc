@@ -1,12 +1,16 @@
 "use client";
 
+import type { ReadingBookState } from "@bbrc/api/modules/reading/reading.schema";
 import {
 	contentPlainText,
 	type FeedbackRatingStep,
 	isFeedbackRatingStep,
+	plainTextToRichDocument,
 	readFinishedMonthFromClubNow,
+	serializeRichDocument,
 } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
+import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -25,7 +29,13 @@ import {
 } from "@bbrc/ui/components/select";
 import { Switch } from "@bbrc/ui/components/switch";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { BookCheck, ChevronDown, PenLine, Trash2 } from "lucide-react";
+import {
+	BookCheck,
+	BookOpen,
+	ChevronDown,
+	PenLine,
+	Trash2,
+} from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -41,6 +51,10 @@ import {
 	READ_DATE_MONTHS,
 	readDateMonthLabel,
 } from "@/lib/read-date-months";
+import {
+	invalidateReadingQueries,
+	useReadingState,
+} from "@/lib/reading/use-reading";
 import { cn } from "@/lib/utils";
 import { client, orpc, queryClient } from "@/utils/orpc";
 
@@ -66,6 +80,23 @@ function clampDigits(value: string, maxLength: number) {
 
 const REVIEW_MAX_PLAIN = 500;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** "Started Oct 20 · finishing today makes it 5 days." */
+function readingSummary(startedAt: Date | string) {
+	const started = new Date(startedAt);
+	const days = Math.max(
+		1,
+		Math.ceil((Date.now() - started.getTime()) / DAY_MS),
+	);
+	const date = started.toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric",
+		timeZone: clubTimeZone,
+	});
+	return `Started ${date} · finishing today makes it ${days} ${days === 1 ? "day" : "days"}.`;
+}
+
 export function BookMarkReadDialog({
 	bookSlug,
 	bookTitle,
@@ -78,6 +109,9 @@ export function BookMarkReadDialog({
 		useState<FeedbackRatingStep | null>(null);
 	const [feedbackReview, setFeedbackReview] = useState("");
 	const [reviewOpen, setReviewOpen] = useState(false);
+	const [shareToFeed, setShareToFeed] = useState(false);
+	/** What to do once the save lands (the dialog is already closed by then). */
+	const shareRef = useRef<{ text: string } | null>(null);
 	/** Fill the form from the server once per opening, so a refetch never wipes typing. */
 	const initializedRef = useRef(false);
 	const reviewBlockRef = useRef<HTMLDivElement>(null);
@@ -99,6 +133,11 @@ export function BookMarkReadDialog({
 		...orpc.book.getBookBySlug.queryOptions({ input: bookSlug }),
 		enabled: open,
 	});
+
+	// Reading and wishlist state: prefill the edition and explain what finishing does.
+	const readingStateQuery = useReadingState(bookSlug, open);
+	const reading = readingStateQuery.data?.reading ?? null;
+	const inWishlist = readingStateQuery.data?.inWishlist ?? false;
 
 	const currentMonth = readFinishedMonthFromClubNow(new Date(), clubTimeZone);
 
@@ -137,6 +176,7 @@ export function BookMarkReadDialog({
 			setFeedbackRating(null);
 			setFeedbackReview("");
 			setReviewOpen(false);
+			setShareToFeed(false);
 			return;
 		}
 		if (initializedRef.current || !stateQuery.data || !prefsQuery.data) {
@@ -269,11 +309,62 @@ export function BookMarkReadDialog({
 		}
 	}
 
+	/** Finishing ends the reading and clears the wishlist: show that at once. */
+	async function applyReadingOptimistically() {
+		const mineKey = orpc.reading.mine.queryKey();
+		const stateKey = orpc.reading.state.queryKey({ input: { bookSlug } });
+		await Promise.all([
+			queryClient.cancelQueries({ queryKey: mineKey }),
+			queryClient.cancelQueries({ queryKey: stateKey }),
+		]);
+		const previousMine = queryClient.getQueryData(mineKey);
+		const previousState = queryClient.getQueryData(stateKey);
+		if (previousMine) {
+			queryClient.setQueryData(mineKey, {
+				items: previousMine.items.filter((item) => item.book.slug !== bookSlug),
+			});
+		}
+		if (previousState) {
+			queryClient.setQueryData<ReadingBookState>(stateKey, {
+				...previousState,
+				hasRead: true,
+				inWishlist: false,
+				reading: null,
+				activeCount: Math.max(
+					0,
+					previousState.activeCount - (previousState.reading ? 1 : 0),
+				),
+			});
+		}
+		return { mineKey, stateKey, previousMine, previousState };
+	}
+
+	/** Posts "finished this book" with the book attached. Failing here never undoes the read. */
+	async function shareFinishedBook(text: string) {
+		try {
+			await client.post.create({
+				content: serializeRichDocument(plainTextToRichDocument(text)),
+				attachment: { kind: "book", slug: bookSlug },
+			});
+			toast.success("Shared to the feed");
+			void queryClient.invalidateQueries({
+				queryKey: orpc.post.getPostList.key(),
+			});
+		} catch (error) {
+			toast.error(
+				error instanceof Error
+					? `Marked as read, but sharing failed: ${error.message}`
+					: "Marked as read, but sharing failed.",
+			);
+		}
+	}
+
 	const saveMutation = useMutation(
 		orpc.read.setRead.mutationOptions({
 			// One save at a time per book, in click order.
 			scope: { id: `read-${bookSlug}` },
 			onMutate: async (variables) => {
+				const readingSnapshot = await applyReadingOptimistically();
 				const snapshot = await applyReadOptimistically({
 					hasRead: true,
 					readEndYear: variables.readEndYear,
@@ -284,16 +375,34 @@ export function BookMarkReadDialog({
 							: null,
 				});
 				onOpenChange(false);
-				return snapshot;
+				return { ...snapshot, readingSnapshot };
 			},
 			onError: (error, _variables, snapshot) => {
 				restoreRead(snapshot);
+				const readingSnap = snapshot?.readingSnapshot;
+				if (readingSnap) {
+					queryClient.setQueryData(
+						readingSnap.mineKey,
+						readingSnap.previousMine,
+					);
+					queryClient.setQueryData(
+						readingSnap.stateKey,
+						readingSnap.previousState,
+					);
+				}
+				shareRef.current = null;
 				toast.error(error.message || "Could not save your read");
+			},
+			onSuccess: () => {
+				const share = shareRef.current;
+				shareRef.current = null;
+				if (share) void shareFinishedBook(share.text);
 			},
 			onSettled: (_data, _error, variables) => {
 				refreshReadQueries(
 					"feedbackRating" in variables && variables.feedbackRating != null,
 				);
+				invalidateReadingQueries();
 			},
 		}),
 	);
@@ -384,9 +493,31 @@ export function BookMarkReadDialog({
 			return;
 		}
 
+		// A new read keeps the edition the member was reading.
+		const editionFields =
+			!hasRead && reading?.edition
+				? reading.edition.kind === "member"
+					? { bookEditionId: reading.edition.memberEditionId }
+					: { editionId: reading.edition.olid }
+				: {};
+
+		if (shareToFeed && !hasRead) {
+			const authors = book ? formatBookAuthors(book.authors) : null;
+			const rating =
+				offerFeedback && hasRating && feedbackRating != null
+					? ` Rated ${feedbackRating.toFixed(1)} out of 5.`
+					: "";
+			shareRef.current = {
+				text: `Finished reading ${bookTitle}${authors ? ` by ${authors}` : ""}.${rating}`,
+			};
+		} else {
+			shareRef.current = null;
+		}
+
 		saveMutation.mutate({
 			bookSlug,
 			...finish,
+			...editionFields,
 			...(offerFeedback && hasRating
 				? {
 						feedbackRating,
@@ -447,6 +578,26 @@ export function BookMarkReadDialog({
 					</DialogHeader>
 
 					<div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-5">
+						{reading && !hasRead ? (
+							<section
+								className="flex flex-col gap-1.5 border border-border bg-muted/30 p-3 text-sm"
+								aria-label="Your reading"
+							>
+								<p className="flex items-center gap-2 font-medium">
+									<BookOpen className="size-4" aria-hidden />
+									{reading.edition?.label ?? "Your reading"}
+								</p>
+								<p className="text-muted-foreground text-xs leading-relaxed">
+									{readingSummary(reading.startedAt)}
+									{inWishlist ? " It will leave your wishlist." : ""}
+								</p>
+							</section>
+						) : inWishlist && !hasRead ? (
+							<p className="border border-border bg-muted/30 p-3 text-muted-foreground text-xs">
+								Marking it read removes it from your wishlist.
+							</p>
+						) : null}
+
 						<section
 							className="flex flex-col gap-3"
 							aria-labelledby="read-when"
@@ -652,6 +803,26 @@ export function BookMarkReadDialog({
 							</p>
 						) : null}
 					</div>
+
+					{!hasRead ? (
+						<label
+							htmlFor="read-share-feed"
+							className="flex cursor-pointer items-start gap-3 border-border border-t px-5 py-3"
+						>
+							<Checkbox
+								id="read-share-feed"
+								checked={shareToFeed}
+								onCheckedChange={(checked) => setShareToFeed(checked === true)}
+								className="mt-0.5"
+							/>
+							<span className="flex flex-col gap-0.5">
+								<span className="font-medium text-sm">Share to the feed</span>
+								<span className="text-muted-foreground text-xs">
+									Posts that you finished this book, with the book attached.
+								</span>
+							</span>
+						</label>
+					) : null}
 
 					<div className="flex items-center justify-between gap-2 border-border border-t bg-muted/20 p-4">
 						{hasRead ? (
