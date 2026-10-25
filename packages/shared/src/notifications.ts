@@ -26,6 +26,7 @@ export const NOTIFICATION_KINDS = [
 	"view_milestone",
 	"views_digest",
 	"reading_behind",
+	"mention",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -57,6 +58,7 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
 	view_milestone: "Your content reached a views milestone",
 	views_digest: "Your weekly views",
 	reading_behind: "You are behind your reading pace",
+	mention: "Someone mentioned you",
 };
 
 export const NOTIFICATION_KIND_GROUPS = {
@@ -82,6 +84,7 @@ export const NOTIFICATION_KIND_GROUPS = {
 		"view_milestone",
 		"views_digest",
 		"reading_behind",
+		"mention",
 	] as const satisfies readonly NotificationKind[],
 	sitting: [
 		"sitting_poll_started",
@@ -100,6 +103,7 @@ export const NOTIFICATION_KIND_GROUPS = {
 export const NOTIFICATION_KINDS_PUSH_ENABLED_BY_DEFAULT = [
 	"book_added_to_library",
 	"comment_on_your_post",
+	"mention",
 	"reply_to_your_comment",
 	"shelf_invitation",
 	"sitting_invitation",

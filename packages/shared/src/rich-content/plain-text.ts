@@ -11,7 +11,7 @@ function inlinePlainText(inline: RichInline[]): string {
 				out += node.label;
 				break;
 			case "mention":
-				out += `@${node.username}`;
+				out += `@${node.name?.trim() || node.username}`;
 				break;
 			default: {
 				const _exhaustive: never = node;
