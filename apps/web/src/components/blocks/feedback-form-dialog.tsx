@@ -209,6 +209,7 @@ export function FeedbackFormDialog({
 	const pending = false;
 
 	function handleSubmit() {
+		if (createMutation.isPending || updateMutation.isPending) return;
 		const plain = contentPlainText(review).trim();
 		if (plain.length > FEEDBACK_REVIEW_MAX_PLAIN) {
 			toast.error(
@@ -271,6 +272,7 @@ export function FeedbackFormDialog({
 								id="feedback-dialog-review"
 								value={review}
 								onChange={setReview}
+								onSubmitShortcut={handleSubmit}
 								maxPlainLength={FEEDBACK_REVIEW_MAX_PLAIN}
 								minHeightClassName="min-h-[6rem]"
 								placeholder="What did you think of the book? (optional)"

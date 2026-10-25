@@ -42,6 +42,8 @@ import {
 } from "@/components/blocks/post-settings-fields";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { uploadImageForEntity } from "@/components/blocks/single-image-upload-field";
+import { SubmitShortcutHint } from "@/components/blocks/submit-shortcut-hint";
+import { ToolButton } from "@/components/blocks/tool-button";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { authClient } from "@/lib/auth-client";
 import {
@@ -52,44 +54,6 @@ import {
 } from "@/lib/optimistic/infinite-lists";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
-
-type ToolButtonProps = {
-	icon: React.ReactNode;
-	label: string;
-	active?: boolean;
-	disabled?: boolean;
-	reason?: string;
-	onClick: () => void;
-};
-
-/** An icon button in the composer's toolbar. Greyed out with a reason when another one is in use. */
-function ToolButton({
-	icon,
-	label,
-	active,
-	disabled,
-	reason,
-	onClick,
-}: ToolButtonProps) {
-	return (
-		<button
-			type="button"
-			aria-pressed={active}
-			aria-label={label}
-			disabled={disabled}
-			title={disabled ? reason : label}
-			onClick={onClick}
-			className={cn(
-				"grid size-9 place-items-center border transition-colors focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-40",
-				active
-					? "border-foreground bg-foreground text-background"
-					: "border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-			)}
-		>
-			{icon}
-		</button>
-	);
-}
 
 type ComposePostDialogProps = {
 	open: boolean;
@@ -265,6 +229,7 @@ export function ComposePostDialog({
 	);
 
 	function submit() {
+		if (createMutation.isPending) return;
 		if (plain.length < 1) {
 			toast.error("Write something first.");
 			return;
@@ -344,6 +309,7 @@ export function ComposePostDialog({
 							id="compose-post-content"
 							value={content}
 							onChange={setContent}
+							onSubmitShortcut={submit}
 							disabled={false}
 							placeholder={
 								pollOn
@@ -434,6 +400,7 @@ export function ComposePostDialog({
 								<span className="hidden text-muted-foreground text-xs tabular-nums sm:inline">
 									{plain.length > 0 ? `${plain.length}/5000` : ""}
 								</span>
+								<SubmitShortcutHint />
 								<LoadingButton
 									type="submit"
 									loading={false}

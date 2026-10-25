@@ -7,13 +7,18 @@ import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
-import { Pencil, Trash2 } from "lucide-react";
+import { ImagePlus, Pencil, Trash2 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CommentLikeEngagement } from "@/components/blocks/comment-like-engagement";
+import { FullWidthImagePreview } from "@/components/blocks/full-width-image-preview";
 import { RemoveMyMentionMenu } from "@/components/blocks/mention/remove-my-mention";
+import {
+	PendingImageAttachment,
+	usePendingImageInput,
+} from "@/components/blocks/pending-image-attachment";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import {
@@ -21,8 +26,10 @@ import {
 	ResourceShareMenu,
 } from "@/components/blocks/resource-share-menu";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
-import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
+import { uploadImageForEntity } from "@/components/blocks/single-image-upload-field";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
+import { SubmitShortcutHint } from "@/components/blocks/submit-shortcut-hint";
+import { ToolButton } from "@/components/blocks/tool-button";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
@@ -144,68 +151,129 @@ function CommentEditForm({
 	feedbackSlug?: string;
 }) {
 	const [draft, setDraft] = useState(comment.content);
+	// Picture changes wait for Save; Cancel throws them away.
+	const [imageFile, setImageFile] = useState<File | null>(null);
+	const [removeImage, setRemoveImage] = useState(false);
+	const [savingImage, setSavingImage] = useState(false);
+	const imageInput = usePendingImageInput(
+		(file) => {
+			setImageFile(file);
+			if (file) setRemoveImage(false);
+		},
+		{ variant: "comment" },
+	);
+
+	const textChanged = draft !== comment.content;
+	const keptImageUrl = removeImage ? null : comment.imageUrl;
 
 	const updateMutation = useMutation(
 		orpc.comment.update.mutationOptions({
-			onSuccess: async () => {
-				toast.success("Comment updated.");
-				await invalidateCommentQueries();
-				onCancel();
-			},
 			onError: (error) => toast.error(error.message),
 		}),
 	);
+	const busy = updateMutation.isPending || savingImage;
+
+	async function save() {
+		if (busy) return;
+		const plain = contentPlainText(draft).trim();
+		if (plain.length < 1) {
+			toast.error("Comment must be at least 1 character long");
+			return;
+		}
+		if (plain.length > 5000) {
+			toast.error("Comment must be at most 5000 characters");
+			return;
+		}
+
+		try {
+			if (textChanged) {
+				await updateMutation.mutateAsync({
+					slug: comment.slug,
+					content: draft,
+				});
+			}
+		} catch {
+			return; // the mutation already showed the error
+		}
+
+		setSavingImage(true);
+		try {
+			if (imageFile) {
+				await uploadImageForEntity(imageFile, {
+					target: "comment-image",
+					commentSlug: comment.slug,
+				});
+			} else if (removeImage && comment.imageUrl) {
+				await orpc.storage.removeCommentImage.call({
+					commentSlug: comment.slug,
+				});
+			}
+		} catch (error) {
+			toast.error(
+				error instanceof Error
+					? error.message
+					: "The text was saved, but the image could not be updated.",
+			);
+			setSavingImage(false);
+			await invalidateCommentQueries();
+			return;
+		}
+		toast.success("Comment updated.");
+		await invalidateCommentQueries();
+		setSavingImage(false);
+		onCancel();
+	}
 
 	return (
 		<form
 			className="flex flex-col gap-3"
 			onSubmit={(event) => {
 				event.preventDefault();
-
-				const plain = contentPlainText(draft).trim();
-				if (plain.length < 1) {
-					toast.error("Comment must be at least 1 character long");
-					return;
-				}
-				if (plain.length > 5000) {
-					toast.error("Comment must be at most 5000 characters");
-					return;
-				}
-
-				updateMutation.mutate({
-					slug: comment.slug,
-					content: draft,
-				});
+				void save();
 			}}
 		>
+			{imageInput.input}
+			{imageInput.cropDialog}
 			<RichTextEditor
 				instanceKey={comment.slug}
 				mentionContext={{ postSlug, feedbackSlug }}
 				value={draft}
 				onChange={setDraft}
-				disabled={updateMutation.isPending}
+				onSubmitShortcut={() => void save()}
+				disabled={busy}
 			/>
-			<SingleImageUploadField
-				label="Comment image"
-				currentUrl={comment.imageUrl}
-				uploadTarget={{
-					target: "comment-image",
-					commentSlug: comment.slug,
-				}}
-				onRemove={async () => {
-					await orpc.storage.removeCommentImage.call({
-						commentSlug: comment.slug,
-					});
-				}}
-				onSuccess={async () => {
-					await invalidateCommentQueries();
-				}}
-			/>
-			<div className="flex flex-wrap gap-2">
+			{imageFile ? (
+				<PendingImageAttachment
+					variant="comment"
+					file={imageFile}
+					onFileChange={setImageFile}
+					disabled={busy}
+					inputRef={imageInput.inputRef}
+				/>
+			) : keptImageUrl ? (
+				<FullWidthImagePreview
+					src={keptImageUrl}
+					alt="Comment image"
+					compact
+					bleed={false}
+					disabled={busy}
+					onReplace={imageInput.openPicker}
+					onRemove={() => setRemoveImage(true)}
+				/>
+			) : null}
+			<div className="flex flex-wrap items-center gap-2">
+				<ToolButton
+					className="-ms-2"
+					icon={<ImagePlus className="size-[18px]" aria-hidden />}
+					label={keptImageUrl || imageFile ? "Change photo" : "Add a photo"}
+					active={imageFile != null || keptImageUrl != null}
+					disabled={busy}
+					onClick={imageInput.openPicker}
+				/>
 				<LoadingButton
 					type="submit"
 					size="sm"
-					loading={updateMutation.isPending}
+					loading={busy}
 					disabled={contentPlainText(draft).trim().length < 1}
 				>
 					Save
@@ -214,11 +282,12 @@ function CommentEditForm({
 					type="button"
 					size="sm"
 					variant="outline"
-					disabled={updateMutation.isPending}
+					disabled={busy}
 					onClick={onCancel}
 				>
 					Cancel
 				</Button>
+				<SubmitShortcutHint verb="save" />
 			</div>
 		</form>
 	);

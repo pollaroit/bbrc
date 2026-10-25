@@ -12,10 +12,13 @@ import {
 	MentionResolveOutputSchema,
 	MentionSearchInputSchema,
 	MentionSearchOutputSchema,
+	MentionTargetInputSchema,
+	MentionTargetOutputSchema,
 	OkSchema,
 	SetMentionPreferencesInputSchema,
 } from "./mention.schema";
 import {
+	findMentionTarget,
 	findViewerMentions,
 	getMentionPreferences,
 	listMyMentions,
@@ -34,6 +37,16 @@ export const mentionRouter = {
 				context.db,
 				{ id: context.session.user.id },
 				input,
+			),
+		})),
+	target: notBannedProcedure
+		.input(MentionTargetInputSchema)
+		.output(MentionTargetOutputSchema)
+		.handler(async ({ input, context }) => ({
+			member: await findMentionTarget(
+				context.db,
+				{ id: context.session.user.id },
+				input.username,
 			),
 		})),
 	resolve: publicProcedure

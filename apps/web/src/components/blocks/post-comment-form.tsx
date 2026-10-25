@@ -7,6 +7,7 @@ import { Field, FieldLabel } from "@bbrc/ui/components/field";
 import { Label } from "@bbrc/ui/components/label";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
+import { ImagePlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -16,6 +17,8 @@ import {
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { SignInLink } from "@/components/blocks/sign-in-link";
 import { uploadImageForEntity } from "@/components/blocks/single-image-upload-field";
+import { SubmitShortcutHint } from "@/components/blocks/submit-shortcut-hint";
+import { ToolButton } from "@/components/blocks/tool-button";
 import { authClient } from "@/lib/auth-client";
 import {
 	createPendingSlug,
@@ -110,26 +113,18 @@ export function PostCommentForm({
 
 	// A reply starts with a mention of the person it answers, which the writer can delete
 	// like any mention. Nothing is added for your own comment, or for someone who does not
-	// allow mentions (the picker search leaves them out, so no match means no prefill).
+	// allow mentions (no match means no prefill). Looked up by exact username: the picker
+	// search is capped at five rows, so it could miss them.
 	useEffect(() => {
 		if (!replyToUsername || restoredDraft || sessionPending) return;
 		if (session?.user.username === replyToUsername) return;
 		let cancelled = false;
 		void client.mention
-			.search({
-				query: replyToUsername,
-				...(postSlug || feedbackSlug
-					? { context: { postSlug, feedbackSlug } }
-					: {}),
-			})
-			.then(({ items }) => {
-				const match = items.find(
-					(item) =>
-						item.username.toLowerCase() === replyToUsername.toLowerCase(),
-				);
+			.target({ username: replyToUsername })
+			.then(({ member: match }) => {
 				if (cancelled || !match) return;
 				setContent((current) =>
-					current.trim()
+					contentPlainText(current).trim()
 						? current
 						: serializeRichDocument({
 								v: 1,
@@ -154,14 +149,7 @@ export function PostCommentForm({
 		return () => {
 			cancelled = true;
 		};
-	}, [
-		replyToUsername,
-		restoredDraft,
-		session?.user.username,
-		sessionPending,
-		postSlug,
-		feedbackSlug,
-	]);
+	}, [replyToUsername, restoredDraft, session?.user.username, sessionPending]);
 
 	useEffect(() => {
 		if (parentSlug || replyToUsername || autoFocus) {
@@ -398,6 +386,7 @@ export function PostCommentForm({
 	);
 
 	function submitComment() {
+		if (createMutation.isPending) return;
 		const plain = contentPlainText(content).trim();
 		if (plain.length < 1) {
 			toast.error("Comment must be at least 1 character long");
@@ -488,7 +477,15 @@ export function PostCommentForm({
 				/>
 			</Field>
 
-			<div className="flex items-center gap-2">
+			<div className="-ms-2 flex items-center gap-2">
+				<ToolButton
+					icon={<ImagePlus className="size-[18px]" aria-hidden />}
+					label={imageFile ? "Change photo" : "Add a photo"}
+					active={imageFile != null}
+					disabled={isPending}
+					onClick={imageInput.openPicker}
+				/>
+				<span className="h-5 w-px bg-border" aria-hidden />
 				<Checkbox
 					id={`${fieldId}-spoiler`}
 					checked={isSpoiler}
@@ -518,6 +515,7 @@ export function PostCommentForm({
 				>
 					{parentSlug ? "Post reply" : "Post comment"}
 				</LoadingButton>
+				<SubmitShortcutHint />
 				{onCancelReply ? (
 					<Button
 						type="button"

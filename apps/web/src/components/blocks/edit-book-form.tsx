@@ -7,6 +7,7 @@ import { Button } from "@bbrc/ui/components/button";
 import {
 	Field,
 	FieldDescription,
+	FieldError,
 	FieldGroup,
 	FieldLegend,
 } from "@bbrc/ui/components/field";
@@ -62,6 +63,8 @@ import {
 	bookToSeriesSelection,
 	buildSeriesUpdate,
 	EditBookFormSchema,
+	editFormProblems,
+	editFormToast,
 	isCoverChanged,
 	isSeriesChanged,
 	toUpdateBookInput,
@@ -125,6 +128,10 @@ export function EditBookForm({ book }: EditBookFormProps) {
 
 	const [helpOpen, setHelpOpen] = useState(false);
 	const [leaveOpen, setLeaveOpen] = useState(false);
+	const [openRequest, setOpenRequest] = useState<{
+		id: string;
+		nonce: number;
+	} | null>(null);
 	const savedRef = useRef(false);
 
 	const title = form.watch("title");
@@ -223,8 +230,32 @@ export function EditBookForm({ book }: EditBookFormProps) {
 				),
 			);
 		},
-		() => {
-			toast.error("Fix the highlighted fields and try again.");
+		(errors) => {
+			// Say exactly what is wrong, open that section and move to the field.
+			const problems = editFormProblems(errors);
+			toast.error(editFormToast(problems));
+			const first = problems[0];
+			if (!first) return;
+			setOpenRequest((current) => ({
+				id: first.section,
+				nonce: (current?.nonce ?? 0) + 1,
+			}));
+			window.setTimeout(() => {
+				const target = document.getElementById(first.field);
+				const holder =
+					target ??
+					document.getElementById(first.field === "subjects" ? "subjects" : "");
+				const focusable =
+					target instanceof HTMLElement &&
+					["INPUT", "TEXTAREA", "BUTTON", "SELECT"].includes(target.tagName)
+						? target
+						: holder?.querySelector<HTMLElement>("input, textarea, button");
+				focusable?.focus({ preventScroll: true });
+				(focusable ?? holder)?.scrollIntoView({
+					behavior: "smooth",
+					block: "center",
+				});
+			}, 350);
 		},
 	);
 
@@ -277,6 +308,7 @@ export function EditBookForm({ book }: EditBookFormProps) {
 	return (
 		<form onSubmit={onSubmit} noValidate className="pb-24">
 			<BookWorkspace
+				openRequest={openRequest}
 				header={<EditHotkeyBar onOpenHelp={() => setHelpOpen(true)} />}
 				preview={preview}
 				sections={[
@@ -309,8 +341,11 @@ export function EditBookForm({ book }: EditBookFormProps) {
 						status:
 							errors.title ||
 							errors.authorsText ||
+							errors.excerpt ||
 							errors.pages ||
-							errors.publishedIn
+							errors.publishedIn ||
+							errors.openLibraryRating ||
+							errors.averageRating
 								? "attention"
 								: undefined,
 						summary: [authors.join(", "), pages ? `${pages} pages` : null]
@@ -512,6 +547,10 @@ export function EditBookForm({ book }: EditBookFormProps) {
 						title: "Classification",
 						description:
 							"Reading status, subjects and where the book comes from.",
+						status:
+							errors.status || errors.subjects || errors.countries
+								? "attention"
+								: undefined,
 						summary: `${bookStatusFilterLabels[status]}${subjects.length ? ` · ${subjects.length} subjects` : ""}`,
 						content: (
 							<FieldGroup>
@@ -541,7 +580,10 @@ export function EditBookForm({ book }: EditBookFormProps) {
 								<BookSubjectsField
 									value={subjects}
 									onChange={(next) =>
-										form.setValue("subjects", next, { shouldDirty: true })
+										form.setValue("subjects", next, {
+											shouldDirty: true,
+											shouldValidate: true,
+										})
 									}
 									suggest={
 										<SuggestSubjectsButton
@@ -556,11 +598,19 @@ export function EditBookForm({ book }: EditBookFormProps) {
 										/>
 									}
 								/>
+								{errors.subjects?.message ? (
+									<FieldError>{errors.subjects.message}</FieldError>
+								) : null}
 
 								<BookOriginCountriesField
 									value={countriesField.field.value}
 									onChange={countriesField.field.onChange}
 								/>
+								{errors.countries?.message ? (
+									<FieldError id="countries">
+										{errors.countries.message}
+									</FieldError>
+								) : null}
 							</FieldGroup>
 						),
 					},

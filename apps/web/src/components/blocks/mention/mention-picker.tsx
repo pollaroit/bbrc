@@ -151,7 +151,14 @@ export function MentionPicker({
 			);
 			return true;
 		}
+		if (event.key === "Home" || event.key === "End") {
+			if (mode === "replace" || items.length === 0) return false;
+			setActive(event.key === "Home" ? 0 : items.length - 1);
+			return true;
+		}
 		if (event.key === "Enter" || event.key === "Tab") {
+			// While the list is still loading, Enter must not fall through to a new line.
+			if (search.isPending) return true;
 			const candidate = items[active];
 			if (!candidate) return false;
 			pick(candidate);
@@ -165,6 +172,14 @@ export function MentionPicker({
 	};
 	const handleKeyRef = useRef(handleKey);
 	handleKeyRef.current = handleKey;
+
+	// Keep the highlighted row visible while arrowing through a long list.
+	useEffect(() => {
+		if (!request) return;
+		document
+			.getElementById(`${listId}-${active}`)
+			?.scrollIntoView({ block: "nearest" });
+	}, [active, request, listId]);
 
 	useEffect(() => {
 		if (!request) return;
@@ -253,7 +268,7 @@ export function MentionPicker({
 								role="option"
 								tabIndex={-1}
 								aria-selected={index === active}
-								onMouseEnter={() => setActive(index)}
+								onMouseMove={() => setActive(index)}
 								onClick={() => pick(candidate)}
 								onKeyDown={(event) => {
 									if (event.key === "Enter" || event.key === " ") {

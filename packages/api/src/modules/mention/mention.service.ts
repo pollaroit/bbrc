@@ -410,6 +410,26 @@ export async function searchMentionCandidates(
 	return picked;
 }
 
+/** A member to mention by exact username, or null when they cannot be mentioned. */
+export async function findMentionTarget(
+	db: Database,
+	viewer: Viewer,
+	username: string,
+) {
+	const user = await db.user.findFirst({
+		where: {
+			username: { equals: username, mode: "insensitive" },
+			id: { not: viewer.id },
+			allowMentions: true,
+			...visibleMemberWhere,
+		},
+		select: { id: true, username: true, name: true },
+	});
+	return user
+		? { id: user.id, username: user.username, name: user.name }
+		: null;
+}
+
 export async function resolveMentionProfiles(
 	db: Database,
 	ids: string[],

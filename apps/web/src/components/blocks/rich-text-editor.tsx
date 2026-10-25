@@ -309,7 +309,8 @@ export function RichTextEditor({
 					? [
 							Mention.configure({
 								onPicker: setMentionRequest,
-								keyHandler: mentionKeyHandler,
+								handleKey: (event) =>
+									mentionKeyHandler.current?.(event) ?? false,
 							}),
 						]
 					: []),
@@ -322,7 +323,9 @@ export function RichTextEditor({
 					if (
 						event.key === "Enter" &&
 						(event.metaKey || event.ctrlKey) &&
-						onSubmitShortcutRef.current
+						onSubmitShortcutRef.current &&
+						// Enter belongs to the mention list while it is open.
+						!mentionKeyHandler.current
 					) {
 						event.preventDefault();
 						onSubmitShortcutRef.current();

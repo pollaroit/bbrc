@@ -4,6 +4,7 @@ import { z } from "zod";
  * Mentions ("@Jon Doe") in posts, comments and reviews.
  *
  * - `mention.search`      the picker: 5 people, smart when nothing is typed.
+ * - `mention.target`      the member a reply answers, by exact username (never cut off by the picker's limit).
  * - `mention.resolve`     current name/username/photo for mention ids (to show the CURRENT name).
  * - `mention.mine`        "Mentions" page: where I was mentioned.
  * - `mention.remove`      "Remove my mention": turns a mention of me into plain text.
@@ -38,6 +39,15 @@ export type MentionCandidate = z.infer<typeof MentionCandidateSchema>;
 
 export const MentionSearchOutputSchema = z.object({
 	items: z.array(MentionCandidateSchema).max(MENTION_PICKER_LIMIT),
+});
+
+export const MentionTargetInputSchema = z.object({
+	username: z.string().trim().min(1).max(60),
+});
+export const MentionTargetOutputSchema = z.object({
+	member: z
+		.object({ id: z.string(), username: z.string(), name: z.string() })
+		.nullable(),
 });
 
 export const MentionResolveInputSchema = z.object({

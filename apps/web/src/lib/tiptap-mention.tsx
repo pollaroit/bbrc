@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
  *   hover, removed whole by one Backspace or Delete, and clicking it opens the
  *   picker again to swap the person.
  * - The editor only reports what the picker should show (`onPicker`); the picker
- *   itself lives in React next to the editor and answers keys through `keyHandler`.
+ *   itself lives in React next to the editor and answers keys through `handleKey`.
  */
 
 export type MentionPick = {
@@ -43,7 +43,8 @@ export type MentionPickerRequest = {
 export type MentionExtensionOptions = {
 	onPicker: (request: MentionPickerRequest | null) => void;
 	/** The picker puts its key handler here; returns true when it used the key. */
-	keyHandler: { current: ((event: KeyboardEvent) => boolean) | null };
+	/** A function, not a ref object: TipTap deep-clones plain-object options. */
+	handleKey: (event: KeyboardEvent) => boolean;
 };
 
 function MentionNodeView({ node, extension, editor, getPos }: NodeViewProps) {
@@ -109,7 +110,7 @@ export const Mention = Node.create<MentionExtensionOptions>({
 	addOptions() {
 		return {
 			onPicker: () => {},
-			keyHandler: { current: null },
+			handleKey: () => false,
 		};
 	},
 
@@ -228,8 +229,7 @@ export const Mention = Node.create<MentionExtensionOptions>({
 						onStart: show,
 						onUpdate: show,
 						onExit: () => options.onPicker(null),
-						onKeyDown: ({ event }) =>
-							options.keyHandler.current?.(event) ?? false,
+						onKeyDown: ({ event }) => options.handleKey(event),
 					};
 				},
 			}),
