@@ -816,3 +816,12 @@ export async function getDiscoverLane(
 	}
 	return result;
 }
+
+/** Block or unblock changes what may be suggested, so cached lanes are dropped. */
+export async function invalidateDiscoverLanes(db: Database) {
+	await db.bookDiscoverCache.deleteMany({
+		where: {
+			OR: [{ key: { startsWith: "lane:" } }, { key: { startsWith: "ai:" } }],
+		},
+	});
+}

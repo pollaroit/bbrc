@@ -1,6 +1,7 @@
 import { BookSchema } from "@bbrc/schemas";
 import {
 	adminProcedure,
+	notBannedProcedure,
 	protectedProcedure,
 	publicProcedure,
 } from "../../procedures";
@@ -9,6 +10,7 @@ import {
 	revalidateFeedsIsr,
 	revalidateSeriesIsr,
 } from "../../revalidate-isr";
+import { invalidateDiscoverLanes } from "../book-discover/book-discover.service";
 import {
 	AddBookInputSchema,
 	AddBookOutputSchema,
@@ -56,18 +58,8 @@ import {
 	SuggestBookOriginCountriesOutputSchema,
 } from "./book-origin.schema";
 import { suggestBookOriginCountries } from "./book-origin.service";
-import {
-	ListCatalogOlidsOutputSchema,
-	RecommendOpenLibraryBooksOutputSchema,
-	RecommendOpenLibraryReplaceInputSchema,
-	RecommendOpenLibraryReplaceOutputSchema,
-} from "./book-recommendation.schema";
-import {
-	invalidateRecommendationCache,
-	listCatalogOlids,
-	recommendOpenLibraryBooks,
-	replaceBookRecommendation,
-} from "./book-recommendation.service";
+import { ListCatalogOlidsOutputSchema } from "./book-recommendation.schema";
+import { listCatalogOlids } from "./book-recommendation.service";
 import {
 	BlockOpenLibraryWorkInputSchema,
 	ListBlockedOpenLibraryWorksOutputSchema,
@@ -213,16 +205,8 @@ export const bookRouter = {
 			revalidateFeedsIsr(context);
 			return slug;
 		}),
-	recommendOpenLibrary: adminProcedure
-		.output(RecommendOpenLibraryBooksOutputSchema)
-		.handler(async ({ context }) => recommendOpenLibraryBooks(context.db)),
-	recommendOpenLibraryReplace: adminProcedure
-		.input(RecommendOpenLibraryReplaceInputSchema)
-		.output(RecommendOpenLibraryReplaceOutputSchema)
-		.handler(async ({ input, context }) => ({
-			item: await replaceBookRecommendation(context.db, input),
-		})),
-	listCatalogOlids: adminProcedure
+	// Public information (the catalog), and members need it to see what is already in the library.
+	listCatalogOlids: notBannedProcedure
 		.output(ListCatalogOlidsOutputSchema)
 		.handler(async ({ context }) => ({
 			olids: await listCatalogOlids(context.db),
@@ -239,7 +223,7 @@ export const bookRouter = {
 				context.session.user.id,
 				context.db,
 			);
-			invalidateRecommendationCache();
+			await invalidateDiscoverLanes(context.db);
 			return result;
 		}),
 	unblockOpenLibraryWork: adminProcedure
@@ -247,7 +231,7 @@ export const bookRouter = {
 		.output(OpenLibraryOlidResultSchema)
 		.handler(async ({ input, context }) => {
 			const result = await unblockOpenLibraryWork(input.olid, context.db);
-			invalidateRecommendationCache();
+			await invalidateDiscoverLanes(context.db);
 			return result;
 		}),
 };
