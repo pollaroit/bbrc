@@ -1,4 +1,5 @@
 import {
+	formatEditionLanguage,
 	openLibraryEditionKeyToOlid,
 	openLibraryEditionPageUrl,
 	openLibraryWorkKeyToOlid,
@@ -107,8 +108,7 @@ export function openLibraryLanguageLabels(languageKeys: string[]): string[] {
 
 	for (const key of languageKeys) {
 		const label =
-			LANGUAGE_LABELS[key] ??
-			(key.split("/").pop()?.toUpperCase() || key.trim());
+			LANGUAGE_LABELS[key] ?? (formatEditionLanguage(key) || key.trim());
 		const dedupe = label.toLowerCase();
 		if (!dedupe || seen.has(dedupe)) {
 			continue;

@@ -1,5 +1,6 @@
 import { OngoingSittingBanner } from "@/components/blocks/ongoing-sitting-banner";
 import { PostFeed } from "@/components/blocks/post-feed";
+import { HomeReadingCards } from "@/components/blocks/reading/home-reading-cards";
 import { TrendingStrip } from "@/components/blocks/trending-strip";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { loadOngoingSittingForIsr } from "@/lib/isr-data";
@@ -34,6 +35,8 @@ export default async function HomePage() {
 					Club activity and the current sitting at a glance.
 				</p>
 			</div>
+
+			<HomeReadingCards />
 
 			{ongoing ? <OngoingSittingBanner sitting={ongoing} /> : null}
 

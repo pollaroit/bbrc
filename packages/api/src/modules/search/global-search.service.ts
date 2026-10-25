@@ -7,6 +7,7 @@ import {
 	goalScopeFromStored,
 	richContentPreview,
 } from "@bbrc/shared";
+import { visibleShelfWhere } from "../shelf/shelf-visibility";
 import type {
 	GlobalSearchHit,
 	GlobalSearchHitType,
@@ -27,6 +28,8 @@ type SearchContext = {
 	db: Database;
 	query: string;
 	isAdmin: boolean;
+	/** The signed-in member, so their own private shelves can be found. */
+	viewerId?: string;
 	limit: number;
 };
 
@@ -296,14 +299,22 @@ async function searchComments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 async function searchShelves(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.shelf.findMany({
 		where: {
-			status: "active",
-			user: { isHidden: false },
-			OR: [
-				{ title: containsQuery(ctx.query) },
-				{ slug: containsQuery(ctx.query) },
-				{ description: containsQuery(ctx.query) },
-				{ user: { name: containsQuery(ctx.query) } },
-				{ user: { username: containsQuery(ctx.query) } },
+			// Private shelves only turn up for their owner and collaborators; the
+			// Wishlist has its own page and is never listed here.
+			isWishlist: false,
+			AND: [
+				visibleShelfWhere(
+					ctx.viewerId ? { userId: ctx.viewerId, isAdmin: ctx.isAdmin } : null,
+				),
+				{
+					OR: [
+						{ title: containsQuery(ctx.query) },
+						{ slug: containsQuery(ctx.query) },
+						{ description: containsQuery(ctx.query) },
+						{ user: { name: containsQuery(ctx.query) } },
+						{ user: { username: containsQuery(ctx.query) } },
+					],
+				},
 			],
 		},
 		orderBy: [{ updatedAt: "desc" }, { slug: "desc" }],
@@ -533,6 +544,7 @@ export async function globalSearch(
 	input: GlobalSearchInput,
 	db: Database,
 	isAdmin: boolean,
+	viewerId?: string,
 ): Promise<GlobalSearchOutput> {
 	const types = input.types ?? globalSearchHitTypes;
 	const narrowed = input.types != null && input.types.length === 1;
@@ -540,6 +552,7 @@ export async function globalSearch(
 		db,
 		query: input.query,
 		isAdmin,
+		viewerId,
 		limit: narrowed ? GLOBAL_SEARCH_NARROW_LIMIT : GLOBAL_SEARCH_PER_TYPE_LIMIT,
 	};
 

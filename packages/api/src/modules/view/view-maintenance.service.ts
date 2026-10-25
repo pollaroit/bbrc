@@ -7,6 +7,7 @@ import {
 	VIEW_RETENTION_DAYS,
 } from "@bbrc/shared";
 import { dispatchNotification } from "../notification/notification.service";
+import { reconcileBookReadingCounters } from "../reading/book-reading-counters";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -211,7 +212,9 @@ export async function sweepViews(db: Database) {
 		console.error("view cleanup failed", error);
 	}
 	try {
-		result.reconciled = await reconcileViewCounters(db);
+		result.reconciled =
+			(await reconcileViewCounters(db)) +
+			(await reconcileBookReadingCounters(db));
 	} catch (error) {
 		console.error("view counter reconcile failed", error);
 	}

@@ -2,12 +2,15 @@ import type { Database, DatabaseTransaction } from "@bbrc/db";
 import { generateUniqueSlug } from "@bbrc/shared";
 
 const SHELF_SLUG_MIN_LENGTH = 3;
+const RESERVED_WISHLIST_SLUG = "wishlist";
 
 async function isShelfSlugAvailable(
 	userId: string,
 	slug: string,
 	db: Database | DatabaseTransaction,
 ): Promise<boolean> {
+	// "wishlist" belongs to the member's Wishlist shelf.
+	if (slug === RESERVED_WISHLIST_SLUG) return false;
 	const existing = await db.shelf.findUnique({
 		where: { userId_slug: { userId, slug } },
 		select: { id: true },

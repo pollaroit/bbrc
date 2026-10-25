@@ -11,6 +11,11 @@ export const globalSearchRouter = {
 		.output(GlobalSearchOutputSchema)
 		.handler(async ({ input, context }) => {
 			const isAdmin = context.session?.user?.isAdmin === true;
-			return globalSearch(input, context.db, isAdmin);
+			return globalSearch(
+				input,
+				context.db,
+				isAdmin,
+				context.session?.user?.id,
+			);
 		}),
 };

@@ -68,6 +68,22 @@ export function buildBookListWhere(
 		});
 	}
 
+	if (viewerUserId && input.viewerWishlist) {
+		viewerFragments.push({
+			shelfBooks: {
+				some: { shelf: { userId: viewerUserId, isWishlist: true } },
+			},
+		});
+	}
+
+	if (viewerUserId && input.viewerReading) {
+		viewerFragments.push({
+			readings: {
+				some: { userId: viewerUserId, finishedAt: null },
+			},
+		});
+	}
+
 	return mergeWhereFragments<Prisma.BookWhereInput>(
 		ranging.use(),
 		searchWhere,

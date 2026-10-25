@@ -49,7 +49,12 @@ import {
 } from "@/lib/listing/books-listing";
 import { cn } from "@/lib/utils";
 
-const viewerFilterKeys = ["viewerFavorite", "viewerReviewed"] as const;
+const viewerFilterKeys = [
+	"viewerFavorite",
+	"viewerReviewed",
+	"viewerWishlist",
+	"viewerReading",
+] as const;
 
 function viewerReadFilterLabel(value: ViewerReadFilter | null | undefined) {
 	if (value === "read") {

@@ -11,6 +11,7 @@ import {
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { mapBookSeriesSummary } from "../series/series.service";
+import { publicShelfWhere } from "../shelf/shelf-visibility";
 import type { GetBookListOutput } from "./book.schema";
 import { getBookListFields } from "./book.schema";
 import {
@@ -22,6 +23,11 @@ import { resolveClubSittingSlug } from "./resolve-club-sitting-slug";
 const discoverySelect = {
 	...getBookListFields,
 	viewCount: true,
+	readingNowCount: true,
+	wishlistCount: true,
+	viewerCount: true,
+	createdAt: true,
+	updatedAt: true,
 	subjects: true,
 	subjectPeople: true,
 	subjectTimes: true,
@@ -42,7 +48,7 @@ const discoverySelect = {
 			documents: { where: { status: "approved" as const } },
 			reads: true,
 			feedbacks: true,
-			shelfBooks: true,
+			shelfBooks: { where: { shelf: publicShelfWhere } },
 			favorites: true,
 		},
 	},

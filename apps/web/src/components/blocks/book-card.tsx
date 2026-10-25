@@ -2,6 +2,7 @@ import type { GetBookListOutput } from "@bbrc/api/modules/book/book.schema";
 import type { LucideIcon } from "lucide-react";
 import {
 	BookCheck,
+	BookOpen,
 	Eye,
 	FileText,
 	Heart,
@@ -21,6 +22,7 @@ import {
 	bookCoverUrl,
 	formatBookSeriesCardLabel,
 } from "@/lib/book-cover";
+import { bookSortMetric } from "@/lib/books/sort-metric";
 import { cn } from "@/lib/utils";
 
 export type BookCardBook = GetBookListOutput["items"][number];
@@ -34,6 +36,8 @@ type BookCardProps = {
 	feedbackBookSlugs?: Set<string> | null;
 	/** Viewer’s club feedback rating when logged in and they reviewed this book. */
 	viewerBookRating?: number;
+	/** The list's current sort; a figure that is not on the card shows in the top strip. */
+	sortBy?: string;
 };
 
 const compactCount = new Intl.NumberFormat("en", {
@@ -183,6 +187,7 @@ export function BookCard({
 	listEngagement,
 	feedbackBookSlugs,
 	viewerBookRating,
+	sortBy,
 }: BookCardProps) {
 	const href = `/books/${book.slug}` as Route;
 	const coverSrc = bookCoverUrl(book.coverId, "M");
@@ -205,7 +210,7 @@ export function BookCard({
 				className,
 			)}
 		>
-			<BookCardStatusStrip book={book} />
+			<BookCardStatusStrip book={book} metric={bookSortMetric(book, sortBy)} />
 
 			<div className="relative flex min-h-[8.5rem] min-w-0">
 				<Link
@@ -256,10 +261,22 @@ export function BookCard({
 								</p>
 							) : null}
 
-							<p className="mt-1.5 flex items-center gap-1.5 text-muted-foreground text-xs tabular-nums">
+							<p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-muted-foreground text-xs tabular-nums">
 								<span>{book.pages} pages</span>
 								<span aria-hidden>·</span>
 								<span>{book.publishedIn}</span>
+								{book.readingNowCount > 0 ? (
+									<>
+										<span aria-hidden>·</span>
+										<span
+											className="inline-flex items-center gap-1 text-info-ink"
+											title={`${book.readingNowCount} ${book.readingNowCount === 1 ? "member is" : "members are"} reading this now`}
+										>
+											<BookOpen className="size-3" aria-hidden />
+											{book.readingNowCount} reading
+										</span>
+									</>
+								) : null}
 							</p>
 
 							<BookCardRatingRow

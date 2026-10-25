@@ -47,6 +47,7 @@ export const FACT_SECTIONS = [
 	"quizzes",
 	"profile",
 	"views",
+	"reading",
 	"club",
 ] as const;
 export type FactSection = (typeof FACT_SECTIONS)[number];
@@ -101,6 +102,17 @@ export type ViewFacts = {
 	profileOpens: OpenedFact | null;
 };
 
+/** What the member's reading sessions and wishlist show. */
+export type ReadingFacts = {
+	/** When each reading session was finished on or before its sitting's deadline. */
+	onTimeFinishes: Date[];
+	/** The longest run of days with progress logged, and the day it ended. */
+	longestStreak: { days: number; at: Date } | null;
+	/** Books on the wishlist now, and when the shelf last changed. */
+	wishlistSize: number;
+	wishlistAt: Date | null;
+};
+
 export type SeriesFact = { id: string; bookIds: string[] };
 
 export type AchievementFacts = {
@@ -136,6 +148,7 @@ export type AchievementFacts = {
 	quizzes: { at: Date; perfect: boolean }[];
 	series: SeriesFact[];
 	views: ViewFacts;
+	reading: ReadingFacts;
 };
 
 /** A cumulative value reached at a moment; values never go down. */
@@ -186,6 +199,9 @@ export type MetricKey =
 	| "postOpens"
 	| "reviewOpens"
 	| "profileOpens"
+	| "paceSetter"
+	| "readingStreak"
+	| "wishlistKeeper"
 	| "founder"
 	| "tenure";
 

@@ -8,6 +8,7 @@ export type BookDetailTabId =
 	| "shelves"
 	| "reviews"
 	| "reads"
+	| "reading"
 	| "sittings"
 	| "stats"
 	| "favorites"
@@ -56,6 +57,11 @@ export const BOOK_DETAIL_TABS: BookDetailTab[] = [
 		id: "reads",
 		label: "Reads",
 		href: (slug) => `/books/${slug}/reads` as Route,
+	},
+	{
+		id: "reading",
+		label: "Reading",
+		href: (slug) => `/books/${slug}/reading` as Route,
 	},
 	{
 		id: "sittings",

@@ -15,6 +15,7 @@ const statusStripClassName: Record<BookStatus, string> = {
 
 import type { Route } from "next";
 import Link from "next/link";
+import type { BookSortMetric } from "@/lib/books/sort-metric";
 import { cn } from "@/lib/utils";
 
 type BookCardStatusBook = Pick<
@@ -32,7 +33,14 @@ function sittingHrefForBook(book: BookCardStatusBook): Route | null {
 	return `/sittings/${book.clubSittingSlug}` as Route;
 }
 
-export function BookCardStatusStrip({ book }: { book: BookCardStatusBook }) {
+export function BookCardStatusStrip({
+	book,
+	metric,
+}: {
+	book: BookCardStatusBook;
+	/** The figure the list is sorted by, when it is not already on the card. */
+	metric?: BookSortMetric | null;
+}) {
 	const status = book.status as BookStatus;
 	const sittingHref = sittingHrefForBook(book);
 	const label = formatBookStatusLabel(status);
@@ -55,6 +63,23 @@ export function BookCardStatusStrip({ book }: { book: BookCardStatusBook }) {
 			) : (
 				<span className="min-w-0 flex-1 truncate">{label}</span>
 			)}
+			{metric ? (
+				metric.href ? (
+					<Link
+						href={metric.href as Route}
+						className="shrink-0 tabular-nums underline-offset-4 hover:underline"
+						onClick={(event) => event.stopPropagation()}
+					>
+						<span className="font-normal opacity-80">{metric.label} </span>
+						<span className="font-semibold">{metric.value}</span>
+					</Link>
+				) : (
+					<span className="shrink-0 tabular-nums">
+						<span className="font-normal opacity-80">{metric.label} </span>
+						<span className="font-semibold">{metric.value}</span>
+					</span>
+				)
+			) : null}
 			<BookEditLink
 				slug={book.slug}
 				redirect="books"

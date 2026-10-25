@@ -134,6 +134,8 @@ async function resolveTargets(
 				const rows = await db.shelf.findMany({
 					where: {
 						status: "active",
+						// Private shelves are never tracked.
+						visibility: "public",
 						OR: pairs.map(({ username, slug }) => ({
 							slug,
 							user: { username },

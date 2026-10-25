@@ -10,7 +10,9 @@ import { useQuery } from "@tanstack/react-query";
 import { BookCheck } from "lucide-react";
 import { type MouseEvent, useState } from "react";
 import { BookMarkReadDialog } from "@/components/blocks/book-mark-read-dialog";
+import { BookReadingMenu } from "@/components/blocks/reading/book-reading-menu";
 import { authClient } from "@/lib/auth-client";
+import { invalidateReadingQueries } from "@/lib/reading/use-reading";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -26,6 +28,8 @@ type BookMarkReadButtonProps = {
 	 * `null` while loading (render nothing). Omit on book detail (per-book fetch).
 	 */
 	listHasRead?: boolean | null;
+	/** Pages of the book, for the "currently reading" modal (book detail only). */
+	bookPages?: number;
 };
 
 export function BookMarkReadButton({
@@ -35,6 +39,7 @@ export function BookMarkReadButton({
 	tooltipSide = "top",
 	variant = "full",
 	listHasRead,
+	bookPages = 0,
 }: BookMarkReadButtonProps) {
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [open, setOpen] = useState(false);
@@ -67,6 +72,12 @@ export function BookMarkReadButton({
 		: (stateQuery.data?.hasRead ?? false);
 
 	const label = hasRead ? "Edit read" : "Mark as read";
+
+	// Marking a book read ends the reading and clears the wishlist: refresh both.
+	const changeOpen = (next: boolean) => {
+		setOpen(next);
+		if (!next) invalidateReadingQueries();
+	};
 
 	const openDialog = (event: MouseEvent) => {
 		event.preventDefault();
@@ -101,21 +112,32 @@ export function BookMarkReadButton({
 					<TooltipContent side={tooltipSide}>{label}</TooltipContent>
 				</Tooltip>
 			) : (
-				<Button
-					type="button"
-					variant={hasRead ? "secondary" : "default"}
-					className={cn("w-full", className)}
-					onClick={() => setOpen(true)}
-				>
-					<BookCheck data-icon="inline-start" />
-					{hasRead ? "Edit read" : "Mark read"}
-				</Button>
+				<div className={cn("flex w-full", className)}>
+					<Button
+						type="button"
+						variant={hasRead ? "secondary" : "default"}
+						className="min-w-0 flex-1 rounded-e-none"
+						onClick={() => setOpen(true)}
+					>
+						<BookCheck data-icon="inline-start" />
+						{hasRead ? "Edit read" : "Mark read"}
+					</Button>
+					{useListMode ? null : (
+						<BookReadingMenu
+							bookSlug={bookSlug}
+							bookTitle={bookTitle}
+							bookPages={bookPages}
+							hasRead={hasRead}
+							className="rounded-s-none"
+						/>
+					)}
+				</div>
 			)}
 			<BookMarkReadDialog
 				bookSlug={bookSlug}
 				bookTitle={bookTitle}
 				open={open}
-				onOpenChange={setOpen}
+				onOpenChange={changeOpen}
 			/>
 		</>
 	);

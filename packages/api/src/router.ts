@@ -5,6 +5,7 @@ import { adminRouter } from "./modules/admin/admin.router";
 import { authorRouter } from "./modules/author/author.router";
 import { bookRouter } from "./modules/book/book.router";
 import { bookDiscoverRouter } from "./modules/book-discover/book-discover.router";
+import { bookEditionRouter } from "./modules/book-edition/book-edition.router";
 import { bookRequestRouter } from "./modules/book-request/book-request.router";
 import { commentRouter } from "./modules/comment/comment.router";
 import { documentRouter } from "./modules/document/document.router";
@@ -22,6 +23,7 @@ import { postRouter } from "./modules/post/post.router";
 import { postPollRouter } from "./modules/post-poll/post-poll.router";
 import { quizRouter } from "./modules/quiz/quiz.router";
 import { readRouter } from "./modules/read/read.router";
+import { readingRouter } from "./modules/reading/reading.router";
 import { rpRouter } from "./modules/rp/rp.router";
 import { globalSearchRouter } from "./modules/search/global-search.router";
 import { seriesRouter } from "./modules/series/series.router";
@@ -40,6 +42,7 @@ export const appRouter = {
 	leaderboard: leaderboardRouter,
 	book: bookRouter,
 	bookDiscover: bookDiscoverRouter,
+	bookEdition: bookEditionRouter,
 	bookRequest: bookRequestRouter,
 	comment: commentRouter,
 	document: documentRouter,
@@ -54,6 +57,7 @@ export const appRouter = {
 	post: postRouter,
 	quiz: quizRouter,
 	read: readRouter,
+	reading: readingRouter,
 	series: seriesRouter,
 	linkPreview: linkPreviewRouter,
 	postPoll: postPollRouter,

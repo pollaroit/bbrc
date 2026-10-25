@@ -24,6 +24,7 @@ enum NotificationKind {
   sitting_welcome
   view_milestone
   views_digest
+  reading_behind
 }
 
 model Notification {

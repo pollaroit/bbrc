@@ -2,6 +2,7 @@
 
 import type { ViewSourceName } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
+import { Lock } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -20,6 +21,8 @@ export type ShelfCatalogCardShelf = {
 	coverPreviewCoverIds: (number | null)[];
 	type: "ordered" | "unordered";
 	status?: "draft" | "active" | "archived";
+	/** Private shelves get a lock badge (only people who can open one ever see it). */
+	visibility?: "public" | "private";
 	bookCount: number;
 	owner: Member;
 	collaborators: Member[];
@@ -158,6 +161,12 @@ export function ShelfCatalogCard({
 						</h2>
 						{shelf.type === "ordered" ? (
 							<Badge variant="secondary">Ranked</Badge>
+						) : null}
+						{shelf.visibility === "private" ? (
+							<Badge variant="outline" className="gap-1">
+								<Lock aria-hidden />
+								Private
+							</Badge>
 						) : null}
 						{showStatus && shelf.status && shelf.status !== "active" ? (
 							<Badge variant="outline" className="capitalize">

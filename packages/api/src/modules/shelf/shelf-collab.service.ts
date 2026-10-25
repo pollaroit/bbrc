@@ -13,6 +13,7 @@ import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import { mapShelfListItem, shelfListItemSelect } from "./shelf.schema";
 import { loadCoverPreviewMap } from "./shelf.service";
 import {
+	assertNotWishlist,
 	canViewShelf,
 	loadShelfAccess,
 	logShelfActivity,
@@ -94,6 +95,10 @@ export async function searchInvitableMembers(
 ): Promise<SearchInvitableOutput> {
 	const access = await loadShelfAccess(db, { ...input, actorId });
 	requireShelfPermission(access, "add_collaborator");
+	assertNotWishlist(
+		access.shelf,
+		"Your Wishlist is personal, so it cannot be shared.",
+	);
 
 	const users = await db.user.findMany({
 		where: {
@@ -160,6 +165,10 @@ export async function inviteCollaborator(
 ) {
 	const access = await loadShelfAccess(db, { ...input, actorId });
 	requireShelfPermission(access, "add_collaborator");
+	assertNotWishlist(
+		access.shelf,
+		"Your Wishlist is personal, so it cannot be shared.",
+	);
 
 	const permissions = normalizeShelfPermissions(input.permissions);
 	if (permissions.length === 0) {
@@ -739,6 +748,10 @@ export async function transferShelfOwnership(
 		actorId,
 	});
 	requireOwner(access);
+	assertNotWishlist(
+		access.shelf,
+		"Your Wishlist cannot be handed over to someone else.",
+	);
 
 	const target = await findCollaborator(db, access.shelf.id, input.username);
 	const manager = SHELF_PERMISSION_PRESETS.find(

@@ -11,6 +11,7 @@ export type ObjectKeyParams =
 			shelfSlug: string;
 	  }
 	| { kind: "book-cover"; coverUid: string }
+	| { kind: "edition-cover"; coverUid: string }
 	| {
 			kind: "book-document";
 			bookSlug: string;
@@ -33,6 +34,8 @@ export function buildObjectKey(
 			return `${storageEnv}/users/${params.username}/shelves/${params.shelfSlug}/image.png`;
 		case "book-cover":
 			return `${storageEnv}/books/covers/${params.coverUid}.webp`;
+		case "edition-cover":
+			return `${storageEnv}/books/editions/${params.coverUid}.webp`;
 		case "book-document":
 			return `${storageEnv}/books/${params.bookSlug}/documents/${params.documentSlug}.${params.extension}`;
 		default: {

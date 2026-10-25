@@ -154,6 +154,8 @@ export async function buildAdminShelfListWhere(
 	}
 
 	const where = mergeWhereFragments<Prisma.ShelfWhereInput>(
+		// Wishlists are personal lists, not shelves to moderate.
+		{ isWishlist: false },
 		ranging.use(),
 		searching.use(),
 		adminShelfExtraWhere(input),

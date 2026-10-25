@@ -1,6 +1,7 @@
 import type { Database } from "@bbrc/db";
 import { hrefFromInternalLinkRef, richContentPreview } from "@bbrc/shared";
 import { authorBookSummary, findAuthorBySlug } from "../../lib/authors";
+import { type ShelfViewer, visibleShelfWhere } from "../shelf/shelf-visibility";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type { InternalLinkRefInput, LinkPreview } from "./link-preview.schema";
 
@@ -48,6 +49,7 @@ function safeExcerpt(content: string, isSpoiler: boolean, max = 200) {
 async function resolveOne(
 	db: Database,
 	ref: InternalLinkRefInput,
+	viewer: ShelfViewer,
 ): Promise<LinkPreview> {
 	const href = hrefFromInternalLinkRef(ref);
 	const base = { href, kind: ref.kind, kindLabel: KIND_LABELS[ref.kind] };
@@ -254,8 +256,9 @@ async function resolveOne(
 			const shelf = await db.shelf.findFirst({
 				where: {
 					slug: ref.slug,
-					status: "active",
 					user: { username: ref.username, ...visibleOnSiteUserWhere },
+					// A private shelf shows nothing to people who cannot open it.
+					AND: [visibleShelfWhere(viewer)],
 				},
 				select: {
 					title: true,
@@ -342,11 +345,12 @@ async function resolveOne(
 export async function resolveLinkPreviews(
 	db: Database,
 	refs: InternalLinkRefInput[],
+	viewer: ShelfViewer = null,
 ): Promise<LinkPreview[]> {
 	return Promise.all(
 		refs.map(async (ref) => {
 			try {
-				return await resolveOne(db, ref);
+				return await resolveOne(db, ref, viewer);
 			} catch (error) {
 				console.error("link preview failed", error);
 				return unavailable(ref);

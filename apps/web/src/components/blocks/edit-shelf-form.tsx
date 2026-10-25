@@ -21,6 +21,7 @@ import {
 } from "@/components/blocks/shelf-editor-shell";
 import {
 	ShelfOptionPicker,
+	shelfAccessOptions,
 	shelfTypeOptions,
 	shelfVisibilityOptionsForEdit,
 } from "@/components/blocks/shelf-form-options";
@@ -49,6 +50,7 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 		"draft",
 	);
 	const [type, setType] = useState<"ordered" | "unordered">("unordered");
+	const [access, setAccess] = useState<"public" | "private">("public");
 
 	useEffect(() => {
 		if (!shelfQuery.data) return;
@@ -56,6 +58,7 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 		setDescription(shelfQuery.data.description ?? "");
 		setStatus(shelfQuery.data.status);
 		setType(shelfQuery.data.type);
+		setAccess(shelfQuery.data.visibility);
 	}, [shelfQuery.data]);
 
 	const updateMutation = useMutation(
@@ -89,13 +92,16 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 				shelfQuery.data.viewer.permissions,
 			)
 		: null;
-	const canTitle = permissions?.has("edit_title") ?? false;
+	// The Wishlist keeps its name, look and type: only the description and who sees it change.
+	const isWishlist = shelfQuery.data?.isWishlist ?? false;
+	const canTitle = !isWishlist && (permissions?.has("edit_title") ?? false);
 	const canDescription = permissions?.has("edit_description") ?? false;
-	const canCover = permissions?.has("edit_cover") ?? false;
-	const canStatus = permissions?.has("edit_status") ?? false;
-	const canType = permissions?.has("edit_type") ?? false;
+	const canCover = !isWishlist && (permissions?.has("edit_cover") ?? false);
+	const canStatus = !isWishlist && (permissions?.has("edit_status") ?? false);
+	const canType = !isWishlist && (permissions?.has("edit_type") ?? false);
+	const canAccess = shelfQuery.data?.viewer.role === "owner";
 	const canEditAnything =
-		canTitle || canDescription || canCover || canStatus || canType;
+		canTitle || canDescription || canCover || canStatus || canType || canAccess;
 
 	if (shelfQuery.isError || !shelfQuery.data || !canEditAnything) {
 		return (
@@ -112,13 +118,18 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 		trimmedTitle === shelf.title &&
 		(description.trim() || null) === (shelf.description ?? null) &&
 		status === shelf.status &&
-		type === shelf.type;
+		type === shelf.type &&
+		access === shelf.visibility;
 	const backHref = `/users/${username}/shelves/${shelfSlug}` as Route;
 
 	return (
 		<ShelfEditorShell
-			title="Edit shelf"
-			description="Update the title, visibility, and how books are shown on the page."
+			title={isWishlist ? "Edit your Wishlist" : "Edit shelf"}
+			description={
+				isWishlist
+					? "Your Wishlist keeps its name and look. You can change the description and who can see it."
+					: "Update the title, status, who can see it, and how books are shown on the page."
+			}
 			backHref={backHref}
 			backLabel="Back to shelf"
 			preview={
@@ -134,6 +145,7 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 						description: description.trim() || null,
 						status,
 						type,
+						visibility: access,
 					}}
 				/>
 			}
@@ -146,10 +158,10 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 				updateMutation.mutate({
 					ownerUsername: username,
 					shelfSlug,
-					title: trimmedTitle,
 					description: description.trim() || null,
-					status,
-					type,
+					// The Wishlist's name, status and type are fixed, so they are not sent.
+					...(isWishlist ? {} : { title: trimmedTitle, status, type }),
+					...(canAccess ? { visibility: access } : {}),
 				});
 			}}
 			footer={
@@ -250,20 +262,39 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 
 			{canStatus ? (
 				<ShelfEditorSection
-					title="Visibility"
+					title="Status"
 					description={
 						shelf.status !== "draft"
-							? "This shelf has been public or archived before, so it cannot go back to draft."
+							? "This shelf has been published or archived before, so it cannot go back to draft."
 							: undefined
 					}
 				>
 					<ShelfOptionPicker
-						name="edit-shelf-visibility"
-						label="Who can see this shelf?"
+						name="edit-shelf-status"
+						label="Is it ready to show?"
 						value={status}
 						options={visibilityOptions}
 						columns={visibilityOptions.length === 3 ? 3 : 2}
 						onChange={setStatus}
+					/>
+				</ShelfEditorSection>
+			) : null}
+
+			{canAccess ? (
+				<ShelfEditorSection
+					title="Who can see it"
+					description={
+						isWishlist
+							? "Your Wishlist is private until you decide to show it."
+							: "Collaborators can always open a private shelf."
+					}
+				>
+					<ShelfOptionPicker
+						name="edit-shelf-access"
+						label="Who can open this shelf?"
+						value={access}
+						options={[...shelfAccessOptions]}
+						onChange={setAccess}
 					/>
 				</ShelfEditorSection>
 			) : null}

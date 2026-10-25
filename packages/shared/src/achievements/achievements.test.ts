@@ -37,6 +37,12 @@ function facts(overrides: Partial<AchievementFacts> = {}): AchievementFacts {
 		quizzes: [],
 		series: [],
 		views: { mostOpenedPost: null, mostOpenedReview: null, profileOpens: null },
+		reading: {
+			onTimeFinishes: [],
+			longestStreak: null,
+			wishlistSize: 0,
+			wishlistAt: null,
+		},
 		...overrides,
 	};
 }
@@ -319,6 +325,69 @@ describe("views achievements", () => {
 	test("they only need the views section", () => {
 		for (const key of ["seen", "well_read_review", "face_in_the_crowd"]) {
 			expect(getAchievement(key)?.needs).toEqual(["views"]);
+		}
+	});
+});
+
+describe("reading achievements", () => {
+	test("nothing without reading activity", () => {
+		for (const key of ["pace_setter", "page_by_page", "wishlist_keeper"]) {
+			expect(earnedOf(facts(), key)).toEqual([]);
+		}
+	});
+
+	test("finishing by the deadline counts each time", () => {
+		const f = facts({
+			reading: {
+				onTimeFinishes: [
+					d("2026-08-01T10:00:00Z"),
+					d("2026-09-01T10:00:00Z"),
+					d("2026-10-01T10:00:00Z"),
+					d("2026-10-10T10:00:00Z"),
+					d("2026-10-20T10:00:00Z"),
+				],
+				longestStreak: null,
+				wishlistSize: 0,
+				wishlistAt: null,
+			},
+		});
+		expect(earnedOf(f, "pace_setter").map((item) => item.tier)).toEqual([1, 2]);
+		expect(earnedOf(f, "pace_setter")[0]?.earnedAt).toEqual(
+			d("2026-08-01T10:00:00Z"),
+		);
+	});
+
+	test("the longest streak sets the tier", () => {
+		const f = facts({
+			reading: {
+				onTimeFinishes: [],
+				longestStreak: { days: 8, at: d("2026-10-18T10:00:00Z") },
+				wishlistSize: 0,
+				wishlistAt: null,
+			},
+		});
+		expect(earnedOf(f, "page_by_page").map((item) => item.tier)).toEqual([
+			1, 2,
+		]);
+	});
+
+	test("the wishlist size sets the tier", () => {
+		const f = facts({
+			reading: {
+				onTimeFinishes: [],
+				longestStreak: null,
+				wishlistSize: 16,
+				wishlistAt: d("2026-10-02T10:00:00Z"),
+			},
+		});
+		expect(earnedOf(f, "wishlist_keeper").map((item) => item.tier)).toEqual([
+			1, 2,
+		]);
+	});
+
+	test("they only need the reading section", () => {
+		for (const key of ["pace_setter", "page_by_page", "wishlist_keeper"]) {
+			expect(getAchievement(key)?.needs).toEqual(["reading"]);
 		}
 	});
 });

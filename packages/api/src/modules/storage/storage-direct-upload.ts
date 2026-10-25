@@ -11,6 +11,7 @@ import {
 	uploadAvatarDirect,
 	uploadBookCoverDirect,
 	uploadCommentImageDirect,
+	uploadEditionCoverDirect,
 	uploadPostImageDirect,
 	uploadShelfCoverDirect,
 } from "./storage-image.service";
@@ -26,6 +27,7 @@ const DirectUploadTargetSchema = z.discriminatedUnion("target", [
 		commentSlug: z.string().min(1),
 	}),
 	z.object({ target: z.literal("book-cover") }),
+	z.object({ target: z.literal("edition-cover") }),
 	z.object({
 		target: z.literal("shelf-cover"),
 		ownerUsername: z.string().min(3).max(20).optional(),
@@ -121,6 +123,9 @@ export async function handleDirectImageUpload(
 				break;
 			case "book-cover":
 				result = await uploadBookCoverDirect(payload, session);
+				break;
+			case "edition-cover":
+				result = await uploadEditionCoverDirect(payload, session);
 				break;
 			case "shelf-cover":
 				result = await uploadShelfCoverDirect(

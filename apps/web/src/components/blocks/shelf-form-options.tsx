@@ -121,11 +121,28 @@ export const shelfVisibilityCreateOptions = [
 	},
 	{
 		value: "active",
-		title: "Public",
-		description: "Shows on your profile. Anyone can open the shelf page.",
+		title: "Published",
+		description: "Shows on your profile and the shelves page.",
 		icon: <Globe className={iconClass} aria-hidden />,
 	},
 ] as const satisfies ShelfOption<"draft" | "active">[];
+
+/** Who may open a published shelf (separate from its draft / published / archived status). */
+export const shelfAccessOptions = [
+	{
+		value: "public",
+		title: "Public",
+		description: "Anyone can open it and find it in search.",
+		icon: <Globe className={iconClass} aria-hidden />,
+	},
+	{
+		value: "private",
+		title: "Private",
+		description:
+			"Only you and the people you share it with can open it. It stays out of lists and search.",
+		icon: <Lock className={iconClass} aria-hidden />,
+	},
+] as const satisfies ShelfOption<"public" | "private">[];
 
 export const shelfVisibilityEditOptions = [
 	...shelfVisibilityCreateOptions,

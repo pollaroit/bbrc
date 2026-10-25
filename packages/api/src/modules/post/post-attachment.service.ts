@@ -41,6 +41,22 @@ function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
 			if (!row.shelf) {
 				throw new Error("Shelf attachment missing shelf row");
 			}
+			// A shelf that became private after it was shared shows nothing about itself.
+			if (row.shelf.visibility === "private") {
+				return {
+					kind: "shelf",
+					shelf: {
+						slug: row.shelf.slug,
+						title: "Private shelf",
+						type: row.shelf.type,
+						coverImageUrl: null,
+						ownerUsername: row.shelf.user.username,
+						bookCount: 0,
+						coverPreviewCoverIds: [],
+						isPrivate: true,
+					},
+				};
+			}
 			return {
 				kind: "shelf",
 				shelf: {
@@ -53,6 +69,7 @@ function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
 					coverPreviewCoverIds: row.shelf.books.map(
 						(entry) => entry.book.coverId,
 					),
+					isPrivate: false,
 				},
 			};
 		}
@@ -210,11 +227,17 @@ export async function resolvePostAttachmentCreateData(
 					slug: input.slug,
 					user: { username: input.ownerUsername },
 				},
-				select: { id: true },
+				select: { id: true, visibility: true },
 			});
 			if (!shelf) {
 				throw new ORPCError("NOT_FOUND", {
 					message: "Shelf not found",
+				});
+			}
+			if (shelf.visibility === "private") {
+				throw new ORPCError("BAD_REQUEST", {
+					message:
+						"A private shelf cannot be shared in a post. Make it public first.",
 				});
 			}
 			return { kind: "shelf", shelf: { connect: { id: shelf.id } } };

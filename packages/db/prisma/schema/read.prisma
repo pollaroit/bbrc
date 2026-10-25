@@ -22,10 +22,15 @@ model Read {
   /// @zod.refine((v) => v == null || isOpenLibraryEditionOlid(v), { message: "Invalid Open Library edition ID" })
   editionId String? @map("edition_id")
 
+  /// A member-added edition (see `BookEdition`), when the Open Library one is missing.
+  bookEditionId String?      @map("book_edition_id")
+  bookEdition   BookEdition? @relation(fields: [bookEditionId], references: [id], onDelete: SetNull)
+
   @@id([userId, bookId])
   @@index([bookId])
   @@index([userId])
   @@index([userId, readEndYear, readEndMonth])
   @@index([editionId])
+  @@index([bookEditionId])
   @@map("member_read")
 }

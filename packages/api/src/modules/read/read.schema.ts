@@ -50,6 +50,8 @@ export const SetReadInputSchema = z
 		bookSlug: BookSchema.shape.slug,
 		/** Edition OLID or `/books/OL…M` key; pass `null` to clear. */
 		editionId: ReadEditionIdFieldSchema.optional(),
+		/** One of our own (member-added) editions; pass `null` to clear. */
+		bookEditionId: z.string().uuid().nullable().optional(),
 	})
 	.merge(OptionalFeedbackOnSetReadSchema)
 	.and(ReadFinishedMonthInputSchema);
@@ -201,6 +203,8 @@ const userReadListQueryInputShape = bookListFiltersSchema
 		viewerRead: true,
 		viewerFavorite: true,
 		viewerReviewed: true,
+		viewerWishlist: true,
+		viewerReading: true,
 	})
 	.extend(userReadListSorting.inputSchema.shape)
 	.extend(userReadListRanging.inputSchema.shape)

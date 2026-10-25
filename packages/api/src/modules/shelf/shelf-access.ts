@@ -6,6 +6,7 @@ import {
 	type ShelfPermission,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import { WISHLIST_PROTECTED_MESSAGE } from "./shelf-visibility";
 
 type Db = Database | DatabaseTransaction;
 
@@ -17,6 +18,8 @@ export const shelfAccessSelect = {
 	coverImageUrl: true,
 	status: true,
 	type: true,
+	visibility: true,
+	isWishlist: true,
 	userId: true,
 	updatedAt: true,
 	_count: { select: { books: true } },
@@ -126,7 +129,7 @@ export function requireShelfPermission(
 	if (
 		!access.isOwner &&
 		access.collaborator == null &&
-		access.shelf.status !== "active"
+		(access.shelf.status !== "active" || access.shelf.visibility === "private")
 	) {
 		throw new ORPCError("NOT_FOUND", { message: "Shelf not found" });
 	}
@@ -149,13 +152,32 @@ export function requireOwner(access: ShelfAccess): void {
  * pending invitation (so an invitee can look before answering).
  */
 export function canViewShelf(
-	shelf: { status: string; userId: string },
+	shelf: {
+		status: string;
+		userId: string;
+		visibility?: "public" | "private";
+	},
 	viewer: {
 		userId: string | undefined;
 		permissions: ReadonlySet<ShelfPermission>;
 		hasPendingInvitation: boolean;
+		isCollaborator?: boolean;
+		isAdmin?: boolean;
 	},
 ): boolean {
+	// A private shelf is for the owner, collaborators, admins and invitees only.
+	if (
+		shelf.visibility === "private" &&
+		!(
+			viewer.isAdmin ||
+			(viewer.userId != null &&
+				(viewer.userId === shelf.userId ||
+					viewer.isCollaborator ||
+					viewer.hasPendingInvitation))
+		)
+	) {
+		return false;
+	}
 	if (shelf.status === "active") {
 		return true;
 	}
@@ -200,4 +222,14 @@ export async function logShelfActivity(
 			meta: input.meta ?? undefined,
 		},
 	});
+}
+
+/** Throws for the Wishlist shelf: it cannot be deleted, renamed, retyped, re-covered or shared. */
+export function assertNotWishlist(
+	shelf: { isWishlist: boolean },
+	what = WISHLIST_PROTECTED_MESSAGE,
+): void {
+	if (shelf.isWishlist) {
+		throw new ORPCError("BAD_REQUEST", { message: what });
+	}
 }

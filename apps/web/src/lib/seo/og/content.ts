@@ -193,11 +193,18 @@ async function resolveBooksListOg(): Promise<OgImageContent> {
 	};
 }
 
+/** Shelves any visitor can see (what social cards may count). */
+const OG_PUBLIC_SHELF = {
+	status: "active",
+	visibility: "public",
+	isWishlist: false,
+} as const;
+
 async function resolveShelvesListOg(): Promise<OgImageContent> {
 	const [shelves, listed, curators] = await Promise.all([
-		db.shelf.count({ where: { status: "active" } }),
-		db.shelfBook.count({ where: { shelf: { status: "active" } } }),
-		db.user.count({ where: { shelves: { some: { status: "active" } } } }),
+		db.shelf.count({ where: OG_PUBLIC_SHELF }),
+		db.shelfBook.count({ where: { shelf: OG_PUBLIC_SHELF } }),
+		db.user.count({ where: { shelves: { some: OG_PUBLIC_SHELF } } }),
 	]);
 
 	return {
@@ -411,7 +418,7 @@ async function bookTabFact(
 		}
 		case "shelves": {
 			const count = await db.shelfBook.count({
-				where: { ...where, shelf: { status: "active" } },
+				where: { ...where, shelf: OG_PUBLIC_SHELF },
 			});
 			return fact("On shelves", num(count));
 		}
@@ -814,7 +821,7 @@ async function resolveMemberOg(
 				select: { book: { select: { pages: true } } },
 			}),
 			db.participation.count({ where: byUser }),
-			db.shelf.count({ where: { ...byUser, status: "active" } }),
+			db.shelf.count({ where: { ...byUser, ...OG_PUBLIC_SHELF } }),
 			listGoalsByUsername(username, null, db),
 		]);
 

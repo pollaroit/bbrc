@@ -42,6 +42,8 @@ export const adminBookSortByLabels = {
 	"documents._count": "Documents",
 	viewCount: "Views",
 	viewerCount: "Viewers",
+	readingNowCount: "Reading now",
+	wishlistCount: "Wishlisted",
 	"postAttachments._count": "Post attachments",
 	"polls._count": "Poll options",
 	pollVotes: "Poll votes",

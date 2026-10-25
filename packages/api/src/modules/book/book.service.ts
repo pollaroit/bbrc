@@ -8,6 +8,7 @@ import {
 	mapBookSeriesSummary,
 	placeBookInSeries,
 } from "../series/series.service";
+import { publicShelfWhere } from "../shelf/shelf-visibility";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import { bookListSorting } from "./book.listing";
 import {
@@ -40,6 +41,11 @@ import { resolveClubSittingSlug } from "./resolve-club-sitting-slug";
 const bookListSelect = {
 	...getBookListFields,
 	viewCount: true,
+	readingNowCount: true,
+	wishlistCount: true,
+	viewerCount: true,
+	createdAt: true,
+	updatedAt: true,
 	seriesMembership: {
 		select: {
 			position: true,
@@ -56,7 +62,8 @@ const bookListSelect = {
 			documents: { where: { status: "approved" as const } },
 			reads: true,
 			feedbacks: true,
-			shelfBooks: true,
+			// Only shelves anyone can see count (not private ones or the Wishlist).
+			shelfBooks: { where: { shelf: publicShelfWhere } },
 			favorites: true,
 		},
 	},
@@ -105,7 +112,9 @@ export async function getRandomBook(
 	if (
 		(input.viewerRead != null ||
 			input.viewerFavorite ||
-			input.viewerReviewed) &&
+			input.viewerReviewed ||
+			input.viewerWishlist ||
+			input.viewerReading) &&
 		!viewerUserId
 	) {
 		throw new ORPCError("UNAUTHORIZED", {

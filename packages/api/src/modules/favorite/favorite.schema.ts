@@ -105,6 +105,10 @@ export const GetViewerLibraryEngagementOutputSchema = zod.object({
 	favoriteSlugs: zod.array(BookSchema.shape.slug),
 	feedbackBookSlugs: zod.array(BookSchema.shape.slug),
 	feedbackRatings: zod.array(ViewerFeedbackRatingSchema),
+	/** Books on the viewer's wishlist (for the bookmark on cards). */
+	wishlistSlugs: zod.array(BookSchema.shape.slug),
+	/** Books the viewer is reading right now. */
+	readingSlugs: zod.array(BookSchema.shape.slug),
 	slotsUsed: zod.number().int().min(0).max(MAX_FAVORITES_PER_USER),
 	maxSlots: zod.literal(MAX_FAVORITES_PER_USER),
 });
