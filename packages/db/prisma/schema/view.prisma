@@ -137,6 +137,8 @@ model ViewTotal {
   opens       Int          @default(0)
   /// Times it showed up in a list.
   impressions Int          @default(0)
+  /// Different people who opened it (members exactly; guests within the last 90 days).
+  viewers     Int          @default(0)
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
   @@id([resource, resourceId])

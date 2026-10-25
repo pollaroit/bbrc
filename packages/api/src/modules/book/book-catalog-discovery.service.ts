@@ -21,6 +21,7 @@ import { resolveClubSittingSlug } from "./resolve-club-sitting-slug";
 
 const discoverySelect = {
 	...getBookListFields,
+	viewCount: true,
 	subjects: true,
 	subjectPeople: true,
 	subjectTimes: true,

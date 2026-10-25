@@ -44,6 +44,8 @@ export const adminShelfSortByLabels = {
 	title: "Title",
 	"books._count": "Books",
 	"collaborators._count": "Collaborators",
+	viewCount: "Views",
+	viewerCount: "Viewers",
 	"postAttachments._count": "Post attachments",
 	"user.username": "Owner username",
 } as const satisfies FieldLabels<(typeof adminShelfSortableFields)[number]>;

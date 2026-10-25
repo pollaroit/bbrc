@@ -2,6 +2,7 @@ import type { GetBookListOutput } from "@bbrc/api/modules/book/book.schema";
 import type { LucideIcon } from "lucide-react";
 import {
 	BookCheck,
+	Eye,
 	FileText,
 	Heart,
 	Library,
@@ -35,21 +36,29 @@ type BookCardProps = {
 	viewerBookRating?: number;
 };
 
+const compactCount = new Intl.NumberFormat("en", {
+	notation: "compact",
+	maximumFractionDigits: 1,
+});
+
 function MetaStripStat({
 	icon: Icon,
 	count,
 	title,
 	href,
+	compact = false,
 }: {
 	icon: LucideIcon;
 	count: number;
 	title: string;
 	href?: Route;
+	/** Shorten large numbers (1.2k) so the strip never outgrows the card. */
+	compact?: boolean;
 }) {
 	const body = (
 		<>
 			<Icon className="size-3.5 shrink-0" aria-hidden />
-			<span>{count}</span>
+			<span>{compact ? compactCount.format(count) : count}</span>
 		</>
 	);
 
@@ -83,11 +92,10 @@ function BookCardMetaStrip({ book }: { book: BookCardBook }) {
 	const shelfTitle = `${book.shelfCount} shelf${book.shelfCount === 1 ? "" : "es"}`;
 	const documentTitle = `${book.approvedDocumentCount} approved document${book.approvedDocumentCount === 1 ? "" : "s"}`;
 	const favoriteTitle = `${book.favoriteCount} favorite${book.favoriteCount === 1 ? "" : "s"}`;
+	const viewTitle = `${book.viewCount.toLocaleString("en-US")} view${book.viewCount === 1 ? "" : "s"}`;
 
 	return (
 		<div className="relative z-2 flex w-full flex-nowrap items-center justify-between gap-1 border-border border-t bg-muted/10 px-3 py-1.5 text-muted-foreground text-xs tabular-nums">
-			<span className="shrink-0 whitespace-nowrap">{book.pages} p</span>
-			<span className="shrink-0 whitespace-nowrap">{book.publishedIn}</span>
 			<MetaStripStat
 				icon={BookCheck}
 				count={book.readCount}
@@ -117,6 +125,12 @@ function BookCardMetaStrip({ book }: { book: BookCardBook }) {
 				count={book.favoriteCount}
 				title={favoriteTitle}
 				href={`/books/${slug}/favorites` as Route}
+			/>
+			<MetaStripStat
+				icon={Eye}
+				count={book.viewCount}
+				title={viewTitle}
+				compact
 			/>
 		</div>
 	);
@@ -240,6 +254,12 @@ export function BookCard({
 									</Link>
 								</p>
 							) : null}
+
+							<p className="mt-1.5 flex items-center gap-1.5 text-muted-foreground text-xs tabular-nums">
+								<span>{book.pages} pages</span>
+								<span aria-hidden>·</span>
+								<span>{book.publishedIn}</span>
+							</p>
 
 							<BookCardRatingRow
 								viewerBookRating={viewerBookRating}

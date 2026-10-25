@@ -89,6 +89,21 @@ export async function removeOrphanedViews(db: Database): Promise<number> {
 	return removed;
 }
 
+/** Heals the copies on books and shelves from the totals (they only drift after a failure). */
+export async function reconcileViewCounters(db: Database): Promise<number> {
+	const books = await db.$executeRaw`
+		UPDATE book b SET view_count = t.opens, viewer_count = t.viewers
+		FROM view_total t
+		WHERE t.resource = 'book' AND t.resource_id = b.id
+			AND (b.view_count <> t.opens OR b.viewer_count <> t.viewers)`;
+	const shelves = await db.$executeRaw`
+		UPDATE shelf s SET view_count = t.opens, viewer_count = t.viewers
+		FROM view_total t
+		WHERE t.resource = 'shelf' AND t.resource_id = s.id
+			AND (s.view_count <> t.opens OR s.viewer_count <> t.viewers)`;
+	return books + shelves;
+}
+
 type DigestRow = {
 	owner_id: string;
 	title: string;
@@ -184,7 +199,7 @@ export async function sendWeeklyViewsDigest(
 
 /** The daily views chores, each one isolated so one failure does not stop the rest. */
 export async function sweepViews(db: Database) {
-	const result = { rolledUp: 0, orphansRemoved: 0, digests: 0 };
+	const result = { rolledUp: 0, orphansRemoved: 0, digests: 0, reconciled: 0 };
 	try {
 		result.rolledUp = await rollupOldViews(db);
 	} catch (error) {
@@ -194,6 +209,11 @@ export async function sweepViews(db: Database) {
 		result.orphansRemoved = await removeOrphanedViews(db);
 	} catch (error) {
 		console.error("view cleanup failed", error);
+	}
+	try {
+		result.reconciled = await reconcileViewCounters(db);
+	} catch (error) {
+		console.error("view counter reconcile failed", error);
 	}
 	try {
 		result.digests = await sendWeeklyViewsDigest(db);

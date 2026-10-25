@@ -269,12 +269,48 @@ export async function recordViews(
 						impressions = view_total.impressions + ${listed},
 						updated_at = now()
 					RETURNING opens`;
-				if (actor.userId && item.kind === "detail") {
+				let newViewer = false;
+				if (item.kind === "detail") {
+					if (actor.userId) {
+						const seen = await db.$queryRaw<{ inserted: boolean }[]>`
+							INSERT INTO viewer_seen (resource, resource_id, user_id, first_seen_at, last_seen_at, views)
+							VALUES (${target.resource}::"view_resource", ${target.id}, ${actor.userId}, ${now}, ${now}, 1)
+							ON CONFLICT (resource, resource_id, user_id) DO UPDATE
+							SET last_seen_at = ${now}, views = viewer_seen.views + 1
+							RETURNING (xmax = 0) AS inserted`;
+						newViewer = seen[0]?.inserted === true;
+					} else {
+						// The row just written is the only one when this guest is new.
+						const earlier = await db.view.count({
+							where: {
+								resource: target.resource,
+								resourceId: target.id,
+								kind: "detail",
+								visitorId: actor.visitorId,
+								viewerUserId: null,
+								isOwner: false,
+							},
+						});
+						newViewer = earlier <= 1;
+					}
+				}
+				const viewers = newViewer ? 1 : 0;
+				if (viewers > 0) {
 					await db.$executeRaw`
-						INSERT INTO viewer_seen (resource, resource_id, user_id, first_seen_at, last_seen_at, views)
-						VALUES (${target.resource}::"view_resource", ${target.id}, ${actor.userId}, ${now}, ${now}, 1)
-						ON CONFLICT (resource, resource_id, user_id) DO UPDATE
-						SET last_seen_at = ${now}, views = viewer_seen.views + 1`;
+						UPDATE view_total SET viewers = viewers + 1
+						WHERE resource = ${target.resource}::"view_resource" AND resource_id = ${target.id}`;
+				}
+				// Books and shelves keep a copy so their lists can sort by it.
+				if (opened > 0 || viewers > 0) {
+					if (target.resource === "book") {
+						await db.$executeRaw`
+							UPDATE book SET view_count = view_count + ${opened}, viewer_count = viewer_count + ${viewers}
+							WHERE id = ${target.id}`;
+					} else if (target.resource === "shelf") {
+						await db.$executeRaw`
+							UPDATE shelf SET view_count = view_count + ${opened}, viewer_count = viewer_count + ${viewers}
+							WHERE id = ${target.id}`;
+					}
 				}
 				const after = rows[0]?.opens ?? 0;
 				if (opened > 0 && target.ownerId) {

@@ -12,6 +12,8 @@ export const shelfSortableFields = [
 	"title",
 	"books._count",
 	"collaborators._count",
+	"viewCount",
+	"viewerCount",
 ] as const;
 
 export const shelfListSorting = defineSorting<

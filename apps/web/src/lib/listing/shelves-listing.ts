@@ -30,6 +30,8 @@ export const shelfSortByLabels = {
 	title: "Title",
 	"books._count": "Book count",
 	"collaborators._count": "Collaborators",
+	viewCount: "Views",
+	viewerCount: "Viewers",
 } as const satisfies FieldLabels<(typeof shelfSortableFields)[number]>;
 
 export const shelfRangeByLabels = {
