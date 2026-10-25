@@ -6,8 +6,9 @@
  * Suggestions in lanes, each saying why a book is suggested. Admins see
  * "Members want this", "Next in a series", "Authors the club rates highly",
  * "Fills a gap" and "Ask AI"; members see "Suggested for you" and "Ask AI".
- * Every lane except the AI one loads at once and in parallel; the AI lane runs
- * only when someone presses "Ask AI".
+ * Only the open lane is fetched (some ask Open Library on the server and can be
+ * slow); the others load when their tab is opened. The AI lane runs only when
+ * someone presses "Ask AI".
  *
  * - `onPick(item)`: admin pressed "Add" (open the add form for `item.olid`).
  * - `onRequest(item)`: member pressed "Request" (falls back to `onPick`).
@@ -242,13 +243,25 @@ export function DiscoverPanel({
 	const lanes = lanesQuery.data?.lanes ?? [];
 	const [chosen, setChosen] = useState<DiscoverLaneId | null>(null);
 
-	// Every lane that runs by itself loads at once.
+	const activeId =
+		chosen && lanes.some((lane) => lane.id === chosen)
+			? chosen
+			: (lanes[0]?.id as DiscoverLaneId | undefined);
+
+	// Only the lane being looked at is fetched. Several lanes ask Open Library
+	// on the server and can be slow; loading them all at once would fill the
+	// few connections a browser keeps open to the site and freeze the page
+	// (header links, search and buttons would all wait behind them). Other lanes
+	// load when their tab is opened, and show a count once they have been seen.
 	const loaded = useQueries({
 		queries: lanes
 			.filter((lane) => !lane.onDemand)
 			.map((lane) => ({
 				...orpc.bookDiscover.lane.queryOptions({ input: { id: lane.id } }),
+				enabled: lane.id === activeId,
 				staleTime: 5 * 60_000,
+				retry: false,
+				refetchOnWindowFocus: false,
 			})),
 	});
 	const byId = new Map(
@@ -266,12 +279,8 @@ export function DiscoverPanel({
 	}
 	if (lanes.length === 0) return null;
 
-	const activeId =
-		chosen && lanes.some((lane) => lane.id === chosen)
-			? chosen
-			: (lanes[0]?.id as DiscoverLaneId);
 	const active = lanes.find((lane) => lane.id === activeId);
-	const activeQuery = byId.get(activeId);
+	const activeQuery = activeId ? byId.get(activeId) : undefined;
 
 	return (
 		<section
@@ -281,7 +290,7 @@ export function DiscoverPanel({
 			<div className="overflow-x-auto [scrollbar-width:none]">
 				<SegmentedControl<DiscoverLaneId>
 					label="Suggestion lanes"
-					value={activeId}
+					value={activeId as DiscoverLaneId}
 					onChange={setChosen}
 					options={lanes.map((lane) => {
 						const lane_ = byId.get(lane.id)?.data;

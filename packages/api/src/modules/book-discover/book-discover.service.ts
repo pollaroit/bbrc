@@ -61,6 +61,55 @@ export function listLanesFor(viewer: Viewer) {
 	}));
 }
 
+// ── Time budget ────────────────────────────────────────────────────────────
+
+/**
+ * Open Library can be slow or down, and a lane makes several searches. Every
+ * lane gets a short budget: searches that do not finish in time are skipped, so
+ * a request never holds a connection for longer than this (the browser only
+ * keeps a handful of connections open to the site, and a few slow lanes would
+ * make the whole page feel stuck).
+ */
+const LANE_BUDGET_MS = 8_000;
+const SLOW_MESSAGE = "Open Library is slow right now. Try again in a moment.";
+
+type Budget = { deadline: number; timedOut: boolean };
+
+const newBudget = (ms = LANE_BUDGET_MS): Budget => ({
+	deadline: Date.now() + ms,
+	timedOut: false,
+});
+
+async function searchWithin(
+	budget: Budget,
+	query: string,
+	limit: number,
+	options?: { sort?: string },
+): Promise<OpenLibrarySearchHit[]> {
+	const left = budget.deadline - Date.now();
+	if (left <= 0) {
+		budget.timedOut = true;
+		return [];
+	}
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timeout = new Promise<null>((resolve) => {
+		timer = setTimeout(() => resolve(null), left);
+	});
+	try {
+		const result = await Promise.race([
+			searchOpenLibraryWorks(query, limit, options).catch(() => []),
+			timeout,
+		]);
+		if (result === null) {
+			budget.timedOut = true;
+			return [];
+		}
+		return result;
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+}
+
 // ── Cache ──────────────────────────────────────────────────────────────────
 
 const LANE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -278,7 +327,7 @@ function authorStats(taste: TasteBook[]): AuthorStat[] {
 
 // ── Lanes ──────────────────────────────────────────────────────────────────
 
-async function lanePersonal(db: Database, viewer: Viewer) {
+async function lanePersonal(db: Database, viewer: Viewer, budget: Budget) {
 	const [taste, exclusions, mine] = await Promise.all([
 		loadTaste(db, viewer.id),
 		loadExclusions(db),
@@ -304,9 +353,9 @@ async function lanePersonal(db: Database, viewer: Viewer) {
 	);
 	const results = await mapWithConcurrency(authors, 2, async (author) => ({
 		author,
-		hits: await searchOpenLibraryWorks(`author:"${author.name}"`, 10, {
+		hits: await searchWithin(budget, `author:"${author.name}"`, 10, {
 			sort: "already_read",
-		}).catch(() => []),
+		}),
 	}));
 	for (const { author, hits } of results) {
 		collect(
@@ -320,10 +369,16 @@ async function lanePersonal(db: Database, viewer: Viewer) {
 			8,
 		);
 	}
-	return lane("for_you", items, "No new books from your authors right now.");
+	return lane(
+		"for_you",
+		items,
+		budget.timedOut
+			? SLOW_MESSAGE
+			: "No new books from your authors right now.",
+	);
 }
 
-async function laneRatedAuthors(db: Database) {
+async function laneRatedAuthors(db: Database, budget: Budget) {
 	const [taste, exclusions] = await Promise.all([
 		loadTaste(db),
 		loadExclusions(db),
@@ -339,9 +394,9 @@ async function laneRatedAuthors(db: Database) {
 	);
 	const results = await mapWithConcurrency(authors, 2, async (author) => ({
 		author,
-		hits: await searchOpenLibraryWorks(`author:"${author.name}"`, 10, {
+		hits: await searchWithin(budget, `author:"${author.name}"`, 10, {
 			sort: "already_read",
-		}).catch(() => []),
+		}),
 	}));
 	const items: DiscoverItem[] = [];
 	const seen = new Set<string>();
@@ -357,10 +412,14 @@ async function laneRatedAuthors(db: Database) {
 			8,
 		);
 	}
-	return lane("rated_authors", items, "No new books from those authors.");
+	return lane(
+		"rated_authors",
+		items,
+		budget.timedOut ? SLOW_MESSAGE : "No new books from those authors.",
+	);
 }
 
-async function laneSeriesNext(db: Database) {
+async function laneSeriesNext(db: Database, budget: Budget) {
 	const [series, exclusions] = await Promise.all([
 		db.series.findMany({
 			select: {
@@ -403,9 +462,7 @@ async function laneSeriesNext(db: Database) {
 			: `title:"${row.title}"`;
 		return {
 			row,
-			hits: await searchOpenLibraryWorks(query, 8, { sort: "old" }).catch(
-				() => [],
-			),
+			hits: await searchWithin(budget, query, 8, { sort: "old" }),
 		};
 	});
 	const items: DiscoverItem[] = [];
@@ -428,7 +485,7 @@ async function laneSeriesNext(db: Database) {
 	);
 }
 
-async function laneGaps(db: Database) {
+async function laneGaps(db: Database, budget: Budget) {
 	const [books, exclusions] = await Promise.all([
 		db.book.findMany({ select: { countries: true, publishedIn: true } }),
 		loadExclusions(db),
@@ -499,16 +556,20 @@ async function laneGaps(db: Database) {
 	];
 	const results = await mapWithConcurrency(queries, 2, async (query) => ({
 		query,
-		hits: await searchOpenLibraryWorks(query.q, 12, {
+		hits: await searchWithin(budget, query.q, 12, {
 			sort: "already_read",
-		}).catch(() => []),
+		}),
 	}));
 	const items: DiscoverItem[] = [];
 	const seen = new Set<string>();
 	for (const { query, hits } of results) {
 		collect(items, seen, hits, exclusions, query.reason, 10, 2);
 	}
-	return lane("gaps", items, "No suggestions for the gaps right now.");
+	return lane(
+		"gaps",
+		items,
+		budget.timedOut ? SLOW_MESSAGE : "No suggestions for the gaps right now.",
+	);
 }
 
 async function laneMemberWants(db: Database) {
@@ -734,15 +795,17 @@ async function laneAi(db: Database, viewer: Viewer, refresh: boolean) {
 
 	// Every pick must exist on Open Library and not already be in the library.
 	const exclusions = await loadExclusions(db);
+	const checkBudget = newBudget(15_000);
 	const verified = await mapWithConcurrency(
 		draft.suggestions,
-		2,
+		3,
 		async (suggestion) => {
-			const hits = await searchOpenLibraryWorks(
+			const hits = await searchWithin(
+				checkBudget,
 				`title:"${suggestion.title}" author:"${suggestion.author}"`,
 				4,
 				{ sort: "already_read" },
-			).catch(() => []);
+			);
 			const wantedTitle = norm(suggestion.title);
 			const hit = hits.find(
 				(candidate) =>
@@ -803,15 +866,17 @@ export async function getDiscoverLane(
 	const cached = await readCache<DiscoverLane>(db, key);
 	if (cached) return cached;
 
+	const budget = newBudget();
 	const result =
 		id === "for_you"
-			? await lanePersonal(db, viewer)
+			? await lanePersonal(db, viewer, budget)
 			: id === "series_next"
-				? await laneSeriesNext(db)
+				? await laneSeriesNext(db, budget)
 				: id === "rated_authors"
-					? await laneRatedAuthors(db)
-					: await laneGaps(db);
-	if (result.items.length > 0) {
+					? await laneRatedAuthors(db, budget)
+					: await laneGaps(db, budget);
+	// A lane that ran out of time may be incomplete: do not keep it.
+	if (result.items.length > 0 && !budget.timedOut) {
 		await writeCache(db, key, result, LANE_TTL_MS);
 	}
 	return result;
