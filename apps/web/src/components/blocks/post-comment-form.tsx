@@ -1,6 +1,6 @@
 "use client";
 
-import { contentPlainText } from "@bbrc/shared";
+import { contentPlainText, serializeRichDocument } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import { Field, FieldLabel } from "@bbrc/ui/components/field";
@@ -24,7 +24,7 @@ import {
 	swapListItemSlug,
 } from "@/lib/optimistic/infinite-lists";
 import { cn } from "@/lib/utils";
-import { orpc, queryClient } from "@/utils/orpc";
+import { client, orpc, queryClient } from "@/utils/orpc";
 
 type PostCommentFormProps = {
 	postSlug?: string;
@@ -107,6 +107,61 @@ export function PostCommentForm({
 	useEffect(() => {
 		failedReplyDrafts.delete(draftKey);
 	}, [draftKey]);
+
+	// A reply starts with a mention of the person it answers, which the writer can delete
+	// like any mention. Nothing is added for your own comment, or for someone who does not
+	// allow mentions (the picker search leaves them out, so no match means no prefill).
+	useEffect(() => {
+		if (!replyToUsername || restoredDraft || sessionPending) return;
+		if (session?.user.username === replyToUsername) return;
+		let cancelled = false;
+		void client.mention
+			.search({
+				query: replyToUsername,
+				...(postSlug || feedbackSlug
+					? { context: { postSlug, feedbackSlug } }
+					: {}),
+			})
+			.then(({ items }) => {
+				const match = items.find(
+					(item) =>
+						item.username.toLowerCase() === replyToUsername.toLowerCase(),
+				);
+				if (cancelled || !match) return;
+				setContent((current) =>
+					current.trim()
+						? current
+						: serializeRichDocument({
+								v: 1,
+								blocks: [
+									{
+										t: "p",
+										inline: [
+											{
+												t: "mention",
+												username: match.username,
+												userId: match.id,
+												name: match.name,
+											},
+											{ t: "text", s: " " },
+										],
+									},
+								],
+							}),
+				);
+			})
+			.catch(() => {});
+		return () => {
+			cancelled = true;
+		};
+	}, [
+		replyToUsername,
+		restoredDraft,
+		session?.user.username,
+		sessionPending,
+		postSlug,
+		feedbackSlug,
+	]);
 
 	useEffect(() => {
 		if (parentSlug || replyToUsername || autoFocus) {
@@ -422,6 +477,7 @@ export function PostCommentForm({
 				<RichTextEditor
 					id={fieldId}
 					instanceKey={`${fieldId}-${editorEpoch}`}
+					mentionContext={{ postSlug, feedbackSlug }}
 					value={content}
 					onChange={setContent}
 					disabled={isPending}

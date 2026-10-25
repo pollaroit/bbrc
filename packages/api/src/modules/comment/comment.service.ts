@@ -6,6 +6,13 @@ import { ORPCError } from "@orpc/server";
 import { assertNormalizedSocialContent } from "../../lib/rich-content";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
+import { warmLinkPreviewsInContent } from "../link-unfurl/link-unfurl.service";
+import {
+	loadMentionedIds,
+	notifyMentions,
+	prepareContentMentions,
+	syncContentMentions,
+} from "../mention/mention.service";
 import {
 	notifyCommentOnYourPost,
 	notifyReplyToYourComment,
@@ -350,7 +357,13 @@ export async function createComment(
 		parent = row;
 	}
 
-	const content = assertNormalizedSocialContent(input.content);
+	const prepared = await prepareContentMentions(db, {
+		content: assertNormalizedSocialContent(input.content),
+		authorId: userId,
+	});
+	const content = prepared.content;
+	// Outside links get their preview ready now (bounded; never fails the save).
+	await warmLinkPreviewsInContent(db, userId, content);
 
 	return db
 		.$transaction(async (tx) => {
@@ -377,13 +390,30 @@ export async function createComment(
 				? XP_AWARD.comment
 				: 0;
 
+			const freshMentions = await syncContentMentions(tx, {
+				ref: { kind: "comment", id: comment.id },
+				authorId: userId,
+				mentioned: prepared.mentioned,
+			});
+
 			return {
 				slug: comment.slug,
 				xpAwarded,
 				parentAuthorId: parent?.authorId ?? null,
+				freshMentions,
 			};
 		})
 		.then(async (result) => {
+			const href = await commentPermalink(db, result.slug);
+			if (href) {
+				void notifyMentions(db, {
+					authorId: userId,
+					recipientIds: result.freshMentions,
+					content,
+					href,
+				});
+			}
+			// A member who is mentioned gets the mention, not also the comment/reply notice.
 			if (input.postSlug) {
 				if (parent) {
 					void notifyReplyToYourComment(
@@ -392,14 +422,41 @@ export async function createComment(
 						result.slug,
 						userId,
 						result.parentAuthorId,
+						result.freshMentions,
 					);
 				} else {
-					void notifyCommentOnYourPost(db, input.postSlug, userId);
+					void notifyCommentOnYourPost(
+						db,
+						input.postSlug,
+						userId,
+						result.freshMentions,
+					);
 				}
 			}
 
 			return { slug: result.slug, xpAwarded: result.xpAwarded };
 		});
+}
+
+/** The permalink of a comment, on its post or on its review. */
+async function commentPermalink(
+	db: Database,
+	slug: string,
+): Promise<string | null> {
+	const row = await db.comment.findUnique({
+		where: { slug },
+		select: {
+			slug: true,
+			post: { select: { slug: true } },
+			feedback: { select: { slug: true, book: { select: { slug: true } } } },
+		},
+	});
+	if (!row) return null;
+	if (row.post) return `/posts/${row.post.slug}/comments/${row.slug}`;
+	if (row.feedback) {
+		return `/books/${row.feedback.book.slug}/feedbacks/${row.feedback.slug}/comments/${row.slug}`;
+	}
+	return null;
 }
 
 export async function updateComment(
@@ -421,22 +478,56 @@ export async function updateComment(
 
 	assertCommentAuthor(comment, userId);
 
-	const normalizedContent =
+	const preparedContent =
 		input.content != null
-			? assertNormalizedSocialContent(input.content)
+			? await prepareContentMentions(db, {
+					content: assertNormalizedSocialContent(input.content),
+					authorId: userId,
+					alreadyMentionedIds: await loadMentionedIds(db, {
+						kind: "comment",
+						id: comment.id,
+					}),
+				})
 			: undefined;
+	const normalizedContent = preparedContent?.content;
 	const contentChanged =
 		normalizedContent != null && normalizedContent !== comment.content;
+	if (normalizedContent != null && contentChanged) {
+		await warmLinkPreviewsInContent(db, userId, normalizedContent);
+	}
 
-	await db.comment.update({
-		where: { id: comment.id },
-		data: {
-			...(normalizedContent != null ? { content: normalizedContent } : {}),
-			...(input.isSpoiler !== undefined ? { isSpoiler: input.isSpoiler } : {}),
-			...(contentChanged ? { editedAt: new Date() } : {}),
-		},
-		select: { slug: true },
+	const freshMentions = await db.$transaction(async (tx) => {
+		await tx.comment.update({
+			where: { id: comment.id },
+			data: {
+				...(normalizedContent != null ? { content: normalizedContent } : {}),
+				...(input.isSpoiler !== undefined
+					? { isSpoiler: input.isSpoiler }
+					: {}),
+				...(contentChanged ? { editedAt: new Date() } : {}),
+			},
+			select: { slug: true },
+		});
+		return preparedContent
+			? syncContentMentions(tx, {
+					ref: { kind: "comment", id: comment.id },
+					authorId: userId,
+					mentioned: preparedContent.mentioned,
+				})
+			: [];
 	});
+
+	if (normalizedContent != null && freshMentions.length > 0) {
+		const href = await commentPermalink(db, input.slug);
+		if (href) {
+			void notifyMentions(db, {
+				authorId: userId,
+				recipientIds: freshMentions,
+				content: normalizedContent,
+				href,
+			});
+		}
+	}
 
 	return { slug: input.slug };
 }

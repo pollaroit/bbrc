@@ -13,6 +13,8 @@ import {
 	FeedbackRatingBadge,
 	FeedbackReviewBody,
 } from "@/components/blocks/feedback-live";
+import { RemoveMyMentionMenu } from "@/components/blocks/mention/remove-my-mention";
+import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserPanel } from "@/components/blocks/user-panel";
@@ -72,6 +74,13 @@ export function FeedbackDetail({
 				</CardHeader>
 				<CardContent className="flex flex-col gap-4 pt-4">
 					<FeedbackReviewBody feedback={feedback} />
+					{feedback.imageUrl ? (
+						<PostAttachedImage
+							src={feedback.imageUrl}
+							alt=""
+							className="mt-0"
+						/>
+					) : null}
 					<EditionChip
 						bookSlug={feedback.bookSlug}
 						edition={feedback.readEdition}
@@ -98,6 +107,7 @@ export function FeedbackDetail({
 							shareInPost={{ kind: "feedback", slug: feedback.slug }}
 							size="md"
 						/>
+						<RemoveMyMentionMenu kind="review" slug={feedback.slug} />
 					</div>
 				</CardContent>
 			</Card>

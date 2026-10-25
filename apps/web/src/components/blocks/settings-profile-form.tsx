@@ -365,6 +365,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 					<div className={bioPreview ? "hidden" : undefined}>
 						<RichTextEditor
 							id={ids.bio}
+							enableMentions={false}
 							value={draft.bio}
 							onChange={(bio) => patch({ bio })}
 							placeholder="Tell other readers a little about yourself…"

@@ -78,6 +78,8 @@ export const GetBookReadStateOutputSchema = z.object({
 	readEndYear: z.number().int().nullable(),
 	readEndMonth: z.number().int().nullable(),
 	editionId: ReadEditionIdFieldSchema,
+	/** Set by `setRead` when it just created the member's review, so an image can be attached to it. */
+	createdFeedbackSlug: z.string().nullish(),
 });
 
 export const GetReadPreferencesOutputSchema = z.object({

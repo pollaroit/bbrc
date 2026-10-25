@@ -26,6 +26,7 @@ import {
 	X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { MentionPicker } from "@/components/blocks/mention/mention-picker";
 import {
 	RichTextLinkDialog,
 	type RichTextLinkDialogResult,
@@ -43,6 +44,7 @@ import {
 } from "@/lib/rich-content-tiptap";
 import { isAllowedRichLinkHref } from "@/lib/rich-link";
 import { LinkCard } from "@/lib/tiptap-link-card";
+import { Mention, type MentionPickerRequest } from "@/lib/tiptap-mention";
 import { cn } from "@/lib/utils";
 
 type RichTextEditorProps = {
@@ -59,6 +61,10 @@ type RichTextEditorProps = {
 	autoFocus?: boolean;
 	/** Runs on ⌘/Ctrl + Enter, e.g. to post a comment. */
 	onSubmitShortcut?: () => void;
+	/** Typing "@" offers members to mention (off for places that never notify, like a bio). */
+	enableMentions?: boolean;
+	/** What is being written on, so its author and commenters are suggested first. */
+	mentionContext?: { postSlug?: string; feedbackSlug?: string };
 };
 
 function initialEditorDoc(stored: string) {
@@ -251,8 +257,15 @@ export function RichTextEditor({
 	minHeightClassName = "min-h-[8rem]",
 	autoFocus = false,
 	onSubmitShortcut,
+	enableMentions = true,
+	mentionContext,
 }: RichTextEditorProps) {
 	const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+	const [mentionRequest, setMentionRequest] =
+		useState<MentionPickerRequest | null>(null);
+	const mentionKeyHandler = useRef<((event: KeyboardEvent) => boolean) | null>(
+		null,
+	);
 	const openLinkDialogRef = useRef<() => void>(() => {});
 	openLinkDialogRef.current = () => setLinkDialogOpen(true);
 
@@ -292,6 +305,14 @@ export function RichTextEditor({
 					},
 				}),
 				LinkCard,
+				...(enableMentions
+					? [
+							Mention.configure({
+								onPicker: setMentionRequest,
+								keyHandler: mentionKeyHandler,
+							}),
+						]
+					: []),
 				Placeholder.configure({ placeholder }),
 			],
 			content: initialEditorDoc(value),
@@ -421,6 +442,10 @@ export function RichTextEditor({
 				: storedContentToTiptapJson(external);
 		editor.commands.setContent(nextDoc, { emitUpdate: false });
 		suppressOnChangeRef.current = false;
+		// Text put in from outside (a reply that starts with a mention): keep typing after it.
+		if (editor.isFocused) {
+			editor.commands.focus("end");
+		}
 	}, [editor, value]);
 
 	if (!editor) {
@@ -547,6 +572,13 @@ export function RichTextEditor({
 				</div>
 				<LinkContextBar editor={editor} onEdit={openLinkDialog} />
 				<EditorContent editor={editor} />
+				{enableMentions ? (
+					<MentionPicker
+						request={mentionRequest}
+						keyHandlerRef={mentionKeyHandler}
+						context={mentionContext}
+					/>
+				) : null}
 				<p className="border-border border-t px-3 py-1.5 text-muted-foreground text-xs tabular-nums">
 					{plainLength}/{maxPlainLength}
 				</p>

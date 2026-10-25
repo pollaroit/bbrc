@@ -49,6 +49,12 @@ export const USER_INNER_PAGES: InnerPage[] = [
 	{ id: "shelves", label: "Shelves", path: "shelves" },
 	{ id: "goals", label: "Goals", path: "goals" },
 	{
+		id: "mentions",
+		label: "Mentions",
+		path: "mentions",
+		aliases: ["mentioned"],
+	},
+	{
 		id: "achievements",
 		label: "Achievements",
 		path: "achievements",

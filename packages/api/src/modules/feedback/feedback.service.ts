@@ -9,6 +9,13 @@ import {
 	clubReadEligibilityHint,
 	userCompletedClubRead,
 } from "../book/book-read-eligibility";
+import { warmLinkPreviewsInContent } from "../link-unfurl/link-unfurl.service";
+import {
+	loadMentionedIds,
+	notifyMentions,
+	prepareContentMentions,
+	syncContentMentions,
+} from "../mention/mention.service";
 import { notifyMemberFeedbackOnBook } from "../notification/notification-triggers";
 import { loadReadEditionRefs } from "../read/read-edition-ref";
 import {
@@ -130,6 +137,7 @@ export async function getBookFeedbackList(
 			rating: true,
 			review: true,
 			isSpoiler: true,
+			imageUrl: true,
 			createdAt: true,
 			authorId: true,
 			author: {
@@ -168,6 +176,7 @@ export async function getBookFeedbackList(
 		rating: feedback.rating,
 		review: feedback.review,
 		isSpoiler: feedback.isSpoiler,
+		imageUrl: feedback.imageUrl,
 		createdAt: feedback.createdAt,
 		likeCount: feedback._count.likes,
 		likedByMe: likedFeedbackIds.has(feedback.id),
@@ -250,6 +259,7 @@ export async function getFeedbackBySlug(
 		slug: feedback.slug,
 		review: feedback.review,
 		isSpoiler: feedback.isSpoiler,
+		imageUrl: feedback.imageUrl,
 		rating: feedback.rating,
 		createdAt: feedback.createdAt,
 		bookSlug: feedback.book.slug,
@@ -378,6 +388,7 @@ export async function getBookFeedbackState(
 			rating: true,
 			review: true,
 			isSpoiler: true,
+			imageUrl: true,
 			createdAt: true,
 		},
 	});
@@ -457,7 +468,13 @@ export async function createFeedback(
 		});
 	}
 
-	const review = normalizeFeedbackReview(input.review);
+	const prepared = await prepareContentMentions(db, {
+		content: normalizeFeedbackReview(input.review),
+		authorId: userId,
+	});
+	const review = prepared.content;
+	// Outside links get their preview ready now (bounded; never fails the save).
+	await warmLinkPreviewsInContent(db, userId, review);
 
 	return db
 		.$transaction(async (tx) => {
@@ -484,11 +501,29 @@ export async function createFeedback(
 				? XP_AWARD.feedback
 				: 0;
 
-			return { slug: feedback.slug, xpAwarded };
+			const freshMentions = await syncContentMentions(tx, {
+				ref: { kind: "review", id: feedback.id },
+				authorId: userId,
+				mentioned: prepared.mentioned,
+			});
+
+			return { slug: feedback.slug, xpAwarded, freshMentions };
 		})
 		.then(async (result) => {
-			void notifyMemberFeedbackOnBook(db, input.bookSlug, userId);
-			return result;
+			void notifyMentions(db, {
+				authorId: userId,
+				recipientIds: result.freshMentions,
+				content: review,
+				href: `/books/${input.bookSlug}/feedbacks/${result.slug}`,
+			});
+			// A member who is mentioned gets the mention, not also the "new review" notice.
+			void notifyMemberFeedbackOnBook(
+				db,
+				input.bookSlug,
+				userId,
+				result.freshMentions,
+			);
+			return { slug: result.slug, xpAwarded: result.xpAwarded };
 		});
 }
 
@@ -518,9 +553,19 @@ export async function updateFeedback(
 		});
 	}
 
-	const review = normalizeFeedbackReview(input.review);
+	const prepared = await prepareContentMentions(db, {
+		content: normalizeFeedbackReview(input.review),
+		authorId: userId,
+		alreadyMentionedIds: await loadMentionedIds(db, {
+			kind: "review",
+			id: existing.id,
+		}),
+	});
+	const review = prepared.content;
+	// Outside links get their preview ready now (bounded; never fails the save).
+	await warmLinkPreviewsInContent(db, userId, review);
 
-	await db.$transaction(async (tx) => {
+	const freshMentions = await db.$transaction(async (tx) => {
 		await tx.feedback.update({
 			where: { id: existing.id },
 			data: {
@@ -530,6 +575,18 @@ export async function updateFeedback(
 			},
 		});
 		await recalculateBookAverageRating(book.id, tx);
+		return syncContentMentions(tx, {
+			ref: { kind: "review", id: existing.id },
+			authorId: userId,
+			mentioned: prepared.mentioned,
+		});
+	});
+
+	void notifyMentions(db, {
+		authorId: userId,
+		recipientIds: freshMentions,
+		content: review,
+		href: `/books/${input.bookSlug}/feedbacks/${existing.slug}`,
 	});
 
 	return { slug: existing.slug };

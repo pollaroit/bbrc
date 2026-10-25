@@ -87,3 +87,53 @@ export const MentionPreferencesSchema = z.object({
 	allowMentions: z.boolean(),
 });
 export const SetMentionPreferencesInputSchema = MentionPreferencesSchema;
+
+// ── "Remove my mention" on the content itself ──────────────────────────────
+
+const oneOf = (value: {
+	postSlug?: string;
+	commentSlug?: string;
+	feedbackSlug?: string;
+}) =>
+	[value.postSlug, value.commentSlug, value.feedbackSlug].filter(Boolean)
+		.length === 1;
+
+/** The viewer's mention on one post, comment or review (exactly one slug). */
+export const MentionForContentInputSchema = z
+	.object({
+		postSlug: z.string().min(1).max(160).optional(),
+		commentSlug: z.string().min(1).max(160).optional(),
+		feedbackSlug: z.string().min(1).max(160).optional(),
+	})
+	.refine(oneOf, {
+		message: "Send exactly one of postSlug, commentSlug or feedbackSlug.",
+	});
+export const MentionForContentOutputSchema = z.object({
+	mentionId: z.string().nullable(),
+});
+
+/** The same for a whole page of content in one call (at most 60 slugs in all). */
+export const MentionForContentBatchInputSchema = z
+	.object({
+		postSlugs: z.array(z.string().min(1).max(160)).max(60).optional(),
+		commentSlugs: z.array(z.string().min(1).max(160)).max(60).optional(),
+		feedbackSlugs: z.array(z.string().min(1).max(160)).max(60).optional(),
+	})
+	.refine(
+		(value) =>
+			(value.postSlugs?.length ?? 0) +
+				(value.commentSlugs?.length ?? 0) +
+				(value.feedbackSlugs?.length ?? 0) <=
+			60,
+		{ message: "At most 60 slugs in all." },
+	);
+export const MentionForContentBatchOutputSchema = z.object({
+	/** Only content that mentions the viewer; anything not listed has no mention of them. */
+	items: z.array(
+		z.object({
+			kind: MentionKindSchema,
+			slug: z.string(),
+			mentionId: z.string(),
+		}),
+	),
+});

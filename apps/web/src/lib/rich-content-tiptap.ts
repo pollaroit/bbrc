@@ -53,6 +53,18 @@ function inlineFromTiptap(nodes: JSONContent[] | undefined): RichInline[] {
 			inline.push({ t: "text", s: text, m: marksFromTiptap(node.marks) });
 			continue;
 		}
+		if (node.type === "mention") {
+			const username = String(node.attrs?.username ?? "").trim();
+			if (username) {
+				inline.push({
+					t: "mention",
+					username,
+					userId: node.attrs?.userId ? String(node.attrs.userId) : undefined,
+					name: String(node.attrs?.name ?? "").trim() || undefined,
+				});
+			}
+			continue;
+		}
 		if (node.type === "hardBreak") {
 			inline.push({ t: "text", s: "\n" });
 		}
@@ -129,7 +141,14 @@ function tiptapInlineFromRich(inline: RichInline[]): JSONContent[] | undefined {
 	const nodes: JSONContent[] = [];
 	for (const node of inline) {
 		if (node.t === "mention") {
-			nodes.push({ type: "text", text: `@${node.username}` });
+			nodes.push({
+				type: "mention",
+				attrs: {
+					userId: node.userId ?? null,
+					username: node.username,
+					name: node.name ?? node.username,
+				},
+			});
 			continue;
 		}
 		if (node.t === "link") {

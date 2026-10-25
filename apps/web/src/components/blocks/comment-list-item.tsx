@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CommentLikeEngagement } from "@/components/blocks/comment-like-engagement";
+import { RemoveMyMentionMenu } from "@/components/blocks/mention/remove-my-mention";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import {
@@ -134,9 +135,13 @@ function CommentAuthorActions({
 function CommentEditForm({
 	comment,
 	onCancel,
+	postSlug,
+	feedbackSlug,
 }: {
 	comment: CommentListItem;
 	onCancel: () => void;
+	postSlug?: string;
+	feedbackSlug?: string;
 }) {
 	const [draft, setDraft] = useState(comment.content);
 
@@ -175,6 +180,7 @@ function CommentEditForm({
 		>
 			<RichTextEditor
 				instanceKey={comment.slug}
+				mentionContext={{ postSlug, feedbackSlug }}
 				value={draft}
 				onChange={setDraft}
 				disabled={updateMutation.isPending}
@@ -293,6 +299,8 @@ function CommentListItemViewInner({
 			<CommentEditForm
 				comment={listComment}
 				onCancel={() => setEditing(false)}
+				postSlug={postSlug}
+				feedbackSlug={feedbackContextSlug}
 			/>
 		) : isThread ? (
 			<>
@@ -354,6 +362,7 @@ function CommentListItemViewInner({
 									shareInPost={{ kind: "comment", slug: comment.slug }}
 								/>
 							) : null}
+							<RemoveMyMentionMenu kind="comment" slug={comment.slug} />
 							{canReply && onReply && session?.user ? (
 								<Button
 									type="button"
@@ -425,6 +434,7 @@ function CommentListItemViewInner({
 							shareInPost={{ kind: "comment", slug: comment.slug }}
 						/>
 					) : null}
+					<RemoveMyMentionMenu kind="comment" slug={comment.slug} />
 					{canReply && onReply && session?.user ? (
 						<Button
 							type="button"

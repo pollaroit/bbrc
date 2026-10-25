@@ -222,6 +222,7 @@ export function EditPostForm({ post }: EditPostFormProps) {
 						<RichTextEditor
 							id="edit-post-content"
 							instanceKey={post.slug}
+							mentionContext={{ postSlug: post.slug }}
 							value={content}
 							onChange={setContent}
 							disabled={updateMutation.isPending}

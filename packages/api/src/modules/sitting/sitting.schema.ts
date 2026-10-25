@@ -516,6 +516,7 @@ export const SittingReviewSummarySchema = zod.object({
 	rating: zod.number().min(0).max(5),
 	review: zod.string().min(1).max(500),
 	isSpoiler: FeedbackSchema.shape.isSpoiler,
+	imageUrl: FeedbackSchema.shape.imageUrl,
 	createdAt: zod.coerce.date(),
 	likeCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),

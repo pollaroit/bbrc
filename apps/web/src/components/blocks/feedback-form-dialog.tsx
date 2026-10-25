@@ -27,6 +27,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { FeedbackHalfStarRating } from "@/components/blocks/feedback-half-star-rating";
+import {
+	ReviewImageField,
+	uploadReviewImage,
+} from "@/components/blocks/review-image-field";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { authClient } from "@/lib/auth-client";
 import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
@@ -48,6 +52,8 @@ export type FeedbackFormInitialValues = {
 	rating: FeedbackRatingStep;
 	review: string;
 	isSpoiler: boolean;
+	/** The review's current image, when it has one. */
+	imageUrl?: string | null;
 };
 
 type FeedbackFormDialogProps = {
@@ -77,6 +83,7 @@ export function FeedbackFormDialog({
 	const [rating, setRating] = useState<FeedbackRatingStep>(4);
 	const [review, setReview] = useState("");
 	const [isSpoiler, setIsSpoiler] = useState(false);
+	const [imageFile, setImageFile] = useState<File | null>(null);
 
 	useEffect(() => {
 		if (!open) {
@@ -84,6 +91,7 @@ export function FeedbackFormDialog({
 				setRating(4);
 				setReview("");
 				setIsSpoiler(false);
+				setImageFile(null);
 			}
 			return;
 		}
@@ -101,7 +109,7 @@ export function FeedbackFormDialog({
 			onMutate: async (variables) => {
 				const user = session?.user;
 				const pendingSlug = createPendingSlug();
-				const draft = { rating, review, isSpoiler };
+				const draft = { rating, review, isSpoiler, imageFile };
 				const snapshot = await snapshotFeedbackQueries();
 
 				if (user) {
@@ -131,12 +139,16 @@ export function FeedbackFormDialog({
 					setRating(context.draft.rating);
 					setReview(context.draft.review);
 					setIsSpoiler(context.draft.isSpoiler);
+					setImageFile(context.draft.imageFile);
 					onOpenChange(true);
 				}
 				toast.error(error.message);
 			},
 			onSuccess: (result, _variables, context) => {
 				confirmFeedbackCreate(bookSlug, context.pendingSlug, result.slug);
+				if (context.draft.imageFile) {
+					void uploadReviewImage(context.draft.imageFile, result.slug);
+				}
 				if (result.xpAwarded > 0) {
 					toast.success(`Feedback saved (+${result.xpAwarded} XP)`);
 				}
@@ -268,6 +280,24 @@ export function FeedbackFormDialog({
 						<FieldDescription>
 							Optional — up to {FEEDBACK_REVIEW_MAX_PLAIN} characters.
 						</FieldDescription>
+					</Field>
+					<Field>
+						<FieldLabel>Photo</FieldLabel>
+						{isEdit ? (
+							<ReviewImageField
+								mode="edit"
+								feedbackSlug={feedbackSlug ?? myFeedbackSlug(bookSlug)}
+								currentUrl={initialValues?.imageUrl}
+								disabled={pending}
+							/>
+						) : (
+							<ReviewImageField
+								mode="create"
+								file={imageFile}
+								onFileChange={setImageFile}
+								disabled={pending}
+							/>
+						)}
 					</Field>
 					<Field>
 						<div className="flex items-center gap-2">

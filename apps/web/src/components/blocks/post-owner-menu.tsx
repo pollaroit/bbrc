@@ -21,6 +21,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+	RemoveMyMentionMenu,
+	RemoveMyMentionMenuItem,
+	useRemoveMyMentionAction,
+} from "@/components/blocks/mention/remove-my-mention";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
 import { removeFromLists } from "@/lib/optimistic/infinite-lists";
@@ -92,9 +97,11 @@ export function PostOwnerMenu({
 		Boolean(session?.user.username) &&
 		session?.user.username === authorUsername;
 	const isAdmin = Boolean(session?.user.isAdmin);
+	const mention = useRemoveMyMentionAction("post", slug);
 
+	// Someone who was mentioned (and is neither the author nor an admin) only gets that one action.
 	if (!isAuthor && !isAdmin) {
-		return null;
+		return <RemoveMyMentionMenu kind="post" slug={slug} />;
 	}
 
 	return (
@@ -136,6 +143,9 @@ export function PostOwnerMenu({
 							Poll stats
 						</DropdownMenuItem>
 					) : null}
+					{mention.available ? (
+						<RemoveMyMentionMenuItem onSelect={mention.request} />
+					) : null}
 					{isAuthor ? (
 						<>
 							<DropdownMenuSeparator />
@@ -151,6 +161,7 @@ export function PostOwnerMenu({
 				</DropdownMenuContent>
 			</DropdownMenu>
 
+			{mention.dialog}
 			<DestructiveConfirmDialog
 				open={confirmOpen}
 				onOpenChange={setConfirmOpen}

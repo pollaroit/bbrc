@@ -28,6 +28,8 @@ export const BookFeedbackReviewSchema = zod.object({
 	rating: FeedbackSchema.shape.rating,
 	review: FeedbackSchema.shape.review,
 	isSpoiler: FeedbackSchema.shape.isSpoiler,
+	/** The review's image (one, like a post). */
+	imageUrl: FeedbackSchema.shape.imageUrl,
 	createdAt: zod.coerce.date(),
 	likeCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
@@ -70,6 +72,7 @@ export const GetBookFeedbackStateOutputSchema = zod.object({
 			rating: FeedbackSchema.shape.rating,
 			review: FeedbackSchema.shape.review,
 			isSpoiler: FeedbackSchema.shape.isSpoiler,
+			imageUrl: FeedbackSchema.shape.imageUrl,
 			createdAt: zod.coerce.date(),
 		})
 		.nullable(),
@@ -125,6 +128,7 @@ export const UserFeedbackListItemSchema = zod.object({
 	rating: FeedbackSchema.shape.rating,
 	review: FeedbackSchema.shape.review,
 	isSpoiler: FeedbackSchema.shape.isSpoiler,
+	imageUrl: FeedbackSchema.shape.imageUrl,
 	createdAt: zod.coerce.date(),
 	likeCount: zod.number().int().min(0),
 	commentCount: zod.number().int().min(0),
@@ -180,6 +184,7 @@ export const getUserFeedbackListFields = {
 	rating: true,
 	review: true,
 	isSpoiler: true,
+	imageUrl: true,
 	createdAt: true,
 	_count: { select: { likes: true, comments: true } },
 	book: {
@@ -199,6 +204,7 @@ export const GetFeedbackBySlugOutputSchema = FeedbackSchema.pick({
 	slug: true,
 	review: true,
 	isSpoiler: true,
+	imageUrl: true,
 	rating: true,
 	createdAt: true,
 }).extend({
@@ -224,6 +230,7 @@ export const getFeedbackBySlugFields = {
 	slug: true,
 	review: true,
 	isSpoiler: true,
+	imageUrl: true,
 	rating: true,
 	createdAt: true,
 	authorId: true,

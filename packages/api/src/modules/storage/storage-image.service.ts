@@ -15,6 +15,7 @@ import { ORPCError } from "@orpc/server";
 import type { z } from "zod";
 import type { Context } from "../../context";
 import {
+	revalidateBookIsr,
 	revalidateCommentIsr,
 	revalidatePostIsr,
 	revalidateUserIsr,
@@ -141,6 +142,39 @@ export async function uploadPostImageDirect(
 
 	await tryDeleteR2PublicUrl(post.imageUrl);
 	revalidatePostIsr(context, postSlug);
+
+	return { publicUrl };
+}
+
+export async function uploadFeedbackImageDirect(
+	feedbackSlug: string,
+	file: {
+		buffer: Buffer;
+		contentType: AllowedImageMimeType;
+		contentLength: number;
+	},
+	session: Session,
+	db: Database,
+	context: Context,
+) {
+	const feedback = await loadOwnedFeedback(feedbackSlug, session.user.id, db);
+	const key = buildObjectKey(getStorageEnv(), {
+		kind: "feedback-image",
+		feedbackSlug,
+	});
+	const body: ImageUploadBody = {
+		contentType: file.contentType,
+		contentLength: file.contentLength,
+	};
+	const publicUrl = await putImageAtKey(key, body, file.buffer);
+
+	await db.feedback.update({
+		where: { id: feedback.id },
+		data: { imageUrl: publicUrl },
+	});
+
+	await tryDeleteR2PublicUrl(feedback.imageUrl);
+	revalidateBookIsr(context, feedback.book.slug);
 
 	return { publicUrl };
 }
@@ -416,6 +450,28 @@ async function loadOwnedPost(slug: string, userId: string, db: Database) {
 	return post;
 }
 
+async function loadOwnedFeedback(slug: string, userId: string, db: Database) {
+	const feedback = await db.feedback.findUnique({
+		where: { slug },
+		select: {
+			id: true,
+			slug: true,
+			authorId: true,
+			imageUrl: true,
+			book: { select: { slug: true } },
+		},
+	});
+	if (!feedback) {
+		throw new ORPCError("NOT_FOUND", { message: "Review not found" });
+	}
+	if (feedback.authorId !== userId) {
+		throw new ORPCError("FORBIDDEN", {
+			message: "Only the author can change this review image",
+		});
+	}
+	return feedback;
+}
+
 async function loadOwnedComment(slug: string, userId: string, db: Database) {
 	const comment = await db.comment.findUnique({
 		where: { slug },
@@ -521,6 +577,64 @@ export async function removePostImage(
 
 	await tryDeleteR2PublicUrl(post.imageUrl);
 	revalidatePostIsr(context, postSlug);
+
+	return { removed: true as const };
+}
+
+export async function initFeedbackImageUpload(
+	feedbackSlug: string,
+	body: ImageUploadBody,
+	session: Session,
+	db: Database,
+) {
+	await loadOwnedFeedback(feedbackSlug, session.user.id, db);
+	const key = buildObjectKey(getStorageEnv(), {
+		kind: "feedback-image",
+		feedbackSlug,
+	});
+	return prepareImageUploadInit(key, body);
+}
+
+export async function commitFeedbackImageUpload(
+	feedbackSlug: string,
+	body: ImageUploadBody,
+	session: Session,
+	db: Database,
+	context: Context,
+) {
+	const feedback = await loadOwnedFeedback(feedbackSlug, session.user.id, db);
+	const key = buildObjectKey(getStorageEnv(), {
+		kind: "feedback-image",
+		feedbackSlug,
+	});
+	const publicUrl = await verifyUploadedObject(key, body);
+
+	await db.feedback.update({
+		where: { id: feedback.id },
+		data: { imageUrl: publicUrl },
+	});
+
+	await tryDeleteR2PublicUrl(feedback.imageUrl);
+	revalidateBookIsr(context, feedback.book.slug);
+
+	return { publicUrl };
+}
+
+export async function removeFeedbackImage(
+	feedbackSlug: string,
+	session: Session,
+	db: Database,
+	context: Context,
+) {
+	const feedback = await loadOwnedFeedback(feedbackSlug, session.user.id, db);
+
+	await db.feedback.update({
+		where: { id: feedback.id },
+		data: { imageUrl: null },
+	});
+
+	await tryDeleteR2PublicUrl(feedback.imageUrl);
+	revalidateBookIsr(context, feedback.book.slug);
 
 	return { removed: true as const };
 }

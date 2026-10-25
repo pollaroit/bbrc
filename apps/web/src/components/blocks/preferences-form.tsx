@@ -380,6 +380,55 @@ function PollsSection() {
 	);
 }
 
+function MentionsSection() {
+	const { data: session } = authClient.useSession();
+	const signedIn = Boolean(session?.user);
+
+	const preferenceQuery = useQuery({
+		...orpc.mention.preferences.queryOptions(),
+		enabled: signedIn,
+	});
+	const key = orpc.mention.preferences.queryKey();
+	const mutation = useMutation(
+		orpc.mention.setPreferences.mutationOptions({
+			onMutate: async (variables) => {
+				await queryClient.cancelQueries({ queryKey: key });
+				const previous = queryClient.getQueryData(key);
+				queryClient.setQueryData(key, variables);
+				return { previous };
+			},
+			onError: (_error, _variables, context) => {
+				queryClient.setQueryData(key, context?.previous);
+				toast.error("Could not save that setting.");
+			},
+			onSettled: () => {
+				void queryClient.invalidateQueries({ queryKey: key });
+			},
+		}),
+	);
+
+	return (
+		<PreferencesSection
+			id="mentions"
+			title="Mentions"
+			description="Whether other members can mention you with @ in posts, comments and reviews."
+		>
+			<SwitchRow
+				id="pref-allow-mentions"
+				label="Allow others to mention me"
+				hint={
+					signedIn
+						? "Turn off to stop appearing when people type @. Mentions that already exist stay."
+						: "Sign in to change this one."
+				}
+				checked={preferenceQuery.data?.allowMentions ?? true}
+				disabled={!signedIn || preferenceQuery.isPending}
+				onChange={(allowMentions) => mutation.mutate({ allowMentions })}
+			/>
+		</PreferencesSection>
+	);
+}
+
 function PostsSection() {
 	const { data: session } = authClient.useSession();
 	const signedIn = Boolean(session?.user);
@@ -647,6 +696,7 @@ const sections = [
 	{ id: "reading-privacy", label: "Wishlist" },
 	{ id: "shelves", label: "Shelves" },
 	{ id: "polls", label: "Polls" },
+	{ id: "mentions", label: "Mentions" },
 	{ id: "posts", label: "Posts" },
 	{ id: "sittings", label: "Sittings" },
 	{ id: "time", label: "Time and format" },
@@ -687,6 +737,7 @@ export function PreferencesForm() {
 			<ReadingPrivacySection />
 			<ShelvesSection />
 			<PollsSection />
+			<MentionsSection />
 			<PostsSection />
 			<SittingsSection />
 			<TimeSection />

@@ -65,6 +65,7 @@ export function FeedbackDetailOwnerActions({
 					rating={live.rating}
 					review={live.review}
 					isSpoiler={live.isSpoiler}
+					imageUrl={feedback.imageUrl}
 					feedbackSlug={feedback.slug}
 				/>
 			) : null}

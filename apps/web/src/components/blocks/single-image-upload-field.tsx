@@ -53,7 +53,8 @@ export function SingleImageUploadField({
 			? "avatar"
 			: uploadTarget.target === "shelf-cover"
 				? "cover"
-				: uploadTarget.target === "post-image"
+				: uploadTarget.target === "post-image" ||
+						uploadTarget.target === "feedback-image"
 					? "default"
 					: "compact";
 
