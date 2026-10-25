@@ -1,4 +1,5 @@
 import type { Database } from "@bbrc/db";
+import { authorNameKey, isLikelySameAuthor } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { getGeminiConfig } from "../../lib/gemini/config";
 import { geminiGenerateJson } from "../../lib/gemini/generate-json";
@@ -66,6 +67,9 @@ function jaccard(a: string[], b: string[]) {
 }
 
 function authorOverlap(a: string[], b: string[]) {
+	if (a.some((x) => b.some((y) => isLikelySameAuthor(x, y)))) {
+		return true;
+	}
 	const left = a.map(normalize);
 	const right = b.map(normalize);
 	return left.some((name) =>
@@ -89,6 +93,10 @@ export async function findSimilarBooks(
 	input: { title: string; authors: string[]; olid?: string },
 ): Promise<FindSimilarBooksOutput> {
 	const words = tokens(input.title).filter((word) => word.length >= 4);
+	const authorKeys = input.authors
+		.slice(0, 3)
+		.map((author) => authorNameKey(author))
+		.filter(Boolean);
 	const candidates = await db.book.findMany({
 		where: {
 			...(input.olid ? { NOT: { olid: input.olid } } : {}),
@@ -99,6 +107,22 @@ export async function findSimilarBooks(
 				...input.authors.slice(0, 3).map((author) => ({
 					authors: { has: author },
 				})),
+				...(authorKeys.length > 0
+					? [
+							{
+								authorLinks: {
+									some: {
+										author: {
+											OR: [
+												{ nameKey: { in: authorKeys } },
+												{ aliases: { some: { key: { in: authorKeys } } } },
+											],
+										},
+									},
+								},
+							},
+						]
+					: []),
 			],
 		},
 		select: { slug: true, title: true, authors: true, coverId: true },

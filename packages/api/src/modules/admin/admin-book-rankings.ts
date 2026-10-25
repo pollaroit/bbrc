@@ -1,5 +1,5 @@
 import type { Database, Prisma } from "@bbrc/db";
-import { authorNameToSlug, getBookCountryName } from "@bbrc/shared";
+import { bookAuthorEntries, getBookCountryName } from "@bbrc/shared";
 import type { z } from "zod";
 import { mergeWhereFragments } from "../../utils/searching";
 import { aggregateCountryBookCounts } from "../book/book-country-filter";
@@ -151,35 +151,39 @@ async function topAuthorsByCatalogSize(
 	db: Database,
 	where: Prisma.BookWhereInput,
 ): Promise<AuthorRankingItem[]> {
-	const rows = await db.book.findMany({ where, select: { authors: true } });
-	const counts = new Map<string, { name: string; bookCount: number }>();
+	const rows = await db.book.findMany({
+		where,
+		select: {
+			authors: true,
+			authorLinks: {
+				select: { author: { select: { id: true, slug: true, name: true } } },
+			},
+		},
+	});
+	const counts = new Map<
+		string,
+		{ name: string; slug: string; bookCount: number }
+	>();
 
 	for (const row of rows) {
-		const seenOnBook = new Set<string>();
-		for (const rawName of row.authors) {
-			const name = rawName.trim();
-			if (!name) {
-				continue;
-			}
-			const slug = authorNameToSlug(name);
-			if (seenOnBook.has(slug)) {
-				continue;
-			}
-			seenOnBook.add(slug);
-			const existing = counts.get(slug);
+		for (const author of bookAuthorEntries(row)) {
+			const existing = counts.get(author.key);
 			if (existing) {
 				existing.bookCount += 1;
-				existing.name = name;
 			} else {
-				counts.set(slug, { name, bookCount: 1 });
+				counts.set(author.key, {
+					name: author.label,
+					slug: author.slug,
+					bookCount: 1,
+				});
 			}
 		}
 	}
 
-	return [...counts.entries()]
-		.map(([authorSlug, { name, bookCount }]) => ({
+	return [...counts.values()]
+		.map(({ name, slug, bookCount }) => ({
 			authorName: name,
-			authorSlug,
+			authorSlug: slug,
 			bookCount,
 		}))
 		.sort(

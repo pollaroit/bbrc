@@ -422,6 +422,13 @@ export async function updateAuthor(input: UpdateAuthorFields, db: Database) {
 				tx,
 				links.map((link) => link.bookId),
 			);
+			// Post attachments keep a name snapshot next to the slug; keep it current.
+			if (typeof data.name === "string") {
+				await tx.postAttachment.updateMany({
+					where: { authorSlug: author.slug },
+					data: { authorName: data.name },
+				});
+			}
 		}
 		return { id, slug: author.slug, changed: true };
 	});

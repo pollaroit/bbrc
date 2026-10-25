@@ -1,5 +1,4 @@
 import { fetchWorkEditionTotalCount } from "@bbrc/api/lib/open-library/work-editions";
-import { loadAuthorCatalog } from "@bbrc/api/modules/author/author-catalog";
 import { getAuthor } from "@bbrc/api/modules/author/author-directory.service";
 import { getAuthorBooks } from "@bbrc/api/modules/author/author-tabs.service";
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
@@ -300,19 +299,24 @@ async function resolveSeriesListOg(): Promise<OgImageContent> {
 }
 
 async function resolveAuthorsListOg(): Promise<OgImageContent> {
-	const [catalog, books, reviews] = await Promise.all([
-		loadAuthorCatalog(db),
+	const withBooks = { books: { some: {} } };
+	const [writers, rated, books, reviews] = await Promise.all([
+		db.author.count({ where: withBooks }),
+		db.author.count({
+			where: {
+				books: { some: { book: { feedbacks: { some: {} } } } },
+			},
+		}),
 		db.book.count(),
 		db.feedback.count(),
 	]);
-	const rated = catalog.filter((entry) => entry.averageRating != null).length;
 
 	return {
 		kind: "Authors",
 		title: "Authors",
 		body: "Browse writers in the catalog by country, reads, reviews and club rating.",
 		facts: [
-			fact("Writers", num(catalog.length)),
+			fact("Writers", num(writers)),
 			fact("Books", num(books)),
 			fact("Reviews", num(reviews)),
 			fact("Club-rated", num(rated)),

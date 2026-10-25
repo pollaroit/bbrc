@@ -6,6 +6,7 @@ import { Badge } from "@bbrc/ui/components/badge";
 import { BadgeCheck, BookMarked, Globe2, Star } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { CopyValueButton } from "@/components/blocks/edition-page/copy-value";
 import { EditionCoverGallery } from "@/components/blocks/edition-page/edition-cover-gallery";
 import { editionHeadline } from "@/lib/edition/format";
@@ -132,7 +133,16 @@ export function EditionHero({
 						>
 							{book.title}
 						</Link>
-						{book.authors.length > 0 ? ` by ${book.authors.join(", ")}` : null}
+						{book.authors.length > 0 ? (
+							<>
+								{" by "}
+								<BookAuthorLinks
+									authors={book.authors}
+									refs={book.authorRefs}
+									className="text-muted-foreground"
+								/>
+							</>
+						) : null}
 					</p>
 					<h1 className="text-balance font-semibold text-2xl tracking-tight sm:text-3xl">
 						{headline}

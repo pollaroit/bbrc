@@ -22,10 +22,11 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { type CSSProperties, useId, useState } from "react";
+import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
-import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { bookCoverUrl } from "@/lib/book-cover";
 import { paceText, paceToneClass } from "@/lib/reading/pace-text";
 import {
 	useAbandonReading,
@@ -291,7 +292,7 @@ export function ReadingCard({
 						</Link>
 					</h3>
 					<p className="text-muted-foreground text-sm">
-						{formatBookAuthors(reading.book.authors)}
+						<BookAuthorLinks authors={reading.book.authors} />
 					</p>
 					<p className="flex min-w-0 flex-wrap items-center gap-x-2 text-muted-foreground text-xs">
 						<span>

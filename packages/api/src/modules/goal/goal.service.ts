@@ -52,13 +52,40 @@ const readProgressSelect = {
 			authors: true,
 			coverId: true,
 			countries: true,
+			authorLinks: {
+				select: {
+					author: {
+						select: { slug: true, slugRedirects: { select: { slug: true } } },
+					},
+				},
+			},
 		},
 	},
 } satisfies Prisma.ReadSelect;
 
-type ReadProgressRow = Prisma.ReadGetPayload<{
+type RawReadProgressRow = Prisma.ReadGetPayload<{
 	select: typeof readProgressSelect;
 }>;
+
+type ReadProgressRow = Omit<RawReadProgressRow, "book"> & {
+	book: Omit<RawReadProgressRow["book"], "authorLinks"> & {
+		authorSlugs: string[];
+	};
+};
+
+function withAuthorSlugs(row: RawReadProgressRow): ReadProgressRow {
+	const { authorLinks, ...book } = row.book;
+	return {
+		...row,
+		book: {
+			...book,
+			authorSlugs: authorLinks.flatMap(({ author }) => [
+				author.slug,
+				...author.slugRedirects.map((redirect) => redirect.slug),
+			]),
+		},
+	};
+}
 
 async function loadUserByUsername(
 	username: string,
@@ -100,7 +127,7 @@ async function loadReadsForGoalYears(
 		return [];
 	}
 
-	return db.read.findMany({
+	const rows = await db.read.findMany({
 		where: {
 			userId,
 			readEndYear: { in: years },
@@ -109,6 +136,7 @@ async function loadReadsForGoalYears(
 		select: readProgressSelect,
 		orderBy: [{ readEndYear: "desc" }, { readEndMonth: "desc" }],
 	});
+	return rows.map(withAuthorSlugs);
 }
 
 function mapGoalListItem(
@@ -291,7 +319,13 @@ export async function getGoalBySlug(
 		.map((read) => ({
 			readEndYear: read.readEndYear!,
 			readEndMonth: read.readEndMonth!,
-			book: read.book,
+			book: {
+				slug: read.book.slug,
+				title: read.book.title,
+				authors: read.book.authors,
+				coverId: read.book.coverId,
+				countries: read.book.countries,
+			},
 		}));
 
 	return {

@@ -18,6 +18,19 @@ export async function findBookIdsByAuthorNameSearch(
 			SELECT 1 FROM unnest(b.authors) AS author_name(name)
 			WHERE author_name.name ILIKE ${pattern}
 		)
+		OR EXISTS (
+			SELECT 1
+			FROM book_author ba
+			JOIN author a ON a.id = ba.author_id
+			WHERE ba.book_id = b.id
+				AND (
+					a.name ILIKE ${pattern}
+					OR EXISTS (
+						SELECT 1 FROM author_alias al
+						WHERE al.author_id = a.id AND al.alias ILIKE ${pattern}
+					)
+				)
+		)
 		LIMIT ${AUTHOR_BOOK_ID_LIMIT}
 	`;
 

@@ -1,4 +1,6 @@
 import { protectedProcedure, publicProcedure } from "../../procedures";
+import { revalidateAuthorSlugs } from "../author/author-isr";
+import { findAuthorBySlugOrRedirect } from "../author-admin/author-core";
 import {
 	FollowStateInputSchema,
 	FollowStatesInputSchema,
@@ -15,9 +17,21 @@ export const followRouter = {
 	/** Follow, or stop following. Returns the new state and the follower count. */
 	toggle: protectedProcedure
 		.input(ToggleFollowInputSchema)
-		.handler(({ input, context }) =>
-			toggleFollow(input.target, context.session.user.id, context.db),
-		),
+		.handler(async ({ input, context }) => {
+			const result = await toggleFollow(
+				input.target,
+				context.session.user.id,
+				context.db,
+			);
+			if (input.target.type === "author") {
+				const author = await findAuthorBySlugOrRedirect(
+					context.db,
+					input.target.slug,
+				);
+				if (author) revalidateAuthorSlugs(context, [author.slug]);
+			}
+			return result;
+		}),
 
 	/** Counts only, never names. `following` is false when nobody is signed in. */
 	state: publicProcedure

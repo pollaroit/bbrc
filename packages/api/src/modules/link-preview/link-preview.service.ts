@@ -297,7 +297,13 @@ async function resolveOne(
 		case "author": {
 			const author = await findAuthorBySlug(db, ref.slug);
 			if (!author) return unavailable(ref);
-			const summary = await authorBookSummary(db, author.name);
+			const summary = await authorBookSummary(db, author);
+			const photo = author.id
+				? await db.author.findUnique({
+						where: { id: author.id },
+						select: { photoUrl: true },
+					})
+				: null;
 			return {
 				...base,
 				status: "ok",
@@ -305,7 +311,9 @@ async function resolveOne(
 				subtitle: "Author",
 				excerpt: null,
 				meta: [`${count(summary.bookCount, "book", "books")} in the library`],
-				image: { type: "mosaic", coverIds: summary.coverIds, imageUrl: null },
+				image: photo?.photoUrl
+					? { type: "avatar", name: author.name, image: photo.photoUrl }
+					: { type: "mosaic", coverIds: summary.coverIds, imageUrl: null },
 			};
 		}
 

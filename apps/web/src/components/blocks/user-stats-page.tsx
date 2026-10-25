@@ -1,7 +1,7 @@
 "use client";
 
 import type { GetUserStatsOutput } from "@bbrc/api/modules/user/user-stats.schema";
-import { getBookCountryName } from "@bbrc/shared";
+import { authorNameToSlug, getBookCountryName } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Card,
@@ -775,7 +775,14 @@ function TopAuthorsCountries({
 										className="font-medium"
 									/>
 								) : (
-									<p className="font-medium">{row.label}</p>
+									<Link
+										href={
+											`/authors/${row.slug ?? authorNameToSlug(row.label)}` as Route
+										}
+										className="font-medium underline-offset-4 hover:underline"
+									>
+										{row.label}
+									</Link>
 								)}
 								<p className="text-muted-foreground text-sm tabular-nums">
 									{row.bookCount} books

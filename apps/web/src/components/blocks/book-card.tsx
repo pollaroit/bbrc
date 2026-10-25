@@ -247,7 +247,10 @@ export function BookCard({
 								{book.title}
 							</h2>
 							<p className="mt-1 line-clamp-1 text-sm leading-snug">
-								<BookAuthorLinks authors={book.authors} />
+								<BookAuthorLinks
+									authors={book.authors}
+									refs={book.authorRefs}
+								/>
 							</p>
 							{seriesLabel && series ? (
 								<p className="pointer-events-auto relative z-2 mt-1.5 line-clamp-1 text-muted-foreground text-xs leading-snug">

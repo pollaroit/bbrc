@@ -1,6 +1,7 @@
 import type { Database } from "@bbrc/db";
 import {
 	type AchievementFacts,
+	bookAuthorEntries,
 	type FactSection,
 	type GoalFact,
 	goalScopeFromStored,
@@ -98,6 +99,12 @@ export async function loadAchievementFacts(
 								publishedIn: true,
 								countries: true,
 								authors: true,
+								authorLinks: {
+									orderBy: { position: "asc" },
+									select: {
+										author: { select: { id: true, slug: true, name: true } },
+									},
+								},
 							},
 						},
 					},
@@ -114,7 +121,7 @@ export async function loadAchievementFacts(
 					pages: row.book.pages,
 					publishedIn: row.book.publishedIn,
 					countries: row.book.countries,
-					authors: row.book.authors,
+					authors: bookAuthorEntries(row.book).map((author) => author.key),
 				}));
 
 				const bookIds = rows.map((row) => row.bookId);
@@ -312,13 +319,39 @@ export async function loadAchievementFacts(
 							createdAt: true,
 							readEndYear: true,
 							readEndMonth: true,
-							book: { select: { authors: true, countries: true } },
+							book: {
+								select: {
+									authors: true,
+									countries: true,
+									authorLinks: {
+										select: {
+											author: {
+												select: {
+													slug: true,
+													slugRedirects: { select: { slug: true } },
+												},
+											},
+										},
+									},
+								},
+							},
 						},
 					}),
 				]);
 				facts.goals = goals.map((goal): GoalFact => {
 					const scope = goalScopeFromStored(goal);
 					const counted = reads
+						.map((read) => ({
+							...read,
+							book: {
+								authors: read.book.authors,
+								countries: read.book.countries,
+								authorSlugs: read.book.authorLinks.flatMap(({ author }) => [
+									author.slug,
+									...author.slugRedirects.map((redirect) => redirect.slug),
+								]),
+							},
+						}))
 						.filter((read) => readCountsTowardGoal(read, goal.year, scope))
 						.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 					const reached = counted[goal.target - 1];

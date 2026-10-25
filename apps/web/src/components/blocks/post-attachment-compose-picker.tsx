@@ -215,7 +215,7 @@ function PersonResults({
 						)
 					}
 				>
-					{kind === "user" ? (
+					{kind === "user" || item.image ? (
 						<UserAvatar
 							user={{ name: item.label, image: item.image }}
 							className="size-9"

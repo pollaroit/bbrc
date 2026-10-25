@@ -346,12 +346,30 @@ function PostAttachmentAuthorCard({
 }) {
 	return (
 		<AttachmentLinkFrame href={`/authors/${author.slug}` as Route}>
-			<AttachmentMedia variant="icon">
-				<UserRound className="size-5 text-muted-foreground" aria-hidden />
-			</AttachmentMedia>
+			{author.photoUrl ? (
+				<AttachmentMedia variant="image" className="overflow-hidden">
+					<UserAvatar
+						user={{ name: author.name, image: author.photoUrl }}
+						className="size-full"
+					/>
+				</AttachmentMedia>
+			) : (
+				<AttachmentMedia variant="icon">
+					<UserRound className="size-5 text-muted-foreground" aria-hidden />
+				</AttachmentMedia>
+			)}
 			<AttachmentContent>
 				<AttachmentTitle>{author.name}</AttachmentTitle>
-				<AttachmentDescription>Author · see their books</AttachmentDescription>
+				<AttachmentDescription>
+					{[
+						author.lifespan,
+						author.bookCount != null
+							? `${author.bookCount} ${author.bookCount === 1 ? "book" : "books"}`
+							: "Author",
+					]
+						.filter(Boolean)
+						.join(" · ")}
+				</AttachmentDescription>
 			</AttachmentContent>
 		</AttachmentLinkFrame>
 	);

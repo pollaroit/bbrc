@@ -55,6 +55,7 @@ import {
 	type UpdatePostOutput,
 } from "./post.schema";
 import {
+	fillAuthorAttachments,
 	mapPostAttachmentFromPostRow,
 	syncPostAttachment,
 } from "./post-attachment.service";
@@ -305,6 +306,12 @@ async function mapPostDetailRow(
 		loadPollViews(db, [row.id], pollViewer(session)),
 	]);
 
+	const attachment = mapPostAttachmentFromPostRow({
+		attachment: row.attachment,
+		attachedBook: row.attachedBook,
+	});
+	await fillAuthorAttachments(db, [attachment]);
+
 	return {
 		slug: row.slug,
 		content: row.content,
@@ -317,10 +324,7 @@ async function mapPostDetailRow(
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
-		attachment: mapPostAttachmentFromPostRow({
-			attachment: row.attachment,
-			attachedBook: row.attachedBook,
-		}),
+		attachment,
 		likeCount: row._count.likes,
 		commentCount: row._count.comments,
 		likedByMe: likedPostIds.has(row.id),
@@ -394,9 +398,14 @@ async function hydratePostListPage(
 		loadPollViews(db, postIds, pollViewer(session)),
 	]);
 
-	return rows.map((row) =>
+	const items = rows.map((row) =>
 		mapPostListRow(row, likedPostIds, topCommentsByPostId, polls),
 	);
+	await fillAuthorAttachments(
+		db,
+		items.map((item) => item.attachment),
+	);
+	return items;
 }
 
 function listPageMetadata(input: {

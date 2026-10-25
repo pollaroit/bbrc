@@ -63,3 +63,7 @@ export async function revalidateCommentIsr(
 		revalidateBookIsr(context, comment.feedback.book.slug);
 	}
 }
+
+export function revalidateAuthorIsr(context: Context, slug: string) {
+	context.revalidateIsr?.revalidateAuthor(slug);
+}

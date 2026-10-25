@@ -1,5 +1,7 @@
 import type { IsrRevalidator } from "@bbrc/api/isr-revalidation";
 import {
+	authorDetailIsrPath,
+	authorsListIsrPath,
 	bookDetailIsrPath,
 	postDetailIsrPath,
 	seriesDetailIsrPath,
@@ -54,6 +56,10 @@ export function createIsrRevalidator(): IsrRevalidator {
 		},
 		revalidateBooksCatalog() {
 			revalidatePath("/books");
+		},
+		revalidateAuthor(slug) {
+			revalidatePageAndLayout(authorDetailIsrPath(slug));
+			revalidatePath(authorsListIsrPath());
 		},
 	};
 }

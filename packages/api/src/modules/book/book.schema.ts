@@ -18,6 +18,7 @@ import {
 	bookListSearching,
 	bookListSorting,
 } from "./book.listing";
+import { BookAuthorRefsSchema } from "./book-author-refs";
 
 export {
 	bookListRanging,
@@ -166,6 +167,8 @@ export const BookWithRequestedBySchema = BookSchema.pick(
 });
 
 export const BookListItemSchema = BookSchema.pick(getBookListFields).extend({
+	/** The work's author records in order (empty until the backfill linked the book). */
+	authorRefs: BookAuthorRefsSchema,
 	approvedDocumentCount: z.number().int().min(0),
 	readCount: z.number().int().min(0),
 	feedbackCount: z.number().int().min(0),

@@ -1,6 +1,7 @@
 import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import {
+	bookAuthorEntries,
 	computeReadingStreak,
 	contentPlainText,
 	genres,
@@ -277,13 +278,25 @@ async function loadDistinctAuthorCounts(
 ): Promise<Map<string, number>> {
 	const rows = await db.read.findMany({
 		where: { userId: { in: userIds } },
-		select: { userId: true, book: { select: { authors: true } } },
+		select: {
+			userId: true,
+			book: {
+				select: {
+					authors: true,
+					authorLinks: {
+						select: {
+							author: { select: { id: true, slug: true, name: true } },
+						},
+					},
+				},
+			},
+		},
 	});
 	const byUser = new Map<string, Set<string>>();
 	for (const row of rows) {
 		const set = byUser.get(row.userId) ?? new Set<string>();
-		for (const author of row.book.authors) {
-			set.add(author);
+		for (const author of bookAuthorEntries(row.book)) {
+			set.add(author.key);
 		}
 		byUser.set(row.userId, set);
 	}

@@ -10,10 +10,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
-import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { bookCoverUrl } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -208,7 +209,7 @@ export function ShelfDetailBookRow({
 							{book.title}
 						</Link>
 						<p className="text-muted-foreground text-sm">
-							{formatBookAuthors(book.authors)}
+							<BookAuthorLinks authors={book.authors} />
 						</p>
 					</div>
 					{actions}

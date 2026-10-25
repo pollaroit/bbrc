@@ -1,5 +1,9 @@
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
-import { contentPlainText, formatSittingDisplayName } from "@bbrc/shared";
+import {
+	contentPlainText,
+	formatAuthorLifespan,
+	formatSittingDisplayName,
+} from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { findAuthorBySlug } from "../../lib/authors";
 import {
@@ -174,7 +178,13 @@ function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
 			}
 			return {
 				kind: "author",
-				author: { slug: row.authorSlug, name: row.authorName },
+				author: {
+					slug: row.authorSlug,
+					name: row.authorName,
+					photoUrl: null,
+					lifespan: null,
+					bookCount: null,
+				},
 			};
 		}
 		default: {
@@ -495,7 +505,79 @@ export async function getPostAttachmentPreview(
 	actorId?: string,
 ): Promise<PostAttachmentOutput> {
 	const row = await loadAttachmentPreviewRow(input, db, actorId);
-	return mapAttachmentRow(row);
+	const attachment = mapAttachmentRow(row);
+	await fillAuthorAttachments(db, [attachment]);
+	return attachment;
+}
+
+/**
+ * Fills in photo, lifespan and book count on author attachments (one batch for any number of
+ * posts), and follows merged slugs to the canonical page. Changes the attachments in place.
+ */
+export async function fillAuthorAttachments(
+	db: Database,
+	attachments: (PostAttachmentOutput | null | undefined)[],
+): Promise<void> {
+	const authorAttachments = attachments.filter(
+		(
+			attachment,
+		): attachment is Extract<PostAttachmentOutput, { kind: "author" }> =>
+			attachment?.kind === "author",
+	);
+	if (authorAttachments.length === 0) return;
+
+	const slugs = [...new Set(authorAttachments.map((a) => a.author.slug))];
+	const select = {
+		id: true,
+		slug: true,
+		name: true,
+		photoUrl: true,
+		birthYear: true,
+		deathYear: true,
+	} as const;
+	const direct = await db.author.findMany({
+		where: { slug: { in: slugs } },
+		select,
+	});
+	const bySlug = new Map(direct.map((author) => [author.slug, author]));
+	const missing = slugs.filter((slug) => !bySlug.has(slug));
+	if (missing.length > 0) {
+		const redirects = await db.authorSlugRedirect.findMany({
+			where: { slug: { in: missing } },
+			select: { slug: true, author: { select } },
+		});
+		for (const redirect of redirects) {
+			bySlug.set(redirect.slug, redirect.author);
+		}
+	}
+
+	const ids = [...new Set([...bySlug.values()].map((author) => author.id))];
+	const counts =
+		ids.length > 0
+			? await db.bookAuthor.groupBy({
+					by: ["authorId"],
+					where: { authorId: { in: ids } },
+					_count: { _all: true },
+				})
+			: [];
+	const countById = new Map(
+		counts.map((row) => [row.authorId, row._count._all]),
+	);
+
+	for (const attachment of authorAttachments) {
+		const author = bySlug.get(attachment.author.slug);
+		if (!author) continue;
+		attachment.author = {
+			slug: author.slug,
+			name: author.name,
+			photoUrl: author.photoUrl,
+			lifespan: formatAuthorLifespan({
+				birth: { year: author.birthYear },
+				death: { year: author.deathYear },
+			}),
+			bookCount: countById.get(author.id) ?? 0,
+		};
+	}
 }
 
 export async function syncPostAttachment(

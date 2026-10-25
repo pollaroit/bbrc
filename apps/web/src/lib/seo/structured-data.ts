@@ -42,10 +42,14 @@ export function bookJsonLd(book: TGetBookBySlugOutputSchema): JsonLd {
 		"@type": "Book",
 		name: book.title,
 		url: absoluteUrl(`/books/${book.slug}`),
-		author: book.authors.map((name) => ({
-			"@type": "Person",
-			name,
-		})),
+		author:
+			book.authorRefs.length > 0
+				? book.authorRefs.map((author) => ({
+						"@type": "Person",
+						name: author.name,
+						url: absoluteUrl(`/authors/${author.slug}`),
+					}))
+				: book.authors.map((name) => ({ "@type": "Person", name })),
 		...(book.pages ? { numberOfPages: book.pages } : {}),
 		...(book.excerpt ? { description: book.excerpt } : {}),
 		...(cover ? { image: cover } : {}),
@@ -198,7 +202,14 @@ export function editionJsonLd(input: {
 		"@type": "Book",
 		name: edition.title?.trim() || book.title,
 		url: absoluteUrl(input.path),
-		author: book.authors.map((name) => ({ "@type": "Person", name })),
+		author:
+			book.authorRefs.length > 0
+				? book.authorRefs.map((author) => ({
+						"@type": "Person",
+						name: author.name,
+						url: absoluteUrl(`/authors/${author.slug}`),
+					}))
+				: book.authors.map((name) => ({ "@type": "Person", name })),
 		exampleOfWork: {
 			"@type": "Book",
 			name: book.title,

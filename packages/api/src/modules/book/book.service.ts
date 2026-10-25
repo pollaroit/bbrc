@@ -35,6 +35,7 @@ import {
 	type TUpdateBookOutputSchema,
 } from "./book.schema";
 import { listAuthorFacetsForBooks } from "./book-author-filter";
+import { bookAuthorRefsSelect, mapBookAuthorRefs } from "./book-author-refs";
 import { listCountryFacetsForBooks } from "./book-country-filter";
 import { assertOwnCoverUrl, isClubCoverId, newClubCoverId } from "./book-cover";
 import { buildBookListWhereWithAuthors } from "./book-list-where";
@@ -48,6 +49,7 @@ import { resolveClubSittingSlug } from "./resolve-club-sitting-slug";
 
 const bookListSelect = {
 	...getBookListFields,
+	...bookAuthorRefsSelect,
 	viewCount: true,
 	readingNowCount: true,
 	wishlistCount: true,
@@ -199,9 +201,16 @@ export async function getBookList(
 
 	return {
 		items: page.items.map((row) => {
-			const { seriesMembership, sittingsSelectedFor, _count, ...fields } = row;
+			const {
+				seriesMembership,
+				sittingsSelectedFor,
+				_count,
+				authorLinks,
+				...fields
+			} = row;
 			return {
 				...fields,
+				authorRefs: mapBookAuthorRefs(authorLinks),
 				approvedDocumentCount: _count.documents,
 				readCount: _count.reads,
 				feedbackCount: _count.feedbacks,

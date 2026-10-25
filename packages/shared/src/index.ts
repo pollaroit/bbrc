@@ -2,6 +2,7 @@ export * from "./achievements";
 export * from "./author-insights";
 export * from "./author-name";
 export * from "./author-slug";
+export * from "./book-authors";
 export * from "./book-catalog-similarity";
 export * from "./book-country";
 export * from "./book-filter-dsl";

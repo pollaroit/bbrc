@@ -14,6 +14,7 @@ import { mapBookSeriesSummary } from "../series/series.service";
 import { publicShelfWhere } from "../shelf/shelf-visibility";
 import type { GetBookListOutput } from "./book.schema";
 import { getBookListFields } from "./book.schema";
+import { bookAuthorRefsSelect, mapBookAuthorRefs } from "./book-author-refs";
 import {
 	BOOK_CATALOG_DISCOVERY_LIMIT,
 	type GetBookCatalogDiscoveryOutput,
@@ -22,6 +23,7 @@ import { resolveClubSittingSlug } from "./resolve-club-sitting-slug";
 
 const discoverySelect = {
 	...getBookListFields,
+	...bookAuthorRefsSelect,
 	viewCount: true,
 	readingNowCount: true,
 	wishlistCount: true,
@@ -59,9 +61,16 @@ type DiscoveryRow = Prisma.BookGetPayload<{ select: typeof discoverySelect }>;
 function mapDiscoveryRow(
 	row: DiscoveryRow,
 ): GetBookListOutput["items"][number] {
-	const { seriesMembership, sittingsSelectedFor, _count, ...fields } = row;
+	const {
+		seriesMembership,
+		sittingsSelectedFor,
+		_count,
+		authorLinks,
+		...fields
+	} = row;
 	return {
 		...fields,
+		authorRefs: mapBookAuthorRefs(authorLinks),
 		approvedDocumentCount: _count.documents,
 		readCount: _count.reads,
 		feedbackCount: _count.feedbacks,

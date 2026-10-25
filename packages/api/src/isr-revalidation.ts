@@ -9,4 +9,6 @@ export type IsrRevalidator = {
 	revalidateFeeds: () => void;
 	revalidateSeries: (slug: string) => void;
 	revalidateBooksCatalog: () => void;
+	/** An author page (every tab) and the authors list. */
+	revalidateAuthor: (slug: string) => void;
 };
