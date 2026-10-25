@@ -14,6 +14,7 @@ import type { z } from "zod";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { authClient } from "@/lib/auth-client";
+import { editionDisplayLabel } from "@/lib/reading/edition-text";
 import { useReadingState } from "@/lib/reading/use-reading";
 import { orpc } from "@/utils/orpc";
 
@@ -172,11 +173,11 @@ function ReaderCard({ reader }: { reader: Reader }) {
 				<p className="text-muted-foreground text-xs">Reading</p>
 			)}
 
-			{reader.edition?.label ? (
-				<p className="truncate text-muted-foreground text-xs">
-					Edition: {reader.edition.label}
-				</p>
-			) : null}
+			<p className="truncate text-muted-foreground text-xs">
+				{reader.edition?.label
+					? `Edition: ${reader.edition.label}`
+					: editionDisplayLabel(null, reader.totalPages)}
+			</p>
 		</li>
 	);
 }

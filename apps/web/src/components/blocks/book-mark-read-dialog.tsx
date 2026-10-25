@@ -51,6 +51,7 @@ import {
 	READ_DATE_MONTHS,
 	readDateMonthLabel,
 } from "@/lib/read-date-months";
+import { editionDisplayLabel } from "@/lib/reading/edition-text";
 import {
 	invalidateReadingQueries,
 	useReadingState,
@@ -585,7 +586,7 @@ export function BookMarkReadDialog({
 							>
 								<p className="flex items-center gap-2 font-medium">
 									<BookOpen className="size-4" aria-hidden />
-									{reading.edition?.label ?? "Your reading"}
+									{editionDisplayLabel(reading.edition, reading.totalPages)}
 								</p>
 								<p className="text-muted-foreground text-xs leading-relaxed">
 									{readingSummary(reading.startedAt)}

@@ -135,6 +135,7 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 					status={sitting.status}
 					bookSlug={book?.slug ?? null}
 					bookTitle={book?.title ?? null}
+					bookPages={book?.pages ?? null}
 				/>
 
 				<div className="grid grid-cols-2 divide-x divide-y divide-border border border-border sm:grid-cols-4 sm:divide-y-0">

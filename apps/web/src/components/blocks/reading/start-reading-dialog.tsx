@@ -14,6 +14,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
 	type ReadingEditionChoice,
+	type ReadingEditionMode,
 	ReadingEditionPicker,
 } from "@/components/blocks/reading/reading-edition-picker";
 import { MAX_ACTIVE_READINGS } from "@/lib/reading/limits";
@@ -24,12 +25,17 @@ import {
 } from "@/lib/reading/use-reading";
 
 /*
- * "I'm currently reading" — pick the edition (optional), then start.
+ * "I'm currently reading" — pick the edition, or just the pages, then start.
+ * The edition is optional: "Just the pages" is for a PDF, an ebook or any copy,
+ * and the page count itself may be left empty (progress is then a percentage).
  *
  * <StartReadingDialog bookSlug bookTitle bookPages open onOpenChange />
  *   start mode: creates the reading (optimistic).
  * <StartReadingDialog … reading={item} />
  *   change mode: the same picker, saved onto the reading you already have.
+ * `onStarting` runs just before a start is sent (return a function that undoes
+ * what you changed, called if the server refuses); `onStarted` runs after it
+ * worked. The sitting page uses them to keep its status in step.
  * Load it with next/dynamic: it pulls in the edition picker.
  */
 
@@ -40,7 +46,9 @@ type Props = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	/** Set to change the edition of a reading that already exists. */
-	reading?: ReadingItem | null;
+	reading?: Pick<ReadingItem, "id" | "edition" | "totalPages"> | null;
+	onStarting?: () => (() => void) | undefined | void;
+	onStarted?: () => void;
 };
 
 const EMPTY: ReadingEditionChoice = {
@@ -52,7 +60,7 @@ const EMPTY: ReadingEditionChoice = {
 };
 
 function initialChoice(
-	reading: ReadingItem | null | undefined,
+	reading: Props["reading"] | undefined,
 ): ReadingEditionChoice {
 	if (!reading) return EMPTY;
 	return {
@@ -78,10 +86,16 @@ function DialogBody({
 	open,
 	onOpenChange,
 	reading,
+	onStarting,
+	onStarted,
 }: Props) {
 	const changing = reading != null;
 	const [choice, setChoice] = useState<ReadingEditionChoice>(() =>
 		initialChoice(reading),
+	);
+	// A reading with no edition opens on "Just the pages".
+	const [mode, setMode] = useState<ReadingEditionMode>(
+		changing && reading?.edition == null ? "pages" : "edition",
 	);
 	const start = useStartReading(bookSlug);
 	const change = useSetReadingEdition();
@@ -89,20 +103,42 @@ function DialogBody({
 	const atLimit =
 		!changing && (state.data?.activeCount ?? 0) >= MAX_ACTIVE_READINGS;
 
-	const pagesUsed = choice.totalPages ?? (bookPages > 0 ? bookPages : null);
+	// With "Just the pages" an empty count is deliberate (percentage only);
+	// with an edition an empty count falls back to the edition's or the book's.
+	const pagesUsed =
+		mode === "pages"
+			? choice.totalPages
+			: (choice.totalPages ?? (bookPages > 0 ? bookPages : null));
 
-	const submit = (chosen: ReadingEditionChoice) => {
+	const submit = () => {
 		onOpenChange(false);
+		const body =
+			mode === "pages"
+				? {
+						editionOlid: null,
+						editionCoverId: null,
+						editionLabel: null,
+						bookEditionId: null,
+						totalPages: choice.totalPages,
+					}
+				: { ...choice, totalPages: choice.totalPages ?? undefined };
 		if (changing && reading) {
 			change.mutate(
-				{ id: reading.id, ...chosen },
+				{ id: reading.id, ...body },
 				{ onSuccess: () => toast.success("Edition updated") },
 			);
 			return;
 		}
+		const undo = onStarting?.();
 		start.mutate(
-			{ bookSlug, ...chosen },
-			{ onSuccess: () => toast.success(`You're reading ${bookTitle}`) },
+			{ bookSlug, ...body },
+			{
+				onSuccess: () => {
+					toast.success(`You're reading ${bookTitle}`);
+					onStarted?.();
+				},
+				onError: () => undo?.(),
+			},
 		);
 	};
 
@@ -111,12 +147,12 @@ function DialogBody({
 			<DialogContent className="max-h-[90vh] gap-4 overflow-y-auto sm:max-w-xl">
 				<DialogHeader>
 					<DialogTitle>
-						{changing ? "Change your edition" : "I'm currently reading"}
+						{changing ? "Change your copy" : "I'm currently reading"}
 					</DialogTitle>
 					<DialogDescription>
 						{changing
 							? "Your place in the book stays the same."
-							: "Pick the edition you have so the pages match your copy. It is optional."}
+							: "Choose an edition, or just say how many pages your copy has. You can change it later."}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -125,12 +161,14 @@ function DialogBody({
 					bookPages={bookPages}
 					value={choice}
 					onChange={setChoice}
+					mode={mode}
+					onModeChange={setMode}
 				/>
 
 				<p className="border-border border-t pt-3 text-muted-foreground text-sm">
 					{pagesUsed != null
 						? `Progress is tracked by page, out of ${pagesUsed} pages.`
-						: "No page count yet, so progress is tracked as a percentage. You can add pages above."}
+						: "No page count, so progress is tracked as a percentage. You can add pages above."}
 				</p>
 
 				{atLimit ? (
@@ -140,35 +178,17 @@ function DialogBody({
 					</p>
 				) : null}
 
-				<DialogFooter className="gap-2 sm:justify-between">
-					{changing ? (
-						<span />
-					) : (
-						<Button
-							type="button"
-							variant="ghost"
-							disabled={atLimit}
-							onClick={() => submit(EMPTY)}
-						>
-							Skip the edition
-						</Button>
-					)}
-					<div className="flex gap-2">
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => onOpenChange(false)}
-						>
-							Cancel
-						</Button>
-						<Button
-							type="button"
-							disabled={atLimit}
-							onClick={() => submit(choice)}
-						>
-							{changing ? "Save edition" : "Start reading"}
-						</Button>
-					</div>
+				<DialogFooter className="gap-2">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => onOpenChange(false)}
+					>
+						Cancel
+					</Button>
+					<Button type="button" disabled={atLimit} onClick={submit}>
+						{changing ? "Save" : "Start reading"}
+					</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

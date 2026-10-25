@@ -15,10 +15,12 @@ import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Vote } from "lucide-react";
 import type { Route } from "next";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { SittingReadingPanel } from "@/components/blocks/reading/sitting-reading-panel";
 import { SittingBookFeedbackPrompt } from "@/components/blocks/sitting-book-feedback-prompt";
 import { progressLabels } from "@/components/blocks/sitting-participation-progress";
 import { authClient } from "@/lib/auth-client";
@@ -31,11 +33,21 @@ import { orpc, queryClient } from "@/utils/orpc";
 
 type Progress = NonNullable<GetMySittingStateOutput["progress"]>;
 
+// Starting to read asks for the edition (or just the pages), like on the book page.
+const StartReadingDialog = dynamic(
+	() =>
+		import("@/components/blocks/reading/start-reading-dialog").then(
+			(mod) => mod.StartReadingDialog,
+		),
+	{ ssr: false },
+);
+
 type SittingViewerActionProps = {
 	sittingSlug: string;
 	status: "voting" | "reading" | "finished";
 	bookSlug: string | null;
 	bookTitle: string | null;
+	bookPages?: number | null;
 };
 
 /** Members can only move forward: not started -> reading -> completed. */
@@ -86,14 +98,30 @@ const confirmCopy: Record<
 function ProgressControl({
 	sittingSlug,
 	current,
+	book,
 }: {
 	sittingSlug: string;
 	current: Progress;
+	/** The sitting's book; with it, "Reading" opens the edition dialog. */
+	book: { slug: string; title: string; pages: number } | null;
 }) {
 	const router = useRouter();
 	const [pendingChoice, setPendingChoice] = useState<Progress | null>(null);
+	const [startOpen, setStartOpen] = useState(false);
 
 	const { data: session } = authClient.useSession();
+
+	function refreshSitting() {
+		void Promise.all([
+			queryClient.invalidateQueries({
+				queryKey: orpc.sitting.getMySittingState.key(),
+			}),
+			queryClient.invalidateQueries({
+				queryKey: orpc.sitting.getSittingBySlug.key(),
+			}),
+		]);
+		router.refresh();
+	}
 
 	const mutation = useMutation(
 		orpc.sitting.updateMyParticipationProgress.mutationOptions({
@@ -147,9 +175,13 @@ function ProgressControl({
 							aria-pressed={selected}
 							disabled={mutation.isPending || (!selected && !allowed)}
 							onClick={() => {
-								if (!selected) {
-									setPendingChoice(option);
+								if (selected) return;
+								if (option === "in_progress" && book) {
+									// Same as "I'm currently reading" on the book page.
+									setStartOpen(true);
+									return;
 								}
+								setPendingChoice(option);
 							}}
 							className={cn(
 								"border px-3 py-2.5 text-sm transition-colors disabled:cursor-not-allowed",
@@ -165,6 +197,26 @@ function ProgressControl({
 					);
 				})}
 			</div>
+			{startOpen && book ? (
+				<StartReadingDialog
+					bookSlug={book.slug}
+					bookTitle={book.title}
+					bookPages={book.pages}
+					open={startOpen}
+					onOpenChange={setStartOpen}
+					onStarting={() => {
+						// The sitting shows "Reading" at once; undone if the server refuses.
+						const snapshot = applyProgressOptimistically(
+							sittingSlug,
+							session?.user.id ?? "",
+							"in_progress",
+							{ self: true },
+						);
+						return () => void snapshot.then(restoreProgress);
+					}}
+					onStarted={refreshSitting}
+				/>
+			) : null}
 			<AlertDialog
 				open={pendingChoice != null}
 				onOpenChange={(open) => {
@@ -210,7 +262,9 @@ export function SittingViewerAction({
 	status,
 	bookSlug,
 	bookTitle,
+	bookPages,
 }: SittingViewerActionProps) {
+	const router = useRouter();
 	const { data: session } = authClient.useSession();
 
 	const stateQuery = useQuery({
@@ -241,8 +295,32 @@ export function SittingViewerAction({
 	}
 
 	if (status === "reading" && state.progress) {
+		const book =
+			bookSlug && bookTitle
+				? { slug: bookSlug, title: bookTitle, pages: bookPages ?? 0 }
+				: null;
 		return (
-			<ProgressControl sittingSlug={sittingSlug} current={state.progress} />
+			<div className="flex flex-col gap-4">
+				<ProgressControl
+					sittingSlug={sittingSlug}
+					current={state.progress}
+					book={book}
+				/>
+				{book && state.progress !== "completed" && state.progress !== "dnf" ? (
+					<SittingReadingPanel
+						bookSlug={book.slug}
+						bookTitle={book.title}
+						bookPages={book.pages}
+						markedReading={state.progress === "in_progress"}
+						onChanged={() => {
+							void queryClient.invalidateQueries({
+								queryKey: orpc.sitting.getSittingBySlug.key(),
+							});
+							router.refresh();
+						}}
+					/>
+				) : null}
+			</div>
 		);
 	}
 

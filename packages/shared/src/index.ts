@@ -10,6 +10,7 @@ export * from "./club-timezone";
 export * from "./comment-thread";
 export * from "./document-file-check";
 export * from "./documents";
+export * from "./edition-language";
 export * from "./favorites";
 export * from "./feedback-rating";
 export * from "./genres";

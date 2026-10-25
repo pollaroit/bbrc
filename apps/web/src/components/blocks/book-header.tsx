@@ -13,6 +13,7 @@ import { BookHeaderActions } from "@/components/blocks/book-header-actions";
 import { BookMarkReadButton } from "@/components/blocks/book-mark-read-button";
 import { BookQuizButton } from "@/components/blocks/book-quiz-button";
 import { BookReadAfterLinks } from "@/components/blocks/book-read-after-links";
+import { BookReadingStatCells } from "@/components/blocks/book-reading-stat-cells";
 import { BookRequestedByLine } from "@/components/blocks/book-requested-by";
 import { BookStatusBanner } from "@/components/blocks/book-status-badge";
 import { LiveViewCount } from "@/components/blocks/live-view-count";
@@ -160,7 +161,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 						bookPages={book.pages}
 					/>
 
-					<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+					<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
 						<StatCell
 							label="Published"
 							value={book.publishedIn ?? "—"}
@@ -187,6 +188,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 									: "—"
 							}
 						/>
+						<BookReadingStatCells bookSlug={book.slug} />
 					</div>
 
 					{olWorkUrl ? (

@@ -8,7 +8,15 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@bbrc/ui/components/popover";
-import { BookCheck, BookOpen, Flag, Hash, Plus, Square } from "lucide-react";
+import {
+	BookCheck,
+	BookCopy,
+	BookOpen,
+	Flag,
+	Hash,
+	Plus,
+	Square,
+} from "lucide-react";
 import type { Route } from "next";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -17,12 +25,22 @@ import { type CSSProperties, useId, useState } from "react";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { editionDisplayLabel } from "@/lib/reading/edition-text";
 import { paceText, paceToneClass } from "@/lib/reading/pace-text";
 import {
 	useAbandonReading,
 	useUpdateReadingProgress,
 } from "@/lib/reading/use-reading";
 import { cn } from "@/lib/utils";
+
+// Changing the edition loads the picker only when asked.
+const StartReadingDialog = dynamic(
+	() =>
+		import("@/components/blocks/reading/start-reading-dialog").then(
+			(mod) => mod.StartReadingDialog,
+		),
+	{ ssr: false },
+);
 
 // The finish dialog carries the editor and the review form, so it loads when asked.
 const BookMarkReadDialog = dynamic(
@@ -209,6 +227,7 @@ export function ReadingCard({
 	const abandon = useAbandonReading();
 	const [finishOpen, setFinishOpen] = useState(false);
 	const [stopOpen, setStopOpen] = useState(false);
+	const [editionOpen, setEditionOpen] = useState(false);
 
 	const byPage = reading.totalPages != null && reading.currentPage != null;
 	const unit = byPage ? "pages" : "percent";
@@ -278,11 +297,22 @@ export function ReadingCard({
 						<span>
 							Started <RelativeTime date={reading.startedAt} />
 						</span>
-						{reading.edition?.label ? (
-							<span className="min-w-0 truncate" title={reading.edition.label}>
-								{reading.edition.label}
-							</span>
-						) : null}
+						<span
+							className="min-w-0 truncate"
+							title={editionDisplayLabel(reading.edition, reading.totalPages)}
+						>
+							{editionDisplayLabel(reading.edition, reading.totalPages)}
+						</span>
+						{readOnly ? null : (
+							<button
+								type="button"
+								onClick={() => setEditionOpen(true)}
+								className="inline-flex items-center gap-1 text-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+							>
+								<BookCopy className="size-3" aria-hidden />
+								Change edition
+							</button>
+						)}
 						{reading.sitting ? (
 							<Link
 								href={`/sittings/${reading.sitting.slug}` as Route}
@@ -387,6 +417,16 @@ export function ReadingCard({
 
 			{readOnly ? null : (
 				<>
+					{editionOpen ? (
+						<StartReadingDialog
+							bookSlug={reading.book.slug}
+							bookTitle={reading.book.title}
+							bookPages={reading.book.pages}
+							open={editionOpen}
+							onOpenChange={setEditionOpen}
+							reading={reading}
+						/>
+					) : null}
 					{finishOpen ? (
 						<BookMarkReadDialog
 							bookSlug={reading.book.slug}

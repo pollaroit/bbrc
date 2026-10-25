@@ -49,7 +49,8 @@ export function TrendingStrip({ resource, className }: TrendingStripProps) {
 				<Flame className="size-4 text-warning-ink" aria-hidden />
 				Most viewed this week
 			</h2>
-			<ul className="-mx-6 flex snap-x gap-3 overflow-x-auto px-6 pb-1 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden">
+			{/* `relative` keeps the screen-reader-only text (absolutely positioned) inside the scroller, so it cannot widen the page. */}
+			<ul className="relative -mx-6 flex snap-x gap-3 overflow-x-auto px-6 pb-1 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden">
 				{items.map((item, index) => {
 					const cover =
 						resource === "book" ? bookCoverUrl(item.coverId, "S") : null;

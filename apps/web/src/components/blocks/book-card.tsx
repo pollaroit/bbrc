@@ -22,6 +22,7 @@ import {
 	bookCoverUrl,
 	formatBookSeriesCardLabel,
 } from "@/lib/book-cover";
+import { bookSortMetric } from "@/lib/books/sort-metric";
 import { cn } from "@/lib/utils";
 
 export type BookCardBook = GetBookListOutput["items"][number];
@@ -35,6 +36,8 @@ type BookCardProps = {
 	feedbackBookSlugs?: Set<string> | null;
 	/** Viewer’s club feedback rating when logged in and they reviewed this book. */
 	viewerBookRating?: number;
+	/** The list's current sort; a figure that is not on the card shows in the top strip. */
+	sortBy?: string;
 };
 
 const compactCount = new Intl.NumberFormat("en", {
@@ -184,6 +187,7 @@ export function BookCard({
 	listEngagement,
 	feedbackBookSlugs,
 	viewerBookRating,
+	sortBy,
 }: BookCardProps) {
 	const href = `/books/${book.slug}` as Route;
 	const coverSrc = bookCoverUrl(book.coverId, "M");
@@ -206,7 +210,7 @@ export function BookCard({
 				className,
 			)}
 		>
-			<BookCardStatusStrip book={book} />
+			<BookCardStatusStrip book={book} metric={bookSortMetric(book, sortBy)} />
 
 			<div className="relative flex min-h-[8.5rem] min-w-0">
 				<Link

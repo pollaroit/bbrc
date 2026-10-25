@@ -23,8 +23,8 @@ type BookSubjectGroupProps = {
 
 function SubjectBadge({ item, linkable }: { item: string; linkable: boolean }) {
 	const badge = (
-		<Badge variant="secondary" className="font-normal">
-			{item}
+		<Badge variant="secondary" className="max-w-full font-normal">
+			<span className="truncate">{item}</span>
 		</Badge>
 	);
 
@@ -38,7 +38,7 @@ function SubjectBadge({ item, linkable }: { item: string; linkable: boolean }) {
 	return (
 		<Link
 			href={href}
-			className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+			className="block max-w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 		>
 			{badge}
 		</Link>
@@ -55,7 +55,7 @@ function SubjectBadgeList({
 	return (
 		<ul className="flex flex-wrap gap-1.5">
 			{items.map((item) => (
-				<li key={item}>
+				<li key={item} className="min-w-0 max-w-full">
 					<SubjectBadge item={item} linkable={linkable} />
 				</li>
 			))}
@@ -79,11 +79,11 @@ export function BookSubjectGroup({
 
 	return (
 		<>
-			<div className="space-y-2">
+			<div className="min-w-0 space-y-2">
 				<h3 className="font-medium text-sm">{label}</h3>
 				<ul className="flex flex-wrap gap-1.5">
 					{preview.map((item) => (
-						<li key={item}>
+						<li key={item} className="min-w-0 max-w-full">
 							<SubjectBadge item={item} linkable={linkable} />
 						</li>
 					))}

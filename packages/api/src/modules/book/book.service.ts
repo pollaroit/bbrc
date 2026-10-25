@@ -42,6 +42,10 @@ const bookListSelect = {
 	...getBookListFields,
 	viewCount: true,
 	readingNowCount: true,
+	wishlistCount: true,
+	viewerCount: true,
+	createdAt: true,
+	updatedAt: true,
 	seriesMembership: {
 		select: {
 			position: true,

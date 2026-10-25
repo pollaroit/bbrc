@@ -1,4 +1,5 @@
 import type { BookEditionItem } from "@bbrc/api/modules/book-edition/book-edition.schema";
+import { formatEditionLanguage } from "@bbrc/shared";
 
 export const EDITION_LANGUAGE_LABELS: Record<string, string> = {
 	eng: "English",
@@ -16,8 +17,8 @@ export const EDITION_FORMAT_LABELS: Record<BookEditionItem["format"], string> =
 		other: "Other",
 	};
 
-export const languageLabel = (code: string) =>
-	EDITION_LANGUAGE_LABELS[code] ?? code.toUpperCase();
+/** "Turkish" for `tur` or `/languages/tur`; never the raw Open Library key. */
+export const languageLabel = (code: string) => formatEditionLanguage(code);
 
 /** "Penguin · 2003 · eng": a short line that tells editions apart. */
 export function editionLabelFromParts(parts: {
@@ -27,7 +28,12 @@ export function editionLabelFromParts(parts: {
 	language?: string | null;
 }) {
 	return (
-		[parts.title, parts.publisher, parts.year, parts.language]
+		[
+			parts.title,
+			parts.publisher,
+			parts.year,
+			parts.language ? formatEditionLanguage(parts.language) : null,
+		]
 			.filter((part) => part != null && String(part).trim() !== "")
 			.join(" · ") || null
 	);

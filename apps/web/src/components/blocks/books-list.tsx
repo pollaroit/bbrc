@@ -160,6 +160,7 @@ export function BooksList(
 						<li key={book.slug} className="min-h-0">
 							<BookCard
 								book={book}
+								sortBy={params.sortBy ?? undefined}
 								listEngagement={listEngagement}
 								viewerHasRead={viewerHasRead}
 								feedbackBookSlugs={feedbackBookSlugs}

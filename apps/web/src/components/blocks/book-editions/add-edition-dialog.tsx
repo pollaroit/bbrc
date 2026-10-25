@@ -12,39 +12,60 @@
  *   edition?              pass an existing edition to edit it instead
  * />
  *
- * An ISBN can be looked up on Open Library to fill the form. The cover is
- * uploaded through the same 2:3 cropper the book covers use; nothing is
- * saved until "Save edition".
+ * An ISBN can be looked up on Open Library (or scanned with the camera) to fill
+ * the form. The cover is uploaded through the same 2:3 cropper the book covers
+ * use; nothing is saved until "Save edition".
+ *
+ * Layout: a live preview card beside the form on wide screens, a compact
+ * preview row above it on phones (where the dialog fills the screen), and a
+ * sticky action bar. Esc, the close button and Cancel ask before throwing
+ * away changes. Ctrl/⌘+Enter saves from anywhere in the form.
  */
 
 import type { BookEditionItem } from "@bbrc/api/modules/book-edition/book-edition.schema";
-import { BOOK_EDITION_LANGUAGES } from "@bbrc/api/modules/book-edition/book-edition.schema";
-import { isValidIsbn } from "@bbrc/shared";
+import {
+	BOOK_EDITION_LANGUAGES,
+	MAX_EDITIONS_PER_MEMBER_PER_DAY,
+} from "@bbrc/api/modules/book-edition/book-edition.schema";
+import { isbnPair, isValidIsbn, normalizeIsbn } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
-	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
 import { Input } from "@bbrc/ui/components/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@bbrc/ui/components/select";
 import { Textarea } from "@bbrc/ui/components/textarea";
-import { useMutation } from "@tanstack/react-query";
-import { ImagePlus, Loader2, Search, Trash2 } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+	Book,
+	BookOpen,
+	Headphones,
+	Loader2,
+	Minus,
+	Plus,
+	Search,
+	Shapes,
+	Tablet,
+} from "lucide-react";
 import dynamic from "next/dynamic";
-import Image from "next/image";
-import { useEffect, useId, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { toast } from "sonner";
-import { bookCoverFrameClassName } from "@/lib/book-cover";
+import {
+	useHasKeyboard,
+	useIsMac,
+} from "@/components/blocks/book-flow/use-book-flow-hotkeys";
+import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { authClient } from "@/lib/auth-client";
 import {
 	EDITION_FORMAT_LABELS,
 	languageLabel,
@@ -53,10 +74,31 @@ import { fetchOpenLibraryEditionByIsbn } from "@/lib/open-library/edition-lookup
 import { uploadEditionCover } from "@/lib/storage/upload-edition-cover";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
+import {
+	type Choice,
+	ChoiceChips,
+	CoverDropzone,
+	EditionPreviewCard,
+	type EditionPreviewData,
+	EditionPreviewStrip,
+	FieldLabel,
+	FormSection,
+	StatusLine,
+	type Tone,
+} from "./edition-dialog-parts";
 
 const CoverCropper = dynamic(
 	() =>
 		import("@/components/blocks/cover-cropper").then((mod) => mod.CoverCropper),
+	{ ssr: false },
+);
+
+// Only phones and laptops with a camera get the button; it loads on demand.
+const IsbnScannerButton = dynamic(
+	() =>
+		import("@/components/blocks/book-flow/isbn-scanner").then(
+			(mod) => mod.IsbnScannerButton,
+		),
 	{ ssr: false },
 );
 
@@ -73,6 +115,26 @@ type Props = {
 type Lang = (typeof BOOK_EDITION_LANGUAGES)[number];
 type Format = BookEditionItem["format"];
 const FORMATS = Object.keys(EDITION_FORMAT_LABELS) as Format[];
+
+const FORMAT_ICONS: Record<Format, React.ReactNode> = {
+	paperback: <BookOpen />,
+	hardcover: <Book />,
+	ebook: <Tablet />,
+	audiobook: <Headphones />,
+	other: <Shapes />,
+};
+
+const LANGUAGE_CHOICES: Choice<Lang>[] = BOOK_EDITION_LANGUAGES.map((code) => ({
+	id: code,
+	label: languageLabel(code),
+	code,
+}));
+
+const FORMAT_CHOICES: Choice<Format>[] = FORMATS.map((format) => ({
+	id: format,
+	label: EDITION_FORMAT_LABELS[format],
+	icon: FORMAT_ICONS[format],
+}));
 
 type FormState = {
 	isbn: string;
@@ -120,6 +182,16 @@ const listKey = (bookSlug: string) =>
 
 type ListData = { items: BookEditionItem[]; addsLeftToday: number | null };
 
+type Lookup =
+	| { state: "idle" }
+	| { state: "loading" }
+	| { state: "found"; title: string | null }
+	| { state: "missing" }
+	| { state: "error"; message: string };
+
+const MIN_PAGES = 1;
+const MAX_PAGES = 20000;
+
 export function AddEditionDialog({
 	bookSlug,
 	bookTitle,
@@ -131,46 +203,121 @@ export function AddEditionDialog({
 }: Props) {
 	const uid = useId();
 	const editing = edition != null;
-	const [form, setForm] = useState<FormState>(EMPTY);
-	const [lookingUp, setLookingUp] = useState(false);
-	const [lookupNote, setLookupNote] = useState<string | null>(null);
+	const isMac = useIsMac();
+	const hasKeyboard = useHasKeyboard();
+	const { data: session } = authClient.useSession();
+	const isAdmin = session?.user.isAdmin === true;
+
+	const initial = useMemo(
+		() => (edition ? fromEdition(edition) : EMPTY),
+		[edition],
+	);
+	const [form, setForm] = useState<FormState>(initial);
+	const [lookup, setLookup] = useState<Lookup>({ state: "idle" });
 	const [cropFile, setCropFile] = useState<File | null>(null);
 	const [uploading, setUploading] = useState(false);
 	const [duplicateId, setDuplicateId] = useState<string | null>(null);
-	const fileRef = useRef<HTMLInputElement>(null);
+	const [touched, setTouched] = useState({ pages: false, year: false });
+	const [showTitle, setShowTitle] = useState(false);
+	const [showTranslator, setShowTranslator] = useState(false);
+	const [discardOpen, setDiscardOpen] = useState(false);
+	const isbnRef = useRef<HTMLInputElement>(null);
+	const pagesRef = useRef<HTMLInputElement>(null);
 
 	// A fresh form each time it opens (or the form of the edition being edited).
 	useEffect(() => {
 		if (!open) return;
-		setForm(edition ? fromEdition(edition) : EMPTY);
-		setLookupNote(null);
+		setForm(initial);
+		setLookup({ state: "idle" });
 		setDuplicateId(null);
-	}, [open, edition]);
+		setCropFile(null);
+		setDiscardOpen(false);
+		setTouched({ pages: false, year: false });
+		setShowTitle(initial.title !== "");
+		setShowTranslator(initial.translator !== "");
+	}, [open, initial]);
 
 	const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
 		setForm((current) => ({ ...current, [key]: value }));
 
+	const dirty = JSON.stringify(form) !== JSON.stringify(initial);
+
+	// Closing asks first when there is something to lose.
+	const requestClose = useCallback(
+		(next: boolean) => {
+			if (next) {
+				onOpenChange(true);
+				return;
+			}
+			if (cropFile) return;
+			if (dirty && !uploading) {
+				setDiscardOpen(true);
+				return;
+			}
+			onOpenChange(false);
+		},
+		[cropFile, dirty, onOpenChange, uploading],
+	);
+
+	// ── Checks ──
 	const isbnTrimmed = form.isbn.trim();
 	const isbnValid = isbnTrimmed === "" || isValidIsbn(isbnTrimmed);
 	const pages = Number.parseInt(form.pages, 10);
-	const pagesValid = Number.isFinite(pages) && pages >= 1 && pages <= 20000;
+	const pagesValid =
+		Number.isFinite(pages) && pages >= MIN_PAGES && pages <= MAX_PAGES;
 	const year = form.year.trim() === "" ? null : Number.parseInt(form.year, 10);
 	const yearValid = year == null || (year >= 1000 && year <= 2100);
-	const canSave = pagesValid && isbnValid && yearValid && !uploading;
 
-	async function lookUp() {
-		setLookupNote(null);
-		if (!isValidIsbn(isbnTrimmed)) {
-			setLookupNote("Enter a valid ISBN first.");
+	// The list is usually already loaded on the editions page and in the picker.
+	const listQuery = useQuery({
+		...orpc.bookEdition.list.queryOptions({ input: { bookSlug } }),
+		enabled: open,
+		staleTime: 30_000,
+	});
+	const addsLeft = isAdmin ? null : (listQuery.data?.addsLeftToday ?? null);
+	const outOfAdds = !editing && addsLeft === 0;
+
+	// The same ISBN may already be on the list: say so before saving.
+	const existingByIsbn = useMemo(() => {
+		if (editing || !isbnValid || isbnTrimmed === "") return null;
+		const pair = isbnPair(isbnTrimmed);
+		return (
+			listQuery.data?.items.find(
+				(item) =>
+					(pair.isbn13 && item.isbn13 === pair.isbn13) ||
+					(pair.isbn10 && item.isbn10 === pair.isbn10),
+			) ?? null
+		);
+	}, [editing, isbnValid, isbnTrimmed, listQuery.data?.items]);
+	const duplicateTarget = duplicateId ?? existingByIsbn?.id ?? null;
+
+	const blocker = uploading
+		? "Waiting for the cover to upload…"
+		: !pagesValid
+			? "Add the number of pages to save."
+			: !isbnValid
+				? "Fix the ISBN to save."
+				: !yearValid
+					? "Fix the year to save."
+					: outOfAdds
+						? `You have added ${MAX_EDITIONS_PER_MEMBER_PER_DAY} editions today. Try again tomorrow.`
+						: duplicateTarget
+							? "This ISBN is already listed."
+							: null;
+	const canSave = blocker == null;
+
+	// ── Look up on Open Library ──
+	async function lookUp(raw = form.isbn) {
+		const value = raw.trim();
+		if (!isValidIsbn(value)) {
+			setLookup({ state: "error", message: "Enter a valid ISBN first." });
 			return;
 		}
-		setLookingUp(true);
+		setLookup({ state: "loading" });
 		try {
-			const found = await fetchOpenLibraryEditionByIsbn(isbnTrimmed);
+			const found = await fetchOpenLibraryEditionByIsbn(value);
 			if (!found) {
-				setLookupNote(
-					"Open Library has no edition with that ISBN. Fill it in by hand.",
-				);
+				setLookup({ state: "missing" });
 				return;
 			}
 			setForm((current) => ({
@@ -190,14 +337,22 @@ export function AddEditionDialog({
 						: current.language,
 				format: found.format ?? current.format,
 			}));
-			setLookupNote("Filled in from Open Library. Check it matches your copy.");
+			if (
+				found.title &&
+				found.title.toLowerCase() !== bookTitle.toLowerCase()
+			) {
+				setShowTitle(true);
+			}
+			setLookup({ state: "found", title: found.title });
 		} catch (error) {
-			setLookupNote(error instanceof Error ? error.message : "Lookup failed.");
-		} finally {
-			setLookingUp(false);
+			setLookup({
+				state: "error",
+				message: error instanceof Error ? error.message : "Lookup failed.",
+			});
 		}
 	}
 
+	// ── Cover ──
 	async function onCropped(file: File) {
 		setCropFile(null);
 		setUploading(true);
@@ -211,11 +366,31 @@ export function AddEditionDialog({
 		}
 	}
 
+	// Paste an image anywhere in the dialog.
+	useEffect(() => {
+		if (!open || cropFile) return;
+		function onPaste(event: ClipboardEvent) {
+			const file = Array.from(event.clipboardData?.files ?? []).find((entry) =>
+				entry.type.startsWith("image/"),
+			);
+			if (!file) return;
+			event.preventDefault();
+			if (file.size > 5 * 1024 * 1024) {
+				toast.error("Choose an image under 5 MB.");
+				return;
+			}
+			setCropFile(file);
+		}
+		document.addEventListener("paste", onPaste);
+		return () => document.removeEventListener("paste", onPaste);
+	}, [open, cropFile]);
+
+	// ── Saving ──
 	const payload = () => ({
 		title: form.title.trim() || null,
 		language: form.language,
 		pages,
-		isbn: isbnTrimmed || null,
+		isbn: isbnTrimmed ? normalizeIsbn(isbnTrimmed) : null,
 		publisher: form.publisher.trim() || null,
 		publishedYear: year,
 		format: form.format,
@@ -271,6 +446,7 @@ export function AddEditionDialog({
 	const pending = create.isPending || update.isPending;
 
 	function submit() {
+		setTouched({ pages: true, year: true });
 		if (!canSave || pending) return;
 		setDuplicateId(null);
 		if (editing && edition) {
@@ -280,308 +456,505 @@ export function AddEditionDialog({
 		}
 	}
 
-	const field = (id: string, label: string, hint?: string) => (
-		<label htmlFor={`${uid}-${id}`} className="flex flex-col gap-1.5 text-sm">
-			<span className="font-medium">{label}</span>
-			{hint ? (
-				<span className="-mt-1 text-muted-foreground text-xs">{hint}</span>
-			) : null}
-		</label>
-	);
+	// ── Preview ──
+	const preview: EditionPreviewData = {
+		bookTitle,
+		title: form.title,
+		languageLabel: languageLabel(form.language),
+		formatLabel: EDITION_FORMAT_LABELS[form.format],
+		formatIcon: FORMAT_ICONS[form.format],
+		pages: pagesValid ? pages : null,
+		isbn: form.isbn,
+		publisher: form.publisher,
+		year: form.year,
+		coverUrl: form.coverUrl,
+		uploading,
+		status:
+			editing && edition?.status === "verified" && isAdmin
+				? "verified"
+				: "member",
+		addedBy: editing
+			? (edition?.createdBy?.name ?? "a member")
+			: (session?.user.name ?? "you"),
+		readers: edition?.readers,
+	};
+
+	const pagesInvalid = touched.pages && !pagesValid;
+	const yearInvalid = touched.year && !yearValid;
+	const stepPages = (delta: number) => {
+		const base = Number.isFinite(pages) ? pages : 0;
+		const next = Math.min(MAX_PAGES, Math.max(MIN_PAGES, base + delta));
+		set("pages", String(next));
+		setTouched((current) => ({ ...current, pages: true }));
+	};
+
+	const lookupTone: Tone =
+		lookup.state === "found"
+			? "success"
+			: lookup.state === "loading"
+				? "loading"
+				: lookup.state === "error"
+					? "danger"
+					: "neutral";
+
+	const warnsVerifiedReset =
+		editing && edition?.status === "verified" && !isAdmin;
 
 	return (
 		<>
-			<Dialog open={open} onOpenChange={onOpenChange}>
-				<DialogContent className="max-h-[92vh] gap-0 overflow-y-auto p-0 sm:max-w-2xl">
-					<DialogHeader className="border-border border-b p-5">
-						<DialogTitle>
+			<Dialog open={open} onOpenChange={requestClose}>
+				<DialogContent
+					initialFocus={editing ? pagesRef : isbnRef}
+					className={cn(
+						"flex flex-col gap-0 overflow-hidden p-0 text-sm",
+						// Phones: the dialog fills the screen like a sheet.
+						"top-0 left-0 h-dvh max-h-dvh max-w-none translate-x-0 translate-y-0",
+						"sm:top-1/2 sm:left-1/2 sm:h-auto sm:max-h-[min(92vh,54rem)] sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2",
+					)}
+				>
+					<DialogHeader className="border-border border-b px-5 py-4 pe-14">
+						<DialogTitle className="text-base">
 							{editing ? "Edit edition" : "Add an edition"}
 						</DialogTitle>
-						<DialogDescription>
+						<DialogDescription className="text-sm">
 							{editing
 								? "Fix what is wrong. Everyone reading this edition sees the change."
-								: `Your copy of “${bookTitle}” is not on Open Library? Add it here so you and other members can pick it.`}
+								: `Your copy of “${bookTitle}” is not on Open Library? Add it so you and other members can pick it.`}
 						</DialogDescription>
 					</DialogHeader>
 
+					<div className="md:hidden">
+						<EditionPreviewStrip data={preview} />
+					</div>
+
 					<form
-						className="grid gap-5 p-5 sm:grid-cols-[10rem_minmax(0,1fr)]"
+						className="flex min-h-0 flex-1 flex-col"
+						noValidate
 						onSubmit={(event) => {
 							event.preventDefault();
 							submit();
 						}}
+						onKeyDown={(event) => {
+							if (
+								event.key === "Enter" &&
+								(event.metaKey || event.ctrlKey) &&
+								!event.repeat
+							) {
+								event.preventDefault();
+								submit();
+							}
+						}}
 					>
-						<div className="flex flex-col gap-2">
-							<div
-								className={cn(
-									"relative mx-auto aspect-2/3 w-full max-w-[10rem]",
-									bookCoverFrameClassName,
-								)}
-							>
-								{form.coverUrl ? (
-									<Image
-										src={form.coverUrl}
-										alt="Edition cover"
-										fill
-										className="object-cover"
-										sizes="160px"
+						<div className="grid min-h-0 flex-1 gap-6 overflow-y-auto p-5 md:grid-cols-[14rem_minmax(0,1fr)]">
+							<div className="hidden md:block">
+								<div className="sticky top-0">
+									<EditionPreviewCard data={preview} />
+								</div>
+							</div>
+
+							<div className="flex min-w-0 flex-col gap-7">
+								<FormSection
+									title="Find it by ISBN"
+									description="The number on the back of the book. We fill in the rest from Open Library, and it stops the same edition being listed twice."
+								>
+									<div className="flex flex-col gap-2">
+										<FieldLabel htmlFor={`${uid}-isbn`}>ISBN</FieldLabel>
+										<div className="flex gap-2">
+											<Input
+												id={`${uid}-isbn`}
+												ref={isbnRef}
+												value={form.isbn}
+												onChange={(event) => {
+													set("isbn", event.target.value);
+													setLookup({ state: "idle" });
+													setDuplicateId(null);
+												}}
+												onKeyDown={(event) => {
+													if (
+														event.key === "Enter" &&
+														!event.metaKey &&
+														!event.ctrlKey
+													) {
+														event.preventDefault();
+														void lookUp();
+													}
+												}}
+												placeholder="978-0-306-40615-7"
+												inputMode="numeric"
+												autoComplete="off"
+												className="h-10 font-mono text-sm tabular-nums"
+												aria-invalid={!isbnValid}
+												aria-describedby={`${uid}-isbn-status`}
+											/>
+											<IsbnScannerButton
+												disabled={lookup.state === "loading"}
+												onDetected={(isbn) => {
+													set("isbn", isbn);
+													void lookUp(isbn);
+												}}
+											/>
+											<Button
+												type="button"
+												className="h-10"
+												disabled={
+													lookup.state === "loading" ||
+													isbnTrimmed === "" ||
+													!isbnValid
+												}
+												onClick={() => void lookUp()}
+											>
+												{lookup.state === "loading" ? (
+													<Loader2
+														data-icon="inline-start"
+														className="animate-spin"
+														aria-hidden
+													/>
+												) : (
+													<Search data-icon="inline-start" aria-hidden />
+												)}
+												Look up
+											</Button>
+										</div>
+										<div id={`${uid}-isbn-status`} className="min-h-5">
+											{!isbnValid ? (
+												<StatusLine tone="danger">
+													That is not a valid ISBN. Check the last digit.
+												</StatusLine>
+											) : duplicateTarget ? (
+												<StatusLine
+													tone="warning"
+													action={
+														<Button
+															type="button"
+															size="xs"
+															variant="outline"
+															onClick={() => {
+																onDuplicate?.(duplicateTarget);
+																onOpenChange(false);
+															}}
+														>
+															Use the existing one
+														</Button>
+													}
+												>
+													This ISBN is already listed.
+												</StatusLine>
+											) : lookup.state === "found" ? (
+												<StatusLine tone={lookupTone}>
+													Found on Open Library
+													{lookup.title ? `: ${lookup.title}` : ""}. Filled in
+													below; check it matches your copy.
+												</StatusLine>
+											) : lookup.state === "missing" ? (
+												<StatusLine tone="neutral">
+													Open Library has no edition with that ISBN. Fill it in
+													by hand.
+												</StatusLine>
+											) : lookup.state === "error" ? (
+												<StatusLine tone="danger">{lookup.message}</StatusLine>
+											) : lookup.state === "loading" ? (
+												<StatusLine tone="loading">
+													Looking it up on Open Library…
+												</StatusLine>
+											) : (
+												<StatusLine tone="neutral">
+													No ISBN? Skip this and fill the details in below.
+												</StatusLine>
+											)}
+										</div>
+									</div>
+								</FormSection>
+
+								<FormSection title="About this edition">
+									<div className="flex flex-col gap-2">
+										<FieldLabel>Language</FieldLabel>
+										<ChoiceChips
+											label="Language"
+											value={form.language}
+											options={LANGUAGE_CHOICES}
+											onChange={(value) => set("language", value)}
+										/>
+									</div>
+									<div className="flex flex-col gap-2">
+										<FieldLabel>Format</FieldLabel>
+										<ChoiceChips
+											label="Format"
+											variant="tile"
+											value={form.format}
+											options={FORMAT_CHOICES}
+											onChange={(value) => set("format", value)}
+										/>
+									</div>
+
+									<div className="grid gap-4 sm:grid-cols-2">
+										<div className="flex flex-col gap-1.5">
+											<FieldLabel htmlFor={`${uid}-pages`}>Pages</FieldLabel>
+											<div className="flex items-stretch gap-1.5">
+												<Button
+													type="button"
+													variant="outline"
+													size="icon"
+													className="size-10 shrink-0"
+													aria-label="One page less"
+													disabled={
+														!Number.isFinite(pages) || pages <= MIN_PAGES
+													}
+													onClick={() => stepPages(-1)}
+												>
+													<Minus aria-hidden />
+												</Button>
+												<Input
+													id={`${uid}-pages`}
+													ref={pagesRef}
+													type="number"
+													min={MIN_PAGES}
+													max={MAX_PAGES}
+													value={form.pages}
+													onChange={(event) => set("pages", event.target.value)}
+													onBlur={() =>
+														setTouched((current) => ({
+															...current,
+															pages: true,
+														}))
+													}
+													inputMode="numeric"
+													className="h-10 text-center tabular-nums"
+													aria-invalid={pagesInvalid}
+													aria-describedby={`${uid}-pages-help`}
+													required
+												/>
+												<Button
+													type="button"
+													variant="outline"
+													size="icon"
+													className="size-10 shrink-0"
+													aria-label="One page more"
+													disabled={pages >= MAX_PAGES}
+													onClick={() => stepPages(1)}
+												>
+													<Plus aria-hidden />
+												</Button>
+											</div>
+											<p
+												id={`${uid}-pages-help`}
+												className={cn(
+													"text-xs",
+													pagesInvalid
+														? "text-destructive"
+														: "text-muted-foreground",
+												)}
+											>
+												{pagesInvalid
+													? `Pages must be between ${MIN_PAGES} and ${MAX_PAGES.toLocaleString("en-US")}.`
+													: "Used for progress and pace."}
+											</p>
+										</div>
+										<div className="flex flex-col gap-1.5">
+											<FieldLabel htmlFor={`${uid}-year`}>
+												Year published
+											</FieldLabel>
+											<Input
+												id={`${uid}-year`}
+												type="number"
+												value={form.year}
+												onChange={(event) => set("year", event.target.value)}
+												onBlur={() =>
+													setTouched((current) => ({ ...current, year: true }))
+												}
+												placeholder="2003"
+												inputMode="numeric"
+												className="h-10 tabular-nums"
+												aria-invalid={yearInvalid}
+											/>
+											{yearInvalid ? (
+												<p className="text-destructive text-xs">
+													Year must be between 1000 and 2100.
+												</p>
+											) : null}
+										</div>
+									</div>
+
+									<div className="flex flex-col gap-1.5">
+										<FieldLabel htmlFor={`${uid}-publisher`}>
+											Publisher
+										</FieldLabel>
+										<Input
+											id={`${uid}-publisher`}
+											value={form.publisher}
+											maxLength={200}
+											onChange={(event) => set("publisher", event.target.value)}
+											autoComplete="off"
+											className="h-10"
+										/>
+									</div>
+
+									{showTranslator || form.language !== "eng" ? (
+										<div className="flex flex-col gap-1.5">
+											<FieldLabel
+												htmlFor={`${uid}-translator`}
+												hint="For a translated edition."
+											>
+												Translator
+											</FieldLabel>
+											<Input
+												id={`${uid}-translator`}
+												value={form.translator}
+												maxLength={200}
+												onChange={(event) =>
+													set("translator", event.target.value)
+												}
+												autoComplete="off"
+												className="h-10"
+											/>
+										</div>
+									) : null}
+									{showTitle ? (
+										<div className="flex flex-col gap-1.5">
+											<FieldLabel
+												htmlFor={`${uid}-title`}
+												hint="Only if it differs from the book's title, like a translated title."
+											>
+												Title in this edition
+											</FieldLabel>
+											<Input
+												id={`${uid}-title`}
+												value={form.title}
+												maxLength={300}
+												onChange={(event) => set("title", event.target.value)}
+												autoComplete="off"
+												className="h-10"
+											/>
+										</div>
+									) : null}
+									{!showTitle ||
+									(!showTranslator && form.language === "eng") ? (
+										<div className="flex flex-wrap gap-x-4 gap-y-1">
+											{!showTitle ? (
+												<Button
+													type="button"
+													variant="link"
+													size="xs"
+													className="h-auto px-0 text-muted-foreground"
+													onClick={() => setShowTitle(true)}
+												>
+													<Plus data-icon="inline-start" aria-hidden />
+													Different title in this edition
+												</Button>
+											) : null}
+											{!showTranslator && form.language === "eng" ? (
+												<Button
+													type="button"
+													variant="link"
+													size="xs"
+													className="h-auto px-0 text-muted-foreground"
+													onClick={() => setShowTranslator(true)}
+												>
+													<Plus data-icon="inline-start" aria-hidden />
+													Add a translator
+												</Button>
+											) : null}
+										</div>
+									) : null}
+								</FormSection>
+
+								<FormSection
+									title="Cover"
+									description="Optional. It appears on the editions page and on your reading card."
+								>
+									<CoverDropzone
+										hasCover={form.coverUrl != null}
+										uploading={uploading}
+										onFile={setCropFile}
+										onError={(message) => toast.error(message)}
+										onRemove={() => set("coverUrl", null)}
 									/>
-								) : (
-									<div className="flex size-full flex-col items-center justify-center gap-1 px-2 text-center text-muted-foreground text-xs">
-										<ImagePlus className="size-5" aria-hidden />
-										No cover yet
+								</FormSection>
+
+								<FormSection title="Notes">
+									<div className="flex flex-col gap-1.5">
+										<Textarea
+											id={`${uid}-notes`}
+											aria-label="Notes"
+											value={form.notes}
+											maxLength={300}
+											rows={3}
+											onChange={(event) => set("notes", event.target.value)}
+											placeholder="Anything that helps others recognise this edition, like “free PDF from the publisher”"
+											className="text-sm"
+										/>
+										<p className="text-end text-muted-foreground text-xs tabular-nums">
+											{form.notes.length}/300
+										</p>
 									</div>
-								)}
-								{uploading ? (
-									<div className="absolute inset-0 flex items-center justify-center bg-background/70">
-										<Loader2 className="size-5 animate-spin" aria-hidden />
-									</div>
+								</FormSection>
+
+								{warnsVerifiedReset ? (
+									<StatusLine tone="neutral">
+										This edition is verified. After you edit it, an admin has to
+										verify it again.
+									</StatusLine>
 								) : null}
 							</div>
-							<input
-								ref={fileRef}
-								type="file"
-								accept="image/jpeg,image/png,image/webp"
-								className="sr-only"
-								aria-label="Choose a cover image"
-								onChange={(event) => {
-									const file = event.target.files?.[0];
-									event.target.value = "";
-									if (!file) return;
-									if (file.size > 5 * 1024 * 1024) {
-										toast.error("Choose an image under 5 MB.");
-										return;
-									}
-									setCropFile(file);
-								}}
-							/>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								disabled={uploading}
-								onClick={() => fileRef.current?.click()}
+						</div>
+
+						<div className="flex flex-col gap-3 border-border border-t bg-popover px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+							<p
+								className={cn(
+									"text-xs leading-relaxed",
+									canSave ? "text-muted-foreground" : "text-foreground",
+								)}
+								role="status"
 							>
-								<ImagePlus data-icon="inline-start" aria-hidden />
-								{form.coverUrl ? "Change cover" : "Upload cover"}
-							</Button>
-							{form.coverUrl ? (
+								{blocker ??
+									(!editing && addsLeft != null
+										? `You can add ${addsLeft} more ${addsLeft === 1 ? "edition" : "editions"} today (${MAX_EDITIONS_PER_MEMBER_PER_DAY} a day keeps the list tidy).`
+										: editing
+											? "Changes are saved for everyone."
+											: "Nothing is saved until you press Save edition.")}
+							</p>
+							<div className="flex items-center justify-end gap-2">
 								<Button
 									type="button"
 									variant="ghost"
-									size="sm"
-									className="text-muted-foreground"
-									onClick={() => set("coverUrl", null)}
+									onClick={() => requestClose(false)}
 								>
-									<Trash2 data-icon="inline-start" aria-hidden />
-									Remove cover
+									Cancel
 								</Button>
-							) : null}
+								<Button type="submit" disabled={!canSave || pending}>
+									{pending ? (
+										<Loader2
+											data-icon="inline-start"
+											className="animate-spin"
+											aria-hidden
+										/>
+									) : null}
+									Save edition
+									{hasKeyboard ? (
+										<kbd className="ms-1 border border-primary-foreground/30 px-1 font-mono text-3xs opacity-80">
+											{isMac ? "⌘↵" : "Ctrl+↵"}
+										</kbd>
+									) : null}
+								</Button>
+							</div>
 						</div>
-
-						<div className="flex min-w-0 flex-col gap-4">
-							<div className="flex flex-col gap-1.5">
-								{field(
-									"isbn",
-									"ISBN",
-									"On the back of the book. Optional, but it stops duplicates.",
-								)}
-								<div className="flex gap-2">
-									<Input
-										id={`${uid}-isbn`}
-										value={form.isbn}
-										onChange={(event) => set("isbn", event.target.value)}
-										placeholder="978-0-306-40615-7"
-										inputMode="numeric"
-										autoComplete="off"
-										aria-invalid={!isbnValid}
-									/>
-									<Button
-										type="button"
-										variant="outline"
-										disabled={lookingUp || isbnTrimmed === ""}
-										onClick={() => void lookUp()}
-									>
-										{lookingUp ? (
-											<Loader2
-												data-icon="inline-start"
-												className="animate-spin"
-												aria-hidden
-											/>
-										) : (
-											<Search data-icon="inline-start" aria-hidden />
-										)}
-										Look up
-									</Button>
-								</div>
-								{!isbnValid ? (
-									<p className="text-destructive text-xs">
-										That is not a valid ISBN.
-									</p>
-								) : lookupNote ? (
-									<p className="text-muted-foreground text-xs" role="status">
-										{lookupNote}
-									</p>
-								) : null}
-							</div>
-
-							<div className="grid gap-4 sm:grid-cols-2">
-								<div className="flex flex-col gap-1.5">
-									{field("language", "Language")}
-									<Select
-										value={form.language}
-										onValueChange={(value) => set("language", value as Lang)}
-									>
-										<SelectTrigger id={`${uid}-language`}>
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											{BOOK_EDITION_LANGUAGES.map((code) => (
-												<SelectItem key={code} value={code}>
-													{languageLabel(code)}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-								<div className="flex flex-col gap-1.5">
-									{field("format", "Format")}
-									<Select
-										value={form.format}
-										onValueChange={(value) => set("format", value as Format)}
-									>
-										<SelectTrigger id={`${uid}-format`}>
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											{FORMATS.map((format) => (
-												<SelectItem key={format} value={format}>
-													{EDITION_FORMAT_LABELS[format]}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-								<div className="flex flex-col gap-1.5">
-									{field("pages", "Pages")}
-									<Input
-										id={`${uid}-pages`}
-										type="number"
-										min={1}
-										max={20000}
-										value={form.pages}
-										onChange={(event) => set("pages", event.target.value)}
-										inputMode="numeric"
-										aria-invalid={form.pages !== "" && !pagesValid}
-										required
-									/>
-								</div>
-								<div className="flex flex-col gap-1.5">
-									{field("year", "Year published")}
-									<Input
-										id={`${uid}-year`}
-										type="number"
-										value={form.year}
-										onChange={(event) => set("year", event.target.value)}
-										placeholder="2003"
-										inputMode="numeric"
-										aria-invalid={!yearValid}
-									/>
-								</div>
-							</div>
-
-							<div className="flex flex-col gap-1.5">
-								{field("publisher", "Publisher")}
-								<Input
-									id={`${uid}-publisher`}
-									value={form.publisher}
-									maxLength={200}
-									onChange={(event) => set("publisher", event.target.value)}
-									autoComplete="off"
-								/>
-							</div>
-							<div className="grid gap-4 sm:grid-cols-2">
-								<div className="flex flex-col gap-1.5">
-									{field(
-										"title",
-										"Title in this edition",
-										"Only if it differs, like a translated title.",
-									)}
-									<Input
-										id={`${uid}-title`}
-										value={form.title}
-										maxLength={300}
-										onChange={(event) => set("title", event.target.value)}
-										autoComplete="off"
-									/>
-								</div>
-								<div className="flex flex-col gap-1.5">
-									{field("translator", "Translator")}
-									<Input
-										id={`${uid}-translator`}
-										value={form.translator}
-										maxLength={200}
-										onChange={(event) => set("translator", event.target.value)}
-										autoComplete="off"
-									/>
-								</div>
-							</div>
-							<div className="flex flex-col gap-1.5">
-								{field("notes", "Notes")}
-								<Textarea
-									id={`${uid}-notes`}
-									value={form.notes}
-									maxLength={300}
-									rows={2}
-									onChange={(event) => set("notes", event.target.value)}
-									placeholder="Anything that helps others recognise this edition"
-								/>
-								<p className="text-end text-muted-foreground text-xs tabular-nums">
-									{form.notes.length}/300
-								</p>
-							</div>
-
-							{duplicateId ? (
-								<div
-									className="flex flex-wrap items-center justify-between gap-2 border border-warning/40 bg-warning/10 p-3 text-sm"
-									role="alert"
-								>
-									<span>This edition (same ISBN) is already listed.</span>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										onClick={() => {
-											onDuplicate?.(duplicateId);
-											onOpenChange(false);
-										}}
-									>
-										Use the existing one
-									</Button>
-								</div>
-							) : null}
-						</div>
-
-						<DialogFooter className="border-border border-t pt-4 sm:col-span-2">
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() => onOpenChange(false)}
-							>
-								Cancel
-							</Button>
-							<Button type="submit" disabled={!canSave || pending}>
-								{pending ? (
-									<Loader2
-										data-icon="inline-start"
-										className="animate-spin"
-										aria-hidden
-									/>
-								) : null}
-								Save edition
-							</Button>
-						</DialogFooter>
 					</form>
+
+					<DestructiveConfirmDialog
+						open={discardOpen}
+						onOpenChange={setDiscardOpen}
+						title="Discard this edition?"
+						description={
+							editing
+								? "Your changes to this edition will be lost."
+								: "What you entered will be lost."
+						}
+						confirmLabel="Discard"
+						cancelLabel="Keep editing"
+						onConfirm={() => {
+							setDiscardOpen(false);
+							onOpenChange(false);
+						}}
+					/>
 				</DialogContent>
 			</Dialog>
 

@@ -1,6 +1,8 @@
 import type { Database, DatabaseTransaction } from "@bbrc/db";
 import {
+	cleanEditionLabel,
 	clubDayKey,
+	formatEditionLanguage,
 	type PaceResult,
 	readingPace,
 	readingStats,
@@ -100,7 +102,7 @@ export function mapEdition(row: ReadingRow): ReadingItem["edition"] {
 			edition.title,
 			edition.publisher,
 			edition.publishedYear ? String(edition.publishedYear) : null,
-			edition.language,
+			formatEditionLanguage(edition.language),
 		].filter(Boolean);
 		return {
 			kind: "member",
@@ -118,7 +120,8 @@ export function mapEdition(row: ReadingRow): ReadingItem["edition"] {
 			kind: "open_library",
 			olid: row.editionOlid,
 			memberEditionId: null,
-			label: row.editionLabel,
+			// Older readings have a raw "/languages/tur" baked into the label.
+			label: cleanEditionLabel(row.editionLabel),
 			coverId: row.editionCoverId,
 			coverUrl: null,
 			language: null,
@@ -425,10 +428,14 @@ export async function startReading(
 			memberEdition = edition;
 		}
 
+		// `null` means "no page count, track by percentage"; leaving it out uses the
+		// edition's pages, then the book's.
 		const totalPages =
-			input.totalPages ??
-			memberEdition?.pages ??
-			(book.pages > 0 ? book.pages : null);
+			input.totalPages === null && !memberEdition
+				? null
+				: (input.totalPages ??
+					memberEdition?.pages ??
+					(book.pages > 0 ? book.pages : null));
 		const editionFields = {
 			editionOlid: memberEdition ? null : (input.editionOlid ?? null),
 			editionCoverId: memberEdition ? null : (input.editionCoverId ?? null),
@@ -568,7 +575,12 @@ export async function setReadingEdition(
 		}
 		memberPages = edition.pages;
 	}
-	const totalPages = input.totalPages ?? memberPages ?? row.totalPages;
+	// A number sets the pages, `null` clears them (percentage only, e.g. a PDF),
+	// and leaving it out keeps the current pages unless the new edition has its own.
+	const totalPages =
+		input.totalPages != null
+			? input.totalPages
+			: (memberPages ?? (input.totalPages === null ? null : row.totalPages));
 	const updated = await db.reading.update({
 		where: { id: row.id },
 		data: {
