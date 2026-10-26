@@ -61,6 +61,7 @@ export const FONT_OPTIONS = {
 		label: "Atkinson Hyperlegible",
 		note: "Made for easy reading",
 		cssVar: "--font-atkinson",
+		extraCssVars: ["--font-atkinson-ext"],
 		fallback: SANS,
 		cyrillic: false,
 	},

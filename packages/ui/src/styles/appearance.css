@@ -21,7 +21,7 @@ html[data-font-body="plex-sans"] {
 }
 
 html[data-font-body="atkinson"] {
-	--app-font-body: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+	--app-font-body: var(--font-atkinson), var(--font-atkinson-ext), ui-sans-serif, system-ui, sans-serif;
 }
 
 html[data-font-body="literata"] {
@@ -89,7 +89,7 @@ html[data-font-reading="source-serif"] {
 }
 
 html[data-font-reading="atkinson"] {
-	--app-font-reading: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+	--app-font-reading: var(--font-atkinson), var(--font-atkinson-ext), ui-sans-serif, system-ui, sans-serif;
 }
 
 html[data-font-reading="inter"] {
