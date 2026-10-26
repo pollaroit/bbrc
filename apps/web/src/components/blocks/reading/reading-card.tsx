@@ -291,10 +291,10 @@ export function ReadingCard({
 				</span>
 			) : null}
 
-			<div className="flex gap-4 sm:gap-5">
+			<div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-4 gap-y-4 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-x-5">
 				<Link
 					href={bookHref}
-					className="relative block aspect-2/3 w-20 shrink-0 self-start overflow-hidden bg-muted shadow-md ring-1 ring-foreground/10 transition-transform duration-200 group-hover/reading:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover/reading:translate-y-0 sm:w-28"
+					className="relative block aspect-2/3 w-full shrink-0 self-start overflow-hidden bg-muted shadow-md ring-1 ring-foreground/10 transition-transform duration-200 group-hover/reading:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover/reading:translate-y-0 sm:row-span-2"
 					tabIndex={-1}
 					aria-hidden
 				>
@@ -314,101 +314,105 @@ export function ReadingCard({
 					)}
 				</Link>
 
-				<div className="flex min-w-0 flex-1 flex-col gap-3">
-					<div className="flex min-w-0 flex-col gap-1">
-						{reading.sitting ? (
-							<Link
-								href={`/sittings/${reading.sitting.slug}` as Route}
-								className="inline-flex w-fit items-center gap-1 border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-medium text-2xs text-foreground uppercase tracking-wide hover:bg-primary/15"
+				<div className="flex min-w-0 flex-col gap-1">
+					{reading.sitting ? (
+						<Link
+							href={`/sittings/${reading.sitting.slug}` as Route}
+							className="inline-flex w-fit items-center gap-1 border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-medium text-2xs text-foreground uppercase tracking-wide hover:bg-primary/15"
+						>
+							<Flag className="size-3" aria-hidden />
+							Club read
+						</Link>
+					) : null}
+					<h3 className="text-pretty font-semibold text-lg leading-tight tracking-tight sm:text-xl">
+						<Link href={bookHref} className="hover:underline">
+							{reading.book.title}
+						</Link>
+					</h3>
+					<p className="text-muted-foreground text-sm">
+						<BookAuthorLinks authors={reading.book.authors} />
+					</p>
+					<p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground text-xs">
+						<span>
+							Started <RelativeTime date={reading.startedAt} />
+						</span>
+						<EditionLabelLink
+							bookSlug={reading.book.slug}
+							edition={reading.edition}
+							totalPages={reading.totalPages}
+						/>
+						{readOnly ? null : (
+							<button
+								type="button"
+								onClick={() => setEditionOpen(true)}
+								className="inline-flex items-center gap-1 text-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
 							>
-								<Flag className="size-3" aria-hidden />
-								Club read
-							</Link>
-						) : null}
-						<h3 className="text-pretty font-semibold text-lg leading-tight tracking-tight sm:text-xl">
-							<Link href={bookHref} className="hover:underline">
-								{reading.book.title}
-							</Link>
-						</h3>
-						<p className="text-muted-foreground text-sm">
-							<BookAuthorLinks authors={reading.book.authors} />
-						</p>
-						<p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground text-xs">
-							<span>
-								Started <RelativeTime date={reading.startedAt} />
-							</span>
-							<EditionLabelLink
-								bookSlug={reading.book.slug}
-								edition={reading.edition}
-								totalPages={reading.totalPages}
-							/>
-							{readOnly ? null : (
-								<button
-									type="button"
-									onClick={() => setEditionOpen(true)}
-									className="inline-flex items-center gap-1 text-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-								>
-									<BookCopy className="size-3" aria-hidden />
-									Change edition
-								</button>
-							)}
-						</p>
-					</div>
-
-					{progressVisible ? (
-						<div className="flex flex-col gap-1.5">
-							<div className="flex items-end justify-between gap-3 tabular-nums">
-								<p
-									className="font-heading font-semibold text-4xl leading-none tracking-tight"
-									aria-live="polite"
-								>
-									{shownPercent}
-									<span className="ms-0.5 font-normal text-lg text-muted-foreground">
-										%
-									</span>
-								</p>
-								<p className="pb-0.5 text-right text-muted-foreground text-sm">
-									{byPage ? progressLabel : "of the book"}
-								</p>
-							</div>
-							{readOnly ? (
-								// The numbers above say the same thing, so the bar is only a picture.
-								<div className="h-2.5 w-full bg-muted" aria-hidden>
-									<div
-										className="h-full bg-primary"
-										style={{ width: `${reading.percent}%` }}
-									/>
-								</div>
-							) : (
-								<div className="relative pb-4">
-									<ProgressSlider
-										percent={reading.percent}
-										label={`Progress on ${reading.book.title}`}
-										valueText={progressLabel}
-										draft={draft}
-										onDraft={setDraft}
-										onCommit={(percent) =>
-											update.mutate({ id: reading.id, percent })
-										}
-									/>
-									{/* Quarter marks under the bar, like a ruler. */}
-									<span
-										aria-hidden
-										className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between text-3xs text-muted-foreground"
-									>
-										{["0", "25", "50", "75", "100"].map((tick) => (
-											<span key={tick} className="tabular-nums">
-												{tick}
-											</span>
-										))}
-									</span>
-								</div>
-							)}
-						</div>
-					) : (
-						<p className="text-muted-foreground text-sm">Reading</p>
-					)}
+								<BookCopy className="size-3" aria-hidden />
+								Change edition
+							</button>
+						)}
+					</p>
 				</div>
+
+				{progressVisible ? (
+					<div className="col-span-2 flex flex-col gap-1.5 sm:col-span-1 sm:col-start-2">
+						<div className="flex items-end justify-between gap-3 tabular-nums">
+							<p
+								className="font-heading font-semibold text-4xl leading-none tracking-tight"
+								aria-live="polite"
+							>
+								{shownPercent}
+								<span className="ms-0.5 font-normal text-lg text-muted-foreground">
+									%
+								</span>
+							</p>
+							<p className="pb-0.5 text-right text-muted-foreground text-xs sm:text-sm">
+								{byPage ? (
+									progressLabel
+								) : (
+									<span className="max-sm:hidden">of the book</span>
+								)}
+							</p>
+						</div>
+						{readOnly ? (
+							// The numbers above say the same thing, so the bar is only a picture.
+							<div className="h-2.5 w-full bg-muted" aria-hidden>
+								<div
+									className="h-full bg-primary"
+									style={{ width: `${reading.percent}%` }}
+								/>
+							</div>
+						) : (
+							<div className="relative pb-4">
+								<ProgressSlider
+									percent={reading.percent}
+									label={`Progress on ${reading.book.title}`}
+									valueText={progressLabel}
+									draft={draft}
+									onDraft={setDraft}
+									onCommit={(percent) =>
+										update.mutate({ id: reading.id, percent })
+									}
+								/>
+								{/* Quarter marks under the bar, like a ruler. */}
+								<span
+									aria-hidden
+									className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between text-3xs text-muted-foreground"
+								>
+									{["0", "25", "50", "75", "100"].map((tick) => (
+										<span key={tick} className="tabular-nums">
+											{tick}
+										</span>
+									))}
+								</span>
+							</div>
+						)}
+					</div>
+				) : (
+					<p className="col-span-2 text-muted-foreground text-sm sm:col-span-1 sm:col-start-2">
+						Reading
+					</p>
+				)}
 			</div>
 
 			{readOnly ? null : finished ? (
@@ -423,7 +427,7 @@ export function ReadingCard({
 				</div>
 			) : (
 				<div className="flex flex-wrap items-center gap-2">
-					<div className="flex items-center gap-1.5">
+					<div className="grid w-full grid-cols-3 gap-1.5 sm:flex sm:w-auto sm:items-center">
 						{quickSteps.map((step) => (
 							<Button
 								key={step}
@@ -455,7 +459,12 @@ export function ReadingCard({
 					>
 						<Square aria-hidden />
 					</Button>
-					<Button type="button" size="sm" onClick={() => setFinishOpen(true)}>
+					<Button
+						type="button"
+						size="sm"
+						className="flex-1 sm:flex-none"
+						onClick={() => setFinishOpen(true)}
+					>
 						<BookCheck data-icon="inline-start" aria-hidden />
 						Finished
 					</Button>
