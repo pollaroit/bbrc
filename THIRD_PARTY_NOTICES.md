@@ -14,3 +14,7 @@ palette meets the readability checks in `packages/shared/src/themes/contrast.ts`
 Presets or modes that could not be made readable were left out. Run
 `bun run themes:import` to regenerate the file; the header of that file lists
 what was adjusted or skipped.
+
+## Atkinson Hyperlegible Next
+
+The font files in `apps/web/src/app/fonts/` are Atkinson Hyperlegible Next, copyright the Braille Institute of America, Inc., served from Google Fonts and licensed under the SIL Open Font License 1.1 (https://openfontlicense.org).

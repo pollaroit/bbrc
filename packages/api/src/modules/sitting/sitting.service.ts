@@ -298,7 +298,7 @@ function mapSittingDetail(
 	optionAggregatesById: Map<string, { voteCount: number; pointTotal: number }>,
 	hidePollAggregates: boolean,
 	pollChipRankByUserId: Map<string, 1 | 2 | null>,
-): GetSittingBySlugOutput {
+): Omit<GetSittingBySlugOutput, "selectedBookAuthors"> {
 	const myVoteOptionIds = myVotes.map((vote) => vote.optionId);
 	const bookPages = row.selectedBook?.pages ?? null;
 
@@ -992,19 +992,34 @@ export async function getSittingBySlug(
 		});
 	}
 
-	return mapSittingDetail(
-		sittingForDetail,
-		myVotes,
-		myChipGrants,
-		reviews,
-		pollVoterCount,
-		removedParticipants,
-		participantReadCountByBookId,
-		viewerReadBookIds,
-		optionAggregatesById,
-		hidePollAggregates,
-		pollChipRankByUserId,
-	);
+	// The picked book's author records (with photos) for the page header.
+	const authorLinks =
+		sitting.selectedBookId != null
+			? await db.bookAuthor.findMany({
+					where: { bookId: sitting.selectedBookId },
+					orderBy: { position: "asc" },
+					select: {
+						author: { select: { slug: true, name: true, photoUrl: true } },
+					},
+				})
+			: [];
+
+	return {
+		...mapSittingDetail(
+			sittingForDetail,
+			myVotes,
+			myChipGrants,
+			reviews,
+			pollVoterCount,
+			removedParticipants,
+			participantReadCountByBookId,
+			viewerReadBookIds,
+			optionAggregatesById,
+			hidePollAggregates,
+			pollChipRankByUserId,
+		),
+		selectedBookAuthors: authorLinks.map((link) => link.author),
+	};
 }
 
 export async function getOngoingSitting(

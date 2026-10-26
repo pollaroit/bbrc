@@ -1,5 +1,6 @@
 "use client";
 
+import type { ListBookReadersOutputSchema } from "@bbrc/api/modules/reading/reading.schema";
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import type { ParticipantJoinInfo } from "@bbrc/api/modules/sitting/sitting-join.schema";
 import {
@@ -9,11 +10,14 @@ import {
 } from "@bbrc/ui/components/avatar";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
+import { Progress as ProgressBar } from "@bbrc/ui/components/progress";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { useMemo, useState } from "react";
+import type { z } from "zod";
+import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
 import {
 	SittingParticipantsAdminToolbar,
 	SittingRemovedParticipantsSection,
@@ -34,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
 type Sitting = GetSittingBySlugOutput;
+type Reader = z.infer<typeof ListBookReadersOutputSchema>["items"][number];
 type Participant = Sitting["participants"][number];
 type Progress = Participant["progress"];
 
@@ -82,7 +87,56 @@ function describeJoin(info: JoinInfo) {
 	return `${how} · ${new Date(info.joinedAt).toLocaleDateString(undefined, { dateStyle: "medium" })}`;
 }
 
+/** Progress and edition of a participant who is reading the picked book now (same data as the book's reading page). */
+function ReadingDetail({
+	reader,
+	bookSlug,
+}: {
+	reader: Reader;
+	bookSlug: string;
+}) {
+	return (
+		<div className="flex flex-col gap-2 border-border border-t bg-muted/30 px-4 py-3">
+			{reader.percent != null ? (
+				<>
+					<div className="flex items-end justify-between gap-3 tabular-nums">
+						<p className="font-heading font-semibold text-3xl leading-none tracking-tight">
+							{reader.percent}
+							<span className="ms-0.5 font-normal text-base text-muted-foreground">
+								%
+							</span>
+						</p>
+						{reader.currentPage != null && reader.totalPages != null ? (
+							<p className="pb-0.5 text-muted-foreground text-xs">
+								page {reader.currentPage} of {reader.totalPages}
+							</p>
+						) : null}
+					</div>
+					<ProgressBar
+						value={reader.percent}
+						aria-label={`${reader.name}'s reading progress`}
+						className="gap-0"
+					/>
+				</>
+			) : (
+				<p className="text-muted-foreground text-xs">Reading</p>
+			)}
+			{reader.edition?.label ? (
+				<p className="truncate text-muted-foreground text-xs">
+					Edition:{" "}
+					<EditionLabelLink
+						bookSlug={bookSlug}
+						edition={reader.edition}
+						totalPages={reader.totalPages}
+					/>
+				</p>
+			) : null}
+		</div>
+	);
+}
+
 type RowProps = {
+	reading?: Reader;
 	joinInfo?: JoinInfo;
 	sitting: Sitting;
 	participant: Participant;
@@ -93,7 +147,16 @@ type RowProps = {
 	removeDisabledReason?: string;
 };
 
+/** Tint of the status pill, from the same tokens as the dot. */
+const statusPillClassName: Record<Progress, string> = {
+	not_started: "border-warning/30 bg-warning/10 text-foreground",
+	in_progress: "border-primary/30 bg-primary/10 text-foreground",
+	completed: "border-success/30 bg-success/10 text-success-ink",
+	dnf: "border-destructive/30 bg-destructive/10 text-destructive",
+};
+
 function ParticipantRow({
+	reading,
 	joinInfo,
 	sitting,
 	participant,
@@ -115,68 +178,60 @@ function ParticipantRow({
 			: null;
 
 	const showRemove = isAdmin && canRemove;
+	const profileHref = `/users/${participant.username}` as Route;
 
 	return (
-		<li className="flex flex-col">
-			<div className="flex items-start gap-4 px-4 py-4">
-				<Link
-					href={`/users/${participant.username}` as Route}
-					className="shrink-0"
-					tabIndex={-1}
-					aria-hidden
-				>
-					<Avatar className="size-11">
+		<li
+			className={cn(
+				"flex min-w-0 flex-col overflow-hidden border bg-card",
+				isSelf ? "border-foreground/40" : "border-border",
+			)}
+		>
+			<div className="flex items-start gap-3 p-4">
+				<Link href={profileHref} className="shrink-0" tabIndex={-1} aria-hidden>
+					<Avatar className="size-12">
 						<AvatarImage src={participant.image ?? undefined} />
 						<AvatarFallback>{participant.name.charAt(0)}</AvatarFallback>
 					</Avatar>
 				</Link>
 
-				<div className="flex min-w-0 flex-1 flex-col gap-1">
+				<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 					<p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
 						<Link
-							href={`/users/${participant.username}` as Route}
-							className="truncate font-medium hover:underline"
+							href={profileHref}
+							className="truncate font-semibold hover:underline"
 						>
 							{participant.name}
 						</Link>
+						{isSelf ? (
+							<span className="border border-border px-1 font-normal text-2xs text-muted-foreground">
+								You
+							</span>
+						) : null}
 						{participant.status !== "active" ? (
 							<Badge variant="outline" className="h-5 px-1.5 capitalize">
 								{participant.status}
 							</Badge>
 						) : null}
 					</p>
-					<p className="text-muted-foreground text-xs tabular-nums">
-						@{participant.username} · {participant.rpLevel.label} ·{" "}
-						{participant.rp.toLocaleString()} RP
+					<p className="truncate text-muted-foreground text-xs tabular-nums">
+						@{participant.username}
 					</p>
-					{joinInfo ? (
-						<p className="text-muted-foreground text-xs">
-							{describeJoin(joinInfo)}
-						</p>
-					) : null}
-					{chipLabel ? (
-						<p className="font-medium text-xs">{chipLabel}</p>
-					) : null}
-					{sitting.status === "finished" && participant.rpChange != null ? (
-						<p
-							className={cn(
-								"font-medium text-xs tabular-nums",
-								participant.rpChange < 0 && "text-destructive",
-							)}
-						>
-							{participant.rpChange > 0
-								? `+${participant.rpChange}`
-								: participant.rpChange}{" "}
-							RP from this sitting
-						</p>
-					) : null}
+					<p className="text-muted-foreground text-xs tabular-nums">
+						{participant.rpLevel.label} · {participant.rp.toLocaleString()} RP
+					</p>
 				</div>
 
 				{showProgress ? (
-					<p className="flex shrink-0 items-center gap-1.5 text-xs">
+					<p
+						className={cn(
+							"flex shrink-0 items-center gap-1.5 border px-2 py-0.5 text-xs",
+							statusPillClassName[participant.progress],
+						)}
+					>
 						<span
 							className={cn(
-								"size-2",
+								"size-1.5",
 								progressIndicatorClassName[participant.progress],
 							)}
 							aria-hidden
@@ -186,8 +241,39 @@ function ParticipantRow({
 				) : null}
 			</div>
 
+			{joinInfo || chipLabel ? (
+				<div className="flex flex-col gap-0.5 px-4 pb-3">
+					{chipLabel ? (
+						<p className="font-medium text-xs">{chipLabel}</p>
+					) : null}
+					{joinInfo ? (
+						<p className="text-muted-foreground text-xs">
+							{describeJoin(joinInfo)}
+						</p>
+					) : null}
+				</div>
+			) : null}
+
+			{reading && sitting.selectedBook ? (
+				<ReadingDetail reader={reading} bookSlug={sitting.selectedBook.slug} />
+			) : null}
+
+			{sitting.status === "finished" && participant.rpChange != null ? (
+				<p
+					className={cn(
+						"border-border border-t px-4 py-2 font-medium text-xs tabular-nums",
+						participant.rpChange < 0 ? "text-destructive" : "text-success-ink",
+					)}
+				>
+					{participant.rpChange > 0
+						? `+${participant.rpChange}`
+						: participant.rpChange}{" "}
+					RP from this sitting
+				</p>
+			) : null}
+
 			{canEditProgress || showRemove ? (
-				<div className="flex items-center justify-end gap-2 border-border border-t bg-muted/20 px-4 py-2.5">
+				<div className="mt-auto flex items-center justify-end gap-2 border-border border-t bg-muted/20 px-4 py-2.5">
 					{canEditProgress ? (
 						<Button
 							type="button"
@@ -251,6 +337,18 @@ export function SittingParticipantsView({
 		}),
 		enabled: isAdmin,
 	});
+	// Who is reading the picked book right now, with progress and edition (members who keep
+	// their reading private are left out by the API, exactly as on the book's reading page).
+	const pickedBookSlug = sitting.selectedBook?.slug;
+	const readers = useQuery({
+		...orpc.reading.readers.queryOptions({
+			input: { bookSlug: pickedBookSlug ?? "" },
+		}),
+		enabled: Boolean(pickedBookSlug) && sitting.status === "reading",
+	});
+	const readerByUsername = new Map(
+		(readers.data?.items ?? []).map((item) => [item.username, item]),
+	);
 	const joinInfoByUsername = new Map(
 		(joinInfo.data?.items ?? []).map((item) => [item.username, item]),
 	);
@@ -387,8 +485,9 @@ export function SittingParticipantsView({
 			) : null}
 
 			{me ? (
-				<ul className="border border-foreground/30 bg-muted/20">
+				<ul className="grid gap-3">
 					<ParticipantRow
+						reading={readerByUsername.get(me.username)}
 						joinInfo={joinInfoByUsername.get(me.username)}
 						sitting={sitting}
 						participant={me}
@@ -427,9 +526,10 @@ export function SittingParticipantsView({
 					</p>
 				</div>
 			) : (
-				<ul className="divide-y divide-border border border-border">
+				<ul className="grid gap-3 md:grid-cols-2">
 					{visible.map((participant) => (
 						<ParticipantRow
+							reading={readerByUsername.get(participant.username)}
 							joinInfo={joinInfoByUsername.get(participant.username)}
 							key={participant.userId}
 							sitting={sitting}
