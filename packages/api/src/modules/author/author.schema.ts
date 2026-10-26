@@ -12,12 +12,16 @@
  *   author.nationalityFacets nationalities for the directory filter, with counts
  *   author.get               overview: profile, headline numbers, series line, viewer state
  *   author.about             sources, credits and completeness for the About tab
- *   author.books             books by the author (paged, sortable, with series + viewer read state)
  *   author.more              related authors (nationality, era, read by the same members), max 12
- *   author.reads             members' reads of the author's books (paged)
- *   author.reviews           reviews of the author's books (paged, excerpts only)
+ *   author.books             books by the author: same filters/sorts/cards as /books (paged)
+ *   author.bookFacets        country and subject facets + slider ranges for the Books tab
+ *   author.reads             members' reads of the author's books (paged, filters, sorts, search)
+ *   author.reviews           reviews of the author's books (paged, filters, sorts, search)
+ *   author.readerOptions     members to pick in the reads/reviews filters (search, top 20)
+ *   author.bookOptions       books by the author to pick in filters (search, top 20)
+ *   author.seriesOptions     series holding their books to pick in filters (search, top 20)
+ *   author.followers         members who follow the author (people cards, filters, sorts)
  *   author.posts             feed posts that attach this author (paged, feed shape)
- *   author.comments          comments on posts that attach this author (paged, list shape)
  *   author.sittings          sittings that picked or polled one of the author's books (paged)
  *   author.favorites         members who favorited the author's books (paged by member)
  *   author.shelves           public shelves holding the author's books (paged)
@@ -37,7 +41,15 @@ import {
 } from "@bbrc/schemas";
 import { bookCountryCodeSchema } from "@bbrc/shared";
 import zod from "zod";
-import { CommentListItemSchema } from "../comment/comment.schema";
+import { bookListFiltersSchema } from "../book/book.listing";
+import {
+	BookListItemSchema,
+	BookListMetadataSchema,
+	bookListQueryInputShape,
+	bookSortableFields,
+	refineBookListQueryInput,
+} from "../book/book.schema";
+import { PeopleListItemSchema } from "../people/people.schema";
 import { PostListItemSchema } from "../post/post.schema";
 import { ReadEditionRefSchema } from "../read/read-edition-ref";
 import { BookSeriesSummarySchema } from "../series/series.schema";
@@ -146,8 +158,12 @@ export const AuthorCardSchema = zod.object({
 	bookCount: CountSchema,
 	/** Different members who read at least one of their books. */
 	readerCount: CountSchema,
+	/** All reads of their books (one member reading two books counts twice). */
+	readCount: CountSchema,
 	/** Reviews of their books. */
 	reviewCount: CountSchema,
+	/** Pages of all their books in the library added together. */
+	totalPages: CountSchema,
 	/** Average club rating over all reviews of their books; null when none. */
 	averageRating: zod.number().min(0).max(5).nullable(),
 	/** How many members follow the author (names are private). */
@@ -171,6 +187,8 @@ function refineDirectoryRanges(
 	const pairs = [
 		["minBooks", "maxBooks"],
 		["minReaders", "maxReaders"],
+		["minReads", "maxReads"],
+		["minPages", "maxPages"],
 		["minReviews", "maxReviews"],
 		["minAverageRating", "maxAverageRating"],
 	] as const;
@@ -395,40 +413,79 @@ export const AuthorAboutOutputSchema = zod.object({
 });
 export type AuthorAboutOutput = zod.infer<typeof AuthorAboutOutputSchema>;
 
-// ── Books: author.books ────────────────────────────────────────────────────
+// ── Books: author.books / author.bookFacets ────────────────────────────────
 
-export const AuthorBookSortFields = [
-	"title",
-	"publishedIn",
-	"averageRating",
-	"readCount",
-	"createdAt",
-] as const;
+/**
+ * `author.books` takes the same filters, sorts, range and search as `book.getBookList`
+ * (so the author's Books tab works like /books) minus the author filter: the author is
+ * the one in `slug`. It returns the same list item (`BookListItem`, with `authorRefs`
+ * and `series`) plus `readByMe`. Defaults: oldest publication first.
+ */
+export const AuthorBooksInputSchema = bookListQueryInputShape
+	.omit({ authors: true })
+	.extend({
+		slug: authorSlugInput,
+		sortBy: zod.enum(bookSortableFields).default("publishedIn"),
+		sortDirection: zod.enum(["asc", "desc"]).default("asc"),
+		cursor: CursorPaginationInputSchema.shape.cursor,
+		limit: zod.number().int().min(1).max(100).default(24),
+	})
+	.superRefine(refineBookListQueryInput);
 
-export const AuthorBooksInputSchema = AuthorTabInputSchema.extend({
-	sortBy: zod.enum(AuthorBookSortFields).default("publishedIn"),
-	sortDirection: zod.enum(["asc", "desc"]).default("asc"),
-	limit: zod.number().int().min(1).max(100).default(24),
-});
-
-export const AuthorBookItemSchema = AuthorBookRefSchema.extend({
-	publishedIn: zod.number().int(),
-	pages: zod.number().int(),
-	/** Club average (stored on the book); null when nobody rated it. */
-	averageRating: zod.number().nullable(),
-	/** Members who read it (visible members). */
-	readCount: CountSchema,
-	feedbackCount: CountSchema,
-	createdAt: zod.coerce.date(),
-	series: BookSeriesSummarySchema.nullable(),
-	/** The other authors of the same book, linked to their pages. */
-	coAuthors: zod.array(zod.object({ slug: zod.string(), name: zod.string() })),
+export const AuthorBookItemSchema = BookListItemSchema.extend({
 	/** The viewer has read it (false when signed out). */
 	readByMe: zod.boolean(),
 });
-export const AuthorBooksOutputSchema = pageOf(AuthorBookItemSchema);
+export const AuthorBooksOutputSchema = zod.object({
+	items: zod.array(AuthorBookItemSchema),
+	/** Same metadata as `book.getBookList` (cursor is a book slug; `total` on the first page). */
+	metadata: BookListMetadataSchema,
+});
+export type AuthorBooksInput = zod.infer<typeof AuthorBooksInputSchema>;
 export type AuthorBookItem = zod.infer<typeof AuthorBookItemSchema>;
 export type AuthorBooksOutput = zod.infer<typeof AuthorBooksOutputSchema>;
+
+/**
+ * Facets for the Books tab filters, scoped to the author and to the other active
+ * filters (the filter being faceted is ignored, like `book.getBookListCountryFacets`).
+ * Subjects come with their slug (the `subjects` filter takes slugs).
+ */
+export const AuthorBookFacetsInputSchema = bookListQueryInputShape
+	.omit({ authors: true })
+	.extend({
+		slug: authorSlugInput,
+		pinnedCountryCodes: zod.array(bookCountryCodeSchema).optional(),
+	})
+	.superRefine(refineBookListQueryInput);
+export const AuthorBookFacetsOutputSchema = zod.object({
+	countries: zod.array(
+		zod.object({
+			alpha2: zod.string(),
+			name: zod.string(),
+			bookCount: CountSchema,
+		}),
+	),
+	subjects: zod.array(
+		zod.object({
+			slug: zod.string(),
+			name: zod.string(),
+			bookCount: CountSchema,
+		}),
+	),
+	/** Min and max of the numbers the sliders need (null when the author has no book). */
+	ranges: zod.object({
+		pages: zod.object({ min: zod.number(), max: zod.number() }).nullable(),
+		publishedIn: zod
+			.object({ min: zod.number(), max: zod.number() })
+			.nullable(),
+	}),
+});
+export type AuthorBookFacetsInput = zod.infer<
+	typeof AuthorBookFacetsInputSchema
+>;
+export type AuthorBookFacetsOutput = zod.infer<
+	typeof AuthorBookFacetsOutputSchema
+>;
 
 // ── More: author.more ──────────────────────────────────────────────────────
 
@@ -463,11 +520,95 @@ export const AuthorMoreOutputSchema = zod.object({
 export type RelatedAuthor = zod.infer<typeof RelatedAuthorSchema>;
 export type AuthorMoreOutput = zod.infer<typeof AuthorMoreOutputSchema>;
 
+// ── Shared filters of reads and reviews ────────────────────────────────────
+
+/**
+ * Book filters shared by `author.reads` and `author.reviews`: the same fields (and
+ * meaning) as the filters of `book.getBookList`.
+ */
+export const authorScopedBookFiltersSchema = bookListFiltersSchema.pick({
+	subjects: true,
+	subjectsMatch: true,
+	countries: true,
+	minPages: true,
+	maxPages: true,
+	minPublishedIn: true,
+	maxPublishedIn: true,
+	minAverageRating: true,
+	maxAverageRating: true,
+});
+
+const usernameListSchema = zod
+	.array(zod.string().trim().min(1).max(60))
+	.max(30);
+const slugListSchema = zod.array(zod.string().trim().min(1).max(200)).max(30);
+
+/**
+ * Filters common to the reads and reviews lists. Members are given by username, books and
+ * series by slug (what the option endpoints return), so they fit in a URL.
+ */
+export const authorActivityFiltersSchema = authorScopedBookFiltersSchema
+	.extend({
+		/** Members (usernames); empty or missing = everyone. */
+		members: usernameListSchema.optional(),
+		/** Books by this author (slugs). */
+		books: slugListSchema.optional(),
+		/** Series (slugs) that hold at least one of the author's books. */
+		series: slugListSchema.optional(),
+		/** Free text search; see each endpoint for what it matches. */
+		search: zod.string().trim().max(100).optional(),
+	})
+	.partial();
+
 // ── Reads: author.reads ────────────────────────────────────────────────────
+
+export const AuthorReadSortFields = [
+	"finishedAt",
+	"loggedAt",
+	"book",
+	"member",
+] as const;
+
+/**
+ * `search` matches member name and username, book title and slug, series title and slug.
+ * `finishedFrom`/`finishedTo` bound the read end date (month precision: a read with only a
+ * year matches any month of that year; reads with no end date never match a bound).
+ * `loggedFrom`/`loggedTo` bound when the read was recorded in the app (the whole `loggedTo` day counts).
+ * `finishedAt` sort: reads with no end date are always last, in both directions.
+ */
+export const AuthorReadsInputSchema = AuthorTabInputSchema.extend(
+	authorActivityFiltersSchema.shape,
+)
+	.extend({
+		finishedFrom: zod.coerce.date().optional(),
+		finishedTo: zod.coerce.date().optional(),
+		loggedFrom: zod.coerce.date().optional(),
+		loggedTo: zod.coerce.date().optional(),
+		sortBy: zod.enum(AuthorReadSortFields).default("finishedAt"),
+		sortDirection: zod.enum(["asc", "desc"]).default("desc"),
+	})
+	.superRefine((value, ctx) => {
+		for (const [from, to] of [
+			["finishedFrom", "finishedTo"],
+			["loggedFrom", "loggedTo"],
+		] as const) {
+			const low = value[from];
+			const high = value[to];
+			if (low && high && high < low) {
+				ctx.addIssue({
+					code: "custom",
+					message: "The end date must be on or after the start date",
+					path: [to],
+				});
+			}
+		}
+	});
 
 export const AuthorReadItemSchema = zod.object({
 	member: AuthorMemberSchema,
 	book: AuthorBookRefSchema,
+	/** The book's series and place in it; null when it is in none. */
+	series: BookSeriesSummarySchema.nullable(),
 	/** When they finished it (month is null when only the year is known). */
 	finishedMonth: zod.number().int().min(1).max(12).nullable(),
 	finishedYear: zod.number().int().nullable(),
@@ -477,21 +618,73 @@ export const AuthorReadItemSchema = zod.object({
 	createdAt: zod.coerce.date(),
 });
 export const AuthorReadsOutputSchema = pageOf(AuthorReadItemSchema);
+export type AuthorReadsInput = zod.infer<typeof AuthorReadsInputSchema>;
 export type AuthorReadItem = zod.infer<typeof AuthorReadItemSchema>;
 export type AuthorReadsOutput = zod.infer<typeof AuthorReadsOutputSchema>;
 
 // ── Reviews: author.reviews ────────────────────────────────────────────────
 
-export const AuthorReviewsInputSchema = AuthorTabInputSchema.extend({
-	sortBy: zod.enum(["createdAt", "rating"]).default("createdAt"),
-	sortDirection: zod.enum(["asc", "desc"]).default("desc"),
-});
+export const AuthorReviewSortFields = [
+	"createdAt",
+	"rating",
+	"likes",
+	"comments",
+	"book",
+] as const;
+
+/**
+ * `search` matches reviewer name and username, book title and slug, and the review text
+ * (the text of spoiler reviews is never matched). `members` are the reviewers.
+ * Sorts: createdAt desc = newest, asc = oldest; rating; likes; comments; book title.
+ */
+export const AuthorReviewsInputSchema = AuthorTabInputSchema.extend(
+	authorActivityFiltersSchema.shape,
+)
+	.extend({
+		minRating: zod.number().min(0).max(5).optional(),
+		maxRating: zod.number().min(0).max(5).optional(),
+		/** `written` has review text; `rating_only` is a rating with no text. */
+		reviewType: zod.enum(["written", "rating_only"]).optional(),
+		hasImage: zod.boolean().optional(),
+		/** `only` keeps spoiler-tagged reviews; `hide` drops them. */
+		spoilers: zod.enum(["only", "hide"]).optional(),
+		/** Written between these dates (the whole `to` day counts). */
+		createdFrom: zod.coerce.date().optional(),
+		createdTo: zod.coerce.date().optional(),
+		sortBy: zod.enum(AuthorReviewSortFields).default("createdAt"),
+		sortDirection: zod.enum(["asc", "desc"]).default("desc"),
+	})
+	.superRefine((value, ctx) => {
+		if (
+			value.minRating != null &&
+			value.maxRating != null &&
+			value.maxRating < value.minRating
+		) {
+			ctx.addIssue({
+				code: "custom",
+				message: "Maximum rating must be greater than or equal to minimum",
+				path: ["maxRating"],
+			});
+		}
+		if (
+			value.createdFrom &&
+			value.createdTo &&
+			value.createdTo < value.createdFrom
+		) {
+			ctx.addIssue({
+				code: "custom",
+				message: "The end date must be on or after the start date",
+				path: ["createdTo"],
+			});
+		}
+	});
 
 export const AuthorReviewItemSchema = zod.object({
 	/** Feedback slug (link to the review). */
 	slug: zod.string(),
 	member: AuthorMemberSchema,
 	book: AuthorBookRefSchema,
+	series: BookSeriesSummarySchema.nullable(),
 	rating: zod.number(),
 	isSpoiler: zod.boolean(),
 	/** Plain-text excerpt (never raw JSON); null for spoiler reviews and rating-only reviews. */
@@ -502,25 +695,114 @@ export const AuthorReviewItemSchema = zod.object({
 	createdAt: zod.coerce.date(),
 });
 export const AuthorReviewsOutputSchema = pageOf(AuthorReviewItemSchema);
+export type AuthorReviewsInput = zod.infer<typeof AuthorReviewsInputSchema>;
 export type AuthorReviewItem = zod.infer<typeof AuthorReviewItemSchema>;
 export type AuthorReviewsOutput = zod.infer<typeof AuthorReviewsOutputSchema>;
 
-// ── Posts and comments: author.posts / author.comments ─────────────────────
+// ── Option lists for the multi-selects ─────────────────────────────────────
+
+/**
+ * Small searchable lists behind the multi-select filters (at most 20 rows, most active
+ * first; an empty `query` gives the top ones). Hidden members never appear.
+ */
+export const AuthorOptionsInputSchema = zod.object({
+	slug: authorSlugInput,
+	query: zod.string().trim().max(100).default(""),
+});
+export const AuthorMemberOptionsInputSchema = AuthorOptionsInputSchema.extend({
+	/** `reads` = members who read their books; `reviews` = members who reviewed them. */
+	source: zod.enum(["reads", "reviews"]).default("reads"),
+});
+export const AuthorMemberOptionsOutputSchema = zod.object({
+	items: zod.array(
+		AuthorMemberSchema.extend({
+			/** Reads or reviews of the author's books, by `source`. */
+			count: CountSchema,
+		}),
+	),
+});
+export const AuthorBookOptionsOutputSchema = zod.object({
+	items: zod.array(
+		AuthorBookRefSchema.extend({ publishedIn: zod.number().int() }),
+	),
+});
+export const AuthorSeriesOptionsOutputSchema = zod.object({
+	/** Only series that hold at least one of the author's books. */
+	items: zod.array(
+		zod.object({
+			slug: zod.string(),
+			title: zod.string(),
+			/** The author's books in the series. */
+			authorBookCount: CountSchema,
+		}),
+	),
+});
+export type AuthorMemberOptionsOutput = zod.infer<
+	typeof AuthorMemberOptionsOutputSchema
+>;
+export type AuthorBookOptionsOutput = zod.infer<
+	typeof AuthorBookOptionsOutputSchema
+>;
+export type AuthorSeriesOptionsOutput = zod.infer<
+	typeof AuthorSeriesOptionsOutputSchema
+>;
+
+// ── Followers: author.followers ────────────────────────────────────────────
+
+export const AuthorFollowerSortFields = [
+	"followedAt",
+	"name",
+	"username",
+	"joinedAt",
+	"reads",
+	"reviews",
+	"authorReads",
+] as const;
+
+/**
+ * Members who follow the author, as people cards (`PeopleListItem`) plus when they
+ * followed and what they did with this author's books. Hidden members never appear
+ * and banned members only for admins. `search` matches name and username.
+ */
+export const AuthorFollowersInputSchema = AuthorTabInputSchema.extend({
+	search: zod.string().trim().max(100).optional(),
+	sortBy: zod.enum(AuthorFollowerSortFields).default("followedAt"),
+	sortDirection: zod.enum(["asc", "desc"]).default("desc"),
+	/** Read at least one book by the author. */
+	readAuthor: zod.boolean().optional(),
+	/** Reviewed at least one book by the author. */
+	reviewedAuthor: zod.boolean().optional(),
+	location: zod.string().trim().max(80).optional(),
+	hasBio: zod.boolean().optional(),
+	hasAvatar: zod.boolean().optional(),
+	/** Followed between these dates (the whole `to` day counts). */
+	followedFrom: zod.coerce.date().optional(),
+	followedTo: zod.coerce.date().optional(),
+});
+export const AuthorFollowerItemSchema = PeopleListItemSchema.extend({
+	/** When they followed (ISO). */
+	followedAt: zod.string(),
+	/** Books by this author they read, and reviews they wrote of them. */
+	authorReads: CountSchema,
+	authorReviews: CountSchema,
+});
+export const AuthorFollowersOutputSchema = zod.object({
+	/** All followers (visible members), whatever the filters. */
+	followerCount: CountSchema,
+	items: zod.array(AuthorFollowerItemSchema),
+	metadata: AuthorTabMetadataSchema,
+});
+export type AuthorFollowersInput = zod.infer<typeof AuthorFollowersInputSchema>;
+export type AuthorFollowerItem = zod.infer<typeof AuthorFollowerItemSchema>;
+export type AuthorFollowersOutput = zod.infer<
+	typeof AuthorFollowersOutputSchema
+>;
+
+// ── Posts: author.posts ────────────────────────────────────────────────────
 
 /** Feed posts that attach this author, in the same shape as the feed (`PostListItem`). */
 export const AuthorPostsOutputSchema = pageOf(PostListItemSchema);
 export type AuthorPostsOutput = zod.infer<typeof AuthorPostsOutputSchema>;
-
-/**
- * Comments carry no attachment of their own, so this lists the comments written on posts
- * that attach this author (`CommentListItem` plus the post they belong to).
- */
-export const AuthorCommentItemSchema = CommentListItemSchema.extend({
-	post: zod.object({ slug: zod.string(), excerpt: zod.string() }).nullable(),
-});
-export const AuthorCommentsOutputSchema = pageOf(AuthorCommentItemSchema);
-export type AuthorCommentItem = zod.infer<typeof AuthorCommentItemSchema>;
-export type AuthorCommentsOutput = zod.infer<typeof AuthorCommentsOutputSchema>;
 
 // ── Sittings: author.sittings ──────────────────────────────────────────────
 

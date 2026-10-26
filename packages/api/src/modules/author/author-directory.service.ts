@@ -131,6 +131,8 @@ async function loadDirectory(
 					filters.minReaders,
 					filters.maxReaders,
 				) &&
+				inRange(aggregate.readCount, filters.minReads, filters.maxReads) &&
+				inRange(aggregate.pageCount, filters.minPages, filters.maxPages) &&
 				inRange(aggregate.reviewCount, filters.minReviews, filters.maxReviews)
 			);
 		});
@@ -147,6 +149,10 @@ function sortValue(
 			return entry.aggregate.bookCount;
 		case "readerCount":
 			return entry.aggregate.readerCount;
+		case "readCount":
+			return entry.aggregate.readCount;
+		case "pageCount":
+			return entry.aggregate.pageCount;
 		case "reviewCount":
 			return entry.aggregate.reviewCount;
 		case "averageRating":

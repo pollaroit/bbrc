@@ -30,7 +30,8 @@ const genreNameBySlug = new Map<string, string>(
 	genres.map((genre) => [genre.slug, genre.name]),
 );
 
-const userListSelect = {
+/** Shared with the author followers list. */
+export const userListSelect = {
 	id: true,
 	username: true,
 	name: true,
@@ -57,7 +58,9 @@ const userListSelect = {
 	},
 } satisfies Prisma.UserSelect;
 
-type PeopleRow = Prisma.UserGetPayload<{ select: typeof userListSelect }>;
+export type PeopleRow = Prisma.UserGetPayload<{
+	select: typeof userListSelect;
+}>;
 
 function levelRanges(
 	labels: readonly string[] | undefined,
@@ -350,7 +353,8 @@ async function loadStreaks(
 	return result;
 }
 
-async function buildItems(
+/** Turns member rows into people-list cards (shared with the author followers list). */
+export async function buildItems(
 	rows: PeopleRow[],
 	db: Database,
 ): Promise<PeopleListItem[]> {

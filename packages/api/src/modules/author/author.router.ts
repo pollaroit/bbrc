@@ -1,20 +1,29 @@
 import { publicProcedure } from "../../procedures";
 import {
 	AuthorAboutOutputSchema,
+	AuthorBookFacetsInputSchema,
+	AuthorBookFacetsOutputSchema,
+	AuthorBookOptionsOutputSchema,
 	AuthorBooksInputSchema,
 	AuthorBooksOutputSchema,
-	AuthorCommentsOutputSchema,
 	AuthorFavoritesOutputSchema,
+	AuthorFollowersInputSchema,
+	AuthorFollowersOutputSchema,
 	AuthorGetOutputSchema,
 	AuthorListInputSchema,
 	AuthorListOutputSchema,
+	AuthorMemberOptionsInputSchema,
+	AuthorMemberOptionsOutputSchema,
 	AuthorMoreOutputSchema,
 	AuthorNationalityFacetsInputSchema,
 	AuthorNationalityFacetsOutputSchema,
+	AuthorOptionsInputSchema,
 	AuthorPostsOutputSchema,
+	AuthorReadsInputSchema,
 	AuthorReadsOutputSchema,
 	AuthorReviewsInputSchema,
 	AuthorReviewsOutputSchema,
+	AuthorSeriesOptionsOutputSchema,
 	AuthorSeriesOutputSchema,
 	AuthorShelvesOutputSchema,
 	AuthorSittingsOutputSchema,
@@ -23,18 +32,24 @@ import {
 	AuthorTabInputSchema,
 } from "./author.schema";
 import {
+	getAuthorReads,
+	getAuthorReviews,
+	listAuthorBookOptions,
+	listAuthorMemberOptions,
+	listAuthorSeriesOptions,
+} from "./author-activity.service";
+import { getAuthorBookFacets, getAuthorBooks } from "./author-books.service";
+import {
 	getAuthor,
 	getAuthorAbout,
 	listAuthorNationalityFacets,
 	listAuthors,
 } from "./author-directory.service";
-import { getAuthorComments, getAuthorPosts } from "./author-social.service";
+import { getAuthorFollowers } from "./author-followers.service";
+import { getAuthorPosts } from "./author-social.service";
 import {
-	getAuthorBooks,
 	getAuthorFavorites,
 	getAuthorMore,
-	getAuthorReads,
-	getAuthorReviews,
 	getAuthorSeries,
 	getAuthorShelves,
 	getAuthorSittings,
@@ -79,8 +94,14 @@ export const authorRouter = {
 		.handler(async ({ input, context }) =>
 			getAuthorMore(input.slug, context.db, context.session),
 		),
+	bookFacets: publicProcedure
+		.input(AuthorBookFacetsInputSchema)
+		.output(AuthorBookFacetsOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAuthorBookFacets(input, context.db, context.session),
+		),
 	reads: publicProcedure
-		.input(AuthorTabInputSchema)
+		.input(AuthorReadsInputSchema)
 		.output(AuthorReadsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAuthorReads(input, context.db, context.session),
@@ -91,17 +112,35 @@ export const authorRouter = {
 		.handler(async ({ input, context }) =>
 			getAuthorReviews(input, context.db, context.session),
 		),
+	readerOptions: publicProcedure
+		.input(AuthorMemberOptionsInputSchema)
+		.output(AuthorMemberOptionsOutputSchema)
+		.handler(async ({ input, context }) =>
+			listAuthorMemberOptions(input, context.db, context.session),
+		),
+	bookOptions: publicProcedure
+		.input(AuthorOptionsInputSchema)
+		.output(AuthorBookOptionsOutputSchema)
+		.handler(async ({ input, context }) =>
+			listAuthorBookOptions(input, context.db, context.session),
+		),
+	seriesOptions: publicProcedure
+		.input(AuthorOptionsInputSchema)
+		.output(AuthorSeriesOptionsOutputSchema)
+		.handler(async ({ input, context }) =>
+			listAuthorSeriesOptions(input, context.db, context.session),
+		),
+	followers: publicProcedure
+		.input(AuthorFollowersInputSchema)
+		.output(AuthorFollowersOutputSchema)
+		.handler(async ({ input, context }) =>
+			getAuthorFollowers(input, context.db, context.session),
+		),
 	posts: publicProcedure
 		.input(AuthorTabInputSchema)
 		.output(AuthorPostsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAuthorPosts(input, context.db, context.session),
-		),
-	comments: publicProcedure
-		.input(AuthorTabInputSchema)
-		.output(AuthorCommentsOutputSchema)
-		.handler(async ({ input, context }) =>
-			getAuthorComments(input, context.db, context.session),
 		),
 	sittings: publicProcedure
 		.input(AuthorTabInputSchema)

@@ -9,11 +9,7 @@ import {
 	getBookCountryName,
 } from "@bbrc/shared";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
-import type {
-	AuthorBookItem,
-	AuthorCard,
-	AuthorProfile,
-} from "./author.schema";
+import type { AuthorCard, AuthorProfile } from "./author.schema";
 
 // ── Small mappers ──────────────────────────────────────────────────────────
 
@@ -59,6 +55,8 @@ export type AuthorAggregate = {
 	readCount: number;
 	reviewCount: number;
 	ratingSum: number;
+	/** Pages of all their books in the library added together. */
+	pageCount: number;
 	coverIds: (number | null)[];
 	bookIds: string[];
 };
@@ -69,6 +67,7 @@ export const EMPTY_AGGREGATE: AuthorAggregate = {
 	readCount: 0,
 	reviewCount: 0,
 	ratingSum: 0,
+	pageCount: 0,
 	coverIds: [],
 	bookIds: [],
 };
@@ -94,7 +93,9 @@ export async function loadAuthorAggregates(
 		where: { authorId: { in: [...authorIds] } },
 		select: {
 			authorId: true,
-			book: { select: { id: true, title: true, coverId: true } },
+			book: {
+				select: { id: true, title: true, coverId: true, pages: true },
+			},
 		},
 	});
 	const bookIds = [...new Set(links.map((link) => link.book.id))];
@@ -135,7 +136,9 @@ export async function loadAuthorAggregates(
 		let readCount = 0;
 		let reviewCount = 0;
 		let ratingSum = 0;
+		let pageCount = 0;
 		for (const { book } of authorLinks) {
+			pageCount += book.pages;
 			const bookReaders = readersByBook.get(book.id) ?? [];
 			readCount += bookReaders.length;
 			for (const userId of bookReaders) readers.add(userId);
@@ -154,6 +157,7 @@ export async function loadAuthorAggregates(
 			readCount,
 			reviewCount,
 			ratingSum,
+			pageCount,
 			coverIds: byTitle.slice(0, 4).map((link) => link.book.coverId),
 			bookIds: authorLinks.map((link) => link.book.id),
 		});
@@ -241,7 +245,9 @@ export function toAuthorCard(
 		photoUrl: row.photoUrl,
 		bookCount: aggregate.bookCount,
 		readerCount: aggregate.readerCount,
+		readCount: aggregate.readCount,
 		reviewCount: aggregate.reviewCount,
+		totalPages: aggregate.pageCount,
 		averageRating: averageRatingOf(aggregate),
 		followerCount,
 		followedByMe,
@@ -469,33 +475,6 @@ export function bookRef(book: {
 		title: book.title,
 		authors: book.authors,
 		coverId: book.coverId,
-	};
-}
-
-export function toAuthorBookItem(
-	row: AuthorBookRow,
-	authorId: string,
-	readBookIds: Set<string>,
-): AuthorBookItem {
-	return {
-		...bookRef(row),
-		publishedIn: row.publishedIn,
-		pages: row.pages,
-		averageRating: row.averageRating,
-		readCount: row._count.reads,
-		feedbackCount: row._count.feedbacks,
-		createdAt: row.createdAt,
-		series: row.seriesMembership
-			? {
-					slug: row.seriesMembership.series.slug,
-					title: row.seriesMembership.series.title,
-					position: row.seriesMembership.position,
-				}
-			: null,
-		coAuthors: row.authorLinks
-			.filter((link) => link.authorId !== authorId)
-			.map((link) => ({ slug: link.author.slug, name: link.author.name })),
-		readByMe: readBookIds.has(row.id),
 	};
 }
 

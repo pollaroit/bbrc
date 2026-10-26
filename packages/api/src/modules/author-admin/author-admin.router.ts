@@ -40,8 +40,38 @@ import {
 	suggestPhoto,
 	updateAuthor,
 } from "./author-admin.service";
+import {
+	AdminAuthorListInputSchema,
+	AdminAuthorListOutputSchema,
+	AdminAuthorOverviewOutputSchema,
+	AdminAuthorScopeInputSchema,
+	AdminAuthorStatsOutputSchema,
+} from "./author-dashboard.schema";
+import {
+	getAdminAuthorOverview,
+	getAdminAuthorStats,
+	listAdminAuthors,
+} from "./author-dashboard.service";
 
 export const authorAdminRouter = {
+	/** Dashboard like /admin/books: counts, charts and rankings for the filtered authors. */
+	overview: adminProcedure
+		.input(AdminAuthorScopeInputSchema)
+		.output(AdminAuthorOverviewOutputSchema)
+		.handler(({ input, context }) => getAdminAuthorOverview(input, context.db)),
+
+	/** The full directory table with filters, sorting, search and paging (like /admin/books/list). */
+	list: adminProcedure
+		.input(AdminAuthorListInputSchema)
+		.output(AdminAuthorListOutputSchema)
+		.handler(({ input, context }) => listAdminAuthors(input, context.db)),
+
+	/** Deeper breakdowns and time series (like /admin/books/stats). */
+	stats: adminProcedure
+		.input(AdminAuthorScopeInputSchema)
+		.output(AdminAuthorStatsOutputSchema)
+		.handler(({ input, context }) => getAdminAuthorStats(input, context.db)),
+
 	/** Chips in the add / edit book form: our authors first, then Open Library suggestions. */
 	search: adminProcedure
 		.input(SearchAuthorsInputSchema)

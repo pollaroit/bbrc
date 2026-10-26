@@ -5,6 +5,7 @@ import { adminRouter } from "./modules/admin/admin.router";
 import { authorRouter } from "./modules/author/author.router";
 import { authorAdminRouter } from "./modules/author-admin/author-admin.router";
 import { authorBackfillRouter } from "./modules/author-backfill/author-backfill.router";
+import { authorInsightsRouter } from "./modules/author-insights/author-insights.router";
 import { bookRouter } from "./modules/book/book.router";
 import { bookDiscoverRouter } from "./modules/book-discover/book-discover.router";
 import { bookEditionRouter } from "./modules/book-edition/book-edition.router";
@@ -45,6 +46,7 @@ export const appRouter = {
 	author: authorRouter,
 	authorAdmin: authorAdminRouter,
 	authorBackfill: authorBackfillRouter,
+	authorInsights: authorInsightsRouter,
 	health: healthRouter,
 	leaderboard: leaderboardRouter,
 	book: bookRouter,

@@ -8,26 +8,16 @@ import {
 	getBookCountryName,
 	median,
 	ratingDistribution,
-	richContentPreview,
 	scoreRelatedAuthor,
 } from "@bbrc/shared";
-import {
-	loadEditionSnapshotLabels,
-	readEditionRef,
-	readEditionRefSelect,
-} from "../read/read-edition-ref";
 import { publicShelfWhere } from "../shelf/shelf-visibility";
 import {
 	viewerFromSession,
 	visibleOnSiteUserWhere,
 } from "../user/user-visibility";
 import type {
-	AuthorBookItem,
-	AuthorBooksOutput,
 	AuthorFavoritesOutput,
 	AuthorMoreOutput,
-	AuthorReadsOutput,
-	AuthorReviewsOutput,
 	AuthorSeriesOutput,
 	AuthorShelvesOutput,
 	AuthorSittingItem,
@@ -41,12 +31,10 @@ import {
 	EMPTY_AGGREGATE,
 	loadAuthorAggregates,
 	loadAuthorBookRows,
-	loadViewerReadBookIds,
 	nationalityList,
 	offsetMetadata,
 	pageInMemory,
 	parseOffsetCursor,
-	toAuthorBookItem,
 } from "./author-data";
 import { resolveAuthor } from "./author-resolve";
 import { loadAuthorSeries } from "./author-series";
@@ -62,66 +50,6 @@ const byAuthor = (authorId: string) =>
 const userRef = {
 	select: { username: true, name: true, image: true },
 } as const;
-
-// ── Books ──────────────────────────────────────────────────────────────────
-
-function bookSortValue(
-	item: AuthorBookItem,
-	sortBy: string,
-): number | string | null {
-	switch (sortBy) {
-		case "title":
-			return item.title;
-		case "publishedIn":
-			return item.publishedIn;
-		case "averageRating":
-			return item.averageRating;
-		case "readCount":
-			return item.readCount;
-		case "createdAt":
-			return item.createdAt.getTime();
-		default:
-			return item.title;
-	}
-}
-
-export async function getAuthorBooks(
-	input: TabPaging & {
-		slug: string;
-		sortBy: string;
-		sortDirection: "asc" | "desc";
-	},
-	db: Database,
-	session: Session | null,
-): Promise<AuthorBooksOutput> {
-	const viewer = viewerFromSession(session);
-	const author = await resolveAuthor(db, input.slug, viewer);
-	const rows = await loadAuthorBookRows(db, author.id);
-	const readIds = await loadViewerReadBookIds(
-		db,
-		viewer?.userId ?? null,
-		rows.map((row) => row.id),
-	);
-
-	const factor = input.sortDirection === "asc" ? 1 : -1;
-	const items = rows
-		.map((row) => toAuthorBookItem(row, author.id, readIds))
-		.toSorted((a, b) => {
-			const left = bookSortValue(a, input.sortBy);
-			const right = bookSortValue(b, input.sortBy);
-			if (left == null && right != null) return 1;
-			if (left != null && right == null) return -1;
-			if (left != null && right != null && left !== right) {
-				const compared =
-					typeof left === "string" && typeof right === "string"
-						? left.localeCompare(right)
-						: Number(left) - Number(right);
-				if (compared !== 0) return compared * factor;
-			}
-			return a.title.localeCompare(b.title);
-		});
-	return pageInMemory(items, input.cursor, input.limit);
-}
 
 // ── Related authors ────────────────────────────────────────────────────────
 
@@ -223,149 +151,6 @@ export async function getAuthorMore(
 		};
 	});
 	return { items };
-}
-
-// ── Reads ──────────────────────────────────────────────────────────────────
-
-export async function getAuthorReads(
-	input: TabPaging & { slug: string },
-	db: Database,
-	session: Session | null,
-): Promise<AuthorReadsOutput> {
-	const author = await resolveAuthor(
-		db,
-		input.slug,
-		viewerFromSession(session),
-	);
-	const where: Prisma.ReadWhereInput = {
-		book: byAuthor(author.id),
-		user: visibleOnSiteUserWhere,
-	};
-	const skip = parseOffsetCursor(input.cursor);
-
-	const [total, rows] = await Promise.all([
-		skip === 0 ? db.read.count({ where }) : Promise.resolve(undefined),
-		db.read.findMany({
-			where,
-			skip,
-			take: input.limit + 1,
-			orderBy: [
-				{ readEndYear: { sort: "desc", nulls: "last" } },
-				{ readEndMonth: { sort: "desc", nulls: "last" } },
-				{ createdAt: "desc" },
-				{ userId: "asc" },
-			],
-			select: {
-				createdAt: true,
-				readEndMonth: true,
-				readEndYear: true,
-				user: userRef,
-				book: {
-					select: { slug: true, title: true, authors: true, coverId: true },
-				},
-				...readEditionRefSelect,
-			},
-		}),
-	]);
-
-	const hasNextPage = rows.length > input.limit;
-	const page = hasNextPage ? rows.slice(0, input.limit) : rows;
-	const labels = await loadEditionSnapshotLabels(
-		db,
-		page.flatMap((row) => (row.editionId ? [row.editionId] : [])),
-	);
-
-	return {
-		items: page.map((row) => ({
-			member: row.user,
-			book: bookRef(row.book),
-			finishedMonth: row.readEndMonth,
-			finishedYear: row.readEndYear,
-			edition: readEditionRef(row, labels),
-			createdAt: row.createdAt,
-		})),
-		metadata: offsetMetadata({
-			limit: input.limit,
-			skip,
-			shown: page.length,
-			hasNextPage,
-			total,
-		}),
-	};
-}
-
-// ── Reviews ────────────────────────────────────────────────────────────────
-
-export async function getAuthorReviews(
-	input: TabPaging & {
-		slug: string;
-		sortBy: "createdAt" | "rating";
-		sortDirection: "asc" | "desc";
-	},
-	db: Database,
-	session: Session | null,
-): Promise<AuthorReviewsOutput> {
-	const author = await resolveAuthor(
-		db,
-		input.slug,
-		viewerFromSession(session),
-	);
-	const where: Prisma.FeedbackWhereInput = {
-		book: byAuthor(author.id),
-		author: visibleOnSiteUserWhere,
-	};
-	const skip = parseOffsetCursor(input.cursor);
-
-	const [total, rows] = await Promise.all([
-		skip === 0 ? db.feedback.count({ where }) : Promise.resolve(undefined),
-		db.feedback.findMany({
-			where,
-			skip,
-			take: input.limit + 1,
-			orderBy: [{ [input.sortBy]: input.sortDirection }, { slug: "desc" }],
-			select: {
-				slug: true,
-				rating: true,
-				review: true,
-				isSpoiler: true,
-				imageUrl: true,
-				createdAt: true,
-				author: userRef,
-				book: {
-					select: { slug: true, title: true, authors: true, coverId: true },
-				},
-				_count: { select: { likes: true, comments: true } },
-			},
-		}),
-	]);
-
-	const hasNextPage = rows.length > input.limit;
-	const page = hasNextPage ? rows.slice(0, input.limit) : rows;
-
-	return {
-		items: page.map((row) => {
-			const excerpt = row.isSpoiler ? "" : richContentPreview(row.review, 280);
-			return {
-				slug: row.slug,
-				member: row.author,
-				book: bookRef(row.book),
-				rating: row.rating,
-				isSpoiler: row.isSpoiler,
-				excerpt: excerpt.trim() ? excerpt : null,
-				hasImage: row.imageUrl != null,
-				likeCount: row._count.likes,
-				commentCount: row._count.comments,
-				createdAt: row.createdAt,
-			};
-		}),
-		metadata: offsetMetadata({
-			limit: input.limit,
-			skip,
-			shown: page.length,
-			hasNextPage,
-			total,
-		}),
-	};
 }
 
 // ── Sittings ───────────────────────────────────────────────────────────────
@@ -822,3 +607,10 @@ export async function getAuthorStats(
 			.sort((a, b) => a.year - b.year),
 	};
 }
+
+// Moved: kept here so server-side callers keep their import path.
+export {
+	getAuthorReads,
+	getAuthorReviews,
+} from "./author-activity.service";
+export { getAuthorBooks } from "./author-books.service";

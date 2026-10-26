@@ -7,6 +7,8 @@ export const authorDirectorySortFields = [
 	"name",
 	"bookCount",
 	"readerCount",
+	"readCount",
+	"pageCount",
 	"reviewCount",
 	"averageRating",
 	"followerCount",
@@ -38,6 +40,12 @@ export const authorDirectoryFiltersSchema = z
 		/** Distinct members who read at least one book by the author. */
 		minReaders: z.number().int().min(0).optional(),
 		maxReaders: z.number().int().min(0).optional(),
+		/** All reads (a member reading two of their books counts twice). */
+		minReads: z.number().int().min(0).optional(),
+		maxReads: z.number().int().min(0).optional(),
+		/** Pages of all their books in the library added together. */
+		minPages: z.number().int().min(0).optional(),
+		maxPages: z.number().int().min(0).optional(),
 		minReviews: z.number().int().min(0).optional(),
 		maxReviews: z.number().int().min(0).optional(),
 		minAverageRating: z.number().min(0).max(5).optional(),
