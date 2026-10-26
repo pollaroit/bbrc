@@ -1,5 +1,6 @@
 "use client";
 
+import type { ListBookReadersOutputSchema } from "@bbrc/api/modules/reading/reading.schema";
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import type { ParticipantJoinInfo } from "@bbrc/api/modules/sitting/sitting-join.schema";
 import {
@@ -9,11 +10,14 @@ import {
 } from "@bbrc/ui/components/avatar";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
+import { Progress as ProgressBar } from "@bbrc/ui/components/progress";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { useMemo, useState } from "react";
+import type { z } from "zod";
+import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
 import {
 	SittingParticipantsAdminToolbar,
 	SittingRemovedParticipantsSection,
@@ -34,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
 type Sitting = GetSittingBySlugOutput;
+type Reader = z.infer<typeof ListBookReadersOutputSchema>["items"][number];
 type Participant = Sitting["participants"][number];
 type Progress = Participant["progress"];
 
@@ -82,7 +87,51 @@ function describeJoin(info: JoinInfo) {
 	return `${how} · ${new Date(info.joinedAt).toLocaleDateString(undefined, { dateStyle: "medium" })}`;
 }
 
+/** Progress and edition of a participant who is reading the book now (same data as the book's reading page). */
+function ReadingDetail({
+	reader,
+	bookSlug,
+}: {
+	reader: Reader;
+	bookSlug: string;
+}) {
+	return (
+		<div className="mt-1.5 flex max-w-sm flex-col gap-1.5">
+			{reader.percent != null ? (
+				<>
+					<ProgressBar
+						value={reader.percent}
+						aria-label={`${reader.name}'s reading progress`}
+						className="gap-0"
+					/>
+					<p className="flex justify-between text-muted-foreground text-xs tabular-nums">
+						<span>{reader.percent}%</span>
+						{reader.currentPage != null && reader.totalPages != null ? (
+							<span>
+								page {reader.currentPage} of {reader.totalPages}
+							</span>
+						) : null}
+					</p>
+				</>
+			) : (
+				<p className="text-muted-foreground text-xs">Reading</p>
+			)}
+			{reader.edition?.label ? (
+				<p className="truncate text-muted-foreground text-xs">
+					Edition:{" "}
+					<EditionLabelLink
+						bookSlug={bookSlug}
+						edition={reader.edition}
+						totalPages={reader.totalPages}
+					/>
+				</p>
+			) : null}
+		</div>
+	);
+}
+
 type RowProps = {
+	reading?: Reader;
 	joinInfo?: JoinInfo;
 	sitting: Sitting;
 	participant: Participant;
@@ -94,6 +143,7 @@ type RowProps = {
 };
 
 function ParticipantRow({
+	reading,
 	joinInfo,
 	sitting,
 	participant,
@@ -156,6 +206,12 @@ function ParticipantRow({
 					) : null}
 					{chipLabel ? (
 						<p className="font-medium text-xs">{chipLabel}</p>
+					) : null}
+					{reading && sitting.selectedBook ? (
+						<ReadingDetail
+							reader={reading}
+							bookSlug={sitting.selectedBook.slug}
+						/>
 					) : null}
 					{sitting.status === "finished" && participant.rpChange != null ? (
 						<p
@@ -251,6 +307,18 @@ export function SittingParticipantsView({
 		}),
 		enabled: isAdmin,
 	});
+	// Who is reading the picked book right now, with progress and edition (members who keep
+	// their reading private are left out by the API, exactly as on the book's reading page).
+	const pickedBookSlug = sitting.selectedBook?.slug;
+	const readers = useQuery({
+		...orpc.reading.readers.queryOptions({
+			input: { bookSlug: pickedBookSlug ?? "" },
+		}),
+		enabled: Boolean(pickedBookSlug) && sitting.status === "reading",
+	});
+	const readerByUsername = new Map(
+		(readers.data?.items ?? []).map((item) => [item.username, item]),
+	);
 	const joinInfoByUsername = new Map(
 		(joinInfo.data?.items ?? []).map((item) => [item.username, item]),
 	);
@@ -389,6 +457,7 @@ export function SittingParticipantsView({
 			{me ? (
 				<ul className="border border-foreground/30 bg-muted/20">
 					<ParticipantRow
+						reading={readerByUsername.get(me.username)}
 						joinInfo={joinInfoByUsername.get(me.username)}
 						sitting={sitting}
 						participant={me}
@@ -430,6 +499,7 @@ export function SittingParticipantsView({
 				<ul className="divide-y divide-border border border-border">
 					{visible.map((participant) => (
 						<ParticipantRow
+							reading={readerByUsername.get(participant.username)}
 							joinInfo={joinInfoByUsername.get(participant.username)}
 							key={participant.userId}
 							sitting={sitting}

@@ -90,20 +90,24 @@ function ProgressSlider({
 	label,
 	valueText,
 	disabled,
+	draft,
+	onDraft,
 	onCommit,
 }: {
 	percent: number;
 	label: string;
 	valueText: string;
 	disabled?: boolean;
+	/** The position while it is being dragged (null when idle); the card shows it live. */
+	draft: number | null;
+	onDraft: (percent: number | null) => void;
 	onCommit: (percent: number) => void;
 }) {
-	const [draft, setDraft] = useState<number | null>(null);
 	const shown = draft ?? percent;
 
 	function commit() {
 		if (draft != null && draft !== percent) onCommit(draft);
-		setDraft(null);
+		onDraft(null);
 	}
 
 	return (
@@ -118,7 +122,7 @@ function ProgressSlider({
 			aria-valuetext={valueText}
 			className="reading-range"
 			style={{ "--progress": `${shown}%` } as CSSProperties}
-			onChange={(event) => setDraft(Number(event.target.value))}
+			onChange={(event) => onDraft(Number(event.target.value))}
 			onPointerUp={commit}
 			onKeyUp={commit}
 			onBlur={commit}
@@ -229,6 +233,8 @@ export function ReadingCard({
 	const [finishOpen, setFinishOpen] = useState(false);
 	const [stopOpen, setStopOpen] = useState(false);
 	const [editionOpen, setEditionOpen] = useState(false);
+	// While the handle is dragged, the numbers above follow it.
+	const [draft, setDraft] = useState<number | null>(null);
 
 	const byPage = reading.totalPages != null && reading.currentPage != null;
 	const unit = byPage ? "pages" : "percent";
@@ -237,10 +243,15 @@ export function ReadingCard({
 	const pace = readOnly ? null : paceText(reading.pace ?? null);
 	const bookHref = `/books/${reading.book.slug}` as Route;
 	const finished = reading.percent >= 100;
+	const shownPercent = draft ?? reading.percent;
+	const shownPage =
+		draft != null
+			? Math.round((draft / 100) * (reading.totalPages ?? 0))
+			: reading.currentPage;
 	const progressLabel =
 		byPage && progressVisible
-			? `Page ${reading.currentPage} of ${reading.totalPages}`
-			: `${reading.percent}%`;
+			? `Page ${shownPage} of ${reading.totalPages}`
+			: `${shownPercent}%`;
 
 	function bump(amount: number) {
 		if (byPage) {
@@ -329,7 +340,7 @@ export function ReadingCard({
 					<div className="flex flex-col gap-1">
 						<div className="flex items-baseline justify-between gap-3 text-sm tabular-nums">
 							<span className="font-medium">{progressLabel}</span>
-							<span className="text-muted-foreground">{reading.percent}%</span>
+							<span className="text-muted-foreground">{shownPercent}%</span>
 						</div>
 						{readOnly ? (
 							// The numbers above say the same thing, so the bar is only a picture.
@@ -344,6 +355,8 @@ export function ReadingCard({
 								percent={reading.percent}
 								label={`Progress on ${reading.book.title}`}
 								valueText={progressLabel}
+								draft={draft}
+								onDraft={setDraft}
 								onCommit={(percent) =>
 									update.mutate({ id: reading.id, percent })
 								}
