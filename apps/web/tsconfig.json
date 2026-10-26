@@ -32,5 +32,10 @@
 		".next/types/**/*.ts",
 		".next/dev/types/**/*.ts"
 	],
-	"exclude": ["./node_modules", "public/sw.js", "public/sw.js.map"]
+	"exclude": [
+		"./node_modules",
+		"public/sw.js",
+		"public/sw.js.map",
+		"**/*.test.ts"
+	]
 }

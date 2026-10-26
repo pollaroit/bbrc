@@ -1,5 +1,10 @@
 import { authorNameKey, looseAuthorKey } from "@bbrc/shared";
 import {
+	type BirthCountry,
+	nationalitiesFromDescription,
+	nationalitiesFromWikidata,
+} from "./historical-states";
+import {
 	goodreadsAuthorUrl,
 	type OpenLibraryAuthorRecord,
 	type SourceFacts,
@@ -94,21 +99,67 @@ export async function gatherAuthorFacts(
 		const placeIds = [
 			wikidata.birthPlaceId,
 			wikidata.deathPlaceId,
-			...wikidata.citizenshipIds.slice(0, 3),
+			...wikidata.citizenshipIds.slice(0, 5),
 		].filter((id): id is string => id != null);
 		const places = new Map<
 			string,
-			{ label: string | null; countryCode: string | null }
+			{
+				label: string | null;
+				countryCode: string | null;
+				countryIds?: string[];
+			}
 		>();
 		await Promise.all(
 			[...new Set(placeIds)].map(async (id) => {
 				places.set(id, await sources.wikidataPlace(id));
 			}),
 		);
-		const nationalities = wikidata.citizenshipIds
-			.slice(0, 3)
-			.map((id) => places.get(id)?.countryCode)
-			.filter((code): code is string => Boolean(code));
+
+		// The modern country of the birthplace: the place itself when it is a country, else the
+		// country it sits in (P17). It decides what an empire or union citizenship means.
+		let birthCountry: BirthCountry | null = null;
+		const birthPlace = wikidata.birthPlaceId
+			? places.get(wikidata.birthPlaceId)
+			: undefined;
+		if (birthPlace) {
+			if (birthPlace.countryCode) {
+				birthCountry = {
+					label: birthPlace.label,
+					countryCode: birthPlace.countryCode,
+					id: wikidata.birthPlaceId,
+				};
+			} else {
+				const countryIds = (birthPlace.countryIds ?? []).slice(0, 3);
+				const countries = await Promise.all(
+					countryIds.map(async (id) => ({
+						id,
+						...(await sources.wikidataPlace(id)),
+					})),
+				);
+				const modern = countries.find((country) => country.countryCode);
+				const first = modern ?? countries[0];
+				if (first) {
+					birthCountry = {
+						label: first.label,
+						countryCode: first.countryCode,
+						id: first.id,
+					};
+				}
+			}
+		}
+
+		let nationalities = nationalitiesFromWikidata({
+			citizenships: wikidata.citizenshipIds.slice(0, 5).map((id) => ({
+				id,
+				label: places.get(id)?.label ?? null,
+				countryCode: places.get(id)?.countryCode ?? null,
+			})),
+			birthCountry,
+		});
+		// Nothing structured: the short description ("Russian novelist") still names the country.
+		if (nationalities.length === 0) {
+			nationalities = nationalitiesFromDescription(wikidata.description);
+		}
 
 		const wikidataPageTitle = wikidata.wikipediaTitle;
 		facts.push({
@@ -122,7 +173,7 @@ export async function gatherAuthorFacts(
 				deathPlace: wikidata.deathPlaceId
 					? (places.get(wikidata.deathPlaceId)?.label ?? undefined)
 					: undefined,
-				nationalities: [...new Set(nationalities)],
+				nationalities,
 				gender: wikidata.gender ?? undefined,
 				websiteUrl: wikidata.websiteUrl ?? undefined,
 				wikipediaUrl: wikidataPageTitle
@@ -154,6 +205,19 @@ export async function gatherAuthorFacts(
 			text.push(`Wikipedia summary: ${summary.extract}`);
 			if (summary.description) {
 				text.push(`Wikipedia short description: ${summary.description}`);
+				const fromDescription = nationalitiesFromDescription(
+					summary.description,
+				);
+				const wikidataFact = facts.find((fact) => fact.source === "wikidata");
+				const known =
+					wikidataFact?.values.nationalities &&
+					wikidataFact.values.nationalities.length > 0;
+				if (fromDescription.length > 0 && !known) {
+					const wikipediaFact = facts[facts.length - 1];
+					if (wikipediaFact) {
+						wikipediaFact.values.nationalities = fromDescription;
+					}
+				}
 			}
 		}
 	}

@@ -3,6 +3,7 @@ import type {
 	AuthorFieldMeta,
 	AuthorFieldSource,
 } from "@bbrc/shared";
+import { toModernCountryCodes } from "./historical-states";
 import {
 	type AuthorFactValues,
 	type AuthorGenderValue,
@@ -60,10 +61,11 @@ function valueFor(
 			return hasDate(values.birth) ? values.birth : undefined;
 		case "death":
 			return hasDate(values.death) ? values.death : undefined;
-		case "nationalities":
-			return values.nationalities && values.nationalities.length > 0
-				? values.nationalities
-				: undefined;
+		case "nationalities": {
+			// Whatever the source, only modern countries are stored.
+			const codes = toModernCountryCodes(values.nationalities ?? []);
+			return codes.length > 0 ? codes : undefined;
+		}
 		case "gender":
 			return values.gender && values.gender !== "unknown"
 				? values.gender

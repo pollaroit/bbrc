@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { aiWorthAsking, buildAuthorAiPrompt, parseAiAuthorFacts } from "./ai";
+import {
+	AUTHOR_AI_SYSTEM_PROMPT,
+	aiWorthAsking,
+	buildAuthorAiPrompt,
+	parseAiAuthorFacts,
+	prepareAiItem,
+} from "./ai";
 
 const items = [
 	{
@@ -98,5 +104,57 @@ describe("prompt", () => {
 		const [first, second] = items;
 		expect(aiWorthAsking(first as never)).toBe(true);
 		expect(aiWorthAsking(second as never)).toBe(false);
+	});
+});
+
+describe("nationalities are modern countries", () => {
+	const one = [
+		{
+			id: "a1",
+			name: "Fyodor Dostoyevsky",
+			wanted: ["nationalities"] as const,
+			sourceText: "",
+		},
+	];
+
+	test("retired codes are mapped to today's country", () => {
+		const facts = parseAiAuthorFacts(
+			{
+				authors: [{ id: "a1", nationalities: ["SU", "yu", "CS", "DD", "ZZ"] }],
+			},
+			one,
+		);
+		expect(facts.get("a1")?.nationalities).toEqual(["RU", "RS", "CZ", "DE"]);
+	});
+
+	test("the prompt carries the historical state rules", () => {
+		expect(AUTHOR_AI_SYSTEM_PROMPT).toContain("Russian Empire");
+		expect(AUTHOR_AI_SYSTEM_PROMPT).toContain("Qing");
+		expect(AUTHOR_AI_SYSTEM_PROMPT).toContain("MODERN");
+	});
+
+	test("nationalities alone may be asked without source text", () => {
+		const prepared = prepareAiItem({
+			id: "a1",
+			name: "Fyodor Dostoyevsky",
+			wanted: ["bio", "nationalities", "gender"],
+			sourceText: "",
+		});
+		expect(prepared?.wanted).toEqual(["nationalities"]);
+		expect(
+			prepareAiItem({
+				id: "a2",
+				name: "X",
+				wanted: ["bio", "gender"],
+				sourceText: "",
+			}),
+		).toBeNull();
+		const withText = prepareAiItem({
+			id: "a3",
+			name: "X",
+			wanted: ["bio", "nationalities"],
+			sourceText: "Wikipedia summary: a long enough text about this author.",
+		});
+		expect(withText?.wanted).toEqual(["bio", "nationalities"]);
 	});
 });

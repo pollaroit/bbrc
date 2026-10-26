@@ -478,16 +478,24 @@ export function parseWikidataAuthor(
 	};
 }
 
-/** A place or country entity: the English label, and the ISO code when it is a country (P297). */
+/**
+ * A place or country entity: the English label, the ISO code when it is a current country
+ * (P297), and the countries it sits in (P17, best rank first) for a city or region.
+ */
 export function parseWikidataPlace(entity: WikidataEntity | null): {
 	label: string | null;
 	countryCode: string | null;
+	countryIds: string[];
 } {
-	if (!entity) return { label: null, countryCode: null };
+	if (!entity) return { label: null, countryCode: null, countryIds: [] };
 	const label = entity.labels?.en?.value?.trim() || null;
 	const code = claimStrings(entity, "P297")[0];
 	const [normalized] = code ? normalizeBookCountryCodes([code]) : [];
-	return { label, countryCode: normalized ?? null };
+	return {
+		label,
+		countryCode: normalized ?? null,
+		countryIds: claimEntityIds(entity, "P17"),
+	};
 }
 
 // ── Wikipedia ──────────────────────────────────────────────────────────────

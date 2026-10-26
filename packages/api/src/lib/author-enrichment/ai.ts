@@ -1,7 +1,8 @@
-import { AUTHOR_BIO_MAX_LENGTH, normalizeBookCountryCodes } from "@bbrc/shared";
+import { AUTHOR_BIO_MAX_LENGTH } from "@bbrc/shared";
 import { getGeminiConfig } from "../gemini/config";
 import { geminiGenerateJson } from "../gemini/generate-json";
 import type { EnrichableField } from "./fields";
+import { toModernCountryCodes } from "./historical-states";
 import {
 	type AuthorFactValues,
 	type AuthorGenderValue,
@@ -21,13 +22,13 @@ export type AiAuthorInput = {
 
 export const AUTHOR_AI_SYSTEM_PROMPT = `You fill gaps in author records for a reading club catalog.
 
-You are given, for each author, the SOURCE TEXT we already hold and the list of WANTED fields. Use only what the source text says. Do not use anything you remember about the author, and do not guess.
+You are given, for each author, the SOURCE TEXT we already hold and the list of WANTED fields. Use only what the source text says for bio, dates and places. Do not use anything you remember about the author for those, and do not guess. The one exception is nationalities (below).
 
 Rules:
 - Return null for a field the source text does not state. null is always better than a guess.
 - Never invent dates or places. Dates: "YYYY", "YYYY-MM" or "YYYY-MM-DD" exactly as precise as the text. BC years are negative ("-0384").
 - bio: at most ${AUTHOR_BIO_MAX_LENGTH} characters of plain text (no markdown), written only from the source text; null when the text has no biographical content.
-- nationalities: ISO 3166-1 alpha-2 codes of modern states, only when the text names the nationality or country of origin. Use GB for the United Kingdom.
+- nationalities: ISO 3166-1 alpha-2 codes of MODERN countries only, never a historical state. Use the text; when the text is silent and the author is well known, you may use general knowledge of their nationality, and leave the list empty when you are not confident. Translate historical states and adjectives to today's country: Russian Empire, Tsardom of Russia, USSR/Soviet Union, Russian SFSR -> RU (a Soviet citizen born in another former republic is from that country, e.g. Kyiv -> UA); Qing/Ming/Han dynasty, Republic of China (1912-1949) -> CN; Austria-Hungary, Austrian Empire, Holy Roman Empire, Ottoman Empire, Czechoslovakia, Yugoslavia, Roman Empire, British Raj -> the modern country of the birthplace (Prague -> CZ, Budapest -> HU, Kraków -> PL, Istanbul -> TR, Lahore -> PK), else AT, DE, TR, CZ, RS, IT, IN; Kingdom of Great Britain, United Kingdom of Great Britain and Ireland -> GB (born in Ireland -> IE); Prussia, German Empire, East/West Germany -> DE; Kingdom of Italy -> IT; Persia -> IR; Ancient Greece -> GR. Use GB for the United Kingdom (never UK), RU (never SU), CZ/SK (never CS), RS (never YU).
 - gender: "female", "male", "non_binary" or "other" only when the text clearly states it (pronouns like "she" or "he" count); otherwise null.
 - Ask nothing about fields that are not WANTED: return null for them.`;
 
@@ -126,7 +127,7 @@ export function parseAiAuthorFacts(
 			wanted.includes("nationalities") &&
 			Array.isArray(record.nationalities)
 		) {
-			const codes = normalizeBookCountryCodes(
+			const codes = toModernCountryCodes(
 				record.nationalities.filter(
 					(code): code is string => typeof code === "string",
 				),
@@ -177,5 +178,18 @@ export const geminiAuthorAiRunner: AuthorAiRunner = async (items) => {
 
 /** Items that can be asked about at all: no source text and nothing wanted means no call. */
 export function aiWorthAsking(item: AiAuthorInput): boolean {
-	return item.wanted.length > 0 && item.sourceText.trim().length >= 40;
+	return prepareAiItem(item) != null;
+}
+
+/**
+ * What to ask the model about one author, or null for no call. With source text, everything
+ * still empty may be asked. Without it, only nationalities (general knowledge is allowed there).
+ */
+export function prepareAiItem(item: AiAuthorInput): AiAuthorInput | null {
+	if (item.wanted.length === 0) return null;
+	if (item.sourceText.trim().length >= 40) return item;
+	if (item.wanted.includes("nationalities")) {
+		return { ...item, wanted: ["nationalities"] };
+	}
+	return null;
 }

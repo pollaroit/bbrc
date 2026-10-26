@@ -43,6 +43,7 @@ import {
 	AuthorEditFormSchema,
 	type AuthorEditFormValues,
 	authorToFormValues,
+	hasAuthorEditChanges,
 	toUpdateInput,
 } from "@/lib/author-edit-form";
 import { client, orpc, queryClient } from "@/utils/orpc";
@@ -185,13 +186,12 @@ function AuthorEditorForm({
 		form.reset(initialValues);
 	}, [serverKey, initialValues, form]);
 
-	const dirty = form.formState.isDirty;
-	const bioLength = useWatch({ control: form.control, name: "bio" }).trim()
-		.length;
-	const nationalities = useWatch({
-		control: form.control,
-		name: "nationalities",
-	});
+	// Every current value, compared with what was loaded. react-hook-form's own `isDirty` is not
+	// used: the React Compiler can cache its proxy and leave Save disabled after a change.
+	const values = useWatch({ control: form.control }) as AuthorEditFormValues;
+	const dirty = hasAuthorEditChanges(values, initialValues);
+	const bioLength = (values.bio ?? "").trim().length;
+	const nationalities = values.nationalities ?? [];
 
 	const save = useMutation({
 		mutationFn: (input: NonNullable<ReturnType<typeof toUpdateInput>>) =>
@@ -240,8 +240,8 @@ function AuthorEditorForm({
 		lock.mutate({ field, locked });
 
 	const onSubmit = form.handleSubmit(
-		(values) => {
-			const input = toUpdateInput(author.id, values, initialValues);
+		(submitted) => {
+			const input = toUpdateInput(author.id, submitted, initialValues);
 			if (!input) return;
 			save.mutate(input);
 		},
@@ -575,7 +575,11 @@ function AuthorEditorForm({
 				>
 					Discard changes
 				</Button>
-				<LoadingButton type="submit" loading={save.isPending} disabled={!dirty}>
+				<LoadingButton
+					type="submit"
+					loading={save.isPending}
+					disabled={!dirty || save.isPending}
+				>
 					Save changes
 				</LoadingButton>
 			</div>

@@ -223,11 +223,30 @@ describe("Wikidata", () => {
 					],
 				},
 			}),
-		).toEqual({ label: "Russia", countryCode: "RU" });
+		).toEqual({ label: "Russia", countryCode: "RU", countryIds: [] });
 		expect(parseWikidataPlace(null)).toEqual({
 			label: null,
 			countryCode: null,
+			countryIds: [],
 		});
+	});
+
+	test("a city lists the countries it sits in (P17)", () => {
+		expect(
+			parseWikidataPlace({
+				labels: { en: { value: "Prague" } },
+				claims: {
+					P17: [
+						{
+							mainsnak: {
+								snaktype: "value",
+								datavalue: { value: { id: "Q213" } },
+							},
+						},
+					],
+				},
+			}),
+		).toEqual({ label: "Prague", countryCode: null, countryIds: ["Q213"] });
 	});
 });
 

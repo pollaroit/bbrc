@@ -156,3 +156,17 @@ describe("planFieldPatch", () => {
 		expect(still).toContain("birth");
 	});
 });
+
+describe("nationalities are always modern", () => {
+	test("retired and invalid codes are mapped or dropped", () => {
+		const resolved = resolveFields([
+			{ source: "ai", values: { nationalities: ["SU", "ZZ", "ru"] } },
+		]);
+		expect(resolved).toEqual([
+			{ field: "nationalities", source: "ai", value: ["RU"] },
+		]);
+		expect(
+			resolveFields([{ source: "ai", values: { nationalities: ["ZZ"] } }]),
+		).toEqual([]);
+	});
+});
