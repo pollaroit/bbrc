@@ -1,12 +1,11 @@
 import type { Metadata, Route } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AuthorPageBio } from "@/components/blocks/author/author-page-about";
 import {
-	AuthorPageCover,
 	AuthorPageEmpty,
 	AuthorPageSection,
 } from "@/components/blocks/author/author-page-bits";
+import { AuthorPageLibrary } from "@/components/blocks/author/author-page-library";
 import { AuthorPageLifeline } from "@/components/blocks/author/author-page-lifeline";
 import { AuthorPageMoreGrid } from "@/components/blocks/author/author-page-more";
 import { AuthorPageProgress } from "@/components/blocks/author/author-page-progress";
@@ -48,7 +47,7 @@ export default async function AuthorOverviewPage({
 	// The most read books first; ties by title keep the strip steady.
 	const topBooks = [...books.items]
 		.sort((a, b) => b.readCount - a.readCount || a.title.localeCompare(b.title))
-		.slice(0, 8);
+		.slice(0, 12);
 
 	return (
 		<div className="flex flex-col gap-8">
@@ -67,7 +66,14 @@ export default async function AuthorOverviewPage({
 			<AuthorPageLifeline
 				birth={profile.birth}
 				death={profile.death}
-				books={books.items}
+				books={books.items.map((book) => ({
+					slug: book.slug,
+					title: book.title,
+					publishedIn: book.publishedIn,
+					coverId: book.coverId ?? null,
+					averageRating: book.averageRating,
+					readCount: book.readCount,
+				}))}
 				currentYear={new Date().getFullYear()}
 			/>
 
@@ -81,25 +87,19 @@ export default async function AuthorOverviewPage({
 						No books by this author in the library yet.
 					</AuthorPageEmpty>
 				) : (
-					<ul className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
-						{topBooks.map((book) => (
-							<li key={book.slug}>
-								<Link
-									href={`/books/${book.slug}` as Route}
-									className="flex flex-col gap-1.5"
-								>
-									<AuthorPageCover
-										coverId={book.coverId}
-										title={book.title}
-										sizes="(max-width: 640px) 25vw, 120px"
-									/>
-									<span className="line-clamp-2 text-xs leading-snug">
-										{book.title}
-									</span>
-								</Link>
-							</li>
-						))}
-					</ul>
+					<AuthorPageLibrary
+						books={topBooks.map((book) => ({
+							slug: book.slug,
+							title: book.title,
+							publishedIn: book.publishedIn,
+							coverId: book.coverId ?? null,
+							averageRating: book.averageRating,
+							readCount: book.readCount,
+							series: book.series
+								? { title: book.series.title, position: book.series.position }
+								: null,
+						}))}
+					/>
 				)}
 			</AuthorPageSection>
 

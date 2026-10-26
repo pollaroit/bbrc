@@ -8,11 +8,11 @@ export type AuthorTabId =
 	| "reads"
 	| "reviews"
 	| "posts"
-	| "comments"
 	| "sittings"
 	| "favorites"
 	| "shelves"
 	| "series"
+	| "followers"
 	| "stats";
 
 export type AuthorTab = {
@@ -31,11 +31,11 @@ export const AUTHOR_TABS: readonly AuthorTab[] = [
 	{ id: "reads", label: "Reads", segment: "reads" },
 	{ id: "reviews", label: "Reviews", segment: "reviews" },
 	{ id: "posts", label: "Posts", segment: "posts" },
-	{ id: "comments", label: "Comments", segment: "comments" },
 	{ id: "sittings", label: "Sittings", segment: "sittings" },
 	{ id: "favorites", label: "Favorites", segment: "favorites" },
 	{ id: "shelves", label: "Shelves", segment: "shelves" },
 	{ id: "series", label: "Series", segment: "series" },
+	{ id: "followers", label: "Followers", segment: "followers" },
 	{ id: "stats", label: "Stats", segment: "stats" },
 ];
 

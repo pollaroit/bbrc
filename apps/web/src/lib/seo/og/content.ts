@@ -1,6 +1,7 @@
 import { fetchWorkEditionTotalCount } from "@bbrc/api/lib/open-library/work-editions";
+import { AuthorBooksInputSchema } from "@bbrc/api/modules/author/author.schema";
+import { getAuthorBooks } from "@bbrc/api/modules/author/author-books.service";
 import { getAuthor } from "@bbrc/api/modules/author/author-directory.service";
-import { getAuthorBooks } from "@bbrc/api/modules/author/author-tabs.service";
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { bookSittingsWhere } from "@bbrc/api/modules/book/book-sittings.service";
 import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
@@ -546,12 +547,12 @@ async function resolveAuthorDetailOg(slug: string): Promise<OgImageContent> {
 	const author = await getAuthor(slug, db, null);
 	const { profile, numbers } = author;
 	const books = await getAuthorBooks(
-		{
+		AuthorBooksInputSchema.parse({
 			slug: profile.slug,
 			limit: 6,
-			sortBy: "readCount",
+			sortBy: "reads._count",
 			sortDirection: "desc",
-		},
+		}),
 		db,
 		null,
 	);

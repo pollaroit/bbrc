@@ -40,6 +40,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
@@ -278,14 +279,7 @@ function initials(name: string) {
 }
 
 function ChipAvatar({ chip }: { chip: AuthorChip }) {
-	return (
-		<Avatar size="sm">
-			{chip.photoUrl ? <AvatarImage src={chip.photoUrl} alt="" /> : null}
-			<AvatarFallback className="text-3xs">
-				{initials(chip.name)}
-			</AvatarFallback>
-		</Avatar>
-	);
+	return <AuthorPhoto name={chip.name} photoUrl={chip.photoUrl} size="xs" />;
 }
 
 function stateLabel(chip: AuthorChip): string | null {
@@ -766,14 +760,7 @@ function OptionRow({ option }: { option: Option }) {
 		const { author } = option;
 		return (
 			<>
-				<Avatar size="sm">
-					{author.photoUrl ? (
-						<AvatarImage src={author.photoUrl} alt="" />
-					) : null}
-					<AvatarFallback className="text-3xs">
-						{initials(author.name)}
-					</AvatarFallback>
-				</Avatar>
+				<AuthorPhoto name={author.name} photoUrl={author.photoUrl} size="sm" />
 				<span className="min-w-0 flex-1">
 					<span className="block truncate">{author.name}</span>
 					<span className="block truncate text-2xs text-muted-foreground">

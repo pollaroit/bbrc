@@ -5,7 +5,7 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { useState } from "react";
-import { AuthorCardPortrait } from "@/components/blocks/author/author-card";
+import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { orpc } from "@/utils/orpc";
 
@@ -71,10 +71,10 @@ export function AuthorPicker({
 								className="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none"
 								onClick={() => onPick(author)}
 							>
-								<AuthorCardPortrait
+								<AuthorPhoto
+									size="sm"
 									name={author.name}
 									photoUrl={author.photoUrl}
-									className="w-8"
 								/>
 								<span className="flex min-w-0 flex-1 flex-col">
 									<span className="truncate font-medium text-sm">

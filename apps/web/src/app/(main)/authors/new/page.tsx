@@ -1,6 +1,7 @@
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { AdminAppShell } from "@/components/blocks/admin-app-shell";
 import { AuthorCreateForm } from "@/components/blocks/author/admin/author-create-form";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
@@ -21,5 +22,9 @@ export default async function NewAuthorPage() {
 		redirect("/authors" as Route);
 	}
 
-	return <AuthorCreateForm />;
+	return (
+		<AdminAppShell>
+			<AuthorCreateForm />
+		</AdminAppShell>
+	);
 }

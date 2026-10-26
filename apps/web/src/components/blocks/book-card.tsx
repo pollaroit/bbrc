@@ -38,6 +38,11 @@ type BookCardProps = {
 	viewerBookRating?: number;
 	/** The list's current sort; a figure that is not on the card shows in the top strip. */
 	sortBy?: string;
+	/**
+	 * On an author's page: leave this author out of the credit line. A book written by them
+	 * alone shows no author line; a shared one shows "with" and the others.
+	 */
+	excludeAuthorSlug?: string;
 };
 
 const compactCount = new Intl.NumberFormat("en", {
@@ -188,6 +193,7 @@ export function BookCard({
 	feedbackBookSlugs,
 	viewerBookRating,
 	sortBy,
+	excludeAuthorSlug,
 }: BookCardProps) {
 	const href = `/books/${book.slug}` as Route;
 	const coverSrc = bookCoverUrl(book.coverId, "M");
@@ -195,6 +201,10 @@ export function BookCard({
 
 	const aggregateLabel = aggregateRating?.suffix === "CR" ? "Club" : "Open Lib";
 	const aggregateValue = aggregateRating?.value ?? null;
+
+	const coAuthorRefs = excludeAuthorSlug
+		? (book.authorRefs ?? []).filter((ref) => ref.slug !== excludeAuthorSlug)
+		: null;
 
 	const series = book.series;
 	const seriesLabel =
@@ -246,12 +256,17 @@ export function BookCard({
 							<h2 className="line-clamp-2 font-semibold text-base leading-snug tracking-tight">
 								{book.title}
 							</h2>
-							<p className="mt-1 line-clamp-1 text-sm leading-snug">
-								<BookAuthorLinks
-									authors={book.authors}
-									refs={book.authorRefs}
-								/>
-							</p>
+							{coAuthorRefs && coAuthorRefs.length === 0 ? null : (
+								<p className="mt-1 line-clamp-1 text-sm leading-snug">
+									{coAuthorRefs ? (
+										<span className="text-muted-foreground">with </span>
+									) : null}
+									<BookAuthorLinks
+										authors={book.authors}
+										refs={coAuthorRefs ?? book.authorRefs}
+									/>
+								</p>
+							)}
 							{seriesLabel && series ? (
 								<p className="pointer-events-auto relative z-2 mt-1.5 line-clamp-1 text-muted-foreground text-xs leading-snug">
 									<Link

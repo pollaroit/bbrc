@@ -7,6 +7,7 @@ import { bookCountryCodeSchema } from "@bbrc/shared";
 import {
 	parseAsArrayOf,
 	parseAsBoolean,
+	parseAsFloat,
 	parseAsInteger,
 	parseAsString,
 	parseAsStringLiteral,
@@ -29,6 +30,8 @@ export const authorSortByLabels = {
 	name: "Name",
 	bookCount: "Books",
 	readerCount: "Readers",
+	readCount: "Reads",
+	pageCount: "Total pages",
 	reviewCount: "Reviews",
 	averageRating: "Average rating",
 	followerCount: "Followers",
@@ -73,6 +76,13 @@ export const authorsListingSearchParams = {
 		.withDefault("desc")
 		.withOptions({ shallow: false }),
 	minBooks: parseAsInteger.withOptions({ shallow: false }),
+	minReaders: parseAsInteger.withOptions({ shallow: false }),
+	minReads: parseAsInteger.withOptions({ shallow: false }),
+	minReviews: parseAsInteger.withOptions({ shallow: false }),
+	minPages: parseAsInteger.withOptions({ shallow: false }),
+	maxPages: parseAsInteger.withOptions({ shallow: false }),
+	minRating: parseAsFloat.withOptions({ shallow: false }),
+	maxRating: parseAsFloat.withOptions({ shallow: false }),
 	countries: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
 	genders: parseAsArrayOf(
 		parseAsStringLiteral(AUTHOR_GENDER_FILTERS),
@@ -111,6 +121,13 @@ function toFilterInput(params: AuthorsListingSearchParams) {
 	return buildListCallInput({
 		search: params.search,
 		minBooks: params.minBooks,
+		minReaders: params.minReaders,
+		minReads: params.minReads,
+		minReviews: params.minReviews,
+		minPages: params.minPages,
+		maxPages: params.maxPages,
+		minAverageRating: params.minRating,
+		maxAverageRating: params.maxRating,
 		countries: normalizeCountryCodes(params.countries),
 		genders: params.genders,
 		hasPhoto: params.hasPhoto === true ? true : null,
@@ -145,6 +162,11 @@ export function countAuthorSheetFilters(
 ): number {
 	let count = 0;
 	if (params.minBooks != null) count += 1;
+	if (params.minReaders != null) count += 1;
+	if (params.minReads != null) count += 1;
+	if (params.minReviews != null) count += 1;
+	if (params.minPages != null || params.maxPages != null) count += 1;
+	if (params.minRating != null || params.maxRating != null) count += 1;
 	if (params.countries && params.countries.length > 0) count += 1;
 	if (params.genders && params.genders.length > 0) count += 1;
 	if (params.hasPhoto === true) count += 1;
@@ -157,6 +179,13 @@ export function clearAuthorSheetFilters(
 ) {
 	void setParams({
 		minBooks: null,
+		minReaders: null,
+		minReads: null,
+		minReviews: null,
+		minPages: null,
+		maxPages: null,
+		minRating: null,
+		maxRating: null,
 		countries: null,
 		genders: null,
 		hasPhoto: null,

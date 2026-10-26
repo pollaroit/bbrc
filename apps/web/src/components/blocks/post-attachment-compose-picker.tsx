@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Feather, Library, Search, UserRound, X } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { PostAttachmentComposePreview } from "@/components/blocks/post-attachment-compose-preview";
 import { ShelfCover } from "@/components/blocks/shelf-cover";
 import { UserAvatar } from "@/components/blocks/user-avatar";
@@ -215,15 +216,13 @@ function PersonResults({
 						)
 					}
 				>
-					{kind === "user" || item.image ? (
+					{kind === "user" ? (
 						<UserAvatar
 							user={{ name: item.label, image: item.image }}
 							className="size-9"
 						/>
 					) : (
-						<span className="grid size-9 shrink-0 place-items-center bg-muted">
-							<Feather className="size-4 text-muted-foreground" aria-hidden />
-						</span>
+						<AuthorPhoto name={item.label} photoUrl={item.image} size="sm" />
 					)}
 					<span className="flex min-w-0 flex-1 flex-col">
 						<span className="truncate font-medium text-sm">{item.label}</span>

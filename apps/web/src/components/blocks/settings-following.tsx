@@ -1,16 +1,12 @@
 "use client";
 
-import {
-	Avatar,
-	AvatarFallback,
-	AvatarImage,
-} from "@bbrc/ui/components/avatar";
 import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { toast } from "sonner";
+import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { orpc, queryClient } from "@/utils/orpc";
 
 /*
@@ -40,15 +36,6 @@ const SECTIONS = [
 		empty: "You are not following any authors yet.",
 	},
 ];
-
-function initials(name: string) {
-	return name
-		.split(/\s+/)
-		.filter(Boolean)
-		.slice(0, 2)
-		.map((part) => part[0]?.toUpperCase())
-		.join("");
-}
 
 function lifespan(author: FollowItem["author"]) {
 	if (author.birthYear == null) return null;
@@ -171,14 +158,11 @@ export function SettingsFollowing() {
 										key={item.id}
 										className="flex items-center gap-3 px-3 py-2.5"
 									>
-										<Avatar size="lg">
-											{item.author.photoUrl ? (
-												<AvatarImage src={item.author.photoUrl} alt="" />
-											) : null}
-											<AvatarFallback className="text-2xs">
-												{initials(item.author.name)}
-											</AvatarFallback>
-										</Avatar>
+										<AuthorPhoto
+											name={item.author.name}
+											photoUrl={item.author.photoUrl}
+											size="md"
+										/>
 										<Link
 											href={`/authors/${item.author.slug}` as Route}
 											className="min-w-0 flex-1 transition-colors hover:text-primary"

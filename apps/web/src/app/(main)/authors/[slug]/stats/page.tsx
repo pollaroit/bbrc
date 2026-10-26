@@ -1,9 +1,12 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { AuthorPageStats } from "@/components/blocks/author/author-page-stats";
-import { loadAuthorForIsr, loadAuthorStatsForIsr } from "@/lib/isr-data";
+import type { Metadata, Route } from "next";
+import { notFound, permanentRedirect } from "next/navigation";
+import { AuthorTabStats } from "@/components/blocks/author/author-tab-stats";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
+import { loadAuthorForIsr } from "@/lib/isr-data";
 import { buildNotFoundMetadata } from "@/lib/seo";
 import { buildAuthorPageMetadata } from "@/lib/seo/author-page-metadata";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
 	params,
@@ -25,9 +28,20 @@ export default async function AuthorStatsPage({
 	params,
 }: PageProps<"/authors/[slug]/stats">) {
 	const { slug } = await params;
-	const stats = await loadAuthorStatsForIsr(slug).catch(() => null);
-	if (!stats) {
+	const author = await loadAuthorForIsr(slug).catch(() => null);
+	if (!author) {
 		notFound();
 	}
-	return <AuthorPageStats stats={stats} />;
+	if (author.redirectTo) {
+		permanentRedirect(`/authors/${author.redirectTo}/stats` as Route);
+	}
+
+	return (
+		<ListingSearchParamsBoundary>
+			<AuthorTabStats
+				slug={author.profile.slug}
+				authorName={author.profile.name}
+			/>
+		</ListingSearchParamsBoundary>
+	);
 }

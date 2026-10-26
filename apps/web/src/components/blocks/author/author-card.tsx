@@ -2,10 +2,19 @@
 
 import type { AuthorCard as AuthorCardData } from "@bbrc/api/modules/author/author.schema";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, Star, UserRound, Users } from "lucide-react";
+import {
+	BookOpen,
+	BookText,
+	Eye,
+	MessageSquareText,
+	Star,
+	UserRound,
+	Users,
+} from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { FollowAuthorButton } from "@/components/blocks/author/follow-author-button";
 import { CountryFlagIcon } from "@/components/blocks/country-dropdown";
 import { bookCoverFrameClassName, bookCoverUrl } from "@/lib/book-cover";
@@ -24,19 +33,19 @@ type AuthorCardProps = {
 
 type SortMetric = { label: string; value: string };
 
-/** Sorts whose figure is not already in the footer. */
+/** Sorts whose figure is not shown anywhere on the card. */
 function sortMetricFor(
 	author: AuthorCardData,
 	sortBy: AuthorSortField | undefined,
 ): SortMetric | null {
 	switch (sortBy) {
-		case "reviewCount":
-			return { label: "Reviews", value: String(author.reviewCount) };
 		case "birthYear":
 			return {
 				label: "Born",
 				value: author.birthYear != null ? String(author.birthYear) : "—",
 			};
+		case "createdAt":
+			return null;
 		default:
 			return null;
 	}
@@ -73,45 +82,10 @@ function plural(count: number, one: string, many = `${one}s`) {
 	return `${count.toLocaleString()} ${count === 1 ? one : many}`;
 }
 
-function initialOf(name: string) {
-	return name.trim().charAt(0).toUpperCase() || "?";
-}
-
-export function AuthorCardPortrait({
-	name,
-	photoUrl,
-	className,
-}: {
-	name: string;
-	photoUrl: string | null;
-	className?: string;
-}) {
-	return (
-		<div
-			className={cn(
-				"relative aspect-3/4 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10",
-				className,
-			)}
-		>
-			{photoUrl ? (
-				<Image
-					src={photoUrl}
-					alt=""
-					fill
-					sizes="72px"
-					className="object-cover"
-				/>
-			) : (
-				<span
-					className="flex size-full items-center justify-center font-semibold text-2xl text-muted-foreground"
-					aria-hidden
-				>
-					{initialOf(name)}
-				</span>
-			)}
-		</div>
-	);
-}
+const pagesFormat = new Intl.NumberFormat("en", {
+	notation: "compact",
+	maximumFractionDigits: 1,
+});
 
 export function AuthorCard({ author, sortBy, className }: AuthorCardProps) {
 	const href = `/authors/${author.slug}` as Route;
@@ -147,14 +121,31 @@ export function AuthorCard({ author, sortBy, className }: AuthorCardProps) {
 				) : (
 					<span className="min-w-0 truncate">Nationality unknown</span>
 				)}
-				{metric ? (
-					<span className="shrink-0 tabular-nums">
-						<span className="font-normal opacity-80">{metric.label} </span>
-						<span className="font-semibold text-foreground">
-							{metric.value}
+				<span className="flex shrink-0 items-center gap-3 tabular-nums">
+					{metric ? (
+						<span>
+							<span className="font-normal opacity-80">{metric.label} </span>
+							<span className="font-semibold text-foreground">
+								{metric.value}
+							</span>
 						</span>
-					</span>
-				) : null}
+					) : null}
+					<FooterStat
+						icon={Eye}
+						value={author.readCount}
+						title={plural(author.readCount, "read")}
+					/>
+					<FooterStat
+						icon={MessageSquareText}
+						value={author.reviewCount}
+						title={plural(author.reviewCount, "review")}
+					/>
+					<FooterStat
+						icon={BookText}
+						value={pagesFormat.format(author.totalPages)}
+						title={plural(author.totalPages, "page")}
+					/>
+				</span>
 			</div>
 
 			<div className="relative flex min-h-[8.5rem] flex-1">
@@ -164,10 +155,10 @@ export function AuthorCard({ author, sortBy, className }: AuthorCardProps) {
 					className="absolute inset-0 z-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 				/>
 				<div className="pointer-events-none relative z-1 flex min-w-0 flex-1 gap-3 p-3 sm:gap-4 sm:p-4">
-					<AuthorCardPortrait
+					<AuthorPhoto
 						name={author.name}
 						photoUrl={author.photoUrl}
-						className="w-16 sm:w-18"
+						size="xl"
 					/>
 					<div className="flex min-w-0 flex-1 flex-col gap-1">
 						<h2 className="font-semibold text-base leading-snug tracking-tight">
@@ -249,5 +240,22 @@ export function AuthorCard({ author, sortBy, className }: AuthorCardProps) {
 				/>
 			</div>
 		</article>
+	);
+}
+
+/** Kept for the admin screens: a square photo that fills the width its parent gives it. */
+export function AuthorCardPortrait({
+	name,
+	photoUrl,
+	className,
+}: {
+	name: string;
+	photoUrl: string | null;
+	className?: string;
+}) {
+	return (
+		<div className={cn("shrink-0", className)}>
+			<AuthorPhoto name={name} photoUrl={photoUrl} size="fill" />
+		</div>
 	);
 }

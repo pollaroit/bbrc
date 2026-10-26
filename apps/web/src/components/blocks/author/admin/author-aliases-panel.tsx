@@ -39,6 +39,11 @@ export function AuthorAliasesPanel({
 			toast.error(error.message || "Could not add that spelling."),
 	});
 
+	const submitDraft = () => {
+		const alias = draft.trim();
+		if (alias && !add.isPending) add.mutate(alias);
+	};
+
 	const remove = useMutation({
 		mutationFn: (aliasId: string) =>
 			client.authorAdmin.aliases.remove({ id: authorId, aliasId }),
@@ -85,31 +90,32 @@ export function AuthorAliasesPanel({
 						No other spellings yet.
 					</p>
 				)}
-				<form
-					className="flex gap-2"
-					onSubmit={(event) => {
-						event.preventDefault();
-						const alias = draft.trim();
-						if (alias) add.mutate(alias);
-					}}
-				>
+				{/* Not a <form>: this panel sits inside the editor's own form. */}
+				<div className="flex gap-2">
 					<Input
 						value={draft}
 						onChange={(event) => setDraft(event.target.value)}
+						onKeyDown={(event) => {
+							if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+								event.preventDefault();
+								submitDraft();
+							}
+						}}
 						placeholder="e.g. Dostoevski"
 						maxLength={200}
 						aria-label="New spelling"
 					/>
 					<LoadingButton
-						type="submit"
+						type="button"
 						variant="outline"
 						loading={add.isPending}
 						disabled={draft.trim() === ""}
+						onClick={submitDraft}
 					>
 						<Plus data-icon="inline-start" />
 						Add
 					</LoadingButton>
-				</form>
+				</div>
 			</CardContent>
 		</Card>
 	);

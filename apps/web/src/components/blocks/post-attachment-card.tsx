@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
@@ -347,12 +348,7 @@ function PostAttachmentAuthorCard({
 	return (
 		<AttachmentLinkFrame href={`/authors/${author.slug}` as Route}>
 			{author.photoUrl ? (
-				<AttachmentMedia variant="image" className="overflow-hidden">
-					<UserAvatar
-						user={{ name: author.name, image: author.photoUrl }}
-						className="size-full"
-					/>
-				</AttachmentMedia>
+				<AuthorPhoto name={author.name} photoUrl={author.photoUrl} size="lg" />
 			) : (
 				<AttachmentMedia variant="icon">
 					<UserRound className="size-5 text-muted-foreground" aria-hidden />

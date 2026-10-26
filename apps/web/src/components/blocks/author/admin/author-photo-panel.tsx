@@ -14,7 +14,7 @@ import { useMutation } from "@tanstack/react-query";
 import { ImagePlus, Trash2, Wand2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { AuthorCardPortrait } from "@/components/blocks/author/author-card";
+import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { ImageCropDialog } from "@/components/blocks/image-crop-dialog";
 import {
 	ACCEPT_IMAGE_MIME,
@@ -121,11 +121,7 @@ export function AuthorPhotoPanel({
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
 				<div className="flex gap-3">
-					<AuthorCardPortrait
-						name={name}
-						photoUrl={photoUrl}
-						className="w-24"
-					/>
+					<AuthorPhoto size="xl" name={name} photoUrl={photoUrl} />
 					<div className="flex min-w-0 flex-1 flex-col gap-1 text-muted-foreground text-xs">
 						{photoUrl ? (
 							<>

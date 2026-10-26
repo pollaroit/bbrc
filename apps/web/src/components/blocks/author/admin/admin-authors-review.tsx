@@ -2,9 +2,17 @@
 
 import { AUTHOR_FIELD_SOURCE_LABELS } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
+import { Input } from "@bbrc/ui/components/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@bbrc/ui/components/select";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { BadgeCheck, GitMerge, Pencil } from "lucide-react";
+import { BadgeCheck, GitMerge, Pencil, Search } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
@@ -14,7 +22,7 @@ import {
 	MergeAuthorDialog,
 } from "@/components/blocks/author/admin/author-actions-panel";
 import { AuthorStatusBadge } from "@/components/blocks/author/admin/author-status-badge";
-import { AuthorCardPortrait } from "@/components/blocks/author/author-card";
+import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { client, orpc, queryClient } from "@/utils/orpc";
 
@@ -31,6 +39,40 @@ const reasonText: Record<string, string> = {
 };
 
 const queueInput = { limit: 50 };
+
+type ReviewSort = "name" | "books" | "recent";
+type ReviewFilter = "all" | "failed" | "no_bio" | "no_photo";
+
+const sortLabels: Record<ReviewSort, string> = {
+	name: "Name",
+	books: "Most books",
+	recent: "Newest",
+};
+const filterLabels: Record<ReviewFilter, string> = {
+	all: "Everything",
+	failed: "Lookup failed",
+	no_bio: "No bio",
+	no_photo: "No photo",
+};
+
+function matchesFilter(row: ReviewRow, filter: ReviewFilter) {
+	if (filter === "failed") return row.enrichmentStatus === "failed";
+	if (filter === "no_bio") return !row.hasBio;
+	if (filter === "no_photo") return !row.photoUrl;
+	return true;
+}
+
+function sortRows(rows: ReviewRow[], sort: ReviewSort): ReviewRow[] {
+	if (sort === "name") {
+		return rows.toSorted((a, b) => a.name.localeCompare(b.name));
+	}
+	if (sort === "books") {
+		return rows.toSorted(
+			(a, b) => b.bookCount - a.bookCount || a.name.localeCompare(b.name),
+		);
+	}
+	return rows;
+}
 
 function Section({
 	title,
@@ -65,11 +107,7 @@ function AuthorLine({ author }: { author: Summary }) {
 			href={`/authors/${author.slug}/edit` as Route}
 			className="flex min-w-0 items-center gap-3 hover:underline"
 		>
-			<AuthorCardPortrait
-				name={author.name}
-				photoUrl={author.photoUrl}
-				className="w-9"
-			/>
+			<AuthorPhoto size="sm" name={author.name} photoUrl={author.photoUrl} />
 			<span className="flex min-w-0 flex-col">
 				<span className="truncate font-medium text-sm">{author.name}</span>
 				<span className="truncate text-muted-foreground text-xs tabular-nums">
@@ -93,6 +131,9 @@ export function AdminAuthorsReview() {
 	});
 	const queue = useQuery(options);
 	const [mergeRow, setMergeRow] = useState<ReviewRow | null>(null);
+	const [search, setSearch] = useState("");
+	const [sort, setSort] = useState<ReviewSort>("recent");
+	const [filter, setFilter] = useState<ReviewFilter>("all");
 	const [pair, setPair] = useState<{ from: Summary; into: Summary } | null>(
 		null,
 	);
@@ -151,7 +192,29 @@ export function AdminAuthorsReview() {
 		);
 	}
 
-	const { needsReview, autoFilled, mergeSuggestions } = queue.data;
+	const term = search.trim().toLowerCase();
+	const matchesSearch = (name: string, slug: string) =>
+		term === "" ||
+		name.toLowerCase().includes(term) ||
+		slug.toLowerCase().includes(term);
+	const needsReview = sortRows(
+		queue.data.needsReview.filter(
+			(row) => matchesSearch(row.name, row.slug) && matchesFilter(row, filter),
+		),
+		sort,
+	);
+	const autoFilled = sortRows(
+		queue.data.autoFilled.filter(
+			(row) => matchesSearch(row.name, row.slug) && matchesFilter(row, filter),
+		),
+		sort,
+	);
+	const mergeSuggestions = queue.data.mergeSuggestions.filter(
+		(suggestion) =>
+			term === "" ||
+			matchesSearch(suggestion.a.name, suggestion.a.slug) ||
+			matchesSearch(suggestion.b.name, suggestion.b.slug),
+	);
 
 	const rowActions = (row: ReviewRow) => (
 		<div className="flex shrink-0 flex-wrap gap-2">
@@ -219,6 +282,52 @@ export function AdminAuthorsReview() {
 
 	return (
 		<div className="flex flex-col gap-10">
+			<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+				<div className="relative min-w-0 flex-1 sm:max-w-md">
+					<Search
+						className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+						aria-hidden
+					/>
+					<Input
+						type="search"
+						value={search}
+						onChange={(event) => setSearch(event.target.value)}
+						placeholder="Search by name or address…"
+						className="ps-8"
+						aria-label="Search the review queue"
+					/>
+				</div>
+				<Select
+					value={filter}
+					onValueChange={(value) => setFilter(value as ReviewFilter)}
+				>
+					<SelectTrigger className="w-44" aria-label="Show">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent alignItemWithTrigger={false}>
+						{(Object.keys(filterLabels) as ReviewFilter[]).map((value) => (
+							<SelectItem key={value} value={value}>
+								{filterLabels[value]}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+				<Select
+					value={sort}
+					onValueChange={(value) => setSort(value as ReviewSort)}
+				>
+					<SelectTrigger className="w-40" aria-label="Sort by">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent alignItemWithTrigger={false}>
+						{(Object.keys(sortLabels) as ReviewSort[]).map((value) => (
+							<SelectItem key={value} value={value}>
+								{sortLabels[value]}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
 			<Section
 				title="Possible duplicates"
 				description="Pairs that look like the same person. Names alone never merge authors; you decide."

@@ -2,7 +2,7 @@ import type { RelatedAuthor } from "@bbrc/api/modules/author/author.schema";
 import type { Route } from "next";
 import Link from "next/link";
 import { AuthorPageCover } from "./author-page-bits";
-import { AuthorPagePortrait } from "./author-page-portrait";
+import { AuthorPhoto } from "./author-photo";
 
 /** A small card for an author someone might like next; local to the author page. */
 export function AuthorMiniCard({ author }: { author: RelatedAuthor }) {
@@ -11,11 +11,7 @@ export function AuthorMiniCard({ author }: { author: RelatedAuthor }) {
 			href={`/authors/${author.slug}` as Route}
 			className="group flex gap-3 border border-border p-3 transition-colors hover:bg-muted/40"
 		>
-			<AuthorPagePortrait
-				name={author.name}
-				photoUrl={author.photoUrl}
-				size="chip"
-			/>
+			<AuthorPhoto name={author.name} photoUrl={author.photoUrl} size="lg" />
 			<div className="flex min-w-0 flex-1 flex-col gap-1">
 				<p className="truncate font-medium text-sm group-hover:underline">
 					{author.name}

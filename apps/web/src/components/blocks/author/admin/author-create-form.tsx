@@ -19,7 +19,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { invalidateAuthorQueries } from "@/components/blocks/author/admin/author-actions-panel";
-import { AuthorCardPortrait } from "@/components/blocks/author/author-card";
+import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { client, orpc } from "@/utils/orpc";
 
@@ -86,7 +86,7 @@ export function AuthorCreateForm() {
 	const fromOpenLibrary = suggestions.data?.openLibrary ?? [];
 
 	return (
-		<div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+		<div className="flex w-full max-w-4xl flex-col gap-6">
 			<div className="flex flex-col gap-3">
 				<Link
 					href={"/authors" as Route}
@@ -150,10 +150,10 @@ export function AuthorCreateForm() {
 											href={editHref(author.slug)}
 											className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-muted/40"
 										>
-											<AuthorCardPortrait
+											<AuthorPhoto
+												size="sm"
 												name={author.name}
 												photoUrl={author.photoUrl}
-												className="w-8"
 											/>
 											<span className="flex min-w-0 flex-1 flex-col">
 												<span className="truncate font-medium text-sm">
@@ -222,10 +222,10 @@ export function AuthorCreateForm() {
 								{reasonText[duplicate.reason]}.
 							</p>
 							<div className="flex items-center gap-3">
-								<AuthorCardPortrait
+								<AuthorPhoto
+									size="md"
 									name={duplicate.author.name}
 									photoUrl={duplicate.author.photoUrl}
-									className="w-10"
 								/>
 								<span className="text-muted-foreground text-xs tabular-nums">
 									{duplicate.author.bookCount}{" "}

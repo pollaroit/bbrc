@@ -1,15 +1,23 @@
-import { resolveAuthor } from "@bbrc/api/modules/author/author-resolve";
 import {
-	getAuthorComments,
-	getAuthorPosts,
-} from "@bbrc/api/modules/author/author-social.service";
+	AuthorReadsInputSchema,
+	AuthorReviewsInputSchema,
+} from "@bbrc/api/modules/author/author.schema";
 import {
-	getAuthorFavorites,
 	getAuthorReads,
 	getAuthorReviews,
-	getAuthorShelves,
-	getAuthorSittings,
-} from "@bbrc/api/modules/author/author-tabs.service";
+} from "@bbrc/api/modules/author/author-activity.service";
+import { resolveAuthor } from "@bbrc/api/modules/author/author-resolve";
+import { getAuthorPosts } from "@bbrc/api/modules/author/author-social.service";
+import {
+	AuthorInsightFavoritesInputSchema,
+	AuthorInsightShelvesInputSchema,
+	AuthorInsightSittingsInputSchema,
+} from "@bbrc/api/modules/author-insights/author-insights.schema";
+import {
+	getAuthorInsightFavorites,
+	getAuthorInsightShelves,
+	getAuthorInsightSittings,
+} from "@bbrc/api/modules/author-insights/author-insights.service";
 import { viewerFromSession } from "@bbrc/api/modules/user/user-visibility";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
@@ -23,30 +31,30 @@ export type AuthorActivityTab =
 	| "reads"
 	| "reviews"
 	| "posts"
-	| "comments"
 	| "sittings"
 	| "favorites"
-	| "shelves";
+	| "shelves"
+	| "followers";
 
 const TAB_LABELS: Record<AuthorActivityTab, string> = {
 	reads: "reads",
 	reviews: "reviews",
 	posts: "posts",
-	comments: "comments",
 	sittings: "sittings",
 	favorites: "favorites",
 	shelves: "shelves",
+	followers: "followers",
 };
 
 const TAB_DESCRIPTIONS: Record<AuthorActivityTab, (name: string) => string> = {
 	reads: (name) => `Members who finished a book by ${name}, and when.`,
 	reviews: (name) => `What members think of the books by ${name}.`,
 	posts: (name) => `Posts that mention ${name}.`,
-	comments: (name) => `Comments on posts that mention ${name}.`,
 	sittings: (name) => `Club sittings where a book by ${name} was in play.`,
 	favorites: (name) =>
 		`Members who put a book by ${name} among their favorites.`,
 	shelves: (name) => `Public shelves that hold books by ${name}.`,
+	followers: (name) => `Members who follow ${name}.`,
 };
 
 type AuthorTabHead = {
@@ -57,20 +65,21 @@ type AuthorTabHead = {
 	empty: boolean;
 };
 
-const ONE = { limit: 1 } as const;
-
 async function tabIsEmpty(tab: AuthorActivityTab, slug: string) {
 	const session = await auth.api.getSession({ headers: await headers() });
-	const input = { slug, ...ONE };
+	const input = { slug, limit: 1 };
 
 	switch (tab) {
 		case "reads":
-			return (await getAuthorReads(input, db, session)).metadata.total === 0;
+			return (
+				(await getAuthorReads(AuthorReadsInputSchema.parse(input), db, session))
+					.metadata.total === 0
+			);
 		case "reviews":
 			return (
 				(
 					await getAuthorReviews(
-						{ ...input, sortBy: "createdAt", sortDirection: "desc" },
+						AuthorReviewsInputSchema.parse(input),
 						db,
 						session,
 					)
@@ -78,16 +87,38 @@ async function tabIsEmpty(tab: AuthorActivityTab, slug: string) {
 			);
 		case "posts":
 			return (await getAuthorPosts(input, db, session)).metadata.total === 0;
-		case "comments":
-			return (await getAuthorComments(input, db, session)).metadata.total === 0;
 		case "sittings":
-			return (await getAuthorSittings(input, db, session)).metadata.total === 0;
+			return (
+				(
+					await getAuthorInsightSittings(
+						AuthorInsightSittingsInputSchema.parse(input),
+						db,
+						session,
+					)
+				).metadata.total === 0
+			);
 		case "favorites":
 			return (
-				(await getAuthorFavorites(input, db, session)).totalFavorites === 0
+				(
+					await getAuthorInsightFavorites(
+						AuthorInsightFavoritesInputSchema.parse(input),
+						db,
+						session,
+					)
+				).totalFavorites === 0
 			);
+		case "followers":
+			return false;
 		case "shelves":
-			return (await getAuthorShelves(input, db, session)).metadata.total === 0;
+			return (
+				(
+					await getAuthorInsightShelves(
+						AuthorInsightShelvesInputSchema.parse(input),
+						db,
+						session,
+					)
+				).metadata.total === 0
+			);
 	}
 }
 

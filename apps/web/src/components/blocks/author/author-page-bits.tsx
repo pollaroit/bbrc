@@ -4,6 +4,11 @@ import Link from "next/link";
 import { bookCoverFrameClassName, bookCoverUrl } from "@/lib/book-cover";
 import { cn } from "@/lib/utils";
 
+/** Anchor id of a book in the overview grid (the timeline can jump to it). */
+export function authorBookAnchor(slug: string) {
+	return `author-book-${slug}`;
+}
+
 /** A 2:3 cover tile, with a quiet "No cover" fallback so a grid never jumps. */
 export function AuthorPageCover({
 	coverId,

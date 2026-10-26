@@ -1,11 +1,13 @@
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import {
 	AdminResourceShell,
 	adminAuthorTabs,
 } from "@/components/blocks/admin-resource-shell";
 import { AdminAuthorsListTable } from "@/components/blocks/author/admin/admin-authors-list-table";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 
@@ -32,7 +34,11 @@ export default async function AdminAuthorsListTablePage() {
 			tabs={[...adminAuthorTabs]}
 			activeHref="/admin/authors/list"
 		>
-			<AdminAuthorsListTable />
+			<ListingSearchParamsBoundary>
+				<Suspense fallback={null}>
+					<AdminAuthorsListTable />
+				</Suspense>
+			</ListingSearchParamsBoundary>
 		</AdminResourceShell>
 	);
 }

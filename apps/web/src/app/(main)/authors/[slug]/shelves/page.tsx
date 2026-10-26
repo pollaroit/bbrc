@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthorTabShelves } from "@/components/blocks/author/author-tab-shelves";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { buildAuthorTabMetadata, requireAuthorTab } from "@/lib/author-tab";
 
 export const dynamic = "force-dynamic";
@@ -17,5 +18,9 @@ export default async function AuthorShelvesPage({
 	const { slug } = await params;
 	const author = await requireAuthorTab(slug, "shelves");
 
-	return <AuthorTabShelves slug={author.slug} authorName={author.name} />;
+	return (
+		<ListingSearchParamsBoundary>
+			<AuthorTabShelves slug={author.slug} authorName={author.name} />
+		</ListingSearchParamsBoundary>
+	);
 }

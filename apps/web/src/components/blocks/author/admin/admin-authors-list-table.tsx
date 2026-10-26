@@ -1,16 +1,7 @@
 "use client";
 
+import { getBookCountryName } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
-import { Checkbox } from "@bbrc/ui/components/checkbox";
-import { Input } from "@bbrc/ui/components/input";
-import { Label } from "@bbrc/ui/components/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@bbrc/ui/components/select";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import {
 	Table,
@@ -20,215 +11,234 @@ import {
 	TableHeader,
 	TableRow,
 } from "@bbrc/ui/components/table";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { Pencil, Search } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
-import { useState } from "react";
-import { AuthorStatusBadge } from "@/components/blocks/author/admin/author-status-badge";
-import { AuthorCardPortrait } from "@/components/blocks/author/author-card";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
 import {
-	AUTHOR_STATUS_FILTERS,
-	authorSortByLabels,
-	authorStatusLabels,
-} from "@/lib/listing/authors-listing";
+	ADMIN_TABLE_MOBILE_MIN_WIDTH,
+	AdminListTableScroll,
+} from "@/components/blocks/admin-list-table-scroll";
+import { AdminAuthorRowActions } from "@/components/blocks/author/admin/admin-author-row-actions";
+import { AdminAuthorsToolbar } from "@/components/blocks/author/admin/admin-authors-toolbar";
+import { AuthorStatusBadge } from "@/components/blocks/author/admin/author-status-badge";
+import { AuthorPhoto } from "@/components/blocks/author/author-photo";
+import { adminAuthorsExportConfig } from "@/lib/admin-table-export/configs";
+import {
+	adminAuthorEnrichmentLabels,
+	adminAuthorFieldLabels,
+	adminAuthorSourceLabels,
+	toAdminAuthorsListCallInput,
+	useAdminAuthorsListingSearchParams,
+} from "@/lib/listing/admin-authors-listing";
+import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
-const PAGE_SIZE = 25;
-const SORTS = [
-	"name",
-	"bookCount",
-	"readerCount",
-	"followerCount",
-	"createdAt",
-] as const;
+const MAX_MISSING_SHOWN = 3;
+
+function formatDate(date: Date) {
+	return new Intl.DateTimeFormat(undefined, {
+		year: "numeric",
+		month: "short",
+		day: "numeric",
+	}).format(date);
+}
+
+function lifeYears(birthYear: number | null, deathYear: number | null) {
+	if (birthYear == null && deathYear == null) return "—";
+	return `${birthYear ?? "?"}–${deathYear ?? ""}`;
+}
 
 export function AdminAuthorsListTable() {
-	const [search, setSearch] = useState("");
-	const [status, setStatus] = useState<
-		"all" | (typeof AUTHOR_STATUS_FILTERS)[number]
-	>("all");
-	const [sortBy, setSortBy] = useState<(typeof SORTS)[number]>("createdAt");
-	const [includeEmpty, setIncludeEmpty] = useState(true);
-	const debounced = useDebouncedValue(search, 300).trim();
+	const [params, setParams] = useAdminAuthorsListingSearchParams();
+	const listInput = toAdminAuthorsListCallInput(params);
 
-	const query = useInfiniteQuery(
-		orpc.author.list.infiniteOptions({
-			initialPageParam: undefined as string | undefined,
-			getNextPageParam: (lastPage) => lastPage.metadata.nextCursor ?? undefined,
-			input: (cursor) => ({
-				...(debounced ? { search: debounced } : {}),
-				...(status !== "all" ? { statuses: [status] } : {}),
-				includeEmpty,
-				sortBy,
-				sortDirection: sortBy === "name" ? ("asc" as const) : ("desc" as const),
-				limit: PAGE_SIZE,
-				...(cursor != null ? { cursor } : {}),
-			}),
-		}),
+	const { data, isPending, isError, error, refetch } = useQuery(
+		orpc.authorAdmin.list.queryOptions({ input: listInput }),
 	);
 
-	const rows = query.data?.pages.flatMap((page) => page.items) ?? [];
-	const total = query.data?.pages[0]?.metadata.total;
+	const footer = data ? (
+		<AdminListTableFooter
+			summary={`${data.metadata.total} authors · Page ${data.metadata.page} of ${Math.max(data.metadata.totalPages, 1)}`}
+			metadata={data.metadata}
+			onPageChange={(page) => {
+				void setParams({ page });
+			}}
+			exportConfig={adminAuthorsExportConfig}
+			listInput={listInput as Record<string, unknown>}
+			currentPageItems={data.items}
+		/>
+	) : null;
 
 	return (
 		<div className="flex flex-col gap-4">
-			<div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-				<div className="relative min-w-0 flex-1">
-					<Search
-						className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-						aria-hidden
-					/>
-					<Input
-						type="search"
-						value={search}
-						onChange={(event) => setSearch(event.target.value)}
-						placeholder="Search authors by name…"
-						className="ps-8"
-						aria-label="Search authors"
-					/>
+			<AdminAuthorsToolbar />
+
+			{isPending ? (
+				<Skeleton className="h-120 w-full" />
+			) : isError ? (
+				<div className="flex flex-col items-start gap-3 border border-dashed p-6">
+					<p className="text-sm">
+						{error?.message ?? "Could not load authors."}
+					</p>
+					<Button variant="outline" size="sm" onClick={() => refetch()}>
+						Try again
+					</Button>
 				</div>
-				<div className="flex flex-wrap items-center gap-3">
-					<Select
-						value={status}
-						onValueChange={(value) => setStatus(value as typeof status)}
-					>
-						<SelectTrigger className="w-48" aria-label="Status">
-							<SelectValue placeholder="Status" />
-						</SelectTrigger>
-						<SelectContent alignItemWithTrigger={false}>
-							<SelectItem value="all">Any status</SelectItem>
-							{AUTHOR_STATUS_FILTERS.map((value) => (
-								<SelectItem key={value} value={value}>
-									{authorStatusLabels[value]}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-					<Select
-						value={sortBy}
-						onValueChange={(value) => setSortBy(value as typeof sortBy)}
-					>
-						<SelectTrigger className="w-44" aria-label="Sort by">
-							<SelectValue placeholder="Sort by" />
-						</SelectTrigger>
-						<SelectContent alignItemWithTrigger={false}>
-							{SORTS.map((value) => (
-								<SelectItem key={value} value={value}>
-									{authorSortByLabels[value]}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-					<div className="inline-flex items-center gap-2 text-sm">
-						<Checkbox
-							id="authors-include-empty"
-							checked={includeEmpty}
-							onCheckedChange={(checked) => setIncludeEmpty(checked === true)}
-						/>
-						<Label htmlFor="authors-include-empty" className="font-normal">
-							Include authors without books
-						</Label>
+			) : data.items.length === 0 ? (
+				<>
+					<div className="border border-dashed p-8 text-center">
+						<p className="font-medium text-sm">
+							No authors match these filters
+						</p>
+						<p className="mt-1 text-muted-foreground text-sm">
+							Try clearing search or filters.
+						</p>
 					</div>
-				</div>
-			</div>
-
-			{total != null ? (
-				<p className="text-muted-foreground text-sm tabular-nums">
-					{total.toLocaleString()} {total === 1 ? "author" : "authors"}
-				</p>
-			) : null}
-
-			{query.isPending ? (
-				<Skeleton className="h-96 w-full" aria-hidden />
-			) : query.isError ? (
-				<p className="text-muted-foreground text-sm">Could not load authors.</p>
-			) : rows.length === 0 ? (
-				<p className="text-muted-foreground text-sm">No authors match.</p>
+					{footer}
+				</>
 			) : (
-				<div className="border border-border">
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Author</TableHead>
-								<TableHead>Status</TableHead>
-								<TableHead className="text-right">Books</TableHead>
-								<TableHead className="text-right">Readers</TableHead>
-								<TableHead className="text-right">Followers</TableHead>
-								<TableHead className="w-12" />
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{rows.map((author) => (
-								<TableRow key={author.slug}>
-									<TableCell>
-										<Link
-											href={`/authors/${author.slug}` as Route}
-											className="flex min-w-0 items-center gap-3 hover:underline"
-										>
-											<AuthorCardPortrait
-												name={author.name}
-												photoUrl={author.photoUrl}
-												className="w-8"
-											/>
-											<span className="flex min-w-0 flex-col">
-												<span className="truncate font-medium">
-													{author.name}
-												</span>
-												{author.lifespan ? (
-													<span className="text-muted-foreground text-xs tabular-nums">
-														{author.lifespan}
+				<>
+					<AdminListTableScroll>
+						<Table className={ADMIN_TABLE_MOBILE_MIN_WIDTH}>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Author</TableHead>
+									<TableHead>Status</TableHead>
+									<TableHead className="hidden lg:table-cell">
+										Missing
+									</TableHead>
+									<TableHead className="hidden md:table-cell">
+										Nationality
+									</TableHead>
+									<TableHead className="hidden xl:table-cell">Life</TableHead>
+									<TableHead className="text-right tabular-nums">
+										Books
+									</TableHead>
+									<TableHead className="hidden text-right tabular-nums lg:table-cell">
+										Readers
+									</TableHead>
+									<TableHead className="hidden text-right tabular-nums xl:table-cell">
+										Reads
+									</TableHead>
+									<TableHead className="hidden text-right tabular-nums lg:table-cell">
+										Followers
+									</TableHead>
+									<TableHead className="hidden lg:table-cell">Added</TableHead>
+									<TableHead className="w-12">
+										<span className="sr-only">Actions</span>
+									</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{data.items.map((author) => (
+									<TableRow key={author.id}>
+										<TableCell>
+											<div className="flex min-w-0 items-center gap-3">
+												<AuthorPhoto
+													size="sm"
+													name={author.name}
+													photoUrl={author.photoUrl}
+												/>
+												<div className="flex min-w-0 flex-col gap-0.5">
+													<Link
+														href={`/authors/${author.slug}` as Route}
+														className="truncate font-medium hover:underline"
+													>
+														{author.name}
+													</Link>
+													<p className="truncate font-mono text-muted-foreground text-xs">
+														{author.slug}
+													</p>
+												</div>
+											</div>
+										</TableCell>
+										<TableCell>
+											<div className="flex flex-col items-start gap-1">
+												<AuthorStatusBadge status={author.status} />
+												{author.enrichmentStatus !== "done" ? (
+													<span
+														className={cn(
+															"text-2xs",
+															author.enrichmentStatus === "failed"
+																? "text-destructive"
+																: "text-muted-foreground",
+														)}
+														title={author.enrichmentError ?? undefined}
+													>
+														{
+															adminAuthorEnrichmentLabels[
+																author.enrichmentStatus
+															]
+														}
 													</span>
 												) : null}
+												{author.hasLocks ? (
+													<span className="text-2xs text-muted-foreground">
+														Has locked fields
+													</span>
+												) : null}
+											</div>
+										</TableCell>
+										<TableCell className="hidden max-w-56 lg:table-cell">
+											{author.missingFields.length === 0 ? (
+												<span className="text-muted-foreground text-xs">
+													Complete
+												</span>
+											) : (
+												<span className="text-muted-foreground text-xs">
+													{author.missingFields
+														.slice(0, MAX_MISSING_SHOWN)
+														.map((field) => adminAuthorFieldLabels[field])
+														.join(", ")}
+													{author.missingFields.length > MAX_MISSING_SHOWN
+														? ` +${author.missingFields.length - MAX_MISSING_SHOWN}`
+														: ""}
+												</span>
+											)}
+										</TableCell>
+										<TableCell className="hidden max-w-40 truncate md:table-cell">
+											{author.nationalities.length === 0
+												? "—"
+												: author.nationalities
+														.map((code) => getBookCountryName(code) ?? code)
+														.join(", ")}
+										</TableCell>
+										<TableCell className="hidden text-muted-foreground text-xs tabular-nums xl:table-cell">
+											{lifeYears(author.birthYear, author.deathYear)}
+										</TableCell>
+										<TableCell className="text-right tabular-nums">
+											{author.bookCount}
+										</TableCell>
+										<TableCell className="hidden text-right tabular-nums lg:table-cell">
+											{author.readerCount}
+										</TableCell>
+										<TableCell className="hidden text-right tabular-nums xl:table-cell">
+											{author.readCount}
+										</TableCell>
+										<TableCell className="hidden text-right tabular-nums lg:table-cell">
+											{author.followerCount}
+										</TableCell>
+										<TableCell className="hidden text-muted-foreground text-xs lg:table-cell">
+											<span
+												title={author.sources
+													.map((source) => adminAuthorSourceLabels[source])
+													.join(", ")}
+											>
+												{formatDate(author.createdAt)}
 											</span>
-										</Link>
-									</TableCell>
-									<TableCell>
-										{author.status ? (
-											<AuthorStatusBadge status={author.status} />
-										) : null}
-									</TableCell>
-									<TableCell className="text-right tabular-nums">
-										{author.bookCount}
-									</TableCell>
-									<TableCell className="text-right tabular-nums">
-										{author.readerCount}
-									</TableCell>
-									<TableCell className="text-right tabular-nums">
-										{author.followerCount}
-									</TableCell>
-									<TableCell>
-										<Button
-											render={
-												<Link href={`/authors/${author.slug}/edit` as Route} />
-											}
-											nativeButton={false}
-											variant="ghost"
-											size="icon-sm"
-											aria-label={`Edit ${author.name}`}
-										>
-											<Pencil />
-										</Button>
-									</TableCell>
-								</TableRow>
-							))}
-						</TableBody>
-					</Table>
-				</div>
+										</TableCell>
+										<TableCell>
+											<AdminAuthorRowActions author={author} />
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</AdminListTableScroll>
+					{footer}
+				</>
 			)}
-
-			{query.hasNextPage ? (
-				<Button
-					type="button"
-					variant="outline"
-					className="w-fit self-center"
-					disabled={query.isFetchingNextPage}
-					onClick={() => void query.fetchNextPage()}
-				>
-					{query.isFetchingNextPage ? "Loading…" : "Load more"}
-				</Button>
-			) : null}
 		</div>
 	);
 }

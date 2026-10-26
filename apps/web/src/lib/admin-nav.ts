@@ -15,6 +15,7 @@ import {
 	UsersRound,
 } from "lucide-react";
 import type { Route } from "next";
+import { isAdminAuthorScreen } from "@/lib/admin-author-screens";
 
 export type AdminNavChild = {
 	href: Route;
@@ -99,7 +100,8 @@ export const adminNavSections: AdminNavSection[] = [
 		label: "Authors",
 		icon: Feather,
 		defaultHref: "/admin/authors" as Route,
-		sectionActive: (pathname) => pathname.startsWith("/admin/authors"),
+		sectionActive: (pathname) =>
+			pathname.startsWith("/admin/authors") || isAdminAuthorScreen(pathname),
 		children: [
 			{
 				href: "/admin/authors" as Route,
@@ -111,7 +113,8 @@ export const adminNavSections: AdminNavSection[] = [
 				label: "List",
 				isActive: (pathname) =>
 					pathname.startsWith("/admin/authors/list") ||
-					pathname.startsWith("/admin/authors/edit"),
+					pathname.startsWith("/admin/authors/edit") ||
+					isAdminAuthorScreen(pathname),
 			},
 			{
 				href: "/admin/authors/stats" as Route,

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthorTabFavorites } from "@/components/blocks/author/author-tab-favorites";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { buildAuthorTabMetadata, requireAuthorTab } from "@/lib/author-tab";
 
 export const dynamic = "force-dynamic";
@@ -17,5 +18,9 @@ export default async function AuthorFavoritesPage({
 	const { slug } = await params;
 	const author = await requireAuthorTab(slug, "favorites");
 
-	return <AuthorTabFavorites slug={author.slug} authorName={author.name} />;
+	return (
+		<ListingSearchParamsBoundary>
+			<AuthorTabFavorites slug={author.slug} authorName={author.name} />
+		</ListingSearchParamsBoundary>
+	);
 }

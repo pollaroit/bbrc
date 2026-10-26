@@ -12,6 +12,8 @@ import { useMemo } from "react";
 import { ListingAuthorCountryMultiSelect } from "@/components/listing/listing-author-country-multi-select";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
+import { ListingIntegerRangeFields } from "@/components/listing/listing-integer-range-fields";
+import { ListingOpenLibraryRatingSlider } from "@/components/listing/listing-open-library-rating-slider";
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
 import { authClient } from "@/lib/auth-client";
@@ -27,6 +29,13 @@ import {
 	toAuthorNationalityFacetsInput,
 	useAuthorsListingSearchParams,
 } from "@/lib/listing/authors-listing";
+
+const MINIMUMS = [
+	{ key: "minBooks", id: "author-min-books", label: "Books" },
+	{ key: "minReaders", id: "author-min-readers", label: "Readers" },
+	{ key: "minReads", id: "author-min-reads", label: "Reads" },
+	{ key: "minReviews", id: "author-min-reviews", label: "Reviews" },
+] as const;
 
 function toggled<T extends string>(
 	current: readonly T[] | null,
@@ -75,7 +84,7 @@ export function AuthorsListToolbar() {
 
 				<ListingFiltersSheet
 					title="Author filters"
-					description="Narrow the list by nationality, gender, photo and how many books they have here."
+					description="Narrow the list by nationality, gender, photo, size, readers, reviews and rating."
 					activeFilterCount={countAuthorSheetFilters(params)}
 					onClear={() => clearAuthorSheetFilters(setParams)}
 					appearance="library"
@@ -121,25 +130,57 @@ export function AuthorsListToolbar() {
 					<FieldSet className="gap-3">
 						<FieldLegend>At least</FieldLegend>
 						<FieldGroup className="grid grid-cols-2 gap-3">
-							<Field>
-								<Label htmlFor="author-min-books">Books in the library</Label>
-								<Input
-									id="author-min-books"
-									type="number"
-									min={1}
-									inputMode="numeric"
-									placeholder="Any"
-									value={params.minBooks ?? ""}
-									onChange={(event) => {
-										const parsed = Number.parseInt(event.target.value, 10);
-										void setParams({
-											minBooks:
-												Number.isNaN(parsed) || parsed < 1 ? null : parsed,
-										});
-									}}
-								/>
-							</Field>
+							{MINIMUMS.map(({ key, id, label }) => (
+								<Field key={key}>
+									<Label htmlFor={id}>{label}</Label>
+									<Input
+										id={id}
+										type="number"
+										min={1}
+										inputMode="numeric"
+										placeholder="Any"
+										value={params[key] ?? ""}
+										onChange={(event) => {
+											const parsed = Number.parseInt(event.target.value, 10);
+											void setParams({
+												[key]:
+													Number.isNaN(parsed) || parsed < 1 ? null : parsed,
+											});
+										}}
+									/>
+								</Field>
+							))}
 						</FieldGroup>
+					</FieldSet>
+
+					<ListingIntegerRangeFields
+						legend="Total pages"
+						minId="author-min-pages"
+						maxId="author-max-pages"
+						min={params.minPages}
+						max={params.maxPages}
+						minLabel="Fewest"
+						maxLabel="Most"
+						onMinChange={(minPages) => {
+							void setParams({ minPages });
+						}}
+						onMaxChange={(maxPages) => {
+							void setParams({ maxPages });
+						}}
+					/>
+
+					<FieldSet className="gap-3">
+						<FieldLegend>Average rating</FieldLegend>
+						<ListingOpenLibraryRatingSlider
+							min={params.minRating}
+							max={params.maxRating}
+							onMinChange={(minRating) => {
+								void setParams({ minRating });
+							}}
+							onMaxChange={(maxRating) => {
+								void setParams({ maxRating });
+							}}
+						/>
 					</FieldSet>
 
 					{isAdmin ? (

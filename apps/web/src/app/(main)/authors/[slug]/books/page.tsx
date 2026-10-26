@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthorPageBooks } from "@/components/blocks/author/author-page-books";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { loadAuthorForIsr } from "@/lib/isr-data";
 import { buildNotFoundMetadata } from "@/lib/seo";
 import { buildAuthorPageMetadata } from "@/lib/seo/author-page-metadata";
@@ -24,5 +25,9 @@ export default async function AuthorBooksPage({
 	params,
 }: PageProps<"/authors/[slug]/books">) {
 	const { slug } = await params;
-	return <AuthorPageBooks slug={slug} />;
+	return (
+		<ListingSearchParamsBoundary>
+			<AuthorPageBooks slug={slug} />
+		</ListingSearchParamsBoundary>
+	);
 }

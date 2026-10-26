@@ -1,9 +1,10 @@
+import { AuthorBooksInputSchema } from "@bbrc/api/modules/author/author.schema";
+import { getAuthorBooks } from "@bbrc/api/modules/author/author-books.service";
 import {
 	getAuthor,
 	getAuthorAbout,
 } from "@bbrc/api/modules/author/author-directory.service";
 import {
-	getAuthorBooks,
 	getAuthorMore,
 	getAuthorStats,
 } from "@bbrc/api/modules/author/author-tabs.service";
@@ -60,12 +61,12 @@ export const loadAuthorStatsForIsr = cache((slug: string) =>
 /** The author's best known books (most read first) for the overview and the timeline. */
 export const loadAuthorTopBooksForIsr = cache((slug: string) =>
 	getAuthorBooks(
-		{
+		AuthorBooksInputSchema.parse({
 			slug,
 			limit: 100,
 			sortBy: "publishedIn",
 			sortDirection: "asc",
-		},
+		}),
 		db,
 		anonymousSession,
 	),
