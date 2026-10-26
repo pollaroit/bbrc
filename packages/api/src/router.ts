@@ -37,6 +37,8 @@ import { shelfRouter } from "./modules/shelf/shelf.router";
 import { sittingRouter } from "./modules/sitting/sitting.router";
 import { storageRouter } from "./modules/storage/storage.router";
 import { userRouter } from "./modules/user/user.router";
+import { userCompareRouter } from "./modules/user-compare/user-compare.router";
+import { userCompareAdminRouter } from "./modules/user-compare-admin/user-compare-admin.router";
 import { viewRouter } from "./modules/view/view.router";
 import { xpRouter } from "./modules/xp/xp.router";
 
@@ -47,6 +49,7 @@ export const appRouter = {
 	authorAdmin: authorAdminRouter,
 	authorBackfill: authorBackfillRouter,
 	authorInsights: authorInsightsRouter,
+	userCompareAdmin: userCompareAdminRouter,
 	health: healthRouter,
 	leaderboard: leaderboardRouter,
 	book: bookRouter,
@@ -64,6 +67,7 @@ export const appRouter = {
 	globalSearch: globalSearchRouter,
 	like: likeRouter,
 	mention: mentionRouter,
+	userCompare: userCompareRouter,
 	notification: notificationRouter,
 	people: peopleRouter,
 	post: postRouter,

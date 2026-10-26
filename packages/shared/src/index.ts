@@ -49,6 +49,7 @@ export * from "./subject-slug";
 export * from "./themes/contrast";
 export * from "./themes/oklch";
 export * from "./themes/palettes";
+export * from "./user-compare";
 export * from "./user-profile";
 export * from "./user-stats";
 export * from "./username";
