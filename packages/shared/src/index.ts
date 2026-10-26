@@ -30,6 +30,7 @@ export * from "./poll-chip-grants";
 export * from "./post-feed-ranking";
 export * from "./post-polls";
 export * from "./preferences";
+export * from "./rating-definitions";
 export * from "./read-finished-month";
 export * from "./reading-deadline";
 export * from "./reading-pace";

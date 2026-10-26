@@ -28,6 +28,7 @@ import { peopleRouter } from "./modules/people/people.router";
 import { postRouter } from "./modules/post/post.router";
 import { postPollRouter } from "./modules/post-poll/post-poll.router";
 import { quizRouter } from "./modules/quiz/quiz.router";
+import { ratingDefinitionRouter } from "./modules/rating-definition/rating-definition.router";
 import { readRouter } from "./modules/read/read.router";
 import { readingRouter } from "./modules/reading/reading.router";
 import { rpRouter } from "./modules/rp/rp.router";
@@ -61,6 +62,7 @@ export const appRouter = {
 	fact: factRouter,
 	edition: editionRouter,
 	favorite: favoriteRouter,
+	ratingDefinition: ratingDefinitionRouter,
 	feedback: feedbackRouter,
 	follow: followRouter,
 	goal: goalRouter,

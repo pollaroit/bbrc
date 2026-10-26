@@ -12,6 +12,7 @@ import {
 	Space_Grotesk,
 } from "next/font/google";
 import localFont from "next/font/local";
+import Script from "next/script";
 
 import "../index.css";
 
@@ -215,7 +216,10 @@ export default function RootLayout({
 			suppressHydrationWarning
 		>
 			<head>
-				<script
+				{/* next/script (not a bare <script>): React warns about scripts rendered by components. */}
+				<Script
+					id="preferences-boot"
+					strategy="beforeInteractive"
 					// biome-ignore lint/security/noDangerouslySetInnerHtml: static boot script built from constants
 					dangerouslySetInnerHTML={{ __html: preferencesBootScript }}
 				/>

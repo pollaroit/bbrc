@@ -4,7 +4,7 @@ import { DEFAULT_PREFERENCES } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Switch } from "@bbrc/ui/components/switch";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { PreferencesAppearance } from "@/components/blocks/preferences-appearance";
@@ -13,6 +13,7 @@ import {
 	PreferencesSection,
 	Segmented,
 } from "@/components/blocks/preferences-ui";
+import { RatingDefinitionsSection } from "@/components/blocks/rating-definitions-editor";
 import { authClient } from "@/lib/auth-client";
 import { clubTimeZone } from "@/lib/club-timezone";
 import {
@@ -640,9 +641,12 @@ function TimeSection() {
 }
 
 function SearchSection() {
-	const [recentCount, setRecentCount] = useState(() =>
-		typeof window === "undefined" ? 0 : readRecentHits().length,
-	);
+	// The saved list lives in this browser, so it is read after hydration (reading it during
+	// render gives the server and the first client render different text).
+	const [recentCount, setRecentCount] = useState(0);
+	useEffect(() => {
+		setRecentCount(readRecentHits().length);
+	}, []);
 
 	return (
 		<PreferencesSection
@@ -743,6 +747,7 @@ const sections = [
 	{ id: "accessibility", label: "Accessibility" },
 	{ id: "reading", label: "Reading" },
 	{ id: "reading-privacy", label: "Wishlist" },
+	{ id: "ratings", label: "Ratings" },
 	{ id: "shelves", label: "Shelves" },
 	{ id: "polls", label: "Polls" },
 	{ id: "mentions", label: "Mentions" },
@@ -785,6 +790,7 @@ export function PreferencesForm() {
 			<AccessibilitySection />
 			<ReadingSection />
 			<ReadingPrivacySection />
+			<RatingDefinitionsSection />
 			<ShelvesSection />
 			<PollsSection />
 			<MentionsSection />
