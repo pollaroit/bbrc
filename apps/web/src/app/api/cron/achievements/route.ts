@@ -1,3 +1,4 @@
+import { sweepAuthorEnrichment } from "@bbrc/api/lib/author-enrichment/schedule";
 import { sweepAchievements } from "@bbrc/api/modules/achievement/achievement.service";
 import { sweepEndedPolls } from "@bbrc/api/modules/post-poll/post-poll.service";
 import { sweepReadingReminders } from "@bbrc/api/modules/reading/reading-reminders.service";
@@ -34,6 +35,13 @@ export async function POST(request: Request) {
 		} catch (error) {
 			console.error("reading reminders failed", error);
 		}
+		// New authors the background run never finished (a lost process, a failed lookup); a failure must not stop the rest.
+		let authorsEnriched = 0;
+		try {
+			authorsEnriched = await sweepAuthorEnrichment(db);
+		} catch (error) {
+			console.error("author enrichment sweep failed", error);
+		}
 		const result = await sweepAchievements(db);
 		const endedPolls = await sweepEndedPolls(db);
 		return NextResponse.json({
@@ -42,6 +50,7 @@ export async function POST(request: Request) {
 			endedPolls,
 			views,
 			readingReminders,
+			authorsEnriched,
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "Sweep failed";

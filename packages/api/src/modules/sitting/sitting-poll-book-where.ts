@@ -1,6 +1,11 @@
 import type { Database, Prisma } from "@bbrc/db";
 import { mergeWhereFragments } from "../../utils/searching";
-import { resolveAuthorSlugsToNames } from "../book/book-author-filter";
+import {
+	type AuthorFilter,
+	buildAuthorFilterWhere,
+	isEmptyAuthorFilter,
+	resolveAuthorFilter,
+} from "../book/book-author-filter";
 import { bookIdsWithReadsCountBounds } from "../book/book-read-count-filter";
 import type { CreateSittingPollInput } from "./sitting.schema";
 
@@ -39,11 +44,11 @@ export async function resolveWishlistPollBookWhere(
 	poll: CreateSittingPollInput,
 	db: Database,
 ): Promise<Prisma.BookWhereInput | null> {
-	let resolvedAuthorNames: string[] | undefined;
+	let authorFilter: AuthorFilter | undefined;
 
 	if (poll.authors && poll.authors.length > 0) {
-		resolvedAuthorNames = await resolveAuthorSlugsToNames(poll.authors, db);
-		if (resolvedAuthorNames.length === 0) {
+		authorFilter = await resolveAuthorFilter(poll.authors, db);
+		if (isEmptyAuthorFilter(authorFilter)) {
 			return null;
 		}
 	}
@@ -60,12 +65,7 @@ export async function resolveWishlistPollBookWhere(
 
 	const baseWhere = mergeWhereFragments<Prisma.BookWhereInput>(
 		buildWishlistPollBookWhereBase(poll),
-		{
-			authors:
-				resolvedAuthorNames && resolvedAuthorNames.length > 0
-					? { hasSome: resolvedAuthorNames }
-					: undefined,
-		},
+		buildAuthorFilterWhere(authorFilter) ?? {},
 	);
 
 	if (readsCountIds == null) {

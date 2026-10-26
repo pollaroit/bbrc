@@ -1,7 +1,15 @@
 import type { Database, Prisma } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
+import { scheduleAuthorEnrichment } from "../../lib/author-enrichment/schedule";
 import { definePagination } from "../../utils/pagination";
-import { notifyBookAddedToLibrary } from "../notification/notification-triggers";
+import {
+	resolveAuthorsByNames,
+	setBookAuthors,
+} from "../author-admin/author-core";
+import {
+	notifyBookAddedToLibrary,
+	notifyFollowersOfNewBook,
+} from "../notification/notification-triggers";
 import {
 	createSeriesRecord,
 	detachBookFromSeries,
@@ -27,6 +35,7 @@ import {
 	type TUpdateBookOutputSchema,
 } from "./book.schema";
 import { listAuthorFacetsForBooks } from "./book-author-filter";
+import { bookAuthorRefsSelect, mapBookAuthorRefs } from "./book-author-refs";
 import { listCountryFacetsForBooks } from "./book-country-filter";
 import { assertOwnCoverUrl, isClubCoverId, newClubCoverId } from "./book-cover";
 import { buildBookListWhereWithAuthors } from "./book-list-where";
@@ -40,6 +49,7 @@ import { resolveClubSittingSlug } from "./resolve-club-sitting-slug";
 
 const bookListSelect = {
 	...getBookListFields,
+	...bookAuthorRefsSelect,
 	viewCount: true,
 	readingNowCount: true,
 	wishlistCount: true,
@@ -191,9 +201,16 @@ export async function getBookList(
 
 	return {
 		items: page.items.map((row) => {
-			const { seriesMembership, sittingsSelectedFor, _count, ...fields } = row;
+			const {
+				seriesMembership,
+				sittingsSelectedFor,
+				_count,
+				authorLinks,
+				...fields
+			} = row;
 			return {
 				...fields,
+				authorRefs: mapBookAuthorRefs(authorLinks),
 				approvedDocumentCount: _count.documents,
 				readCount: _count.reads,
 				feedbackCount: _count.feedbacks,
@@ -296,6 +313,14 @@ export async function getBookBySlug(
 				},
 			},
 			readAfterPrerequisites: readAfterBookInclude,
+			authorLinks: {
+				orderBy: { position: "asc" },
+				select: {
+					author: {
+						select: { id: true, slug: true, name: true, photoUrl: true },
+					},
+				},
+			},
 			seriesMembership: {
 				select: {
 					position: true,
@@ -314,10 +339,12 @@ export async function getBookBySlug(
 		});
 	}
 
-	const { readAfterPrerequisites, seriesMembership, ...rest } = book;
+	const { readAfterPrerequisites, seriesMembership, authorLinks, ...rest } =
+		book;
 
 	return normalizeBookRecord({
 		...rest,
+		authorRefs: authorLinks.map((link) => link.author),
 		readAfterBooks: mapReadAfterBooks(readAfterPrerequisites),
 		series: mapBookSeriesSummary(seriesMembership),
 	});
@@ -331,6 +358,31 @@ function normalizeBookRecord<T extends TGetBookBySlugOutputSchema>(book: T): T {
 		subjects: book.subjects ?? [],
 		countries: book.countries ?? [],
 	};
+}
+
+/**
+ * The authors a book form sent, as author ids in order: the chosen records, or names
+ * resolved to existing authors (by name, alias or likely spelling) or created.
+ */
+async function resolveBookAuthors(
+	tx: Parameters<Parameters<Database["$transaction"]>[0]>[0],
+	input: { authorIds?: string[]; authors?: string[] },
+	createdById: string | null,
+): Promise<{ authorIds: string[]; createdIds: string[] }> {
+	if (input.authorIds?.length) {
+		const ids = [...new Set(input.authorIds)];
+		const found = await tx.author.count({ where: { id: { in: ids } } });
+		if (found !== ids.length) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "One of the authors no longer exists. Pick them again.",
+			});
+		}
+		return { authorIds: ids, createdIds: [] };
+	}
+	const names = (input.authors ?? [])
+		.map((name) => name.trim())
+		.filter(Boolean);
+	return resolveAuthorsByNames(tx, names, { createdById });
 }
 
 export async function addBook(
@@ -347,11 +399,14 @@ export async function addBook(
 		shiftLater,
 		customCoverUrl,
 		notifyMembers,
+		authorIds: inputAuthorIds,
+		authors: inputAuthorNames,
 		...bookInput
 	} = input;
 	const trimmedAcceptanceNotes = acceptanceNotes?.trim() || null;
 
 	let interestedUserIds: string[] = [];
+	let createdAuthorIds: string[] = [];
 	const book = await db.$transaction(async (tx) => {
 		const existing = await tx.book.findUnique({
 			where: { olid: bookInput.olid },
@@ -391,9 +446,18 @@ export async function addBook(
 			};
 		}
 
+		const resolvedAuthors = await resolveBookAuthors(
+			tx,
+			{ authorIds: inputAuthorIds, authors: inputAuthorNames },
+			adminUserId,
+		);
+		createdAuthorIds = resolvedAuthors.createdIds;
+
 		const book = await tx.book.create({
 			data: {
 				...bookInput,
+				// The names copy; `setBookAuthors` below keeps it equal to the author records.
+				authors: [],
 				subjectPeople: bookInput.subjectPeople ?? [],
 				subjectTimes: bookInput.subjectTimes ?? [],
 				subjects: bookInput.subjects ?? [],
@@ -408,6 +472,8 @@ export async function addBook(
 				slug: true,
 			},
 		});
+
+		await setBookAuthors(tx, book.id, resolvedAuthors.authorIds);
 
 		if (readAfterBookSlugs && readAfterBookSlugs.length > 0) {
 			await syncBookReadAfterPrerequisites(book.id, readAfterBookSlugs, tx);
@@ -446,12 +512,23 @@ export async function addBook(
 		return { ...book, seriesSlug: attachedSeriesSlug };
 	});
 
-	// Quiet adds only tell the people who asked for the book (or said "me too").
-	void notifyBookAddedToLibrary(
-		db,
-		book.slug,
-		notifyMembers === false ? { onlyUserIds: interestedUserIds } : undefined,
-	);
+	// New authors fill themselves in (Open Library, Wikidata, Wikipedia) without holding the request up.
+	scheduleAuthorEnrichment(db, createdAuthorIds);
+
+	// Quiet adds only tell the people who asked for the book (or said "me too"); otherwise members
+	// following one of the authors also hear about it. One after the other, not side by side.
+	void (async () => {
+		await notifyBookAddedToLibrary(
+			db,
+			book.slug,
+			notifyMembers === false ? { onlyUserIds: interestedUserIds } : undefined,
+		);
+		if (notifyMembers !== false) {
+			await notifyFollowersOfNewBook(db, book.slug, {
+				excludeUserIds: [adminUserId],
+			});
+		}
+	})().catch((error) => console.error("book added notices failed", error));
 
 	return book;
 }
@@ -459,6 +536,7 @@ export async function addBook(
 export async function updateBook(
 	input: TUpdateBookInputSchema,
 	db: Database,
+	adminUserId: string | null = null,
 ): Promise<TUpdateBookOutputSchema> {
 	const book = await db.book.findUnique({
 		where: { slug: input.slug },
@@ -475,9 +553,18 @@ export async function updateBook(
 	}
 
 	let replacedCoverUrl: string | null = null;
+	let createdAuthorIds: string[] = [];
 
 	const result = await db.$transaction(async (tx) => {
-		const { slug, readAfterBookSlugs, customCoverUrl, series, ...data } = input;
+		const {
+			slug,
+			readAfterBookSlugs,
+			customCoverUrl,
+			series,
+			authorIds: inputAuthorIds,
+			authors: inputAuthorNames,
+			...data
+		} = input;
 		const coverFields: {
 			coverId?: number | null;
 			customCoverUrl?: string | null;
@@ -501,6 +588,17 @@ export async function updateBook(
 			where: { id: book.id },
 			data: { ...data, ...coverFields },
 		});
+
+		if (inputAuthorIds?.length || inputAuthorNames?.length) {
+			const resolved = await resolveBookAuthors(
+				tx,
+				{ authorIds: inputAuthorIds, authors: inputAuthorNames },
+				adminUserId,
+			);
+			createdAuthorIds = resolved.createdIds;
+			// Taking an author off a book never deletes the author.
+			await setBookAuthors(tx, book.id, resolved.authorIds);
+		}
 
 		if (readAfterBookSlugs !== undefined) {
 			await syncBookReadAfterPrerequisites(book.id, readAfterBookSlugs, tx);
@@ -536,6 +634,7 @@ export async function updateBook(
 	});
 
 	void tryDeleteR2PublicUrl(replacedCoverUrl);
+	scheduleAuthorEnrichment(db, createdAuthorIds);
 
 	return result;
 }

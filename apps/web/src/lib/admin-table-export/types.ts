@@ -7,7 +7,8 @@ export type AdminTableExportResource =
 	| "posts"
 	| "comments"
 	| "documents"
-	| "series";
+	| "series"
+	| "authors";
 
 export type AdminTableExportFormat = "json" | "csv";
 

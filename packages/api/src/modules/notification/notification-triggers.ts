@@ -302,6 +302,75 @@ export async function notifyBookAddedToLibrary(
 	});
 }
 
+/**
+ * Tells members who follow one of the book's authors, once each even when they follow
+ * several. Never the admin who added the book.
+ */
+export async function notifyFollowersOfNewBook(
+	db: Database,
+	bookSlug: string,
+	options: { excludeUserIds?: string[] } = {},
+): Promise<void> {
+	const book = await db.book.findUnique({
+		where: { slug: bookSlug },
+		select: {
+			title: true,
+			authorLinks: {
+				orderBy: { position: "asc" },
+				select: {
+					author: {
+						select: {
+							name: true,
+							followers: {
+								where: { targetType: "author" },
+								select: { followerId: true },
+							},
+						},
+					},
+				},
+			},
+		},
+	});
+	if (!book) {
+		return;
+	}
+
+	const activeMemberIds = new Set(await listActiveMemberUserIds(db));
+	const excluded = new Set(options.excludeUserIds ?? []);
+	const authorNamesByFollower = new Map<string, string[]>();
+	for (const link of book.authorLinks) {
+		for (const { followerId } of link.author.followers) {
+			if (!activeMemberIds.has(followerId) || excluded.has(followerId)) {
+				continue;
+			}
+			const names = authorNamesByFollower.get(followerId) ?? [];
+			names.push(link.author.name);
+			authorNamesByFollower.set(followerId, names);
+		}
+	}
+
+	// One notification per distinct wording, so a follower of two authors gets a single one.
+	const followersByTitle = new Map<string, string[]>();
+	for (const [followerId, names] of authorNamesByFollower) {
+		const label =
+			names.length <= 2 ? names.join(" and ") : `${names[0]} and others`;
+		const title = `A new book by ${label}`;
+		const list = followersByTitle.get(title) ?? [];
+		list.push(followerId);
+		followersByTitle.set(title, list);
+	}
+
+	for (const [title, recipientUserIds] of followersByTitle) {
+		await dispatchNotification(db, {
+			kind: "author_new_book",
+			recipientUserIds,
+			title,
+			body: `“${book.title}” was added to the club library.`,
+			href: `/books/${bookSlug}`,
+		});
+	}
+}
+
 export async function notifySittingPollStarted(
 	db: Database,
 	sittingSlug: string,

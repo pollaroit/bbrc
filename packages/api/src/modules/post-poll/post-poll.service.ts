@@ -1,10 +1,10 @@
 import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import {
-	authorNameToSlug,
 	ballotAccess,
 	bookCountryCodeSchema,
 	canSeeResults,
+	formatAuthorLifespan,
 	getBookCountryName,
 	getZonedParts,
 	isTighterOrEqualBallotVisibility,
@@ -22,6 +22,7 @@ import {
 	validatePollSetup,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import { findAuthorBySlug } from "../../lib/authors";
 import { dispatchNotification } from "../notification/notification.service";
 import {
 	assertContentNotVisible,
@@ -93,7 +94,36 @@ const pollSelect = {
 	},
 } as const satisfies Prisma.PostPollSelect;
 
-type PollRow = Prisma.PostPollGetPayload<{ select: typeof pollSelect }>;
+type PollRow = Prisma.PostPollGetPayload<{ select: typeof pollSelect }> & {
+	/** Photos of the authors the options point at (by canonical slug), when they have one. */
+	authorPhotos?: Record<string, string>;
+};
+
+/** Looks up the photos of author options in one query and hangs them on the rows. */
+async function withAuthorPhotos<
+	T extends Prisma.PostPollGetPayload<{ select: typeof pollSelect }>,
+>(
+	db: Db,
+	rows: T[],
+): Promise<(T & { authorPhotos: Record<string, string> })[]> {
+	const slugs = new Set<string>();
+	for (const row of rows) {
+		for (const option of row.options) {
+			if (option.kind === "author" && option.refKey) slugs.add(option.refKey);
+		}
+	}
+	const photos: Record<string, string> = {};
+	if (slugs.size > 0) {
+		const authors = await db.author.findMany({
+			where: { slug: { in: [...slugs] }, photoUrl: { not: null } },
+			select: { slug: true, photoUrl: true },
+		});
+		for (const author of authors) {
+			if (author.photoUrl) photos[author.slug] = author.photoUrl;
+		}
+	}
+	return rows.map((row) => ({ ...row, authorPhotos: photos }));
+}
 
 export function pollViewer(session: Session | null): PollViewer {
 	const viewer = viewerFromSession(session);
@@ -110,7 +140,10 @@ function toMember(user: {
 
 // ── Building the view ──────────────────────────────────────────────────────
 
-function optionTarget(option: PollRow["options"][number]) {
+function optionTarget(
+	option: PollRow["options"][number],
+	authorPhotos?: Record<string, string>,
+) {
 	return {
 		slug: option.book?.slug ?? option.series?.slug ?? null,
 		title: option.book?.title ?? option.series?.title ?? null,
@@ -119,7 +152,12 @@ function optionTarget(option: PollRow["options"][number]) {
 		username:
 			option.user && !option.user.isHidden ? option.user.username : null,
 		name: option.user && !option.user.isHidden ? option.user.name : null,
-		image: option.user && !option.user.isHidden ? option.user.image : null,
+		image:
+			option.kind === "author" && option.refKey
+				? (authorPhotos?.[option.refKey] ?? null)
+				: option.user && !option.user.isHidden
+					? option.user.image
+					: null,
 		code: option.kind === "country" ? option.refKey : null,
 	};
 }
@@ -226,7 +264,7 @@ export function buildPollView(
 			position: option.position,
 			userAdded: option.userAdded,
 			addedBy: option.addedBy ? toMember(option.addedBy) : null,
-			target: optionTarget(option),
+			target: optionTarget(option, row.authorPhotos),
 			canRemove,
 			result:
 				resultsVisible && optionTally
@@ -305,8 +343,9 @@ export async function loadPollViews(
 	const now = new Date();
 	void settleEndedPolls(db, rows, now);
 
+	const withPhotos = await withAuthorPhotos(db, rows);
 	return new Map(
-		rows.map((row) => [row.post.id, buildPollView(row, viewer, now)]),
+		withPhotos.map((row) => [row.post.id, buildPollView(row, viewer, now)]),
 	);
 }
 
@@ -318,7 +357,8 @@ async function loadPollRow(db: Db, postSlug: string): Promise<PollRow> {
 	if (!row) {
 		throw new ORPCError("NOT_FOUND", { message: "Poll not found" });
 	}
-	return row;
+	const [withPhotos] = await withAuthorPhotos(db, [row]);
+	return withPhotos ?? row;
 }
 
 export async function getPollView(
@@ -470,24 +510,16 @@ async function resolveOption(
 	}
 
 	if (kind === "author") {
-		const name = input.label?.trim();
-		if (!name || authorNameToSlug(name) !== key) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Pick an author from the list.",
-			});
-		}
-		const known = await db.book.findFirst({
-			where: { authors: { has: name } },
-			select: { id: true },
-		});
-		if (!known)
+		const author = await findAuthorBySlug(db, key);
+		if (!author) {
 			throw new ORPCError("NOT_FOUND", { message: "Author not found." });
+		}
 		return {
 			kind,
-			label: name,
-			dedupeKey: refDedupeKey(kind, key),
+			label: author.name,
+			dedupeKey: refDedupeKey(kind, author.slug),
 			...empty,
-			refKey: key,
+			refKey: author.slug,
 		};
 	}
 
@@ -1040,17 +1072,37 @@ export async function searchPollTargets(
 	}
 
 	if (kind === "author") {
-		const rows = await db.$queryRaw<{ name: string }[]>`
-			SELECT DISTINCT author AS name
-			FROM book, unnest(authors) AS author
-			WHERE author ILIKE ${`%${query}%`}
-			ORDER BY author
-			LIMIT ${limit}
-		`;
+		const rows = await db.author.findMany({
+			where: {
+				books: { some: {} },
+				OR: [
+					{ name: { contains: query, mode: "insensitive" } },
+					{
+						aliases: {
+							some: { alias: { contains: query, mode: "insensitive" } },
+						},
+					},
+				],
+			},
+			orderBy: { name: "asc" },
+			take: limit,
+			select: {
+				slug: true,
+				name: true,
+				photoUrl: true,
+				birthYear: true,
+				deathYear: true,
+			},
+		});
 		return rows.map((row) => ({
-			key: authorNameToSlug(row.name),
+			key: row.slug,
 			label: row.name,
 			...none,
+			sublabel: formatAuthorLifespan({
+				birth: { year: row.birthYear },
+				death: { year: row.deathYear },
+			}),
+			image: row.photoUrl,
 		}));
 	}
 

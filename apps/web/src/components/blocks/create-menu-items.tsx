@@ -10,6 +10,7 @@ import {
 	PenLine,
 	Sofa,
 	Target,
+	UserPlus,
 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
@@ -126,6 +127,13 @@ export function CreateMenuItems({
 							onNavigate={onNavigate}
 						/>
 						<SheetLinkRow
+							icon={UserPlus}
+							label="Add author"
+							description="Admin catalog"
+							href={"/authors/new" as Route}
+							onNavigate={onNavigate}
+						/>
+						<SheetLinkRow
 							icon={Layers}
 							label="Add series"
 							description="Admin catalog"
@@ -190,6 +198,15 @@ export function CreateMenuItems({
 					>
 						<BookPlus className="size-4" aria-hidden="true" />
 						Add book
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						render={
+							<Link href={"/authors/new" as Route} onClick={onNavigate} />
+						}
+						nativeButton={false}
+					>
+						<UserPlus className="size-4" aria-hidden="true" />
+						Add author
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						render={

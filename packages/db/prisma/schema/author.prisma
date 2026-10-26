@@ -1,0 +1,180 @@
+enum AuthorGender {
+  female
+  male
+  non_binary
+  other
+  unknown
+
+  @@map("author_gender")
+}
+
+/// `verified` = an admin confirmed it; `auto` = filled in by the pipeline and live;
+/// `needs_review` = the pipeline was unsure (possible duplicate, thin data).
+enum AuthorStatus {
+  verified
+  auto
+  needs_review
+
+  @@map("author_status")
+}
+
+enum AuthorEnrichmentStatus {
+  pending
+  running
+  done
+  failed
+
+  @@map("author_enrichment_status")
+}
+
+/// A writer of a work. One record per person: spelling variants are `AuthorAlias`es of it.
+model Author {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// The address, made from the name when the author first appeared (the same slug
+  /// the app always used for that name). It never changes when the name is edited.
+  slug String @unique
+
+  /// The name we show.
+  name     String
+  /// "Tolkien, J. R. R." for sorting.
+  sortName String? @map("sort_name")
+  /// Normalised form of `name` for finding duplicates (accents, initials and word order ignored).
+  nameKey  String  @map("name_key")
+
+  /// Plain text, up to 2,000 characters.
+  bio       String? @db.Text
+  /// Where the bio came from: openlibrary, wikipedia, ai or admin.
+  bioSource String? @map("bio_source")
+
+  /// Dates with precision: a year alone is common, so month and day are optional.
+  birthYear  Int? @map("birth_year")
+  birthMonth Int? @map("birth_month")
+  birthDay   Int? @map("birth_day")
+  deathYear  Int? @map("death_year")
+  deathMonth Int? @map("death_month")
+  deathDay   Int? @map("death_day")
+
+  birthPlace String? @map("birth_place")
+  deathPlace String? @map("death_place")
+
+  /// ISO 3166-1 alpha-2 codes (one or more), the same list the books use.
+  nationalities String[]     @default([])
+  gender        AuthorGender @default(unknown)
+
+  wikipediaUrl String? @map("wikipedia_url")
+  goodreadsUrl String? @map("goodreads_url")
+  /// Open Library author id (OL…A), when known.
+  openLibraryId String? @unique @map("open_library_id")
+  wikidataId    String? @map("wikidata_id")
+  websiteUrl    String? @map("website_url")
+
+  /// A photo we host (public storage URL) and its credit.
+  photoUrl       String? @map("photo_url")
+  photoCredit    String? @map("photo_credit")
+  photoLicense   String? @map("photo_license")
+  photoSourceUrl String? @map("photo_source_url")
+
+  status AuthorStatus @default(auto)
+
+  /// Per field: where it came from and whether an admin locked it,
+  /// for example {"bio":{"source":"wikipedia","locked":false},"gender":{"source":"wikidata"}}.
+  fieldMeta Json @default("{}") @map("field_meta")
+
+  enrichmentStatus   AuthorEnrichmentStatus @default(pending) @map("enrichment_status")
+  enrichmentAttempts Int                    @default(0) @map("enrichment_attempts")
+  enrichmentError    String?                @map("enrichment_error")
+  enrichedAt         DateTime?              @map("enriched_at")
+
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation("AuthorCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  books         BookAuthor[]
+  aliases       AuthorAlias[]
+  slugRedirects AuthorSlugRedirect[]
+  followers     Follow[]
+
+  @@index([nameKey])
+  @@index([status])
+  @@index([enrichmentStatus])
+  @@index([wikidataId])
+  @@map("author")
+}
+
+/// Another spelling of an author's name. One alias belongs to one author.
+model AuthorAlias {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  authorId String @map("author_id")
+  author   Author @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  alias String
+  /// Normalised `alias`, unique across all authors.
+  key   String @unique
+
+  @@index([authorId])
+  @@map("author_alias")
+}
+
+/// An address that used to be an author (merged into another): it redirects.
+model AuthorSlugRedirect {
+  slug     String @id
+  authorId String @map("author_id")
+  author   Author @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@map("author_slug_redirect")
+}
+
+/// Which authors wrote a work, in order. (Translators and illustrators belong to editions.)
+model BookAuthor {
+  bookId String @map("book_id")
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  authorId String @map("author_id")
+  author   Author @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  position Int @default(0)
+
+  @@id([bookId, authorId])
+  @@index([authorId])
+  @@index([bookId, position])
+  @@map("book_author")
+}
+
+enum FollowTargetType {
+  author
+  user
+
+  @@map("follow_target_type")
+}
+
+/// A member following something. Built to hold more than authors: members will be able
+/// to follow members, so the target is an author OR a user (exactly one of the two ids).
+model Follow {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  followerId String @map("follower_id")
+  follower   User   @relation("FollowsMade", fields: [followerId], references: [id], onDelete: Cascade)
+
+  targetType FollowTargetType @map("target_type")
+
+  authorId String? @map("author_id")
+  author   Author? @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  targetUserId String? @map("target_user_id")
+  targetUser   User?   @relation("FollowedBy", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, authorId])
+  @@unique([followerId, targetUserId])
+  @@index([authorId])
+  @@index([targetUserId])
+  @@index([followerId, createdAt])
+  @@map("follow")
+}

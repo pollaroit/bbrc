@@ -18,6 +18,7 @@ import {
 	bookListSearching,
 	bookListSorting,
 } from "./book.listing";
+import { BookAuthorRefsSchema } from "./book-author-refs";
 
 export {
 	bookListRanging,
@@ -166,6 +167,8 @@ export const BookWithRequestedBySchema = BookSchema.pick(
 });
 
 export const BookListItemSchema = BookSchema.pick(getBookListFields).extend({
+	/** The work's author records in order (empty until the backfill linked the book). */
+	authorRefs: BookAuthorRefsSchema,
 	approvedDocumentCount: z.number().int().min(0),
 	readCount: z.number().int().min(0),
 	feedbackCount: z.number().int().min(0),
@@ -254,10 +257,12 @@ export type TGetBookListInputSchema = GetBookListInput;
 /** @deprecated Use `GetBookListOutput` */
 export type TGetBookListOutputSchema = GetBookListOutput;
 
+/** Authors of a work: ids from the author chips (preferred), or plain names (each resolved to an author). */
+const bookAuthorIdsSchema = z.array(z.string().uuid()).min(1).max(12);
+
 /** ADD */
 export const AddBookInputSchema = BookSchema.pick({
 	title: true,
-	authors: true,
 	coverId: true,
 	openLibraryRating: true,
 	excerpt: true,
@@ -269,6 +274,10 @@ export const AddBookInputSchema = BookSchema.pick({
 	subjects: true,
 })
 	.extend({
+		/** Author records, in order (from the chips). Wins over `authors`. */
+		authorIds: bookAuthorIdsSchema.optional(),
+		/** Author names, resolved to existing authors (by name, alias or likely spelling) or created. */
+		authors: BookSchema.shape.authors.optional(),
 		acceptanceNotes: z
 			.string()
 			.trim()
@@ -288,6 +297,13 @@ export const AddBookInputSchema = BookSchema.pick({
 		notifyMembers: z.boolean().optional(),
 	})
 	.superRefine((value, ctx) => {
+		if (!value.authorIds?.length && !value.authors?.length) {
+			ctx.addIssue({
+				code: "custom",
+				message: "Add at least one author.",
+				path: ["authorIds"],
+			});
+		}
 		if (value.seriesSlug && value.newSeries) {
 			ctx.addIssue({
 				code: "custom",
@@ -314,6 +330,15 @@ export const GetBookBySlugOutputSchema = BookSchema.omit({
 	approvedById: true,
 }).extend({
 	requestedBy: BookRequestedBySchema.nullable(),
+	/** The work's author records in order (what the author chips load); `authors` is the names copy. */
+	authorRefs: z.array(
+		z.object({
+			id: z.string().uuid(),
+			slug: z.string(),
+			name: z.string(),
+			photoUrl: z.string().nullable(),
+		}),
+	),
 	readAfterBooks: z.array(
 		z.object({
 			slug: BookSchema.shape.slug,
@@ -348,6 +373,8 @@ export const UpdateBookInputSchema = BookSchema.pick({
 	.partial()
 	.required({ slug: true })
 	.extend({
+		/** Author records, in order (from the chips). Wins over `authors`. */
+		authorIds: bookAuthorIdsSchema.optional(),
 		readAfterBookSlugs: z.array(BookSchema.shape.slug).max(20).optional(),
 		countries: bookCountriesSchema.optional(),
 		/** A newly uploaded cover; null removes the uploaded cover. */

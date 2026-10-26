@@ -2,7 +2,12 @@ import type { Database, Prisma } from "@bbrc/db";
 import { mergeWhereFragments } from "../../utils/searching";
 import { bookListRanging } from "./book.listing";
 import type { GetBookListInput } from "./book.schema";
-import { resolveAuthorSlugsToNames } from "./book-author-filter";
+import {
+	type AuthorFilter,
+	buildAuthorFilterWhere,
+	isEmptyAuthorFilter,
+	resolveAuthorFilter,
+} from "./book-author-filter";
 import { bookIdsWithFeedbackCountBounds } from "./book-feedback-count-filter";
 import {
 	buildBookTextSearchWhere,
@@ -16,7 +21,7 @@ export type BookListQueryInput = Omit<GetBookListInput, "cursor" | "limit"> & {
 };
 
 export type BuildBookListWhereOptions = {
-	resolvedAuthorNames?: string[];
+	authorFilter?: AuthorFilter;
 	resolvedSubjectNames?: string[];
 	searchAuthorBookIds?: string[];
 };
@@ -87,6 +92,7 @@ export function buildBookListWhere(
 	return mergeWhereFragments<Prisma.BookWhereInput>(
 		ranging.use(),
 		searchWhere,
+		buildAuthorFilterWhere(options?.authorFilter) ?? {},
 		{
 			status: input.statuses ? { in: input.statuses } : undefined,
 			openLibraryRating:
@@ -110,10 +116,6 @@ export function buildBookListWhere(
 							gte: input.minPages ?? undefined,
 							lte: input.maxPages ?? undefined,
 						},
-			authors:
-				options?.resolvedAuthorNames && options.resolvedAuthorNames.length > 0
-					? { hasSome: options.resolvedAuthorNames }
-					: undefined,
 			subjects:
 				options?.resolvedSubjectNames && options.resolvedSubjectNames.length > 0
 					? input.subjectsMatch === "all"
@@ -136,18 +138,18 @@ export function buildBookListWhere(
 	);
 }
 
-/** Returns `null` when author slugs match no catalog names (empty list). */
+/** Returns `null` when author slugs match no author (empty list). */
 export async function buildBookListWhereWithAuthors(
 	input: BookListQueryInput,
 	db: Database,
 	viewerUserId?: string,
 ): Promise<Prisma.BookWhereInput | null> {
-	let resolvedAuthorNames: string[] | undefined;
+	let authorFilter: AuthorFilter | undefined;
 	let resolvedSubjectNames: string[] | undefined;
 
 	if (input.authors && input.authors.length > 0) {
-		resolvedAuthorNames = await resolveAuthorSlugsToNames(input.authors, db);
-		if (resolvedAuthorNames.length === 0) {
+		authorFilter = await resolveAuthorFilter(input.authors, db);
+		if (isEmptyAuthorFilter(authorFilter)) {
 			return null;
 		}
 	}
@@ -185,7 +187,7 @@ export async function buildBookListWhereWithAuthors(
 	}
 
 	const baseWhere = buildBookListWhere(input, viewerUserId, {
-		resolvedAuthorNames,
+		authorFilter,
 		resolvedSubjectNames,
 		searchAuthorBookIds,
 	});

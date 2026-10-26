@@ -16,6 +16,10 @@ import {
 	yearFromPublishDate,
 } from "../../lib/open-library/edition-full";
 import { listWorkEditions } from "../../lib/open-library/work-editions";
+import {
+	bookAuthorRefsSelect,
+	mapBookAuthorRefs,
+} from "../book/book-author-refs";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type {
 	EditionCore,
@@ -51,6 +55,7 @@ async function loadBook(db: Database, slug: string) {
 			slug: true,
 			title: true,
 			authors: true,
+			...bookAuthorRefsSelect,
 			coverId: true,
 			pages: true,
 			olid: true,
@@ -496,6 +501,7 @@ export async function getEdition(
 				slug: book.slug,
 				title: book.title,
 				authors: book.authors,
+				authorRefs: mapBookAuthorRefs(book.authorLinks),
 				coverId: book.coverId,
 				pages: book.pages,
 			},

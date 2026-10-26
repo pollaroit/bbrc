@@ -1,6 +1,6 @@
 "use client";
 
-import type { GetAuthorListCountryFacetsInput } from "@bbrc/api/modules/author/author.schema";
+import type { AuthorNationalityFacetsInput } from "@bbrc/api/modules/author/author.schema";
 import { Button } from "@bbrc/ui/components/button";
 import { Card } from "@bbrc/ui/components/card";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
@@ -25,11 +25,11 @@ type ListingAuthorCountryMultiSelectProps = {
 	legend?: string;
 	selectedAlpha2: string[];
 	onSelectedAlpha2Change: (codes: string[]) => void;
-	facetInput: Partial<GetAuthorListCountryFacetsInput>;
+	facetInput: Partial<AuthorNationalityFacetsInput>;
 };
 
 export function ListingAuthorCountryMultiSelect({
-	legend = "Author country",
+	legend = "Nationality",
 	selectedAlpha2,
 	onSelectedAlpha2Change,
 	facetInput,
@@ -39,7 +39,7 @@ export function ListingAuthorCountryMultiSelect({
 	const facetInputKey = useMemo(() => JSON.stringify(facetInput), [facetInput]);
 
 	const facetsQuery = useQuery({
-		...orpc.author.getCountryFacets.queryOptions({
+		...orpc.author.nationalityFacets.queryOptions({
 			input: facetInput,
 		}),
 	});

@@ -1,6 +1,7 @@
 import { fetchWorkEditionTotalCount } from "@bbrc/api/lib/open-library/work-editions";
-import { getAuthorPage } from "@bbrc/api/modules/author/author.service";
-import { loadAuthorCatalog } from "@bbrc/api/modules/author/author-catalog";
+import { AuthorBooksInputSchema } from "@bbrc/api/modules/author/author.schema";
+import { getAuthorBooks } from "@bbrc/api/modules/author/author-books.service";
+import { getAuthor } from "@bbrc/api/modules/author/author-directory.service";
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { bookSittingsWhere } from "@bbrc/api/modules/book/book-sittings.service";
 import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
@@ -299,19 +300,24 @@ async function resolveSeriesListOg(): Promise<OgImageContent> {
 }
 
 async function resolveAuthorsListOg(): Promise<OgImageContent> {
-	const [catalog, books, reviews] = await Promise.all([
-		loadAuthorCatalog(db),
+	const withBooks = { books: { some: {} } };
+	const [writers, rated, books, reviews] = await Promise.all([
+		db.author.count({ where: withBooks }),
+		db.author.count({
+			where: {
+				books: { some: { book: { feedbacks: { some: {} } } } },
+			},
+		}),
 		db.book.count(),
 		db.feedback.count(),
 	]);
-	const rated = catalog.filter((entry) => entry.averageRating != null).length;
 
 	return {
 		kind: "Authors",
 		title: "Authors",
 		body: "Browse writers in the catalog by country, reads, reviews and club rating.",
 		facts: [
-			fact("Writers", num(catalog.length)),
+			fact("Writers", num(writers)),
 			fact("Books", num(books)),
 			fact("Reviews", num(reviews)),
 			fact("Club-rated", num(rated)),
@@ -538,56 +544,47 @@ async function resolveBookOg(
 }
 
 async function resolveAuthorDetailOg(slug: string): Promise<OgImageContent> {
-	const author = await getAuthorPage(slug, db);
-	const by = { authors: { has: author.name } };
-	const onBook = { book: by };
-
-	const [books, reads, readers, reviews] = await Promise.all([
-		db.book.findMany({
-			where: by,
-			orderBy: { createdAt: "desc" },
-			select: { pages: true, coverId: true },
+	const author = await getAuthor(slug, db, null);
+	const { profile, numbers } = author;
+	const books = await getAuthorBooks(
+		AuthorBooksInputSchema.parse({
+			slug: profile.slug,
+			limit: 6,
+			sortBy: "reads._count",
+			sortDirection: "desc",
 		}),
-		db.read.count({ where: onBook }),
-		db.read.findMany({
-			where: onBook,
-			distinct: ["userId"],
-			select: { userId: true },
-		}),
-		db.feedback.aggregate({
-			where: onBook,
-			_avg: { rating: true },
-			_count: { _all: true },
-		}),
-	]);
-
-	const pages = books.reduce((sum, row) => sum + (row.pages ?? 0), 0);
-	const average = reviews._avg.rating;
-	const perBook = books.length > 0 ? reads / books.length : 0;
+		db,
+		null,
+	);
+	const photo = profile.photo ? await ogImageData(profile.photo.url) : null;
+	const subtitle = [profile.lifespan, profile.nationalities[0]?.name]
+		.filter(Boolean)
+		.join(" · ");
 
 	return {
 		kind: "Author",
-		title: author.name,
-		subtitle: `${author.bookCount} ${author.bookCount === 1 ? "book" : "books"} in the catalog`,
-		body: "Club reads, reviews and related authors.",
-		media: await coversMedia(books.map((row) => row.coverId)),
+		title: profile.name,
+		subtitle:
+			subtitle ||
+			`${numbers.bookCount} ${numbers.bookCount === 1 ? "book" : "books"} in the catalog`,
+		body: profile.bio
+			? truncateAtWord(profile.bio, 170)
+			: "Club reads, reviews and related authors.",
+		media: photo
+			? { kind: "photo", src: photo }
+			: await coversMedia(books.items.map((row) => row.coverId)),
 		facts: [
-			fact("Total pages", num(pages)),
-			average != null
+			fact("Books", num(numbers.bookCount)),
+			numbers.averageRating != null
 				? fact(
 						"Avg rating",
-						outOfFive(average),
-						rating(average),
-						`from ${num(reviews._count._all)} ${reviews._count._all === 1 ? "review" : "reviews"}`,
+						outOfFive(numbers.averageRating),
+						rating(numbers.averageRating),
+						`from ${num(numbers.reviewCount)} ${numbers.reviewCount === 1 ? "review" : "reviews"}`,
 					)
 				: fact("Avg rating", "No reviews"),
-			fact("Readers", num(readers.length)),
-			fact(
-				"Total reads",
-				num(reads),
-				undefined,
-				`${perBook.toFixed(1)} per book`,
-			),
+			fact("Readers", num(numbers.readerCount)),
+			fact("Total reads", num(numbers.readCount)),
 		],
 	};
 }
@@ -1348,7 +1345,8 @@ export async function resolveOgImageContent(
 		);
 	}
 
-	if (section === "authors" && rest.length === 0) {
+	// Every tab of an author shares the author's card.
+	if (section === "authors") {
 		return resolveAuthorDetailOg(slug).catch(() =>
 			notFound("Author", "Author"),
 		);

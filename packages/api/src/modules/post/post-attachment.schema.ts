@@ -133,6 +133,12 @@ export const PostAttachmentAuthorSchema = zod.object({
 	author: zod.object({
 		slug: zod.string(),
 		name: zod.string(),
+		/** The author's photo, when an admin chose one. */
+		photoUrl: zod.string().nullable(),
+		/** "1821–1881", "b. 1965" or null when unknown. */
+		lifespan: zod.string().nullable(),
+		/** Books by the author in the library (null until looked up). */
+		bookCount: zod.number().int().nullable(),
 	}),
 });
 

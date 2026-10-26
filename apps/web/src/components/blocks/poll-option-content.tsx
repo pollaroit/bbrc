@@ -88,8 +88,16 @@ export function PollOptionContent({
 	if (kind === "author" || kind === "series") {
 		return (
 			<span className={cn("flex min-w-0 items-center gap-3", className)}>
-				<span className="grid size-8 shrink-0 place-items-center bg-muted">
-					{kind === "author" ? (
+				<span className="relative grid size-8 shrink-0 place-items-center overflow-hidden bg-muted">
+					{kind === "author" && target.image ? (
+						<Image
+							src={target.image}
+							alt=""
+							fill
+							sizes="32px"
+							className="object-cover"
+						/>
+					) : kind === "author" ? (
 						<UserRound className="size-4 text-muted-foreground" />
 					) : (
 						<Library className="size-4 text-muted-foreground" />

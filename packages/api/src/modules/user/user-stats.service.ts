@@ -2,6 +2,7 @@ import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import {
 	averageNumber,
+	bookAuthorEntries,
 	compareMonths,
 	computeCumulativeReadSeries,
 	computeReadingPace,
@@ -73,6 +74,10 @@ const readBookSelect = {
 	slug: true,
 	title: true,
 	authors: true,
+	authorLinks: {
+		orderBy: { position: "asc" },
+		select: { author: { select: { id: true, slug: true, name: true } } },
+	},
 	pages: true,
 	countries: true,
 	subjects: true,
@@ -205,8 +210,8 @@ export async function getUserStats(
 	const authorSet = new Set<string>();
 	const countrySet = new Set<string>();
 	for (const read of readsInPeriod) {
-		for (const author of read.book.authors) {
-			authorSet.add(author.trim().toLowerCase());
+		for (const author of bookAuthorEntries(read.book)) {
+			authorSet.add(author.key);
 		}
 		for (const country of read.book.countries) {
 			const code = country.trim().toUpperCase();
@@ -341,7 +346,7 @@ export async function getUserStats(
 		period.type === "none" ? readsInPeriod : datedReadsInPeriod;
 	const analyticsRows = analyticsReads.map((read) => ({
 		pages: read.book.pages,
-		authorKeys: read.book.authors.map((a) => a.trim().toLowerCase()),
+		authorKeys: bookAuthorEntries(read.book).map((a) => a.key),
 		book: read.book,
 	}));
 
@@ -350,7 +355,7 @@ export async function getUserStats(
 		return {
 			finish,
 			pages: read.book.pages,
-			authorKeys: read.book.authors.map((a) => a.trim().toLowerCase()),
+			authorKeys: bookAuthorEntries(read.book).map((a) => a.key),
 			book: read.book,
 		};
 	});
@@ -631,6 +636,7 @@ function buildAuthorCountryRows(
 		string,
 		{
 			label: string;
+			slug: string | null;
 			books: (typeof reads)[number]["book"][];
 		}
 	>();
@@ -638,18 +644,15 @@ function buildAuthorCountryRows(
 	for (const read of reads) {
 		const keys =
 			mode === "authors"
-				? read.book.authors.map((author) => ({
-						key: author.trim().toLowerCase(),
-						label: author.trim(),
-					}))
+				? bookAuthorEntries(read.book)
 				: read.book.countries.map((country) => {
 						const code = country.trim().toUpperCase();
-						return { key: code, label: code };
+						return { key: code, label: code, slug: null };
 					});
 
-		for (const { key, label } of keys) {
+		for (const { key, label, slug } of keys) {
 			if (!key) continue;
-			const entry = map.get(key) ?? { label, books: [] };
+			const entry = map.get(key) ?? { label, slug, books: [] };
 			entry.books.push(read.book);
 			map.set(key, entry);
 		}
@@ -670,6 +673,7 @@ function buildAuthorCountryRows(
 			return {
 				key,
 				label: entry.label,
+				slug: entry.slug,
 				bookCount: entry.books.length,
 				topRatedBook: topRated ? mapStatsBook(topRated) : null,
 				userAverageRating: averageNumber(ratings),

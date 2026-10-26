@@ -132,6 +132,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 							) : null}
 							<BookAuthorLinks
 								authors={book.authors}
+								refs={book.authorRefs}
 								className="text-sm leading-relaxed"
 							/>
 							<BookReadAfterLinks readAfterBooks={book.readAfterBooks} />

@@ -96,6 +96,14 @@ export const adminSeriesTabs = [
 	{ href: "/admin/series/stats" as Route, label: "Stats" },
 ] as const;
 
+export const adminAuthorTabs = [
+	{ href: "/admin/authors" as Route, label: "Overview" },
+	{ href: "/admin/authors/list" as Route, label: "List" },
+	{ href: "/admin/authors/stats" as Route, label: "Stats" },
+	{ href: "/admin/authors/review" as Route, label: "Needs review" },
+	{ href: "/admin/authors/backfill" as Route, label: "Backfill" },
+] as const;
+
 export const adminPostTabs = [
 	{ href: "/admin/posts" as Route, label: "Overview" },
 	{ href: "/admin/posts/list" as Route, label: "List" },

@@ -57,6 +57,7 @@ model Book {
 
   feedbacks           Feedback[]
   readings            Reading[]
+  authorLinks         BookAuthor[]
   editions            BookEdition[]
   editionTombstones   EditionTombstone[]
   editionSnapshots    EditionSnapshot[]

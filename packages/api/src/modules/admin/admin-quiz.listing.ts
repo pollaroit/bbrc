@@ -58,7 +58,20 @@ export const adminQuizListSearching = defineSearching<
 		"book.title": (query) => ({
 			book: { title: { contains: query, mode: "insensitive" } },
 		}),
-		"book.authors": (query) => ({ book: { authors: { has: query } } }),
+		"book.authors": (query) => ({
+			book: {
+				OR: [
+					{ authors: { has: query } },
+					{
+						authorLinks: {
+							some: {
+								author: { name: { contains: query, mode: "insensitive" } },
+							},
+						},
+					},
+				],
+			},
+		}),
 		"generatedBy.username": (query) => ({
 			generatedBy: { username: { contains: query, mode: "insensitive" } },
 		}),

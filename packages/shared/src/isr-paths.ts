@@ -34,3 +34,11 @@ export function seriesListIsrPath() {
 export function seriesDetailIsrPath(slug: string) {
 	return `/series/${slug}`;
 }
+
+export function authorDetailIsrPath(slug: string) {
+	return `/authors/${slug}`;
+}
+
+export function authorsListIsrPath() {
+	return "/authors";
+}

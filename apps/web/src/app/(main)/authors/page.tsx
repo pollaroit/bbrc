@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { AuthorsLibraryPageHeader } from "@/components/blocks/authors-library-page-header";
-import { AuthorsList } from "@/components/blocks/authors-list";
+import { AuthorsListGrid } from "@/components/blocks/author/authors-list-grid";
+import { AuthorsListHeader } from "@/components/blocks/author/authors-list-header";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildPageMetadata({
 	title: "Authors",
 	description:
-		"Browse writers in the BBRC catalog by name, country, and club stats.",
+		"Browse the writers behind the club's books by name, nationality and club stats.",
 	path: "/authors",
 });
 
@@ -18,8 +18,8 @@ export default function AuthorsPage() {
 		<div className="flex flex-col gap-8">
 			<ListingSearchParamsBoundary>
 				<div className="flex flex-col gap-8">
-					<AuthorsLibraryPageHeader />
-					<AuthorsList />
+					<AuthorsListHeader />
+					<AuthorsListGrid />
 				</div>
 			</ListingSearchParamsBoundary>
 		</div>

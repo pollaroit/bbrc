@@ -1,6 +1,6 @@
 import type { GlobalSearchHit } from "@bbrc/api/modules/search/global-search.schema";
 
-/** A page inside a book or member profile that search can jump straight to. */
+/** A page inside a book, author or member profile that search can jump straight to. */
 export type InnerPage = {
 	id: string;
 	label: string;
@@ -65,6 +65,31 @@ export const USER_INNER_PAGES: InnerPage[] = [
 	{ id: "rp", label: "RP", path: "rp" },
 ];
 
+export const AUTHOR_INNER_PAGES: InnerPage[] = [
+	{ id: "books", label: "Books", path: "books" },
+	{ id: "about", label: "About", path: "about", aliases: ["bio"] },
+	{ id: "more", label: "Similar authors", path: "more", aliases: ["similar"] },
+	{ id: "reads", label: "Reads", path: "reads" },
+	{
+		id: "reviews",
+		label: "Reviews",
+		path: "reviews",
+		aliases: ["feedbacks", "feedback"],
+	},
+	{ id: "posts", label: "Posts", path: "posts", aliases: ["feed"] },
+	{ id: "sittings", label: "Sittings", path: "sittings" },
+	{ id: "favorites", label: "Favorites", path: "favorites" },
+	{ id: "shelves", label: "Shelves", path: "shelves" },
+	{ id: "series", label: "Series", path: "series" },
+	{
+		id: "followers",
+		label: "Followers",
+		path: "followers",
+		aliases: ["following"],
+	},
+	{ id: "stats", label: "Stats", path: "stats", aliases: ["statistics"] },
+];
+
 export function innerPagesFor(
 	type: GlobalSearchHit["type"],
 ): InnerPage[] | null {
@@ -73,6 +98,9 @@ export function innerPagesFor(
 	}
 	if (type === "user") {
 		return USER_INNER_PAGES;
+	}
+	if (type === "author") {
+		return AUTHOR_INNER_PAGES;
 	}
 	return null;
 }

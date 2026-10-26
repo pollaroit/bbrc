@@ -1,14 +1,16 @@
-import { authorSortableFields } from "@bbrc/api/modules/author/author.listing";
 import type {
-	GetAuthorListCountryFacetsInput,
-	GetAuthorListInput,
+	AuthorListInput,
+	AuthorNationalityFacetsInput,
 } from "@bbrc/api/modules/author/author.schema";
+import { authorDirectorySortFields } from "@bbrc/api/modules/author/author-directory.listing";
 import { bookCountryCodeSchema } from "@bbrc/shared";
 import {
 	parseAsArrayOf,
+	parseAsBoolean,
 	parseAsFloat,
 	parseAsInteger,
 	parseAsString,
+	parseAsStringLiteral,
 	useQueryStates,
 } from "nuqs";
 import { buildListCallInput } from "@/lib/listing/build-list-call-input";
@@ -19,31 +21,77 @@ import {
 	sortDirectionParser,
 } from "@/lib/listing/parsers";
 
+export type AuthorSortField = (typeof authorDirectorySortFields)[number];
+
+/** Re-exported as a plain list for the sort menu. */
+export const authorDirectorySortFieldsList = authorDirectorySortFields;
+
 export const authorSortByLabels = {
 	name: "Name",
-	bookCount: "Book count",
-	readerCount: "Reader count",
-	reviewCount: "Review count",
+	bookCount: "Books",
+	readerCount: "Readers",
+	readCount: "Reads",
+	pageCount: "Total pages",
+	reviewCount: "Reviews",
 	averageRating: "Average rating",
-} as const satisfies FieldLabels<(typeof authorSortableFields)[number]>;
+	followerCount: "Followers",
+	createdAt: "Recently added",
+	birthYear: "Birth year",
+} as const satisfies FieldLabels<AuthorSortField>;
+
+export const AUTHOR_GENDER_FILTERS = [
+	"female",
+	"male",
+	"non_binary",
+	"other",
+] as const;
+
+export const authorGenderLabels = {
+	female: "Women",
+	male: "Men",
+	non_binary: "Non-binary",
+	other: "Other",
+} as const satisfies FieldLabels<(typeof AUTHOR_GENDER_FILTERS)[number]>;
+
+export const AUTHOR_STATUS_FILTERS = [
+	"verified",
+	"auto",
+	"needs_review",
+] as const;
+
+export const authorStatusLabels = {
+	verified: "Verified",
+	auto: "Filled in automatically",
+	needs_review: "Needs review",
+} as const satisfies FieldLabels<(typeof AUTHOR_STATUS_FILTERS)[number]>;
+
+export const AUTHORS_PAGE_SIZE = 24;
 
 export const authorsListingSearchParams = {
 	search: searchParser.withOptions({ shallow: false, throttleMs: 400 }),
-	sortBy: createSortByParser(authorSortableFields)
+	sortBy: createSortByParser(authorDirectorySortFields)
 		.withDefault("bookCount")
 		.withOptions({ shallow: false }),
 	sortDirection: sortDirectionParser
 		.withDefault("desc")
 		.withOptions({ shallow: false }),
 	minBooks: parseAsInteger.withOptions({ shallow: false }),
-	maxBooks: parseAsInteger.withOptions({ shallow: false }),
+	minReaders: parseAsInteger.withOptions({ shallow: false }),
 	minReads: parseAsInteger.withOptions({ shallow: false }),
-	maxReads: parseAsInteger.withOptions({ shallow: false }),
 	minReviews: parseAsInteger.withOptions({ shallow: false }),
-	maxReviews: parseAsInteger.withOptions({ shallow: false }),
-	minAverageRating: parseAsFloat.withOptions({ shallow: false }),
-	maxAverageRating: parseAsFloat.withOptions({ shallow: false }),
+	minPages: parseAsInteger.withOptions({ shallow: false }),
+	maxPages: parseAsInteger.withOptions({ shallow: false }),
+	minRating: parseAsFloat.withOptions({ shallow: false }),
+	maxRating: parseAsFloat.withOptions({ shallow: false }),
 	countries: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
+	genders: parseAsArrayOf(
+		parseAsStringLiteral(AUTHOR_GENDER_FILTERS),
+	).withOptions({ shallow: false }),
+	hasPhoto: parseAsBoolean.withOptions({ shallow: false }),
+	/** Admins only; ignored by the server for everyone else. */
+	statuses: parseAsArrayOf(
+		parseAsStringLiteral(AUTHOR_STATUS_FILTERS),
+	).withOptions({ shallow: false }),
 };
 
 export function useAuthorsListingSearchParams() {
@@ -69,71 +117,60 @@ export function normalizeCountryCodes(
 	return codes.length > 0 ? codes : undefined;
 }
 
-export function toAuthorListCallInput(
-	params: AuthorsListingSearchParams,
-): Partial<GetAuthorListInput> {
+function toFilterInput(params: AuthorsListingSearchParams) {
 	return buildListCallInput({
 		search: params.search,
+		minBooks: params.minBooks,
+		minReaders: params.minReaders,
+		minReads: params.minReads,
+		minReviews: params.minReviews,
+		minPages: params.minPages,
+		maxPages: params.maxPages,
+		minAverageRating: params.minRating,
+		maxAverageRating: params.maxRating,
+		countries: normalizeCountryCodes(params.countries),
+		genders: params.genders,
+		hasPhoto: params.hasPhoto === true ? true : null,
+		statuses: params.statuses,
+	});
+}
+
+export function toAuthorListCallInput(
+	params: AuthorsListingSearchParams,
+): Partial<AuthorListInput> {
+	return {
+		...toFilterInput(params),
 		sortBy: params.sortBy ?? "bookCount",
 		sortDirection: params.sortDirection ?? "desc",
-		minBooks: params.minBooks,
-		maxBooks: params.maxBooks,
-		minReads: params.minReads,
-		maxReads: params.maxReads,
-		minReviews: params.minReviews,
-		maxReviews: params.maxReviews,
-		minAverageRating: params.minAverageRating,
-		maxAverageRating: params.maxAverageRating,
-		countries: normalizeCountryCodes(params.countries),
-		limit: 24,
-	}) as Partial<GetAuthorListInput>;
+		limit: AUTHORS_PAGE_SIZE,
+	} as Partial<AuthorListInput>;
 }
 
-export function toAuthorListCatalogFilterInput(
+/** The facet counts follow every filter except the nationality picked itself. */
+export function toAuthorNationalityFacetsInput(
 	params: AuthorsListingSearchParams,
-): Partial<GetAuthorListInput> {
-	const listInput = toAuthorListCallInput(params);
-	const { limit: _limit, cursor: _cursor, ...rest } = listInput;
-	return rest;
-}
-
-export function toAuthorListCountryFacetsInput(
-	params: AuthorsListingSearchParams,
-): Partial<GetAuthorListCountryFacetsInput> {
-	const catalog = toAuthorListCatalogFilterInput(params);
-	const { countries: _selectedCountries, ...catalogWithoutCountries } = catalog;
-
+): Partial<AuthorNationalityFacetsInput> {
+	const { countries: _selected, ...rest } = toFilterInput(params);
 	return buildListCallInput({
-		...catalogWithoutCountries,
+		...rest,
 		pinnedCountryCodes: normalizeCountryCodes(params.countries),
-	}) as Partial<GetAuthorListCountryFacetsInput>;
+	}) as Partial<AuthorNationalityFacetsInput>;
 }
 
 export function countAuthorSheetFilters(
 	params: AuthorsListingSearchParams,
 ): number {
 	let count = 0;
-
-	if (params.minBooks != null || params.maxBooks != null) {
-		count += 1;
-	}
-
-	if (params.minReads != null || params.maxReads != null) {
-		count += 1;
-	}
-
-	if (params.minReviews != null || params.maxReviews != null) {
-		count += 1;
-	}
-
-	if (params.minAverageRating != null || params.maxAverageRating != null) {
-		count += 1;
-	}
-
-	if (params.countries && params.countries.length > 0) {
-		count += 1;
-	}
-
+	if (params.minBooks != null) count += 1;
+	if (params.minReaders != null) count += 1;
+	if (params.minReads != null) count += 1;
+	if (params.minReviews != null) count += 1;
+	if (params.minPages != null || params.maxPages != null) count += 1;
+	if (params.minRating != null || params.maxRating != null) count += 1;
+	if (params.countries && params.countries.length > 0) count += 1;
+	if (params.genders && params.genders.length > 0) count += 1;
+	if (params.hasPhoto === true) count += 1;
+	if (params.statuses && params.statuses.length > 0) count += 1;
 	return count;
 }
 
@@ -142,13 +179,16 @@ export function clearAuthorSheetFilters(
 ) {
 	void setParams({
 		minBooks: null,
-		maxBooks: null,
+		minReaders: null,
 		minReads: null,
-		maxReads: null,
 		minReviews: null,
-		maxReviews: null,
-		minAverageRating: null,
-		maxAverageRating: null,
+		minPages: null,
+		maxPages: null,
+		minRating: null,
+		maxRating: null,
 		countries: null,
+		genders: null,
+		hasPhoto: null,
+		statuses: null,
 	});
 }

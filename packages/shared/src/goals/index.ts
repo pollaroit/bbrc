@@ -12,6 +12,11 @@ export type GoalScope = {
 
 export type GoalBookForScope = {
 	authors: readonly string[];
+	/**
+	 * Every address the book's authors answer to (canonical slug and merged slugs). When present
+	 * it is used instead of the names, so a renamed or merged author still counts.
+	 */
+	authorSlugs?: readonly string[];
 	countries: readonly string[];
 };
 
@@ -96,6 +101,9 @@ export function bookMatchesGoalScope(
 			return false;
 		}
 		const wanted = new Set(scope.authorSlugs);
+		if (book.authorSlugs && book.authorSlugs.length > 0) {
+			return book.authorSlugs.some((slug) => wanted.has(slug));
+		}
 		for (const name of book.authors) {
 			if (wanted.has(authorNameToSlug(name))) {
 				return true;

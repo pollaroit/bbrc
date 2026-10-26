@@ -1,21 +1,42 @@
-import type { GetAuthorPageOutput } from "@bbrc/api/modules/author/author.schema";
+import type { AuthorGetOutput } from "@bbrc/api/modules/author/author.schema";
 import type { Metadata } from "next";
-import { buildPageMetadata } from "@/lib/seo";
+import {
+	buildPageMetadata,
+	NO_INDEX_ROBOTS,
+	truncateDescription,
+} from "@/lib/seo";
 
-export function authorPageDescription(
-	author: Pick<GetAuthorPageOutput, "name" | "bookCount">,
-): string {
-	const catalogLabel =
-		author.bookCount === 1 ? "1 book" : `${author.bookCount} books`;
+type AuthorMetaSource = Pick<AuthorGetOutput, "profile" | "numbers">;
 
-	return `Explore ${catalogLabel} by ${author.name} in the BBRC catalog. Club reads, reviews, and similar authors.`;
+export function authorPageDescription(author: AuthorMetaSource): string {
+	const { profile, numbers } = author;
+	const bio = profile.bio?.trim();
+	if (bio) {
+		return truncateDescription(bio);
+	}
+
+	const facts = [profile.lifespan, profile.nationalities[0]?.name].filter(
+		Boolean,
+	);
+	const lead = facts.length > 0 ? `${profile.name} (${facts.join(", ")}).` : "";
+	const catalog =
+		numbers.bookCount === 1 ? "1 book" : `${numbers.bookCount} books`;
+
+	return `${lead} ${catalog} by ${profile.name} in the BBRC library, with club reads, reviews and related authors.`.trim();
 }
 
-export function buildAuthorPageMetadata(author: GetAuthorPageOutput): Metadata {
+export function buildAuthorPageMetadata(
+	author: AuthorMetaSource,
+	tab?: { title: string; description: string; segment: string },
+): Metadata {
+	const base = `/authors/${author.profile.slug}`;
+
 	return buildPageMetadata({
-		title: author.name,
-		description: authorPageDescription(author),
-		path: `/authors/${author.slug}`,
-		openGraph: { type: "website" },
+		title: tab ? `${author.profile.name} · ${tab.title}` : author.profile.name,
+		description: tab?.description ?? authorPageDescription(author),
+		path: tab?.segment ? `${base}/${tab.segment}` : base,
+		openGraph: { type: "profile" },
+		// An author without books has nothing to index.
+		...(author.numbers.bookCount === 0 ? { robots: NO_INDEX_ROBOTS } : {}),
 	});
 }

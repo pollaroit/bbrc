@@ -1,96 +1,116 @@
-import type { GetAuthorPageOutput } from "@bbrc/api/modules/author/author.schema";
-import { getAuthorPage } from "@bbrc/api/modules/author/author.service";
-import { isAuthorSlug } from "@bbrc/shared";
-import type { Metadata } from "next";
+import type { Metadata, Route } from "next";
 import { notFound } from "next/navigation";
-import { AuthorPageInsights } from "@/components/blocks/author-page-insights";
-import { BooksList } from "@/components/blocks/books-list";
-import { BooksListingToolbar } from "@/components/blocks/books-listing-toolbar";
-import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
-import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
+import { AuthorPageBio } from "@/components/blocks/author/author-page-about";
 import {
-	authorJsonLd,
-	buildAuthorPageMetadata,
-	buildNotFoundMetadata,
-	JsonLd,
-} from "@/lib/seo";
-import { db } from "@/services";
-
-export const dynamic = "force-dynamic";
+	AuthorPageEmpty,
+	AuthorPageSection,
+} from "@/components/blocks/author/author-page-bits";
+import { AuthorPageLibrary } from "@/components/blocks/author/author-page-library";
+import { AuthorPageLifeline } from "@/components/blocks/author/author-page-lifeline";
+import { AuthorPageMoreGrid } from "@/components/blocks/author/author-page-more";
+import { AuthorPageProgress } from "@/components/blocks/author/author-page-progress";
+import {
+	loadAuthorForIsr,
+	loadAuthorMoreForIsr,
+	loadAuthorTopBooksForIsr,
+} from "@/lib/isr-data";
+import { buildNotFoundMetadata } from "@/lib/seo";
+import { buildAuthorPageMetadata } from "@/lib/seo/author-page-metadata";
 
 export async function generateMetadata({
 	params,
 }: PageProps<"/authors/[slug]">): Promise<Metadata> {
 	const { slug } = await params;
-
-	if (!isAuthorSlug(slug)) {
-		return buildNotFoundMetadata("Author");
-	}
-
 	try {
-		const author = await getAuthorPage(slug, db);
-		return buildAuthorPageMetadata(author);
+		return buildAuthorPageMetadata(await loadAuthorForIsr(slug));
 	} catch {
 		return buildNotFoundMetadata("Author");
 	}
 }
 
-export default async function AuthorPage({
+export default async function AuthorOverviewPage({
 	params,
 }: PageProps<"/authors/[slug]">) {
 	const { slug } = await params;
-
-	if (!isAuthorSlug(slug)) {
+	const author = await loadAuthorForIsr(slug).catch(() => null);
+	if (!author) {
 		notFound();
 	}
 
-	let author: GetAuthorPageOutput;
-	try {
-		author = await getAuthorPage(slug, db);
-	} catch {
-		notFound();
-	}
+	const [books, more] = await Promise.all([
+		loadAuthorTopBooksForIsr(slug),
+		loadAuthorMoreForIsr(slug),
+	]);
+	const { profile, seriesSummary } = author;
+	const base = `/authors/${profile.slug}`;
+
+	// The most read books first; ties by title keep the strip steady.
+	const topBooks = [...books.items]
+		.sort((a, b) => b.readCount - a.readCount || a.title.localeCompare(b.title))
+		.slice(0, 12);
 
 	return (
 		<div className="flex flex-col gap-8">
-			<JsonLd
-				data={authorJsonLd({
-					name: author.name,
-					slug: author.slug,
-					bookCount: author.bookCount,
-				})}
+			<AuthorPageProgress slug={profile.slug} />
+
+			{profile.bio ? (
+				<AuthorPageSection
+					title="About"
+					href={`${base}/about` as Route}
+					hrefLabel="Read more"
+				>
+					<AuthorPageBio profile={profile} excerpt />
+				</AuthorPageSection>
+			) : null}
+
+			<AuthorPageLifeline
+				birth={profile.birth}
+				death={profile.death}
+				books={books.items.map((book) => ({
+					slug: book.slug,
+					title: book.title,
+					publishedIn: book.publishedIn,
+					coverId: book.coverId ?? null,
+					averageRating: book.averageRating,
+					readCount: book.readCount,
+				}))}
+				currentYear={new Date().getFullYear()}
 			/>
-			<header className="flex max-w-3xl flex-col gap-2">
-				<p className="text-muted-foreground text-sm">Author</p>
-				<div className="flex items-start justify-between gap-3">
-					<h1 className="font-bold text-2xl tracking-tight sm:text-3xl">
-						{author.name}
-					</h1>
-					<ResourceShareMenu
-						path={`/authors/${author.slug}`}
-						shareText={author.name}
-						label="Share author"
-						shareInPost={{ kind: "author", slug: author.slug }}
-						size="md"
-						iconOnly
+
+			<AuthorPageSection
+				title="Books in the library"
+				description={seriesSummary.line ?? undefined}
+				href={`${base}/books` as Route}
+			>
+				{topBooks.length === 0 ? (
+					<AuthorPageEmpty>
+						No books by this author in the library yet.
+					</AuthorPageEmpty>
+				) : (
+					<AuthorPageLibrary
+						books={topBooks.map((book) => ({
+							slug: book.slug,
+							title: book.title,
+							publishedIn: book.publishedIn,
+							coverId: book.coverId ?? null,
+							averageRating: book.averageRating,
+							readCount: book.readCount,
+							series: book.series
+								? { title: book.series.title, position: book.series.position }
+								: null,
+						}))}
 					/>
-				</div>
-				<p className="text-muted-foreground text-sm tabular-nums">
-					{author.bookCount} book{author.bookCount === 1 ? "" : "s"} in the club
-					catalog
-				</p>
-			</header>
+				)}
+			</AuthorPageSection>
 
-			<AuthorPageInsights author={author} />
-
-			<ListingSearchParamsBoundary>
-				<div className="flex flex-col gap-6">
-					<div className="border border-border bg-muted/15 p-4">
-						<BooksListingToolbar variant="author" />
-					</div>
-					<BooksList fixedAuthorSlug={slug} />
-				</div>
-			</ListingSearchParamsBoundary>
+			{more.items.length > 0 ? (
+				<AuthorPageSection
+					title="Similar authors"
+					href={`${base}/more` as Route}
+				>
+					<AuthorPageMoreGrid items={more.items.slice(0, 4)} />
+				</AuthorPageSection>
+			) : null}
 		</div>
 	);
 }

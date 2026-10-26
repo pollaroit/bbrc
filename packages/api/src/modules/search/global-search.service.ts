@@ -4,9 +4,11 @@ import {
 	countReadsForGoal,
 	documentFormatFromFilename,
 	documentFormatLabel,
+	formatAuthorLifespan,
 	goalScopeFromStored,
 	richContentPreview,
 } from "@bbrc/shared";
+import { findBookIdsByAuthorNameSearch } from "../book/book-list-search";
 import { visibleShelfWhere } from "../shelf/shelf-visibility";
 import type {
 	GlobalSearchHit,
@@ -73,16 +75,9 @@ function imageMedia(url: string | null | undefined) {
 }
 
 async function searchBooks(ctx: SearchContext): Promise<GlobalSearchHit[]> {
-	const pattern = `%${ctx.query}%`;
-	const authorBookIds = await ctx.db.$queryRaw<{ id: string }[]>`
-		SELECT DISTINCT b.id
-		FROM book b
-		WHERE EXISTS (
-			SELECT 1 FROM unnest(b.authors) AS author_name(name)
-			WHERE author_name.name ILIKE ${pattern}
-		)
-		LIMIT ${ctx.limit}
-	`;
+	const authorBookIds = (await findBookIdsByAuthorNameSearch(ctx.db, ctx.query))
+		.slice(0, ctx.limit)
+		.map((id) => ({ id }));
 
 	const rows = await ctx.db.book.findMany({
 		where: {
@@ -114,11 +109,61 @@ async function searchBooks(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 }
 
 async function searchAuthors(ctx: SearchContext): Promise<GlobalSearchHit[]> {
+	const rows = await ctx.db.author.findMany({
+		where: {
+			books: { some: {} },
+			OR: [
+				{ name: containsQuery(ctx.query) },
+				{ aliases: { some: { alias: containsQuery(ctx.query) } } },
+			],
+		},
+		orderBy: [{ name: "asc" }],
+		take: ctx.limit,
+		select: {
+			slug: true,
+			name: true,
+			photoUrl: true,
+			birthYear: true,
+			deathYear: true,
+			_count: { select: { books: true } },
+		},
+	});
+
+	const hits: GlobalSearchHit[] = rows.map((row) => {
+		const lifespan = formatAuthorLifespan({
+			birth: { year: row.birthYear },
+			death: { year: row.deathYear },
+		});
+		const books = row._count.books;
+		return {
+			type: "author" as const,
+			title: row.name,
+			description: [
+				"Author",
+				lifespan,
+				`${books} ${books === 1 ? "book" : "books"}`,
+			]
+				.filter(Boolean)
+				.join(" · "),
+			href: `/authors/${row.slug}`,
+			media: imageMedia(row.photoUrl),
+		};
+	});
+
+	if (hits.length >= ctx.limit) {
+		return hits;
+	}
+
+	// Names on books the backfill has not linked to an author yet.
 	const pattern = `%${ctx.query}%`;
-	const rows = await ctx.db.$queryRaw<{ author_name: string; books: bigint }[]>`
+	const legacy = await ctx.db.$queryRaw<
+		{ author_name: string; books: bigint }[]
+	>`
 		SELECT author_name, COUNT(*) AS books
 		FROM (
-			SELECT unnest(authors) AS author_name FROM book
+			SELECT unnest(authors) AS author_name
+			FROM book b
+			WHERE NOT EXISTS (SELECT 1 FROM book_author ba WHERE ba.book_id = b.id)
 		) AS authors_unnested
 		WHERE author_name ILIKE ${pattern}
 		GROUP BY author_name
@@ -126,31 +171,27 @@ async function searchAuthors(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 		LIMIT ${ctx.limit}
 	`;
 
-	const seen = new Set<string>();
-
-	return rows.flatMap((row) => {
+	const seen = new Set(rows.map((row) => row.slug));
+	for (const row of legacy) {
 		const name = row.author_name.trim();
-		if (!name) {
-			return [];
+		if (!name || hits.length >= ctx.limit) {
+			continue;
 		}
-
 		const slug = authorNameToSlug(name);
 		if (seen.has(slug)) {
-			return [];
+			continue;
 		}
-
 		seen.add(slug);
 		const books = Number(row.books);
+		hits.push({
+			type: "author" as const,
+			title: name,
+			description: `Author · ${books} ${books === 1 ? "book" : "books"}`,
+			href: `/authors/${slug}`,
+		});
+	}
 
-		return [
-			{
-				type: "author" as const,
-				title: name,
-				description: `Author · ${books} ${books === 1 ? "book" : "books"}`,
-				href: `/authors/${slug}`,
-			},
-		];
-	});
+	return hits;
 }
 
 async function searchUsers(ctx: SearchContext): Promise<GlobalSearchHit[]> {

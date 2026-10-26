@@ -14,6 +14,7 @@ export type ObjectKeyParams =
 	| { kind: "book-cover"; coverUid: string }
 	| { kind: "link-preview"; urlHash: string }
 	| { kind: "edition-cover"; coverUid: string }
+	| { kind: "author-photo"; photoUid: string }
 	| {
 			kind: "book-document";
 			bookSlug: string;
@@ -42,6 +43,8 @@ export function buildObjectKey(
 			return `${storageEnv}/books/covers/${params.coverUid}.webp`;
 		case "edition-cover":
 			return `${storageEnv}/books/editions/${params.coverUid}.webp`;
+		case "author-photo":
+			return `${storageEnv}/authors/${params.photoUid}.webp`;
 		case "book-document":
 			return `${storageEnv}/books/${params.bookSlug}/documents/${params.documentSlug}.${params.extension}`;
 		default: {

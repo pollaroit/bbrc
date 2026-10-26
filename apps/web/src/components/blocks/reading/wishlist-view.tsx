@@ -28,8 +28,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { PickForMe } from "@/components/blocks/reading/pick-for-me";
-import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { bookCoverUrl } from "@/lib/book-cover";
 import { useMyReadings } from "@/lib/reading/use-reading";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -127,7 +128,7 @@ function WishlistRow({
 					</Link>
 				</p>
 				<p className="truncate text-muted-foreground text-xs">
-					{formatBookAuthors(book.authors)}
+					<BookAuthorLinks authors={book.authors} />
 				</p>
 				{rank === 1 ? (
 					<span className="mt-1 inline-block border border-primary/40 bg-primary/5 px-1.5 text-3xs text-foreground">

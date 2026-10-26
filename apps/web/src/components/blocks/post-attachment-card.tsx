@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
@@ -346,12 +347,25 @@ function PostAttachmentAuthorCard({
 }) {
 	return (
 		<AttachmentLinkFrame href={`/authors/${author.slug}` as Route}>
-			<AttachmentMedia variant="icon">
-				<UserRound className="size-5 text-muted-foreground" aria-hidden />
-			</AttachmentMedia>
+			{author.photoUrl ? (
+				<AuthorPhoto name={author.name} photoUrl={author.photoUrl} size="lg" />
+			) : (
+				<AttachmentMedia variant="icon">
+					<UserRound className="size-5 text-muted-foreground" aria-hidden />
+				</AttachmentMedia>
+			)}
 			<AttachmentContent>
 				<AttachmentTitle>{author.name}</AttachmentTitle>
-				<AttachmentDescription>Author · see their books</AttachmentDescription>
+				<AttachmentDescription>
+					{[
+						author.lifespan,
+						author.bookCount != null
+							? `${author.bookCount} ${author.bookCount === 1 ? "book" : "books"}`
+							: "Author",
+					]
+						.filter(Boolean)
+						.join(" · ")}
+				</AttachmentDescription>
 			</AttachmentContent>
 		</AttachmentLinkFrame>
 	);

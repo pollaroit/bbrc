@@ -51,6 +51,8 @@ const CumulativePointSchema = zod.object({
 const AuthorCountryRowSchema = zod.object({
 	key: zod.string(),
 	label: zod.string(),
+	/** Author slug for author rows (link with it); null for countries. */
+	slug: zod.string().nullable(),
 	bookCount: zod.number().int().min(0),
 	topRatedBook: StatsBookSchema.nullable(),
 	userAverageRating: zod.number().nullable(),

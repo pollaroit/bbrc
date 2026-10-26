@@ -65,6 +65,9 @@ export async function ensureNotificationPreferences(
 			inAppEnabled: !isOffByDefaultKind(kind),
 			pushEnabled: !isOffByDefaultKind(kind) && defaultPushEnabledForKind(kind),
 		})),
+		// Two notices at once (a new book also tells the author's followers) can both find the
+		// same rows missing; the second must not fail on the first one's insert.
+		skipDuplicates: true,
 	});
 }
 

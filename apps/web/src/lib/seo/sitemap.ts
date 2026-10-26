@@ -24,6 +24,7 @@ export async function buildAppSitemap(
 
 	const [
 		books,
+		authors,
 		series,
 		posts,
 		sittings,
@@ -34,6 +35,12 @@ export async function buildAppSitemap(
 		readEditions,
 	] = await Promise.all([
 		db.book.findMany({
+			select: { slug: true, updatedAt: true },
+			orderBy: { updatedAt: "desc" },
+		}),
+		// Authors with no books have nothing to show (their pages are noindex).
+		db.author.findMany({
+			where: { books: { some: {} } },
 			select: { slug: true, updatedAt: true },
 			orderBy: { updatedAt: "desc" },
 		}),
@@ -125,6 +132,20 @@ export async function buildAppSitemap(
 		...books.map((book) =>
 			entry(absoluteUrl(`/books/${book.slug}`), book.updatedAt, "weekly", 0.7),
 		),
+		...authors.flatMap((author) => [
+			entry(
+				absoluteUrl(`/authors/${author.slug}`),
+				author.updatedAt,
+				"monthly",
+				0.65,
+			),
+			entry(
+				absoluteUrl(`/authors/${author.slug}/about`),
+				author.updatedAt,
+				"monthly",
+				0.5,
+			),
+		]),
 		...series.map((row) =>
 			entry(absoluteUrl(`/series/${row.slug}`), row.updatedAt, "weekly", 0.72),
 		),

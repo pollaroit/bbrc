@@ -28,6 +28,11 @@ const settingsLinks = [
 		description: "Birthday, bio, favorite genres, links and reading speed.",
 	},
 	{
+		href: "/settings/following",
+		title: "Following",
+		description: "Authors you follow and new-book alerts.",
+	},
+	{
 		href: "/settings/accounts",
 		title: "Account connections",
 		description: "Link Telegram for club bot features.",

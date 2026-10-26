@@ -150,6 +150,10 @@ export const EditionPageSchema = z.object({
 		slug: z.string(),
 		title: z.string(),
 		authors: z.array(z.string()),
+		/** The author records in order (empty until the backfill linked the book). */
+		authorRefs: z.array(
+			z.object({ id: z.string(), slug: z.string(), name: z.string() }),
+		),
 		coverId: z.number().int().nullable(),
 		pages: z.number().int(),
 	}),

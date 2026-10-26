@@ -7,6 +7,10 @@ import type { ListAdminSeriesOutput } from "@bbrc/api/modules/admin/admin-series
 import type { ListAdminShelvesOutput } from "@bbrc/api/modules/admin/admin-shelf.schema";
 import type { ListAdminSittingsOutput } from "@bbrc/api/modules/admin/admin-sitting.schema";
 import type { ListAdminUsersOutput } from "@bbrc/api/modules/admin/admin-user.schema";
+import type {
+	AdminAuthorListInput,
+	AdminAuthorListOutput,
+} from "@bbrc/api/modules/author-admin/author-dashboard.schema";
 import { contentPlainText, getBookCountryName } from "@bbrc/shared";
 import { formatBookAuthors } from "@/lib/book-cover";
 import { client } from "@/utils/orpc";
@@ -25,6 +29,7 @@ type SeriesItem = ListAdminSeriesOutput["items"][number];
 type PostItem = ListAdminPostsOutput["items"][number];
 type CommentItem = ListAdminCommentsOutput["items"][number];
 type DocumentItem = ListAdminDocumentsOutput["items"][number];
+type AuthorItem = AdminAuthorListOutput["items"][number];
 
 export type AdminTableExportConfig<TItem> = {
 	resource: AdminTableExportResource;
@@ -550,3 +555,49 @@ export function defaultSelectedFieldKeys<TItem>(
 ): Set<string> {
 	return defaultSelected(fields);
 }
+
+export const adminAuthorsExportFields: AdminTableExportField<AuthorItem>[] = [
+	{ key: "name", label: "Name", getValue: (r) => r.name },
+	{ key: "slug", label: "Slug", getValue: (r) => r.slug },
+	{ key: "status", label: "Status", getValue: (r) => r.status },
+	{
+		key: "enrichmentStatus",
+		label: "Lookup",
+		getValue: (r) => r.enrichmentStatus,
+	},
+	{
+		key: "nationalities",
+		label: "Nationalities",
+		getValue: (r) => formatBookCountries(r.nationalities),
+	},
+	{ key: "gender", label: "Gender", getValue: (r) => r.gender },
+	{ key: "birthYear", label: "Birth year", getValue: (r) => r.birthYear },
+	{ key: "deathYear", label: "Death year", getValue: (r) => r.deathYear },
+	{ key: "bookCount", label: "Books", getValue: (r) => r.bookCount },
+	{ key: "readerCount", label: "Readers", getValue: (r) => r.readerCount },
+	{ key: "readCount", label: "Reads", getValue: (r) => r.readCount },
+	{
+		key: "followerCount",
+		label: "Followers",
+		getValue: (r) => r.followerCount,
+	},
+	{
+		key: "missingFields",
+		label: "Missing fields",
+		defaultSelected: false,
+		getValue: (r) => r.missingFields.join("; "),
+	},
+	{
+		key: "sources",
+		label: "Sources",
+		defaultSelected: false,
+		getValue: (r) => r.sources.join("; "),
+	},
+	{ key: "createdAt", label: "Added", getValue: (r) => r.createdAt },
+];
+
+export const adminAuthorsExportConfig: AdminTableExportConfig<AuthorItem> = {
+	resource: "authors",
+	fields: adminAuthorsExportFields,
+	fetchPage: (input) => client.authorAdmin.list(input as AdminAuthorListInput),
+};

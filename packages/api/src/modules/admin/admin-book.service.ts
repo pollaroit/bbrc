@@ -1,5 +1,5 @@
 import type { Database, Prisma } from "@bbrc/db";
-import { getBookCountryName } from "@bbrc/shared";
+import { bookAuthorEntries, getBookCountryName } from "@bbrc/shared";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
 import { aggregateCountryBookCounts } from "../book/book-country-filter";
@@ -38,17 +38,19 @@ function withStableSlugOrderBy(
 	return [orderBy, { slug: sortDirection }];
 }
 
-function distinctAuthorCount(rows: { authors: string[] }[]): number {
-	const names = new Set<string>();
+function distinctAuthorCount(
+	rows: {
+		authors: string[];
+		authorLinks: { author: { id: string; slug: string; name: string } }[];
+	}[],
+): number {
+	const keys = new Set<string>();
 	for (const row of rows) {
-		for (const author of row.authors) {
-			const trimmed = author.trim();
-			if (trimmed) {
-				names.add(trimmed);
-			}
+		for (const author of bookAuthorEntries(row)) {
+			keys.add(author.key);
 		}
 	}
-	return names.size;
+	return keys.size;
 }
 
 function buildAdditionsByDay(
@@ -490,7 +492,15 @@ export async function getAdminBookOverview(
 		db.book.groupBy({ by: ["status"], where, _count: { _all: true } }),
 		db.book.aggregate({ where, _sum: { pages: true } }),
 		db.book.aggregate({ where, _avg: { pages: true } }),
-		db.book.findMany({ where, select: { authors: true } }),
+		db.book.findMany({
+			where,
+			select: {
+				authors: true,
+				authorLinks: {
+					select: { author: { select: { id: true, slug: true, name: true } } },
+				},
+			},
+		}),
 		db.book.count({ where: added7Where }),
 		db.book.count({ where: added30Where }),
 		pendingBookRequestsPromise,

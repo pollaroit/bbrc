@@ -1,10 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { isAdminAuthorScreen } from "@/lib/admin-author-screens";
 
 export function AdminMainFrame({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
-	const isAdmin = pathname.startsWith("/admin");
+	const isAdmin =
+		pathname.startsWith("/admin") || isAdminAuthorScreen(pathname);
 	const isReels = pathname.startsWith("/reels");
 
 	if (isReels) {

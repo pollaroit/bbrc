@@ -10,6 +10,7 @@ import {
 	revalidateFeedsIsr,
 	revalidateSeriesIsr,
 } from "../../revalidate-isr";
+import { authorSlugsOfBook, revalidateAuthorSlugs } from "../author/author-isr";
 import { invalidateDiscoverLanes } from "../book-discover/book-discover.service";
 import {
 	AddBookInputSchema,
@@ -183,6 +184,10 @@ export const bookRouter = {
 			const book = await addBook(input, context.db, context.session.user.id);
 			revalidateBookIsr(context, book.slug);
 			revalidateFeedsIsr(context);
+			revalidateAuthorSlugs(
+				context,
+				await authorSlugsOfBook(context.db, book.slug),
+			);
 			if (book.seriesSlug) {
 				revalidateSeriesIsr(context, book.seriesSlug);
 			}
@@ -192,8 +197,19 @@ export const bookRouter = {
 		.input(UpdateBookInputSchema)
 		.output(UpdateBookOutputSchema)
 		.handler(async ({ input, context }) => {
-			const book = await updateBook(input, context.db);
+			const authorsChanged =
+				input.authorIds !== undefined || input.authors !== undefined;
+			const before = authorsChanged
+				? await authorSlugsOfBook(context.db, input.slug)
+				: [];
+			const book = await updateBook(input, context.db, context.session.user.id);
 			revalidateBookIsr(context, book.slug);
+			if (authorsChanged) {
+				revalidateAuthorSlugs(context, [
+					...before,
+					...(await authorSlugsOfBook(context.db, book.slug)),
+				]);
+			}
 			return book;
 		}),
 	removeBook: adminProcedure

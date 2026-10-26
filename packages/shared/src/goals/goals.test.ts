@@ -43,6 +43,34 @@ describe("goal scope", () => {
 		).toBe(false);
 	});
 
+	it("matches author scope through the author records, including merged slugs", () => {
+		const scope = goalScopeFromStored({
+			scopeKind: "authors",
+			scopeAuthors: ["dostoevsky_old"],
+			scopeCountries: [],
+		});
+		expect(
+			bookMatchesGoalScope(
+				{
+					authors: ["Fyodor Dostoyevsky"],
+					authorSlugs: ["fyodor_dostoyevsky", "dostoevsky_old"],
+					countries: [],
+				},
+				scope,
+			),
+		).toBe(true);
+		expect(
+			bookMatchesGoalScope(
+				{
+					authors: ["Leo Tolstoy"],
+					authorSlugs: ["leo_tolstoy"],
+					countries: [],
+				},
+				scope,
+			),
+		).toBe(false);
+	});
+
 	it("matches country scope", () => {
 		const scope = goalScopeFromStored({
 			scopeKind: "countries",

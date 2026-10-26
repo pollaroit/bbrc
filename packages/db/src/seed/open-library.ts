@@ -1,4 +1,6 @@
 import {
+	authorNameKey,
+	authorNameToSlug,
 	generateUniqueSlug,
 	openLibraryWorkKeyToOlid,
 	parseOpenLibraryDescription,
@@ -350,6 +352,28 @@ export async function fetchOpenLibraryBooks(
 	return works.slice(0, count);
 }
 
+async function findOrCreateSeedAuthor(tx: DatabaseTransaction, name: string) {
+	const nameKey = authorNameKey(name);
+	const existing = await tx.author.findFirst({
+		where: { nameKey },
+		select: { id: true },
+	});
+	if (existing) {
+		return existing.id;
+	}
+
+	const base = authorNameToSlug(name) || "author";
+	let slug = base;
+	for (let n = 2; await tx.author.findUnique({ where: { slug } }); n += 1) {
+		slug = `${base}_${n}`;
+	}
+	const created = await tx.author.create({
+		data: { slug, name, nameKey },
+		select: { id: true },
+	});
+	return created.id;
+}
+
 export async function createBookFromWork(
 	tx: DatabaseTransaction,
 	work: OpenLibraryWorkSeed,
@@ -358,7 +382,7 @@ export async function createBookFromWork(
 ) {
 	const slug = await generateCatalogBookSlug(work.title, tx);
 
-	return tx.book.create({
+	const book = await tx.book.create({
 		data: {
 			title: work.title,
 			slug,
@@ -377,4 +401,24 @@ export async function createBookFromWork(
 			updatedAt: createdAt,
 		},
 	});
+
+	// Authors are records now: link each name (the names copy on the book stays as is).
+	const authorIds: string[] = [];
+	for (const name of work.authors) {
+		const id = await findOrCreateSeedAuthor(tx, name);
+		if (!authorIds.includes(id)) {
+			authorIds.push(id);
+		}
+	}
+	if (authorIds.length > 0) {
+		await tx.bookAuthor.createMany({
+			data: authorIds.map((authorId, position) => ({
+				bookId: book.id,
+				authorId,
+				position,
+			})),
+		});
+	}
+
+	return book;
 }

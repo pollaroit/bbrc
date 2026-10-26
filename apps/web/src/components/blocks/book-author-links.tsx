@@ -4,12 +4,24 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 type BookAuthorLinksProps = {
+	/** Names copy of the book's authors (always present). */
 	authors: string[];
+	/** Author records when the data carries them; links then use the canonical slug. */
+	refs?: { slug: string; name: string }[];
 	className?: string;
 };
 
-export function BookAuthorLinks({ authors, className }: BookAuthorLinksProps) {
-	if (authors.length === 0) {
+export function BookAuthorLinks({
+	authors,
+	refs,
+	className,
+}: BookAuthorLinksProps) {
+	const people =
+		refs && refs.length > 0
+			? refs
+			: authors.map((name) => ({ name, slug: authorNameToSlug(name) }));
+
+	if (people.length === 0) {
 		return (
 			<span className={cn("text-muted-foreground", className)}>
 				Unknown author
@@ -19,8 +31,7 @@ export function BookAuthorLinks({ authors, className }: BookAuthorLinksProps) {
 
 	return (
 		<span className={cn("text-muted-foreground", className)}>
-			{authors.map((name, index) => {
-				const slug = authorNameToSlug(name);
+			{people.map(({ name, slug }, index) => {
 				const href = `/authors/${slug}` as Route;
 
 				return (

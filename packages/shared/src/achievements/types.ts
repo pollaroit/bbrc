@@ -61,6 +61,7 @@ export type ReadFact = {
 	pages: number;
 	publishedIn: number;
 	countries: string[];
+	/** One key per author (the Author id, or the lower-case name before the backfill), so renames and merges count once. */
 	authors: string[];
 };
 

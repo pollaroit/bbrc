@@ -352,6 +352,35 @@ export async function uploadEditionCoverDirect(
 	return { publicUrl };
 }
 
+/**
+ * Uploads a finished author photo (cropped by the browser) and returns its public URL.
+ * Admins only; the author itself is updated by `authorAdmin.uploadPhoto`.
+ */
+export async function uploadAuthorPhotoDirect(
+	file: {
+		buffer: Buffer;
+		contentType: AllowedImageMimeType;
+		contentLength: number;
+	},
+	session: Session,
+) {
+	if (!session.user.isAdmin) {
+		throw new ORPCError("FORBIDDEN", {
+			message: "Only admins can upload author photos.",
+		});
+	}
+	const key = buildObjectKey(getStorageEnv(), {
+		kind: "author-photo",
+		photoUid: crypto.randomUUID(),
+	});
+	const body: ImageUploadBody = {
+		contentType: file.contentType,
+		contentLength: file.contentLength,
+	};
+	const publicUrl = await putImageAtKey(key, body, file.buffer);
+	return { publicUrl };
+}
+
 export async function initAvatarUpload(
 	body: ImageUploadBody,
 	session: Session,

@@ -3,8 +3,9 @@ import { BookCheck, BookOpen, CalendarDays, Star } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { EditionChip } from "@/components/blocks/edition-chip";
-import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { bookCoverUrl } from "@/lib/book-cover";
 import { formatReadFinishedMonthField } from "@/lib/format-read-date";
 
 type Item = ListUserReadsOutput["items"][number];
@@ -43,7 +44,7 @@ export function MemberProfileReadCard({ item }: { item: Item }) {
 							</Link>
 						</h3>
 						<p className="text-muted-foreground text-sm">
-							{formatBookAuthors(book.authors)}
+							<BookAuthorLinks authors={book.authors} />
 						</p>
 					</div>
 					{finished ? (

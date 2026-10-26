@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Database } from "@bbrc/db";
+import { bookAuthorEntries } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { getGeminiConfig } from "../../lib/gemini/config";
 import { geminiGenerateJson } from "../../lib/gemini/generate-json";
@@ -222,6 +223,8 @@ function collect(
 type TasteBook = {
 	title: string;
 	authors: string[];
+	/** Key of the first author (the Author id, or the lower-case name before the backfill). */
+	authorKey: string | null;
 	subjects: string[];
 	countries: string[];
 	publishedIn: number;
@@ -248,6 +251,10 @@ async function loadTaste(
 		select: {
 			title: true,
 			authors: true,
+			authorLinks: {
+				orderBy: { position: "asc" },
+				select: { author: { select: { id: true, slug: true, name: true } } },
+			},
 			subjects: true,
 			countries: true,
 			publishedIn: true,
@@ -261,9 +268,11 @@ async function loadTaste(
 	});
 	return books.map((book) => {
 		const ratings = book.feedbacks.map((feedback) => feedback.rating);
+		const authors = bookAuthorEntries(book);
 		return {
 			title: book.title,
-			authors: book.authors,
+			authors: authors.map((author) => author.label),
+			authorKey: authors[0]?.key ?? null,
 			subjects: book.subjects,
 			countries: book.countries,
 			publishedIn: book.publishedIn,
@@ -301,7 +310,7 @@ function authorStats(taste: TasteBook[]): AuthorStat[] {
 	for (const book of taste) {
 		const first = book.authors[0];
 		if (!first) continue;
-		const key = norm(first);
+		const key = book.authorKey ?? norm(first);
 		const entry = map.get(key) ?? {
 			name: first,
 			reads: 0,
