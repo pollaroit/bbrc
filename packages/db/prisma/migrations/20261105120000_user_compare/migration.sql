@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "allow_compare" BOOLEAN NOT NULL DEFAULT true;
