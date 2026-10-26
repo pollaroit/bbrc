@@ -285,11 +285,11 @@ export function AuthorPhotoPanel({
 					if (!open) setRawFile(null);
 				}}
 				file={rawFile}
-				aspect={3 / 4}
+				aspect={1}
 				maxEdge={900}
 				outputMimeTypes={["image/webp", "image/jpeg"]}
 				title="Crop author photo"
-				description="A portrait crop (3:4). We compress the photo before it is uploaded."
+				description="A square crop (1:1). We compress the photo before it is uploaded."
 				onConfirm={(file) => upload.mutate(file)}
 			/>
 		</Card>
