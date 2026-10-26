@@ -1,13 +1,16 @@
 "use client";
 
 import {
+	DEFAULT_RATING_DEFINITIONS,
 	type FeedbackRatingStep,
 	formatFeedbackRating,
 	isFeedbackRatingStep,
+	ratingKey,
 } from "@bbrc/shared";
 import { cn } from "@bbrc/ui/lib/utils";
 import { Star } from "lucide-react";
 import { useRef, useState } from "react";
+import { RatingDefinitionCard } from "@/components/blocks/rating-definition-card";
 
 type FeedbackHalfStarRatingProps = {
 	value: FeedbackRatingStep;
@@ -21,14 +24,9 @@ type FeedbackHalfStarRatingProps = {
 const STAR_SIZE = 36;
 const STAR_GAP = 4;
 
-/** Plain words for each band, so the number means something at a glance. */
+/** The short name of a rating ("Excellent"), the same words as the definition card. */
 function describeRating(value: number): string {
-	if (value <= 1) return "Not for me";
-	if (value <= 2) return "Disappointing";
-	if (value <= 3) return "It was okay";
-	if (value <= 3.5) return "Good";
-	if (value <= 4.5) return "Great";
-	return "A favorite";
+	return DEFAULT_RATING_DEFINITIONS[ratingKey(value)]?.label ?? "";
 }
 
 /**
@@ -70,127 +68,129 @@ export function FeedbackHalfStarRating({
 		}
 	}
 
-	return (
-		<div
-			className={cn(
-				"flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5",
-				className,
-			)}
-		>
-			<div
-				ref={trackRef}
-				role="slider"
-				tabIndex={disabled ? -1 : 0}
-				aria-label="Rating"
-				aria-valuemin={0}
-				aria-valuemax={5}
-				aria-valuenow={value}
-				aria-valuetext={
-					value > 0
-						? `${formatFeedbackRating(value)} out of 5, ${describeRating(value)}`
-						: "No rating"
-				}
-				aria-disabled={disabled}
-				className={cn(
-					"flex w-fit cursor-pointer touch-none select-none items-center outline-none focus-visible:ring-2 focus-visible:ring-warning/60 focus-visible:ring-offset-2",
-					disabled && "pointer-events-none opacity-50",
-				)}
-				style={{ gap: STAR_GAP }}
-				onPointerDown={(event) => {
-					const track = trackRef.current;
-					if (!track || disabled) return;
-					track.setPointerCapture(event.pointerId);
-					draggingRef.current = true;
-					onChange(ratingAt(event.clientX, track));
-				}}
-				onPointerMove={(event) => {
-					const track = trackRef.current;
-					if (!track || disabled) return;
-					const next = ratingAt(event.clientX, track);
-					if (draggingRef.current) {
-						onChange(next);
-					} else if (event.pointerType === "mouse") {
-						setHover(next);
-					}
-				}}
-				onPointerUp={() => {
-					draggingRef.current = false;
-				}}
-				onPointerCancel={() => {
-					draggingRef.current = false;
-					setHover(null);
-				}}
-				onPointerLeave={() => setHover(null)}
-				onKeyDown={(event) => {
-					if (event.key === "ArrowRight" || event.key === "ArrowUp") {
-						event.preventDefault();
-						step(0.5);
-					} else if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
-						event.preventDefault();
-						step(-0.5);
-					} else if (event.key === "Home") {
-						event.preventDefault();
-						onChange(0);
-					} else if (event.key === "End") {
-						event.preventDefault();
-						onChange(5);
-					}
-				}}
-			>
-				{[1, 2, 3, 4, 5].map((starIndex) => {
-					const share = fillShare(starIndex, shown);
-					return (
-						<span
-							key={starIndex}
-							className="relative block"
-							style={{ width: STAR_SIZE, height: STAR_SIZE }}
-							aria-hidden
-						>
-							<Star
-								className="absolute inset-0 size-full text-muted-foreground/35"
-								strokeWidth={1.5}
-							/>
-							<Star
-								className={cn(
-									"absolute inset-0 size-full fill-warning text-warning transition-opacity",
-									hover != null && "opacity-70",
-								)}
-								strokeWidth={1.5}
-								style={{ clipPath: `inset(0 ${(1 - share) * 100}% 0 0)` }}
-							/>
-						</span>
-					);
-				})}
-			</div>
+	// With "Clear" a 0 means no rating; without it a 0 is a real rating ("Nothing works").
+	const showDefinition =
+		isFeedbackRatingStep(shown) && (hasValue || !allowClear);
 
-			<div className="flex min-w-0 items-baseline gap-3" aria-live="polite">
-				{hasValue ? (
-					<>
-						<p className="tabular-nums leading-none">
-							<span className="font-semibold text-2xl">
-								{formatFeedbackRating(shown)}
+	return (
+		<div className={cn("flex flex-col gap-3", className)}>
+			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+				<div
+					ref={trackRef}
+					role="slider"
+					tabIndex={disabled ? -1 : 0}
+					aria-label="Rating"
+					aria-valuemin={0}
+					aria-valuemax={5}
+					aria-valuenow={value}
+					aria-valuetext={
+						value > 0
+							? `${formatFeedbackRating(value)} out of 5, ${describeRating(value)}`
+							: "No rating"
+					}
+					aria-disabled={disabled}
+					className={cn(
+						"flex w-fit cursor-pointer touch-none select-none items-center outline-none focus-visible:ring-2 focus-visible:ring-warning/60 focus-visible:ring-offset-2",
+						disabled && "pointer-events-none opacity-50",
+					)}
+					style={{ gap: STAR_GAP }}
+					onPointerDown={(event) => {
+						const track = trackRef.current;
+						if (!track || disabled) return;
+						track.setPointerCapture(event.pointerId);
+						draggingRef.current = true;
+						onChange(ratingAt(event.clientX, track));
+					}}
+					onPointerMove={(event) => {
+						const track = trackRef.current;
+						if (!track || disabled) return;
+						const next = ratingAt(event.clientX, track);
+						if (draggingRef.current) {
+							onChange(next);
+						} else if (event.pointerType === "mouse") {
+							setHover(next);
+						}
+					}}
+					onPointerUp={() => {
+						draggingRef.current = false;
+					}}
+					onPointerCancel={() => {
+						draggingRef.current = false;
+						setHover(null);
+					}}
+					onPointerLeave={() => setHover(null)}
+					onKeyDown={(event) => {
+						if (event.key === "ArrowRight" || event.key === "ArrowUp") {
+							event.preventDefault();
+							step(0.5);
+						} else if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
+							event.preventDefault();
+							step(-0.5);
+						} else if (event.key === "Home") {
+							event.preventDefault();
+							onChange(0);
+						} else if (event.key === "End") {
+							event.preventDefault();
+							onChange(5);
+						}
+					}}
+				>
+					{[1, 2, 3, 4, 5].map((starIndex) => {
+						const share = fillShare(starIndex, shown);
+						return (
+							<span
+								key={starIndex}
+								className="relative block"
+								style={{ width: STAR_SIZE, height: STAR_SIZE }}
+								aria-hidden
+							>
+								<Star
+									className="absolute inset-0 size-full text-muted-foreground/35"
+									strokeWidth={1.5}
+								/>
+								<Star
+									className={cn(
+										"absolute inset-0 size-full fill-warning text-warning transition-opacity",
+										hover != null && "opacity-70",
+									)}
+									strokeWidth={1.5}
+									style={{ clipPath: `inset(0 ${(1 - share) * 100}% 0 0)` }}
+								/>
 							</span>
-							<span className="ml-1 text-muted-foreground text-sm">/ 5</span>
+						);
+					})}
+				</div>
+
+				<div className="flex min-w-0 items-baseline gap-3" aria-live="polite">
+					{hasValue ? (
+						<>
+							<p className="tabular-nums leading-none">
+								<span className="font-semibold text-2xl">
+									{formatFeedbackRating(shown)}
+								</span>
+								<span className="ml-1 text-muted-foreground text-sm">/ 5</span>
+							</p>
+							<p className="truncate text-muted-foreground text-sm">
+								{describeRating(shown)}
+							</p>
+						</>
+					) : (
+						<p className="text-muted-foreground text-sm">
+							Tap a star, or drag across them
 						</p>
-						<p className="truncate text-muted-foreground text-sm">
-							{describeRating(shown)}
-						</p>
-					</>
-				) : (
-					<p className="text-muted-foreground text-sm">
-						Tap a star, or drag across them
-					</p>
-				)}
-				{allowClear && value > 0 && !disabled ? (
-					<button
-						type="button"
-						className="text-muted-foreground text-xs underline-offset-2 hover:text-foreground hover:underline"
-						onClick={() => onChange(0)}
-					>
-						Clear
-					</button>
-				) : null}
+					)}
+					{allowClear && value > 0 && !disabled ? (
+						<button
+							type="button"
+							className="text-muted-foreground text-xs underline-offset-2 hover:text-foreground hover:underline"
+							onClick={() => onChange(0)}
+						>
+							Clear
+						</button>
+					) : null}
+				</div>
 			</div>
+			{showDefinition ? <RatingDefinitionCard rating={shown} /> : null}
 		</div>
 	);
 }

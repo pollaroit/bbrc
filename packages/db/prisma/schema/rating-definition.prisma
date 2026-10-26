@@ -1,0 +1,19 @@
+/// A member's own wording for what one rating means ("4.5"). Only edits are stored: a rating
+/// without a row uses the default text from `@bbrc/shared`, and "reset" deletes the row.
+model RatingDefinition {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// "0", "0.5" ... "5" (the same keys as `ratingKey` in `@bbrc/shared`).
+  ratingKey String @map("rating_key")
+
+  text String
+
+  @@unique([userId, ratingKey])
+  @@map("rating_definition")
+}

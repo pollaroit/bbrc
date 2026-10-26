@@ -13,6 +13,7 @@ import {
 	PreferencesSection,
 	Segmented,
 } from "@/components/blocks/preferences-ui";
+import { RatingDefinitionsSection } from "@/components/blocks/rating-definitions-editor";
 import { authClient } from "@/lib/auth-client";
 import { clubTimeZone } from "@/lib/club-timezone";
 import {
@@ -743,6 +744,7 @@ const sections = [
 	{ id: "accessibility", label: "Accessibility" },
 	{ id: "reading", label: "Reading" },
 	{ id: "reading-privacy", label: "Wishlist" },
+	{ id: "ratings", label: "Ratings" },
 	{ id: "shelves", label: "Shelves" },
 	{ id: "polls", label: "Polls" },
 	{ id: "mentions", label: "Mentions" },
@@ -785,6 +787,7 @@ export function PreferencesForm() {
 			<AccessibilitySection />
 			<ReadingSection />
 			<ReadingPrivacySection />
+			<RatingDefinitionsSection />
 			<ShelvesSection />
 			<PollsSection />
 			<MentionsSection />
