@@ -640,6 +640,14 @@ export const GetSittingBySlugOutputSchema = SittingSchema.pick({
 	displayName: zod.string().min(1),
 	poll: SittingPollDetailSchema.nullable(),
 	selectedBook: SittingDetailBookSchema.nullable(),
+	/** The picked book's author records, in order (empty before the backfill linked the book). */
+	selectedBookAuthors: zod.array(
+		zod.object({
+			slug: zod.string(),
+			name: zod.string(),
+			photoUrl: zod.string().nullable(),
+		}),
+	),
 	reviews: zod.array(SittingReviewSummarySchema),
 	participants: zod.array(SittingParticipantSummarySchema),
 	removedParticipants: zod.array(SittingRemovedParticipantSchema),

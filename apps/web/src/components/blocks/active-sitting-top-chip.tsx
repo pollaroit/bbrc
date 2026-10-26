@@ -64,25 +64,34 @@ export function ActiveSittingTopChip({ className }: { className?: string }) {
 		.filter(Boolean)
 		.join(" · ");
 
+	const participantsHref = `/sittings/${ongoing.slug}/participants` as Route;
+
 	return (
-		<Link
-			href={href}
+		<div
 			className={cn(
-				"flex min-h-9 min-w-0 flex-1 items-center gap-2 border border-border border-l-2 border-l-primary bg-muted/25 py-1 ps-2.5 pe-2 text-left text-xs transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+				"flex min-h-9 min-w-0 flex-1 items-stretch border border-border border-l-2 border-l-primary bg-muted/25 text-left text-xs transition-colors focus-within:ring-2 focus-within:ring-ring hover:bg-muted/45",
 				className,
 			)}
-			aria-label={`Open sitting: ${titleLine}`}
 		>
-			<div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 leading-tight">
+			<Link
+				href={href}
+				className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-1 ps-2.5 pe-2 leading-tight focus-visible:outline-none"
+				aria-label={`Open sitting: ${titleLine}`}
+			>
 				<span className="truncate font-medium">{titleLine}</span>
 				<span className="truncate text-2xs text-muted-foreground">
 					{metaLine}
 				</span>
-			</div>
-			<span className="inline-flex shrink-0 items-center gap-0.5 border border-border bg-background px-1.5 py-0.5 text-muted-foreground tabular-nums">
+			</Link>
+			<Link
+				href={participantsHref}
+				className="my-1 me-1 inline-flex shrink-0 items-center gap-0.5 self-center border border-border bg-background px-1.5 py-0.5 text-muted-foreground tabular-nums transition-colors hover:border-foreground/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				aria-label={`See the ${ongoing.participantCount} participants`}
+				title="Participants"
+			>
 				<Users className="size-3.5" aria-hidden />
 				{ongoing.participantCount}
-			</span>
-		</Link>
+			</Link>
+		</div>
 	);
 }

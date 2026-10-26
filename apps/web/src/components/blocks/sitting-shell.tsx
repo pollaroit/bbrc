@@ -1,7 +1,10 @@
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { formatSittingSlugLabel } from "@bbrc/shared";
 import { BookOpen, CalendarClock, CheckCheck, Users } from "lucide-react";
+import type { Route } from "next";
 import Image from "next/image";
+import Link from "next/link";
+import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
@@ -81,13 +84,45 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 						<div className="flex items-start justify-between gap-3">
 							<div className="min-w-0">
 								<h1 className="font-semibold text-xl tracking-tight sm:text-3xl">
-									{book ? book.title : sittingName}
+									{book ? (
+										<Link
+											href={`/books/${book.slug}` as Route}
+											className="underline-offset-4 hover:underline"
+										>
+											{book.title}
+										</Link>
+									) : (
+										sittingName
+									)}
 								</h1>
-								<p className="mt-0.5 text-muted-foreground text-sm">
-									{book
-										? `${formatBookAuthors(book.authors)} • ${sittingName}`
-										: "Choosing the next book"}
-								</p>
+								{book ? (
+									<p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-sm">
+										{sitting.selectedBookAuthors.length > 0 ? (
+											sitting.selectedBookAuthors.map((author) => (
+												<Link
+													key={author.slug}
+													href={`/authors/${author.slug}` as Route}
+													className="inline-flex items-center gap-1.5 text-foreground underline-offset-4 hover:underline"
+												>
+													<AuthorPhoto
+														name={author.name}
+														photoUrl={author.photoUrl}
+														size="xs"
+													/>
+													{author.name}
+												</Link>
+											))
+										) : (
+											<span>{formatBookAuthors(book.authors)}</span>
+										)}
+										<span aria-hidden>•</span>
+										<span>{sittingName}</span>
+									</p>
+								) : (
+									<p className="mt-0.5 text-muted-foreground text-sm">
+										Choosing the next book
+									</p>
+								)}
 							</div>
 							<div className="flex shrink-0 border border-border">
 								<ResourceShareMenu
