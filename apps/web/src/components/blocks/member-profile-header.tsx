@@ -13,6 +13,7 @@ import { MemberProfileCardDialog } from "@/components/blocks/member-profile-card
 import { MemberProfileNumbers } from "@/components/blocks/member-profile-numbers";
 import { PinnedAchievements } from "@/components/blocks/pinned-achievements";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
+import { CompareWithButton } from "@/components/blocks/user-compare/compare-with-button";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
 
 type MemberProfileHeaderProps = {
@@ -83,7 +84,13 @@ export function MemberProfileHeader({
 									<Pencil data-icon="inline-start" aria-hidden />
 									Edit profile
 								</Button>
-							) : null}
+							) : (
+								<CompareWithButton
+									username={user.username}
+									name={user.name}
+									className="mt-1 w-fit"
+								/>
+							)}
 						</div>
 					</div>
 

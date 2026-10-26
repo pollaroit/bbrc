@@ -429,6 +429,55 @@ function MentionsSection() {
 	);
 }
 
+function CompareSection() {
+	const { data: session } = authClient.useSession();
+	const signedIn = Boolean(session?.user);
+
+	const preferenceQuery = useQuery({
+		...orpc.userCompare.getPreferences.queryOptions(),
+		enabled: signedIn,
+	});
+	const key = orpc.userCompare.getPreferences.queryKey();
+	const mutation = useMutation(
+		orpc.userCompare.setPreferences.mutationOptions({
+			onMutate: async (variables) => {
+				await queryClient.cancelQueries({ queryKey: key });
+				const previous = queryClient.getQueryData(key);
+				queryClient.setQueryData(key, variables);
+				return { previous };
+			},
+			onError: (_error, _variables, context) => {
+				queryClient.setQueryData(key, context?.previous);
+				toast.error("Could not save that setting.");
+			},
+			onSettled: () => {
+				void queryClient.invalidateQueries({ queryKey: key });
+			},
+		}),
+	);
+
+	return (
+		<PreferencesSection
+			id="compare"
+			title="Comparing"
+			description="Whether other members can compare their reading with yours."
+		>
+			<SwitchRow
+				id="pref-allow-compare"
+				label="Allow others to compare with me"
+				hint={
+					signedIn
+						? "Other members can compare their reading with yours. Admins can always compare."
+						: "Sign in to change this one."
+				}
+				checked={preferenceQuery.data?.allowCompare ?? true}
+				disabled={!signedIn || preferenceQuery.isPending}
+				onChange={(allowCompare) => mutation.mutate({ allowCompare })}
+			/>
+		</PreferencesSection>
+	);
+}
+
 function PostsSection() {
 	const { data: session } = authClient.useSession();
 	const signedIn = Boolean(session?.user);
@@ -697,6 +746,7 @@ const sections = [
 	{ id: "shelves", label: "Shelves" },
 	{ id: "polls", label: "Polls" },
 	{ id: "mentions", label: "Mentions" },
+	{ id: "compare", label: "Comparing" },
 	{ id: "posts", label: "Posts" },
 	{ id: "sittings", label: "Sittings" },
 	{ id: "time", label: "Time and format" },
@@ -738,6 +788,7 @@ export function PreferencesForm() {
 			<ShelvesSection />
 			<PollsSection />
 			<MentionsSection />
+			<CompareSection />
 			<PostsSection />
 			<SittingsSection />
 			<TimeSection />

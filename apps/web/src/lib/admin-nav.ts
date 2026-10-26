@@ -69,6 +69,19 @@ export const adminNavSections: AdminNavSection[] = [
 				label: "Stats",
 				isActive: (pathname) => pathname.startsWith("/admin/users/stats"),
 			},
+			{
+				href: "/admin/users/compare" as Route,
+				label: "Compare",
+				isActive: (pathname) =>
+					pathname.startsWith("/admin/users/compare") &&
+					!pathname.startsWith("/admin/users/compare/stats"),
+			},
+			{
+				href: "/admin/users/compare/stats" as Route,
+				label: "Compare stats",
+				isActive: (pathname) =>
+					pathname.startsWith("/admin/users/compare/stats"),
+			},
 		],
 	},
 	{
