@@ -239,3 +239,11 @@ export function toUpdateInput(
 
 	return changed ? patch : null;
 }
+
+/** True when the form holds something different from what was loaded (what Save would send). */
+export function hasAuthorEditChanges(
+	values: AuthorEditFormValues,
+	initial: AuthorEditFormValues,
+): boolean {
+	return toUpdateInput("", values, initial) !== null;
+}

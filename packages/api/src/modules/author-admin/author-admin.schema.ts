@@ -160,3 +160,12 @@ export const UploadAuthorPhotoInputSchema = zod.object({
 export const ReviewQueueInputSchema = zod.object({
 	limit: zod.number().int().min(1).max(100).default(50),
 });
+
+export const FixNationalitiesInputSchema = zod.object({
+	/** Authors to look at in this call (default 300); a call also stops at its time budget. */
+	limit: zod.number().int().min(1).max(1000).optional(),
+	/** Report what would change without writing. */
+	dryRun: zod.boolean().optional(),
+	/** Look again at authors an earlier call already tried and left empty. */
+	retryAttempted: zod.boolean().optional(),
+});

@@ -4,8 +4,8 @@ import { addAliases } from "../../modules/author-admin/author-core";
 import {
 	type AiAuthorInput,
 	type AuthorAiRunner,
-	aiWorthAsking,
 	geminiAuthorAiRunner,
+	prepareAiItem,
 } from "./ai";
 import {
 	type AuthorFieldColumns,
@@ -236,9 +236,10 @@ export async function enrichAuthor(
 				wanted: stillEmpty,
 				sourceText,
 			};
-			if (aiWorthAsking(item)) {
+			const prepared = prepareAiItem(item);
+			if (prepared) {
 				try {
-					const facts = (await ai([item])).get(author.id);
+					const facts = (await ai([prepared])).get(author.id);
 					if (facts) {
 						const plan = planFieldPatch(
 							{ ...current, ...data },

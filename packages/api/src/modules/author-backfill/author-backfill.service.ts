@@ -3,8 +3,8 @@ import { authorNameKey, authorNameToSlug } from "@bbrc/shared";
 import {
 	type AiAuthorInput,
 	type AuthorAiRunner,
-	aiWorthAsking,
 	geminiAuthorAiRunner,
+	prepareAiItem,
 } from "../../lib/author-enrichment/ai";
 import { applyAiFacts, enrichAuthor } from "../../lib/author-enrichment/enrich";
 import {
@@ -25,7 +25,6 @@ import {
 import { findMergeSuggestions } from "../author-admin/merge-suggestions";
 import {
 	type BackfillBook,
-	chunk,
 	clusterAuthorNames,
 	mostCommon,
 	type NameCluster,
@@ -34,19 +33,35 @@ import {
 	startOfUtcDay,
 } from "./cluster";
 
-export const DEFAULT_BACKFILL_LIMIT = 25;
-export const DEFAULT_BACKFILL_DAILY_CAP = 100;
+/** Authors taken per run: effectively "everyone"; the time budget below is what really stops a run. */
+export const DEFAULT_BACKFILL_LIMIT = 500;
+/** 0 means no daily cap (the default); an admin can still ask for one. */
+export const DEFAULT_BACKFILL_DAILY_CAP = 0;
 export const AI_BATCH_SIZE = 20;
-const NETWORK_CONCURRENCY = 3;
+/** Authors read from the outside sources at the same time (their fetches are cached and retried). */
+const NETWORK_CONCURRENCY = 8;
+/** AI requests in flight at once. */
+const AI_PARALLEL = 3;
+/** A rough figure for the dry run: authors one run gets through. */
+const ESTIMATED_AUTHORS_PER_RUN = 60;
 /** How many books of one author we look at to find their Open Library id. */
 const WORKS_PER_AUTHOR = 3;
 /**
- * A run must answer before the gateway gives up (the RPC route allows 90 s).
+ * A run must answer before the gateway gives up (the RPC route allows 90 s, `maxDuration`).
  * Past this, no new work starts; what is done is saved and linked, and the next run continues.
  */
-const RUN_BUDGET_MS = 45_000;
+const RUN_BUDGET_MS = 70_000;
+/** Reading the sources stops here (a share of the budget), leaving time to save, link and ask the AI. */
+const READ_BUDGET_SHARE = 0.55;
+/** The AI is only started when this much of the budget is left (a call can take a minute). */
+const AI_MIN_LEFT_MS = 22_000;
 /** Linking gets its own allowance, so a slow read of the sources never leaves new authors without books. */
-const LINK_BUDGET_MS = 25_000;
+const LINK_BUDGET_MS = 15_000;
+
+/** The daily cap as a number to compare with (0 or missing = no cap). */
+function capOf(dailyCap: number | undefined): number {
+	return dailyCap && dailyCap > 0 ? dailyCap : Number.POSITIVE_INFINITY;
+}
 
 /** Stored on an author in `fieldMeta` when the backfill processed it (counts the day's cap). */
 const BACKFILL_MARKER = "_backfill";
@@ -183,7 +198,6 @@ export async function planBackfill(
 ): Promise<BackfillPlan> {
 	const sources = deps.sources ?? defaultAuthorSources;
 	const dailyCap = input.dailyCap ?? DEFAULT_BACKFILL_DAILY_CAP;
-	const limit = input.limit ?? DEFAULT_BACKFILL_LIMIT;
 
 	const [books, booksTotal] = await Promise.all([
 		loadUnlinkedBooks(db),
@@ -250,7 +264,8 @@ export async function planBackfill(
 		estimatedNeedAi = Math.round((needAi / sample.length) * fresh.length);
 	}
 
-	const perRun = Math.max(1, Math.min(limit, dailyCap));
+	const cap = capOf(dailyCap);
+	const perRun = Math.max(1, Math.min(ESTIMATED_AUTHORS_PER_RUN, cap));
 	return {
 		booksUnlinked: books.length,
 		booksTotal,
@@ -263,7 +278,12 @@ export async function planBackfill(
 		maxAiRequests: Math.ceil(fresh.length / AI_BATCH_SIZE),
 		runsNeeded: Math.ceil(fresh.length / perRun),
 		dailyCap,
-		daysNeeded: Math.ceil(fresh.length / Math.max(1, dailyCap)),
+		daysNeeded:
+			fresh.length === 0
+				? 0
+				: Number.isFinite(cap)
+					? Math.ceil(fresh.length / cap)
+					: 1,
 	};
 }
 
@@ -280,37 +300,44 @@ async function gatherForCluster(
 		.filter((book): book is BackfillBook => book != null)
 		.slice(0, WORKS_PER_AUTHOR);
 
-	const picked: string[] = [];
-	for (const book of clusterBooks) {
-		try {
-			const workOlids = await sources.openLibraryWorkAuthorIds(book.olid);
-			const name =
-				book.authors.find(
-					(candidate) => authorNameKey(candidate) === cluster.key,
-				) ?? cluster.name;
-			const lookups = olidsToLookUp({
-				bookNames: book.authors,
-				name,
-				workOlids,
-			});
-			const namesByOlid = new Map<string, string[]>();
-			for (const olid of lookups) {
-				const record = await sources.openLibraryAuthor(olid);
-				if (record) {
-					namesByOlid.set(olid, [record.name, ...record.alternateNames]);
+	const found = await Promise.all(
+		clusterBooks.map(async (book): Promise<string | null> => {
+			try {
+				const workOlids = await sources.openLibraryWorkAuthorIds(book.olid);
+				const name =
+					book.authors.find(
+						(candidate) => authorNameKey(candidate) === cluster.key,
+					) ?? cluster.name;
+				const lookups = olidsToLookUp({
+					bookNames: book.authors,
+					name,
+					workOlids,
+				});
+				const records = await Promise.all(
+					lookups.map(async (olid) => ({
+						olid,
+						record: await sources.openLibraryAuthor(olid),
+					})),
+				);
+				const namesByOlid = new Map<string, string[]>();
+				for (const { olid, record } of records) {
+					if (record) {
+						namesByOlid.set(olid, [record.name, ...record.alternateNames]);
+					}
 				}
+				return pickOlidForName({
+					bookNames: book.authors,
+					name,
+					workOlids,
+					namesByOlid,
+				});
+			} catch {
+				// One unreachable work must not sink the author.
+				return null;
 			}
-			const olid = pickOlidForName({
-				bookNames: book.authors,
-				name,
-				workOlids,
-				namesByOlid,
-			});
-			if (olid) picked.push(olid);
-		} catch {
-			// One unreachable work must not sink the author.
-		}
-	}
+		}),
+	);
+	const picked = found.filter((olid): olid is string => olid != null);
 
 	const olid = mostCommon(picked);
 	// Exact mapping only: the name is never looked up on Open Library here.
@@ -335,15 +362,25 @@ export type BackfillRunResult = {
 	bookNamesUnified: number;
 	aiRequests: number;
 	aiFilledAuthors: number;
+	/** Authors the AI was not asked about because the run was out of time (fixNationalities can fill them). */
+	aiSkipped: number;
 	/** New authors that look like an existing one (left separate, raised in the review queue). */
 	lookAlikeAuthors: number;
 	errors: string[];
 	booksRemaining: number;
 	authorsRemaining: number;
 	processedToday: number;
-	remainingToday: number;
+	/** Null when there is no daily cap. */
+	remainingToday: number | null;
+	/** 0 = no daily cap. */
 	dailyCap: number;
 	done: boolean;
+	/** The time budget ran out: call `run` again to continue. */
+	timedOut: boolean;
+	/** False when a run did nothing (stop looping even if not `done`, e.g. a daily cap is used up). */
+	madeProgress: boolean;
+	/** Books with no author name; they are left alone. */
+	booksWithoutAuthors: number;
 };
 
 type ClusterOutcome = {
@@ -366,7 +403,9 @@ export async function runBackfill(
 	const limit = input.limit ?? DEFAULT_BACKFILL_LIMIT;
 	const dailyCap = input.dailyCap ?? DEFAULT_BACKFILL_DAILY_CAP;
 	const errors: string[] = [];
-	const deadline = now().getTime() + RUN_BUDGET_MS;
+	const startedAt = Date.now();
+	const deadline = startedAt + RUN_BUDGET_MS;
+	const readDeadline = startedAt + RUN_BUDGET_MS * READ_BUDGET_SHARE;
 	const outOfTime = () => Date.now() > deadline;
 
 	const books = await loadUnlinkedBooks(db);
@@ -377,78 +416,119 @@ export async function runBackfill(
 	);
 
 	const processedBefore = await countProcessedSince(db, startOfUtcDay(now()));
-	const remainingBefore = Math.max(0, dailyCap - processedBefore);
+	const remainingBefore = Math.max(0, capOf(dailyCap) - processedBefore);
 	const fresh = clusters.filter((cluster) => !knownKeys.has(cluster.key));
 	const batch = fresh.slice(0, Math.min(limit, remainingBefore));
 
-	// 1. Read the outside sources for the batch (parallel, a few at a time) before writing anything.
-	const read = await mapWithConcurrency(
-		batch,
-		NETWORK_CONCURRENCY,
-		async (cluster) => {
-			try {
-				return await gatherForCluster(sources, cluster, books);
-			} catch (error) {
-				errors.push(
-					`${cluster.name}: ${error instanceof Error ? error.message : "could not read the sources"}`,
-				);
-				return null;
-			}
-		},
-	);
-
-	// 2. Create or find each author, one after another (so a shared Wikidata id is seen by the next).
+	// Authors are read in parallel; saving them is one at a time (so a Wikidata id shared by two
+	// names is seen by the second), and the AI starts as soon as a batch of leftovers is ready.
 	const outcomes: ClusterOutcome[] = [];
-	for (const [index, cluster] of batch.entries()) {
-		if (outOfTime()) break;
-		const entry = read[index];
+	let settleQueue: Promise<void> = Promise.resolve();
+	const pending: AiAuthorInput[] = [];
+	const aiJobs: Promise<void>[] = [];
+	let aiRequests = 0;
+	let aiFilledAuthors = 0;
+	let aiSkipped = 0;
+	let aiRunning = 0;
+	const aiWaiters: Array<() => void> = [];
+
+	const aiSlot = async () => {
+		if (aiRunning < AI_PARALLEL) {
+			aiRunning += 1;
+			return;
+		}
+		await new Promise<void>((resolve) => aiWaiters.push(resolve));
+		aiRunning += 1;
+	};
+	const aiRelease = () => {
+		aiRunning -= 1;
+		aiWaiters.shift()?.();
+	};
+	const aiHasTime = () => deadline - Date.now() > AI_MIN_LEFT_MS;
+
+	const askAi = (group: AiAuthorInput[]) => {
+		if (!ai || group.length === 0) return;
+		aiJobs.push(
+			(async () => {
+				await aiSlot();
+				try {
+					if (!aiHasTime()) {
+						aiSkipped += group.length;
+						return;
+					}
+					aiRequests += 1;
+					const facts = await ai(group);
+					for (const item of group) {
+						const found = facts.get(item.id);
+						if (!found) continue;
+						const changed = await applyAiFacts(db, item.id, found);
+						if (changed.length > 0) aiFilledAuthors += 1;
+					}
+				} catch (error) {
+					errors.push(
+						`AI batch: ${error instanceof Error ? error.message : "failed"}`,
+					);
+				} finally {
+					aiRelease();
+				}
+			})(),
+		);
+	};
+	const flushAi = (all: boolean) => {
+		while (pending.length >= AI_BATCH_SIZE || (all && pending.length > 0)) {
+			askAi(pending.splice(0, AI_BATCH_SIZE));
+		}
+	};
+
+	await mapWithConcurrency(batch, NETWORK_CONCURRENCY, async (cluster) => {
+		if (Date.now() > readDeadline) return; // left for the next run
+		let entry: { gathered: Gathered; olid: string | null } | null = null;
 		try {
-			outcomes.push(
-				await settleCluster(db, sources, cluster, entry ?? null, books, now()),
-			);
+			entry = await gatherForCluster(sources, cluster, books);
 		} catch (error) {
 			errors.push(
-				`${cluster.name}: ${error instanceof Error ? error.message : "failed"}`,
+				`${cluster.name}: ${error instanceof Error ? error.message : "could not read the sources"}`,
 			);
 		}
-	}
+		const settled = settleQueue.then(async () => {
+			try {
+				const outcome = await settleCluster(
+					db,
+					sources,
+					cluster,
+					entry,
+					books,
+					now(),
+				);
+				outcomes.push(outcome);
+				const item = outcome.leftover ? prepareAiItem(outcome.leftover) : null;
+				if (item) {
+					pending.push(item);
+					flushAi(false);
+				}
+			} catch (error) {
+				errors.push(
+					`${cluster.name}: ${error instanceof Error ? error.message : "failed"}`,
+				);
+			}
+		});
+		settleQueue = settled;
+		await settled;
+	});
+	await settleQueue;
 
-	// 3. Link the books now, before the slow AI step: if the request is cut off later,
+	// Link the books now, before waiting for the slow AI: if the request is cut off later,
 	// the authors just created already have their books.
-	const linkDeadline = Date.now() + LINK_BUDGET_MS;
+	const linkDeadline = Math.min(Date.now() + LINK_BUDGET_MS, deadline);
 	const { booksLinked, bookNamesUnified } = await linkBooks(
 		db,
 		errors,
 		() => Date.now() > linkDeadline,
 	);
 
-	// 4. The AI for what is still empty, in batches, from the text we hold (never from memory).
-	let aiRequests = 0;
-	let aiFilledAuthors = 0;
-	const leftovers = outcomes
-		.map((outcome) => outcome.leftover)
-		.filter(
-			(item): item is AiAuthorInput => item != null && aiWorthAsking(item),
-		);
-	if (ai && leftovers.length > 0) {
-		for (const group of chunk(leftovers, AI_BATCH_SIZE)) {
-			if (outOfTime()) break;
-			try {
-				aiRequests += 1;
-				const facts = await ai(group);
-				for (const item of group) {
-					const found = facts.get(item.id);
-					if (!found) continue;
-					const changed = await applyAiFacts(db, item.id, found);
-					if (changed.length > 0) aiFilledAuthors += 1;
-				}
-			} catch (error) {
-				errors.push(
-					`AI batch: ${error instanceof Error ? error.message : "failed"}`,
-				);
-			}
-		}
-	}
+	// The rest of the leftovers go to the AI (it fills only what is still empty).
+	flushAi(true);
+	await Promise.all(aiJobs);
 
 	const [stillUnlinked, status] = await Promise.all([
 		loadUnlinkedBooks(db),
@@ -459,6 +539,12 @@ export async function runBackfill(
 		db,
 		remainingClusters.map((cluster) => cluster.key),
 	);
+	const booksWithoutAuthors = stillUnlinked.filter(
+		(book) => book.authors.length === 0,
+	).length;
+	const authorsRemaining = remainingClusters.filter(
+		(cluster) => !remainingKnown.has(cluster.key),
+	).length;
 
 	return {
 		processedAuthors: outcomes.length,
@@ -469,16 +555,19 @@ export async function runBackfill(
 		bookNamesUnified,
 		aiRequests,
 		aiFilledAuthors,
+		aiSkipped,
 		lookAlikeAuthors: outcomes.filter((outcome) => outcome.lookAlike).length,
 		errors,
 		booksRemaining: stillUnlinked.length,
-		authorsRemaining: remainingClusters.filter(
-			(cluster) => !remainingKnown.has(cluster.key),
-		).length,
+		authorsRemaining,
 		processedToday: status.processedToday,
 		remainingToday: status.remainingToday,
 		dailyCap,
-		done: stillUnlinked.length === 0,
+		// Books with no author name at all can never be linked, so they do not hold the job open.
+		booksWithoutAuthors,
+		done: stillUnlinked.length - booksWithoutAuthors === 0,
+		timedOut: outOfTime(),
+		madeProgress: outcomes.length > 0 || booksLinked > 0,
 	};
 }
 
@@ -634,7 +723,9 @@ export type BackfillStatus = {
 	authorsFailed: number;
 	authorsPending: number;
 	processedToday: number;
-	remainingToday: number;
+	/** Null when there is no daily cap. */
+	remainingToday: number | null;
+	/** 0 = no daily cap. */
 	dailyCap: number;
 	lastRunAt: Date | null;
 };
@@ -681,7 +772,9 @@ export async function getBackfillStatus(
 		authorsFailed,
 		authorsPending,
 		processedToday,
-		remainingToday: Math.max(0, dailyCap - processedToday),
+		remainingToday: Number.isFinite(capOf(dailyCap))
+			? Math.max(0, capOf(dailyCap) - processedToday)
+			: null,
 		dailyCap,
 		lastRunAt: lastAt ? new Date(lastAt) : null,
 	};

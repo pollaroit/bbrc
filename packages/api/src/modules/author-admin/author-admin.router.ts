@@ -12,6 +12,7 @@ import {
 	AddAuthorAliasInputSchema,
 	AuthorIdInputSchema,
 	CreateAuthorInputSchema,
+	FixNationalitiesInputSchema,
 	GetAuthorForEditInputSchema,
 	MergeAuthorsInputSchema,
 	RefreshAuthorInputSchema,
@@ -52,8 +53,23 @@ import {
 	getAdminAuthorStats,
 	listAdminAuthors,
 } from "./author-dashboard.service";
+import { fixAuthorNationalities } from "./author-nationalities.service";
 
 export const authorAdminRouter = {
+	/** Re-derives nationalities as modern countries for authors with none or an old code. Resumable. */
+	fixNationalities: adminProcedure
+		.input(FixNationalitiesInputSchema)
+		.handler(async ({ input, context }) => {
+			const result = await fixAuthorNationalities(input, context.db);
+			if (!result.dryRun && result.changed > 0) {
+				revalidateAuthorsByIds(
+					context,
+					result.samples.map((sample) => sample.id),
+				);
+			}
+			return result;
+		}),
+
 	/** Dashboard like /admin/books: counts, charts and rankings for the filtered authors. */
 	overview: adminProcedure
 		.input(AdminAuthorScopeInputSchema)

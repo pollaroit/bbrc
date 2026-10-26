@@ -42,6 +42,18 @@ async function fetchFromNetwork(url: string): Promise<Response> {
 				signal: AbortSignal.timeout(OPEN_LIBRARY_FETCH.requestTimeoutMs),
 			});
 
+			// A busy answer is worth another try after a short pause (never the last attempt).
+			const busy = response.status === 429 || response.status >= 500;
+			if (busy && attempt < OPEN_LIBRARY_FETCH.maxAttempts - 1) {
+				const retryAfter = Number(response.headers.get("retry-after"));
+				await sleep(
+					Number.isFinite(retryAfter) && retryAfter > 0
+						? Math.min(retryAfter * 1000, 3000)
+						: OPEN_LIBRARY_FETCH.retryBaseDelayMs * 2 ** attempt,
+				);
+				continue;
+			}
+
 			return response;
 		} catch (error) {
 			lastError = error;
