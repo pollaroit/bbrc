@@ -11,6 +11,7 @@ import { CircleHelp } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { CompareMemberPicker } from "@/components/blocks/user-compare/compare-member-picker";
 import { cn } from "@/lib/utils";
@@ -83,6 +84,14 @@ export function CompareHeader({
 							onSelect={(username) => change("b", username)}
 						/>
 					}
+				/>
+			</div>
+			<div className="flex justify-center">
+				<ResourceShareMenu
+					path={memberCompareHref(a.username, b.username)}
+					shareText={`How alike are ${a.name} and ${b.name} as readers?`}
+					label="Share this comparison"
+					size="sm"
 				/>
 			</div>
 			{data.summary && score ? (

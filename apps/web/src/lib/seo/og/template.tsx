@@ -21,6 +21,17 @@ export type OgMedia =
 	| { kind: "photo"; src: string }
 	| { kind: "covers"; srcs: string[] };
 
+/** Two members side by side with a line of text between them (comparison cards). */
+export type OgCompare = {
+	people: [
+		{ name: string; username: string; src: string | null },
+		{ name: string; username: string; src: string | null },
+	];
+	/** Large text between the two members, e.g. "Very similar". */
+	headline: string;
+	subline?: string;
+};
+
 export type OgImageContent = {
 	/** Category shown in the top-left cell: Book, Post, Member… */
 	kind?: string;
@@ -34,6 +45,7 @@ export type OgImageContent = {
 	/** Labelled figures along the bottom, ideally 2 to 4. */
 	facts?: OgFact[];
 	media?: OgMedia;
+	compare?: OgCompare;
 };
 
 const WIDTH = 1200;
@@ -86,6 +98,77 @@ function ProgressBar({ ratio }: { ratio: number }) {
 					background: AMBER,
 				}}
 			/>
+		</div>
+	);
+}
+
+function ComparePerson({
+	person,
+	size,
+}: {
+	person: OgCompare["people"][number];
+	size: number;
+}) {
+	return (
+		<div
+			style={{
+				display: "flex",
+				flexDirection: "column",
+				alignItems: "center",
+				gap: 12,
+				width: 300,
+			}}
+		>
+			{person.src ? (
+				// biome-ignore lint/performance/noImgElement: satori image
+				<img
+					src={person.src}
+					alt=""
+					width={size}
+					height={size}
+					style={{ objectFit: "cover", border: line }}
+				/>
+			) : (
+				<div
+					style={{
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						width: size,
+						height: size,
+						border: line,
+						background: "rgba(250, 250, 250, 0.08)",
+						fontSize: 96,
+						fontWeight: 600,
+					}}
+				>
+					{person.name.slice(0, 1).toUpperCase()}
+				</div>
+			)}
+			<div
+				style={{
+					display: "block",
+					fontSize: 26,
+					fontWeight: 600,
+					lineClamp: 1,
+					textOverflow: "ellipsis",
+					maxWidth: 300,
+				}}
+			>
+				{person.name}
+			</div>
+			<div
+				style={{
+					display: "block",
+					fontSize: 20,
+					color: MUTED,
+					lineClamp: 1,
+					textOverflow: "ellipsis",
+					maxWidth: 300,
+				}}
+			>
+				{`@${person.username}`}
+			</div>
 		</div>
 	);
 }
@@ -209,6 +292,7 @@ export async function renderOgImage(
 	const body = content.body?.trim() || undefined;
 	const media = content.media;
 	const mainHeight = HEIGHT - FRAME * 2 - HEADER_H - FOOTER_H;
+	const compare = content.compare;
 	const quoteLayout =
 		body != null && content.kind != null && QUOTE_KINDS.has(content.kind);
 
@@ -288,102 +372,162 @@ export async function renderOgImage(
 					</div>
 				</div>
 
-				{/* Main: media | text */}
-				<div style={{ display: "flex", height: mainHeight }}>
-					{media ? (
-						<div
-							style={{
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								width: media.kind === "photo" ? 320 : 340,
-								height: mainHeight,
-								borderRight: line,
-								overflow: "hidden",
-								background: "rgba(250, 250, 250, 0.03)",
-							}}
-						>
-							<Media media={media} height={mainHeight} />
-						</div>
-					) : null}
+				{/* Main: two members, or media | text */}
+				{compare ? (
 					<div
 						style={{
 							display: "flex",
-							flexDirection: "column",
-							flex: 1,
-							justifyContent: "center",
-							gap: 18,
-							padding: "28px 44px",
-							overflow: "hidden",
+							height: mainHeight,
+							alignItems: "center",
+							justifyContent: "space-between",
+							padding: "0 40px",
 						}}
 					>
-						{quoteLayout ? (
+						<ComparePerson
+							person={compare.people[0]}
+							size={Math.min(mainHeight - 112, 210)}
+						/>
+						<div
+							style={{
+								display: "flex",
+								flexDirection: "column",
+								alignItems: "center",
+								flex: 1,
+								gap: 10,
+								padding: "0 16px",
+							}}
+						>
+							<div
+								style={{
+									display: "block",
+									fontSize: compare.headline.length > 14 ? 40 : 52,
+									fontWeight: 600,
+									textAlign: "center",
+									lineHeight: 1.1,
+									letterSpacing: "-0.02em",
+									lineClamp: 2,
+									textOverflow: "ellipsis",
+								}}
+							>
+								{compare.headline}
+							</div>
+							{compare.subline ? (
+								<div
+									style={{
+										display: "block",
+										fontSize: 22,
+										color: MUTED,
+										textAlign: "center",
+										lineClamp: 2,
+										textOverflow: "ellipsis",
+									}}
+								>
+									{compare.subline}
+								</div>
+							) : null}
+						</div>
+						<ComparePerson
+							person={compare.people[1]}
+							size={Math.min(mainHeight - 112, 210)}
+						/>
+					</div>
+				) : (
+					<div style={{ display: "flex", height: mainHeight }}>
+						{media ? (
 							<div
 								style={{
 									display: "flex",
-									flexDirection: "column",
-									gap: 6,
-									fontSize: 26,
+									alignItems: "center",
+									justifyContent: "center",
+									width: media.kind === "photo" ? 320 : 340,
+									height: mainHeight,
+									borderRight: line,
+									overflow: "hidden",
+									background: "rgba(250, 250, 250, 0.03)",
 								}}
 							>
-								<span style={{ fontWeight: 600 }}>{content.title}</span>
-								{content.subtitle ? (
-									<span style={{ color: MUTED, fontSize: 22 }}>
-										{content.subtitle}
-									</span>
-								) : null}
-							</div>
-						) : (
-							<div
-								style={{
-									display: "block",
-									fontSize: titleSize(content.title.length, body != null),
-									fontWeight: 600,
-									lineHeight: 1.1,
-									letterSpacing: "-0.02em",
-									lineClamp: 3,
-									textOverflow: "ellipsis",
-								}}
-							>
-								{content.title}
-							</div>
-						)}
-						{!quoteLayout && content.subtitle ? (
-							<div
-								style={{
-									display: "block",
-									fontSize: 28,
-									color: INK,
-									lineClamp: 1,
-									textOverflow: "ellipsis",
-								}}
-							>
-								{content.subtitle}
+								<Media media={media} height={mainHeight} />
 							</div>
 						) : null}
-						{body ? (
-							<div
-								style={{
-									display: "block",
-									fontSize: bodySize(body.length, !quoteLayout),
-									lineHeight: 1.4,
-									color: quoteLayout ? INK : MUTED,
-									borderLeft: quoteLayout ? `3px solid ${AMBER}` : "none",
-									paddingLeft: quoteLayout ? 22 : 0,
-									lineClamp: quoteLayout ? 6 : 3,
-									textOverflow: "ellipsis",
-								}}
-							>
-								{body}
-							</div>
-						) : null}
-						{!body && !content.subtitle && !media ? (
-							<div style={{ display: "flex", fontSize: 28, color: MUTED }}>
-								{DEFAULT_DESCRIPTION}
-							</div>
-						) : null}
+						<div
+							style={{
+								display: "flex",
+								flexDirection: "column",
+								flex: 1,
+								justifyContent: "center",
+								gap: 18,
+								padding: "28px 44px",
+								overflow: "hidden",
+							}}
+						>
+							{quoteLayout ? (
+								<div
+									style={{
+										display: "flex",
+										flexDirection: "column",
+										gap: 6,
+										fontSize: 26,
+									}}
+								>
+									<span style={{ fontWeight: 600 }}>{content.title}</span>
+									{content.subtitle ? (
+										<span style={{ color: MUTED, fontSize: 22 }}>
+											{content.subtitle}
+										</span>
+									) : null}
+								</div>
+							) : (
+								<div
+									style={{
+										display: "block",
+										fontSize: titleSize(content.title.length, body != null),
+										fontWeight: 600,
+										lineHeight: 1.1,
+										letterSpacing: "-0.02em",
+										lineClamp: 3,
+										textOverflow: "ellipsis",
+									}}
+								>
+									{content.title}
+								</div>
+							)}
+							{!quoteLayout && content.subtitle ? (
+								<div
+									style={{
+										display: "block",
+										fontSize: 28,
+										color: INK,
+										lineClamp: 1,
+										textOverflow: "ellipsis",
+									}}
+								>
+									{content.subtitle}
+								</div>
+							) : null}
+							{body ? (
+								<div
+									style={{
+										display: "block",
+										fontSize: bodySize(body.length, !quoteLayout),
+										lineHeight: 1.4,
+										color: quoteLayout ? INK : MUTED,
+										borderLeft: quoteLayout ? `3px solid ${AMBER}` : "none",
+										paddingLeft: quoteLayout ? 22 : 0,
+										lineClamp: quoteLayout ? 6 : 3,
+										textOverflow: "ellipsis",
+									}}
+								>
+									{body}
+								</div>
+							) : null}
+							{!body && !content.subtitle && !media ? (
+								<div style={{ display: "flex", fontSize: 28, color: MUTED }}>
+									{DEFAULT_DESCRIPTION}
+								</div>
+							) : null}
+						</div>
 					</div>
-				</div>
+				)}
 
 				{/* Footer: facts divided by lines */}
 				<div

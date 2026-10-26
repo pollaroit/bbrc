@@ -23,6 +23,7 @@ import { getShelfBySlug } from "@bbrc/api/modules/shelf/shelf.service";
 import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.schema";
 import { getSittingBySlug } from "@bbrc/api/modules/sitting/sitting.service";
 import { getUserByUsername } from "@bbrc/api/modules/user/user.service";
+import { getCompareOgSnapshot } from "@bbrc/api/modules/user-compare/user-compare-og.service";
 import {
 	ACHIEVEMENT_CATEGORY_LABELS,
 	ACHIEVEMENTS,
@@ -928,6 +929,59 @@ async function resolveMemberOg(
 	}
 }
 
+const COMPARE_FALLBACK: OgImageContent = {
+	kind: "Compare",
+	title: "Reading comparison",
+	body: "See how alike two members are as readers: the books and ratings they share.",
+};
+
+async function resolveCompareOg(
+	usernameA: string,
+	usernameB: string,
+): Promise<OgImageContent> {
+	try {
+		const snapshot = await getCompareOgSnapshot(
+			db,
+			decodeURIComponent(usernameA),
+			decodeURIComponent(usernameB),
+		);
+		if (!snapshot) return COMPARE_FALLBACK;
+
+		const [srcA, srcB] = await Promise.all([
+			ogImageData(snapshot.a.image),
+			ogImageData(snapshot.b.image),
+		]);
+		const numbers = snapshot.numbers;
+		return {
+			kind: "Compare",
+			title: `${snapshot.a.name} and ${snapshot.b.name}`,
+			compare: {
+				people: [
+					{ name: snapshot.a.name, username: snapshot.a.username, src: srcA },
+					{ name: snapshot.b.name, username: snapshot.b.username, src: srcB },
+				],
+				headline: numbers ? numbers.bandLabel : "Reading compared",
+				subline: numbers ? undefined : "How alike are they as readers?",
+			},
+			facts: numbers
+				? [
+						fact("Common books", num(numbers.commonBooks)),
+						fact("Match score", `${numbers.score}%`),
+						fact(
+							"Rating agreement",
+							numbers.ratingAgreement == null
+								? "0%"
+								: `${numbers.ratingAgreement}%`,
+						),
+						fact("Shared authors", num(numbers.sharedAuthors)),
+					]
+				: undefined,
+		};
+	} catch {
+		return COMPARE_FALLBACK;
+	}
+}
+
 async function resolveShelfOg(
 	username: string,
 	shelfSlug: string,
@@ -1401,6 +1455,9 @@ export async function resolveOgImageContent(
 	}
 
 	if (section === "users") {
+		if (slug === "compare" && rest[0] && rest[1] && rest.length === 2) {
+			return resolveCompareOg(rest[0], rest[1]);
+		}
 		if (rest[0] === "shelves") {
 			const shelfSlug = rest[1];
 			if (!shelfSlug) return resolveMemberOg(slug, "shelves");
