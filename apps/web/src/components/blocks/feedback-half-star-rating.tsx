@@ -10,7 +10,7 @@ import {
 import { cn } from "@bbrc/ui/lib/utils";
 import { Star } from "lucide-react";
 import { useRef, useState } from "react";
-import { RatingDefinitionCard } from "@/components/blocks/rating-definition-card";
+import { RatingGuideSheet } from "@/components/blocks/rating-guide";
 
 type FeedbackHalfStarRatingProps = {
 	value: FeedbackRatingStep;
@@ -69,8 +69,8 @@ export function FeedbackHalfStarRating({
 	}
 
 	// With "Clear" a 0 means no rating; without it a 0 is a real rating ("Nothing works").
-	const showDefinition =
-		isFeedbackRatingStep(shown) && (hasValue || !allowClear);
+	const guideRating =
+		isFeedbackRatingStep(value) && (value > 0 || !allowClear) ? value : null;
 
 	return (
 		<div className={cn("flex flex-col gap-3", className)}>
@@ -170,9 +170,6 @@ export function FeedbackHalfStarRating({
 								</span>
 								<span className="ml-1 text-muted-foreground text-sm">/ 5</span>
 							</p>
-							<p className="truncate text-muted-foreground text-sm">
-								{describeRating(shown)}
-							</p>
 						</>
 					) : (
 						<p className="text-muted-foreground text-sm">
@@ -188,9 +185,10 @@ export function FeedbackHalfStarRating({
 							Clear
 						</button>
 					) : null}
+					{/* Always there, rated or not, so nothing moves when a rating is chosen. */}
+					<RatingGuideSheet current={guideRating} className="self-center" />
 				</div>
 			</div>
-			{showDefinition ? <RatingDefinitionCard rating={shown} /> : null}
 		</div>
 	);
 }

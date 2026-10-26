@@ -23,7 +23,7 @@ import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PreferencesSection } from "@/components/blocks/preferences-ui";
-import { MiniStars } from "@/components/blocks/rating-definition-card";
+import { MiniStars } from "@/components/blocks/rating-guide";
 import { useRatingDefinitions } from "@/lib/rating/use-rating-definitions";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
