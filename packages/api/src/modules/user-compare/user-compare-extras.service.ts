@@ -378,7 +378,6 @@ export async function getCompareExtras(
 					select: {
 						id: true,
 						slug: true,
-						title: true,
 						status: true,
 						deadline: true,
 						selectedBook: { select: compareBookSelect },
@@ -388,7 +387,8 @@ export async function getCompareExtras(
 		count: sittingRows.length,
 		items: sittingRows.slice(0, LIST_LIMIT).map((row) => ({
 			slug: row.slug,
-			title: row.title,
+			// A sitting has no title of its own: it is known by the book the club picked.
+			title: row.selectedBook?.title ?? row.slug,
 			status: row.status,
 			deadline: row.deadline,
 			book: row.selectedBook ? toCompareBook(row.selectedBook) : null,
