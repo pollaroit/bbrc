@@ -10,7 +10,7 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { CircleHelp } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { CompareMemberPicker } from "@/components/blocks/user-compare/compare-member-picker";
 import { cn } from "@/lib/utils";
@@ -38,17 +38,17 @@ export function CompareHeader({
 	asAdmin: boolean;
 	onChangeMember?: (side: "a" | "b", username: string) => void;
 }) {
-	const router = useRouter();
 	const { a, b, score } = data;
 
 	function change(side: "a" | "b", username: string) {
 		if (onChangeMember) return onChangeMember(side, username);
-		router.push(
-			memberCompareHref(
-				side === "a" ? username : a.username,
-				side === "b" ? username : b.username,
-			),
+		const href = memberCompareHref(
+			side === "a" ? username : a.username,
+			side === "b" ? username : b.username,
 		);
+		// Updates the address at once (Next keeps usePathname in step), so the comparison
+		// does not wait for a server round trip before the page and the URL follow.
+		window.history.pushState(null, "", href);
 	}
 
 	// A member always sees themselves on the left; only admins can swap either side.
@@ -57,32 +57,34 @@ export function CompareHeader({
 	return (
 		<header className="flex flex-col gap-6">
 			<div className="grid items-center gap-6 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-				<MemberSide
-					member={a}
-					side="a"
-					action={
-						canSwapA ? (
-							<CompareMemberPicker
-								value={a.username}
-								excludeUsername={b.username}
-								asAdmin={asAdmin}
-								onSelect={(username) => change("a", username)}
-							/>
-						) : null
-					}
-				/>
+				<MemberSide member={a} side="a" />
 				<ScoreRing data={data} />
-				<MemberSide
-					member={b}
-					side="b"
-					action={
-						<CompareMemberPicker
-							value={b.username}
-							excludeUsername={a.username}
-							asAdmin={asAdmin}
-							onSelect={(username) => change("b", username)}
-						/>
+				<MemberSide member={b} side="b" />
+			</div>
+			<div className="flex flex-wrap items-center justify-center gap-2">
+				{canSwapA ? (
+					<CompareMemberPicker
+						value={a.username}
+						label="Change first member"
+						excludeUsername={b.username}
+						asAdmin={asAdmin}
+						onSelect={(username) => change("a", username)}
+					/>
+				) : null}
+				<CompareMemberPicker
+					value={b.username}
+					label={
+						canSwapA ? "Change second member" : "Compare with someone else"
 					}
+					excludeUsername={a.username}
+					asAdmin={asAdmin}
+					onSelect={(username) => change("b", username)}
+				/>
+				<ResourceShareMenu
+					path={memberCompareHref(a.username, b.username)}
+					shareText={`How alike are ${a.name} and ${b.name} as readers?`}
+					label="Share this comparison"
+					size="sm"
 				/>
 			</div>
 			{data.summary && score ? (
@@ -99,15 +101,7 @@ export function CompareHeader({
 	);
 }
 
-function MemberSide({
-	member,
-	side,
-	action,
-}: {
-	member: Member;
-	side: "a" | "b";
-	action: React.ReactNode;
-}) {
+function MemberSide({ member, side }: { member: Member; side: "a" | "b" }) {
 	return (
 		<div
 			className={cn(
@@ -156,7 +150,6 @@ function MemberSide({
 						})}
 					</p>
 				) : null}
-				{action ? <div className="mt-1">{action}</div> : null}
 			</div>
 		</div>
 	);

@@ -340,6 +340,20 @@ export default async function OgDevPage() {
 					userWithAvatar ? `/users/${userWithAvatar.username}` : null,
 					"No member with an avatar.",
 				),
+				entry(
+					"compare",
+					"Reading compared (two members)",
+					u && userWithAvatar && u !== userWithAvatar.username
+						? `/users/compare/${u}/${userWithAvatar.username}`
+						: null,
+					"Needs two different members.",
+				),
+				entry(
+					"compare-fallback",
+					"Reading compared (fallback)",
+					"/users/compare/nobody-one/nobody-two",
+					"",
+				),
 				...(
 					[
 						["posts", "Feed"],

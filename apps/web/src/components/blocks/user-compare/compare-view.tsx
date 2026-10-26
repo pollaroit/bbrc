@@ -2,6 +2,7 @@
 
 import type { CompareOutput } from "@bbrc/api/modules/user-compare/user-compare.schema";
 import { useQuery } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { CompareBooks } from "@/components/blocks/user-compare/compare-books";
 import {
@@ -28,15 +29,28 @@ export type CompareViewProps = {
 	onChangeMember?: (side: "a" | "b", username: string) => void;
 };
 
+/** `/users/compare/<a>/<b>` to the two usernames, or null for any other path. */
+function parseComparePath(pathname: string | null) {
+	const match = pathname?.match(/^\/users\/compare\/([^/]+)\/([^/]+)\/?$/);
+	if (!match?.[1] || !match[2]) return null;
+	return { a: decodeURIComponent(match[1]), b: decodeURIComponent(match[2]) };
+}
+
 const TABS = ["books", ...COMPARE_EXTRA_TABS.map((tab) => tab.id)] as const;
 
 /** The whole comparison: header with the score, then the tabs. Runs its own queries. */
 export function CompareView({
-	a,
-	b,
+	a: initialA,
+	b: initialB,
 	asAdmin = false,
 	onChangeMember,
 }: CompareViewProps) {
+	// On the member route the address is the source of truth, so swapping a member (which
+	// pushes the new address at once) and the browser's back button both follow it.
+	const pathname = usePathname();
+	const fromPath = onChangeMember ? null : parseComparePath(pathname);
+	const a = fromPath?.a ?? initialA;
+	const b = fromPath?.b ?? initialB;
 	const input = { a, b };
 	const compare = useQuery(
 		asAdmin
