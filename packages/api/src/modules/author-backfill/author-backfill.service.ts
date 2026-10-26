@@ -40,6 +40,13 @@ export const AI_BATCH_SIZE = 20;
 const NETWORK_CONCURRENCY = 3;
 /** How many books of one author we look at to find their Open Library id. */
 const WORKS_PER_AUTHOR = 3;
+/**
+ * A run must answer before the gateway gives up (the RPC route allows 90 s).
+ * Past this, no new work starts; what is done is saved and linked, and the next run continues.
+ */
+const RUN_BUDGET_MS = 45_000;
+/** Linking gets its own allowance, so a slow read of the sources never leaves new authors without books. */
+const LINK_BUDGET_MS = 25_000;
 
 /** Stored on an author in `fieldMeta` when the backfill processed it (counts the day's cap). */
 const BACKFILL_MARKER = "_backfill";
@@ -359,6 +366,8 @@ export async function runBackfill(
 	const limit = input.limit ?? DEFAULT_BACKFILL_LIMIT;
 	const dailyCap = input.dailyCap ?? DEFAULT_BACKFILL_DAILY_CAP;
 	const errors: string[] = [];
+	const deadline = now().getTime() + RUN_BUDGET_MS;
+	const outOfTime = () => Date.now() > deadline;
 
 	const books = await loadUnlinkedBooks(db);
 	const clusters = clusterAuthorNames(books);
@@ -391,6 +400,7 @@ export async function runBackfill(
 	// 2. Create or find each author, one after another (so a shared Wikidata id is seen by the next).
 	const outcomes: ClusterOutcome[] = [];
 	for (const [index, cluster] of batch.entries()) {
+		if (outOfTime()) break;
 		const entry = read[index];
 		try {
 			outcomes.push(
@@ -403,7 +413,16 @@ export async function runBackfill(
 		}
 	}
 
-	// 3. The AI for what is still empty, in batches, from the text we hold (never from memory).
+	// 3. Link the books now, before the slow AI step: if the request is cut off later,
+	// the authors just created already have their books.
+	const linkDeadline = Date.now() + LINK_BUDGET_MS;
+	const { booksLinked, bookNamesUnified } = await linkBooks(
+		db,
+		errors,
+		() => Date.now() > linkDeadline,
+	);
+
+	// 4. The AI for what is still empty, in batches, from the text we hold (never from memory).
 	let aiRequests = 0;
 	let aiFilledAuthors = 0;
 	const leftovers = outcomes
@@ -413,6 +432,7 @@ export async function runBackfill(
 		);
 	if (ai && leftovers.length > 0) {
 		for (const group of chunk(leftovers, AI_BATCH_SIZE)) {
+			if (outOfTime()) break;
 			try {
 				aiRequests += 1;
 				const facts = await ai(group);
@@ -429,9 +449,6 @@ export async function runBackfill(
 			}
 		}
 	}
-
-	// 4. Link every book whose names are all known authors now.
-	const { booksLinked, bookNamesUnified } = await linkBooks(db, errors);
 
 	const [stillUnlinked, status] = await Promise.all([
 		loadUnlinkedBooks(db),
@@ -557,6 +574,7 @@ async function settleCluster(
 async function linkBooks(
 	db: Database,
 	errors: string[],
+	outOfTime: () => boolean = () => false,
 ): Promise<{ booksLinked: number; bookNamesUnified: number }> {
 	const books = await loadUnlinkedBooks(db);
 	const keys = [
@@ -569,6 +587,7 @@ async function linkBooks(
 	let booksLinked = 0;
 	let bookNamesUnified = 0;
 	for (const book of books) {
+		if (outOfTime()) break;
 		if (book.authors.length === 0) continue;
 		const ids: string[] = [];
 		let complete = true;

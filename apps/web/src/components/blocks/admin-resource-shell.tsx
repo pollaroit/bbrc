@@ -64,6 +64,8 @@ export const adminMemberTabs = [
 	{ href: "/admin/users" as Route, label: "Overview" },
 	{ href: "/admin/users/list" as Route, label: "List" },
 	{ href: "/admin/users/stats" as Route, label: "Stats" },
+	{ href: "/admin/users/compare" as Route, label: "Compare" },
+	{ href: "/admin/users/compare/stats" as Route, label: "Compare stats" },
 ] as const;
 
 export const adminSittingTabs = [
