@@ -12,16 +12,17 @@ import {
 	ReadingTimeline,
 	VotingProgress,
 } from "@/components/blocks/sitting-card-parts";
-import { progressLabels } from "@/components/blocks/sitting-participation-progress";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
 import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { useProgressLabels } from "@/lib/i18n/use-labels";
 import { cn } from "@/lib/utils";
 
 type Sitting = GetSittingListOutput["items"][number];
 
 export function SittingListCard({ sitting }: { sitting: Sitting }) {
+	const progressLabels = useProgressLabels();
 	const { data: session } = authClient.useSession();
 	const canJoin =
 		Boolean(session?.user) &&

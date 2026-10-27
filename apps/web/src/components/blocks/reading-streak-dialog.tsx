@@ -13,17 +13,11 @@ import type { Route } from "next";
 import { useMemo } from "react";
 import { Link } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/format-datetime";
+import { useProgressLabels } from "@/lib/i18n/use-labels";
 import { cn } from "@/lib/utils";
 
 type Streak = GetUserByUsernameOutput["readingStreak"];
 type StreakSitting = Streak["sittings"][number];
-
-const progressLabels: Record<StreakSitting["progress"], string> = {
-	not_started: "Not started",
-	in_progress: "Reading",
-	completed: "Completed",
-	dnf: "Did not finish",
-};
 
 function streakSetsEqual(a: readonly string[], b: readonly string[]) {
 	if (a.length !== b.length) {
@@ -40,6 +34,7 @@ function SittingStreakList({
 	items: StreakSitting[];
 	highlight: "current" | "best" | "history";
 }) {
+	const progressLabels = useProgressLabels();
 	if (items.length === 0) {
 		return null;
 	}

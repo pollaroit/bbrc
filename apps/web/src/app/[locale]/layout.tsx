@@ -61,7 +61,7 @@ export default async function LocaleLayout({
 			lang={locale}
 			intl={{
 				locale,
-				messages: pickMessages(locale, ["language", "notifications"]),
+				messages: pickMessages(locale, ["language", "notifications", "labels"]),
 			}}
 		>
 			{children}

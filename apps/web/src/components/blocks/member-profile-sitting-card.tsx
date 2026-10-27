@@ -11,10 +11,10 @@ import {
 	ReadingTimeline,
 	VotingProgress,
 } from "@/components/blocks/sitting-card-parts";
-import { progressLabels } from "@/components/blocks/sitting-participation-progress";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
 import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { useProgressLabels } from "@/lib/i18n/use-labels";
 import { cn } from "@/lib/utils";
 
 type Item = GetUserParticipationListOutput["items"][number];
@@ -42,6 +42,7 @@ export function MemberProfileSittingCard({
 	item,
 	variant = "compact",
 }: MemberProfileSittingCardProps) {
+	const progressLabels = useProgressLabels();
 	const { sitting } = item;
 	const book = sitting.selectedBook;
 	const coverSrc = book ? bookCoverUrl(book.coverId) : null;

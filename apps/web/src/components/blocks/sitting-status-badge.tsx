@@ -1,6 +1,6 @@
-import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.listing";
 import type { GetSittingListOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { Badge } from "@bbrc/ui/components/badge";
+import { useSittingStatusLabels } from "@/lib/i18n/use-labels";
 
 export type SittingStatus = GetSittingListOutput["items"][number]["status"];
 
@@ -11,9 +11,10 @@ const statusBadgeClassName: Record<SittingStatus, string> = {
 };
 
 export function SittingStatusBadge({ status }: { status: SittingStatus }) {
+	const labels = useSittingStatusLabels();
 	return (
 		<Badge variant="outline" className={statusBadgeClassName[status]}>
-			{sittingStatusFilterLabels[status]}
+			{labels[status]}
 		</Badge>
 	);
 }

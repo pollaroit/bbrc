@@ -22,6 +22,7 @@ import {
 import { Link } from "@/i18n/navigation";
 import { bookCoverUrl } from "@/lib/book-cover";
 import { useFormatters } from "@/lib/i18n/use-formatters";
+import { useProgressLabels } from "@/lib/i18n/use-labels";
 import { cn } from "@/lib/utils";
 
 type Sitting = GetSittingBySlugOutput;
@@ -34,15 +35,6 @@ const progressBarClass = {
 } as const;
 
 const progressDotClass = progressBarClass;
-
-// Defined here: the shared labels live in a client module, which a server
-// component cannot read values from.
-const progressLabels = {
-	not_started: "Not started",
-	in_progress: "Reading",
-	completed: "Completed",
-	dnf: "Did not finish",
-} as const;
 
 const progressOrder = [
 	"completed",
@@ -83,6 +75,7 @@ function Section({
 }
 
 function ProgressSection({ sitting }: { sitting: Sitting }) {
+	const progressLabels = useProgressLabels();
 	const { stats } = sitting;
 	const total = stats.participantCount;
 	const isVoting = sitting.status === "voting";
@@ -314,6 +307,7 @@ function VotingSection({ sitting }: { sitting: Sitting }) {
 }
 
 function ReadersSection({ sitting }: { sitting: Sitting }) {
+	const progressLabels = useProgressLabels();
 	const people = sitting.participants;
 	const shown = people.slice(0, 10);
 	const hidden = people.length - shown.length;

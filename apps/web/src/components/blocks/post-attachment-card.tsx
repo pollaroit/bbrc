@@ -1,6 +1,5 @@
 import type { PostAttachmentOutput } from "@bbrc/api/modules/post/post-attachment.schema";
 import { shelfTypeFilterLabels } from "@bbrc/api/modules/shelf/shelf.listing";
-import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.listing";
 import { contentPlainText, formatFeedbackRating } from "@bbrc/shared";
 import {
 	Attachment,
@@ -25,6 +24,7 @@ import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
 import { useFormatters } from "@/lib/i18n/use-formatters";
+import { useSittingStatusLabels } from "@/lib/i18n/use-labels";
 import { postAttachmentHref } from "@/lib/post-attachment-path";
 import { cn } from "@/lib/utils";
 
@@ -189,6 +189,7 @@ function PostAttachmentSittingCard({
 }: {
 	sitting: Extract<PostAttachmentOutput, { kind: "sitting" }>["sitting"];
 }) {
+	const sittingStatusLabels = useSittingStatusLabels();
 	const href = `/sittings/${sitting.slug}` as Route;
 	const title = sitting.displayName;
 	const deadlineLabel =
@@ -212,8 +213,8 @@ function PostAttachmentSittingCard({
 			<AttachmentContent>
 				<AttachmentTitle>{title}</AttachmentTitle>
 				<AttachmentDescription>
-					{sittingStatusFilterLabels[sitting.status]} ·{" "}
-					{sitting.participantCount} participant
+					{sittingStatusLabels[sitting.status]} · {sitting.participantCount}{" "}
+					participant
 					{sitting.participantCount === 1 ? "" : "s"}
 					{sitting.status === "voting" && sitting.selectedBookTitle
 						? ` · ${sitting.selectedBookTitle}`

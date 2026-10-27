@@ -22,19 +22,16 @@ import {
 	SittingRemovedParticipantsSection,
 	useParticipantRemoveDialog,
 } from "@/components/blocks/sitting-participants-admin-panel";
-import {
-	progressIndicatorClassName,
-	progressLabels,
-} from "@/components/blocks/sitting-participation-progress";
+import { progressIndicatorClassName } from "@/components/blocks/sitting-participation-progress";
 import { SittingParticipationProgressPickerDialog } from "@/components/blocks/sitting-participation-progress-picker-dialog";
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
 import { Link } from "@/i18n/navigation";
+import { useProgressLabels } from "@/lib/i18n/use-labels";
 import type { FieldLabels } from "@/lib/listing/labels";
 import { sortDirectionParser } from "@/lib/listing/parsers";
 import { formatPollChipRankLabel } from "@/lib/poll-chip-rank-label";
 import { cn } from "@/lib/utils";
-
 import { orpc } from "@/utils/orpc";
 
 type Sitting = GetSittingBySlugOutput;
@@ -166,6 +163,7 @@ function ParticipantRow({
 	onRemove,
 	removeDisabledReason,
 }: RowProps) {
+	const progressLabels = useProgressLabels();
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const isSelf = participant.userId === viewerUserId;
 	const showProgress = sitting.status !== "voting";
@@ -328,6 +326,7 @@ export function SittingParticipantsView({
 	isAdmin,
 	viewerUserId,
 }: SittingParticipantsViewProps) {
+	const progressLabels = useProgressLabels();
 	const [params, setParams] = useQueryStates(paramParsers);
 	const { canRemove, requestRemove, removeDialog } =
 		useParticipantRemoveDialog(sitting);

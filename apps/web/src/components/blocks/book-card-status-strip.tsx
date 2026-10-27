@@ -2,10 +2,7 @@
 
 import type { GetBookListOutput } from "@bbrc/api/modules/book/book.schema";
 import { BookEditLink } from "@/components/blocks/book-edit-link";
-import {
-	type BookStatus,
-	formatBookStatusLabel,
-} from "@/components/blocks/book-status-badge";
+import type { BookStatus } from "@/components/blocks/book-status-badge";
 
 const statusStripClassName: Record<BookStatus, string> = {
 	completed: "bg-success/10 text-success-ink",
@@ -16,6 +13,7 @@ const statusStripClassName: Record<BookStatus, string> = {
 import type { Route } from "next";
 import { Link } from "@/i18n/navigation";
 import type { BookSortMetric } from "@/lib/books/sort-metric";
+import { useBookStatusLabels } from "@/lib/i18n/use-labels";
 import { cn } from "@/lib/utils";
 
 type BookCardStatusBook = Pick<
@@ -43,7 +41,7 @@ export function BookCardStatusStrip({
 }) {
 	const status = book.status as BookStatus;
 	const sittingHref = sittingHrefForBook(book);
-	const label = formatBookStatusLabel(status);
+	const label = useBookStatusLabels().label[status];
 
 	const stripClassName = cn(
 		"pointer-events-auto relative z-2 flex items-center gap-2 border-border border-b px-3 py-1.5 font-medium text-xs",

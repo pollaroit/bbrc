@@ -20,9 +20,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { SittingReadingPanel } from "@/components/blocks/reading/sitting-reading-panel";
 import { SittingBookFeedbackPrompt } from "@/components/blocks/sitting-book-feedback-prompt";
-import { progressLabels } from "@/components/blocks/sitting-participation-progress";
 import { Link, useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useProgressLabels } from "@/lib/i18n/use-labels";
 import {
 	applyProgressOptimistically,
 	restoreProgress,
@@ -104,6 +104,7 @@ function ProgressControl({
 	/** The sitting's book; with it, "Reading" opens the edition dialog. */
 	book: { slug: string; title: string; pages: number } | null;
 }) {
+	const progressLabels = useProgressLabels();
 	const router = useRouter();
 	const [pendingChoice, setPendingChoice] = useState<Progress | null>(null);
 	const [startOpen, setStartOpen] = useState(false);

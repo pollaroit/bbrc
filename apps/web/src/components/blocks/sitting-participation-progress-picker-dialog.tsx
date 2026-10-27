@@ -13,12 +13,10 @@ import { useMutation } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { toast } from "sonner";
-import {
-	progressIndicatorClassName,
-	progressLabels,
-} from "@/components/blocks/sitting-participation-progress";
+import { progressIndicatorClassName } from "@/components/blocks/sitting-participation-progress";
 import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useProgressLabels } from "@/lib/i18n/use-labels";
 import {
 	applyProgressOptimistically,
 	restoreProgress,
@@ -60,6 +58,7 @@ export function SittingParticipationProgressPickerDialog({
 	participant,
 	mode,
 }: SittingParticipationProgressPickerDialogProps) {
+	const progressLabels = useProgressLabels();
 	const router = useRouter();
 	const choices = progressChoicesForSitting(sitting.status);
 	const [startOpen, setStartOpen] = useState(false);
