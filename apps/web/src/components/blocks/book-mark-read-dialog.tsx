@@ -99,8 +99,10 @@ const REVIEW_MAX_PLAIN = 500;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** "Started Oct 20 · finishing today makes it 5 days." */
-function readingSummary(startedAt: Date | string) {
-	const f = useFormatters();
+function readingSummary(
+	startedAt: Date | string,
+	f: ReturnType<typeof useFormatters>,
+) {
 	const started = new Date(startedAt);
 	const days = Math.max(
 		1,
@@ -640,7 +642,7 @@ export function BookMarkReadDialog({
 									/>
 								</p>
 								<p className="text-muted-foreground text-xs leading-relaxed">
-									{readingSummary(reading.startedAt)}
+									{readingSummary(reading.startedAt, f)}
 									{inWishlist ? " It will leave your wishlist." : ""}
 								</p>
 							</section>
