@@ -8,6 +8,7 @@ import {
 	formatAuthorLifespan,
 	getBookCountryName,
 } from "@bbrc/shared";
+import { currentLocale } from "../../lib/request-locale";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type { AuthorCard, AuthorProfile } from "./author.schema";
 
@@ -16,7 +17,7 @@ import type { AuthorCard, AuthorProfile } from "./author.schema";
 export function nationalityList(codes: readonly string[]) {
 	return codes.map((code) => ({
 		code,
-		name: getBookCountryName(code) ?? code,
+		name: getBookCountryName(code, currentLocale()) ?? code,
 	}));
 }
 

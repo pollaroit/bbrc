@@ -18,6 +18,7 @@ import {
 	roundTo,
 	seasonality,
 } from "@bbrc/shared";
+import { currentLocale } from "../../lib/request-locale";
 import { resolveAuthor } from "../author/author-resolve";
 import {
 	viewerFromSession,
@@ -463,7 +464,7 @@ export async function getAuthorInsightStats(
 		originCountries: [...countryCounts.entries()]
 			.map(([code, count]) => ({
 				code,
-				name: getBookCountryName(code) ?? code,
+				name: getBookCountryName(code, currentLocale()) ?? code,
 				count,
 			}))
 			.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))

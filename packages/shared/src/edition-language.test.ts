@@ -37,3 +37,13 @@ describe("cleanEditionLabel", () => {
 		expect(cleanEditionLabel(null)).toBeNull();
 	});
 });
+
+describe("in another language", () => {
+	test("language names follow the language, English stays as it was", () => {
+		expect(formatEditionLanguage("/languages/tur", "az")).toBe("Türk dili");
+		expect(formatEditionLanguage("tur")).toBe("Turkish");
+		expect(cleanEditionLabel("Penguin · 2003 · /languages/rus", "az")).toBe(
+			"Penguin · 2003 · Rus dili",
+		);
+	});
+});

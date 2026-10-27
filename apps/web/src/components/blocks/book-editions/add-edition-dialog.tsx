@@ -51,6 +51,7 @@ import {
 	Tablet,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useLocale } from "next-intl";
 import {
 	useCallback,
 	useEffect,
@@ -203,6 +204,7 @@ export function AddEditionDialog({
 	edition = null,
 }: Props) {
 	const f = useFormatters();
+	const locale = useLocale();
 	const uid = useId();
 	const editing = edition != null;
 	const isMac = useIsMac();
@@ -462,7 +464,7 @@ export function AddEditionDialog({
 	const preview: EditionPreviewData = {
 		bookTitle,
 		title: form.title,
-		languageLabel: languageLabel(form.language),
+		languageLabel: languageLabel(form.language, locale),
 		formatLabel: EDITION_FORMAT_LABELS[form.format],
 		formatIcon: FORMAT_ICONS[form.format],
 		pages: pagesValid ? pages : null,

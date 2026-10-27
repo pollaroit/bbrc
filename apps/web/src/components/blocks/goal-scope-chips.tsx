@@ -1,5 +1,7 @@
-import { getBookCountryName } from "@bbrc/shared";
+"use client";
+
 import type { GoalScopeView } from "@/lib/goal-scope-ui";
+import { useCountryName } from "@/lib/i18n/use-content-text";
 import { cn } from "@/lib/utils";
 
 type GoalScopeChipsProps = {
@@ -9,12 +11,15 @@ type GoalScopeChipsProps = {
 	className?: string;
 };
 
-function scopeLabels(scope: GoalScopeView): string[] {
+function scopeLabels(
+	scope: GoalScopeView,
+	countryName: (code: string) => string,
+): string[] {
 	if (scope.kind === "authors") {
 		return scope.authorSlugs.map((slug) => slug.replaceAll("_", " "));
 	}
 	if (scope.kind === "countries") {
-		return scope.countryCodes.map((code) => getBookCountryName(code) ?? code);
+		return scope.countryCodes.map((code) => countryName(code));
 	}
 	return [];
 }
@@ -25,7 +30,8 @@ export function GoalScopeChips({
 	max = 3,
 	className,
 }: GoalScopeChipsProps) {
-	const labels = scopeLabels(scope);
+	const countryName = useCountryName();
+	const labels = scopeLabels(scope, countryName);
 	const shown = labels.slice(0, max);
 	const hidden = labels.length - shown.length;
 	const kindLabel =

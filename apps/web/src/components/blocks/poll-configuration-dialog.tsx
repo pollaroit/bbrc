@@ -7,6 +7,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
+import { useLocale } from "next-intl";
 import {
 	getPollConfigurationRows,
 	type SittingPollConfiguration,
@@ -23,7 +24,7 @@ export function PollConfigurationDialog({
 	open,
 	onOpenChange,
 }: PollConfigurationDialogProps) {
-	const rows = getPollConfigurationRows(poll);
+	const rows = getPollConfigurationRows(poll, useLocale());
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>

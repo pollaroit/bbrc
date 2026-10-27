@@ -1,14 +1,15 @@
 "use client";
 
-import { bookCountrySelectOptions } from "@bbrc/shared";
+import type { bookCountryOptions } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Input } from "@bbrc/ui/components/input";
 import { Globe, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { CircleFlag } from "react-circle-flags";
+import { useCountryOptions } from "@/lib/i18n/use-content-text";
 import { cn } from "@/lib/utils";
 
-type CountryOption = (typeof bookCountrySelectOptions)[number];
+type CountryOption = ReturnType<typeof bookCountryOptions>[number];
 
 type CountryDropdownProps = {
 	disabled?: boolean;
@@ -74,9 +75,10 @@ export function CountryDropdown({
 
 	const exclude = useMemo(() => new Set(excludeAlpha2), [excludeAlpha2]);
 
+	const allCountries = useCountryOptions();
 	const options = useMemo(
-		() => bookCountrySelectOptions.filter((row) => !exclude.has(row.alpha2)),
-		[exclude],
+		() => allCountries.filter((row) => !exclude.has(row.alpha2)),
+		[allCountries, exclude],
 	);
 
 	const filtered = useMemo(

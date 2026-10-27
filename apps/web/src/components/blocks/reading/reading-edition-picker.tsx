@@ -30,6 +30,7 @@ import {
 	X,
 } from "lucide-react";
 import Image from "next/image";
+import { useLocale } from "next-intl";
 import { useId, useMemo, useState } from "react";
 import { AddEditionDialog } from "@/components/blocks/book-editions/add-edition-dialog";
 import { SegmentedControl } from "@/components/blocks/segmented-control";
@@ -119,6 +120,7 @@ export function ReadingEditionPicker({
 	mode: controlledMode,
 	onModeChange,
 }: Props) {
+	const locale = useLocale();
 	const uid = useId();
 	const [ownMode, setOwnMode] = useState<ReadingEditionMode>("edition");
 	const mode = controlledMode ?? ownMode;
@@ -182,7 +184,7 @@ export function ReadingEditionPicker({
 				meta: [
 					edition.publisher,
 					edition.publishedYear,
-					languageLabel(edition.language),
+					languageLabel(edition.language, locale),
 					`${edition.pages} pages`,
 				]
 					.filter(Boolean)

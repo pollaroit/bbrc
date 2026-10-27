@@ -2,7 +2,7 @@
 
 import type { GetUserStatsOutput } from "@bbrc/api/modules/user/user-stats.schema";
 import type { Formatters } from "@bbrc/i18n";
-import { authorNameToSlug, getBookCountryName } from "@bbrc/shared";
+import { authorNameToSlug } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Card,
@@ -54,6 +54,7 @@ import { UserStatsPeriodControls } from "@/components/blocks/user-stats-period-c
 import { UserStatsWorldMap } from "@/components/blocks/user-stats-world-map";
 import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { useCountryName } from "@/lib/i18n/use-content-text";
 import { useFormatters } from "@/lib/i18n/use-formatters";
 import { isUserStatsQueryReady } from "@/lib/user-stats-period-ui";
 import {
@@ -734,6 +735,7 @@ function TopAuthorsCountries({
 	mode: "authors" | "countries";
 }) {
 	const f = useFormatters();
+	const countryName = useCountryName();
 	const [showMostRated, setShowMostRated] = useState(false);
 	const rows = showMostRated ? rowsByRating : rowsByCount;
 	const toggleId =
@@ -776,7 +778,11 @@ function TopAuthorsCountries({
 								{mode === "countries" ? (
 									<CountryLabel
 										alpha2={row.key}
-										name={getBookCountryName(row.key) ?? row.label}
+										name={
+											countryName(row.key) === row.key
+												? row.label
+												: countryName(row.key)
+										}
 										className="font-medium"
 									/>
 								) : (
