@@ -15,7 +15,6 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import type { Route } from "next";
-import { useRouter } from "next/navigation";
 import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useComposePost } from "@/components/blocks/compose-post-provider";
@@ -23,6 +22,7 @@ import { useCreateGoal } from "@/components/blocks/create-goal-provider";
 import { globalSearchTypeLabels } from "@/components/blocks/global-search-provider";
 import { GlobalSearchThumb } from "@/components/blocks/global-search-thumb";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { useColorMode } from "@/lib/preferences/use-color-mode";
 import {

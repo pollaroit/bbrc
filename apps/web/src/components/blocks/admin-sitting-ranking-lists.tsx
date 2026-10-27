@@ -8,8 +8,8 @@ import {
 	CardTitle,
 } from "@bbrc/ui/components/card";
 import type { Route } from "next";
-import Link from "next/link";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
+import { Link } from "@/i18n/navigation";
 import { sittingStatusFilterLabels } from "@/lib/listing/sittings-listing";
 
 type SittingRankingItem =

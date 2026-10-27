@@ -20,9 +20,9 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftRight, BookCheck, BookOpen, Check } from "lucide-react";
 import type { Route } from "next";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import {
 	editionChoiceFor,

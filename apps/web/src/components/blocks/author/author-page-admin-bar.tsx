@@ -4,7 +4,7 @@ import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { Pencil } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { useAuthorViewer } from "./author-page-viewer";
 
 /** Admin-only: the edit link and how trustworthy the details are. Nothing renders for anyone else. */

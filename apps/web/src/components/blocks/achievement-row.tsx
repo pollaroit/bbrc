@@ -1,8 +1,8 @@
 import type { AchievementSummary } from "@bbrc/api/modules/achievement/achievement.schema";
 import type { Route } from "next";
-import Link from "next/link";
 import { AchievementBadge } from "@/components/blocks/achievement-badge";
 import { TierLadder } from "@/components/blocks/tier-ladder";
+import { Link } from "@/i18n/navigation";
 import { percentLabel, rarityOf } from "@/lib/achievements/format";
 import { cn } from "@/lib/utils";
 

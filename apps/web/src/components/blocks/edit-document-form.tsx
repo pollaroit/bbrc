@@ -15,11 +15,11 @@ import { Field, FieldDescription, FieldLabel } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { DocumentLanguagePicker } from "@/components/blocks/document-language-picker";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { orpc, queryClient } from "@/utils/orpc";
 

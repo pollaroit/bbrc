@@ -31,8 +31,6 @@ import {
 	Users,
 } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -52,6 +50,7 @@ import { ShelfDetailBookRow } from "@/components/blocks/shelf-detail-book-row";
 import { ShelfInvitationActions } from "@/components/blocks/shelf-invitation-actions";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { Link, useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";

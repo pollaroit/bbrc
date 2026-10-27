@@ -11,8 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 import { TriangleAlert } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { Link } from "@/i18n/navigation";
 import {
 	bookCoverFrameClassName,
 	bookCoverUrl,

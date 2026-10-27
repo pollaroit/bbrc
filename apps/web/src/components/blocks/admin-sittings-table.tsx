@@ -13,7 +13,6 @@ import {
 } from "@bbrc/ui/components/table";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
 import {
 	ADMIN_TABLE_MOBILE_MIN_WIDTH,
@@ -22,6 +21,7 @@ import {
 import { AdminSittingsToolbar } from "@/components/blocks/admin-sittings-toolbar";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
+import { Link } from "@/i18n/navigation";
 import { adminSittingsExportConfig } from "@/lib/admin-table-export/configs";
 import {
 	toAdminSittingsListCallInput,

@@ -1,6 +1,6 @@
 import type { RelatedAuthor } from "@bbrc/api/modules/author/author.schema";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { AuthorPageCover } from "./author-page-bits";
 import { AuthorPhoto } from "./author-photo";
 

@@ -32,7 +32,6 @@ import {
 } from "@bbrc/ui/components/table";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import {
 	parseAsBoolean,
 	parseAsInteger,
@@ -49,6 +48,7 @@ import {
 	RESOURCE_LABELS,
 	RESOURCE_SINGULAR,
 } from "@/components/blocks/admin-views-parts";
+import { Link } from "@/i18n/navigation";
 import { clubTimeZone } from "@/lib/club-timezone";
 import { orpc } from "@/utils/orpc";
 

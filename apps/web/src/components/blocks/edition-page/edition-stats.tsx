@@ -1,8 +1,8 @@
 import type { EditionPage } from "@bbrc/api/modules/edition/edition.schema";
 import { Star } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { EditionSection } from "@/components/blocks/edition-page/section";
+import { Link } from "@/i18n/navigation";
 
 function Tile({
 	label,

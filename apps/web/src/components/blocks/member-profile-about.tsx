@@ -5,9 +5,9 @@ import { contentPlainText, genres, socialSites } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Cake, Gauge, Globe, MapPin, UserRound } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import { RichContentView } from "@/components/blocks/rich-content-view";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 type Profile = GetUserByUsernameOutput["profile"];

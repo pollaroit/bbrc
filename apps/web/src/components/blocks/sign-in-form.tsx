@@ -3,10 +3,11 @@
 import { SignInInputSchema } from "@bbrc/schemas";
 import { FieldGroup } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAppForm } from "@/hooks/use-app-form";
+import { useRouter } from "@/i18n/navigation";
 import { safeCallbackUrl } from "@/lib/auth-callback-url";
 import { authClient } from "@/lib/auth-client";
 

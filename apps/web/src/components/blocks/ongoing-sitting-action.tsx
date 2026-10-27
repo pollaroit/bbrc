@@ -4,8 +4,8 @@ import { Button } from "@bbrc/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { SittingCardJoinButton } from "@/components/blocks/sitting-card-join-button";
+import { Link } from "@/i18n/navigation";
 import { orpc } from "@/utils/orpc";
 
 type OngoingSittingActionProps = {

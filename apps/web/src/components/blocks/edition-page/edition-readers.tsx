@@ -6,10 +6,10 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, CheckCheck } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { EditionSection } from "@/components/blocks/edition-page/section";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link } from "@/i18n/navigation";
 import { readMonthLabel } from "@/lib/edition/format";
 import { orpc } from "@/utils/orpc";
 

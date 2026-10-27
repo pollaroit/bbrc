@@ -5,9 +5,9 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { FactCategoryBadge } from "@/components/blocks/fact-category-badge";
+import { Link } from "@/i18n/navigation";
 import { orpc } from "@/utils/orpc";
 
 const PAGE_SIZE = 24;

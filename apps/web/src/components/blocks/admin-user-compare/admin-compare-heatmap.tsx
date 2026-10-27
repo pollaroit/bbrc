@@ -3,10 +3,10 @@
 import type { CompareStatsOutput } from "@bbrc/api/modules/user-compare-admin/user-compare-admin.schema";
 import { describeScoreBand } from "@bbrc/shared";
 import type { Route } from "next";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ChartFrame } from "@/components/blocks/author/author-stats-frame";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { useRouter } from "@/i18n/navigation";
 import { adminComparePairHref } from "@/lib/listing/admin-user-compare-listing";
 import { cn } from "@/lib/utils";
 

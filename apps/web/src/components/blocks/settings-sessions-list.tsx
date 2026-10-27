@@ -2,9 +2,9 @@
 
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { Laptop, Smartphone } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 
 export type SettingsSessionItem = {

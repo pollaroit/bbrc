@@ -5,12 +5,12 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftRight, GitCompareArrows } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import {
 	CompareMemberPicker,
 	CompareView,
 } from "@/components/blocks/user-compare/compare-view";
+import { Link } from "@/i18n/navigation";
 import { useAdminCompareSearchParams } from "@/lib/listing/admin-user-compare-listing";
 import { orpc } from "@/utils/orpc";
 

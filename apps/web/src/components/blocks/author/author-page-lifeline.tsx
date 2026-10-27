@@ -4,8 +4,8 @@ import type { AuthorProfile } from "@bbrc/api/modules/author/author.schema";
 import { Button } from "@bbrc/ui/components/button";
 import { Star } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { AuthorPageCover, authorBookAnchor } from "./author-page-bits";
 

@@ -3,11 +3,10 @@
 import { Button } from "@bbrc/ui/components/button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link, useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { orpc, queryClient } from "@/utils/orpc";
 

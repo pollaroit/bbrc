@@ -5,10 +5,10 @@ import type {
 import { Badge } from "@bbrc/ui/components/badge";
 import { BadgeCheck, BookMarked, Globe2, Star } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { CopyValueButton } from "@/components/blocks/edition-page/copy-value";
 import { EditionCoverGallery } from "@/components/blocks/edition-page/edition-cover-gallery";
+import { Link } from "@/i18n/navigation";
 import { editionHeadline } from "@/lib/edition/format";
 import { cn } from "@/lib/utils";
 

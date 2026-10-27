@@ -19,7 +19,6 @@ import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import { BarChart3 } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -31,6 +30,7 @@ import {
 } from "@/components/blocks/poll-builder";
 import { PollOptionContent } from "@/components/blocks/poll-option-content";
 import { SegmentedControl } from "@/components/blocks/segmented-control";
+import { Link } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/format-datetime";
 import { syncPoll } from "@/lib/poll/use-poll";
 import { cn } from "@/lib/utils";

@@ -3,11 +3,11 @@
 import { Button } from "@bbrc/ui/components/button";
 import { BookPlus, Plus } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { AdminBookRequestsSheet } from "@/components/blocks/admin-book-requests-sheet";
 import { AdminDocumentRequestsSheet } from "@/components/blocks/admin-document-requests-sheet";
 import { UserBookRequestsSheet } from "@/components/blocks/user-book-requests-sheet";
 import { UserDocumentsSheet } from "@/components/blocks/user-documents-sheet";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 

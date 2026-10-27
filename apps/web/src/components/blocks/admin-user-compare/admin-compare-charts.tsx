@@ -9,8 +9,6 @@ import {
 } from "@bbrc/ui/components/chart";
 import { Slider } from "@bbrc/ui/components/slider";
 import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
 	Bar,
@@ -31,6 +29,7 @@ import {
 	formatNumber,
 } from "@/components/blocks/author/author-stats-frame";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link, useRouter } from "@/i18n/navigation";
 
 type Stats = CompareStatsOutput;
 

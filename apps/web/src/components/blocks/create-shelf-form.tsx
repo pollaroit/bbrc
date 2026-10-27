@@ -9,8 +9,6 @@ import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { parseAsString, useQueryState } from "nuqs";
 import { useId, useState } from "react";
 import { toast } from "sonner";
@@ -25,6 +23,7 @@ import {
 	shelfTypeOptions,
 	shelfVisibilityCreateOptions,
 } from "@/components/blocks/shelf-form-options";
+import { Link, useRouter } from "@/i18n/navigation";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type CreateShelfFormProps = {

@@ -2,7 +2,6 @@
 
 import type { CompareOutput } from "@bbrc/api/modules/user-compare/user-compare.schema";
 import { useQuery } from "@tanstack/react-query";
-import { usePathname } from "next/navigation";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { CompareBooks } from "@/components/blocks/user-compare/compare-books";
 import {
@@ -13,6 +12,7 @@ import {
 	CompareHeader,
 	CompareHeaderSkeleton,
 } from "@/components/blocks/user-compare/compare-header";
+import { usePathname } from "@/i18n/navigation";
 import { orpc } from "@/utils/orpc";
 
 export type { CompareMemberPickerProps } from "@/components/blocks/user-compare/compare-member-picker";

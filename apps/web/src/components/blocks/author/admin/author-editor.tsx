@@ -24,7 +24,6 @@ import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useEffect, useMemo, useRef } from "react";
 import { Controller, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -38,6 +37,7 @@ import { AuthorPhotoPanel } from "@/components/blocks/author/admin/author-photo-
 import { AuthorStatusBadge } from "@/components/blocks/author/admin/author-status-badge";
 import { BookOriginCountriesField } from "@/components/blocks/book-origin-countries-field";
 import { useAppForm } from "@/hooks/use-app-form";
+import { Link } from "@/i18n/navigation";
 import {
 	AUTHOR_GENDER_OPTIONS,
 	AuthorEditFormSchema,

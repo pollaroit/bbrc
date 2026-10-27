@@ -2,8 +2,8 @@
 
 import { getBookCountryName } from "@bbrc/shared";
 import type { Route } from "next";
-import Link from "next/link";
 import { CountryLabel } from "@/components/blocks/country-dropdown";
+import { Link } from "@/i18n/navigation";
 
 type BookLiteraryOriginProps = {
 	countries: string[];

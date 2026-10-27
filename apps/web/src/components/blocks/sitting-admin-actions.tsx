@@ -23,10 +23,10 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { BookOpenIcon, CheckIcon, FlagIcon, SendIcon } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { SittingAdminToolRow } from "@/components/blocks/sitting-admin-tool-row";
+import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";

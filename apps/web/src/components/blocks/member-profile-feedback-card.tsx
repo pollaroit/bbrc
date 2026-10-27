@@ -5,7 +5,6 @@ import { contentPlainText, formatFeedbackRating } from "@bbrc/shared";
 import { Heart, MessageCircle, Star } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { EditionChip } from "@/components/blocks/edition-chip";
 import { FeedbackEditIconButton } from "@/components/blocks/feedback-edit-icon-button";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
@@ -13,6 +12,7 @@ import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { useImpressionRef } from "@/components/blocks/track-impression";
+import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { shareSnippet } from "@/lib/share-snippet";
 

@@ -12,10 +12,10 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { LogOut, UserPlus } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import { SittingReadingRisk } from "@/components/blocks/sitting-reading-risk";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { useSittingJoinActions } from "@/lib/sitting/join-cache";
 import { orpc } from "@/utils/orpc";

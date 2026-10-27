@@ -19,11 +19,11 @@ import {
 } from "@bbrc/ui/components/sheet";
 import { useMutation } from "@tanstack/react-query";
 import { CalendarClockIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { SittingAdminToolRow } from "@/components/blocks/sitting-admin-tool-row";
 import { SittingDeadlinePicker } from "@/components/blocks/sitting-deadline-picker";
+import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { clubTimeZone, formatClubDateTime } from "@/lib/club-timezone";
 import { orpc, queryClient } from "@/utils/orpc";

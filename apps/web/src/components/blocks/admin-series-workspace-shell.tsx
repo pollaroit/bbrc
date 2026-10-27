@@ -1,7 +1,7 @@
 import { Button } from "@bbrc/ui/components/button";
 import type { Route } from "next";
-import Link from "next/link";
 import type { ReactNode } from "react";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 type AdminSeriesWorkspaceShellProps = {

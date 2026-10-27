@@ -28,11 +28,10 @@ import { Input } from "@bbrc/ui/components/input";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { FileUp } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DocumentLanguagePicker } from "@/components/blocks/document-language-picker";
+import { Link, useRouter } from "@/i18n/navigation";
 import { orpc, queryClient } from "@/utils/orpc";
 
 function formatFileSize(bytes: number): string {

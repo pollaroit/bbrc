@@ -1,7 +1,7 @@
 import type { BookRequestedBy } from "@bbrc/api/modules/book/book.schema";
 import { cn } from "@bbrc/ui/lib/utils";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 
 type BookRequestedByProps = {
 	requestedBy: BookRequestedBy;

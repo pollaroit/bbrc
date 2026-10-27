@@ -10,8 +10,6 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { MemberProfileShelfCard } from "@/components/blocks/member-profile-shelf-card";
@@ -26,6 +24,7 @@ import {
 	shelfVisibilityOptionsForEdit,
 } from "@/components/blocks/shelf-form-options";
 import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
+import { Link, useRouter } from "@/i18n/navigation";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type EditShelfFormProps = {

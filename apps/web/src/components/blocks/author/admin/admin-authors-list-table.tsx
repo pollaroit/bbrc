@@ -13,7 +13,6 @@ import {
 } from "@bbrc/ui/components/table";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
 import {
 	ADMIN_TABLE_MOBILE_MIN_WIDTH,
@@ -23,6 +22,7 @@ import { AdminAuthorRowActions } from "@/components/blocks/author/admin/admin-au
 import { AdminAuthorsToolbar } from "@/components/blocks/author/admin/admin-authors-toolbar";
 import { AuthorStatusBadge } from "@/components/blocks/author/admin/author-status-badge";
 import { AuthorPhoto } from "@/components/blocks/author/author-photo";
+import { Link } from "@/i18n/navigation";
 import { adminAuthorsExportConfig } from "@/lib/admin-table-export/configs";
 import {
 	adminAuthorEnrichmentLabels,

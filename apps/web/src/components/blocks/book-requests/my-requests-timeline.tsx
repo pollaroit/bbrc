@@ -11,9 +11,9 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { Check, Clock, X } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { formatAuthors } from "@/components/blocks/book-requests/request-shared";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 

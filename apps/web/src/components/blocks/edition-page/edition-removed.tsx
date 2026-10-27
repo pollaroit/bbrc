@@ -1,7 +1,7 @@
 import { Button } from "@bbrc/ui/components/button";
 import { ArchiveX } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 
 /** A member edition that was deleted: say so, and point at the book's editions. */
 export function EditionRemoved({

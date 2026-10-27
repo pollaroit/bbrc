@@ -39,6 +39,8 @@ model User {
   allowSittingInvites   Boolean    @default(true) @map("allow_sitting_invites")
   /// Look and feel (palette, fonts, sizes) plus display preferences; validated by `normalizePreferences`.
   preferences           Json?
+  /// The language of the app for this member ("en" or "az"); checked against `LOCALES` in code.
+  locale                String     @default("en") @map("locale")
   /// @zod.email("Invalid email address")
   email                 String     @unique
   emailVerified         Boolean    @default(false) @map("email_verified")

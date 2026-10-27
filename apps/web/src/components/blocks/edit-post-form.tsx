@@ -8,8 +8,6 @@ import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { PollSettingsEditor } from "@/components/blocks/poll-settings-editor";
@@ -22,6 +20,7 @@ import {
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useLivePoll } from "@/lib/poll/use-poll";
 import { postAttachmentLabel } from "@/lib/post-attachment-label";
 import { orpc, queryClient } from "@/utils/orpc";

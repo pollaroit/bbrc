@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Users } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { formatBookAuthors } from "@/lib/book-cover";
 import { formatDateTimeCompact } from "@/lib/format-datetime";

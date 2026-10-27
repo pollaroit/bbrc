@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/i18n/navigation";
 import { isAdminAuthorScreen } from "@/lib/admin-author-screens";
 
 export function AdminMainFrame({ children }: { children: React.ReactNode }) {

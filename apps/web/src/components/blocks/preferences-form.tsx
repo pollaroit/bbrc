@@ -4,9 +4,11 @@ import { DEFAULT_PREFERENCES } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Switch } from "@bbrc/ui/components/switch";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ClubDateTime } from "@/components/blocks/club-date-time";
+import { LanguagePicker } from "@/components/blocks/language-picker";
 import { PreferencesAppearance } from "@/components/blocks/preferences-appearance";
 import {
 	PreferenceRow,
@@ -16,6 +18,7 @@ import {
 import { RatingDefinitionsSection } from "@/components/blocks/rating-definitions-editor";
 import { authClient } from "@/lib/auth-client";
 import { clubTimeZone } from "@/lib/club-timezone";
+import { isLanguageSwitchEnabled } from "@/lib/i18n/language-switch";
 import {
 	getPreferencesSnapshot,
 	writePreferences,
@@ -640,6 +643,20 @@ function TimeSection() {
 	);
 }
 
+function LanguageSection() {
+	const t = useTranslations("language");
+	if (!isLanguageSwitchEnabled()) return null;
+	return (
+		<PreferencesSection
+			id="language"
+			title={t("title")}
+			description={t("description")}
+		>
+			<LanguagePicker />
+		</PreferencesSection>
+	);
+}
+
 function SearchSection() {
 	// The saved list lives in this browser, so it is read after hydration (reading it during
 	// render gives the server and the first client render different text).
@@ -744,6 +761,7 @@ function SyncSection() {
 
 const sections = [
 	{ id: "appearance", label: "Appearance" },
+	{ id: "language", label: "Language" },
 	{ id: "accessibility", label: "Accessibility" },
 	{ id: "reading", label: "Reading" },
 	{ id: "reading-privacy", label: "Wishlist" },
@@ -775,18 +793,23 @@ export function PreferencesForm() {
 				aria-label="Preference sections"
 				className="flex flex-wrap gap-x-4 gap-y-1"
 			>
-				{sections.map((section) => (
-					<a
-						key={section.id}
-						href={`#${section.id}`}
-						className="text-muted-foreground text-sm underline-offset-4 hover:text-foreground hover:underline"
-					>
-						{section.label}
-					</a>
-				))}
+				{sections
+					.filter(
+						(section) => section.id !== "language" || isLanguageSwitchEnabled(),
+					)
+					.map((section) => (
+						<a
+							key={section.id}
+							href={`#${section.id}`}
+							className="text-muted-foreground text-sm underline-offset-4 hover:text-foreground hover:underline"
+						>
+							{section.label}
+						</a>
+					))}
 			</nav>
 
 			<PreferencesAppearance />
+			<LanguageSection />
 			<AccessibilitySection />
 			<ReadingSection />
 			<ReadingPrivacySection />

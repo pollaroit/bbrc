@@ -8,12 +8,12 @@ import {
 } from "@bbrc/ui/components/hover-card";
 import { ExternalLink } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import {
 	ExternalLinkCard,
 	LinkPreviewCard,
 } from "@/components/blocks/link-preview-card";
+import { Link } from "@/i18n/navigation";
 import { internalRefOf, toSitePath } from "@/lib/link-preview/site-path";
 import { cn } from "@/lib/utils";
 

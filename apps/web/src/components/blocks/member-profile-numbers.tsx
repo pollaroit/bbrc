@@ -3,10 +3,10 @@
 import type { GetUserByUsernameOutput } from "@bbrc/api/modules/user/user.schema";
 import { ChevronRight, Flame } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import { MemberLevelsInfoDialog } from "@/components/blocks/member-levels-info-dialog";
 import { ReadingStreakDialog } from "@/components/blocks/reading-streak-dialog";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 type MemberProfileNumbersProps = {

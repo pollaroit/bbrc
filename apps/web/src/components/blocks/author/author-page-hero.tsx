@@ -1,9 +1,9 @@
 import type { AuthorGetOutput } from "@bbrc/api/modules/author/author.schema";
 import { Badge } from "@bbrc/ui/components/badge";
 import type { Route } from "next";
-import Link from "next/link";
 import { CountryFlagIcon } from "@/components/blocks/country-dropdown";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
+import { Link } from "@/i18n/navigation";
 import {
 	AUTHOR_TABS,
 	type AuthorTabId,

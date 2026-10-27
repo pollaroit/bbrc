@@ -1,7 +1,6 @@
 "use client";
 
 import type { Route } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { ActiveSittingTopChip } from "@/components/blocks/active-sitting-top-chip";
 import { BrowseMenuDropdown } from "@/components/blocks/browse-menu-dropdown";
@@ -12,6 +11,7 @@ import { Logo } from "@/components/blocks/logo";
 import { NotificationBell } from "@/components/blocks/notification-bell";
 import { UserMenu } from "@/components/blocks/user-menu";
 import { ModeToggle } from "@/components/mode-toggle";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { headerToolbarControlClass } from "@/lib/header-toolbar";
 import { useLiveUserImage } from "@/lib/user-avatar-broadcast";

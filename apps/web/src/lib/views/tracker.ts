@@ -1,3 +1,4 @@
+import { stripLocalePrefix } from "@bbrc/i18n";
 import {
 	VIEW_BATCH_MAX,
 	VIEW_DEDUPE_MS,
@@ -45,8 +46,10 @@ const navigation: {
 };
 
 /** Called on every in-app route change. The first call is the page load. */
-export function noteNavigation(pathname: string) {
+export function noteNavigation(rawPathname: string) {
 	if (typeof window === "undefined") return;
+	// A page in another language is the same page: `/az/books/x` counts as `/books/x`.
+	const pathname = stripLocalePrefix(rawPathname);
 	if (!navigation.started) {
 		navigation.started = true;
 		navigation.currentPath = pathname;

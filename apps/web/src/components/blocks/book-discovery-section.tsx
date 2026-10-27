@@ -2,8 +2,8 @@
 
 import type { GetBookCatalogDiscoveryOutput } from "@bbrc/api/modules/book/book-catalog-discovery.schema";
 import type { Route } from "next";
-import Link from "next/link";
 import { BookCard } from "@/components/blocks/book-card";
+import { Link } from "@/i18n/navigation";
 
 type DiscoverySection = GetBookCatalogDiscoveryOutput["similar"];
 

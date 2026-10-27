@@ -1,8 +1,8 @@
 "use client";
 
 import type { ViewResourceKind } from "@bbrc/shared";
-import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { usePathname } from "@/i18n/navigation";
 import { trackDetailView } from "@/lib/views/tracker";
 
 type TrackDetailViewProps = {

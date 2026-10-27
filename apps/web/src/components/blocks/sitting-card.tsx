@@ -2,9 +2,9 @@ import type { GetSittingListOutput } from "@bbrc/api/modules/sitting/sitting.sch
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { CalendarDays, Users } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 export type SittingCardSitting = GetSittingListOutput["items"][number];

@@ -14,7 +14,6 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { BadgeCheck, GitMerge, Pencil, Search } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -24,6 +23,7 @@ import {
 import { AuthorStatusBadge } from "@/components/blocks/author/admin/author-status-badge";
 import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { Link } from "@/i18n/navigation";
 import { client, orpc, queryClient } from "@/utils/orpc";
 
 type Queue = Awaited<ReturnType<typeof client.authorAdmin.reviewQueue>>;

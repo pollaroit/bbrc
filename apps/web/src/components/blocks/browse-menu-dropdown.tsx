@@ -12,8 +12,7 @@ import {
 } from "@bbrc/ui/components/dropdown-menu";
 import { Compass } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import {
 	browseMenuItems,
 	browseNavPlaceholderItems,

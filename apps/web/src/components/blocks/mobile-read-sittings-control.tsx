@@ -4,7 +4,7 @@ import { Button } from "@bbrc/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";

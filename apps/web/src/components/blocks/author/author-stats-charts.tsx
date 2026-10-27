@@ -9,7 +9,6 @@ import {
 } from "@bbrc/ui/components/chart";
 import { ToggleGroup, ToggleGroupItem } from "@bbrc/ui/components/toggle-group";
 import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import {
 	Area,
@@ -40,6 +39,7 @@ import {
 	yearToRange,
 } from "@/components/blocks/author/author-stats-frame";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 type Stats = AuthorInsightStatsOutput;

@@ -20,12 +20,12 @@ import {
 import type { Route } from "next";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import Link from "next/link";
 import { type CSSProperties, useId, useState } from "react";
 import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { Link } from "@/i18n/navigation";
 import { bookCoverUrl } from "@/lib/book-cover";
 import { paceText, paceToneClass } from "@/lib/reading/pace-text";
 import {

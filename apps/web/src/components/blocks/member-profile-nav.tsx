@@ -1,9 +1,8 @@
 "use client";
 
 import type { Route } from "next";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, usePathname } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 

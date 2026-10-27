@@ -44,8 +44,6 @@ import {
 	UserPlus,
 } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { RelativeTime } from "@/components/blocks/relative-time";
@@ -55,6 +53,7 @@ import { ShelfPermissionPicker } from "@/components/blocks/shelf-permission-pick
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { Link, useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { orpc, queryClient } from "@/utils/orpc";
 

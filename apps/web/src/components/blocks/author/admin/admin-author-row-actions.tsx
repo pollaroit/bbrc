@@ -12,9 +12,9 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { MoreHorizontal } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { toast } from "sonner";
 import { invalidateAuthorQueries } from "@/components/blocks/author/admin/author-actions-panel";
+import { Link } from "@/i18n/navigation";
 import { client } from "@/utils/orpc";
 
 type AuthorRow = AdminAuthorListOutput["items"][number];

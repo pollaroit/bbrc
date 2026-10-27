@@ -27,7 +27,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Flag, X } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
@@ -37,6 +36,7 @@ import {
 	QuizScore,
 } from "@/components/blocks/quiz-score-parts";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";

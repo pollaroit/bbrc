@@ -12,9 +12,9 @@ import {
 	Sofa,
 } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useImpressionRef } from "@/components/blocks/track-impression";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link } from "@/i18n/navigation";
 import type { PeopleSortField } from "@/lib/listing/people-listing";
 import { cn } from "@/lib/utils";
 

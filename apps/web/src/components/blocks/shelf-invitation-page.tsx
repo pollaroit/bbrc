@@ -10,10 +10,10 @@ import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { ShelfCover } from "@/components/blocks/shelf-cover";
 import { ShelfInvitationActions } from "@/components/blocks/shelf-invitation-actions";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/format-datetime";
 import { orpc } from "@/utils/orpc";
 

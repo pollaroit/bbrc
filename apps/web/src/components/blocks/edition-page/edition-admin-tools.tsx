@@ -34,11 +34,11 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EditionSection } from "@/components/blocks/edition-page/section";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { editionPath } from "@/lib/edition/format";
 import { findMemberEdition } from "@/lib/edition/member-edition";

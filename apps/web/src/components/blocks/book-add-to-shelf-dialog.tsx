@@ -17,9 +17,9 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Library } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 

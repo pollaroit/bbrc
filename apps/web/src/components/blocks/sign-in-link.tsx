@@ -1,8 +1,7 @@
 "use client";
 
 import type { Route } from "next";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { authPageHref } from "@/lib/auth-callback-url";
 
 type SignInLinkProps = {

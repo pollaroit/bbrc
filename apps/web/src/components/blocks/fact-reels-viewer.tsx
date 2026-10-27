@@ -5,10 +5,9 @@ import { Button } from "@bbrc/ui/components/button";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Share2, ThumbsDown, ThumbsUp } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 

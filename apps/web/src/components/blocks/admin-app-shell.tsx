@@ -21,9 +21,8 @@ import {
 } from "@bbrc/ui/components/sidebar";
 import { ChevronRight, Home } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Link, usePathname } from "@/i18n/navigation";
 import { type AdminNavSection, adminNavSections } from "@/lib/admin-nav";
 import { cn } from "@/lib/utils";
 

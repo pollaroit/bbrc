@@ -17,7 +17,6 @@ import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FileText } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { RelativeTime } from "@/components/blocks/relative-time";
@@ -26,6 +25,7 @@ import {
 	ListingSideSheetHeader,
 	listingSideSheetContentClassName,
 } from "@/components/listing/listing-side-sheet";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { orpc, queryClient } from "@/utils/orpc";
 

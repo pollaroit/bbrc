@@ -7,9 +7,9 @@ import {
 	TooltipTrigger,
 } from "@bbrc/ui/components/tooltip";
 import type { Route } from "next";
-import Link from "next/link";
 import { AchievementBadge } from "@/components/blocks/achievement-badge";
 import { usePinnedAwards } from "@/components/blocks/user-achievements-panel";
+import { Link } from "@/i18n/navigation";
 
 /** The member's pinned achievements, shown on their profile header. Renders nothing when none are pinned. */
 export function PinnedAchievements({ username }: { username: string }) {

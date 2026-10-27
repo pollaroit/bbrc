@@ -17,7 +17,7 @@ import {
 } from "@bbrc/ui/components/sheet";
 import { Info, Star } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { useRatingDefinitions } from "@/lib/rating/use-rating-definitions";
 import { cn } from "@/lib/utils";
 

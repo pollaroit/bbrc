@@ -10,8 +10,8 @@ import {
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
 import type { Route } from "next";
-import Link from "next/link";
 import { useMemo } from "react";
+import { Link } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/format-datetime";
 import { cn } from "@/lib/utils";
 

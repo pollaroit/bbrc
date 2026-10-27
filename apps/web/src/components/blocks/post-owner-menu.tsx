@@ -17,8 +17,6 @@ import {
 	Trash2,
 } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -27,6 +25,7 @@ import {
 	useRemoveMyMentionAction,
 } from "@/components/blocks/mention/remove-my-mention";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { Link, useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { removeFromLists } from "@/lib/optimistic/infinite-lists";
 import { orpc, queryClient } from "@/utils/orpc";

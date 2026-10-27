@@ -25,7 +25,6 @@ import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useController } from "react-hook-form";
 import { toast } from "sonner";
@@ -66,6 +65,7 @@ import {
 } from "@/components/blocks/edit-book-hotkeys";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { useAppForm } from "@/hooks/use-app-form";
+import { useRouter } from "@/i18n/navigation";
 import {
 	bookToEditFormValues,
 	bookToSeriesPlacement,

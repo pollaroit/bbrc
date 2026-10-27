@@ -1,8 +1,8 @@
 import type { ViewInsights } from "@bbrc/api/modules/view/view.schema";
 import { VIEW_WEEKDAY_LABELS } from "@bbrc/shared";
 import type { Route } from "next";
-import Link from "next/link";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { formatCount, RESOURCE_NOUN, shortDay } from "./insight-format";
 import { InsightPanel } from "./insight-panel";

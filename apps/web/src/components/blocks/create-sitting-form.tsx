@@ -10,8 +10,6 @@ import {
 	useQuery,
 } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -25,6 +23,7 @@ import { ShelfEditorSection } from "@/components/blocks/shelf-editor-shell";
 import { SittingJoinSettingsFields } from "@/components/blocks/sitting-join-settings-fields";
 import { useAppForm } from "@/hooks/use-app-form";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { Link, useRouter } from "@/i18n/navigation";
 import {
 	CreateSittingFormSchema,
 	type CreateSittingFormValues,

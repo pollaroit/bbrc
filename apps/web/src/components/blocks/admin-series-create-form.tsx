@@ -6,7 +6,6 @@ import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -14,6 +13,7 @@ import {
 	AdminSeriesWorkspacePanel,
 	AdminSeriesWorkspaceShell,
 } from "@/components/blocks/admin-series-workspace-shell";
+import { useRouter } from "@/i18n/navigation";
 import { orpc } from "@/utils/orpc";
 
 export function AdminSeriesCreateForm() {

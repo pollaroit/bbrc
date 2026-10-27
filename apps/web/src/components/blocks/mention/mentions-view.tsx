@@ -10,12 +10,12 @@ import {
 } from "@tanstack/react-query";
 import { AtSign, MessageSquare, Newspaper, Star } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { Link } from "@/i18n/navigation";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type MentionPage = { items: MentionItem[]; nextCursor: string | null };

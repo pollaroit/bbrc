@@ -16,7 +16,6 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import {
 	AdminViewsRangeSwitch,
 	BarList,
@@ -25,6 +24,7 @@ import {
 	StatCard,
 	useAdminViewsRange,
 } from "@/components/blocks/admin-views-parts";
+import { Link } from "@/i18n/navigation";
 import { orpc } from "@/utils/orpc";
 
 // Charts load only once the page is open: recharts is a large dependency.

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
+import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { refreshAuthSession } from "@/lib/refresh-auth-session";
 import { orpc } from "@/utils/orpc";

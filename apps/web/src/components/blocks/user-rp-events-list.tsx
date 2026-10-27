@@ -10,7 +10,7 @@ import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/format-datetime";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";

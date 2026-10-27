@@ -13,13 +13,13 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { useState } from "react";
 import { QuizPager } from "@/components/blocks/quiz-pager";
 import { QuizReviewList } from "@/components/blocks/quiz-results-view";
 import { QuizCounts, QuizScore } from "@/components/blocks/quiz-score-parts";
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
+import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
 import {

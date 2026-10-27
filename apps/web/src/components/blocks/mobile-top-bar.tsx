@@ -1,7 +1,6 @@
 "use client";
 
 import type { Route } from "next";
-import Link from "next/link";
 import { ActiveSittingTopChip } from "@/components/blocks/active-sitting-top-chip";
 import { GlobalSearchMobileTrigger } from "@/components/blocks/global-search-trigger";
 import { Logo } from "@/components/blocks/logo";
@@ -11,6 +10,7 @@ import {
 } from "@/components/blocks/mobile-shell-chrome";
 import { NotificationBell } from "@/components/blocks/notification-bell";
 import { ModeToggle } from "@/components/mode-toggle";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 

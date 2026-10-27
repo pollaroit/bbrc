@@ -13,6 +13,7 @@ import { Heart } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { SignInLink, useSignInHref } from "@/components/blocks/sign-in-link";
+import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { useSyncedBoolean } from "@/lib/optimistic/use-synced-boolean";
 import {
@@ -109,6 +110,7 @@ export function LikeEngagement({
 	const { data: session } = authClient.useSession();
 	const queryClient = useQueryClient();
 	const signInHref = useSignInHref();
+	const router = useRouter();
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [base, setBase] = useState({
 		liked: initialLikedByMe,
@@ -158,7 +160,7 @@ export function LikeEngagement({
 				action: {
 					label: "Sign in",
 					onClick: () => {
-						window.location.href = signInHref;
+						router.push(signInHref);
 					},
 				},
 			});

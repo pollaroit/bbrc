@@ -13,10 +13,10 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { FollowAuthorButton } from "@/components/blocks/author/follow-author-button";
 import { CountryFlagIcon } from "@/components/blocks/country-dropdown";
+import { Link } from "@/i18n/navigation";
 import { bookCoverFrameClassName, bookCoverUrl } from "@/lib/book-cover";
 import {
 	type AuthorSortField,

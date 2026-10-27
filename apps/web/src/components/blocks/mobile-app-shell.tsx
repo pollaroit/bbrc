@@ -1,12 +1,12 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { BodyPortal } from "@/components/blocks/body-portal";
 import { MobileBottomBar } from "@/components/blocks/mobile-bottom-bar";
 import { mobileMainBottomPaddingClass } from "@/components/blocks/mobile-shell-chrome";
 import { MobileTopBar } from "@/components/blocks/mobile-top-bar";
 import { PwaInstallHint } from "@/components/blocks/pwa-install-hint";
+import { usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 export function MobileAppShell({ children }: { children: ReactNode }) {

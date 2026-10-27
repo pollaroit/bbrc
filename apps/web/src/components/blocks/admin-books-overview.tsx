@@ -17,11 +17,11 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { BookPlus, Download, ShieldBan } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { type ReactNode, useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { AdminBookRankingLists } from "@/components/blocks/admin-book-ranking-lists";
 import { AdminBooksToolbar } from "@/components/blocks/admin-books-toolbar";
+import { Link } from "@/i18n/navigation";
 import {
 	toAdminBooksOverviewCallInput,
 	useAdminBooksListingSearchParams,

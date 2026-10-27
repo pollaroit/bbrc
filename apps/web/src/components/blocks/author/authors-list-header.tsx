@@ -3,8 +3,8 @@
 import { Button } from "@bbrc/ui/components/button";
 import { ShieldCheck, UserPlus } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { AuthorsListToolbar } from "@/components/blocks/author/authors-list-toolbar";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 
 export function AuthorsListHeader() {
