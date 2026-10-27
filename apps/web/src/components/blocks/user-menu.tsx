@@ -9,6 +9,7 @@ import {
 	DropdownMenuTrigger,
 } from "@bbrc/ui/components/dropdown-menu";
 import { LogOut } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { UserMenuItems } from "@/components/blocks/user-menu-items";
@@ -21,6 +22,7 @@ import { UserPanel } from "./user-panel";
 interface Props extends React.ComponentProps<typeof UserPanel> {}
 
 export function UserMenu({ ...props }: Props) {
+	const t = useTranslations("shell.header");
 	const [loading, setLoading] = useState(false);
 	const router = useRouter();
 
@@ -31,7 +33,7 @@ export function UserMenu({ ...props }: Props) {
 			await authClient.signOut();
 			router.refresh();
 		} catch {
-			toast.error("Failed to sign out");
+			toast.error(t("signOutFailed"));
 		} finally {
 			setLoading(false);
 		}
@@ -64,7 +66,7 @@ export function UserMenu({ ...props }: Props) {
 					onClick={handleSignOut}
 				>
 					<LogOut aria-hidden />
-					Sign out
+					{t("signOut")}
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>

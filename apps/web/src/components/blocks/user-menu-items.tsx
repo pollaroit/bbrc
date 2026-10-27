@@ -24,6 +24,7 @@ import {
 	User,
 } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { useLanguageChoices } from "@/components/blocks/language-picker";
 import {
 	MobileChromeSheetSection,
@@ -36,6 +37,8 @@ import type { UserPanel } from "@/components/blocks/user-panel";
 import { Link } from "@/i18n/navigation";
 import { isLanguageSwitchEnabled } from "@/lib/i18n/language-switch";
 import { cn } from "@/lib/utils";
+
+type ShellTranslate = ReturnType<typeof useTranslations<"shell.userMenu">>;
 
 type UserMenuUser = React.ComponentProps<typeof UserPanel>["user"];
 
@@ -53,35 +56,49 @@ type MenuEntry = {
 	icon: LucideIcon;
 };
 
-function userMenuActivityEntries(user: UserMenuUser): MenuEntry[] {
+function userMenuActivityEntries(
+	user: UserMenuUser,
+	t: ShellTranslate,
+): MenuEntry[] {
 	const base = `/users/${user.username}` as Route;
 	return [
-		{ label: "Profile", href: base, icon: User },
-		{ label: "My reads", href: `${base}/reads` as Route, icon: BookCheck },
-		{ label: "My posts", href: `${base}/posts` as Route, icon: MessageSquare },
+		{ label: t("profile"), href: base, icon: User },
+		{ label: t("myReads"), href: `${base}/reads` as Route, icon: BookCheck },
 		{
-			label: "My feedbacks",
+			label: t("myPosts"),
+			href: `${base}/posts` as Route,
+			icon: MessageSquare,
+		},
+		{
+			label: t("myFeedbacks"),
 			href: `${base}/feedbacks` as Route,
 			icon: BookOpen,
 		},
-		{ label: "My shelves", href: `${base}/shelves` as Route, icon: LayoutList },
-		{ label: "My goals", href: `${base}/goals` as Route, icon: Target },
-		{ label: "My stats", href: `${base}/stats` as Route, icon: BarChart3 },
+		{
+			label: t("myShelves"),
+			href: `${base}/shelves` as Route,
+			icon: LayoutList,
+		},
+		{ label: t("myGoals"), href: `${base}/goals` as Route, icon: Target },
+		{ label: t("myStats"), href: `${base}/stats` as Route, icon: BarChart3 },
 	];
 }
 
-function userMenuAccountEntries(user: UserMenuUser): MenuEntry[] {
+function userMenuAccountEntries(
+	user: UserMenuUser,
+	t: ShellTranslate,
+): MenuEntry[] {
 	const entries: MenuEntry[] = [
-		{ label: "Settings", href: "/settings" as Route, icon: Settings },
+		{ label: t("settings"), href: "/settings" as Route, icon: Settings },
 	];
 	if (user.isAdmin) {
 		entries.push(
 			{
-				label: "Blocked works",
+				label: t("blockedWorks"),
 				href: "/books/blocked" as Route,
 				icon: BookOpen,
 			},
-			{ label: "Dashboard", href: "/admin" as Route, icon: Shield },
+			{ label: t("dashboard"), href: "/admin" as Route, icon: Shield },
 		);
 	}
 	return entries;
@@ -173,14 +190,15 @@ export function UserMenuItems({
 	variant = "default",
 	hideSignOut = false,
 }: UserMenuItemsProps) {
+	const t = useTranslations("shell.userMenu");
 	const itemClass = cn(
 		"flex w-full items-center gap-3 text-left text-sm transition-colors",
 		variant === "drawer" ? mobileSheetRowClass : "px-3 py-2.5 hover:bg-muted",
 		itemClassName,
 	);
 
-	const activity = userMenuActivityEntries(user);
-	const account = userMenuAccountEntries(user);
+	const activity = userMenuActivityEntries(user, t);
+	const account = userMenuAccountEntries(user, t);
 	const reelsHref = factReplaysHref(user);
 
 	if (variant === "dropdown") {
@@ -188,7 +206,7 @@ export function UserMenuItems({
 			<>
 				<DropdownMenuGroup>
 					<DropdownMenuLabel className="text-muted-foreground text-xs">
-						Your activity
+						{t("yourActivity")}
 					</DropdownMenuLabel>
 					{activity.map((entry) => (
 						<DropdownMenuItem
@@ -211,13 +229,13 @@ export function UserMenuItems({
 						<span className="flex size-4 shrink-0 items-center justify-center font-serif text-sm leading-none">
 							?
 						</span>
-						My fact replays
+						{t("factReplays")}
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
 					<DropdownMenuLabel className="text-muted-foreground text-xs">
-						Account
+						{t("account")}
 					</DropdownMenuLabel>
 					{account.map((entry) => (
 						<DropdownMenuItem
@@ -243,7 +261,7 @@ export function UserMenuItems({
 		return (
 			<nav className="flex flex-col pb-2">
 				<MobileChromeSheetSection
-					title="Your activity"
+					title={t("yourActivity")}
 					className="[&_h3]:pt-2 [&_h3]:pb-0.5"
 				>
 					<ul>
@@ -268,13 +286,13 @@ export function UserMenuItems({
 								<span className="flex size-8 shrink-0 items-center justify-center border border-border bg-muted/20 font-serif text-sm">
 									?
 								</span>
-								<MobileSheetRowBody label="My fact replays" />
+								<MobileSheetRowBody label={t("factReplays")} />
 							</Link>
 						</li>
 					</ul>
 				</MobileChromeSheetSection>
 				<MobileChromeSheetSection
-					title="Account"
+					title={t("account")}
 					className="[&_h3]:pt-2 [&_h3]:pb-0.5"
 				>
 					<ul>
@@ -314,7 +332,7 @@ export function UserMenuItems({
 				<span className="flex size-4 shrink-0 items-center justify-center font-serif text-sm leading-none">
 					?
 				</span>
-				My fact replays
+				{t("factReplays")}
 			</Link>
 			{account.map((entry) => (
 				<Link

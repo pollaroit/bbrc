@@ -7,6 +7,7 @@ import {
 	DropdownMenuTrigger,
 } from "@bbrc/ui/components/dropdown-menu";
 import { Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { CreateMenuItems } from "@/components/blocks/create-menu-items";
 import { CreateMenuSheet } from "@/components/blocks/create-menu-sheet";
@@ -20,6 +21,7 @@ type CreateMenuProps = {
 };
 
 export function CreateMenu({ variant = "header", className }: CreateMenuProps) {
+	const t = useTranslations("shell.create");
 	const { data: session, isPending: isSessionPending } =
 		authClient.useSession();
 	const [sheetOpen, setSheetOpen] = useState(false);
@@ -33,7 +35,7 @@ export function CreateMenu({ variant = "header", className }: CreateMenuProps) {
 			<>
 				<button
 					type="button"
-					aria-label="Create"
+					aria-label={t("title")}
 					onClick={() => setSheetOpen(true)}
 					className={cn(
 						"flex size-[3.25rem] items-center justify-center border-2 border-background bg-primary text-primary-foreground shadow-none ring-1 ring-border transition-transform active:scale-95",
@@ -56,12 +58,12 @@ export function CreateMenu({ variant = "header", className }: CreateMenuProps) {
 						type="button"
 						size="sm"
 						className={headerToolbarControlClass}
-						aria-label="Create"
+						aria-label={t("title")}
 					/>
 				}
 			>
 				<Plus data-icon="inline-start" aria-hidden="true" />
-				Create
+				{t("title")}
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="min-w-44">
 				<CreateMenuItems />

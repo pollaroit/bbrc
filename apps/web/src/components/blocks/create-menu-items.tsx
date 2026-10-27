@@ -13,6 +13,7 @@ import {
 	UserPlus,
 } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { useComposePost } from "@/components/blocks/compose-post-provider";
 import { useCreateGoal } from "@/components/blocks/create-goal-provider";
 import {
@@ -73,6 +74,7 @@ export function CreateMenuItems({
 	onNavigate,
 	variant = "dropdown",
 }: CreateMenuItemsProps) {
+	const t = useTranslations("shell.create");
 	const { data: session } = authClient.useSession();
 	const { data: ongoing, isPending: isOngoingPending } = useQuery({
 		...orpc.sitting.getOngoingSitting.queryOptions(),
@@ -94,8 +96,8 @@ export function CreateMenuItems({
 			<nav className="flex flex-col pb-3">
 				<SheetActionRow
 					icon={PenLine}
-					label="Create post"
-					description="Share with the club feed"
+					label={t("items.post.label")}
+					description={t("items.post.description")}
 					onClick={() => {
 						onNavigate?.();
 						openCompose();
@@ -103,15 +105,15 @@ export function CreateMenuItems({
 				/>
 				<SheetLinkRow
 					icon={LayoutList}
-					label="Create shelf"
-					description="Curate a public list"
+					label={t("items.shelf.label")}
+					description={t("items.shelf.description")}
 					href={newShelfHref}
 					onNavigate={onNavigate}
 				/>
 				<SheetActionRow
 					icon={Target}
-					label="Add goal"
-					description="Track a reading target"
+					label={t("items.goal.label")}
+					description={t("items.goal.description")}
 					onClick={() => {
 						onNavigate?.();
 						openCreateGoal();
@@ -121,22 +123,22 @@ export function CreateMenuItems({
 					<>
 						<SheetLinkRow
 							icon={BookPlus}
-							label="Add book"
-							description="From Open Library"
+							label={t("items.book.label")}
+							description={t("items.book.description")}
 							href={"/books/new" as Route}
 							onNavigate={onNavigate}
 						/>
 						<SheetLinkRow
 							icon={UserPlus}
-							label="Add author"
-							description="Admin catalog"
+							label={t("items.author.label")}
+							description={t("items.author.description")}
 							href={"/authors/new" as Route}
 							onNavigate={onNavigate}
 						/>
 						<SheetLinkRow
 							icon={Layers}
-							label="Add series"
-							description="Admin catalog"
+							label={t("items.series.label")}
+							description={t("items.series.description")}
 							href={"/admin/series/new" as Route}
 							onNavigate={onNavigate}
 						/>
@@ -144,8 +146,8 @@ export function CreateMenuItems({
 				) : (
 					<SheetLinkRow
 						icon={BookMarked}
-						label="Request book"
-						description="Suggest for the library"
+						label={t("items.requestBook.label")}
+						description={t("items.requestBook.description")}
 						href={"/books/request" as Route}
 						onNavigate={onNavigate}
 					/>
@@ -153,8 +155,8 @@ export function CreateMenuItems({
 				{showStartSitting ? (
 					<SheetLinkRow
 						icon={Sofa}
-						label="Start sitting"
-						description="Open a new reading round"
+						label={t("items.sitting.label")}
+						description={t("items.sitting.description")}
 						href={"/sittings/new" as Route}
 						onNavigate={onNavigate}
 					/>
@@ -172,14 +174,14 @@ export function CreateMenuItems({
 				}}
 			>
 				<PenLine className="size-4" aria-hidden="true" />
-				Create post
+				{t("items.post.label")}
 			</DropdownMenuItem>
 			<DropdownMenuItem
 				render={<Link href={newShelfHref} onClick={onNavigate} />}
 				nativeButton={false}
 			>
 				<LayoutList className="size-4" aria-hidden="true" />
-				Create shelf
+				{t("items.shelf.label")}
 			</DropdownMenuItem>
 			<DropdownMenuItem
 				onClick={() => {
@@ -188,7 +190,7 @@ export function CreateMenuItems({
 				}}
 			>
 				<Target className="size-4" aria-hidden="true" />
-				Add goal
+				{t("items.goal.label")}
 			</DropdownMenuItem>
 			{isAdmin ? (
 				<>
@@ -197,7 +199,7 @@ export function CreateMenuItems({
 						nativeButton={false}
 					>
 						<BookPlus className="size-4" aria-hidden="true" />
-						Add book
+						{t("items.book.label")}
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						render={
@@ -206,7 +208,7 @@ export function CreateMenuItems({
 						nativeButton={false}
 					>
 						<UserPlus className="size-4" aria-hidden="true" />
-						Add author
+						{t("items.author.label")}
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						render={
@@ -215,7 +217,7 @@ export function CreateMenuItems({
 						nativeButton={false}
 					>
 						<Layers className="size-4" aria-hidden="true" />
-						Add series
+						{t("items.series.label")}
 					</DropdownMenuItem>
 				</>
 			) : (
@@ -226,7 +228,7 @@ export function CreateMenuItems({
 					nativeButton={false}
 				>
 					<BookMarked className="size-4" aria-hidden="true" />
-					Request book
+					{t("items.requestBook.label")}
 				</DropdownMenuItem>
 			)}
 			{showStartSitting ? (
@@ -235,7 +237,7 @@ export function CreateMenuItems({
 					nativeButton={false}
 				>
 					<Sofa className="size-4" aria-hidden="true" />
-					Start sitting
+					{t("items.sitting.label")}
 				</DropdownMenuItem>
 			) : null}
 		</>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { BrowseMenuItems } from "@/components/blocks/browse-menu-items";
 import { MobileChromeSheet } from "@/components/blocks/mobile-chrome-sheet";
 
@@ -12,8 +13,13 @@ export function BrowseMenuDrawer({
 	open,
 	onOpenChange,
 }: BrowseMenuDrawerProps) {
+	const t = useTranslations("shell.browse");
 	return (
-		<MobileChromeSheet open={open} onOpenChange={onOpenChange} title="Browse">
+		<MobileChromeSheet
+			open={open}
+			onOpenChange={onOpenChange}
+			title={t("title")}
+		>
 			<BrowseMenuItems onNavigate={() => onOpenChange(false)} />
 		</MobileChromeSheet>
 	);

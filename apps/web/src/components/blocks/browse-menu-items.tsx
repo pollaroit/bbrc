@@ -1,6 +1,7 @@
 "use client";
 
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import {
 	MobileChromeSheetSection,
 	MobileSheetRowBody,
@@ -21,6 +22,7 @@ type BrowseMenuItemsProps = {
 };
 
 export function BrowseMenuItems({ onNavigate }: BrowseMenuItemsProps) {
+	const t = useTranslations("shell.browse");
 	const pathname = usePathname();
 
 	return (
@@ -34,7 +36,10 @@ export function BrowseMenuItems({ onNavigate }: BrowseMenuItemsProps) {
 				}
 
 				return (
-					<MobileChromeSheetSection key={section.id} title={section.label}>
+					<MobileChromeSheetSection
+						key={section.id}
+						title={t(`sections.${section.id}`)}
+					>
 						<ul className="flex flex-col">
 							{items.map((item) => {
 								const active = isBrowseNavItemActive(pathname, item.href);
@@ -53,8 +58,8 @@ export function BrowseMenuItems({ onNavigate }: BrowseMenuItemsProps) {
 										>
 											<MobileSheetRowIcon icon={Icon} />
 											<MobileSheetRowBody
-												label={item.label}
-												description={item.description}
+												label={t(`items.${item.id}.label`)}
+												description={t(`items.${item.id}.description`)}
 											/>
 										</Link>
 									</li>
@@ -64,12 +69,12 @@ export function BrowseMenuItems({ onNavigate }: BrowseMenuItemsProps) {
 					</MobileChromeSheetSection>
 				);
 			})}
-			<MobileChromeSheetSection title="Later">
+			<MobileChromeSheetSection title={t("later")}>
 				<ul className="flex flex-col">
 					{browseNavPlaceholderItems.map((item) => {
 						const PlaceholderIcon = item.icon;
 						return (
-							<li key={item.label}>
+							<li key={item.id}>
 								<div
 									className={cn(
 										mobileSheetRowClass,
@@ -83,8 +88,8 @@ export function BrowseMenuItems({ onNavigate }: BrowseMenuItemsProps) {
 										<span className="size-9 shrink-0" aria-hidden />
 									)}
 									<MobileSheetRowBody
-										label={item.label}
-										description={item.description}
+										label={t(`placeholders.${item.id}.label`)}
+										description={t(`placeholders.${item.id}.description`)}
 									/>
 								</div>
 							</li>
