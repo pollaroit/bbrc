@@ -14,6 +14,7 @@
 		"@bbrc/api": "workspace:*",
 		"@bbrc/auth": "workspace:*",
 		"@bbrc/db": "workspace:*",
+		"@bbrc/i18n": "workspace:*",
 		"@bbrc/schemas": "workspace:*",
 		"@bbrc/shared": "workspace:*",
 		"@bbrc/ui": "workspace:*",

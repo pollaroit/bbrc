@@ -1,5 +1,5 @@
 import { createTranslator } from "use-intl/core";
-import { LOCALE_INTL_TAGS, type Locale } from "./locales";
+import type { Locale } from "./locales";
 import { getMessages, type Messages, type Namespace } from "./messages";
 
 /**
@@ -11,7 +11,7 @@ export function createServerTranslator<N extends Namespace>(
 	namespace: N,
 ) {
 	return createTranslator({
-		locale: LOCALE_INTL_TAGS[locale],
+		locale,
 		messages: getMessages(locale) as Messages,
 		namespace,
 	});

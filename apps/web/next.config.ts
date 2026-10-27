@@ -2,8 +2,10 @@ import { withSerwist } from "@serwist/turbopack";
 import { varlockNextConfigPlugin } from "@varlock/nextjs-integration/plugin";
 
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const withVarlock = varlockNextConfigPlugin();
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 function r2ImageRemotePattern():
 	| { protocol: "https"; hostname: string; pathname: string }
@@ -30,7 +32,9 @@ function r2ImageRemotePattern():
 const r2Pattern = r2ImageRemotePattern();
 
 const nextConfig: NextConfig = {
-	typedRoutes: true,
+	// Off: every page now lives under `[locale]`, so Next's typed routes no longer match plain
+	// addresses like "/books". Links go through next-intl's navigation, which adds the language.
+	typedRoutes: false,
 	reactCompiler: true,
 	async redirects() {
 		return [
@@ -80,4 +84,4 @@ const nextConfig: NextConfig = {
 	},
 };
 
-export default withVarlock(withSerwist(nextConfig));
+export default withVarlock(withSerwist(withNextIntl(nextConfig)));
