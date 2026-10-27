@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+	cachedPathsForAllLocales,
 	getLocaleFromPath,
 	stripLocalePrefix,
 	withLocalePrefix,
@@ -42,5 +43,21 @@ describe("getLocaleFromPath", () => {
 		expect(getLocaleFromPath("/az/books")).toBe("az");
 		expect(getLocaleFromPath("/books")).toBeNull();
 		expect(getLocaleFromPath("/azerbaijan")).toBeNull();
+	});
+});
+
+describe("cachedPathsForAllLocales", () => {
+	test("lists the plain English address and one per language", () => {
+		expect(cachedPathsForAllLocales("/books/x")).toEqual([
+			"/books/x",
+			"/en/books/x",
+			"/az/books/x",
+		]);
+		expect(cachedPathsForAllLocales("/")).toEqual(["/", "/en", "/az"]);
+		expect(cachedPathsForAllLocales("/az/books/x")).toEqual([
+			"/books/x",
+			"/en/books/x",
+			"/az/books/x",
+		]);
 	});
 });

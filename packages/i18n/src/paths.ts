@@ -33,3 +33,14 @@ export function withLocalePrefix(path: string, locale: Locale): string {
 	}
 	return `/${locale}${bare}`;
 }
+
+/**
+ * Every address a page is cached under, for refreshing it. English is reached without a
+ * prefix, but the language middleware rewrites it to `/en/...` and that rewritten path is what
+ * Next caches, so both forms are listed, plus one per other language (`/az/...`).
+ */
+export function cachedPathsForAllLocales(path: string): string[] {
+	const bare = stripLocalePrefix(path);
+	const tail = bare === "/" ? "" : bare;
+	return [bare, ...LOCALES.map((locale) => `/${locale}${tail}`)];
+}

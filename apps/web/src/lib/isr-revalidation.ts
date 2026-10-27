@@ -1,4 +1,5 @@
 import type { IsrRevalidator } from "@bbrc/api/isr-revalidation";
+import { cachedPathsForAllLocales } from "@bbrc/i18n";
 import {
 	authorDetailIsrPath,
 	authorsListIsrPath,
@@ -12,7 +13,15 @@ import {
 	userShelfDetailIsrPath,
 	userShelvesListIsrPath,
 } from "@bbrc/shared";
-import { revalidatePath } from "next/cache";
+import { revalidatePath as nextRevalidatePath } from "next/cache";
+
+/** Refreshes a page in every language (the English address and each `/az/...` copy). */
+function revalidatePath(path: string, type?: "page" | "layout") {
+	for (const cached of cachedPathsForAllLocales(path)) {
+		if (type) nextRevalidatePath(cached, type);
+		else nextRevalidatePath(cached);
+	}
+}
 
 function revalidatePageAndLayout(path: string) {
 	revalidatePath(path);
@@ -46,9 +55,10 @@ export function createIsrRevalidator(): IsrRevalidator {
 			revalidatePath("/");
 		},
 		revalidateFeeds() {
-			revalidatePath("/feed");
-			revalidatePath("/feed/posts");
-			revalidatePath("/feed/books");
+			// Feeds are English only and sit outside the language segment.
+			nextRevalidatePath("/feed");
+			nextRevalidatePath("/feed/posts");
+			nextRevalidatePath("/feed/books");
 		},
 		revalidateSeries(slug) {
 			revalidatePageAndLayout(seriesListIsrPath());
