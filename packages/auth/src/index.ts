@@ -65,6 +65,13 @@ export function createAuth(env: AuthConfig, database: Database) {
 					required: true,
 					input: false,
 				},
+				locale: {
+					type: "string",
+					returned: true,
+					defaultValue: "en",
+					required: false,
+					input: false,
+				},
 				username: {
 					type: "string",
 					returned: true,
