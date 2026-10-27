@@ -11,9 +11,9 @@ import {
 	MAX_IMAGE_SIZE,
 	putObjectBuffer,
 } from "@bbrc/storage";
-import { ORPCError } from "@orpc/server";
 import type { z } from "zod";
 import type { Context } from "../../context";
+import { appError } from "../../lib/app-error";
 import {
 	revalidateBookIsr,
 	revalidateCommentIsr,
@@ -34,9 +34,7 @@ type ImageUploadBody = z.infer<typeof ImageUploadBodySchema>;
 function requireR2() {
 	const config = loadR2ConfigFromEnv();
 	if (!config) {
-		throw new ORPCError("PRECONDITION_FAILED", {
-			message: "Object storage is not configured",
-		});
+		throw appError("PRECONDITION_FAILED", "storage.notConfigured");
 	}
 	return { config, client: createR2Client(config) };
 }
@@ -55,28 +53,20 @@ async function verifyUploadedObject(
 	const head = await headObject(client, config, key);
 
 	if (!head) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Upload not found; complete the upload to storage first",
-		});
+		throw appError("BAD_REQUEST", "storage.uploadNotFound");
 	}
 
 	if (head.contentLength !== body.contentLength) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Uploaded size does not match",
-		});
+		throw appError("BAD_REQUEST", "storage.sizeMismatch");
 	}
 
 	const headType = head.contentType?.split(";")[0]?.trim();
 	if (headType && headType !== body.contentType) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Uploaded content type does not match",
-		});
+		throw appError("BAD_REQUEST", "storage.typeMismatch");
 	}
 
 	if (head.contentLength > MAX_IMAGE_SIZE) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "File exceeds maximum size",
-		});
+		throw appError("BAD_REQUEST", "storage.fileTooLarge");
 	}
 
 	return buildPublicObjectUrl(config, key);
@@ -84,9 +74,7 @@ async function verifyUploadedObject(
 
 async function prepareImageUploadInit(key: string, body: ImageUploadBody) {
 	if (body.contentLength > MAX_IMAGE_SIZE) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "File exceeds maximum size",
-		});
+		throw appError("BAD_REQUEST", "storage.fileTooLarge");
 	}
 
 	const { config } = requireR2();
@@ -306,9 +294,7 @@ export async function uploadBookCoverDirect(
 	session: Session,
 ) {
 	if (!session.user.isAdmin) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only admins can upload book covers.",
-		});
+		throw appError("FORBIDDEN", "storage.bookCoverAdminOnly");
 	}
 	const key = buildObjectKey(getStorageEnv(), {
 		kind: "book-cover",
@@ -336,9 +322,7 @@ export async function uploadEditionCoverDirect(
 	session: Session,
 ) {
 	if (session.user.status === "banned") {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Your account cannot upload covers.",
-		});
+		throw appError("FORBIDDEN", "storage.coverUploadBlocked");
 	}
 	const key = buildObjectKey(getStorageEnv(), {
 		kind: "edition-cover",
@@ -365,9 +349,7 @@ export async function uploadAuthorPhotoDirect(
 	session: Session,
 ) {
 	if (!session.user.isAdmin) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only admins can upload author photos.",
-		});
+		throw appError("FORBIDDEN", "storage.authorPhotoAdminOnly");
 	}
 	const key = buildObjectKey(getStorageEnv(), {
 		kind: "author-photo",
@@ -456,9 +438,7 @@ async function loadOwnedPostForUpload(
 		select: { id: true },
 	});
 	if (poll) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "A post with a poll cannot have an image.",
-		});
+		throw appError("BAD_REQUEST", "storage.postHasPoll");
 	}
 	return post;
 }
@@ -469,12 +449,10 @@ async function loadOwnedPost(slug: string, userId: string, db: Database) {
 		select: { id: true, slug: true, authorId: true, imageUrl: true },
 	});
 	if (!post) {
-		throw new ORPCError("NOT_FOUND", { message: "Post not found" });
+		throw appError("NOT_FOUND", "storage.postNotFound");
 	}
 	if (post.authorId !== userId) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only the author can change this post image",
-		});
+		throw appError("FORBIDDEN", "storage.postImageAuthorOnly");
 	}
 	return post;
 }
@@ -491,12 +469,10 @@ async function loadOwnedFeedback(slug: string, userId: string, db: Database) {
 		},
 	});
 	if (!feedback) {
-		throw new ORPCError("NOT_FOUND", { message: "Review not found" });
+		throw appError("NOT_FOUND", "storage.reviewNotFound");
 	}
 	if (feedback.authorId !== userId) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only the author can change this review image",
-		});
+		throw appError("FORBIDDEN", "storage.reviewImageAuthorOnly");
 	}
 	return feedback;
 }
@@ -514,12 +490,10 @@ async function loadOwnedComment(slug: string, userId: string, db: Database) {
 		},
 	});
 	if (!comment) {
-		throw new ORPCError("NOT_FOUND", { message: "Comment not found" });
+		throw appError("NOT_FOUND", "storage.commentNotFound");
 	}
 	if (comment.authorId !== userId) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only the author can change this comment image",
-		});
+		throw appError("FORBIDDEN", "storage.commentImageAuthorOnly");
 	}
 	return comment;
 }

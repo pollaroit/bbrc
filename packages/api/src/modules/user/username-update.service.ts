@@ -1,6 +1,6 @@
 import type { Database } from "@bbrc/db";
 import { getUsernameUpdateEligibility } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import type {
 	GetUsernameUpdateStatusOutput,
 	UpdateNameInput,
@@ -26,7 +26,7 @@ export async function getUsernameUpdateStatus(
 	});
 
 	if (!user) {
-		throw new ORPCError("NOT_FOUND", { message: "User not found" });
+		throw appError("NOT_FOUND", "user.notFound");
 	}
 
 	const eligibility = getUsernameUpdateEligibility(user.usernameLastUpdatedAt);
@@ -55,13 +55,11 @@ export async function updateName(
 	});
 
 	if (!user) {
-		throw new ORPCError("NOT_FOUND", { message: "User not found" });
+		throw appError("NOT_FOUND", "user.notFound");
 	}
 
 	if (nextName === user.name) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Choose a different name than your current one.",
-		});
+		throw appError("BAD_REQUEST", "user.nameUnchanged");
 	}
 
 	const updated = await db.user.update({
@@ -98,25 +96,20 @@ export async function updateUsername(
 	});
 
 	if (!user) {
-		throw new ORPCError("NOT_FOUND", { message: "User not found" });
+		throw appError("NOT_FOUND", "user.notFound");
 	}
 
 	if (user.status !== "active") {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Your account cannot change its username right now.",
-		});
+		throw appError("FORBIDDEN", "user.usernameAccountBlocked");
 	}
 
 	if (nextUsername === user.username) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Choose a different username than your current one.",
-		});
+		throw appError("BAD_REQUEST", "user.usernameUnchanged");
 	}
 
 	const eligibility = getUsernameUpdateEligibility(user.usernameLastUpdatedAt);
 	if (!eligibility.canUpdate) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "You can change your username again after the cooldown ends.",
+		throw appError("FORBIDDEN", "user.usernameCooldown", {
 			data: { nextAllowedAt: eligibility.nextAllowedAt?.toISOString() },
 		});
 	}
@@ -127,9 +120,7 @@ export async function updateUsername(
 	});
 
 	if (taken && taken.id !== userId) {
-		throw new ORPCError("CONFLICT", {
-			message: "That username is already taken.",
-		});
+		throw appError("CONFLICT", "user.usernameTaken");
 	}
 
 	const updated = await db.user.update({
@@ -145,9 +136,7 @@ export async function updateUsername(
 	});
 
 	if (!updated.usernameLastUpdatedAt) {
-		throw new ORPCError("INTERNAL_SERVER_ERROR", {
-			message: "Username update did not complete.",
-		});
+		throw appError("INTERNAL_SERVER_ERROR", "user.usernameUpdateFailed");
 	}
 
 	return {

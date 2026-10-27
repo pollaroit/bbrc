@@ -8,7 +8,7 @@ import {
 	RATING_WEIGHT,
 	scoreComparison,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import {
 	compareBookSelect,
 	loadMemberReads,
@@ -60,8 +60,8 @@ const memberSelect = {
 } as const;
 
 const notFound = (username: string) =>
-	new ORPCError("NOT_FOUND", {
-		message: `User with ${username} username not found. Please check the username and try again.`,
+	appError("NOT_FOUND", "user.notFoundByUsername", {
+		params: { username },
 		data: { username },
 	});
 
@@ -75,8 +75,7 @@ export async function resolveComparePair(
 	const viewerIsAdmin = Boolean(session.user.isAdmin);
 
 	if (input.a.toLowerCase() === input.b.toLowerCase()) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Pick two different members to compare.",
+		throw appError("BAD_REQUEST", "userCompare.sameMember", {
 			data: { code: "compare_same_user" },
 		});
 	}
@@ -114,8 +113,7 @@ export async function resolveComparePair(
 			where: { id: viewerId },
 			select: { username: true },
 		});
-		throw new ORPCError("FORBIDDEN", {
-			message: "You can only compare your own reading with another member.",
+		throw appError("FORBIDDEN", "userCompare.notParticipant", {
 			data: {
 				code: "compare_not_participant",
 				redirectUsername: viewer?.username ?? null,

@@ -1,6 +1,6 @@
 import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { definePagination } from "../../utils/pagination";
 import {
 	buildPointsChartSeries,
@@ -41,9 +41,7 @@ export function calculateRpPointsDelta(
 	bookPages: number,
 ): number {
 	if (bookPages < 1) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Book page count must be at least 1",
-		});
+		throw appError("BAD_REQUEST", "common.invalidBookPages");
 	}
 
 	if (progress === "completed") {

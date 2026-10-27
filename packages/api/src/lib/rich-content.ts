@@ -1,28 +1,23 @@
 import {
-	assertContentWithinLimit,
 	contentPlainText,
 	normalizeContentForStorage,
+	RICH_CONTENT_MAX_PLAIN_CHARS,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "./app-error";
 
-export function normalizeSocialContent(input: string): string {
-	const normalized = normalizeContentForStorage(input);
-	assertContentWithinLimit(normalized);
-	const plain = contentPlainText(normalized);
-	if (plain.trim().length < 1) {
-		throw new Error("Content must be at least 1 character long");
-	}
-	return normalized;
-}
-
+/** The text of a post, comment or review ready to store; throws a translated error when it is not valid. */
 export function assertNormalizedSocialContent(input: string): string {
-	try {
-		return normalizeSocialContent(input);
-	} catch (error) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: error instanceof Error ? error.message : "Invalid content",
+	const normalized = normalizeContentForStorage(input);
+	const plain = contentPlainText(normalized);
+	if (plain.length > RICH_CONTENT_MAX_PLAIN_CHARS) {
+		throw appError("BAD_REQUEST", "common.contentTooLong", {
+			params: { max: RICH_CONTENT_MAX_PLAIN_CHARS },
 		});
 	}
+	if (plain.trim().length < 1) {
+		throw appError("BAD_REQUEST", "common.contentEmpty");
+	}
+	return normalized;
 }
 
 export { contentPlainText };
