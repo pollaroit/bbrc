@@ -160,6 +160,17 @@
         "varlock": "catalog:",
       },
     },
+    "packages/i18n": {
+      "name": "@bbrc/i18n",
+      "dependencies": {
+        "use-intl": "^4.14.9",
+      },
+      "devDependencies": {
+        "@bbrc/config": "workspace:*",
+        "bun-types": "^1.4.2",
+        "typescript": "catalog:",
+      },
+    },
     "packages/schemas": {
       "name": "@bbrc/schemas",
       "dependencies": {
@@ -365,6 +376,8 @@
     "@bbrc/config": ["@bbrc/config@workspace:packages/config"],
 
     "@bbrc/db": ["@bbrc/db@workspace:packages/db"],
+
+    "@bbrc/i18n": ["@bbrc/i18n@workspace:packages/i18n"],
 
     "@bbrc/schemas": ["@bbrc/schemas@workspace:packages/schemas"],
 
