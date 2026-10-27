@@ -16,6 +16,7 @@ import { queryClient } from "@/utils/orpc";
 import { PreferencesSync } from "./preferences-sync";
 import { ThemeHotkey } from "./theme-hotkey";
 import { ThemeProvider } from "./theme-provider";
+import { UiLabelsProvider } from "./ui-labels-provider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
 	return (
@@ -36,7 +37,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 					<PwaNotificationEngagement />
 					<PwaPullToRefresh>
 						<PwaOfflineBanner />
-						<NuqsAdapter>{children}</NuqsAdapter>
+						<NuqsAdapter>
+							<UiLabelsProvider>{children}</UiLabelsProvider>
+						</NuqsAdapter>
 					</PwaPullToRefresh>
 					{/* <ReactQueryDevtools /> */}
 				</QueryClientProvider>

@@ -146,6 +146,8 @@ export const shell: Messages["shell"] = {
 		updateDescription:
 			"Ən son versiyadan istifadə üçün səhifəni yenidən yükləyin.",
 		reload: "Yenidən yüklə",
+		systemAlert:
+			"{count, plural, one {Zəng menyusunda yeni bildirişiniz var.} other {Zəng menyusunda # oxunmamış bildirişiniz var.}}",
 	},
 	search: {
 		title: "Klubda axtar",
@@ -496,5 +498,33 @@ export const shell: Messages["shell"] = {
 	theme: {
 		toggle: "Açıq və tünd mövzunu dəyiş",
 		tooltip: "Mövzunu dəyiş",
+	},
+	ui: {
+		infiniteScroll: {
+			emptyTitle: "Hələ burada heç nə yoxdur",
+			errorTitle: "Nəsə səhv getdi",
+			errorFallback: "Məzmun yüklənmədi.",
+			retry: "Yenidən cəhd et",
+		},
+		dateSelector: {
+			selectDate: "Tarix seçin",
+			apply: "Tətbiq et",
+			cancel: "Ləğv et",
+			clear: "Təmizlə",
+			today: "Bu gün",
+			is: "dəqiq",
+			before: "əvvəl",
+			after: "sonra",
+			between: "arasında",
+			day: "Gün",
+			month: "Ay",
+			quarter: "Rüb",
+			halfYear: "Yarımil",
+			year: "İl",
+			quarterShort: "{n}-ci rüb",
+			halfYearShort: "{n}-ci yarımil",
+			placeholder: "Tarix seçin...",
+			rangePlaceholder: "Tarix aralığı seçin...",
+		},
 	},
 };

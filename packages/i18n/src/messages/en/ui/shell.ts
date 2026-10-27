@@ -146,6 +146,8 @@ export const shell = defineMessages({
 		updateReady: "Update ready",
 		updateDescription: "Reload to use the latest version.",
 		reload: "Reload",
+		systemAlert:
+			"{count, plural, one {You have a new alert in the bell menu.} other {You have # unread alerts in the bell menu.}}",
 	},
 	search: {
 		title: "Search the club",
@@ -495,5 +497,33 @@ export const shell = defineMessages({
 	theme: {
 		toggle: "Toggle light and dark theme",
 		tooltip: "Toggle theme",
+	},
+	ui: {
+		infiniteScroll: {
+			emptyTitle: "Nothing here yet",
+			errorTitle: "Something went wrong",
+			errorFallback: "Failed to load content.",
+			retry: "Try again",
+		},
+		dateSelector: {
+			selectDate: "Select date",
+			apply: "Apply",
+			cancel: "Cancel",
+			clear: "Clear",
+			today: "Today",
+			is: "is",
+			before: "before",
+			after: "after",
+			between: "between",
+			day: "Day",
+			month: "Month",
+			quarter: "Quarter",
+			halfYear: "Half-year",
+			year: "Year",
+			quarterShort: "Q{n}",
+			halfYearShort: "H{n}",
+			placeholder: "Select date...",
+			rangePlaceholder: "Select date range...",
+		},
 	},
 });
