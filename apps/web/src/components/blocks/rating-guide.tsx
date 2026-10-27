@@ -17,6 +17,7 @@ import {
 } from "@bbrc/ui/components/sheet";
 import { Info, Star } from "lucide-react";
 import type { Route } from "next";
+import { useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useRatingDefinitions } from "@/lib/rating/use-rating-definitions";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,7 @@ export function RatingGuideSheet({
 	current?: FeedbackRatingStep | null;
 	className?: string;
 }) {
+	const locale = useLocale();
 	const { overrides, signedIn } = useRatingDefinitions();
 
 	return (
@@ -107,7 +109,11 @@ export function RatingGuideSheet({
 				{/* A ladder: the rail runs from 5 down to 0, and the rating being chosen is marked on it. */}
 				<ol className="relative flex flex-1 flex-col overflow-y-auto py-2">
 					{RATING_DEFINITION_STEPS.map((rating) => {
-						const definition = resolveRatingDefinition(rating, overrides);
+						const definition = resolveRatingDefinition(
+							rating,
+							overrides,
+							locale,
+						);
 						const active = current === rating;
 						return (
 							<li

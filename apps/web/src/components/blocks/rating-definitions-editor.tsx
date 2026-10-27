@@ -1,7 +1,7 @@
 "use client";
 
 import {
-	DEFAULT_RATING_DEFINITIONS,
+	defaultRatingDefinition,
 	formatFeedbackRating,
 	RATING_DEFINITION_MAX_LENGTH,
 	RATING_DEFINITION_STEPS,
@@ -20,6 +20,7 @@ import {
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation } from "@tanstack/react-query";
 import { RotateCcw } from "lucide-react";
+import { useLocale } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PreferencesSection } from "@/components/blocks/preferences-ui";
@@ -91,7 +92,8 @@ function EditDialog({
 	onReset: () => void;
 }) {
 	const [draft, setDraft] = useState(text);
-	const label = DEFAULT_RATING_DEFINITIONS[ratingKey(rating)]?.label ?? "";
+	const locale = useLocale();
+	const label = defaultRatingDefinition(rating, locale).label;
 	const trimmed = draft.trim();
 	const changed = trimmed !== text.trim();
 
@@ -180,8 +182,9 @@ function Row({
 	onSave: (rating: number, text: string) => void;
 	onReset: (rating: number) => void;
 }) {
+	const locale = useLocale();
 	const [open, setOpen] = useState(false);
-	const definition = resolveRatingDefinition(rating, overrides);
+	const definition = resolveRatingDefinition(rating, overrides, locale);
 
 	return (
 		<li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:gap-4">

@@ -1,14 +1,15 @@
 "use client";
 
+import type { Locale } from "@bbrc/i18n";
 import {
-	DEFAULT_RATING_DEFINITIONS,
+	defaultRatingDefinition,
 	type FeedbackRatingStep,
 	formatFeedbackRating,
 	isFeedbackRatingStep,
-	ratingKey,
 } from "@bbrc/shared";
 import { cn } from "@bbrc/ui/lib/utils";
 import { Star } from "lucide-react";
+import { useLocale } from "next-intl";
 import { useRef, useState } from "react";
 import { RatingGuideSheet } from "@/components/blocks/rating-guide";
 
@@ -25,8 +26,8 @@ const STAR_SIZE = 36;
 const STAR_GAP = 4;
 
 /** The short name of a rating ("Excellent"), the same words as the definition card. */
-function describeRating(value: number): string {
-	return DEFAULT_RATING_DEFINITIONS[ratingKey(value)]?.label ?? "";
+function describeRating(value: number, locale: Locale): string {
+	return defaultRatingDefinition(value, locale).label;
 }
 
 /**
@@ -54,6 +55,7 @@ export function FeedbackHalfStarRating({
 	allowClear = false,
 	className,
 }: FeedbackHalfStarRatingProps) {
+	const locale = useLocale();
 	const trackRef = useRef<HTMLDivElement>(null);
 	const draggingRef = useRef(false);
 	const [hover, setHover] = useState<FeedbackRatingStep | null>(null);
@@ -85,7 +87,7 @@ export function FeedbackHalfStarRating({
 					aria-valuenow={value}
 					aria-valuetext={
 						value > 0
-							? `${formatFeedbackRating(value)} out of 5, ${describeRating(value)}`
+							? `${formatFeedbackRating(value)} out of 5, ${describeRating(value, locale)}`
 							: "No rating"
 					}
 					aria-disabled={disabled}
