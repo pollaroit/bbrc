@@ -7,44 +7,66 @@ import { Input } from "@bbrc/ui/components/input";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { useEffect, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
-import { formatDateTime, formatDurationUntil } from "@/lib/format-datetime";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { refreshAuthSession } from "@/lib/refresh-auth-session";
 import { orpc, queryClient } from "@/utils/orpc";
 
 const UsernameInputSchema = UserSchema.pick({ username: true });
 
-function usernameStatusDescription(status: {
-	username: string;
-	usernameLastUpdatedAt: Date | null;
-	canUpdate: boolean;
-	nextAllowedAt: Date | null;
-}): string {
-	const cooldown = `You can change your username once every ${USERNAME_UPDATE_COOLDOWN_DAYS} days.`;
+type UsernameT = ReturnType<typeof useTranslations<"settings.username">>;
+type Formatters = ReturnType<typeof useFormatters>;
+
+/** "3 days", "5 hours", "12 minutes": the time left until `target`, in the page language. */
+function remainingText(t: UsernameT, target: Date): string {
+	const ms = target.getTime() - Date.now();
+	if (ms <= 0) return t("now");
+	const minutes = Math.ceil(ms / 60_000);
+	if (minutes < 60) return t("remainingMinutes", { count: minutes });
+	const hours = Math.ceil(minutes / 60);
+	if (hours < 48) return t("remainingHours", { count: hours });
+	return t("remainingDays", { count: Math.ceil(hours / 24) });
+}
+
+function usernameStatusDescription(
+	t: UsernameT,
+	f: Formatters,
+	status: {
+		usernameLastUpdatedAt: Date | null;
+		canUpdate: boolean;
+		nextAllowedAt: Date | null;
+	},
+): string {
+	const cooldown = t("cooldown", { days: USERNAME_UPDATE_COOLDOWN_DAYS });
+	const dateTime = (value: Date) =>
+		f.dateWith(value, { dateStyle: "medium", timeStyle: "short" });
 
 	if (!status.usernameLastUpdatedAt) {
-		return `${cooldown} You have not changed it since signup, so you can update it now. Profile links use your username.`;
+		return t("neverChanged", { cooldown });
 	}
 
-	const lastChanged = formatDateTime(status.usernameLastUpdatedAt);
+	const lastChanged = dateTime(status.usernameLastUpdatedAt);
 
 	if (status.canUpdate) {
-		return `${cooldown} Last changed ${lastChanged}. You can update it now.`;
+		return t("canUpdate", { cooldown, lastChanged });
 	}
 
-	const nextAt = status.nextAllowedAt
-		? formatDateTime(status.nextAllowedAt)
-		: "later";
-	const remaining = status.nextAllowedAt
-		? formatDurationUntil(status.nextAllowedAt)
-		: "a while";
-
-	return `${cooldown} Last changed ${lastChanged}. You can change it again in ${remaining} (${nextAt}).`;
+	return t("mustWait", {
+		cooldown,
+		lastChanged,
+		nextAt: status.nextAllowedAt ? dateTime(status.nextAllowedAt) : t("later"),
+		remaining: status.nextAllowedAt
+			? remainingText(t, status.nextAllowedAt)
+			: t("aWhile"),
+	});
 }
 
 export function SettingsUsernameForm() {
+	const t = useTranslations("settings.username");
+	const f = useFormatters();
 	const router = useRouter();
 	const fieldId = useId();
 	const [username, setUsername] = useState("");
@@ -78,12 +100,12 @@ export function SettingsUsernameForm() {
 					}),
 					refreshAuthSession({ username: result.username }),
 				]);
-				toast.success("Username updated");
+				toast.success(t("updated"));
 				router.push(`/users/${result.username}` as Route);
 				router.refresh();
 			},
 			onError: (error) => {
-				toast.error(error.message ?? "Could not update username");
+				toast.error(error.message ?? t("updateFailed"));
 			},
 		}),
 	);
@@ -92,8 +114,7 @@ export function SettingsUsernameForm() {
 		if (!statusQuery.data) {
 			return null;
 		}
-		return usernameStatusDescription({
-			username: statusQuery.data.username,
+		return usernameStatusDescription(t, f, {
 			usernameLastUpdatedAt: statusQuery.data.usernameLastUpdatedAt
 				? new Date(statusQuery.data.usernameLastUpdatedAt)
 				: null,
@@ -102,22 +123,14 @@ export function SettingsUsernameForm() {
 				? new Date(statusQuery.data.nextAllowedAt)
 				: null,
 		});
-	}, [statusQuery.data]);
+	}, [statusQuery.data, t, f]);
 
 	if (statusQuery.isPending) {
-		return (
-			<p className="text-muted-foreground text-sm">
-				Loading username settings…
-			</p>
-		);
+		return <p className="text-muted-foreground text-sm">{t("loading")}</p>;
 	}
 
 	if (statusQuery.isError || !statusQuery.data) {
-		return (
-			<p className="text-destructive text-sm">
-				Could not load username settings.
-			</p>
-		);
+		return <p className="text-destructive text-sm">{t("loadFailed")}</p>;
 	}
 
 	return (
@@ -129,9 +142,7 @@ export function SettingsUsernameForm() {
 
 				const parsed = UsernameInputSchema.safeParse({ username: trimmed });
 				if (!parsed.success) {
-					const message =
-						parsed.error.issues[0]?.message ??
-						"Enter a valid username (letters, numbers, underscores).";
+					const message = parsed.error.issues[0]?.message ?? t("invalid");
 					setFieldError(message);
 					return;
 				}
@@ -144,7 +155,7 @@ export function SettingsUsernameForm() {
 			}}
 		>
 			<Field>
-				<FieldLabel htmlFor={fieldId}>Username</FieldLabel>
+				<FieldLabel htmlFor={fieldId}>{t("label")}</FieldLabel>
 				{description ? (
 					<FieldDescription className="max-w-[65ch] leading-relaxed">
 						{description}
@@ -174,7 +185,7 @@ export function SettingsUsernameForm() {
 				disabled={!canSubmit}
 				className="w-fit"
 			>
-				Save username
+				{t("save")}
 			</LoadingButton>
 		</form>
 	);

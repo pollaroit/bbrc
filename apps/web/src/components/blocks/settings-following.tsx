@@ -4,6 +4,7 @@ import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { Link } from "@/i18n/navigation";
@@ -28,14 +29,7 @@ type FollowItem = {
 	};
 };
 
-const SECTIONS = [
-	{
-		type: "author" as const,
-		title: "Authors",
-		description: "You are told when the library adds a book by them.",
-		empty: "You are not following any authors yet.",
-	},
-];
+const SECTIONS = [{ type: "author" as const }];
 
 function lifespan(author: FollowItem["author"]) {
 	if (author.birthYear == null) return null;
@@ -43,6 +37,7 @@ function lifespan(author: FollowItem["author"]) {
 }
 
 export function SettingsFollowing() {
+	const t = useTranslations("settings.following");
 	const followsQuery = useQuery(orpc.follow.mine.queryOptions());
 	const mineKey = orpc.follow.mine.queryKey();
 
@@ -69,12 +64,12 @@ export function SettingsFollowing() {
 			{
 				onError: (error) => {
 					queryClient.setQueryData(mineKey, previous);
-					toast.error(error.message ?? "Could not unfollow.");
+					toast.error(error.message ?? t("unfollowFailed"));
 				},
 				onSuccess: () => {
-					toast(`Unfollowed ${item.author.name}.`, {
+					toast(t("unfollowed", { name: item.author.name }), {
 						action: {
-							label: "Undo",
+							label: t("undo"),
 							onClick: () =>
 								toggle.mutate({
 									target: { type: "author", slug: item.author.slug },
@@ -99,13 +94,13 @@ export function SettingsFollowing() {
 	if (followsQuery.isError) {
 		return (
 			<p className="text-destructive text-sm" role="alert">
-				Could not load what you follow.{" "}
+				{t("loadFailed")}{" "}
 				<button
 					type="button"
 					className="underline underline-offset-4"
 					onClick={() => void followsQuery.refetch()}
 				>
-					Try again
+					{t("tryAgain")}
 				</button>
 			</p>
 		);
@@ -128,7 +123,7 @@ export function SettingsFollowing() {
 								id={`following-${section.type}`}
 								className="font-semibold text-lg tracking-tight"
 							>
-								{section.title}
+								{t("authorsTitle")}
 								{rows.length > 0 ? (
 									<span className="ms-2 font-normal text-muted-foreground text-sm">
 										{rows.length}
@@ -136,19 +131,21 @@ export function SettingsFollowing() {
 								) : null}
 							</h2>
 							<p className="text-muted-foreground text-sm">
-								{section.description}
+								{t("authorsDescription")}
 							</p>
 						</div>
 
 						{rows.length === 0 ? (
 							<div className="flex flex-col items-start gap-3 border border-border border-dashed px-4 py-6">
-								<p className="text-muted-foreground text-sm">{section.empty}</p>
+								<p className="text-muted-foreground text-sm">
+									{t("authorsEmpty")}
+								</p>
 								<Button
 									variant="outline"
 									size="sm"
 									render={<Link href={"/authors" as Route} />}
 								>
-									Browse authors
+									{t("browseAuthors")}
 								</Button>
 							</div>
 						) : (
@@ -173,7 +170,7 @@ export function SettingsFollowing() {
 											<span className="block truncate text-muted-foreground text-xs">
 												{[
 													lifespan(item.author),
-													`${item.author.bookCount} ${item.author.bookCount === 1 ? "book" : "books"}`,
+													t("bookCount", { count: item.author.bookCount }),
 												]
 													.filter(Boolean)
 													.join(" · ")}
@@ -184,9 +181,11 @@ export function SettingsFollowing() {
 											variant="outline"
 											size="sm"
 											onClick={() => unfollow(item)}
-											aria-label={`Unfollow ${item.author.name}`}
+											aria-label={t("unfollowLabel", {
+												name: item.author.name,
+											})}
 										>
-											Unfollow
+											{t("unfollow")}
 										</Button>
 									</li>
 								))}

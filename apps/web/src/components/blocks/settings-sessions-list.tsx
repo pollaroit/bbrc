@@ -2,6 +2,7 @@
 
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { Laptop, Smartphone } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
@@ -16,8 +17,10 @@ export type SettingsSessionItem = {
 	isCurrent: boolean;
 };
 
-function describeUserAgent(userAgent: string | null) {
-	if (!userAgent) return { label: "Unknown device", mobile: false };
+type SessionsT = ReturnType<typeof useTranslations<"settings.sessions">>;
+
+function describeUserAgent(userAgent: string | null, t: SessionsT) {
+	if (!userAgent) return { label: t("unknownDevice"), mobile: false };
 
 	const browser = /Edg\//.test(userAgent)
 		? "Edge"
@@ -29,7 +32,7 @@ function describeUserAgent(userAgent: string | null) {
 					? "Chrome"
 					: /Safari\//.test(userAgent)
 						? "Safari"
-						: "Browser";
+						: t("browser");
 
 	const os = /Windows/.test(userAgent)
 		? "Windows"
@@ -44,7 +47,7 @@ function describeUserAgent(userAgent: string | null) {
 						: null;
 
 	return {
-		label: os ? `${browser} on ${os}` : browser,
+		label: os ? t("browserOnOs", { browser, os }) : browser,
 		mobile: /Mobi|Android|iPhone|iPad/.test(userAgent),
 	};
 }
@@ -54,9 +57,13 @@ export function SettingsSessionsList({
 }: {
 	sessions: SettingsSessionItem[];
 }) {
+	const t = useTranslations("settings.sessions");
 	const f = useFormatters();
 	const router = useRouter();
 	const [pending, setPending] = useState<string | null>(null);
+
+	const signedInAt = (value: string) =>
+		f.dateWith(value, { dateStyle: "medium", timeStyle: "short" });
 
 	const others = sessions.filter((item) => !item.isCurrent);
 
@@ -69,7 +76,7 @@ export function SettingsSessionsList({
 		try {
 			const { error } = await action();
 			if (error) {
-				toast.error(error.message ?? "Something went wrong");
+				toast.error(error.message ?? t("error"));
 				return;
 			}
 			toast.success(successMessage);
@@ -83,7 +90,7 @@ export function SettingsSessionsList({
 		<div className="flex flex-col gap-4">
 			<ul className="divide-y border">
 				{sessions.map((item) => {
-					const { label, mobile } = describeUserAgent(item.userAgent);
+					const { label, mobile } = describeUserAgent(item.userAgent, t);
 					const Icon = mobile ? Smartphone : Laptop;
 
 					return (
@@ -101,17 +108,17 @@ export function SettingsSessionsList({
 										{label}
 										{item.isCurrent ? (
 											<span className="ml-2 border border-border px-1.5 py-0.5 font-normal text-muted-foreground text-xs">
-												This device
+												{t("thisDevice")}
 											</span>
 										) : null}
 									</p>
 									<p className="truncate text-muted-foreground text-sm">
-										{item.ipAddress ? `${item.ipAddress} · ` : ""}
-										Signed in{" "}
-										{f.dateWith(item.createdAt, {
-											dateStyle: "medium",
-											timeStyle: "short",
-										})}
+										{item.ipAddress
+											? t("signedInWithIp", {
+													ip: item.ipAddress,
+													date: signedInAt(item.createdAt),
+												})
+											: t("signedIn", { date: signedInAt(item.createdAt) })}
 									</p>
 								</div>
 							</div>
@@ -126,11 +133,11 @@ export function SettingsSessionsList({
 										run(
 											item.token,
 											() => authClient.revokeSession({ token: item.token }),
-											"Session signed out",
+											t("signedOutOne"),
 										)
 									}
 								>
-									Log out
+									{t("logOut")}
 								</LoadingButton>
 							) : null}
 						</li>
@@ -148,11 +155,11 @@ export function SettingsSessionsList({
 							run(
 								"others",
 								() => authClient.revokeOtherSessions(),
-								"Signed out of other sessions",
+								t("signedOutOthers"),
 							)
 						}
 					>
-						Log out of all other sessions
+						{t("logOutOthers")}
 					</LoadingButton>
 					<LoadingButton
 						variant="destructive"
@@ -162,12 +169,12 @@ export function SettingsSessionsList({
 							await run(
 								"all",
 								() => authClient.revokeSessions(),
-								"Signed out everywhere",
+								t("signedOutAll"),
 							);
 							router.push("/sign-in" as never);
 						}}
 					>
-						Log out of all sessions
+						{t("logOutAll")}
 					</LoadingButton>
 				</div>
 			) : null}

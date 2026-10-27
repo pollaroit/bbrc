@@ -1,7 +1,9 @@
+import { toLocale } from "@bbrc/i18n";
 import { ChevronRight } from "lucide-react";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { SettingsAvatarUpload } from "@/components/blocks/settings-avatar-upload";
 import { SettingsNameForm } from "@/components/blocks/settings-name-form";
 import { SettingsUsernameForm } from "@/components/blocks/settings-username-form";
@@ -9,47 +11,33 @@ import { Link } from "@/i18n/navigation";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 
-export const metadata: Metadata = buildPageMetadata({
-	title: "Settings",
-	description: "Manage your BBRC account preferences.",
-	path: "/settings",
-	robots: NO_INDEX_ROBOTS,
-});
+export async function generateMetadata({
+	params,
+}: PageProps<"/[locale]/settings">): Promise<Metadata> {
+	const locale = toLocale((await params).locale);
+	const t = await getTranslations({ locale, namespace: "settings" });
+	return buildPageMetadata({
+		title: t("index.metaTitle"),
+		description: t("index.metaDescription"),
+		path: "/settings",
+		robots: NO_INDEX_ROBOTS,
+		locale,
+	});
+}
 
 const settingsLinks = [
-	{
-		href: "/settings/preferences",
-		title: "Preferences",
-		description: "Theme, fonts, text size, reading and display options.",
-	},
-	{
-		href: "/settings/profile",
-		title: "Profile",
-		description: "Birthday, bio, favorite genres, links and reading speed.",
-	},
-	{
-		href: "/settings/following",
-		title: "Following",
-		description: "Authors you follow and new-book alerts.",
-	},
-	{
-		href: "/settings/accounts",
-		title: "Account connections",
-		description: "Link Telegram for club bot features.",
-	},
-	{
-		href: "/settings/sessions",
-		title: "Sessions",
-		description: "See where you're signed in and log out of devices.",
-	},
-	{
-		href: "/settings/notifications",
-		title: "Notifications",
-		description: "Bell alerts and one-time ntfy phone setup.",
-	},
+	{ href: "/settings/preferences", key: "preferences" },
+	{ href: "/settings/profile", key: "profile" },
+	{ href: "/settings/following", key: "following" },
+	{ href: "/settings/sessions", key: "sessions" },
+	{ href: "/settings/notifications", key: "notifications" },
 ] as const;
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+	params,
+}: PageProps<"/[locale]/settings">) {
+	const locale = toLocale((await params).locale);
+	const t = await getTranslations({ locale, namespace: "settings" });
 	const session = await auth.api.getSession({
 		headers: await headers(),
 	});
@@ -64,10 +52,10 @@ export default async function SettingsPage() {
 	return (
 		<div className="mx-auto flex max-w-xl flex-col gap-8">
 			<div>
-				<h1 className="font-semibold text-2xl tracking-tight">Settings</h1>
-				<p className="mt-1 text-muted-foreground text-sm">
-					Preferences for your account.
-				</p>
+				<h1 className="font-semibold text-2xl tracking-tight">
+					{t("index.title")}
+				</h1>
+				<p className="mt-1 text-muted-foreground text-sm">{t("index.intro")}</p>
 			</div>
 
 			{!telegramLinked ? (
@@ -103,7 +91,7 @@ export default async function SettingsPage() {
 				aria-labelledby="username-heading"
 			>
 				<h2 id="username-heading" className="sr-only">
-					Username
+					{t("index.usernameHeading")}
 				</h2>
 				<SettingsUsernameForm />
 			</section>
@@ -113,12 +101,32 @@ export default async function SettingsPage() {
 				aria-labelledby="name-heading"
 			>
 				<h2 id="name-heading" className="sr-only">
-					Your Name
+					{t("index.nameHeading")}
 				</h2>
 				<SettingsNameForm currentName={currentName} />
 			</section>
 
 			<ul className="divide-y border">
+				{/* Telegram linking is being removed: this row stays English until it goes. */}
+				<li>
+					<Link
+						href={"/settings/accounts" as Route}
+						className="flex items-center justify-between gap-4 px-4 py-4 transition-colors hover:bg-muted/50"
+					>
+						<span className="min-w-0">
+							<span className="block font-medium text-sm">
+								Account connections
+							</span>
+							<span className="block text-muted-foreground text-sm">
+								Link Telegram for club bot features.
+							</span>
+						</span>
+						<ChevronRight
+							className="size-4 shrink-0 text-muted-foreground"
+							aria-hidden
+						/>
+					</Link>
+				</li>
 				{settingsLinks.map((link) => (
 					<li key={link.href}>
 						<Link
@@ -126,9 +134,11 @@ export default async function SettingsPage() {
 							className="flex items-center justify-between gap-4 px-4 py-4 transition-colors hover:bg-muted/50"
 						>
 							<span className="min-w-0">
-								<span className="block font-medium text-sm">{link.title}</span>
+								<span className="block font-medium text-sm">
+									{t(`index.links.${link.key}.title`)}
+								</span>
 								<span className="block text-muted-foreground text-sm">
-									{link.description}
+									{t(`index.links.${link.key}.description`)}
 								</span>
 							</span>
 							<ChevronRight

@@ -5,6 +5,7 @@ import { Field, FieldLabel } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
@@ -18,6 +19,7 @@ type SettingsNameFormProps = {
 };
 
 export function SettingsNameForm({ currentName }: SettingsNameFormProps) {
+	const t = useTranslations("settings.name");
 	const router = useRouter();
 	const fieldId = useId();
 
@@ -35,11 +37,11 @@ export function SettingsNameForm({ currentName }: SettingsNameFormProps) {
 					refreshAuthSession({ name: result.name }),
 				]);
 
-				toast.success("Name updated");
+				toast.success(t("updated"));
 				router.refresh();
 			},
 			onError: (error) => {
-				toast.error(error.message ?? "Could not update name");
+				toast.error(error.message ?? t("updateFailed"));
 			},
 		}),
 	);
@@ -59,9 +61,7 @@ export function SettingsNameForm({ currentName }: SettingsNameFormProps) {
 				});
 
 				if (!parsed.success) {
-					setFieldError(
-						parsed.error.issues[0]?.message ?? "Enter a valid name.",
-					);
+					setFieldError(parsed.error.issues[0]?.message ?? t("invalid"));
 					return;
 				}
 
@@ -71,7 +71,7 @@ export function SettingsNameForm({ currentName }: SettingsNameFormProps) {
 			}}
 		>
 			<Field>
-				<FieldLabel htmlFor={fieldId}>Name</FieldLabel>
+				<FieldLabel htmlFor={fieldId}>{t("label")}</FieldLabel>
 
 				<Input
 					id={fieldId}
@@ -95,7 +95,7 @@ export function SettingsNameForm({ currentName }: SettingsNameFormProps) {
 				disabled={!canSubmit}
 				className="w-fit"
 			>
-				Save name
+				{t("save")}
 			</LoadingButton>
 		</form>
 	);
