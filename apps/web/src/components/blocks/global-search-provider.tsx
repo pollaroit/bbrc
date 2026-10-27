@@ -1,6 +1,5 @@
 "use client";
 
-import type { GlobalSearchHitType } from "@bbrc/api/modules/search/global-search.schema";
 import {
 	createContext,
 	type ReactNode,
@@ -27,19 +26,6 @@ export function useGlobalSearch(): GlobalSearchContextValue {
 	}
 	return value;
 }
-
-export const globalSearchTypeLabels: Record<GlobalSearchHitType, string> = {
-	book: "Book",
-	user: "Member",
-	post: "Post",
-	feedback: "Review",
-	comment: "Comment",
-	shelf: "Shelf",
-	document: "Document",
-	author: "Author",
-	goal: "Goal",
-	series: "Series",
-};
 
 export function GlobalSearchProvider({ children }: { children: ReactNode }) {
 	const [open, setOpen] = useState(false);

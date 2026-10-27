@@ -1,6 +1,7 @@
 "use client";
 
 import type { GlobalSearchHit } from "@bbrc/api/modules/search/global-search.schema";
+import { getBookCountryName } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import {
@@ -15,11 +16,11 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import type { Route } from "next";
+import { useLocale, useTranslations } from "next-intl";
 import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useComposePost } from "@/components/blocks/compose-post-provider";
 import { useCreateGoal } from "@/components/blocks/create-goal-provider";
-import { globalSearchTypeLabels } from "@/components/blocks/global-search-provider";
 import { GlobalSearchThumb } from "@/components/blocks/global-search-thumb";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useRouter } from "@/i18n/navigation";
@@ -33,6 +34,7 @@ import {
 	parseCommandFilters,
 	type SearchCommand,
 	type SearchCommandContext,
+	type SearchTranslate,
 	searchCommands,
 	suggestedCommands,
 } from "@/lib/search/commands";
@@ -49,6 +51,11 @@ import {
 } from "@/lib/search/recents";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
+
+/** The shown name of an inner page, in the page language. */
+function pageLabel(t: SearchTranslate, page: InnerPage): string {
+	return t(`pages.${page.scope}.${page.id}` as never);
+}
 
 const IDLE_COMMAND_LIMIT = 6;
 const TYPED_COMMAND_LIMIT = 6;
@@ -96,6 +103,8 @@ export function GlobalSearchDialog({
 	open,
 	onOpenChange,
 }: GlobalSearchDialogProps) {
+	const t = useTranslations("shell.search");
+	const tHeader = useTranslations("shell.header");
 	const router = useRouter();
 	const { data: session } = authClient.useSession();
 	const { openCompose } = useComposePost();
@@ -140,7 +149,7 @@ export function GlobalSearchDialog({
 		[session, ongoingQuery.isSuccess, ongoingQuery.data],
 	);
 
-	const commands = useMemo(() => buildSearchCommands(), []);
+	const commands = useMemo(() => buildSearchCommands(t), [t]);
 
 	const hasText = parsed.text.trim().length > 0;
 	const commandResult = useMemo(
@@ -208,7 +217,9 @@ export function GlobalSearchDialog({
 
 	const suffixPage = (hit: GlobalSearchHit): InnerPage | null => {
 		const pages = innerPagesFor(hit.type);
-		return pages ? matchInnerPage(pages, parsed.suffix) : null;
+		return pages
+			? matchInnerPage(pages, parsed.suffix, (page) => pageLabel(t, page))
+			: null;
 	};
 
 	/** The page the next Enter opens for a result: picked by hand, else typed after a colon. */
@@ -238,22 +249,24 @@ export function GlobalSearchDialog({
 			return;
 		}
 		if (result.filters.viewerRead && !ctx.signedIn) {
-			toast.error("Sign in to filter by what you have read (ir / nr).");
+			toast.error(t("toasts.signInToFilter"));
 			return;
 		}
 
 		close();
-		const toastId = toast.loading("Picking a book…");
+		const toastId = toast.loading(t("toasts.picking"));
 		try {
 			const book = await client.book.getRandom(result.filters);
 			toast.success(
-				book.matched > 1 ? `${book.title} (1 of ${book.matched})` : book.title,
+				book.matched > 1
+					? t("toasts.pickedOf", { title: book.title, matched: book.matched })
+					: book.title,
 				{ id: toastId },
 			);
 			router.push(`/books/${book.slug}` as Route);
 		} catch (error) {
 			toast.error(
-				error instanceof Error ? error.message : "Could not pick a book.",
+				error instanceof Error ? error.message : t("toasts.couldNotPick"),
 				{ id: toastId },
 			);
 		}
@@ -285,7 +298,7 @@ export function GlobalSearchDialog({
 					await authClient.signOut();
 					router.refresh();
 				} catch {
-					toast.error("Failed to sign out");
+					toast.error(tHeader("signOutFailed"));
 				}
 				return;
 			case "books": {
@@ -295,7 +308,7 @@ export function GlobalSearchDialog({
 					return;
 				}
 				if (result.filters.viewerRead && !ctx.signedIn) {
-					toast.error("Sign in to filter by what you have read (ir / nr).");
+					toast.error(t("toasts.signInToFilter"));
 					return;
 				}
 				const search = bookFiltersToSearchParams(result.filters);
@@ -363,12 +376,12 @@ export function GlobalSearchDialog({
 					close();
 				}
 			}}
-			title="Search the club"
-			description="Find books, members, posts and more, or jump to a page"
+			title={t("title")}
+			description={t("description")}
 			className="gap-0 p-0 sm:max-w-xl"
 		>
 			<CommandInput
-				placeholder="Search or type a command…"
+				placeholder={t("placeholder")}
 				value={query}
 				onValueChange={setQuery}
 				onKeyDown={onInputKeyDown}
@@ -378,7 +391,7 @@ export function GlobalSearchDialog({
 					<>
 						<CommandEmpty className="hidden" />
 						{idleCommands.length > 0 ? (
-							<CommandGroup heading="Go to">
+							<CommandGroup heading={t("goTo")}>
 								{idleCommands.map((command) => (
 									<CommandRow
 										key={command.id}
@@ -395,7 +408,7 @@ export function GlobalSearchDialog({
 							<CommandGroup
 								heading={
 									<span className="flex items-center justify-between">
-										Recent
+										{t("recent")}
 										<button
 											type="button"
 											className="text-2xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
@@ -404,7 +417,7 @@ export function GlobalSearchDialog({
 												setRecents([]);
 											}}
 										>
-											Clear
+											{t("clear")}
 										</button>
 									</span>
 								}
@@ -431,7 +444,7 @@ export function GlobalSearchDialog({
 					<>
 						<CommandEmpty className="hidden" />
 						{hasCommandRows ? (
-							<CommandGroup heading="Go to">
+							<CommandGroup heading={t("goTo")}>
 								{commandResult.matches.map((match) => (
 									<CommandRow
 										key={match.command.id}
@@ -444,7 +457,7 @@ export function GlobalSearchDialog({
 									<CommandRow
 										command={commandResult.signInHint}
 										filtersText={null}
-										note="Sign in to use this"
+										note={t("signInToUse")}
 										onSelect={() =>
 											void runCommand({
 												command: commandResult.signInHint as SearchCommand,
@@ -458,13 +471,13 @@ export function GlobalSearchDialog({
 						) : null}
 						{commandResult.hiddenCount > 0 ? (
 							<p className="px-3 py-1 text-2xs text-muted-foreground">
-								{commandResult.hiddenCount} more, keep typing to narrow
+								{t("moreHidden", { count: commandResult.hiddenCount })}
 							</p>
 						) : null}
 						{isSearching ? (
 							<GlobalSearchLoadingState />
 						) : items.length > 0 ? (
-							<CommandGroup heading={hasCommandRows ? "Results" : undefined}>
+							<CommandGroup heading={hasCommandRows ? t("results") : undefined}>
 								{items.map((hit, index) => {
 									const pages = innerPagesFor(hit.type);
 									const page = pageFor(hit);
@@ -514,12 +527,16 @@ function CommandRow({
 	note?: string;
 	onSelect: () => void;
 }) {
+	const t = useTranslations("shell.search");
+	const locale = useLocale();
 	const Icon = command.icon;
 	const parsedFilters =
 		filtersText != null ? parseCommandFilters(filtersText) : null;
 	const description = parsedFilters
 		? parsedFilters.ok
-			? describeBookFilters(parsedFilters.filters)
+			? describeBookFilters(parsedFilters.filters, t, (code) =>
+					getBookCountryName(code, locale),
+				)
 			: parsedFilters.error
 		: (note ?? command.description);
 
@@ -574,6 +591,7 @@ function HitRow({
 	onPick: (id: string | null) => void;
 	onOpen: (page: InnerPage | null) => void;
 }) {
+	const t = useTranslations("shell.search");
 	const pages = innerPagesFor(hit.type);
 
 	return (
@@ -609,8 +627,8 @@ function HitRow({
 						</Button>
 					) : null}
 					<Badge variant="outline" className="font-normal text-3xs">
-						{globalSearchTypeLabels[hit.type]}
-						{page ? ` · ${page.label}` : ""}
+						{t(`types.${hit.type}`)}
+						{page ? ` · ${pageLabel(t, page)}` : ""}
 					</Badge>
 				</div>
 			</div>
@@ -638,15 +656,16 @@ function InnerPageStrip({
 	onPick: (id: string | null) => void;
 	onOpen: (page: InnerPage | null) => void;
 }) {
+	const t = useTranslations("shell.search");
 	return (
 		<fieldset className="m-0 ms-12 flex min-w-0 items-center gap-1 overflow-x-auto border-0 p-0 pb-0.5 [scrollbar-width:none]">
-			<legend className="sr-only">Open a specific page</legend>
+			<legend className="sr-only">{t("openPage")}</legend>
 			{selected == null ? (
 				<span className="shrink-0 text-2xs text-muted-foreground">
 					<kbd className="border border-border bg-background px-1 font-mono text-3xs">
 						→
 					</kbd>{" "}
-					pages
+					{t("pagesChip")}
 				</span>
 			) : null}
 			{pages.map((page) => {
@@ -675,7 +694,7 @@ function InnerPageStrip({
 							onOpen(page);
 						}}
 					>
-						{page.label}
+						{pageLabel(t, page)}
 					</button>
 				);
 			})}
@@ -684,38 +703,41 @@ function InnerPageStrip({
 }
 
 function GlobalSearchIdleHints() {
+	const t = useTranslations("shell.search");
+	const code = (chunks: React.ReactNode) => (
+		<code className="font-mono">{chunks}</code>
+	);
 	return (
 		<div className="px-3 pt-3 pb-2">
 			<ul className="space-y-1.5 border-border border-t pt-3 text-2xs text-muted-foreground">
 				<li>
-					Try <code className="font-mono">settings:</code>,{" "}
-					<code className="font-mono">create:</code> or{" "}
-					<code className="font-mono">admin:</code>
+					{t.rich("idle.commands", {
+						code,
+						settings: "settings:",
+						create: "create:",
+						admin: "admin:",
+					})}
 				</li>
-				<li>
-					<code className="font-mono">@</code> searches members,{" "}
-					<code className="font-mono">&gt;</code> shows commands only
-				</li>
-				<li>
-					<code className="font-mono">random:nr:p&lt;400</code> picks a book you
-					have not read, under 400 pages
-				</li>
+				<li>{t.rich("idle.symbols", { code, at: "@", gt: ">" })}</li>
+				<li>{t.rich("idle.random", { code, example: "random:nr:p<400" })}</li>
 			</ul>
 		</div>
 	);
 }
 
 function GlobalSearchMembersHint() {
+	const t = useTranslations("shell.search");
 	return (
 		<div className="px-3 py-5">
 			<p className="text-pretty text-muted-foreground text-sm leading-relaxed">
-				Type a name or username to search members only.
+				{t("membersHint")}
 			</p>
 		</div>
 	);
 }
 
 function GlobalSearchLoadingState() {
+	const t = useTranslations("shell.search");
 	return (
 		<div
 			className="space-y-1.5 px-1 py-1"
@@ -723,7 +745,7 @@ function GlobalSearchLoadingState() {
 			aria-busy="true"
 			aria-live="polite"
 		>
-			<span className="sr-only">Searching</span>
+			<span className="sr-only">{t("searching")}</span>
 			{[0, 1, 2].map((key) => (
 				<div
 					key={key}
@@ -742,56 +764,48 @@ function GlobalSearchLoadingState() {
 }
 
 function GlobalSearchNoResults({ query }: { query: string }) {
+	const t = useTranslations("shell.search");
 	return (
 		<div className="px-3 py-8 text-center">
-			<p className="font-medium text-foreground text-sm">No matches</p>
+			<p className="font-medium text-foreground text-sm">{t("noMatches")}</p>
 			<p className="mt-1.5 text-pretty text-muted-foreground text-xs leading-relaxed">
-				Nothing matched{" "}
-				<span className="text-foreground">&ldquo;{query}&rdquo;</span>. Try a
-				book title, author, or @username.
+				{t.rich("noMatchesBody", {
+					query,
+					hl: (chunks) => <span className="text-foreground">{chunks}</span>,
+				})}
 			</p>
 		</div>
 	);
 }
 
 function GlobalSearchNoCommands({ query }: { query: string }) {
+	const t = useTranslations("shell.search");
 	return (
 		<div className="px-3 py-8 text-center">
-			<p className="font-medium text-foreground text-sm">No command found</p>
+			<p className="font-medium text-foreground text-sm">{t("noCommand")}</p>
 			<p className="mt-1.5 text-pretty text-muted-foreground text-xs leading-relaxed">
-				No command starts with{" "}
-				<span className="text-foreground">&ldquo;{query}&rdquo;</span> for you.
-				Delete the <code className="font-mono">&gt;</code> to search everything.
+				{t.rich("noCommandBody", {
+					query,
+					symbol: ">",
+					hl: (chunks) => <span className="text-foreground">{chunks}</span>,
+					code: (chunks) => <code className="font-mono">{chunks}</code>,
+				})}
 			</p>
 		</div>
 	);
 }
 
 function GlobalSearchFooter({ hasQuery }: { hasQuery: boolean }) {
+	const t = useTranslations("shell.search");
+	const kbd = "border border-border bg-background px-1 font-mono text-3xs";
 	return (
 		<div className="flex flex-wrap items-center justify-between gap-2 border-border border-t bg-muted/20 px-3 py-2 text-2xs text-muted-foreground">
-			<span>
-				{hasQuery
-					? "Commands and results from across the club"
-					: "Club-wide search"}
-			</span>
+			<span>{hasQuery ? t("footerWithQuery") : t("footerIdle")}</span>
 			<span className="hidden sm:inline">
-				<kbd className="border border-border bg-background px-1 font-mono text-3xs">
-					↑↓
-				</kbd>{" "}
-				move{" "}
-				<kbd className="border border-border bg-background px-1 font-mono text-3xs">
-					→
-				</kbd>{" "}
-				pages{" "}
-				<kbd className="border border-border bg-background px-1 font-mono text-3xs">
-					↵
-				</kbd>{" "}
-				open{" "}
-				<kbd className="border border-border bg-background px-1 font-mono text-3xs">
-					esc
-				</kbd>{" "}
-				close
+				<kbd className={kbd}>↑↓</kbd> {t("keys.move")}{" "}
+				<kbd className={kbd}>→</kbd> {t("keys.pages")}{" "}
+				<kbd className={kbd}>↵</kbd> {t("keys.open")}{" "}
+				<kbd className={kbd}>esc</kbd> {t("keys.close")}
 			</span>
 		</div>
 	);

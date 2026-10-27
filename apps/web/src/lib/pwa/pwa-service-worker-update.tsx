@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -7,12 +8,15 @@ import { isStandalonePwa } from "@/lib/pwa/is-standalone";
 
 const SKIP_WAITING = { type: "SKIP_WAITING" } as const;
 
-function promptReload(waiting: ServiceWorker) {
-	toast("Update ready", {
-		description: "Reload to use the latest version.",
+function promptReload(
+	waiting: ServiceWorker,
+	t: ReturnType<typeof useTranslations<"shell.pwa">>,
+) {
+	toast(t("updateReady"), {
+		description: t("updateDescription"),
 		duration: Number.POSITIVE_INFINITY,
 		action: {
-			label: "Reload",
+			label: t("reload"),
 			onClick: () => {
 				waiting.postMessage(SKIP_WAITING);
 			},
@@ -21,6 +25,7 @@ function promptReload(waiting: ServiceWorker) {
 }
 
 export function PwaServiceWorkerUpdate() {
+	const t = useTranslations("shell.pwa");
 	const reloaded = useRef(false);
 
 	useEffect(() => {
@@ -43,7 +48,7 @@ export function PwaServiceWorkerUpdate() {
 
 		const watchRegistration = (registration: ServiceWorkerRegistration) => {
 			if (registration.waiting) {
-				promptReload(registration.waiting);
+				promptReload(registration.waiting, t);
 			}
 
 			registration.addEventListener("updatefound", () => {
@@ -58,7 +63,7 @@ export function PwaServiceWorkerUpdate() {
 						navigator.serviceWorker.controller &&
 						registration.waiting
 					) {
-						promptReload(registration.waiting);
+						promptReload(registration.waiting, t);
 					}
 				});
 			});
@@ -72,7 +77,7 @@ export function PwaServiceWorkerUpdate() {
 				onControllerChange,
 			);
 		};
-	}, []);
+	}, [t]);
 
 	return null;
 }

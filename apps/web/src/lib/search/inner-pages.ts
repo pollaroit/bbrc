@@ -1,8 +1,12 @@
 import type { GlobalSearchHit } from "@bbrc/api/modules/search/global-search.schema";
 
 /** A page inside a book, author or member profile that search can jump straight to. */
+export type InnerPageScope = "book" | "user" | "author";
+
 export type InnerPage = {
 	id: string;
+	scope: InnerPageScope;
+	/** English name, also matched when typed; the shown name comes from the messages. */
 	label: string;
 	/** Appended to the item's own href. */
 	path: string;
@@ -10,7 +14,12 @@ export type InnerPage = {
 	aliases?: string[];
 };
 
-export const BOOK_INNER_PAGES: InnerPage[] = [
+type InnerPageInput = Omit<InnerPage, "scope">;
+
+const scoped = (scope: InnerPageScope, pages: InnerPageInput[]): InnerPage[] =>
+	pages.map((page) => ({ ...page, scope }));
+
+export const BOOK_INNER_PAGES: InnerPage[] = scoped("book", [
 	{ id: "about", label: "About", path: "about" },
 	{ id: "editions", label: "Editions", path: "editions" },
 	{ id: "documents", label: "Documents", path: "documents", aliases: ["docs"] },
@@ -33,9 +42,9 @@ export const BOOK_INNER_PAGES: InnerPage[] = [
 		path: "insights",
 		aliases: ["views", "analytics"],
 	},
-];
+]);
 
-export const USER_INNER_PAGES: InnerPage[] = [
+export const USER_INNER_PAGES: InnerPage[] = scoped("user", [
 	{ id: "sittings", label: "Sittings", path: "sittings" },
 	{ id: "reads", label: "Reads", path: "reads" },
 	{ id: "quizzes", label: "Quizzes", path: "quizzes", aliases: ["quiz"] },
@@ -63,9 +72,9 @@ export const USER_INNER_PAGES: InnerPage[] = [
 	{ id: "stats", label: "Stats", path: "stats", aliases: ["statistics"] },
 	{ id: "xp", label: "XP", path: "xp" },
 	{ id: "rp", label: "RP", path: "rp" },
-];
+]);
 
-export const AUTHOR_INNER_PAGES: InnerPage[] = [
+export const AUTHOR_INNER_PAGES: InnerPage[] = scoped("author", [
 	{ id: "books", label: "Books", path: "books" },
 	{ id: "about", label: "About", path: "about", aliases: ["bio"] },
 	{ id: "more", label: "Similar authors", path: "more", aliases: ["similar"] },
@@ -88,7 +97,7 @@ export const AUTHOR_INNER_PAGES: InnerPage[] = [
 		aliases: ["following"],
 	},
 	{ id: "stats", label: "Stats", path: "stats", aliases: ["statistics"] },
-];
+]);
 
 export function innerPagesFor(
 	type: GlobalSearchHit["type"],
@@ -113,6 +122,8 @@ export function innerPageHref(hit: GlobalSearchHit, page: InnerPage): string {
 export function matchInnerPage(
 	pages: InnerPage[],
 	typed: string,
+	/** The page name in the page language, matched next to the English name and the aliases. */
+	shownName: (page: InnerPage) => string = (page) => page.label,
 ): InnerPage | null {
 	const needle = typed.trim().toLowerCase();
 	if (!needle) {
@@ -120,8 +131,8 @@ export function matchInnerPage(
 	}
 	return (
 		pages.find((page) =>
-			[page.id, page.label, ...(page.aliases ?? [])].some((name) =>
-				name.toLowerCase().startsWith(needle),
+			[page.id, page.label, shownName(page), ...(page.aliases ?? [])].some(
+				(name) => name.toLowerCase().startsWith(needle),
 			),
 		) ?? null
 	);

@@ -3,6 +3,7 @@
 import { BookOpen, Compass, Home, User } from "lucide-react";
 import type { Route } from "next";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Suspense, useState } from "react";
 import { BrowseMenuDrawer } from "@/components/blocks/browse-menu-drawer";
 import { CreateMenu } from "@/components/blocks/create-menu";
@@ -25,19 +26,22 @@ import { useLiveUserImage } from "@/lib/user-avatar-broadcast";
 import { cn } from "@/lib/utils";
 
 type TabConfig = {
-	label: string;
+	id: "home" | "library";
 	href: Route;
 	icon: typeof Home;
 };
 
-const homeTab = { label: "Home", href: "/" as Route, icon: Home };
+const homeTab = { id: "home", href: "/" as Route, icon: Home } as const;
 const libraryTab = {
-	label: "Library",
+	id: "library",
 	href: "/books" as Route,
 	icon: BookOpen,
-};
+} as const;
 
 function MobileBottomBarInner() {
+	const t = useTranslations("shell");
+	const tabLabel = (id: TabConfig["id"]) =>
+		id === "home" ? t("mobile.home") : t("header.nav.library");
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const { data: session, isPending } = authClient.useSession();
@@ -71,27 +75,30 @@ function MobileBottomBarInner() {
 	if (!signedIn || !user) {
 		return (
 			<>
-				<nav className={mobileChromeBottomClass} aria-label="Main">
+				<nav
+					className={mobileChromeBottomClass}
+					aria-label={t("mobile.mainNav")}
+				>
 					<div className={cn(navGridClassGuest, mobileChromeInsetClass)}>
 						{guestTabs.map((tab) => (
 							<MobileNavTab
 								key={tab.href}
 								href={tab.href}
-								label={tab.label}
+								label={tabLabel(tab.id)}
 								icon={tab.icon}
 								active={isMobileNavActive(pathname, tab.href)}
 							/>
 						))}
 						<MobileNavTabButton
-							label="Browse"
+							label={t("browse.title")}
 							icon={Compass}
 							active={isBrowseNavActive(pathname)}
 							onClick={() => setBrowseOpen(true)}
-							aria-label="Browse club sections"
+							aria-label={t("mobile.browseAria")}
 						/>
 						<MobileNavTab
 							href={signInHref}
-							label="Sign in"
+							label={t("header.signIn")}
 							icon={User}
 							active={false}
 						/>
@@ -107,7 +114,7 @@ function MobileBottomBarInner() {
 
 	return (
 		<>
-			<nav className={mobileChromeBottomClass} aria-label="Main">
+			<nav className={mobileChromeBottomClass} aria-label={t("mobile.mainNav")}>
 				<div
 					className={cn(
 						navGridClassSignedIn,
@@ -117,13 +124,13 @@ function MobileBottomBarInner() {
 				>
 					<MobileNavTab
 						href={homeTab.href}
-						label={homeTab.label}
+						label={tabLabel(homeTab.id)}
 						icon={homeTab.icon}
 						active={isMobileNavActive(pathname, homeTab.href)}
 					/>
 					<MobileNavTab
 						href={libraryTab.href}
-						label={libraryTab.label}
+						label={tabLabel(libraryTab.id)}
 						icon={libraryTab.icon}
 						active={isMobileNavActive(pathname, libraryTab.href)}
 					/>
@@ -134,17 +141,17 @@ function MobileBottomBarInner() {
 						<CreateMenu variant="fab" />
 					</div>
 					<MobileNavTabButton
-						label="Browse"
+						label={t("browse.title")}
 						icon={Compass}
 						active={browseActive}
 						onClick={() => setBrowseOpen(true)}
-						aria-label="Browse club sections"
+						aria-label={t("mobile.browseAria")}
 					/>
 					<MobileNavTabButton
-						label="You"
+						label={t("mobile.you")}
 						active={profileActive}
 						onClick={() => setAccountOpen(true)}
-						aria-label="Account menu"
+						aria-label={t("mobile.accountAria")}
 						iconSlot={<UserAvatar user={user} className="size-6" />}
 					/>
 				</div>

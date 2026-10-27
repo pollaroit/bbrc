@@ -2,6 +2,7 @@
 
 import { Button } from "@bbrc/ui/components/button";
 import { Share, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { BodyPortal } from "@/components/blocks/body-portal";
@@ -22,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export function PwaInstallHint() {
+	const t = useTranslations("shell.pwa");
 	const [visible, setVisible] = useState(false);
 	const [iosHint, setIosHint] = useState(false);
 	const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
@@ -95,43 +97,44 @@ export function PwaInstallHint() {
 					mobileChromeInsetClass,
 					"bottom-[calc(4.5rem+var(--pwa-vv-bottom,0px))] py-3",
 				)}
-				aria-label="Install BBRC"
+				aria-label={t("installLabel")}
 			>
 				<div className="mx-auto flex w-full max-w-6xl gap-3">
 					<div className="min-w-0 flex-1">
 						<p className="font-medium text-foreground text-sm">
-							Add BBRC to your home screen
+							{t("installTitle")}
 						</p>
 						{iosHint ? (
 							<p className="mt-1 text-muted-foreground text-xs leading-relaxed">
-								Tap{" "}
-								<Share
-									className="inline size-3.5 align-[-2px] text-foreground"
-									aria-hidden
-								/>{" "}
-								Share, then choose Add to Home Screen for a full-screen app.
+								{t.rich("installIos", {
+									share: () => (
+										<Share
+											className="inline size-3.5 align-[-2px] text-foreground"
+											aria-hidden
+										/>
+									),
+								})}
 							</p>
 						) : (
 							<p className="mt-1 text-muted-foreground text-xs leading-relaxed">
-								Install for faster access, pull to refresh, and a stable tab
-								bar.
+								{t("installOther")}
 							</p>
 						)}
 					</div>
 					<div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
 						{!iosHint && deferredPrompt.current ? (
 							<Button type="button" size="sm" onClick={() => void onInstall()}>
-								Install
+								{t("install")}
 							</Button>
 						) : null}
 						<Button type="button" size="sm" variant="outline" onClick={dismiss}>
-							Not now
+							{t("notNow")}
 						</Button>
 						<button
 							type="button"
 							className="inline-flex size-9 items-center justify-center border border-border text-muted-foreground hover:text-foreground"
 							onClick={dismiss}
-							aria-label="Dismiss install hint permanently"
+							aria-label={t("dismissForever")}
 						>
 							<X className="size-4" aria-hidden />
 						</button>

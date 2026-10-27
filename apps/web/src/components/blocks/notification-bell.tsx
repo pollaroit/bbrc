@@ -11,6 +11,7 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "@/i18n/navigation";
@@ -23,6 +24,7 @@ function formatNotificationTime(f: Formatters, value: Date | string): string {
 }
 
 export function NotificationBell() {
+	const t = useTranslations("shell.notifications");
 	const f = useFormatters();
 	const [open, setOpen] = useState(false);
 
@@ -138,8 +140,8 @@ export function NotificationBell() {
 						className={`relative ${headerToolbarIconButtonClass}`}
 						aria-label={
 							unreadCount > 0
-								? `Notifications, ${unreadCount} unread`
-								: "Notifications"
+								? t("titleWithUnread", { count: unreadCount })
+								: t("title")
 						}
 					/>
 				}
@@ -150,13 +152,13 @@ export function NotificationBell() {
 						variant="destructive"
 						className="absolute -top-0.5 -right-0.5 flex size-5 items-center justify-center p-0 text-3xs"
 					>
-						{unreadCount > 9 ? "9+" : unreadCount}
+						{unreadCount > 9 ? t("overNine") : unreadCount}
 					</Badge>
 				) : null}
 			</PopoverTrigger>
 			<PopoverContent align="end" className="w-80 p-0 sm:w-96">
 				<div className="flex items-center justify-between border-b px-4 py-3">
-					<p className="font-semibold text-sm">Notifications</p>
+					<p className="font-semibold text-sm">{t("title")}</p>
 					{unreadCount > 0 ? (
 						<Button
 							type="button"
@@ -165,18 +167,18 @@ export function NotificationBell() {
 							className="h-auto px-2 py-1 text-xs"
 							onClick={() => markAllMutation.mutate(undefined)}
 						>
-							Mark all read
+							{t("markAllRead")}
 						</Button>
 					) : null}
 				</div>
 				<div className="max-h-80 overflow-y-auto">
 					{listQuery.isPending ? (
 						<p className="px-4 py-6 text-center text-muted-foreground text-sm">
-							Loading…
+							{t("loading")}
 						</p>
 					) : items.length === 0 ? (
 						<p className="px-4 py-6 text-center text-muted-foreground text-sm">
-							No notifications yet.
+							{t("empty")}
 						</p>
 					) : (
 						<ul>
@@ -239,7 +241,7 @@ export function NotificationBell() {
 						className="text-muted-foreground text-sm transition-colors hover:text-foreground"
 						onClick={() => setOpen(false)}
 					>
-						Notification settings
+						{t("settings")}
 					</Link>
 				</div>
 			</PopoverContent>

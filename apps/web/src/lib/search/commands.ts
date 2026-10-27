@@ -28,7 +28,13 @@ import {
 	UserPlus,
 	Users,
 } from "lucide-react";
+import type { useTranslations } from "next-intl";
 import { adminNavSections } from "@/lib/admin-nav";
+
+/** The translator of the search texts (`shell.search` messages). */
+export type SearchTranslate = ReturnType<
+	typeof useTranslations<"shell.search">
+>;
 
 export type SearchCommandContext = {
 	signedIn: boolean;
@@ -175,14 +181,14 @@ function adminCommands(): SearchCommand[] {
 	return commands;
 }
 
-export function buildSearchCommands(): SearchCommand[] {
+export function buildSearchCommands(t: SearchTranslate): SearchCommand[] {
 	return [
 		{
 			id: "profile",
 			keyword: "profile",
 			aliases: ["me", "my-profile"],
-			label: "My profile",
-			description: "Open your profile",
+			label: t("commands.profile.label"),
+			description: t("commands.profile.description"),
 			icon: User,
 			requires: { auth: true },
 			action: ownPath(),
@@ -193,8 +199,8 @@ export function buildSearchCommands(): SearchCommand[] {
 				id: `profile:${tab.key}`,
 				keyword: `profile:${tab.key}`,
 				aliases: tab.aliases.map((alias) => `profile:${alias}`),
-				label: `My ${tab.label.toLowerCase()}`,
-				description: `Open your ${tab.label.toLowerCase()} tab`,
+				label: t(`profileTabs.${tab.key}.label`),
+				description: t(`profileTabs.${tab.key}.description`),
 				icon: User,
 				requires: { auth: true },
 				action: ownPath(`/${tab.key}`),
@@ -204,8 +210,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "read",
 			keyword: "read",
 			aliases: ["current-sitting"],
-			label: "Read",
-			description: "Go to the sitting you are reading",
+			label: t("commands.read.label"),
+			description: t("commands.read.description"),
 			icon: BookOpen,
 			requires: { auth: true, participant: true },
 			action: (ctx) => ({
@@ -218,8 +224,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "random",
 			keyword: "random",
 			aliases: ["lucky"],
-			label: "Random book",
-			description: "Pick a book for me. Add filters like :nr:p<400",
+			label: t("commands.random.label"),
+			description: t("commands.random.description"),
 			icon: Dices,
 			requires: {},
 			action: () => ({ kind: "random" }),
@@ -230,8 +236,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "settings",
 			keyword: "settings",
 			aliases: [],
-			label: "Settings",
-			description: "Your account settings",
+			label: t("commands.settings.label"),
+			description: t("commands.settings.description"),
 			icon: Settings,
 			requires: { auth: true },
 			action: navigate("/settings"),
@@ -242,8 +248,8 @@ export function buildSearchCommands(): SearchCommand[] {
 				id: `settings:${page.key}`,
 				keyword: `settings:${page.key}`,
 				aliases: [],
-				label: page.label,
-				description: page.description,
+				label: t(`settingsPages.${page.key}.label`),
+				description: t(`settingsPages.${page.key}.description`),
 				icon: Settings,
 				requires: { auth: true },
 				action: navigate(`/settings/${page.key}`),
@@ -253,8 +259,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "authors",
 			keyword: "authors",
 			aliases: ["writers"],
-			label: "Authors",
-			description: "Writers in the club catalog",
+			label: t("commands.authors.label"),
+			description: t("commands.authors.description"),
 			icon: UserPen,
 			requires: {},
 			action: navigate("/authors"),
@@ -263,8 +269,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "books",
 			keyword: "books",
 			aliases: ["catalog"],
-			label: "Books",
-			description: "The club library. Add filters like :p<300:a[orwell]",
+			label: t("commands.books.label"),
+			description: t("commands.books.description"),
 			icon: BookOpen,
 			requires: {},
 			action: () => ({ kind: "books" }),
@@ -275,8 +281,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "shelves",
 			keyword: "shelves",
 			aliases: ["lists"],
-			label: "Shelves",
-			description: "Member-curated lists",
+			label: t("commands.shelves.label"),
+			description: t("commands.shelves.description"),
 			icon: LayoutList,
 			requires: {},
 			action: navigate("/shelves"),
@@ -285,8 +291,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "series",
 			keyword: "series",
 			aliases: [],
-			label: "Series",
-			description: "Multi-volume reading order",
+			label: t("commands.series.label"),
+			description: t("commands.series.description"),
 			icon: Layers,
 			requires: {},
 			action: navigate("/series"),
@@ -295,8 +301,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "people",
 			keyword: "people",
 			aliases: ["members", "users"],
-			label: "People",
-			description: "Everyone in the club",
+			label: t("commands.people.label"),
+			description: t("commands.people.description"),
 			icon: Users,
 			requires: {},
 			action: navigate("/users"),
@@ -305,8 +311,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "sittings",
 			keyword: "sittings",
 			aliases: [],
-			label: "Sittings",
-			description: "Club reading rounds",
+			label: t("commands.sittings.label"),
+			description: t("commands.sittings.description"),
 			icon: Sofa,
 			requires: {},
 			action: navigate("/sittings"),
@@ -316,8 +322,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "achievements",
 			keyword: "achievements",
 			aliases: ["badges"],
-			label: "Achievements",
-			description: "Badges you can earn",
+			label: t("commands.achievements.label"),
+			description: t("commands.achievements.description"),
 			icon: Award,
 			requires: {},
 			action: navigate("/achievements"),
@@ -326,8 +332,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "reels",
 			keyword: "reels",
 			aliases: [],
-			label: "Reels",
-			description: "Short fact replays from the club",
+			label: t("commands.reels.label"),
+			description: t("commands.reels.description"),
 			icon: Clapperboard,
 			requires: {},
 			action: navigate("/reels"),
@@ -336,8 +342,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "goals",
 			keyword: "goals",
 			aliases: ["my-goals"],
-			label: "My goals",
-			description: "Your reading goals",
+			label: t("commands.goals.label"),
+			description: t("commands.goals.description"),
 			icon: Target,
 			requires: { auth: true },
 			action: ownPath("/goals"),
@@ -346,8 +352,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "leaderboard",
 			keyword: "leaderboard",
 			aliases: ["ranking"],
-			label: "Leaderboard",
-			description: "XP, reads, and rankings",
+			label: t("commands.leaderboard.label"),
+			description: t("commands.leaderboard.description"),
 			icon: Trophy,
 			requires: {},
 			action: navigate("/leaderboard/overview"),
@@ -358,8 +364,8 @@ export function buildSearchCommands(): SearchCommand[] {
 				id: `leaderboard:${board.key}`,
 				keyword: `leaderboard:${board.key}`,
 				aliases: [`ranking:${board.key}`],
-				label: `Leaderboard · ${board.label}`,
-				description: `Top members by ${board.label.toLowerCase()}`,
+				label: t(`boards.${board.key}.label`),
+				description: t(`boards.${board.key}.description`),
 				icon: Trophy,
 				requires: {},
 				action: navigate(`/leaderboard/${board.key}`),
@@ -369,8 +375,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "create:post",
 			keyword: "create:post",
 			aliases: ["new:post", "post"],
-			label: "Create post",
-			description: "Write a new post",
+			label: t("commands.createPost.label"),
+			description: t("commands.createPost.description"),
 			icon: PenLine,
 			requires: { auth: true },
 			action: () => ({ kind: "dialog", dialog: "compose-post" }),
@@ -380,8 +386,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "create:shelf",
 			keyword: "create:shelf",
 			aliases: ["new:shelf"],
-			label: "Create shelf",
-			description: "Start a new shelf",
+			label: t("commands.createShelf.label"),
+			description: t("commands.createShelf.description"),
 			icon: Plus,
 			requires: { auth: true },
 			action: ownPath("/shelves/new"),
@@ -390,8 +396,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "create:goal",
 			keyword: "create:goal",
 			aliases: ["new:goal"],
-			label: "Create goal",
-			description: "Set a reading goal",
+			label: t("commands.createGoal.label"),
+			description: t("commands.createGoal.description"),
 			icon: Target,
 			requires: { auth: true },
 			action: () => ({ kind: "dialog", dialog: "create-goal" }),
@@ -400,8 +406,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "create:sitting",
 			keyword: "create:sitting",
 			aliases: ["new:sitting"],
-			label: "Create sitting",
-			description: "Start a new reading round",
+			label: t("commands.createSitting.label"),
+			description: t("commands.createSitting.description"),
 			icon: Sofa,
 			requires: { auth: true, admin: true, noOngoing: true },
 			action: navigate("/sittings/new"),
@@ -410,8 +416,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "add",
 			keyword: "add",
 			aliases: ["add:book"],
-			label: "Add a book",
-			description: "Add a book to the library",
+			label: t("commands.add.label"),
+			description: t("commands.add.description"),
 			icon: BookPlus,
 			requires: { auth: true, admin: true },
 			action: navigate("/books/new"),
@@ -420,8 +426,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "request",
 			keyword: "request",
 			aliases: ["request:book"],
-			label: "Request a book",
-			description: "Ask admins to add a book",
+			label: t("commands.request.label"),
+			description: t("commands.request.description"),
 			icon: Send,
 			requires: { auth: true, nonAdmin: true },
 			action: navigate("/books/request"),
@@ -431,8 +437,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "theme",
 			keyword: "theme",
 			aliases: ["dark", "light", "dark-mode"],
-			label: "Switch theme",
-			description: "Toggle light and dark mode",
+			label: t("commands.theme.label"),
+			description: t("commands.theme.description"),
 			icon: Moon,
 			requires: {},
 			action: () => ({ kind: "theme" }),
@@ -441,8 +447,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "signout",
 			keyword: "signout",
 			aliases: ["logout", "sign-out", "log-out"],
-			label: "Sign out",
-			description: "Sign out of your account",
+			label: t("commands.signout.label"),
+			description: t("commands.signout.description"),
 			icon: LogOut,
 			requires: { auth: true },
 			action: () => ({ kind: "signout" }),
@@ -451,8 +457,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "signin",
 			keyword: "signin",
 			aliases: ["login", "sign-in", "log-in"],
-			label: "Sign in",
-			description: "Sign in to your account",
+			label: t("commands.signin.label"),
+			description: t("commands.signin.description"),
 			icon: LogIn,
 			requires: { guest: true },
 			action: navigate("/sign-in"),
@@ -461,8 +467,8 @@ export function buildSearchCommands(): SearchCommand[] {
 			id: "signup",
 			keyword: "signup",
 			aliases: ["register", "sign-up", "join"],
-			label: "Sign up",
-			description: "Create an account",
+			label: t("commands.signup.label"),
+			description: t("commands.signup.description"),
 			icon: UserPlus,
 			requires: { guest: true },
 			action: navigate("/sign-up"),
@@ -606,52 +612,73 @@ export function parseCommandFilters(
 }
 
 /** Plain-language summary of a filter set, for the command's description. */
-export function describeBookFilters(filters: BookFilterSpec): string {
+export function describeBookFilters(
+	filters: BookFilterSpec,
+	t: SearchTranslate,
+	countryName: (code: string) => string | null = getBookCountryName,
+): string {
 	const parts: string[] = [];
 
-	if (filters.viewerRead === "read") parts.push("books I read");
-	if (filters.viewerRead === "unread") parts.push("books I have not read");
+	if (filters.viewerRead === "read") parts.push(t("filters.booksRead"));
+	if (filters.viewerRead === "unread") parts.push(t("filters.booksUnread"));
 
 	const range = (
 		min: number | undefined,
 		max: number | undefined,
-		unit: string,
+		unit: "pages" | "reads" | "reviews" | "clubRating",
 	) => {
+		const name = t(`filters.units.${unit}`);
 		if (min != null && max != null) {
-			parts.push(min === max ? `${min} ${unit}` : `${min}–${max} ${unit}`);
+			parts.push(
+				min === max
+					? `${min} ${name}`
+					: t("filters.rangeBetween", { min, max, unit: name }),
+			);
 		} else if (min != null) {
-			parts.push(`${min}+ ${unit}`);
+			parts.push(t("filters.rangeMin", { min, unit: name }));
 		} else if (max != null) {
-			parts.push(`up to ${max} ${unit}`);
+			parts.push(t("filters.rangeMax", { max, unit: name }));
 		}
 	};
 	range(filters.minPages, filters.maxPages, "pages");
 	if (filters.minPublishedIn != null && filters.maxPublishedIn != null) {
 		parts.push(
 			filters.minPublishedIn === filters.maxPublishedIn
-				? `published ${filters.minPublishedIn}`
-				: `published ${filters.minPublishedIn}–${filters.maxPublishedIn}`,
+				? t("filters.publishedSame", { year: filters.minPublishedIn })
+				: t("filters.publishedBetween", {
+						min: filters.minPublishedIn,
+						max: filters.maxPublishedIn,
+					}),
 		);
 	} else if (filters.minPublishedIn != null) {
-		parts.push(`published ${filters.minPublishedIn} or later`);
+		parts.push(t("filters.publishedFrom", { min: filters.minPublishedIn }));
 	} else if (filters.maxPublishedIn != null) {
-		parts.push(`published ${filters.maxPublishedIn} or earlier`);
+		parts.push(t("filters.publishedUntil", { max: filters.maxPublishedIn }));
 	}
 	range(filters.minReads, filters.maxReads, "reads");
 	range(filters.minFeedbacks, filters.maxFeedbacks, "reviews");
-	range(filters.minAverageRating, filters.maxAverageRating, "club rating");
+	range(filters.minAverageRating, filters.maxAverageRating, "clubRating");
 
-	if (filters.authors?.length) parts.push(`by ${filters.authors.join(", ")}`);
+	if (filters.authors?.length) {
+		parts.push(t("filters.by", { authors: filters.authors.join(", ") }));
+	}
 	if (filters.countries?.length) {
 		parts.push(
-			filters.countries
-				.map((code) => getBookCountryName(code) ?? code)
-				.join(", "),
+			filters.countries.map((code) => countryName(code) ?? code).join(", "),
 		);
 	}
-	if (filters.statuses?.length) parts.push(filters.statuses.join(" or "));
+	if (filters.statuses?.length) {
+		parts.push(
+			filters.statuses.length === 2
+				? t("filters.or", {
+						a: filters.statuses[0] ?? "",
+						b: filters.statuses[1] ?? "",
+					})
+				: filters.statuses.join(", "),
+		);
+	}
 
-	return parts.length > 0 ? parts.join(" · ") : "any book";
+	return parts.length > 0 ? parts.join(" · ") : t("filters.any");
 }
 
 /** Query string for `/books` that reproduces a filter set. */

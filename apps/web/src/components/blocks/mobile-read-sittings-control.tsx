@@ -4,6 +4,7 @@ import { Button } from "@bbrc/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ function SittingsIndexButton({
 	className?: string;
 	showLabel?: boolean;
 }) {
+	const t = useTranslations("shell.header.nav");
 	return (
 		<Button
 			render={<Link href={sittingsHref} />}
@@ -33,19 +35,20 @@ function SittingsIndexButton({
 				showLabel ? "px-2.5" : "size-8 border-0",
 				className,
 			)}
-			aria-label={showLabel ? undefined : "Sittings"}
+			aria-label={showLabel ? undefined : t("sittings")}
 		>
 			<BookOpen
 				className="size-4 shrink-0"
 				data-icon={showLabel ? "inline-start" : undefined}
 				aria-hidden="true"
 			/>
-			{showLabel ? "Sittings" : null}
+			{showLabel ? t("sittings") : null}
 		</Button>
 	);
 }
 
 function ReadSittingButton({ href }: { href: Route }) {
+	const t = useTranslations("shell.header");
 	return (
 		<Button
 			render={<Link href={href} />}
@@ -53,7 +56,7 @@ function ReadSittingButton({ href }: { href: Route }) {
 			size="sm"
 			className="h-8 border-0 px-3 shadow-none"
 		>
-			Read
+			{t("read")}
 		</Button>
 	);
 }
