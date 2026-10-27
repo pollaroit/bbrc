@@ -4,14 +4,17 @@ import { SignupInputSchema } from "@bbrc/schemas";
 import { FieldGroup } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAppForm } from "@/hooks/use-app-form";
 import { useRouter } from "@/i18n/navigation";
 import { safeCallbackUrl } from "@/lib/auth-callback-url";
 import { authClient } from "@/lib/auth-client";
+import { authErrorKey } from "@/lib/auth-error-message";
 
 export default function SignupForm() {
+	const t = useTranslations("auth");
 	const [isLoading, setIsLoading] = useState(false);
 	const router = useRouter();
 	const searchParams = useSearchParams();
@@ -38,26 +41,21 @@ export default function SignupForm() {
 				});
 
 				if (error) {
-					throw new Error(
-						error.message ?? "Something went wrong. Please try again.",
-					);
+					toast.error(t(`errors.${authErrorKey(error)}`));
+					return;
 				}
 
-				toast.success(`Welcome to BBRC, ${data.user.name}!`);
+				toast.success(t("signUp.welcome", { name: data.user.name }));
 
 				router.replace(callbackUrl);
-			} catch (error) {
-				toast.error(
-					(error as Error).message ?? "Something went wrong. Please try again.",
-				);
+			} catch {
+				toast.error(t("errors.generic"));
 			} finally {
 				setIsLoading(false);
 			}
 		},
 		(errors) => {
-			toast.error(
-				errors.root?.message ?? "Something went wrong. Please try again.",
-			);
+			toast.error(errors.root?.message ?? t("errors.generic"));
 		},
 	);
 
@@ -66,11 +64,11 @@ export default function SignupForm() {
 			<FieldGroup>
 				<form.Input
 					name="name"
-					label="Full name"
+					label={t("signUp.name")}
 					render={(field, fieldState) => (
 						<Input
 							id={field.name}
-							placeholder="Martin Eden"
+							placeholder={t("signUp.namePlaceholder")}
 							aria-invalid={fieldState.invalid}
 							{...field}
 						/>
@@ -79,12 +77,12 @@ export default function SignupForm() {
 
 				<form.Input
 					name="email"
-					label="Email"
+					label={t("signUp.email")}
 					render={(field, fieldState) => (
 						<Input
 							id={field.name}
 							type="email"
-							placeholder="leo_tolstoy@example.com"
+							placeholder={t("signUp.emailPlaceholder")}
 							aria-invalid={fieldState.invalid}
 							{...field}
 							onChange={(e) => {
@@ -96,11 +94,11 @@ export default function SignupForm() {
 
 				<form.Input
 					name="username"
-					label="Username"
+					label={t("signUp.username")}
 					render={(field, fieldState) => (
 						<Input
 							id={field.name}
-							placeholder="leo_tolstoy"
+							placeholder={t("signUp.usernamePlaceholder")}
 							aria-invalid={fieldState.invalid}
 							{...field}
 							onChange={(e) => {
@@ -112,12 +110,12 @@ export default function SignupForm() {
 
 				<form.Input
 					name="password"
-					label="Password"
+					label={t("signUp.password")}
 					render={(field, fieldState) => (
 						<Input
 							id={field.name}
 							type="password"
-							placeholder="At least 7 characters"
+							placeholder={t("signUp.passwordPlaceholder")}
 							aria-invalid={fieldState.invalid}
 							{...field}
 						/>
@@ -127,9 +125,9 @@ export default function SignupForm() {
 				<form.Submit
 					className="w-full"
 					loading={isLoading}
-					loadingText="Creating account..."
+					loadingText={t("signUp.submitting")}
 				>
-					Create account
+					{t("signUp.submit")}
 				</form.Submit>
 			</FieldGroup>
 		</form>

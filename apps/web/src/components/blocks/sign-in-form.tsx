@@ -4,14 +4,17 @@ import { SignInInputSchema } from "@bbrc/schemas";
 import { FieldGroup } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAppForm } from "@/hooks/use-app-form";
 import { useRouter } from "@/i18n/navigation";
 import { safeCallbackUrl } from "@/lib/auth-callback-url";
 import { authClient } from "@/lib/auth-client";
+import { authErrorKey } from "@/lib/auth-error-message";
 
 export default function SignInForm() {
+	const t = useTranslations("auth");
 	const [isLoading, setIsLoading] = useState(false);
 	const router = useRouter();
 	const searchParams = useSearchParams();
@@ -33,26 +36,21 @@ export default function SignInForm() {
 				});
 
 				if (error) {
-					throw new Error(
-						error.message ?? "Something went wrong. Please try again.",
-					);
+					toast.error(t(`errors.${authErrorKey(error)}`));
+					return;
 				}
 
-				toast.success(`Welcome back, ${data.user.name}!`);
+				toast.success(t("signIn.welcomeBack", { name: data.user.name }));
 
 				router.replace(callbackUrl);
-			} catch (error) {
-				toast.error(
-					(error as Error).message ?? "Something went wrong. Please try again.",
-				);
+			} catch {
+				toast.error(t("errors.generic"));
 			} finally {
 				setIsLoading(false);
 			}
 		},
 		(errors) => {
-			toast.error(
-				errors.root?.message ?? "Something went wrong. Please try again.",
-			);
+			toast.error(errors.root?.message ?? t("errors.generic"));
 		},
 	);
 
@@ -61,12 +59,12 @@ export default function SignInForm() {
 			<FieldGroup>
 				<form.Input
 					name="email"
-					label="Email"
+					label={t("signIn.email")}
 					render={(field, fieldState) => (
 						<Input
 							id={field.name}
 							type="email"
-							placeholder="leo_tolstoy@example.com"
+							placeholder={t("signIn.emailPlaceholder")}
 							aria-invalid={fieldState.invalid}
 							{...field}
 						/>
@@ -75,12 +73,12 @@ export default function SignInForm() {
 
 				<form.Input
 					name="password"
-					label="Password"
+					label={t("signIn.password")}
 					render={(field, fieldState) => (
 						<Input
 							id={field.name}
 							type="password"
-							placeholder="Enter your password"
+							placeholder={t("signIn.passwordPlaceholder")}
 							aria-invalid={fieldState.invalid}
 							{...field}
 						/>
@@ -90,9 +88,9 @@ export default function SignInForm() {
 				<form.Submit
 					className="w-full"
 					loading={isLoading}
-					loadingText="Signing in..."
+					loadingText={t("signIn.submitting")}
 				>
-					Sign in
+					{t("signIn.submit")}
 				</form.Submit>
 			</FieldGroup>
 		</form>

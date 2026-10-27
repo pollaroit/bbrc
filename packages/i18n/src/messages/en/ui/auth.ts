@@ -1,4 +1,49 @@
 import { defineMessages } from "../../types";
 
-/** Interface texts of the `auth` area. */
-export const auth = defineMessages({});
+/** Sign-in and sign-up. */
+export const auth = defineMessages({
+	signIn: {
+		metaTitle: "Sign in",
+		metaDescription: "Sign in to your BBRC account.",
+		title: "Sign in to your account",
+		description: "Welcome back to BBRC. Let's read together.",
+		noAccount: "Don't have an account?",
+		switchToSignUp: "Sign up",
+		email: "Email",
+		emailPlaceholder: "leo_tolstoy@example.com",
+		password: "Password",
+		passwordPlaceholder: "Enter your password",
+		submit: "Sign in",
+		submitting: "Signing in...",
+		welcomeBack: "Welcome back, {name}!",
+	},
+	signUp: {
+		metaTitle: "Sign up",
+		metaDescription: "Create your BBRC account.",
+		title: "Create your account",
+		description: "Start reading with BBRC. Let's read together.",
+		haveAccount: "Already have an account?",
+		switchToSignIn: "Sign in",
+		name: "Full name",
+		namePlaceholder: "Martin Eden",
+		email: "Email",
+		emailPlaceholder: "leo_tolstoy@example.com",
+		username: "Username",
+		usernamePlaceholder: "leo_tolstoy",
+		password: "Password",
+		passwordPlaceholder: "At least 7 characters",
+		submit: "Create account",
+		submitting: "Creating account...",
+		welcome: "Welcome to BBRC, {name}!",
+	},
+	errors: {
+		generic: "Something went wrong. Please try again.",
+		invalidCredentials: "The email or password is not right.",
+		userExists: "An account with this email already exists.",
+		usernameTaken: "That username is taken.",
+		invalidEmail: "Enter a valid email address.",
+		passwordTooShort: "That password is too short.",
+		passwordTooLong: "That password is too long.",
+		tooManyRequests: "Too many attempts. Wait a moment and try again.",
+	},
+});
