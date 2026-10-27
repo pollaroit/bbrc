@@ -23,7 +23,6 @@ import {
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { FeedbackHalfStarRating } from "@/components/blocks/feedback-half-star-rating";
@@ -32,6 +31,7 @@ import {
 	uploadReviewImage,
 } from "@/components/blocks/review-image-field";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
+import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
 import {

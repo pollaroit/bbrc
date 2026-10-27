@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useLayoutEffect } from "react";
+import { usePathname } from "@/i18n/navigation";
 import { noteNavigation } from "@/lib/views/tracker";
 
 /**

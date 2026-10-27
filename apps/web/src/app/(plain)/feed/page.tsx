@@ -1,5 +1,5 @@
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const metadata = buildPageMetadata({

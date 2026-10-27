@@ -2,7 +2,6 @@
 
 import { cn } from "@bbrc/ui/lib/utils";
 import { Loader2 } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
 import {
 	type ReactNode,
 	useCallback,
@@ -10,6 +9,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { usePathname, useRouter } from "@/i18n/navigation";
 
 import { isOverlayOpen } from "@/lib/pwa/is-overlay-open";
 import { isStandalonePwa } from "@/lib/pwa/is-standalone";

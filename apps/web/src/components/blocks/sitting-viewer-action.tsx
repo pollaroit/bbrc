@@ -16,13 +16,12 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Vote } from "lucide-react";
 import type { Route } from "next";
 import dynamic from "next/dynamic";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { SittingReadingPanel } from "@/components/blocks/reading/sitting-reading-panel";
 import { SittingBookFeedbackPrompt } from "@/components/blocks/sitting-book-feedback-prompt";
 import { progressLabels } from "@/components/blocks/sitting-participation-progress";
+import { Link, useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import {
 	applyProgressOptimistically,

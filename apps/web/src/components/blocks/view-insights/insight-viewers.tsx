@@ -1,8 +1,8 @@
 import type { ViewInsights } from "@bbrc/api/modules/view/view.schema";
 import type { Route } from "next";
-import Link from "next/link";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { Link } from "@/i18n/navigation";
 import { formatCount } from "./insight-format";
 import { InsightPanel } from "./insight-panel";
 

@@ -12,7 +12,6 @@ import {
 } from "@bbrc/ui/components/table";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { AdminBookRowActions } from "@/components/blocks/admin-book-row-actions";
 import { AdminBooksToolbar } from "@/components/blocks/admin-books-toolbar";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
@@ -22,6 +21,7 @@ import {
 } from "@/components/blocks/admin-list-table-scroll";
 import { BookCountriesSummary } from "@/components/blocks/book-countries-summary";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
+import { Link } from "@/i18n/navigation";
 import { adminBooksExportConfig } from "@/lib/admin-table-export/configs";
 import { formatBookAuthors } from "@/lib/book-cover";
 import {

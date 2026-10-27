@@ -2,8 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import {
 	BOOK_DETAIL_TABS,

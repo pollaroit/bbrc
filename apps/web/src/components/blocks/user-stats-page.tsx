@@ -38,7 +38,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
 	Bar,
@@ -52,6 +51,7 @@ import {
 import { CountryLabel } from "@/components/blocks/country-dropdown";
 import { UserStatsPeriodControls } from "@/components/blocks/user-stats-period-controls";
 import { UserStatsWorldMap } from "@/components/blocks/user-stats-world-map";
+import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { isUserStatsQueryReady } from "@/lib/user-stats-period-ui";
 import {

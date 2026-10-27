@@ -9,7 +9,6 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { BookCheck, Rows3, StretchHorizontal } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import {
 	AuthorFilterBar,
 	type AuthorFilterChip,
@@ -30,6 +29,7 @@ import { EditionChip } from "@/components/blocks/edition-chip";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { ListingSort } from "@/components/listing/listing-sort";
+import { Link } from "@/i18n/navigation";
 import {
 	bookCoverFrameClassName,
 	bookCoverUrl,

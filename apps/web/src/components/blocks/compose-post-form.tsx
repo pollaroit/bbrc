@@ -15,7 +15,6 @@ import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import { BarChart3, ImagePlus, Link2, Plus, Settings2 } from "lucide-react";
 import type { Route } from "next";
-import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useComposePost } from "@/components/blocks/compose-post-provider";
@@ -45,6 +44,7 @@ import { uploadImageForEntity } from "@/components/blocks/single-image-upload-fi
 import { SubmitShortcutHint } from "@/components/blocks/submit-shortcut-hint";
 import { ToolButton } from "@/components/blocks/tool-button";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import {
 	createPendingSlug,

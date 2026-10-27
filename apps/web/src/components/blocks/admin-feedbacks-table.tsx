@@ -13,7 +13,6 @@ import {
 } from "@bbrc/ui/components/table";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { AdminFeedbacksToolbar } from "@/components/blocks/admin-feedbacks-toolbar";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
 import {
@@ -21,6 +20,7 @@ import {
 	AdminListTableScroll,
 } from "@/components/blocks/admin-list-table-scroll";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
+import { Link } from "@/i18n/navigation";
 import { adminFeedbacksExportConfig } from "@/lib/admin-table-export/configs";
 import {
 	toAdminFeedbacksListCallInput,

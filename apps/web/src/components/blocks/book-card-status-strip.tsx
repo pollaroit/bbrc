@@ -14,7 +14,7 @@ const statusStripClassName: Record<BookStatus, string> = {
 };
 
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import type { BookSortMetric } from "@/lib/books/sort-metric";
 import { cn } from "@/lib/utils";
 

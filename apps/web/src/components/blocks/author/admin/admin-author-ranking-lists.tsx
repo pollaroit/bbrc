@@ -8,8 +8,8 @@ import {
 	CardTitle,
 } from "@bbrc/ui/components/card";
 import type { Route } from "next";
-import Link from "next/link";
 import { AuthorPhoto } from "@/components/blocks/author/author-photo";
+import { Link } from "@/i18n/navigation";
 
 type RankingItem = AdminAuthorOverviewOutput["rankings"]["byBooks"][number];
 

@@ -3,8 +3,8 @@
 import type { CompareStatsOutput } from "@bbrc/api/modules/user-compare-admin/user-compare-admin.schema";
 import { describeScoreBand } from "@bbrc/shared";
 import type { Route } from "next";
-import Link from "next/link";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link } from "@/i18n/navigation";
 import { adminComparePairHref } from "@/lib/listing/admin-user-compare-listing";
 import { cn } from "@/lib/utils";
 

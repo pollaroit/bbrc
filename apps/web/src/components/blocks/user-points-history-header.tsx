@@ -1,8 +1,8 @@
 import type { GetUserByUsernameOutput } from "@bbrc/api/modules/user/user.schema";
 import { ArrowLeft } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { Link } from "@/i18n/navigation";
 
 type UserPointsHistoryHeaderProps = {
 	user: GetUserByUsernameOutput;

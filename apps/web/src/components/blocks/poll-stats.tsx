@@ -18,7 +18,6 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Lock } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
 	Bar,
@@ -38,6 +37,7 @@ import {
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { Link } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/format-datetime";
 import { formatTimeLeft, percent } from "@/lib/poll/format";
 import { cn } from "@/lib/utils";

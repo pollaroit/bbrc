@@ -1,6 +1,5 @@
 import { parseEditionKey } from "@bbrc/shared";
 import type { Metadata, Route } from "next";
-import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { EditionActions } from "@/components/blocks/edition-page/edition-actions";
 import { EditionAdminTools } from "@/components/blocks/edition-page/edition-admin-tools";
@@ -13,6 +12,7 @@ import { EditionReaders } from "@/components/blocks/edition-page/edition-readers
 import { EditionRemoved } from "@/components/blocks/edition-page/edition-removed";
 import { EditionReviews } from "@/components/blocks/edition-page/edition-reviews";
 import { EditionStats } from "@/components/blocks/edition-page/edition-stats";
+import { Link } from "@/i18n/navigation";
 import {
 	editionHeadline,
 	editionPath,

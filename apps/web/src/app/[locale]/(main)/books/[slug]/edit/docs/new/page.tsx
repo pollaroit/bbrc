@@ -3,9 +3,9 @@ import { listApprovedDocumentsByBook } from "@bbrc/api/modules/document/document
 import { ArrowLeft } from "lucide-react";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CreateDocumentForm } from "@/components/blocks/create-document-form";
+import { Link } from "@/i18n/navigation";
 import { loadBookBySlugForIsr } from "@/lib/isr-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { auth, db } from "@/services";

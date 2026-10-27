@@ -10,8 +10,8 @@ import {
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 

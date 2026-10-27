@@ -17,11 +17,11 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, List, MailWarning } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { type ReactNode, useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { AdminUserRankingLists } from "@/components/blocks/admin-user-ranking-lists";
 import { AdminUsersToolbar } from "@/components/blocks/admin-users-toolbar";
+import { Link } from "@/i18n/navigation";
 import {
 	toAdminUsersOverviewCallInput,
 	useAdminUsersListingSearchParams,

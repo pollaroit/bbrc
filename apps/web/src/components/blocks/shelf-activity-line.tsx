@@ -1,7 +1,7 @@
 import type { ListShelfActivityOutput } from "@bbrc/api/modules/shelf/shelf-collab.schema";
 import type { Route } from "next";
-import Link from "next/link";
 import type { ReactNode } from "react";
+import { Link } from "@/i18n/navigation";
 
 type ActivityItem = ListShelfActivityOutput["items"][number];
 

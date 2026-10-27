@@ -9,8 +9,8 @@ import {
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
 import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
+import { Link } from "@/i18n/navigation";
 
 const SUBJECT_PREVIEW_LIMIT = 10;
 

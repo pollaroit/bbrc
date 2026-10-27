@@ -2,7 +2,7 @@
 
 import { Button } from "@bbrc/ui/components/button";
 import { Pencil } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { editBookPageHref } from "@/lib/edit-book-search-params";
 import { cn } from "@/lib/utils";

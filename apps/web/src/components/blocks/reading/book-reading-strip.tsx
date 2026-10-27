@@ -4,12 +4,12 @@ import { Button } from "@bbrc/ui/components/button";
 import { BookCheck, BookCopy } from "lucide-react";
 import type { Route } from "next";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useState } from "react";
 import { BookMarkReadDialog } from "@/components/blocks/book-mark-read-dialog";
 import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
 import { ReadingProgressControl } from "@/components/blocks/reading/reading-progress-control";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { useReadingState } from "@/lib/reading/use-reading";
 

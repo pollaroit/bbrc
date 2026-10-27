@@ -4,9 +4,9 @@ import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { toast } from "sonner";
 import { AuthorPhoto } from "@/components/blocks/author/author-photo";
+import { Link } from "@/i18n/navigation";
 import { orpc, queryClient } from "@/utils/orpc";
 
 /*

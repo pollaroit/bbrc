@@ -20,7 +20,6 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, Trash2 } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -29,6 +28,7 @@ import {
 } from "@/components/blocks/admin-list-table-scroll";
 import { AdminQuizzesToolbar } from "@/components/blocks/admin-quizzes-toolbar";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { Link } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/format-datetime";
 import {
 	adminQuizStatusLabels,

@@ -2,8 +2,8 @@
 
 import { Button } from "@bbrc/ui/components/button";
 import { ArrowRight } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { authPageHref, currentPageCallbackUrl } from "@/lib/auth-callback-url";
 
 type HeaderAuthLinksProps = {

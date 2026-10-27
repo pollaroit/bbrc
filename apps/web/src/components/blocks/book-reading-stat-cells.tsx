@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { orpc } from "@/utils/orpc";
 
 const CELL =

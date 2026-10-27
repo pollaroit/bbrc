@@ -4,9 +4,9 @@ import { formatFeedbackRating } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import { FeedbackFormDialog } from "@/components/blocks/feedback-form-dialog";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { orpc } from "@/utils/orpc";
 

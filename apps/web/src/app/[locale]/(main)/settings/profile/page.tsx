@@ -1,9 +1,9 @@
 import { ArrowLeft } from "lucide-react";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SettingsProfileForm } from "@/components/blocks/settings-profile-form";
+import { Link } from "@/i18n/navigation";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 

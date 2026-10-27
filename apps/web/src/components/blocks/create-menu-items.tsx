@@ -13,7 +13,6 @@ import {
 	UserPlus,
 } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useComposePost } from "@/components/blocks/compose-post-provider";
 import { useCreateGoal } from "@/components/blocks/create-goal-provider";
 import {
@@ -21,6 +20,7 @@ import {
 	MobileSheetRowIcon,
 	mobileSheetRowClass,
 } from "@/components/blocks/mobile-chrome-sheet";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { orpc } from "@/utils/orpc";
 

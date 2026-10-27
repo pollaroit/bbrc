@@ -5,9 +5,9 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDownIcon } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 

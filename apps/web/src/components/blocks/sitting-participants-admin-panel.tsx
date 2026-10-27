@@ -21,11 +21,11 @@ import {
 } from "@bbrc/ui/components/sheet";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { UndoIcon, UserMinusIcon, UserPlusIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
+import { useRouter } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/format-datetime";
 import { orpc, queryClient } from "@/utils/orpc";
 

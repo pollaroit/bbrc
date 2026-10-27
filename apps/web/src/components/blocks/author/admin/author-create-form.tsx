@@ -14,13 +14,12 @@ import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, UserPlus } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { invalidateAuthorQueries } from "@/components/blocks/author/admin/author-actions-panel";
 import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { Link, useRouter } from "@/i18n/navigation";
 import { client, orpc } from "@/utils/orpc";
 
 const reasonText = {

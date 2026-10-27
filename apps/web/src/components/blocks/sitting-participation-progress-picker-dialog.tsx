@@ -11,13 +11,13 @@ import {
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
 	progressIndicatorClassName,
 	progressLabels,
 } from "@/components/blocks/sitting-participation-progress";
+import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import {
 	applyProgressOptimistically,

@@ -1,8 +1,8 @@
 import type { Metadata, Route } from "next";
-import Link from "next/link";
 import { BookDiscoverySection } from "@/components/blocks/book-discovery-section";
 import { BookExcerptMarkdown } from "@/components/blocks/book-excerpt-markdown";
 import { FeedbackReviewList } from "@/components/blocks/feedback-review-list";
+import { Link } from "@/i18n/navigation";
 import { truncateBookExcerptMarkdown } from "@/lib/books/excerpt-markdown";
 import {
 	loadBookBySlugForIsr,

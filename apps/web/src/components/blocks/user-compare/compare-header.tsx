@@ -9,10 +9,10 @@ import {
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { CircleHelp } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { CompareMemberPicker } from "@/components/blocks/user-compare/compare-member-picker";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 type Member = CompareOutput["a"];

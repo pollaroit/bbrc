@@ -2,10 +2,10 @@ import type { EditionPage } from "@bbrc/api/modules/edition/edition.schema";
 import { Button } from "@bbrc/ui/components/button";
 import { Star } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { EditionSection } from "@/components/blocks/edition-page/section";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link } from "@/i18n/navigation";
 
 /** Reviews of the BOOK, written by members who read this edition. */
 export function EditionReviews({

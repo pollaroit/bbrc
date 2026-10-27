@@ -1,10 +1,10 @@
 import type { GoalListItemSchema } from "@bbrc/api/modules/goal/goal.schema";
 import { Badge } from "@bbrc/ui/components/badge";
 import type { Route } from "next";
-import Link from "next/link";
 import type { z } from "zod";
 import { GoalProgressBar } from "@/components/blocks/goal-progress-bar";
 import { GoalScopeChips } from "@/components/blocks/goal-scope-chips";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 type GoalListItem = z.infer<typeof GoalListItemSchema>;

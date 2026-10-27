@@ -1,6 +1,6 @@
 import { Star } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { AuthorPageCover, authorBookAnchor } from "./author-page-bits";
 
 export type LibraryBook = {

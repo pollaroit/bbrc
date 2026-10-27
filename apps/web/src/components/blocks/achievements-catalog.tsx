@@ -14,7 +14,6 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useMemo } from "react";
 import {
@@ -24,6 +23,7 @@ import {
 	achievementState,
 } from "@/components/blocks/achievement-row";
 import { SegmentedControl } from "@/components/blocks/segmented-control";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";

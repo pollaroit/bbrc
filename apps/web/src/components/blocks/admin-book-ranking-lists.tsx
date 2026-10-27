@@ -10,8 +10,8 @@ import {
 } from "@bbrc/ui/components/card";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { CountryLabel } from "@/components/blocks/country-dropdown";
+import { Link } from "@/i18n/navigation";
 import { bookCoverUrl } from "@/lib/book-cover";
 
 type BookRankingItem =

@@ -23,10 +23,9 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Link, useRouter } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
 import { cn } from "@/lib/utils";

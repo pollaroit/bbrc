@@ -19,7 +19,6 @@ import {
 	User,
 } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import {
 	MobileChromeSheetSection,
 	MobileSheetRowBody,
@@ -28,6 +27,7 @@ import {
 } from "@/components/blocks/mobile-chrome-sheet";
 import { UserAccountSignOutButton } from "@/components/blocks/user-account-sign-out-button";
 import type { UserPanel } from "@/components/blocks/user-panel";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 type UserMenuUser = React.ComponentProps<typeof UserPanel>["user"];

@@ -18,10 +18,10 @@ import {
 	UserRound,
 } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
 import { postAttachmentHref } from "@/lib/post-attachment-path";

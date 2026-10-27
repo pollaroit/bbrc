@@ -5,7 +5,6 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import {
 	parseAsArrayOf,
 	parseAsString,
@@ -31,6 +30,7 @@ import {
 } from "@/components/blocks/author/author-tab-shell";
 import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 

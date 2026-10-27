@@ -4,7 +4,6 @@ import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { LiveViewCount } from "@/components/blocks/live-view-count";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
@@ -17,6 +16,7 @@ import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { Link } from "@/i18n/navigation";
 import { shareSnippet } from "@/lib/share-snippet";
 
 type PostDetailProps = {

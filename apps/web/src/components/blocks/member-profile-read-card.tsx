@@ -2,9 +2,9 @@ import type { ListUserReadsOutput } from "@bbrc/api/modules/read/read.schema";
 import { BookCheck, BookOpen, CalendarDays, Star } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { EditionChip } from "@/components/blocks/edition-chip";
+import { Link } from "@/i18n/navigation";
 import { bookCoverUrl } from "@/lib/book-cover";
 import { formatReadFinishedMonthField } from "@/lib/format-read-date";
 

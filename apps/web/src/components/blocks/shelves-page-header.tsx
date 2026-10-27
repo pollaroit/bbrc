@@ -5,8 +5,8 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { ShelvesListingToolbar } from "@/components/blocks/shelves-listing-toolbar";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { orpc } from "@/utils/orpc";
 

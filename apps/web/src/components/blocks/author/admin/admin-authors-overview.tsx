@@ -19,7 +19,6 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ListChecks, UserPlus, Users, Wand2 } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { type ReactNode, useMemo } from "react";
 import {
 	Area,
@@ -34,6 +33,7 @@ import { toast } from "sonner";
 import { AdminAuthorRankingLists } from "@/components/blocks/author/admin/admin-author-ranking-lists";
 import { AdminAuthorsToolbar } from "@/components/blocks/author/admin/admin-authors-toolbar";
 import { invalidateAuthorQueries } from "@/components/blocks/author/admin/author-actions-panel";
+import { Link } from "@/i18n/navigation";
 import {
 	adminAuthorFieldLabels,
 	adminAuthorGenderLabels,

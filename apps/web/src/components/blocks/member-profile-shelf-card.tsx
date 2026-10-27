@@ -4,10 +4,10 @@ import type { ListShelvesByUsernameOutput } from "@bbrc/api/modules/shelf/shelf.
 import { Badge } from "@bbrc/ui/components/badge";
 import { Lock, Users } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ShelfCover } from "@/components/blocks/shelf-cover";
 import { useImpressionRef } from "@/components/blocks/track-impression";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 type Shelf = ListShelvesByUsernameOutput["items"][number];

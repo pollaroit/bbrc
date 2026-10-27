@@ -1,8 +1,8 @@
 import type { ViewResourceKind } from "@bbrc/shared";
 import { ArrowLeft } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
+import { Link } from "@/i18n/navigation";
 import { ViewInsightsView } from "./view-insights-view";
 
 const BACK_LABEL: Record<ViewResourceKind, string> = {

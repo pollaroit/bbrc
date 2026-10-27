@@ -12,7 +12,6 @@ import {
 import { Star, Trophy } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { BookCountriesSummary } from "@/components/blocks/book-countries-summary";
 import { BookStatusBadge } from "@/components/blocks/book-status-badge";
 import { ClubDateTime } from "@/components/blocks/club-date-time";
@@ -20,6 +19,7 @@ import {
 	ReadingTimeline,
 	VotingProgress,
 } from "@/components/blocks/sitting-card-parts";
+import { Link } from "@/i18n/navigation";
 import { bookCoverUrl } from "@/lib/book-cover";
 import { cn } from "@/lib/utils";
 

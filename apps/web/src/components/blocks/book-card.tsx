@@ -11,11 +11,11 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { BookCardActionBar } from "@/components/blocks/book-card-action-bar";
 import { BookCardStatusStrip } from "@/components/blocks/book-card-status-strip";
 import type { BookListFavoriteEngagement } from "@/components/blocks/book-favorite-button";
+import { Link } from "@/i18n/navigation";
 import { bookCardRatingDisplay } from "@/lib/book-card-rating";
 import {
 	bookCoverFrameClassName,

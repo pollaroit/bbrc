@@ -13,13 +13,13 @@ import {
 } from "@bbrc/ui/components/table";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
 import {
 	ADMIN_TABLE_MOBILE_MIN_WIDTH,
 	AdminListTableScroll,
 } from "@/components/blocks/admin-list-table-scroll";
 import { AdminShelvesToolbar } from "@/components/blocks/admin-shelves-toolbar";
+import { Link } from "@/i18n/navigation";
 import { adminShelvesExportConfig } from "@/lib/admin-table-export/configs";
 import {
 	adminShelfStatusFilterLabels,

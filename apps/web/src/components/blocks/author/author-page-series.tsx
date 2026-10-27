@@ -7,7 +7,7 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { BookCheck } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 import { AuthorPageCover, AuthorPageEmpty } from "./author-page-bits";

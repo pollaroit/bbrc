@@ -32,7 +32,6 @@ import {
 } from "@bbrc/ui/components/select";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { parseAsInteger, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { type ReactNode, useMemo, useState } from "react";
 import {
@@ -47,6 +46,7 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { Link } from "@/i18n/navigation";
 import { orpc } from "@/utils/orpc";
 
 type BookStats = GetBookStatsOutput;

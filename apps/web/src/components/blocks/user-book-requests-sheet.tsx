@@ -11,7 +11,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { BookMarked } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { OpenLibraryWorkTitleLink } from "@/components/blocks/open-library-work-title-link";
 import { RelativeTime } from "@/components/blocks/relative-time";
@@ -20,6 +19,7 @@ import {
 	ListingSideSheetHeader,
 	listingSideSheetContentClassName,
 } from "@/components/listing/listing-side-sheet";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { orpc } from "@/utils/orpc";
 

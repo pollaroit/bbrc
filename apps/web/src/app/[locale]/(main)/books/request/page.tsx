@@ -1,10 +1,10 @@
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { RequestFlow } from "@/components/blocks/book-flow/request-flow";
 import { RequestBookPageHeader } from "@/components/blocks/request-book-page-header";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
+import { Link } from "@/i18n/navigation";
 import { buildPageMetadata } from "@/lib/seo";
 import { auth } from "@/services";
 

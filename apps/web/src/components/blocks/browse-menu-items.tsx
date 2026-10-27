@@ -1,14 +1,13 @@
 "use client";
 
 import type { Route } from "next";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
 	MobileChromeSheetSection,
 	MobileSheetRowBody,
 	MobileSheetRowIcon,
 	mobileSheetRowClass,
 } from "@/components/blocks/mobile-chrome-sheet";
+import { Link, usePathname } from "@/i18n/navigation";
 import {
 	browseNavItems,
 	browseNavPlaceholderItems,

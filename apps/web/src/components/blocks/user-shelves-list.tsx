@@ -6,7 +6,6 @@ import { Tabs, TabsList, TabsTrigger } from "@bbrc/ui/components/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { MemberProfileShelfCard } from "@/components/blocks/member-profile-shelf-card";
 import { SegmentedControl } from "@/components/blocks/segmented-control";
@@ -16,6 +15,7 @@ import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list"
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import {
 	filterAndSortShelves,

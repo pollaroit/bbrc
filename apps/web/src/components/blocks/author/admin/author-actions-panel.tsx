@@ -19,7 +19,6 @@ import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import { BadgeCheck, GitMerge, RefreshCw, Trash2 } from "lucide-react";
 import type { Route } from "next";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -27,6 +26,7 @@ import {
 	type PickedAuthor,
 } from "@/components/blocks/author/admin/author-picker";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { useRouter } from "@/i18n/navigation";
 import { client, orpc, queryClient } from "@/utils/orpc";
 
 type ActionAuthor = {

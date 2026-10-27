@@ -8,8 +8,8 @@ import {
 	CardTitle,
 } from "@bbrc/ui/components/card";
 import type { Route } from "next";
-import Link from "next/link";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link } from "@/i18n/navigation";
 
 type UserRankingItem = AdminUserOverviewOutput["rankings"]["mostXp"][number];
 

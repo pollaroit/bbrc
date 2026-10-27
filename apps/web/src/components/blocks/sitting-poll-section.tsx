@@ -27,8 +27,6 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BookRequestedByLine } from "@/components/blocks/book-requested-by";
@@ -36,6 +34,7 @@ import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { PollOptionReadersDialog } from "@/components/blocks/poll-option-readers-dialog";
 import { PollOptionVotersDialog } from "@/components/blocks/poll-option-voters-dialog";
 import { PollVotesByVoterSection } from "@/components/blocks/poll-votes-by-voter-section";
+import { Link, useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";

@@ -5,7 +5,6 @@ import { Separator } from "@bbrc/ui/components/separator";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { BookDeleteButton } from "@/components/blocks/book-delete-button";
 import { BookEditLink } from "@/components/blocks/book-edit-link";
@@ -19,6 +18,7 @@ import { BookStatusBanner } from "@/components/blocks/book-status-badge";
 import { LiveViewCount } from "@/components/blocks/live-view-count";
 import { BookReadingStrip } from "@/components/blocks/reading/book-reading-strip";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
+import { Link } from "@/i18n/navigation";
 import { bookCoverFrameClassName, bookCoverUrl } from "@/lib/book-cover";
 import { cn } from "@/lib/utils";
 

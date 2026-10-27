@@ -7,7 +7,6 @@ import {
 import { Button } from "@bbrc/ui/components/button";
 import { Crown, Pencil } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { MemberProfileAbout } from "@/components/blocks/member-profile-about";
 import { MemberProfileCardDialog } from "@/components/blocks/member-profile-card-dialog";
 import { MemberProfileNumbers } from "@/components/blocks/member-profile-numbers";
@@ -15,6 +14,7 @@ import { PinnedAchievements } from "@/components/blocks/pinned-achievements";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { CompareWithButton } from "@/components/blocks/user-compare/compare-with-button";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
+import { Link } from "@/i18n/navigation";
 
 type MemberProfileHeaderProps = {
 	user: GetUserByUsernameOutput;

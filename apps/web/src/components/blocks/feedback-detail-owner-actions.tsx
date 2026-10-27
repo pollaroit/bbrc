@@ -9,9 +9,9 @@ import {
 } from "@bbrc/ui/components/tooltip";
 import { LineChart } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { FeedbackEditIconButton } from "@/components/blocks/feedback-edit-icon-button";
 import { useLiveFeedback } from "@/components/blocks/feedback-live";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 
 type FeedbackDetailOwnerActionsProps = {

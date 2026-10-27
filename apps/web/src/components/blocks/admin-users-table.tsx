@@ -14,7 +14,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Crown } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
 import {
 	ADMIN_TABLE_MOBILE_MIN_WIDTH,
@@ -24,6 +23,7 @@ import { AdminUserRowActions } from "@/components/blocks/admin-user-row-actions"
 import { AdminUsersToolbar } from "@/components/blocks/admin-users-toolbar";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
+import { Link } from "@/i18n/navigation";
 import { adminUsersExportConfig } from "@/lib/admin-table-export/configs";
 import {
 	toAdminUsersListCallInput,

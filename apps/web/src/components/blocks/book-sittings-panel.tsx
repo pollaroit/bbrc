@@ -23,7 +23,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import {
 	parseAsArrayOf,
 	parseAsBoolean,
@@ -35,6 +34,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import {

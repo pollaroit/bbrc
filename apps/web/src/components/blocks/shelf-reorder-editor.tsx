@@ -24,12 +24,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ShelfDetailBookRow } from "@/components/blocks/shelf-detail-book-row";
 import { ShelfEditorShell } from "@/components/blocks/shelf-editor-shell";
+import { Link, useRouter } from "@/i18n/navigation";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type ShelfReorderEditorProps = {

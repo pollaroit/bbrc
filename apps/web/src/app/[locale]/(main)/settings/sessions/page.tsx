@@ -1,12 +1,12 @@
 import { ArrowLeft } from "lucide-react";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
-import Link from "next/link";
 import { RedirectType, redirect } from "next/navigation";
 import {
 	type SettingsSessionItem,
 	SettingsSessionsList,
 } from "@/components/blocks/settings-sessions-list";
+import { Link } from "@/i18n/navigation";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth, db } from "@/services";
 

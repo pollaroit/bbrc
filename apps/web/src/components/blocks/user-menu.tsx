@@ -9,10 +9,10 @@ import {
 	DropdownMenuTrigger,
 } from "@bbrc/ui/components/dropdown-menu";
 import { LogOut } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { UserMenuItems } from "@/components/blocks/user-menu-items";
+import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { headerToolbarControlClass } from "@/lib/header-toolbar";
 import { cn } from "@/lib/utils";

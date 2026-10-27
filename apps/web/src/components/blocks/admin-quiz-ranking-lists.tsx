@@ -9,7 +9,7 @@ import {
 	CardTitle,
 } from "@bbrc/ui/components/card";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/format-datetime";
 import { adminQuizStatusLabels } from "@/lib/listing/admin-quizzes-listing";
 

@@ -14,7 +14,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import {
 	CompareBar,
 	EditionSelectBox,
@@ -22,6 +21,7 @@ import {
 	useEditionSelection,
 } from "@/components/blocks/book-editions/edition-select";
 import { MemberEditionsSection } from "@/components/blocks/book-editions/member-editions-section";
+import { Link } from "@/i18n/navigation";
 import { bookCoverFrameClassName, bookCoverUrl } from "@/lib/book-cover";
 import { editionPath } from "@/lib/edition/format";
 import { useBookEditionsListingSearchParams } from "@/lib/listing/book-editions-listing";

@@ -16,7 +16,6 @@ import {
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import {
 	Bar,
 	BarChart,
@@ -40,6 +39,7 @@ import {
 } from "@/components/blocks/author/author-stats-frame";
 import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 

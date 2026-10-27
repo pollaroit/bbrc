@@ -3,13 +3,13 @@
 import type { CreateGoalInput } from "@bbrc/api/modules/goal/goal.schema";
 import { useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
-import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import {
 	GoalFormDialog,
 	type GoalFormValues,
 } from "@/components/blocks/goal-form-dialog";
+import { useRouter } from "@/i18n/navigation";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type CreateGoalDialogProps = {

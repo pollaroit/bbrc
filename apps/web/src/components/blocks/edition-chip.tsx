@@ -1,5 +1,5 @@
 import { BookOpen } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { editionHref } from "@/lib/book-edition/edition-href";
 import { cn } from "@/lib/utils";
 

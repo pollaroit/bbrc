@@ -16,11 +16,11 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CreateSittingWishlistCandidates } from "@/components/blocks/create-sitting-wishlist-candidates";
 import { PollOptionReadersDialog } from "@/components/blocks/poll-option-readers-dialog";
+import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import {
 	type CreateSittingFormValues,

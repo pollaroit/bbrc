@@ -3,8 +3,8 @@
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import type { ReactNode } from "react";
+import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { cn } from "@/lib/utils";
 

@@ -8,9 +8,9 @@ import {
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
 import type { Route } from "next";
-import Link from "next/link";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link } from "@/i18n/navigation";
 
 export type PollVoterRow = {
 	username: string;

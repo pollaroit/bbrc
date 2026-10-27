@@ -3,7 +3,6 @@ import { formatSittingSlugLabel } from "@bbrc/shared";
 import { BookOpen, CalendarClock, CheckCheck, Users } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { RelativeTime } from "@/components/blocks/relative-time";
@@ -12,6 +11,7 @@ import { SittingHubNav } from "@/components/blocks/sitting-hub-nav";
 import { SittingJoinControls } from "@/components/blocks/sitting-join-controls";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
 import { SittingViewerAction } from "@/components/blocks/sitting-viewer-action";
+import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 
 type SittingShellProps = {

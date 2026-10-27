@@ -1,8 +1,7 @@
 "use client";
 
 import type { LeaderboardPeriod } from "@bbrc/api/modules/leaderboard/leaderboard.schema";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import {
 	leaderboardPeriodOptionsForKind,
 	leaderboardTabHref,

@@ -17,7 +17,6 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { EyeOff, Heart, ImageIcon, MessageCircle, Star } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import {
 	AuthorFilterBar,
 	type AuthorFilterChip,
@@ -38,6 +37,7 @@ import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { ListingRatingRangeFields } from "@/components/listing/listing-rating-range-fields";
 import { ListingSort } from "@/components/listing/listing-sort";
+import { Link } from "@/i18n/navigation";
 import {
 	bookCoverFrameClassName,
 	bookCoverUrl,

@@ -4,8 +4,8 @@ import { Button } from "@bbrc/ui/components/button";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useRouter } from "@/i18n/navigation";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type ShelfInvitationActionsProps = {

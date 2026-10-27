@@ -1,8 +1,8 @@
 import type { Metadata, Route } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SeriesDetailBooks } from "@/components/blocks/series-detail-books";
 import { ShelfCover } from "@/components/blocks/shelf-cover";
+import { Link } from "@/i18n/navigation";
 import { loadSeriesBySlugForIsr } from "@/lib/isr-data";
 import {
 	buildNotFoundMetadata,

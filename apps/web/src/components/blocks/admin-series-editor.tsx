@@ -25,7 +25,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { GripVertical, Trash2 } from "lucide-react";
 import type { Route } from "next";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -34,6 +33,7 @@ import {
 	AdminSeriesWorkspaceShell,
 } from "@/components/blocks/admin-series-workspace-shell";
 import { SeriesDetailBooks } from "@/components/blocks/series-detail-books";
+import { useRouter } from "@/i18n/navigation";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type BookRow = {

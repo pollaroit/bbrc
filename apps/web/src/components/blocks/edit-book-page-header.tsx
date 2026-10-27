@@ -2,7 +2,7 @@ import type { TGetBookBySlugOutputSchema } from "@bbrc/api/modules/book/book.sch
 import { Button } from "@bbrc/ui/components/button";
 import { ArrowLeft } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 
 type EditBookPageHeaderProps = {
 	book: Pick<TGetBookBySlugOutputSchema, "title" | "slug">;

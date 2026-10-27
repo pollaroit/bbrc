@@ -1,6 +1,6 @@
 import type { TGetBookBySlugOutputSchema } from "@bbrc/api/modules/book/book.schema";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 
 type BookReadAfterLinksProps = {
 	readAfterBooks: TGetBookBySlugOutputSchema["readAfterBooks"];

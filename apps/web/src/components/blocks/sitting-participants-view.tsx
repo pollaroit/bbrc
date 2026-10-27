@@ -13,7 +13,6 @@ import { Button } from "@bbrc/ui/components/button";
 import { Progress as ProgressBar } from "@bbrc/ui/components/progress";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { useMemo, useState } from "react";
 import type { z } from "zod";
@@ -30,6 +29,7 @@ import {
 import { SittingParticipationProgressPickerDialog } from "@/components/blocks/sitting-participation-progress-picker-dialog";
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
+import { Link } from "@/i18n/navigation";
 import type { FieldLabels } from "@/lib/listing/labels";
 import { sortDirectionParser } from "@/lib/listing/parsers";
 import { formatPollChipRankLabel } from "@/lib/poll-chip-rank-label";

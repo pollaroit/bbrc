@@ -39,7 +39,6 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AddEditionDialog } from "@/components/blocks/book-editions/add-edition-dialog";
@@ -49,6 +48,7 @@ import {
 } from "@/components/blocks/book-editions/edition-select";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { bookCoverFrameClassName } from "@/lib/book-cover";
 import {

@@ -2,8 +2,8 @@
 
 import { Button } from "@bbrc/ui/components/button";
 import type { Route } from "next";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 import { authPageHref, safeCallbackUrl } from "@/lib/auth-callback-url";
 
 type AuthPageSwitchLinkProps = {

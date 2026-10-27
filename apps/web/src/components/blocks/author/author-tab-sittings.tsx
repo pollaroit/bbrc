@@ -6,7 +6,6 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { CheckCheck, Users } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import {
 	parseAsArrayOf,
 	parseAsString,
@@ -34,6 +33,7 @@ import {
 import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 

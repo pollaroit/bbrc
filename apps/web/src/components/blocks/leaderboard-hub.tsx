@@ -1,11 +1,11 @@
 import type { GetLeaderboardHubOutput } from "@bbrc/api/modules/leaderboard/leaderboard.schema";
 import type { Route } from "next";
-import Link from "next/link";
 import {
 	LeaderboardPageHeader,
 	LeaderboardStat,
 } from "@/components/blocks/leaderboard-page-header";
 import { LeaderboardStandings } from "@/components/blocks/leaderboard-standings";
+import { Link } from "@/i18n/navigation";
 import { leaderboardKindPath } from "@/lib/leaderboard/paths";
 
 type LeaderboardHubProps = {

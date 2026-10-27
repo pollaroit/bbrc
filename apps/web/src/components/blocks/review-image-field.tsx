@@ -2,13 +2,13 @@
 
 import { Button } from "@bbrc/ui/components/button";
 import { ImagePlus } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
 	PendingImageAttachment,
 	usePendingImageInput,
 } from "@/components/blocks/pending-image-attachment";
 import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
+import { useRouter } from "@/i18n/navigation";
 import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
 import { uploadEntityImage } from "@/lib/storage/upload-entity-image";
 import { orpc } from "@/utils/orpc";

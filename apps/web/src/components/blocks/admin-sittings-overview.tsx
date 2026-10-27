@@ -17,11 +17,11 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Sofa } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { type ReactNode, useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { AdminSittingRankingLists } from "@/components/blocks/admin-sitting-ranking-lists";
 import { AdminSittingsToolbar } from "@/components/blocks/admin-sittings-toolbar";
+import { Link } from "@/i18n/navigation";
 import {
 	toAdminSittingsOverviewCallInput,
 	useAdminSittingsListingSearchParams,

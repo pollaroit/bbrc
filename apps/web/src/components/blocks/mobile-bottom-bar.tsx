@@ -2,7 +2,7 @@
 
 import { BookOpen, Compass, Home, User } from "lucide-react";
 import type { Route } from "next";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { BrowseMenuDrawer } from "@/components/blocks/browse-menu-drawer";
 import { CreateMenu } from "@/components/blocks/create-menu";
@@ -16,6 +16,7 @@ import {
 } from "@/components/blocks/mobile-shell-chrome";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { UserMenuDrawer } from "@/components/blocks/user-menu-drawer";
+import { usePathname } from "@/i18n/navigation";
 import { authPageHref, currentPageCallbackUrl } from "@/lib/auth-callback-url";
 import { authClient } from "@/lib/auth-client";
 import { isBrowseNavActive } from "@/lib/browse-nav";

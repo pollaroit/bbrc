@@ -1,8 +1,8 @@
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CompareView } from "@/components/blocks/user-compare/compare-view";
+import { Link } from "@/i18n/navigation";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 

@@ -2,8 +2,8 @@
 
 import { Button } from "@bbrc/ui/components/button";
 import type { Route } from "next";
-import Link from "next/link";
 import { BodyPortal } from "@/components/blocks/body-portal";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 

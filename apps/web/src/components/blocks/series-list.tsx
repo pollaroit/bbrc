@@ -4,8 +4,8 @@ import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { ShelfCover } from "@/components/blocks/shelf-cover";
+import { Link } from "@/i18n/navigation";
 import {
 	toSeriesListCallInput,
 	useSeriesListingSearchParams,

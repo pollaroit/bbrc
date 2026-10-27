@@ -5,8 +5,8 @@ import { documentFormatLabel, documentLanguageLabel } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { FileText } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 
 type BookDocumentsSectionProps = {

@@ -31,11 +31,11 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { MoreHorizontal } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { z } from "zod";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { Link } from "@/i18n/navigation";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type AdminUserRow = z.infer<typeof AdminUserListItemSchema>;

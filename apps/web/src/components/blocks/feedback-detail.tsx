@@ -3,7 +3,6 @@ import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { EditionChip } from "@/components/blocks/edition-chip";
 import { FeedbackCommentFocusSection } from "@/components/blocks/feedback-comment-focus-section";
 import { FeedbackCommentsSection } from "@/components/blocks/feedback-comments-section";
@@ -18,6 +17,7 @@ import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { Link } from "@/i18n/navigation";
 import { shareSnippet } from "@/lib/share-snippet";
 
 type FeedbackDetailProps = {

@@ -33,7 +33,6 @@ import {
 	X,
 } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PollOptionContent } from "@/components/blocks/poll-option-content";
 import {
@@ -43,6 +42,7 @@ import {
 import { PollVotersDialog } from "@/components/blocks/poll-voters-dialog";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import {
 	formatTimeLeft,

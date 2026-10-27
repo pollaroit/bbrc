@@ -5,9 +5,9 @@ import { Badge } from "@bbrc/ui/components/badge";
 import { Lock } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { useImpressionRef } from "@/components/blocks/track-impression";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { Link } from "@/i18n/navigation";
 import { bookCoverUrl } from "@/lib/book-cover";
 import { cn } from "@/lib/utils";
 

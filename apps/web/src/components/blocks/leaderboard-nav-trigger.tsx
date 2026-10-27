@@ -3,7 +3,7 @@
 import { Button } from "@bbrc/ui/components/button";
 import { Trophy } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 type LeaderboardNavTriggerProps = {

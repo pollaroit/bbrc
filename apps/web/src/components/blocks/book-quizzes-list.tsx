@@ -3,7 +3,6 @@
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { QuizPager } from "@/components/blocks/quiz-pager";
 import {
 	QuizCounts,
@@ -13,6 +12,7 @@ import {
 import { UserPanel } from "@/components/blocks/user-panel";
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
+import { Link } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/format-datetime";
 import {
 	quizSortFields,

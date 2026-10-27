@@ -10,7 +10,6 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Star } from "lucide-react";
 import type { Route } from "next";
-import Link from "next/link";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import type { z } from "zod";
 import {
@@ -23,6 +22,7 @@ import {
 	InsightsSelect,
 } from "@/components/blocks/author/author-insights-filters";
 import { BookAuthorLinks } from "@/components/blocks/book-author-links";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 

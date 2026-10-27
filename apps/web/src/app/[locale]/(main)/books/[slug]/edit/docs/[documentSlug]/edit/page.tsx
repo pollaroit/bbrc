@@ -3,9 +3,9 @@ import { getDocumentForEdit } from "@bbrc/api/modules/document/document.service"
 import { ArrowLeft } from "lucide-react";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EditDocumentForm } from "@/components/blocks/edit-document-form";
+import { Link } from "@/i18n/navigation";
 import { loadBookBySlugForIsr } from "@/lib/isr-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { auth, db } from "@/services";

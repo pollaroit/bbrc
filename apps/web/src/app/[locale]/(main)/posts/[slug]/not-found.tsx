@@ -1,5 +1,5 @@
 import type { Route } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 
 export default function PostNotFound() {
 	return (

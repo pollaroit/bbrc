@@ -5,9 +5,9 @@ import { Field, FieldLabel } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { toast } from "sonner";
+import { useRouter } from "@/i18n/navigation";
 import { refreshAuthSession } from "@/lib/refresh-auth-session";
 import { orpc, queryClient } from "@/utils/orpc";
 
