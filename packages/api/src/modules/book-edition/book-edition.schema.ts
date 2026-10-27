@@ -1,3 +1,4 @@
+import { validationError } from "@bbrc/i18n";
 import { isValidIsbn, normalizeIsbn } from "@bbrc/shared";
 import { z } from "zod";
 
@@ -28,7 +29,7 @@ const isbnField = z
 	.string()
 	.trim()
 	.refine((value) => value === "" || isValidIsbn(value), {
-		message: "That is not a valid ISBN.",
+		error: validationError("edition.invalidIsbn"),
 	})
 	.transform((value) => (value === "" ? null : normalizeIsbn(value)))
 	.nullish();

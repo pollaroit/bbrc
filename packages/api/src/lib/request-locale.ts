@@ -1,5 +1,9 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { DEFAULT_LOCALE, type Locale } from "@bbrc/i18n";
+import {
+	DEFAULT_LOCALE,
+	type Locale,
+	setValidationLocaleResolver,
+} from "@bbrc/i18n";
 
 const storage = new AsyncLocalStorage<Locale>();
 
@@ -15,3 +19,6 @@ export function runWithLocale<T>(locale: Locale, work: () => T): T {
 export function currentLocale(): Locale {
 	return storage.getStore() ?? DEFAULT_LOCALE;
 }
+
+// Validation texts written while an API request is handled follow that request's language.
+setValidationLocaleResolver(currentLocale);

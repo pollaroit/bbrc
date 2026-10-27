@@ -8,3 +8,9 @@ export {
 } from "./messages";
 export * from "./paths";
 export { createLooseTranslator, createServerTranslator } from "./server";
+export {
+	setValidationLocaleResolver,
+	type ValidationKey,
+	validationError,
+	validationMessage,
+} from "./validation";

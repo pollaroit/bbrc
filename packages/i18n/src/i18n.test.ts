@@ -44,3 +44,20 @@ describe("messages", () => {
 		).toBe("Hazırkı dil: Azərbaycanca");
 	});
 });
+
+describe("validation messages", () => {
+	test("follow the resolver and take parameters", async () => {
+		const { setValidationLocaleResolver, validationMessage } = await import(
+			"./validation"
+		);
+		setValidationLocaleResolver(() => "en");
+		expect(validationMessage("goal.yearOnly", { min: 2025, max: 2026 })).toBe(
+			"A goal can only be set for 2025 or 2026.",
+		);
+		setValidationLocaleResolver(() => "az");
+		expect(validationMessage("goal.yearOnly", { min: 2025, max: 2026 })).toBe(
+			"Məqsəd yalnız 2025 və ya 2026 üçün qoyula bilər.",
+		);
+		setValidationLocaleResolver(() => "en");
+	});
+});

@@ -1,3 +1,4 @@
+import { validationError } from "@bbrc/i18n";
 import {
 	BookSchema,
 	CursorPaginationInputSchema,
@@ -40,7 +41,7 @@ export const BookFeedbackReviewSchema = zod.object({
 
 const FeedbackRatingStepSchema = FeedbackSchema.shape.rating.refine(
 	isFeedbackRatingStep,
-	{ message: "Rating must be in half-star steps from 0 to 5" },
+	{ error: validationError("rating.halfSteps") },
 );
 
 export const FeedbackListSortBySchema = zod.enum(["createdAt", "rating"]);

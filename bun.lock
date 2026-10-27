@@ -177,6 +177,7 @@
     "packages/schemas": {
       "name": "@bbrc/schemas",
       "dependencies": {
+        "@bbrc/i18n": "workspace:*",
         "@bbrc/shared": "workspace:*",
         "zod": "catalog:",
       },

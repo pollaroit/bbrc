@@ -5,6 +5,7 @@ import { genres } from "./genres";
 import { labels } from "./labels";
 import { notifications } from "./notifications";
 import { ratings } from "./ratings";
+import { validation } from "./validation";
 
 /**
  * English, the source of every text. Messages are ICU: `{name}` for a value, and
@@ -19,6 +20,7 @@ export const en = defineMessages({
 	genres,
 	ratings,
 	notifications,
+	validation,
 	language: {
 		title: "Language",
 		description:

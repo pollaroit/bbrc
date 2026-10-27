@@ -1,3 +1,4 @@
+import { validationMessage } from "@bbrc/i18n";
 import { z } from "zod";
 
 const READ_FINISHED_YEAR_MIN = 1000;
@@ -37,7 +38,7 @@ export const ReadFinishedMonthInputSchema = z
 		if (hasYear !== hasMonth) {
 			ctx.addIssue({
 				code: "custom",
-				message: "Finish month and year must be set together",
+				message: validationMessage("readFinish.monthAndYearTogether"),
 				path: ["readEndMonth"],
 			});
 		}

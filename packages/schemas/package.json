@@ -16,6 +16,7 @@
 		"prune-enums": "bun scripts/prune-referenced-enums.ts"
 	},
 	"dependencies": {
+		"@bbrc/i18n": "workspace:*",
 		"@bbrc/shared": "workspace:*",
 		"zod": "catalog:"
 	},
