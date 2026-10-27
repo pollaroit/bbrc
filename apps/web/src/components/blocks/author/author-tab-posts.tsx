@@ -3,6 +3,7 @@
 import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import {
 	AuthorTabEmptyContent,
 	AuthorTabSkeleton,
@@ -20,6 +21,7 @@ export function AuthorTabPosts({
 	slug: string;
 	authorName: string;
 }) {
+	const t = useTranslations("authors");
 	const query = useInfiniteQuery(
 		orpc.author.posts.infiniteOptions({
 			initialPageParam: undefined as string | undefined,
@@ -55,13 +57,13 @@ export function AuthorTabPosts({
 			emptyContent={
 				<AuthorTabEmptyContent
 					authorSlug={slug}
-					text={`No post has shared ${authorName} yet. Use Share on the author page to start one.`}
-					linkLabel="Back to the overview"
+					text={t("posts.empty", { name: authorName })}
+					linkLabel={t("posts.backToOverview")}
 					href={`/authors/${slug}` as Route}
 				/>
 			}
 			loadingContent={<AuthorTabSkeleton variant="list" />}
-			endMessage="That is every post."
+			endMessage={t("posts.end")}
 		>
 			<ul className="flex flex-col gap-4">
 				{posts.map((post) => (
