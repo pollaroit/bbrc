@@ -22,6 +22,7 @@ import {
 } from "@bbrc/ui/components/select";
 import { Separator } from "@bbrc/ui/components/separator";
 import { CalendarIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type FieldLabels, labelForField } from "@/lib/listing/labels";
 import { cn } from "@/lib/utils";
@@ -84,8 +85,9 @@ export function ListingRangeFields<TRangeBy extends string>({
 	onRangeMaxChange,
 	rangeByOptions,
 	rangeByLabels,
-	legend = "Date range",
+	legend,
 }: ListingRangeFieldsProps<TRangeBy>) {
+	const t = useTranslations("listing");
 	const activeRangeBy = rangeBy ?? rangeByOptions[0] ?? null;
 	const currentYear = new Date().getFullYear();
 	const dayDateFormat = "yyyy-MM-dd";
@@ -109,12 +111,12 @@ export function ListingRangeFields<TRangeBy extends string>({
 
 	const dateDisplayText = committedValue
 		? formatDateValue(committedValue, undefined, dayDateFormat)
-		: "Any time";
+		: t("range.anyTime");
 
 	const rangeByDisplayLabel =
 		activeRangeBy != null
 			? labelForField(rangeByLabels, activeRangeBy)
-			: "Field";
+			: t("range.field");
 
 	return (
 		<FieldSet className="gap-3">
@@ -133,7 +135,7 @@ export function ListingRangeFields<TRangeBy extends string>({
 								size="sm"
 								className="h-auto min-h-9 w-auto max-w-[45%] shrink-0 border-0 border-input border-r bg-transparent py-2 pr-2 pl-3 shadow-none focus-visible:ring-0"
 							>
-								<SelectValue placeholder="Field">
+								<SelectValue placeholder={t("range.field")}>
 									{rangeByDisplayLabel}
 								</SelectValue>
 							</SelectTrigger>
@@ -206,7 +208,7 @@ export function ListingRangeFields<TRangeBy extends string>({
 											setPopoverOpen(false);
 										}}
 									>
-										Cancel
+										{t("range.cancel")}
 									</Button>
 									<Button
 										type="button"
@@ -222,7 +224,7 @@ export function ListingRangeFields<TRangeBy extends string>({
 											setPopoverOpen(false);
 										}}
 									>
-										Apply
+										{t("range.apply")}
 									</Button>
 								</div>
 							</PopoverContent>

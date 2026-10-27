@@ -14,6 +14,7 @@ import { ScrollArea } from "@bbrc/ui/components/scroll-area";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { orpc } from "@/utils/orpc";
 
@@ -24,10 +25,12 @@ type ListingBookMultiSelectProps = {
 };
 
 export function ListingBookMultiSelect({
-	legend = "Books",
+	legend: legendProp,
 	selectedSlugs,
 	onSelectedSlugsChange,
 }: ListingBookMultiSelectProps) {
+	const t = useTranslations("listing");
+	const legend = legendProp ?? t("multi.books.legend");
 	const [search, setSearch] = useState("");
 
 	const booksQuery = useQuery(
@@ -68,15 +71,15 @@ export function ListingBookMultiSelect({
 		<FieldSet>
 			<FieldLegend>{legend}</FieldLegend>
 			<Field>
-				<FieldLabel className="sr-only">Search books</FieldLabel>
+				<FieldLabel className="sr-only">{t("multi.books.search")}</FieldLabel>
 				<div className="relative">
 					<SearchIcon className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
 					<Input
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
-						placeholder="Search completed books…"
+						placeholder={t("multi.books.placeholder")}
 						className="pl-9"
-						aria-label="Search books in list"
+						aria-label={t("multi.books.aria")}
 					/>
 				</div>
 			</Field>
@@ -87,7 +90,7 @@ export function ListingBookMultiSelect({
 					size="sm"
 					onClick={() => onSelectedSlugsChange([])}
 				>
-					Clear books ({selectedSlugs.length})
+					{t("multi.books.clear", { count: selectedSlugs.length })}
 				</Button>
 			) : null}
 			<ScrollArea className="h-48 border border-border">
@@ -102,7 +105,7 @@ export function ListingBookMultiSelect({
 					</p>
 				) : visibleBooks.length === 0 ? (
 					<p className="p-3 text-muted-foreground text-sm">
-						No completed books match.
+						{t("multi.books.none")}
 					</p>
 				) : (
 					<ul className="divide-y divide-border">

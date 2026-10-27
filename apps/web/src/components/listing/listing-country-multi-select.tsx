@@ -16,6 +16,7 @@ import { Separator } from "@bbrc/ui/components/separator";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { CountryLabel } from "@/components/blocks/country-dropdown";
 import { useFacetOptionsStale } from "@/lib/listing/use-facet-options-stale";
@@ -29,11 +30,13 @@ type ListingCountryMultiSelectProps = {
 };
 
 export function ListingCountryMultiSelect({
-	legend = "Literary origin",
+	legend: legendProp,
 	selectedAlpha2,
 	onSelectedAlpha2Change,
 	facetInput,
 }: ListingCountryMultiSelectProps) {
+	const t = useTranslations("listing");
+	const legend = legendProp ?? t("multi.countries.legend");
 	const [search, setSearch] = useState("");
 
 	const facetInputKey = useMemo(() => JSON.stringify(facetInput), [facetInput]);
@@ -110,7 +113,7 @@ export function ListingCountryMultiSelect({
 
 	const legendLabel =
 		selectedAlpha2.length > 0
-			? `${legend} (${selectedAlpha2.length} selected)`
+			? t("multi.selected", { legend, count: selectedAlpha2.length })
 			: legend;
 
 	return (
@@ -118,7 +121,7 @@ export function ListingCountryMultiSelect({
 			<FieldLegend>{legendLabel}</FieldLegend>
 			<Field>
 				<FieldLabel htmlFor="country-filter-search" className="sr-only">
-					Search countries
+					{t("multi.countries.search")}
 				</FieldLabel>
 				<div className="relative">
 					<SearchIcon
@@ -129,7 +132,7 @@ export function ListingCountryMultiSelect({
 						id="country-filter-search"
 						value={search}
 						onChange={(event) => setSearch(event.target.value)}
-						placeholder="Search countries…"
+						placeholder={t("multi.countries.placeholder")}
 						className="ps-8"
 						autoComplete="off"
 					/>
@@ -140,7 +143,7 @@ export function ListingCountryMultiSelect({
 				<Skeleton className="h-40 w-full" />
 			) : filteredCountries.length === 0 ? (
 				<p className="text-muted-foreground text-xs">
-					No countries match the current catalog filters.
+					{t("multi.countries.noneCatalog")}
 				</p>
 			) : (
 				<Card className="p-0">
@@ -183,7 +186,7 @@ export function ListingCountryMultiSelect({
 					className="w-fit px-2"
 					onClick={() => onSelectedAlpha2Change([])}
 				>
-					Clear countries
+					{t("multi.countries.clear")}
 				</Button>
 			) : null}
 		</FieldSet>
