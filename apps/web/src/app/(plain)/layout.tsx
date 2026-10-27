@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { PlainPageLang } from "@/components/blocks/plain-page-lang";
 import { RootDocument } from "@/components/root-document";
 import {
 	DEFAULT_DESCRIPTION,
@@ -40,5 +41,10 @@ export const viewport: Viewport = {
 export default function PlainLayout({
 	children,
 }: Readonly<{ children: React.ReactNode }>) {
-	return <RootDocument lang="en">{children}</RootDocument>;
+	return (
+		<RootDocument lang="en">
+			<PlainPageLang />
+			{children}
+		</RootDocument>
+	);
 }
