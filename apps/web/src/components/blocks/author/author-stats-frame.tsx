@@ -2,6 +2,7 @@
 
 import type { Formatters } from "@bbrc/i18n";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -92,6 +93,7 @@ export function ChartFrame({
 	children: ReactNode;
 	footer?: ReactNode;
 }) {
+	const t = useTranslations("authors");
 	return (
 		<section
 			aria-label={title}
@@ -114,7 +116,7 @@ export function ChartFrame({
 			{table && table.rows.length > 0 ? (
 				<details className="group text-xs">
 					<summary className="w-fit cursor-pointer text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
-						View as table
+						{t("stats.viewAsTable")}
 					</summary>
 					<div className="mt-2 max-h-56 overflow-auto border border-border">
 						<table className="w-full text-left tabular-nums">
@@ -148,12 +150,13 @@ export function ChartFrame({
 
 /** Shown in a chart's place when the filters leave nothing to draw. */
 export function ChartEmpty({
-	children = "Nothing to show for these filters.",
+	children,
 	className,
 }: {
 	children?: ReactNode;
 	className?: string;
 }) {
+	const t = useTranslations("authors");
 	return (
 		<div
 			className={cn(
@@ -161,7 +164,7 @@ export function ChartEmpty({
 				className,
 			)}
 		>
-			{children}
+			{children ?? t("stats.nothing")}
 		</div>
 	);
 }

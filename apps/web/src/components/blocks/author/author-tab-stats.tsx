@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { parseAsArrayOf, parseAsString, useQueryStates } from "nuqs";
 import { useMemo, useState } from "react";
 import { InsightsBookCover } from "@/components/blocks/author/author-insights-covers";
@@ -34,6 +35,7 @@ import {
 import { StatsSkeleton } from "@/components/blocks/author/author-stats-frame";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -60,6 +62,8 @@ export function AuthorTabStats({
 		{ clearOnDefault: true },
 	);
 
+	const t = useTranslations("authors");
+	const f = useFormatters();
 	const [bookQuery, setBookQuery] = useState("");
 	const [readerQuery, setReaderQuery] = useState("");
 	const debouncedBookQuery = useDebouncedValue(bookQuery, 250);
@@ -116,12 +120,12 @@ export function AuthorTabStats({
 	const stats = query.data;
 	const scopeText = [
 		filters.books.length > 0
-			? `${filters.books.length} ${filters.books.length === 1 ? "book" : "books"}`
+			? t("stats.scopeBooks", { count: filters.books.length })
 			: null,
 		filters.readers.length > 0
-			? `${filters.readers.length} ${filters.readers.length === 1 ? "reader" : "readers"}`
+			? t("stats.scopeReaders", { count: filters.readers.length })
 			: null,
-		describeRange({ from: filters.from, to: filters.to }),
+		describeRange({ from: filters.from, to: filters.to }, f, t),
 	]
 		.filter(Boolean)
 		.join(" · ");
@@ -131,8 +135,8 @@ export function AuthorTabStats({
 			<div className="flex flex-col gap-2">
 				<InsightsFilterRow>
 					<InsightsMultiPicker
-						label="Books"
-						searchPlaceholder="Search their books…"
+						label={t("stats.books")}
+						searchPlaceholder={t("stats.searchBooks")}
 						options={(bookOptions.data?.items ?? []).map((book) => ({
 							value: book.slug,
 							label: book.title,
@@ -145,8 +149,8 @@ export function AuthorTabStats({
 						isLoading={bookOptions.isFetching}
 					/>
 					<InsightsMultiPicker
-						label="Readers"
-						searchPlaceholder="Search readers…"
+						label={t("stats.readers")}
+						searchPlaceholder={t("stats.searchReaders")}
 						options={(readerOptions.data?.items ?? []).map((member) => ({
 							value: member.username,
 							label: member.name,
@@ -159,7 +163,7 @@ export function AuthorTabStats({
 						isLoading={readerOptions.isFetching}
 					/>
 					<InsightsRangePicker
-						label="Read between"
+						label={t("stats.readBetween")}
 						value={{ from: filters.from, to: filters.to }}
 						onChange={(range) => void setFilters(range)}
 					/>
@@ -177,17 +181,17 @@ export function AuthorTabStats({
 				</InsightsFilterRow>
 				<p className="min-h-4 text-muted-foreground text-xs" aria-live="polite">
 					{narrowed
-						? `Showing ${scopeText}.`
-						: `Showing everything the club has read by ${authorName}.`}
+						? t("stats.showing", { scope: scopeText })
+						: t("stats.showingAll", { name: authorName })}
 					{stats?.scope.hasRange && stats.scope.undatedReads > 0
-						? ` ${stats.scope.undatedReads} ${stats.scope.undatedReads === 1 ? "read" : "reads"} without a date ${stats.scope.undatedReads === 1 ? "is" : "are"} left out.`
+						? ` ${t("stats.undated", { count: stats.scope.undatedReads })}`
 						: ""}
 					{stats?.scope.hasComparison
-						? " Changes compare with the period just before."
+						? ` ${t("stats.compares")}`
 						: filters.from && filters.to
 							? ""
 							: filters.from || filters.to
-								? " Pick both dates to compare with the period before."
+								? ` ${t("stats.pickBoth")}`
 								: ""}
 				</p>
 			</div>
@@ -196,18 +200,18 @@ export function AuthorTabStats({
 				<StatsSkeleton />
 			) : query.isError || !stats ? (
 				<div className="flex flex-col items-start gap-2 border border-border border-dashed p-6">
-					<p className="text-sm">Could not load the stats.</p>
+					<p className="text-sm">{t("stats.loadFailed")}</p>
 					<button
 						type="button"
 						className="text-sm underline underline-offset-4"
 						onClick={() => void query.refetch()}
 					>
-						Try again
+						{t("stats.retry")}
 					</button>
 				</div>
 			) : stats.scope.bookCount === 0 ? (
 				<div className="border border-border border-dashed p-6 text-sm">
-					No book of {authorName} matches these filters.
+					{t("stats.noBooks", { name: authorName })}
 				</div>
 			) : (
 				<div

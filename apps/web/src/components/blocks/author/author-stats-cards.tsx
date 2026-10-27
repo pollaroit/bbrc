@@ -3,6 +3,7 @@
 import type { AuthorInsightStatsOutput } from "@bbrc/api/modules/author-insights/author-insights.schema";
 import { ChartContainer } from "@bbrc/ui/components/chart";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Area, AreaChart } from "recharts";
 import { formatNumberIn } from "@/components/blocks/author/author-stats-frame";
@@ -22,6 +23,7 @@ function Delta({
 	unit?: string;
 }) {
 	const f = useFormatters();
+	const t = useTranslations("authors");
 	if (stat.delta == null) return null;
 
 	const direction = stat.delta > 0 ? "up" : stat.delta < 0 ? "down" : "flat";
@@ -48,20 +50,21 @@ function Delta({
 			)}
 			title={
 				stat.previous != null
-					? `${formatNumberIn(f, stat.previous, 1)} in the period before`
+					? t("stats.delta.before", {
+							value: formatNumberIn(f, stat.previous, 1),
+						})
 					: undefined
 			}
 		>
 			<Icon className="size-3.5" aria-hidden />
 			<span className="sr-only">
 				{direction === "up"
-					? "Up"
+					? t("stats.delta.up")
 					: direction === "down"
-						? "Down"
-						: "Unchanged"}{" "}
-				{direction === "flat" ? "" : "by "}
+						? t("stats.delta.down")
+						: t("stats.delta.unchanged")}{" "}
 			</span>
-			{direction === "flat" ? "No change" : amount}
+			{direction === "flat" ? t("stats.delta.noChange") : amount}
 		</span>
 	);
 }
@@ -141,92 +144,107 @@ function StatCard({
 /** The headline numbers, each with its change against the period before when a range is set. */
 export function AuthorStatsCards({ stats }: { stats: Stats }) {
 	const f = useFormatters();
+	const t = useTranslations("authors");
 	const { cards } = stats;
 	const last = <T,>(rows: T[]) => rows.slice(-24);
 
 	return (
 		<dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 			<StatCard
-				label="Books"
+				label={t("stats.card.books")}
 				value={formatNumberIn(f, cards.books.value)}
 				hint={
 					stats.scope.hasRange
-						? "In the library"
-						: `${formatNumberIn(f, stats.funnel.totals.read)} reads in all`
+						? t("stats.card.inLibrary")
+						: t("stats.card.readsInAll", {
+								count: formatNumberIn(f, stats.funnel.totals.read),
+							})
 				}
 				color="var(--chart-1)"
 				spark={last(stats.publicationTimeline.map((row) => row.readCount))}
 			/>
 			<StatCard
-				label="Readers"
+				label={t("stats.card.readers")}
 				value={formatNumberIn(f, cards.readers.value)}
 				stat={cards.readers}
-				hint="Members with a read"
+				hint={t("stats.card.membersWithRead")}
 				color="var(--chart-2)"
 				spark={last(stats.readersGrowth.map((row) => row.total))}
 			/>
 			<StatCard
-				label="Reads"
+				label={t("stats.card.reads")}
 				value={formatNumberIn(f, cards.reads.value)}
 				stat={cards.reads}
 				hint={
 					stats.scope.undatedReads > 0
-						? `${formatNumberIn(f, stats.scope.undatedReads)} without a date`
+						? t("stats.card.withoutDate", {
+								count: formatNumberIn(f, stats.scope.undatedReads),
+							})
 						: undefined
 				}
 				color="var(--chart-1)"
 				spark={last(stats.readsPerMonth.map((row) => row.count))}
 			/>
 			<StatCard
-				label="Reviews"
+				label={t("stats.card.reviews")}
 				value={formatNumberIn(f, cards.reviews.value)}
 				stat={cards.reviews}
 				color="var(--chart-3)"
 				spark={last(stats.reviewsPerMonth.map((row) => row.count))}
 			/>
 			<StatCard
-				label="Average rating"
+				label={t("stats.card.averageRating")}
 				value={
 					cards.averageRating.value > 0
 						? formatNumberIn(f, cards.averageRating.value, 2)
 						: "–"
 				}
-				suffix={cards.averageRating.value > 0 ? "/ 5" : undefined}
+				suffix={
+					cards.averageRating.value > 0 ? t("stats.card.outOfFive") : undefined
+				}
 				stat={cards.averageRating}
 				deltaUnit=""
 				color="var(--chart-4)"
 				spark={last(stats.ratingOverTime.map((row) => row.average))}
 			/>
 			<StatCard
-				label="Pages read"
+				label={t("stats.card.pagesRead")}
 				value={formatNumberIn(f, cards.pagesRead.value)}
 				stat={cards.pagesRead}
-				hint="One count per read"
+				hint={t("stats.card.oneCountPerRead")}
 				color="var(--chart-5)"
 			/>
 			<StatCard
-				label="Days to finish"
+				label={t("stats.card.daysToFinish")}
 				value={
 					cards.averageDaysToFinish.value > 0
 						? formatNumberIn(f, cards.averageDaysToFinish.value, 1)
 						: "–"
 				}
-				suffix={cards.averageDaysToFinish.value > 0 ? "days" : undefined}
+				suffix={
+					cards.averageDaysToFinish.value > 0 ? t("stats.card.days") : undefined
+				}
 				stat={cards.averageDaysToFinish}
 				tone="neutral"
 				deltaUnit=" d"
 				hint={
 					stats.readingTime.medianDays != null
-						? `Median ${formatNumberIn(f, stats.readingTime.medianDays, 1)} days`
-						: "From finished readings"
+						? t("stats.card.median", {
+								value: formatNumberIn(f, stats.readingTime.medianDays, 1),
+							})
+						: t("stats.card.fromFinished")
 				}
 				color="var(--chart-2)"
 			/>
 			<StatCard
-				label="Followers"
+				label={t("stats.card.followers")}
 				value={formatNumberIn(f, cards.followers.value)}
 				stat={cards.followers}
-				hint={stats.scope.hasRange ? "New in this period" : "All time"}
+				hint={
+					stats.scope.hasRange
+						? t("stats.card.newInPeriod")
+						: t("stats.card.allTime")
+				}
 				color="var(--chart-3)"
 				spark={last(stats.followerGrowth.map((row) => row.total))}
 			/>
