@@ -13,6 +13,7 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { AuthorCard } from "@/components/blocks/author/author-card";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import {
 	type AuthorSortField,
 	clearAuthorSheetFilters,
@@ -36,6 +37,7 @@ function AuthorsListSkeleton() {
 }
 
 export function AuthorsListGrid() {
+	const f = useFormatters();
 	const [params, setParams] = useAuthorsListingSearchParams();
 	const listInput = toAuthorListCallInput(params);
 	const narrowed =
@@ -96,7 +98,7 @@ export function AuthorsListGrid() {
 			? null
 			: filteredTotal === 1
 				? "1 author"
-				: `${filteredTotal.toLocaleString()} authors`;
+				: `${f.number(filteredTotal)} authors`;
 
 	return (
 		<InfiniteScroll

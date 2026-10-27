@@ -21,6 +21,7 @@ import {
 } from "@/components/blocks/sitting-card-parts";
 import { Link } from "@/i18n/navigation";
 import { bookCoverUrl } from "@/lib/book-cover";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 type Sitting = GetSittingBySlugOutput;
@@ -147,6 +148,7 @@ function ProgressSection({ sitting }: { sitting: Sitting }) {
 }
 
 function BookSection({ sitting }: { sitting: Sitting }) {
+	const f = useFormatters();
 	const book = sitting.selectedBook;
 	if (!book) return null;
 
@@ -157,7 +159,7 @@ function BookSection({ sitting }: { sitting: Sitting }) {
 			? [
 					{
 						label: "Open Library",
-						value: `${book.openLibraryRating.toFixed(1)} / 5`,
+						value: `${f.decimal(book.openLibraryRating, 1)} / 5`,
 					},
 				]
 			: []),
@@ -165,7 +167,7 @@ function BookSection({ sitting }: { sitting: Sitting }) {
 			? [
 					{
 						label: "Club rating",
-						value: `${book.averageRating.toFixed(1)} / 5`,
+						value: `${f.decimal(book.averageRating, 1)} / 5`,
 					},
 				]
 			: []),
@@ -367,6 +369,7 @@ function ReadersSection({ sitting }: { sitting: Sitting }) {
 }
 
 function ReviewsSection({ sitting }: { sitting: Sitting }) {
+	const f = useFormatters();
 	const book = sitting.selectedBook;
 	if (!book || sitting.status === "voting") return null;
 
@@ -392,7 +395,9 @@ function ReviewsSection({ sitting }: { sitting: Sitting }) {
 						<Star className="size-4 fill-warning text-warning" aria-hidden />
 						<span className="font-medium tabular-nums">
 							{stats.averageRating != null
-								? formatFeedbackRating(Number(stats.averageRating.toFixed(1)))
+								? formatFeedbackRating(
+										Number(f.decimal(stats.averageRating, 1)),
+									)
 								: "—"}
 						</span>
 						<span className="text-muted-foreground">

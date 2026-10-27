@@ -4,6 +4,7 @@ import {
 	formatDate,
 	formatDateTime,
 	formatDateTimeCompact,
+	formatDateWith,
 	formatDecimal,
 	formatList,
 	formatMonthYear,
@@ -78,5 +79,15 @@ describe("relative time and lists", () => {
 	test("lists use the language's 'and'", () => {
 		expect(formatList("en", ["a", "b", "c"])).toBe("a, b, and c");
 		expect(formatList("az", ["a", "b", "c"])).toBe("a, b və c");
+	});
+});
+
+describe("formatDateWith", () => {
+	test("follows the language with any options", () => {
+		const day = new Date("2026-03-05T12:00:00Z");
+		const en = formatDateWith("en", day, { month: "long", timeZone: "UTC" });
+		const az = formatDateWith("az", day, { month: "long", timeZone: "UTC" });
+		expect(en).toBe("March");
+		expect(az).not.toBe(en);
 	});
 });

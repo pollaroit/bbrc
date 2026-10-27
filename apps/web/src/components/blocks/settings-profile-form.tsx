@@ -40,6 +40,7 @@ import {
 import { ProfileWpmDialog } from "@/components/blocks/profile-wpm-dialog";
 import { RichContentView } from "@/components/blocks/rich-content-view";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -195,6 +196,7 @@ function Section({
 }
 
 function ProfileForm({ initial }: { initial: Profile }) {
+	const f = useFormatters();
 	const ids = {
 		dob: useId(),
 		location: useId(),
@@ -275,9 +277,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 						>
 							<CalendarIcon data-icon="inline-start" aria-hidden />
 							{selectedDob
-								? new Intl.DateTimeFormat("en", { dateStyle: "long" }).format(
-										selectedDob,
-									)
+								? f.dateWith(selectedDob, { dateStyle: "long" })
 								: "Pick a date"}
 						</PopoverTrigger>
 						<PopoverContent className="w-auto p-0" align="start">

@@ -1,8 +1,8 @@
 import { Star } from "lucide-react";
 import type { Route } from "next";
 import { Link } from "@/i18n/navigation";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { AuthorPageCover, authorBookAnchor } from "./author-page-bits";
-
 export type LibraryBook = {
 	slug: string;
 	title: string;
@@ -15,6 +15,7 @@ export type LibraryBook = {
 
 /** The author's books as small cards: cover, year, series place, rating and reads. */
 export function AuthorPageLibrary({ books }: { books: LibraryBook[] }) {
+	const f = useFormatters();
 	return (
 		<ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 			{books.map((book) => (
@@ -47,7 +48,7 @@ export function AuthorPageLibrary({ books }: { books: LibraryBook[] }) {
 								{book.averageRating ? (
 									<span className="inline-flex items-center gap-1">
 										<Star className="size-3" aria-hidden />
-										{book.averageRating.toFixed(1)}
+										{f.decimal(book.averageRating, 1)}
 									</span>
 								) : null}
 								<span>

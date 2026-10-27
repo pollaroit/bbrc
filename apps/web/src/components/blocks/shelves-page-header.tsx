@@ -8,6 +8,7 @@ import type { Route } from "next";
 import { ShelvesListingToolbar } from "@/components/blocks/shelves-listing-toolbar";
 import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
 
 function Stat({
@@ -44,6 +45,7 @@ function Stat({
 }
 
 export function ShelvesPageHeader() {
+	const f = useFormatters();
 	const overview = useQuery(orpc.shelf.overview.queryOptions());
 	const { data: session } = authClient.useSession();
 	const username = session?.user.username;
@@ -86,22 +88,22 @@ export function ShelvesPageHeader() {
 					<>
 						<Stat
 							label="Shelves"
-							value={data.shelves.toLocaleString()}
-							hint={`${data.books.toLocaleString()} books on them`}
+							value={f.number(data.shelves)}
+							hint={`${f.number(data.books)} books on them`}
 						/>
 						<Stat
 							label="Built together"
-							value={data.sharedShelves.toLocaleString()}
+							value={f.number(data.sharedShelves)}
 							hint={
 								data.collaborators > 0
-									? `${data.collaborators.toLocaleString()} ${data.collaborators === 1 ? "member" : "members"} collaborating`
+									? `${f.number(data.collaborators)} ${data.collaborators === 1 ? "member" : "members"} collaborating`
 									: "No collaborations yet"
 							}
 						/>
 						<Stat
 							label="Books per shelf"
 							value={
-								data.shelves > 0 ? (data.books / data.shelves).toFixed(1) : "—"
+								data.shelves > 0 ? f.decimal(data.books / data.shelves, 1) : "—"
 							}
 						/>
 						<Stat

@@ -1,4 +1,5 @@
 import { Eye } from "lucide-react";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 const compact = new Intl.NumberFormat("en", {
@@ -14,6 +15,7 @@ export function ViewCountLabel({
 	count: number | undefined;
 	className?: string;
 }) {
+	const f = useFormatters();
 	if (!count) return null;
 
 	return (
@@ -22,7 +24,7 @@ export function ViewCountLabel({
 				"inline-flex items-center gap-1 text-muted-foreground text-xs tabular-nums",
 				className,
 			)}
-			title={`${count.toLocaleString("en-US")} ${count === 1 ? "view" : "views"}`}
+			title={`${f.number(count)} ${count === 1 ? "view" : "views"}`}
 		>
 			<Eye className="size-3.5" aria-hidden />
 			{compact.format(count)}

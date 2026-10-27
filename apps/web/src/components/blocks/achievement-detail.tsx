@@ -24,6 +24,7 @@ import {
 	percentLabel,
 	rarityOf,
 } from "@/lib/achievements/format";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
 
 const EARNERS_PAGE = 30;
@@ -148,6 +149,7 @@ function EarnerLink({
 }
 
 export function AchievementDetail({ slug }: { slug: string }) {
+	const f = useFormatters();
 	const query = useQuery({
 		...orpc.achievement.getBySlug.queryOptions({ input: { slug } }),
 		retry: false,
@@ -250,8 +252,7 @@ export function AchievementDetail({ slug }: { slug: string }) {
 					/>
 					{data.viewer && focus.next != null && focus.value > 0 ? (
 						<p className="text-muted-foreground text-sm tabular-nums">
-							{focus.value.toLocaleString("en")} of{" "}
-							{focus.next.toLocaleString("en")}
+							{f.number(focus.value)} of {f.number(focus.next)}
 							{data.isYearly ? " this year" : ""} toward{" "}
 							{data.tiers[(data.viewer.nextTier ?? 1) - 1]?.name ||
 								"the next tier"}

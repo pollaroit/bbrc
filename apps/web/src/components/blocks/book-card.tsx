@@ -23,8 +23,8 @@ import {
 	formatBookSeriesCardLabel,
 } from "@/lib/book-cover";
 import { bookSortMetric } from "@/lib/books/sort-metric";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
-
 export type BookCardBook = GetBookListOutput["items"][number];
 
 type BookCardProps = {
@@ -95,13 +95,14 @@ function MetaStripStat({
 }
 
 function BookCardMetaStrip({ book }: { book: BookCardBook }) {
+	const f = useFormatters();
 	const slug = book.slug;
 	const readTitle = `${book.readCount} member${book.readCount === 1 ? "" : "s"} marked read`;
 	const reviewTitle = `${book.feedbackCount} club review${book.feedbackCount === 1 ? "" : "s"}`;
 	const shelfTitle = `${book.shelfCount} shelf${book.shelfCount === 1 ? "" : "es"}`;
 	const documentTitle = `${book.approvedDocumentCount} approved document${book.approvedDocumentCount === 1 ? "" : "s"}`;
 	const favoriteTitle = `${book.favoriteCount} favorite${book.favoriteCount === 1 ? "" : "s"}`;
-	const viewTitle = `${book.viewCount.toLocaleString("en-US")} view${book.viewCount === 1 ? "" : "s"}`;
+	const viewTitle = `${f.number(book.viewCount)} view${book.viewCount === 1 ? "" : "s"}`;
 
 	return (
 		<div className="relative z-2 flex w-full flex-nowrap items-center justify-between gap-1 border-border border-t bg-muted/10 px-3 py-1.5 text-muted-foreground text-xs tabular-nums">
@@ -155,6 +156,7 @@ function BookCardRatingRow({
 	aggregateLabel: string;
 	aggregateValue: string | null;
 }) {
+	const f = useFormatters();
 	if (viewerBookRating == null && aggregateValue == null) {
 		return null;
 	}
@@ -167,7 +169,7 @@ function BookCardRatingRow({
 						You{" "}
 					</span>
 					<span className="font-semibold text-base text-foreground leading-none">
-						{viewerBookRating.toFixed(1)}
+						{f.decimal(viewerBookRating, 1)}
 					</span>
 				</p>
 			) : null}

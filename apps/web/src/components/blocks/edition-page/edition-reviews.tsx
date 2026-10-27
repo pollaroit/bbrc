@@ -7,6 +7,7 @@ import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { Link } from "@/i18n/navigation";
 
+import { useFormatters } from "@/lib/i18n/use-formatters";
 /** Reviews of the BOOK, written by members who read this edition. */
 export function EditionReviews({
 	bookSlug,
@@ -15,6 +16,7 @@ export function EditionReviews({
 	bookSlug: string;
 	reviews: EditionPage["reviews"];
 }) {
+	const f = useFormatters();
 	return (
 		<EditionSection
 			id="edition-reviews"
@@ -59,13 +61,13 @@ export function EditionReviews({
 									<span
 										className="inline-flex items-center gap-1 font-semibold text-sm tabular-nums"
 										role="img"
-										aria-label={`Rated ${review.rating.toFixed(1)} out of 5`}
+										aria-label={`Rated ${f.decimal(review.rating, 1)} out of 5`}
 									>
 										<Star
 											className="size-4 fill-current text-warning-ink"
 											aria-hidden
 										/>
-										{review.rating.toFixed(1)}
+										{f.decimal(review.rating, 1)}
 									</span>
 								</div>
 								{review.isSpoiler ? (

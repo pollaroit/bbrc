@@ -6,9 +6,9 @@ import { Star } from "lucide-react";
 import type { Route } from "next";
 import { useMemo, useRef, useState } from "react";
 import { Link } from "@/i18n/navigation";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { AuthorPageCover, authorBookAnchor } from "./author-page-bits";
-
 export type LifelineBook = {
 	slug: string;
 	title: string;
@@ -45,6 +45,7 @@ export function AuthorPageLifeline({
 	books,
 	currentYear,
 }: AuthorPageLifelineProps) {
+	const f = useFormatters();
 	const dated = useMemo(
 		() =>
 			books
@@ -241,7 +242,7 @@ export function AuthorPageLifeline({
 							{active.averageRating ? (
 								<span className="inline-flex items-center gap-1">
 									<Star className="size-3" aria-hidden />
-									{active.averageRating.toFixed(1)}
+									{f.decimal(active.averageRating, 1)}
 								</span>
 							) : null}
 							<span>

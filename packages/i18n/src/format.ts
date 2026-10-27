@@ -197,6 +197,22 @@ export function formatRelativeTime(
 	return formatter.format(0, "second");
 }
 
+/** A date or time with any `Intl.DateTimeFormat` options, for the few places that need an exact shape. */
+export function formatDateWith(
+	locale: Locale,
+	value: Date | string | number,
+	options: Intl.DateTimeFormatOptions,
+): string {
+	const date = toDate(value);
+	if (!date) return EM_DASH;
+	return cached(
+		"dateWith",
+		locale,
+		options,
+		(tag) => new Intl.DateTimeFormat(tag, options),
+	).format(date);
+}
+
 /** "a, b and c" / "a, b və c". */
 export function formatList(
 	locale: Locale,
@@ -240,6 +256,10 @@ export function createFormatters(locale: Locale) {
 			value: Date | { year: number; month: number },
 			style?: "short" | "long",
 		) => formatMonthYear(locale, value, style),
+		dateWith: (
+			value: Date | string | number,
+			options: Intl.DateTimeFormatOptions,
+		) => formatDateWith(locale, value, options),
 		relativeTime: (value: Date | string | number, now?: Date) =>
 			formatRelativeTime(locale, value, now),
 		list: (items: readonly string[], type?: "conjunction" | "disjunction") =>

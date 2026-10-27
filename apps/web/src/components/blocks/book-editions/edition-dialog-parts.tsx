@@ -28,8 +28,8 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { useId, useRef, useState } from "react";
 import { bookCoverFrameClassName } from "@/lib/book-cover";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
-
 // ── Sections ───────────────────────────────────────────────────────────────
 
 export function FormSection({
@@ -440,6 +440,7 @@ function StatusBadge({ status }: { status: "member" | "verified" }) {
 
 /** The edition as it will look on the editions page (desktop, sticky). */
 export function EditionPreviewCard({ data }: { data: EditionPreviewData }) {
+	const f = useFormatters();
 	const isbn = cleanIsbn(data.isbn);
 	const showsTitle = data.title.trim() !== "";
 	const meta = [data.publisher.trim(), data.year.trim()].filter(Boolean);
@@ -489,7 +490,7 @@ export function EditionPreviewCard({ data }: { data: EditionPreviewData }) {
 						<dd>
 							<Fade id={data.pages ?? "none"}>
 								{data.pages
-									? `${data.pages.toLocaleString("en-US")} pages`
+									? `${f.number(data.pages)} pages`
 									: "Pages: not set"}
 							</Fade>
 						</dd>

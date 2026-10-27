@@ -30,6 +30,7 @@ import { ListingRatingRangeFields } from "@/components/listing/listing-rating-ra
 import { ListingSideSheetSection } from "@/components/listing/listing-side-sheet";
 import { ListingSort } from "@/components/listing/listing-sort";
 import { authClient } from "@/lib/auth-client";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import {
 	bookRangeByLabels,
 	bookSortByLabels,
@@ -76,6 +77,7 @@ export function AuthorPageBooksToolbar({
 	slug: string;
 	total: number | undefined;
 }) {
+	const f = useFormatters();
 	const [params, setParams] = useBookListingSearchParams();
 	const { data: session } = authClient.useSession();
 	const activeCount = countBookSheetFilters({ ...params, authors: null });
@@ -246,7 +248,7 @@ export function AuthorPageBooksToolbar({
 	const resultLabel =
 		total == null
 			? null
-			: `${total.toLocaleString()} ${total === 1 ? "book" : "books"}${filtered ? " match" : ""}`;
+			: `${f.number(total)} ${total === 1 ? "book" : "books"}${filtered ? " match" : ""}`;
 
 	return (
 		<AuthorFilterBar

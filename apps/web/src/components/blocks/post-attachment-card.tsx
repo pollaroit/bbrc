@@ -24,6 +24,7 @@ import { UserAvatar } from "@/components/blocks/user-avatar";
 import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { postAttachmentHref } from "@/lib/post-attachment-path";
 import { cn } from "@/lib/utils";
 
@@ -116,9 +117,10 @@ function PostAttachmentBookCard({
 	book: Extract<PostAttachmentOutput, { kind: "book" }>["book"];
 	className?: string;
 }) {
+	const f = useFormatters();
 	const href = `/books/${book.slug}` as Route;
 	const rating =
-		book.averageRating != null ? book.averageRating.toFixed(1) : null;
+		book.averageRating != null ? f.decimal(book.averageRating, 1) : null;
 
 	return (
 		<AttachmentLinkFrame href={href} className={className}>

@@ -28,6 +28,7 @@ import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet"
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
 import { authClient } from "@/lib/auth-client";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
 
 const LIMIT = 24;
@@ -66,6 +67,7 @@ export function AuthorTabFollowers({
 	slug: string;
 	authorName: string;
 }) {
+	const f = useFormatters();
 	const [filters, setFilters] = useQueryStates(params);
 	const { data: session } = authClient.useSession();
 
@@ -276,8 +278,8 @@ export function AuthorTabFollowers({
 				{total != null || followerCount != null ? (
 					<p className="border-border border-b pb-2 font-medium text-muted-foreground text-sm tabular-nums">
 						{narrowed && total != null
-							? `${total.toLocaleString()} of ${(followerCount ?? total).toLocaleString()} followers`
-							: `${(followerCount ?? total ?? 0).toLocaleString()} ${(followerCount ?? total) === 1 ? "follower" : "followers"}`}
+							? `${f.number(total)} of ${f.number(followerCount ?? total)} followers`
+							: `${f.number(followerCount ?? total ?? 0)} ${(followerCount ?? total) === 1 ? "follower" : "followers"}`}
 					</p>
 				) : null}
 				<ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">

@@ -10,6 +10,7 @@ import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet"
 import { ListingRatingRangeFields } from "@/components/listing/listing-rating-range-fields";
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import {
 	countSittingReviewFilters,
 	filterAndSortSittingReviews,
@@ -27,6 +28,7 @@ type SittingReviewsSectionProps = {
 };
 
 export function SittingReviewsSection({ sitting }: SittingReviewsSectionProps) {
+	const f = useFormatters();
 	const { data } = useQuery({
 		...orpc.sitting.getSittingBySlug.queryOptions({ input: sitting.slug }),
 		initialData: sitting,
@@ -116,7 +118,7 @@ export function SittingReviewsSection({ sitting }: SittingReviewsSectionProps) {
 				{stats.averageRating != null ? (
 					<span className="inline-flex items-center gap-1.5 text-foreground">
 						<Star className="size-4 fill-warning text-warning" aria-hidden />
-						{formatFeedbackRating(Number(stats.averageRating.toFixed(1)))}{" "}
+						{formatFeedbackRating(Number(f.decimal(stats.averageRating, 1)))}{" "}
 						<span className="text-muted-foreground">average</span>
 					</span>
 				) : null}

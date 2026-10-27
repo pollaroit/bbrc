@@ -4,8 +4,8 @@ import { AchievementBadge } from "@/components/blocks/achievement-badge";
 import { TierLadder } from "@/components/blocks/tier-ladder";
 import { Link } from "@/i18n/navigation";
 import { percentLabel, rarityOf } from "@/lib/achievements/format";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
-
 export type AchievementState = "earned" | "started" | "locked";
 
 export function achievementState(item: AchievementSummary): AchievementState {
@@ -49,6 +49,7 @@ export function AchievementRow({
 	item: AchievementSummary;
 	memberCount: number;
 }) {
+	const f = useFormatters();
 	const state = achievementState(item);
 	const focus = achievementFocus(item);
 	const first = item.tiers[0];
@@ -120,8 +121,7 @@ export function AchievementRow({
 								style={{ width: `${Math.round(focus.progress * 100)}%` }}
 							/>
 						</span>
-						{focus.value.toLocaleString("en")} /{" "}
-						{focus.next.toLocaleString("en")}
+						{f.number(focus.value)} / {f.number(focus.next)}
 					</span>
 				) : (
 					<span className="text-2xs text-muted-foreground">

@@ -47,6 +47,7 @@ import {
 	YAxis,
 } from "recharts";
 import { Link } from "@/i18n/navigation";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
 
 type BookStats = GetBookStatsOutput;
@@ -184,6 +185,7 @@ const ratingComparisonConfig = {
 const BY_OPTIONS = ["year", "month"] as const;
 
 export function BookStatsPanel({ bookSlug, initialData }: BookStatsPanelProps) {
+	const f = useFormatters();
 	const { data = initialData } = useQuery({
 		...orpc.book.getStats.queryOptions({ input: { bookSlug } }),
 		initialData,
@@ -289,11 +291,11 @@ export function BookStatsPanel({ bookSlug, initialData }: BookStatsPanelProps) {
 	] as const;
 
 	const pollBars = data.polls.entries.map((entry) => ({
-		label: new Intl.DateTimeFormat("en", {
+		label: f.dateWith(new Date(entry.date), {
 			month: "short",
 			year: "2-digit",
 			timeZone: "UTC",
-		}).format(new Date(entry.date)),
+		}),
 		rank: entry.rank,
 		points: entry.points,
 		optionCount: entry.optionCount,
@@ -408,7 +410,7 @@ export function BookStatsPanel({ bookSlug, initialData }: BookStatsPanelProps) {
 				{data.totals.pagesReadTogether > 0 ? (
 					<StatCard
 						label="Pages read together"
-						value={data.totals.pagesReadTogether.toLocaleString("en")}
+						value={f.number(data.totals.pagesReadTogether)}
 						hint={`${data.book.pages} pages × ${plural(data.totals.readers, "reader")}`}
 					/>
 				) : null}

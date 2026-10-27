@@ -12,6 +12,7 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { PeopleCard } from "@/components/blocks/people-card";
 import { authClient } from "@/lib/auth-client";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import {
 	clearPeopleSheetFilters,
 	countPeopleSheetFilters,
@@ -34,6 +35,7 @@ function PeopleListSkeleton() {
 }
 
 export function PeopleList() {
+	const f = useFormatters();
 	const [params, setParams] = usePeopleListingSearchParams();
 	const { data: session } = authClient.useSession();
 	const listInput = toPeopleListCallInput(params);
@@ -67,7 +69,7 @@ export function PeopleList() {
 			? null
 			: total === 1
 				? "1 person"
-				: `${total.toLocaleString()} people`;
+				: `${f.number(total)} people`;
 
 	return (
 		<InfiniteScroll

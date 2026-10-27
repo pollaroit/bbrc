@@ -1,4 +1,5 @@
 import { achievementTierClassName } from "@/components/blocks/achievement-badge";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 type TierLadderProps = {
@@ -29,6 +30,7 @@ export function TierLadder({
 	size = "sm",
 	className,
 }: TierLadderProps) {
+	const f = useFormatters();
 	const count = thresholds.length;
 
 	if (size === "sm") {
@@ -71,7 +73,7 @@ export function TierLadder({
 						className="flex min-w-0 flex-1 flex-col items-stretch gap-1.5"
 					>
 						<span className="text-center text-muted-foreground text-xs tabular-nums">
-							{threshold.toLocaleString("en")}
+							{f.number(threshold)}
 						</span>
 						<span
 							className={cn(

@@ -25,6 +25,7 @@ import {
 import { SegmentedControl } from "@/components/blocks/segmented-control";
 import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -71,6 +72,7 @@ function Hero({
 	grouped: { category: AchievementCategory; items: AchievementSummary[] }[];
 	signedIn: boolean;
 }) {
+	const f = useFormatters();
 	const all = grouped.flatMap((group) => group.items);
 	const earned = all.filter(
 		(item) => achievementState(item) === "earned",
@@ -123,7 +125,7 @@ function Hero({
 									<span className="flex items-baseline justify-between gap-2 text-sm">
 										<span className="truncate">{item.name}</span>
 										<span className="text-muted-foreground text-xs tabular-nums">
-											{focus.value.toLocaleString("en")} /{" "}
+											{f.number(focus.value)} /{" "}
 											{focus.next?.toLocaleString("en")}
 										</span>
 									</span>

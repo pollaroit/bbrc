@@ -70,6 +70,7 @@ import {
 	EDITION_FORMAT_LABELS,
 	languageLabel,
 } from "@/lib/book-edition/edition-meta";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { fetchOpenLibraryEditionByIsbn } from "@/lib/open-library/edition-lookup";
 import { uploadEditionCover } from "@/lib/storage/upload-edition-cover";
 import { cn } from "@/lib/utils";
@@ -201,6 +202,7 @@ export function AddEditionDialog({
 	onDuplicate,
 	edition = null,
 }: Props) {
+	const f = useFormatters();
 	const uid = useId();
 	const editing = edition != null;
 	const isMac = useIsMac();
@@ -745,7 +747,7 @@ export function AddEditionDialog({
 												)}
 											>
 												{pagesInvalid
-													? `Pages must be between ${MIN_PAGES} and ${MAX_PAGES.toLocaleString("en-US")}.`
+													? `Pages must be between ${MIN_PAGES} and ${f.number(MAX_PAGES)}.`
 													: "Used for progress and pace."}
 											</p>
 										</div>

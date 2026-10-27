@@ -6,6 +6,7 @@ import type { Route } from "next";
 import { PeopleListingToolbar } from "@/components/blocks/people-listing-toolbar";
 import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
 
 const joinedFormat = new Intl.DateTimeFormat("en", {
@@ -44,6 +45,7 @@ function OverviewStat({
 }
 
 export function PeoplePageHeader() {
+	const f = useFormatters();
 	const overview = useQuery(orpc.people.overview.queryOptions());
 	const { data: session } = authClient.useSession();
 	const username = session?.user.username;
@@ -75,11 +77,11 @@ export function PeoplePageHeader() {
 					<>
 						<OverviewStat
 							label="People in the club"
-							value={overview.data.total.toLocaleString()}
+							value={f.number(overview.data.total)}
 						/>
 						<OverviewStat
 							label="Active in the last 30 days"
-							value={overview.data.activeLast30Days.toLocaleString()}
+							value={f.number(overview.data.activeLast30Days)}
 						/>
 						<OverviewStat
 							label="Newest member"

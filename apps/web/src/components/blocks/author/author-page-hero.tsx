@@ -9,6 +9,7 @@ import {
 	type AuthorTabId,
 	authorTabHref,
 } from "@/lib/author-tabs";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { AuthorPageAdminBar } from "./author-page-admin-bar";
 import { AuthorPhoto } from "./author-photo";
 import { FollowAuthorButton } from "./follow-author-button";
@@ -56,6 +57,7 @@ function Figure({
  * anything that depends on the viewer (follow state, admin tools) is a small client island.
  */
 export function AuthorPageHero({ author }: { author: AuthorGetOutput }) {
+	const f = useFormatters();
 	const { profile, numbers } = author;
 	const bornAt = profile.birth.place;
 	const diedAt = profile.death.place;
@@ -182,7 +184,7 @@ export function AuthorPageHero({ author }: { author: AuthorGetOutput }) {
 					href={tab("stats")}
 					value={
 						numbers.averageRating != null
-							? numbers.averageRating.toFixed(1)
+							? f.decimal(numbers.averageRating, 1)
 							: "–"
 					}
 					label="average rating"

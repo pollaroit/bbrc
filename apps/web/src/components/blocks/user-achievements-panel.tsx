@@ -23,6 +23,7 @@ import { TierLadder } from "@/components/blocks/tier-ladder";
 import { Link } from "@/i18n/navigation";
 import { formatAchievementDate } from "@/lib/achievements/format";
 import { authClient } from "@/lib/auth-client";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -129,6 +130,7 @@ function Ledger({
 }
 
 export function UserAchievementsPanel({ username }: { username: string }) {
+	const f = useFormatters();
 	const { data: session } = authClient.useSession();
 	const isAdmin = session?.user.isAdmin === true;
 	const query = usePinnedAwards(username);
@@ -486,8 +488,7 @@ export function UserAchievementsPanel({ username }: { username: string }) {
 															}}
 														/>
 													</span>
-													{item.value.toLocaleString("en")} /{" "}
-													{item.next.toLocaleString("en")}
+													{f.number(item.value)} / {f.number(item.next)}
 												</span>
 											</span>
 										</Link>
