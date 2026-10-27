@@ -12,6 +12,7 @@ import { Input } from "@bbrc/ui/components/input";
 import { Label } from "@bbrc/ui/components/label";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import {
 	parseAsBoolean,
 	parseAsString,
@@ -32,16 +33,6 @@ import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
 
 const LIMIT = 24;
-
-const SORT_LABELS = {
-	followedAt: "Followed",
-	name: "Name",
-	username: "Username",
-	joinedAt: "Joined the club",
-	reads: "Reads",
-	reviews: "Reviews",
-	authorReads: "Reads of this author",
-} as const;
 
 const params = {
 	search: parseAsString,
@@ -68,6 +59,13 @@ export function AuthorTabFollowers({
 	authorName: string;
 }) {
 	const f = useFormatters();
+	const t = useTranslations("authors");
+	const sortLabels = Object.fromEntries(
+		AuthorFollowerSortFields.map((field) => [
+			field,
+			t(`followersTab.sort.${field}`),
+		]),
+	) as Record<(typeof AuthorFollowerSortFields)[number], string>;
 	const [filters, setFilters] = useQueryStates(params);
 	const { data: session } = authClient.useSession();
 
@@ -120,7 +118,7 @@ export function AuthorTabFollowers({
 					onChange={(search) => {
 						void setFilters({ search: search || null });
 					}}
-					placeholder="Search followers by name or username…"
+					placeholder={t("followersTab.search")}
 				/>
 				<div className="flex flex-wrap items-center gap-2 lg:shrink-0">
 					<ListingSort
@@ -133,12 +131,14 @@ export function AuthorTabFollowers({
 							void setFilters({ sortDirection: sortDirection ?? "desc" });
 						}}
 						sortByOptions={AuthorFollowerSortFields}
-						sortByLabels={SORT_LABELS}
+						sortByLabels={sortLabels}
 						appearance="library"
 					/>
 					<ListingFiltersSheet
-						title="Follower filters"
-						description={`Narrow the members who follow ${authorName}.`}
+						title={t("followersTab.filtersTitle")}
+						description={t("followersTab.filtersDescription", {
+							name: authorName,
+						})}
 						activeFilterCount={activeCount}
 						onClear={() => {
 							void setFilters({
@@ -154,11 +154,11 @@ export function AuthorTabFollowers({
 						appearance="library"
 					>
 						<ListingCheckboxList
-							legend="Activity"
+							legend={t("followersTab.activity")}
 							options={[
 								{
 									id: "followers-read-author",
-									label: `Has read ${authorName}`,
+									label: t("followersTab.hasRead", { name: authorName }),
 									checked: filters.readAuthor === true,
 									onCheckedChange: (checked) => {
 										void setFilters({ readAuthor: checked ? true : null });
@@ -166,7 +166,7 @@ export function AuthorTabFollowers({
 								},
 								{
 									id: "followers-reviewed-author",
-									label: `Has reviewed ${authorName}`,
+									label: t("followersTab.hasReviewed", { name: authorName }),
 									checked: filters.reviewedAuthor === true,
 									onCheckedChange: (checked) => {
 										void setFilters({ reviewedAuthor: checked ? true : null });
@@ -175,11 +175,11 @@ export function AuthorTabFollowers({
 							]}
 						/>
 						<ListingCheckboxList
-							legend="Profile"
+							legend={t("followersTab.profile")}
 							options={[
 								{
 									id: "followers-has-bio",
-									label: "Has a bio",
+									label: t("followersTab.hasBio"),
 									checked: filters.hasBio === true,
 									onCheckedChange: (checked) => {
 										void setFilters({ hasBio: checked ? true : null });
@@ -187,7 +187,7 @@ export function AuthorTabFollowers({
 								},
 								{
 									id: "followers-has-avatar",
-									label: "Has a photo",
+									label: t("followersTab.hasPhoto"),
 									checked: filters.hasAvatar === true,
 									onCheckedChange: (checked) => {
 										void setFilters({ hasAvatar: checked ? true : null });
@@ -196,12 +196,14 @@ export function AuthorTabFollowers({
 							]}
 						/>
 						<FieldSet className="gap-3">
-							<FieldLegend>Location</FieldLegend>
+							<FieldLegend>{t("followersTab.location")}</FieldLegend>
 							<Field>
-								<Label htmlFor="followers-location">Lives in</Label>
+								<Label htmlFor="followers-location">
+									{t("followersTab.livesIn")}
+								</Label>
 								<Input
 									id="followers-location"
-									placeholder="Any place"
+									placeholder={t("followersTab.anyPlace")}
 									value={filters.location ?? ""}
 									onChange={(event) => {
 										void setFilters({ location: event.target.value || null });
@@ -210,10 +212,12 @@ export function AuthorTabFollowers({
 							</Field>
 						</FieldSet>
 						<FieldSet className="gap-3">
-							<FieldLegend>Followed between</FieldLegend>
+							<FieldLegend>{t("followersTab.followedBetween")}</FieldLegend>
 							<FieldGroup className="grid grid-cols-2 gap-3">
 								<Field>
-									<Label htmlFor="followers-from">From</Label>
+									<Label htmlFor="followers-from">
+										{t("followersTab.from")}
+									</Label>
 									<Input
 										id="followers-from"
 										type="date"
@@ -226,7 +230,7 @@ export function AuthorTabFollowers({
 									/>
 								</Field>
 								<Field>
-									<Label htmlFor="followers-to">To</Label>
+									<Label htmlFor="followers-to">{t("followersTab.to")}</Label>
 									<Input
 										id="followers-to"
 										type="date"
@@ -263,23 +267,30 @@ export function AuthorTabFollowers({
 						authorSlug={slug}
 						text={
 							narrowed
-								? "No follower matches. Try removing a filter."
-								: `No one follows ${authorName} yet. Follow from the author page to be the first.`
+								? t("followersTab.noMatch")
+								: t("followersTab.none", { name: authorName })
 						}
 						linkLabel={
-							narrowed ? "Back to the overview" : "Follow from the overview"
+							narrowed
+								? t("followersTab.backToOverview")
+								: t("followersTab.followFromOverview")
 						}
 						href={`/authors/${slug}` as Route}
 					/>
 				}
 				loadingContent={<AuthorTabSkeleton variant="grid" />}
-				endMessage="You have reached the end of the list."
+				endMessage={t("list.end")}
 			>
 				{total != null || followerCount != null ? (
 					<p className="border-border border-b pb-2 font-medium text-muted-foreground text-sm tabular-nums">
 						{narrowed && total != null
-							? `${f.number(total)} of ${f.number(followerCount ?? total)} followers`
-							: `${f.number(followerCount ?? total ?? 0)} ${(followerCount ?? total) === 1 ? "follower" : "followers"}`}
+							? t("followersTab.countNarrowed", {
+									total: f.number(total),
+									all: followerCount ?? total,
+								})
+							: t("followersTab.count", {
+									count: followerCount ?? total ?? 0,
+								})}
 					</p>
 				) : null}
 				<ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">

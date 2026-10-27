@@ -6,6 +6,7 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { CheckCheck, Users } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import {
 	parseAsArrayOf,
 	parseAsString,
@@ -34,6 +35,7 @@ import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { Link } from "@/i18n/navigation";
+import { useSittingStatusLabels } from "@/lib/i18n/use-labels";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -42,23 +44,6 @@ const LIMIT = 12;
 const STATUSES = ["voting", "reading", "finished"] as const;
 const OUTCOMES = ["picked", "in_poll", "not_picked"] as const;
 const SORTS = ["newest", "oldest", "participants", "deadline"] as const;
-
-const STATUS_LABELS = {
-	voting: "Voting",
-	reading: "Reading",
-	finished: "Finished",
-} as const;
-const OUTCOME_LABELS = {
-	picked: "Picked",
-	in_poll: "In the poll",
-	not_picked: "Not picked",
-} as const;
-const SORT_OPTIONS = [
-	{ value: "newest", label: "Newest first" },
-	{ value: "oldest", label: "Oldest first" },
-	{ value: "participants", label: "Most participants" },
-	{ value: "deadline", label: "Soonest deadline" },
-] as const;
 
 const outcomeTone = {
 	picked: "bg-success/10 text-success-ink border-success/30",
@@ -90,7 +75,13 @@ export function AuthorTabSittings({
 	slug: string;
 	authorName: string;
 }) {
+	const t = useTranslations("authors");
+	const statusLabels = useSittingStatusLabels();
 	const [filters, setFilters] = useSittingFilters();
+	const sortOptions = SORTS.map((value) => ({
+		value,
+		label: t(`sittings.sort.${value}`),
+	}));
 
 	const input = useMemo(
 		() => ({
@@ -130,12 +121,12 @@ export function AuthorTabSittings({
 
 	const statusOptions = STATUSES.map((value) => ({
 		value,
-		label: STATUS_LABELS[value],
+		label: statusLabels[value],
 		hint: facets?.statuses[value],
 	}));
 	const outcomeOptions = OUTCOMES.map((value) => ({
 		value,
-		label: OUTCOME_LABELS[value],
+		label: t(`sittings.outcome.${value}`),
 		hint: facets?.outcomes[value],
 	}));
 	const bookOptions = (facets?.books ?? []).map(({ book, count }) => ({
@@ -148,13 +139,13 @@ export function AuthorTabSittings({
 		<div className="flex flex-col gap-4">
 			<InsightsFilterRow>
 				<InsightsSearch
-					label="Search sittings"
-					placeholder="Search sittings, books or organisers…"
+					label={t("sittings.searchLabel")}
+					placeholder={t("sittings.searchPlaceholder")}
 					value={filters.q}
 					onChange={(q) => void setFilters({ q })}
 				/>
 				<InsightsMultiPicker
-					label="Status"
+					label={t("sittings.status")}
 					options={statusOptions}
 					selected={filters.status}
 					onChange={(status) =>
@@ -162,7 +153,7 @@ export function AuthorTabSittings({
 					}
 				/>
 				<InsightsMultiPicker
-					label="Outcome"
+					label={t("sittings.outcomeLabel")}
 					options={outcomeOptions}
 					selected={filters.outcome}
 					onChange={(outcome) =>
@@ -171,7 +162,7 @@ export function AuthorTabSittings({
 				/>
 				{bookOptions.length > 1 ? (
 					<InsightsMultiPicker
-						label="Books"
+						label={t("sittings.books")}
 						options={bookOptions}
 						selected={filters.books}
 						onChange={(books) => void setFilters({ books })}
@@ -182,10 +173,10 @@ export function AuthorTabSittings({
 					onChange={(range) => void setFilters(range)}
 				/>
 				<InsightsSelect
-					label="Sort sittings"
-					prefix="Sort"
+					label={t("sittings.sortLabel")}
+					prefix={t("sittings.sortPrefix")}
 					value={filters.sort}
-					options={SORT_OPTIONS}
+					options={sortOptions}
 					onChange={(sort) => void setFilters({ sort })}
 				/>
 				<InsightsClearButton
@@ -219,17 +210,17 @@ export function AuthorTabSittings({
 				emptyContent={
 					narrowed ? (
 						<div className="flex flex-col items-center gap-2 border border-border border-dashed px-4 py-10 text-center">
-							<p className="text-sm">No sitting matches these filters.</p>
+							<p className="text-sm">{t("sittings.noMatch")}</p>
 						</div>
 					) : (
 						<AuthorTabEmptyContent
 							authorSlug={slug}
-							text={`No sitting has had a book by ${authorName} in play yet.`}
+							text={t("sittings.empty", { name: authorName })}
 						/>
 					)
 				}
 				loadingContent={<SittingsSkeleton />}
-				endMessage="That is every sitting."
+				endMessage={t("sittings.end")}
 			>
 				<ul className={authorTabGridClassName}>
 					{items.map((item) => (
@@ -290,6 +281,7 @@ function CoverFan({ books }: { books: SittingItem["books"] }) {
 }
 
 function SittingCard({ item }: { item: SittingItem }) {
+	const t = useTranslations("authors");
 	const progress =
 		item.participantCount > 0
 			? Math.round((item.completedCount / item.participantCount) * 100)
@@ -309,7 +301,7 @@ function SittingCard({ item }: { item: SittingItem }) {
 							outcomeTone[item.outcome],
 						)}
 					>
-						{OUTCOME_LABELS[item.outcome]}
+						{t(`sittings.outcome.${item.outcome}`)}
 					</span>
 				</div>
 
@@ -332,14 +324,17 @@ function SittingCard({ item }: { item: SittingItem }) {
 
 				{item.outcome === "not_picked" && item.pickedBook ? (
 					<p className="relative z-10 text-muted-foreground text-xs">
-						The club picked{" "}
-						<Link
-							href={`/books/${item.pickedBook.slug}` as Route}
-							className="underline underline-offset-4 hover:text-foreground"
-						>
-							{item.pickedBook.title}
-						</Link>{" "}
-						instead.
+						{t.rich("sittings.picked", {
+							title: item.pickedBook.title,
+							book: (chunks) => (
+								<Link
+									href={`/books/${item.pickedBook?.slug}` as Route}
+									className="underline underline-offset-4 hover:text-foreground"
+								>
+									{chunks}
+								</Link>
+							),
+						})}
 					</p>
 				) : null}
 
@@ -349,7 +344,7 @@ function SittingCard({ item }: { item: SittingItem }) {
 							<div
 								className="h-1.5 w-full bg-muted"
 								role="progressbar"
-								aria-label="Members who finished"
+								aria-label={t("sittings.finishedLabel")}
 								aria-valuemin={0}
 								aria-valuemax={100}
 								aria-valuenow={progress}
@@ -361,26 +356,30 @@ function SittingCard({ item }: { item: SittingItem }) {
 							</div>
 							<p className="flex items-center gap-1 text-muted-foreground text-xs tabular-nums">
 								<CheckCheck className="size-3.5" aria-hidden />
-								{item.completedCount} of {item.participantCount} finished
+								{t("sittings.finishedOf", {
+									completed: item.completedCount,
+									total: item.participantCount,
+								})}
 							</p>
 						</div>
 					) : (
 						<p className="flex items-center gap-1 text-muted-foreground text-xs tabular-nums">
 							<Users className="size-3.5" aria-hidden />
-							{item.participantCount}{" "}
-							{item.participantCount === 1 ? "member" : "members"}
 							{item.pollOptionCount > 0
-								? ` · ${item.pollOptionCount} books in the poll`
-								: ""}
+								? t("sittings.membersPoll", {
+										count: item.participantCount,
+										options: item.pollOptionCount,
+									})
+								: t("sittings.members", { count: item.participantCount })}
 						</p>
 					)}
 
 					<div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-muted-foreground text-xs tabular-nums">
 						<span>
 							{item.pollDeadline && item.status === "voting"
-								? "Vote ends "
+								? `${t("sittings.voteEnds")} `
 								: item.status === "reading"
-									? "Reading ends "
+									? `${t("sittings.readingEnds")} `
 									: ""}
 							<ClubDateTime value={item.date} />
 						</span>
