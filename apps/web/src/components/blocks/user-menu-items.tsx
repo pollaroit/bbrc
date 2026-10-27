@@ -5,12 +5,17 @@ import {
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 } from "@bbrc/ui/components/dropdown-menu";
 import type { LucideIcon } from "lucide-react";
 import {
 	BarChart3,
 	BookCheck,
 	BookOpen,
+	Check,
+	Languages,
 	LayoutList,
 	MessageSquare,
 	Settings,
@@ -19,6 +24,7 @@ import {
 	User,
 } from "lucide-react";
 import type { Route } from "next";
+import { useLanguageChoices } from "@/components/blocks/language-picker";
 import {
 	MobileChromeSheetSection,
 	MobileSheetRowBody,
@@ -28,6 +34,7 @@ import {
 import { UserAccountSignOutButton } from "@/components/blocks/user-account-sign-out-button";
 import type { UserPanel } from "@/components/blocks/user-panel";
 import { Link } from "@/i18n/navigation";
+import { isLanguageSwitchEnabled } from "@/lib/i18n/language-switch";
 import { cn } from "@/lib/utils";
 
 type UserMenuUser = React.ComponentProps<typeof UserPanel>["user"];
@@ -78,6 +85,81 @@ function userMenuAccountEntries(user: UserMenuUser): MenuEntry[] {
 		);
 	}
 	return entries;
+}
+
+/** A "Language" submenu (dropdown) or section (drawer) that follows the same language as Preferences. */
+function LanguageMenu({
+	variant,
+	onNavigate,
+}: {
+	variant: "dropdown" | "drawer";
+	onNavigate?: () => void;
+}) {
+	const { label, choices, change } = useLanguageChoices();
+	if (!isLanguageSwitchEnabled()) return null;
+
+	if (variant === "dropdown") {
+		return (
+			<DropdownMenuSub>
+				<DropdownMenuSubTrigger>
+					<Languages aria-hidden />
+					{label}
+				</DropdownMenuSubTrigger>
+				<DropdownMenuSubContent>
+					{choices.map((choice) => (
+						<DropdownMenuItem
+							key={choice.locale}
+							onClick={() => {
+								change(choice.locale);
+								onNavigate?.();
+							}}
+							lang={choice.locale}
+						>
+							{choice.active ? (
+								<Check aria-hidden />
+							) : (
+								<span className="size-4" />
+							)}
+							{choice.name}
+						</DropdownMenuItem>
+					))}
+				</DropdownMenuSubContent>
+			</DropdownMenuSub>
+		);
+	}
+
+	return (
+		<MobileChromeSheetSection
+			title={label}
+			className="[&_h3]:pt-2 [&_h3]:pb-0.5"
+		>
+			<ul>
+				{choices.map((choice) => (
+					<li key={choice.locale}>
+						<button
+							type="button"
+							className={cn(
+								mobileSheetRowClass,
+								"w-full gap-2.5 py-2 text-left",
+							)}
+							aria-pressed={choice.active}
+							lang={choice.locale}
+							onClick={() => {
+								change(choice.locale);
+								onNavigate?.();
+							}}
+						>
+							<MobileSheetRowIcon
+								icon={choice.active ? Check : Languages}
+								compact
+							/>
+							<MobileSheetRowBody label={choice.name} />
+						</button>
+					</li>
+				))}
+			</ul>
+		</MobileChromeSheetSection>
+	);
 }
 
 function factReplaysHref(user: UserMenuUser): Route {
@@ -149,6 +231,7 @@ export function UserMenuItems({
 							{entry.label}
 						</DropdownMenuItem>
 					))}
+					<LanguageMenu variant="dropdown" onNavigate={onNavigate} />
 				</DropdownMenuGroup>
 			</>
 		);
@@ -209,6 +292,7 @@ export function UserMenuItems({
 						))}
 					</ul>
 				</MobileChromeSheetSection>
+				<LanguageMenu variant="drawer" onNavigate={onNavigate} />
 			</nav>
 		);
 	}
