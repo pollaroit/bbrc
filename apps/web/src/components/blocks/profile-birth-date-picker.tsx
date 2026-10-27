@@ -3,7 +3,10 @@
 import { Button } from "@bbrc/ui/components/button";
 import { Calendar } from "@bbrc/ui/components/calendar";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { useCalendarLocale } from "@/lib/i18n/use-calendar-locale";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 type View = "days" | "months" | "years";
@@ -18,12 +21,6 @@ type ProfileBirthDatePickerProps = {
 
 const monthIndex = (date: Date) => date.getFullYear() * 12 + date.getMonth();
 
-const monthNames = Array.from({ length: 12 }, (_, month) =>
-	new Intl.DateTimeFormat("en", { month: "short" }).format(
-		new Date(2000, month, 1),
-	),
-);
-
 /**
  * Calendar whose month/year headers switch to inline panels. Everything stays
  * inside the popover, so there are no nested portals to fight over stacking.
@@ -34,6 +31,12 @@ export function ProfileBirthDatePicker({
 	earliest,
 	latest,
 }: ProfileBirthDatePickerProps) {
+	const t = useTranslations("settings.profileForm");
+	const f = useFormatters();
+	const calendarLocale = useCalendarLocale();
+	const monthNames = Array.from({ length: 12 }, (_, index) =>
+		f.dateWith(new Date(2000, index, 1), { month: "short" }),
+	);
 	const [view, setView] = useState<View>("days");
 	const [month, setMonth] = useState(() => value ?? latest);
 	const selectedYearRef = useRef<HTMLButtonElement>(null);
@@ -70,7 +73,7 @@ export function ProfileBirthDatePicker({
 					type="button"
 					variant="ghost"
 					size="icon-sm"
-					aria-label="Previous month"
+					aria-label={t("previousMonth")}
 					disabled={view !== "days" || monthIndex(month) <= minMonth}
 					onClick={() =>
 						goToMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))
@@ -104,7 +107,7 @@ export function ProfileBirthDatePicker({
 					type="button"
 					variant="ghost"
 					size="icon-sm"
-					aria-label="Next month"
+					aria-label={t("nextMonth")}
 					disabled={view !== "days" || monthIndex(month) >= maxMonth}
 					onClick={() =>
 						goToMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))
@@ -117,6 +120,7 @@ export function ProfileBirthDatePicker({
 			{view === "days" ? (
 				<Calendar
 					mode="single"
+					locale={calendarLocale}
 					className="p-0 [--cell-size:--spacing(8)]"
 					selected={value}
 					month={month}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 
 import { authClient } from "@/lib/auth-client";
@@ -8,15 +9,15 @@ import { playNotificationChime } from "@/lib/pwa/play-notification-chime";
 import { readPwaEngagementPreferences } from "@/lib/pwa/pwa-engagement-storage";
 import { orpc } from "@/utils/orpc";
 
-function showSystemAlert(unread: number) {
+function showSystemAlert(
+	unread: number,
+	t: ReturnType<typeof useTranslations<"shell.pwa">>,
+) {
 	if (!("Notification" in window) || Notification.permission !== "granted") {
 		return;
 	}
 
-	const body =
-		unread === 1
-			? "You have a new alert in the bell menu."
-			: `You have ${unread} unread alerts in the bell menu.`;
+	const body = t("systemAlert", { count: unread });
 
 	try {
 		const notification = new Notification("BBRC", {
@@ -33,6 +34,7 @@ function showSystemAlert(unread: number) {
 }
 
 export function PwaNotificationEngagement() {
+	const t = useTranslations("shell.pwa");
 	const { data: session } = authClient.useSession();
 	const previousUnread = useRef<number | null>(null);
 
@@ -63,9 +65,9 @@ export function PwaNotificationEngagement() {
 		}
 
 		if (prefs.systemAlertsEnabled && hidden) {
-			showSystemAlert(unread);
+			showSystemAlert(unread, t);
 		}
-	}, [unreadQuery.data?.count]);
+	}, [unreadQuery.data?.count, t]);
 
 	return null;
 }

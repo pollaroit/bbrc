@@ -8,6 +8,7 @@ import { ScrollArea } from "@bbrc/ui/components/scroll-area";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useRef, useState } from "react";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { bookCoverUrl } from "@/lib/book-cover";
@@ -46,16 +47,17 @@ type AuthorFilterMultiSelectProps = {
  */
 export function AuthorFilterMultiSelect({
 	label,
-	searchPlaceholder = "Search…",
+	searchPlaceholder,
 	selected,
 	onChange,
 	options,
 	isPending = false,
 	query,
 	onQueryChange,
-	emptyText = "Nothing matches.",
+	emptyText,
 	max = 30,
 }: AuthorFilterMultiSelectProps) {
+	const t = useTranslations("authors");
 	// Remember what each pick was called, so a chip keeps its name after the list changes.
 	const labels = useRef(new Map<string, string>());
 	for (const option of options) {
@@ -82,7 +84,7 @@ export function AuthorFilterMultiSelect({
 						size="xs"
 						onClick={() => onChange([])}
 					>
-						Clear ({selected.length})
+						{t("filters.clearCount", { count: selected.length })}
 					</Button>
 				) : null}
 			</div>
@@ -98,7 +100,9 @@ export function AuthorFilterMultiSelect({
 								<button
 									type="button"
 									className="grid size-4 shrink-0 place-items-center hover:text-foreground"
-									aria-label={`Remove ${labels.current.get(value) ?? value}`}
+									aria-label={t("filters.removeItem", {
+										name: labels.current.get(value) ?? value,
+									})}
 									onClick={() => toggle(value, false)}
 								>
 									<X className="size-3" aria-hidden />
@@ -114,9 +118,9 @@ export function AuthorFilterMultiSelect({
 				<Input
 					value={query}
 					onChange={(event) => onQueryChange(event.target.value)}
-					placeholder={searchPlaceholder}
+					placeholder={searchPlaceholder ?? t("filters.searchDefault")}
 					className="pl-9"
-					aria-label={`Search ${label.toLowerCase()}`}
+					aria-label={t("filters.search", { label: label.toLowerCase() })}
 				/>
 			</div>
 
@@ -129,7 +133,7 @@ export function AuthorFilterMultiSelect({
 					</div>
 				) : options.length === 0 ? (
 					<p className="px-3 py-4 text-center text-muted-foreground text-sm">
-						{emptyText}
+						{emptyText ?? t("filters.nothingMatches")}
 					</p>
 				) : (
 					<ul className="flex flex-col p-1">
@@ -185,8 +189,9 @@ export function AuthorFilterMembers({
 	selected,
 	onChange,
 	source,
-	label = "Readers",
+	label,
 }: SourceProps & { source: "reads" | "reviews"; label?: string }) {
+	const t = useTranslations("authors");
 	const [query, setQuery] = useState("");
 	const debounced = useDebouncedValue(query);
 	const membersQuery = useQuery(
@@ -198,28 +203,29 @@ export function AuthorFilterMembers({
 
 	return (
 		<AuthorFilterMultiSelect
-			label={label}
-			searchPlaceholder="Search by name or username…"
+			label={label ?? t("filters.readers")}
+			searchPlaceholder={t("filters.searchMembers")}
 			selected={selected}
 			onChange={onChange}
 			query={query}
 			onQueryChange={setQuery}
 			isPending={membersQuery.isPending}
 			emptyText={
-				source === "reads" ? "No readers match." : "No reviewers match."
+				source === "reads" ? t("filters.noReaders") : t("filters.noReviewers")
 			}
 			options={(membersQuery.data?.items ?? []).map((member) => ({
 				value: member.username,
 				label: member.name,
-				hint: `@${member.username} · ${member.count} ${
+				hint:
 					source === "reads"
-						? member.count === 1
-							? "read"
-							: "reads"
-						: member.count === 1
-							? "review"
-							: "reviews"
-				}`,
+						? t("filters.memberHintReads", {
+								username: member.username,
+								count: member.count,
+							})
+						: t("filters.memberHintReviews", {
+								username: member.username,
+								count: member.count,
+							}),
 				leading: <UserAvatar user={member} className="size-7" />,
 			}))}
 		/>
@@ -231,8 +237,9 @@ export function AuthorFilterBooksPicker({
 	slug,
 	selected,
 	onChange,
-	label = "Books",
+	label,
 }: SourceProps & { label?: string }) {
+	const t = useTranslations("authors");
 	const [query, setQuery] = useState("");
 	const debounced = useDebouncedValue(query);
 	const booksQuery = useQuery(
@@ -244,14 +251,14 @@ export function AuthorFilterBooksPicker({
 
 	return (
 		<AuthorFilterMultiSelect
-			label={label}
-			searchPlaceholder="Search by title…"
+			label={label ?? t("filters.books")}
+			searchPlaceholder={t("filters.searchTitle")}
 			selected={selected}
 			onChange={onChange}
 			query={query}
 			onQueryChange={setQuery}
 			isPending={booksQuery.isPending}
-			emptyText="No books match."
+			emptyText={t("filters.noBooks")}
 			options={(booksQuery.data?.items ?? []).map((book) => {
 				const cover = bookCoverUrl(book.coverId, "S");
 				return {
@@ -280,8 +287,9 @@ export function AuthorFilterSeries({
 	slug,
 	selected,
 	onChange,
-	label = "Series",
+	label,
 }: SourceProps & { label?: string }) {
+	const t = useTranslations("authors");
 	const [query, setQuery] = useState("");
 	const debounced = useDebouncedValue(query);
 	const seriesQuery = useQuery(
@@ -300,20 +308,18 @@ export function AuthorFilterSeries({
 
 	return (
 		<AuthorFilterMultiSelect
-			label={label}
-			searchPlaceholder="Search by series title…"
+			label={label ?? t("filters.series")}
+			searchPlaceholder={t("filters.searchSeries")}
 			selected={selected}
 			onChange={onChange}
 			query={query}
 			onQueryChange={setQuery}
 			isPending={seriesQuery.isPending}
-			emptyText="No series match."
+			emptyText={t("filters.noSeries")}
 			options={(seriesQuery.data?.items ?? []).map((series) => ({
 				value: series.slug,
 				label: series.title,
-				hint: `${series.authorBookCount} ${
-					series.authorBookCount === 1 ? "book" : "books"
-				} by this author`,
+				hint: t("filters.seriesHint", { count: series.authorBookCount }),
 			}))}
 		/>
 	);

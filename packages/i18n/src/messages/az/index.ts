@@ -5,6 +5,7 @@ import { genres } from "./genres";
 import { labels } from "./labels";
 import { notifications } from "./notifications";
 import { ratings } from "./ratings";
+import { ui } from "./ui";
 import { validation } from "./validation";
 
 /** Azerbaijani. Must have exactly the same keys, parameters and plural forms as English. */
@@ -14,6 +15,7 @@ export const az: Messages = {
 	achievements,
 	genres,
 	ratings,
+	...ui,
 	notifications,
 	validation,
 	language: {

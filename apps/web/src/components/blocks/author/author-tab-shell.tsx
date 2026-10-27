@@ -3,6 +3,7 @@
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import type { Route } from "next";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
@@ -15,7 +16,7 @@ export const authorTabGridClassName =
 export function AuthorTabEmptyContent({
 	authorSlug,
 	text,
-	linkLabel = "Browse their books",
+	linkLabel,
 	href,
 }: {
 	authorSlug: string;
@@ -24,6 +25,7 @@ export function AuthorTabEmptyContent({
 	/** Defaults to the books tab. */
 	href?: Route;
 }) {
+	const t = useTranslations("authors");
 	return (
 		<div className="flex flex-col items-center gap-2 border border-border border-dashed px-4 py-10 text-center">
 			<p className="max-w-md text-sm">{text}</p>
@@ -31,7 +33,7 @@ export function AuthorTabEmptyContent({
 				href={href ?? (`/authors/${authorSlug}/books` as Route)}
 				className="text-sm underline underline-offset-4 hover:text-foreground"
 			>
-				{linkLabel}
+				{linkLabel ?? t("shell.browseBooks")}
 			</Link>
 		</div>
 	);

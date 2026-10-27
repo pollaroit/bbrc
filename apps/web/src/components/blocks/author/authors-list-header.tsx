@@ -3,11 +3,13 @@
 import { Button } from "@bbrc/ui/components/button";
 import { ShieldCheck, UserPlus } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { AuthorsListToolbar } from "@/components/blocks/author/authors-list-toolbar";
 import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 
 export function AuthorsListHeader() {
+	const t = useTranslations("authors");
 	const { data: session } = authClient.useSession();
 	const isAdmin = session?.user.isAdmin === true;
 
@@ -16,11 +18,10 @@ export function AuthorsListHeader() {
 			<div className="flex flex-col gap-5 border-border border-b px-4 py-6 sm:px-6 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
 				<div className="flex max-w-2xl flex-col gap-2">
 					<h1 className="font-bold text-2xl tracking-tight sm:text-3xl">
-						Authors
+						{t("list.title")}
 					</h1>
 					<p className="text-muted-foreground text-sm leading-relaxed">
-						The writers behind the club's books. Follow an author to hear when a
-						new book of theirs is added.
+						{t("list.intro")}
 					</p>
 				</div>
 				{isAdmin ? (
@@ -31,7 +32,7 @@ export function AuthorsListHeader() {
 							size="sm"
 						>
 							<UserPlus data-icon="inline-start" />
-							Add author
+							{t("list.addAuthor")}
 						</Button>
 						<Button
 							render={<Link href={"/admin/authors" as Route} />}
@@ -40,7 +41,7 @@ export function AuthorsListHeader() {
 							size="sm"
 						>
 							<ShieldCheck data-icon="inline-start" />
-							Manage authors
+							{t("list.manage")}
 						</Button>
 					</div>
 				) : null}

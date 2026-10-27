@@ -1,10 +1,10 @@
 "use client";
 
 import type { GetBookFeedbackListOutput } from "@bbrc/api/modules/feedback/feedback.schema";
-import { formatFeedbackRating } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { FeedbackFormDialog } from "@/components/blocks/feedback-form-dialog";
 import { FeedbackListSort } from "@/components/blocks/feedback-list-sort";
@@ -16,6 +16,7 @@ import {
 	isDefaultFeedbackListParams,
 	useFeedbackListSearchParams,
 } from "@/lib/feedback/feedback-list-search-params";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
 
 type BookFeedbackSectionProps = {
@@ -27,6 +28,8 @@ export function BookFeedbackSection({
 	bookSlug,
 	initialReviews,
 }: BookFeedbackSectionProps) {
+	const t = useTranslations("books");
+	const f = useFormatters();
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [searchParams, setSearchParams] = useFeedbackListSearchParams();
 	const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
@@ -76,9 +79,7 @@ export function BookFeedbackSection({
 		state.hint;
 
 	const emptyMessage =
-		minRating !== undefined
-			? "No reviews match this rating filter."
-			: "No club reviews yet. Members can leave feedback after they mark the book completed on a sitting that chose it.";
+		minRating !== undefined ? t("feedback.noneMatch") : t("feedback.none");
 
 	return (
 		<section
@@ -88,13 +89,15 @@ export function BookFeedbackSection({
 			<div className="flex flex-wrap items-end justify-between gap-3">
 				<div className="flex flex-col gap-1">
 					<h2 id="book-feedback-heading" className="font-semibold text-lg">
-						Club reviews
+						{t("feedback.clubReviews")}
 					</h2>
 					<p className="text-muted-foreground text-sm tabular-nums">
-						{reviews.length} review{reviews.length === 1 ? "" : "s"}
 						{minRating !== undefined
-							? ` · ${formatFeedbackRating(minRating)}+`
-							: ""}
+							? t("feedback.reviewCountMin", {
+									count: reviews.length,
+									rating: f.rating(minRating),
+								})
+							: t("feedback.reviewCount", { count: reviews.length })}
 					</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
@@ -118,7 +121,7 @@ export function BookFeedbackSection({
 							size="sm"
 							onClick={() => setFeedbackDialogOpen(true)}
 						>
-							Write feedback
+							{t("feedback.write")}
 						</Button>
 					) : null}
 				</div>
@@ -127,7 +130,7 @@ export function BookFeedbackSection({
 			{listQuery.isError ? (
 				<Card size="sm">
 					<CardContent className="text-destructive text-sm">
-						Could not load reviews. Try refreshing the page.
+						{t("feedback.loadFailed")}
 					</CardContent>
 				</Card>
 			) : (
@@ -148,14 +151,14 @@ export function BookFeedbackSection({
 
 			{sessionPending || (session?.user && stateQuery.isPending) ? (
 				<p className="text-muted-foreground text-sm">
-					Loading feedback options…
+					{t("feedback.optionsLoading")}
 				</p>
 			) : null}
 
 			{stateQuery.isError ? (
 				<Card size="sm">
 					<CardContent className="text-destructive text-sm">
-						Could not load your feedback status. Try refreshing the page.
+						{t("feedback.stateFailed")}
 					</CardContent>
 				</Card>
 			) : null}

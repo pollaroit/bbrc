@@ -10,6 +10,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { BookCheck, Rows3, StretchHorizontal } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import {
 	AuthorFilterBar,
 	type AuthorFilterChip,
@@ -17,7 +18,7 @@ import {
 } from "@/components/blocks/author/author-filter-bar";
 import {
 	AuthorFilterBooks,
-	authorBookFilterChips,
+	useAuthorBookFilterChips,
 } from "@/components/blocks/author/author-filter-books";
 import { AuthorFilterDateRange } from "@/components/blocks/author/author-filter-date-range";
 import {
@@ -40,7 +41,6 @@ import { useFormatters } from "@/lib/i18n/use-formatters";
 import {
 	AUTHOR_BOOK_FILTER_RESET,
 	authorReadSortFields,
-	authorReadSortLabels,
 	countAuthorBookFilters,
 	toAuthorReadsInput,
 	useAuthorReadsParams,
@@ -72,6 +72,7 @@ function shortDate(f: Formatters, date: Date) {
 }
 
 function ReadCard({ item }: { item: AuthorReadItem }) {
+	const t = useTranslations("authors");
 	const finished = finishedLabel(item.finishedYear, item.finishedMonth);
 	const coverSrc = bookCoverUrl(item.book.coverId, "M");
 	const bookHref = `/books/${item.book.slug}` as Route;
@@ -118,7 +119,7 @@ function ReadCard({ item }: { item: AuthorReadItem }) {
 						<EditionChip
 							bookSlug={item.book.slug}
 							edition={item.edition}
-							prefix="Read the"
+							prefix={t("readsTab.editionPrefix")}
 						/>
 					</div>
 				</div>
@@ -147,10 +148,14 @@ function ReadCard({ item }: { item: AuthorReadItem }) {
 						)}
 					>
 						<BookCheck className="size-3.5 text-success-ink" aria-hidden />
-						{finished ?? "Date not set"}
+						{finished ?? t("readsTab.dateNotSet")}
 					</span>
 					<span className="text-muted-foreground text-xs">
-						Logged <RelativeTime date={item.createdAt} className="text-xs" />
+						{t.rich("readsTab.logged", {
+							time: () => (
+								<RelativeTime date={item.createdAt} className="text-xs" />
+							),
+						})}
 					</span>
 				</div>
 			</div>
@@ -160,6 +165,7 @@ function ReadCard({ item }: { item: AuthorReadItem }) {
 
 function ReadRow({ item }: { item: AuthorReadItem }) {
 	const f = useFormatters();
+	const t = useTranslations("authors");
 	const finished = finishedLabel(item.finishedYear, item.finishedMonth);
 
 	return (
@@ -178,10 +184,10 @@ function ReadRow({ item }: { item: AuthorReadItem }) {
 				{item.book.title}
 			</Link>
 			<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-				{finished ?? "Date not set"}
+				{finished ?? t("readsTab.dateNotSet")}
 			</span>
 			<span className="hidden shrink-0 text-muted-foreground text-xs sm:inline">
-				Logged {shortDate(f, item.createdAt)}
+				{t("readsTab.loggedOn", { date: shortDate(f, item.createdAt) })}
 			</span>
 		</div>
 	);
@@ -217,6 +223,10 @@ export function AuthorTabReads({
 	authorName: string;
 }) {
 	const f = useFormatters();
+	const t = useTranslations("authors");
+	const sortLabels = Object.fromEntries(
+		authorReadSortFields.map((field) => [field, t(`readsTab.sort.${field}`)]),
+	) as Record<(typeof authorReadSortFields)[number], string>;
 	const [params, setParams] = useAuthorReadsParams();
 	const search = useDebouncedValue(params.search);
 	const compact = params.density === "compact";
@@ -280,7 +290,7 @@ export function AuthorTabReads({
 		})),
 		...(params.series ?? []).map((seriesSlug) => ({
 			id: `series:${seriesSlug}`,
-			label: `Series: ${humanize(seriesSlug)}`,
+			label: t("readsTab.seriesChip", { name: humanize(seriesSlug) }),
 			onRemove: () =>
 				void setParams({ series: withoutValue(params.series, seriesSlug) }),
 		})),
@@ -288,7 +298,12 @@ export function AuthorTabReads({
 			? [
 					{
 						id: "finished",
-						label: `Finished ${params.finishedFrom ? shortDate(f, params.finishedFrom) : "…"} – ${params.finishedTo ? shortDate(f, params.finishedTo) : "…"}`,
+						label: t("readsTab.finishedChip", {
+							from: params.finishedFrom
+								? shortDate(f, params.finishedFrom)
+								: "…",
+							to: params.finishedTo ? shortDate(f, params.finishedTo) : "…",
+						}),
 						onRemove: () =>
 							void setParams({ finishedFrom: null, finishedTo: null }),
 					},
@@ -298,26 +313,31 @@ export function AuthorTabReads({
 			? [
 					{
 						id: "logged",
-						label: `Logged ${params.loggedFrom ? shortDate(f, params.loggedFrom) : "…"} – ${params.loggedTo ? shortDate(f, params.loggedTo) : "…"}`,
+						label: t("readsTab.loggedChip", {
+							from: params.loggedFrom ? shortDate(f, params.loggedFrom) : "…",
+							to: params.loggedTo ? shortDate(f, params.loggedTo) : "…",
+						}),
 						onRemove: () =>
 							void setParams({ loggedFrom: null, loggedTo: null }),
 					},
 				]
 			: []),
-		...authorBookFilterChips(params, setParams),
+		...useAuthorBookFilterChips(params, setParams),
 	];
 
 	const resultLabel =
 		total == null
 			? null
-			: `${f.number(total)} ${total === 1 ? "read" : "reads"}${filtered ? " match" : ""}`;
+			: filtered
+				? t("readsTab.countMatch", { count: total })
+				: t("readsTab.count", { count: total });
 
 	return (
 		<div className="flex flex-col gap-4">
 			<AuthorFilterBar
 				search={params.search}
 				onSearchChange={(value) => void setParams({ search: value })}
-				searchPlaceholder="Search by reader, book or series…"
+				searchPlaceholder={t("readsTab.search")}
 				sort={
 					<>
 						<ListingSort
@@ -328,7 +348,7 @@ export function AuthorTabReads({
 								void setParams({ sortDirection })
 							}
 							sortByOptions={authorReadSortFields}
-							sortByLabels={authorReadSortLabels}
+							sortByLabels={sortLabels}
 						/>
 						<ToggleGroup
 							value={[compact ? "compact" : "comfortable"]}
@@ -342,22 +362,25 @@ export function AuthorTabReads({
 							}}
 							variant="outline"
 							size="sm"
-							aria-label="Card density"
+							aria-label={t("readsTab.density")}
 						>
 							<ToggleGroupItem
 								value="comfortable"
-								aria-label="Comfortable cards"
+								aria-label={t("readsTab.comfortable")}
 							>
 								<StretchHorizontal />
 							</ToggleGroupItem>
-							<ToggleGroupItem value="compact" aria-label="Compact rows">
+							<ToggleGroupItem
+								value="compact"
+								aria-label={t("readsTab.compact")}
+							>
 								<Rows3 />
 							</ToggleGroupItem>
 						</ToggleGroup>
 					</>
 				}
-				sheetTitle="Read filters"
-				sheetDescription={`Narrow down the reads of books by ${authorName}.`}
+				sheetTitle={t("readsTab.sheetTitle")}
+				sheetDescription={t("readsTab.sheetDescription", { name: authorName })}
 				sheetContent={
 					<>
 						<AuthorFilterMembers
@@ -383,7 +406,7 @@ export function AuthorTabReads({
 							}
 						/>
 						<AuthorFilterDateRange
-							legend="Finished reading between"
+							legend={t("readsTab.finishedBetween")}
 							from={params.finishedFrom}
 							to={params.finishedTo}
 							minYear={1990}
@@ -392,7 +415,7 @@ export function AuthorTabReads({
 							}
 						/>
 						<AuthorFilterDateRange
-							legend="Logged in the app between"
+							legend={t("readsTab.loggedBetween")}
 							from={params.loggedFrom}
 							to={params.loggedTo}
 							onChange={({ from, to }) =>
@@ -431,18 +454,18 @@ export function AuthorTabReads({
 						<AuthorFilteredEmpty
 							filtered
 							emptyText=""
-							filteredText="No reads match these filters."
+							filteredText={t("readsTab.noMatch")}
 							onClear={clearAll}
 						/>
 					) : (
 						<AuthorTabEmptyContent
 							authorSlug={slug}
-							text={`No one has finished a book by ${authorName} yet.`}
+							text={t("readsTab.empty", { name: authorName })}
 						/>
 					)
 				}
 				loadingContent={<ReadsSkeleton compact={compact} />}
-				endMessage="That is every read."
+				endMessage={t("readsTab.end")}
 			>
 				{compact ? (
 					<div className="flex flex-col border border-border bg-card">

@@ -9,6 +9,7 @@ import {
 } from "@bbrc/ui/components/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { PenLine } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { FeedbackFormDialog } from "@/components/blocks/feedback-form-dialog";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ export function BookWriteFeedbackButton({
 	tooltipSide = "top",
 	navigateToReview = false,
 }: BookWriteFeedbackButtonProps) {
+	const t = useTranslations("books");
 	const [open, setOpen] = useState(false);
 	const isEdit = mode === "edit";
 
@@ -59,7 +61,7 @@ export function BookWriteFeedbackButton({
 		(stateQuery.isSuccess && initialValues != null) ||
 		stateQuery.isError;
 
-	const label = isEdit ? "Edit feedback" : "Write feedback";
+	const label = isEdit ? t("actions.editFeedback") : t("actions.writeFeedback");
 
 	const trigger =
 		variant === "icon" ? (

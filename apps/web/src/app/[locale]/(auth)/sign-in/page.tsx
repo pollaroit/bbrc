@@ -1,3 +1,4 @@
+import { toLocale } from "@bbrc/i18n";
 import {
 	Card,
 	CardContent,
@@ -7,27 +8,39 @@ import {
 	CardTitle,
 } from "@bbrc/ui/components/card";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 import { AuthPageSwitchLink } from "@/components/blocks/auth-page-switch-link";
 import SignInForm from "@/components/blocks/sign-in-form";
 import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = buildPageMetadata({
-	title: "Sign in",
-	description: "Sign in to your BBRC account.",
-	path: "/sign-in",
-});
+export async function generateMetadata({
+	params,
+}: PageProps<"/[locale]/sign-in">): Promise<Metadata> {
+	const locale = toLocale((await params).locale);
+	const t = await getTranslations({ locale, namespace: "auth" });
+	return buildPageMetadata({
+		title: t("signIn.metaTitle"),
+		description: t("signIn.metaDescription"),
+		path: "/sign-in",
+		locale,
+	});
+}
 
-export default function SignInPage() {
+export default async function SignInPage({
+	params,
+}: PageProps<"/[locale]/sign-in">) {
+	const locale = toLocale((await params).locale);
+	const t = await getTranslations({ locale, namespace: "auth" });
 	return (
 		<section className="flex w-full items-center justify-center bg-background px-6 py-12 text-foreground">
 			<Card className="w-full max-w-sm">
 				<CardHeader className="items-center text-center">
 					<CardTitle className="mt-4 font-bold text-xl tracking-tight">
-						Sign in to your account
+						{t("signIn.title")}
 					</CardTitle>
 					<CardDescription className="text-sm">
-						Welcome back to BBRC. Let&apos;s read together.
+						{t("signIn.description")}
 					</CardDescription>
 				</CardHeader>
 
@@ -38,9 +51,12 @@ export default function SignInPage() {
 				</CardContent>
 
 				<CardFooter className="justify-center text-muted-foreground text-sm">
-					Don&apos;t have an account?
+					{t("signIn.noAccount")}
 					<Suspense fallback={null}>
-						<AuthPageSwitchLink target="/sign-up" label="Sign up" />
+						<AuthPageSwitchLink
+							target="/sign-up"
+							label={t("signIn.switchToSignUp")}
+						/>
 					</Suspense>
 				</CardFooter>
 			</Card>

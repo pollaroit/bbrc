@@ -4,6 +4,7 @@ import type { GetFeedbackBySlugOutput } from "@bbrc/api/modules/feedback/feedbac
 import { contentPlainText } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
@@ -39,12 +40,13 @@ export function FeedbackReviewBody({
 }: {
 	feedback: GetFeedbackBySlugOutput;
 }) {
+	const t = useTranslations("books");
 	const live = useLiveFeedback(feedback);
 
 	if (contentPlainText(live.review).trim().length === 0) {
 		return (
 			<p className="text-muted-foreground text-sm italic">
-				Rating only — no written review.
+				{t("feedback.ratingOnly")}
 			</p>
 		);
 	}

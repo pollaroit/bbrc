@@ -17,6 +17,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@bbrc/ui/components/select";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { type WpmLanguage, wpmLanguages, wpmTexts } from "@/lib/wpm-texts";
 
@@ -40,6 +41,7 @@ export function ProfileWpmDialog({
 	onOpenChange,
 	onApply,
 }: ProfileWpmDialogProps) {
+	const t = useTranslations("settings.wpm");
 	const [language, setLanguage] = useState<WpmLanguage>("en");
 	const [phase, setPhase] = useState<Phase>("idle");
 	const [elapsedMs, setElapsedMs] = useState(0);
@@ -88,7 +90,7 @@ export function ProfileWpmDialog({
 			<DialogContent className="max-w-xl">
 				<DialogHeader>
 					<div className="flex items-start justify-between gap-4 pr-8">
-						<DialogTitle>Measure your reading speed</DialogTitle>
+						<DialogTitle>{t("title")}</DialogTitle>
 						<Select
 							value={language}
 							disabled={phase === "running"}
@@ -97,7 +99,7 @@ export function ProfileWpmDialog({
 								reset();
 							}}
 						>
-							<SelectTrigger className="w-36" aria-label="Text language">
+							<SelectTrigger className="w-36" aria-label={t("textLanguage")}>
 								<SelectValue>
 									{wpmLanguages.find((item) => item.code === language)?.label}
 								</SelectValue>
@@ -111,15 +113,12 @@ export function ProfileWpmDialog({
 							</SelectContent>
 						</Select>
 					</div>
-					<DialogDescription>
-						Pick a language, start the timer, then read the passage at your
-						normal pace. Press Finished when you reach the end.
-					</DialogDescription>
+					<DialogDescription>{t("description")}</DialogDescription>
 				</DialogHeader>
 
 				{phase === "idle" ? (
 					<p className="border border-border border-dashed px-4 py-8 text-center text-muted-foreground text-sm">
-						The text appears when you start the timer.
+						{t("idleHint")}
 					</p>
 				) : null}
 
@@ -145,8 +144,10 @@ export function ProfileWpmDialog({
 					<div className="flex flex-col gap-1 border border-border px-4 py-6 text-center">
 						<p className="font-semibold text-4xl tabular-nums">{resultWpm}</p>
 						<p className="text-muted-foreground text-sm">
-							words per minute · {countWords(text)} words in{" "}
-							{formatElapsed(elapsedMs)}
+							{t("result", {
+								words: countWords(text),
+								time: formatElapsed(elapsedMs),
+							})}
 						</p>
 					</div>
 				) : null}
@@ -154,18 +155,18 @@ export function ProfileWpmDialog({
 				<DialogFooter>
 					{phase === "idle" ? (
 						<Button type="button" onClick={start}>
-							Start timer
+							{t("start")}
 						</Button>
 					) : null}
 					{phase === "running" ? (
 						<Button type="button" onClick={finish}>
-							Finished
+							{t("finished")}
 						</Button>
 					) : null}
 					{phase === "done" && resultWpm !== null ? (
 						<>
 							<Button type="button" variant="outline" onClick={reset}>
-								Try again
+								{t("tryAgain")}
 							</Button>
 							<Button
 								type="button"
@@ -174,7 +175,7 @@ export function ProfileWpmDialog({
 									onOpenChange(false);
 								}}
 							>
-								Use {resultWpm} WPM
+								{t("use", { wpm: resultWpm })}
 							</Button>
 						</>
 					) : null}

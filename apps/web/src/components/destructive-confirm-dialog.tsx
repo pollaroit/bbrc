@@ -10,6 +10,7 @@ import {
 	AlertDialogTitle,
 } from "@bbrc/ui/components/alert-dialog";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 type DestructiveConfirmDialogProps = {
@@ -32,13 +33,14 @@ export function DestructiveConfirmDialog({
 	title,
 	description,
 	confirmLabel,
-	cancelLabel = "Cancel",
+	cancelLabel,
 	onConfirm,
 	loading = false,
 	confirmDisabled = false,
 	children,
 	contentClassName,
 }: DestructiveConfirmDialogProps) {
+	const t = useTranslations("common.actions");
 	return (
 		<AlertDialog
 			open={open}
@@ -55,7 +57,7 @@ export function DestructiveConfirmDialog({
 				{children}
 				<AlertDialogFooter>
 					<AlertDialogCancel disabled={loading}>
-						{cancelLabel}
+						{cancelLabel ?? t("cancel")}
 					</AlertDialogCancel>
 					<LoadingButton
 						type="button"

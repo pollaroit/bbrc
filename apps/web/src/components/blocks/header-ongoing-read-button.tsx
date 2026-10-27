@@ -3,11 +3,13 @@
 import { Button } from "@bbrc/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { orpc } from "@/utils/orpc";
 
 export function HeaderOngoingReadButton() {
+	const t = useTranslations("shell.header");
 	const { data: session, isPending: isSessionPending } =
 		authClient.useSession();
 	const { data: ongoing, isPending: isOngoingPending } = useQuery({
@@ -30,7 +32,7 @@ export function HeaderOngoingReadButton() {
 			nativeButton={false}
 			size="sm"
 		>
-			Read
+			{t("read")}
 		</Button>
 	);
 }

@@ -1,20 +1,33 @@
+import { toLocale } from "@bbrc/i18n";
 import { ArrowLeft } from "lucide-react";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { SettingsProfileForm } from "@/components/blocks/settings-profile-form";
 import { Link } from "@/i18n/navigation";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 
-export const metadata: Metadata = buildPageMetadata({
-	title: "Profile",
-	description: "Edit your public BBRC profile.",
-	path: "/settings/profile",
-	robots: NO_INDEX_ROBOTS,
-});
+export async function generateMetadata({
+	params,
+}: PageProps<"/[locale]/settings/profile">): Promise<Metadata> {
+	const locale = toLocale((await params).locale);
+	const t = await getTranslations({ locale, namespace: "settings" });
+	return buildPageMetadata({
+		title: t("profile.metaTitle"),
+		description: t("profile.metaDescription"),
+		path: "/settings/profile",
+		robots: NO_INDEX_ROBOTS,
+		locale,
+	});
+}
 
-export default async function ProfileSettingsPage() {
+export default async function ProfileSettingsPage({
+	params,
+}: PageProps<"/[locale]/settings/profile">) {
+	const locale = toLocale((await params).locale);
+	const t = await getTranslations({ locale, namespace: "settings" });
 	const session = await auth.api.getSession({
 		headers: await headers(),
 	});
@@ -31,12 +44,13 @@ export default async function ProfileSettingsPage() {
 					className="mb-4 inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
 				>
 					<ArrowLeft className="size-4" aria-hidden />
-					Settings
+					{t("back")}
 				</Link>
-				<h1 className="font-semibold text-2xl tracking-tight">Profile</h1>
+				<h1 className="font-semibold text-2xl tracking-tight">
+					{t("profile.title")}
+				</h1>
 				<p className="mt-1 text-muted-foreground text-sm">
-					Tell other readers about yourself. Nothing is saved until you press
-					Save changes.
+					{t("profile.intro")}
 				</p>
 			</div>
 

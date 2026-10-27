@@ -1,3 +1,10 @@
+import {
+	buildPageLanguageUrls,
+	DEFAULT_LOCALE,
+	LOCALE_OG_TAGS,
+	LOCALES,
+	type Locale,
+} from "@bbrc/i18n";
 import type { Metadata } from "next";
 import { openGraphImageForPath } from "./og/url";
 import { DEFAULT_DESCRIPTION, SITE_NAME } from "./site";
@@ -32,6 +39,13 @@ export type BuildPageMetadataInput = {
 	openGraph?: PageOpenGraph;
 	/** Override robots; admin and other private routes should pass noindex explicitly. */
 	robots?: Metadata["robots"];
+	/** The language of the page (the `[locale]` param); English when left out. */
+	locale?: Locale;
+	/**
+	 * The page's main content is written by members (post, comment, review, shelf, profile), so
+	 * the other languages look the same: they point at the English page and are not alternates.
+	 */
+	memberContent?: boolean;
 };
 
 export function buildPageMetadata(input: BuildPageMetadataInput): Metadata {
@@ -39,9 +53,17 @@ export function buildPageMetadata(input: BuildPageMetadataInput): Metadata {
 		input.description?.trim() || DEFAULT_DESCRIPTION,
 	);
 	const title = input.title.trim();
+	const locale = input.locale ?? DEFAULT_LOCALE;
+	const urls = input.path
+		? buildPageLanguageUrls(input.path, locale, {
+				memberContent: input.memberContent,
+			})
+		: undefined;
 	const ogImages =
 		input.openGraph?.images ??
-		(input.path ? [openGraphImageForPath(input.path, title)] : undefined);
+		(input.path
+			? [openGraphImageForPath(input.path, title, locale)]
+			: undefined);
 	const ogImageUrl = ogImages
 		? Array.isArray(ogImages)
 			? ogImages[0]?.url
@@ -51,13 +73,24 @@ export function buildPageMetadata(input: BuildPageMetadataInput): Metadata {
 	return {
 		title,
 		description,
-		...(input.path ? { alternates: { canonical: input.path } } : {}),
+		...(urls
+			? {
+					alternates: {
+						canonical: urls.canonical,
+						...(urls.languages ? { languages: urls.languages } : {}),
+					},
+				}
+			: {}),
 		openGraph: {
 			title,
 			description,
 			siteName: SITE_NAME,
 			type: input.openGraph?.type ?? "website",
-			...(input.path ? { url: input.path } : {}),
+			locale: LOCALE_OG_TAGS[locale],
+			alternateLocale: LOCALES.filter((code) => code !== locale).map(
+				(code) => LOCALE_OG_TAGS[code],
+			),
+			...(urls ? { url: urls.canonical } : {}),
 			...(ogImages ? { images: ogImages } : {}),
 		},
 		twitter: {

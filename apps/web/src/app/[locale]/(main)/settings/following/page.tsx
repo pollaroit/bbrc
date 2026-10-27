@@ -1,20 +1,33 @@
+import { toLocale } from "@bbrc/i18n";
 import { ArrowLeft } from "lucide-react";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { SettingsFollowing } from "@/components/blocks/settings-following";
 import { Link } from "@/i18n/navigation";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 
-export const metadata: Metadata = buildPageMetadata({
-	title: "Following",
-	description: "The authors you follow on BBRC.",
-	path: "/settings/following",
-	robots: NO_INDEX_ROBOTS,
-});
+export async function generateMetadata({
+	params,
+}: PageProps<"/[locale]/settings/following">): Promise<Metadata> {
+	const locale = toLocale((await params).locale);
+	const t = await getTranslations({ locale, namespace: "settings" });
+	return buildPageMetadata({
+		title: t("following.metaTitle"),
+		description: t("following.metaDescription"),
+		path: "/settings/following",
+		robots: NO_INDEX_ROBOTS,
+		locale,
+	});
+}
 
-export default async function FollowingSettingsPage() {
+export default async function FollowingSettingsPage({
+	params,
+}: PageProps<"/[locale]/settings/following">) {
+	const locale = toLocale((await params).locale);
+	const t = await getTranslations({ locale, namespace: "settings" });
 	const session = await auth.api.getSession({
 		headers: await headers(),
 	});
@@ -31,19 +44,22 @@ export default async function FollowingSettingsPage() {
 					className="mb-4 inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
 				>
 					<ArrowLeft className="size-4" aria-hidden />
-					Settings
+					{t("back")}
 				</Link>
-				<h1 className="font-semibold text-2xl tracking-tight">Following</h1>
+				<h1 className="font-semibold text-2xl tracking-tight">
+					{t("following.title")}
+				</h1>
 				<p className="mt-1 text-muted-foreground text-sm">
-					Authors you follow. When the library adds a book by one of them you
-					get a notification; switch that on or off in{" "}
-					<Link
-						href={"/settings/notifications" as Route}
-						className="font-medium text-foreground underline underline-offset-4"
-					>
-						Notifications
-					</Link>
-					.
+					{t.rich("following.intro", {
+						link: (chunks) => (
+							<Link
+								href={"/settings/notifications" as Route}
+								className="font-medium text-foreground underline underline-offset-4"
+							>
+								{chunks}
+							</Link>
+						),
+					})}
 				</p>
 			</div>
 

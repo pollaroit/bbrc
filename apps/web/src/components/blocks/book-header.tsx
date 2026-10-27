@@ -5,6 +5,7 @@ import { Separator } from "@bbrc/ui/components/separator";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { BookDeleteButton } from "@/components/blocks/book-delete-button";
 import { BookEditLink } from "@/components/blocks/book-edit-link";
@@ -67,6 +68,7 @@ function StatCell({
 }
 
 export function BookHeader({ book }: BookHeaderProps) {
+	const t = useTranslations("books");
 	const f = useFormatters();
 	const coverSrc = bookCoverUrl(book.coverId, "L");
 	const olWorkUrl = book.olid ? openLibraryWorkPageUrl(book.olid) : null;
@@ -78,7 +80,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 				className="inline-flex w-fit items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
 			>
 				<ArrowLeft className="size-4" />
-				All books
+				{t("header.allBooks")}
 			</Link>
 
 			<BookStatusBanner status={book.status} />
@@ -102,7 +104,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 							/>
 						) : (
 							<div className="flex size-full items-center justify-center text-muted-foreground text-sm">
-								No cover
+								{t("header.noCover")}
 							</div>
 						)}
 					</div>
@@ -122,14 +124,18 @@ export function BookHeader({ book }: BookHeaderProps) {
 							</h1>
 							{book.series ? (
 								<p className="text-muted-foreground text-sm">
-									<span className="tabular-nums">#{book.series.position}</span>{" "}
-									in{" "}
-									<Link
-										href={`/series/${book.series.slug}` as Route}
-										className="text-foreground underline-offset-4 hover:underline"
-									>
-										{book.series.title}
-									</Link>
+									{t.rich("header.seriesPosition", {
+										position: book.series.position,
+										title: book.series.title,
+										series: (chunks) => (
+											<Link
+												href={`/series/${book.series?.slug}` as Route}
+												className="text-foreground underline-offset-4 hover:underline"
+											>
+												{chunks}
+											</Link>
+										),
+									})}
 								</p>
 							) : null}
 							<BookAuthorLinks
@@ -148,7 +154,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 							<ResourceShareMenu
 								path={`/books/${book.slug}`}
 								shareText={book.title}
-								label="Share book"
+								label={t("header.shareBook")}
 								storyBookSlug={book.slug}
 								shareInPost={{ kind: "book", slug: book.slug }}
 								size="md"
@@ -166,7 +172,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 
 					<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
 						<StatCell
-							label="Published"
+							label={t("header.published")}
 							value={book.publishedIn ?? "—"}
 							href={
 								book.publishedIn != null
@@ -174,9 +180,9 @@ export function BookHeader({ book }: BookHeaderProps) {
 									: undefined
 							}
 						/>
-						<StatCell label="Pages" value={book.pages ?? "—"} />
+						<StatCell label={t("header.pages")} value={book.pages ?? "—"} />
 						<StatCell
-							label="Open Library"
+							label={t("header.openLibrary")}
 							value={
 								book.openLibraryRating != null
 									? `${f.decimal(book.openLibraryRating, 1)} / 5`
@@ -184,7 +190,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 							}
 						/>
 						<StatCell
-							label="Club average"
+							label={t("header.clubAverage")}
 							value={
 								book.averageRating != null
 									? `${f.decimal(book.averageRating, 1)} / 5`
@@ -205,7 +211,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 								rel="noreferrer"
 								className="inline-flex items-center gap-1 text-primary text-sm underline-offset-4 hover:underline"
 							>
-								Open Library work
+								{t("header.openLibraryWork")}
 								<ExternalLink className="size-3.5" />
 							</a>
 						</div>

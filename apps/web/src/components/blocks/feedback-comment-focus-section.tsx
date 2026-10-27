@@ -2,6 +2,7 @@
 
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { CommentThreadList } from "@/components/blocks/comment-thread-list";
 import { extractCommentSubtree } from "@/lib/build-comment-tree";
@@ -20,6 +21,7 @@ export function FeedbackCommentFocusSection({
 	bookSlug,
 	focusCommentSlug,
 }: FeedbackCommentFocusSectionProps) {
+	const t = useTranslations("books");
 	const [replyingToSlug, setReplyingToSlug] = useState<string | null>(null);
 
 	const query = useInfiniteQuery(
@@ -68,7 +70,7 @@ export function FeedbackCommentFocusSection({
 			className="flex flex-col gap-4"
 		>
 			<h2 id="feedback-comment-focus-heading" className="font-semibold text-lg">
-				Comment
+				{t("feedback.comment")}
 			</h2>
 
 			{loadingThread && comments.length === 0 ? (
@@ -77,7 +79,7 @@ export function FeedbackCommentFocusSection({
 				<p className="text-destructive text-sm">{query.error.message}</p>
 			) : !focused ? (
 				<p className="border border-border border-dashed px-4 py-8 text-center text-muted-foreground text-sm">
-					This comment could not be found on this review.
+					{t("feedback.commentNotFound")}
 				</p>
 			) : (
 				<div className="border border-border px-3 pt-4 pb-1 sm:px-4">

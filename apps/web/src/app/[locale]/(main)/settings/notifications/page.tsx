@@ -1,20 +1,33 @@
+import { toLocale } from "@bbrc/i18n";
 import { ArrowLeft } from "lucide-react";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { NotificationPreferencesForm } from "@/components/blocks/notification-preferences-form";
 import { Link } from "@/i18n/navigation";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth } from "@/services";
 
-export const metadata: Metadata = buildPageMetadata({
-	title: "Notification settings",
-	description: "Choose in-app and push notifications for BBRC.",
-	path: "/settings/notifications",
-	robots: NO_INDEX_ROBOTS,
-});
+export async function generateMetadata({
+	params,
+}: PageProps<"/[locale]/settings/notifications">): Promise<Metadata> {
+	const locale = toLocale((await params).locale);
+	const t = await getTranslations({ locale, namespace: "settings" });
+	return buildPageMetadata({
+		title: t("notifications.metaTitle"),
+		description: t("notifications.metaDescription"),
+		path: "/settings/notifications",
+		robots: NO_INDEX_ROBOTS,
+		locale,
+	});
+}
 
-export default async function NotificationSettingsPage() {
+export default async function NotificationSettingsPage({
+	params,
+}: PageProps<"/[locale]/settings/notifications">) {
+	const locale = toLocale((await params).locale);
+	const t = await getTranslations({ locale, namespace: "settings" });
 	const session = await auth.api.getSession({
 		headers: await headers(),
 	});
@@ -31,13 +44,13 @@ export default async function NotificationSettingsPage() {
 					className="mb-4 inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
 				>
 					<ArrowLeft className="size-4" aria-hidden />
-					Settings
+					{t("back")}
 				</Link>
-				<h1 className="font-semibold text-2xl tracking-tight">Notifications</h1>
+				<h1 className="font-semibold text-2xl tracking-tight">
+					{t("notifications.title")}
+				</h1>
 				<p className="mt-1 text-muted-foreground text-sm">
-					Choose what appears in the bell on the site and what is sent to your
-					phone through ntfy. Set up phone push once using your personal topic
-					below.
+					{t("notifications.intro")}
 				</p>
 			</div>
 

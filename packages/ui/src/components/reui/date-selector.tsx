@@ -9,12 +9,14 @@ import { useIsMobile } from "@bbrc/ui/hooks/use-mobile";
 import { cn } from "cn";
 import {
 	addMonths,
+	type Locale as DateFnsLocale,
 	format,
 	isBefore,
 	isSameMonth,
 	parse,
 	subMonths,
 } from "date-fns";
+import { az as dateFnsAz } from "date-fns/locale";
 import {
 	ChevronLeftIcon,
 	ChevronRightIcon,
@@ -22,7 +24,7 @@ import {
 	CornerUpRightIcon,
 	XIcon,
 } from "lucide-react";
-import type { ChangeEvent, ComponentProps } from "react";
+import type { ChangeEvent, ComponentProps, ReactNode } from "react";
 import {
 	createContext,
 	useCallback,
@@ -156,6 +158,8 @@ export interface DateSelectorValue {
 
 export interface DateSelectorContextValue {
 	i18n: DateSelectorI18nConfig;
+	/** Names the calendar grid in this language (date-fns locale); English when left out. */
+	locale?: DateFnsLocale;
 	variant: "outline" | "default";
 	size: "sm" | "default" | "lg";
 }
@@ -167,6 +171,43 @@ const DateSelectorContext = createContext<DateSelectorContextValue>({
 });
 
 export const useDateSelectorContext = () => useContext(DateSelectorContext);
+
+type DateSelectorDefaults = {
+	i18n?: Partial<DateSelectorI18nConfig>;
+	locale?: DateFnsLocale;
+};
+
+const DateSelectorDefaultsContext = createContext<DateSelectorDefaults>({});
+
+/** The date-fns locales a language code maps to (English is the library default). */
+const DATE_FNS_LOCALES: Record<string, DateFnsLocale> = { az: dateFnsAz };
+
+/**
+ * Sets the words and calendar language of every date selector below it, so the app translates
+ * them once instead of passing `i18n` to each one. A selector's own `i18n` prop still wins.
+ */
+export function DateSelectorDefaultsProvider({
+	i18n,
+	localeCode,
+	children,
+}: {
+	i18n?: Partial<DateSelectorI18nConfig>;
+	localeCode?: string;
+	children: ReactNode;
+}) {
+	const value = useMemo(
+		() => ({
+			i18n,
+			locale: localeCode ? DATE_FNS_LOCALES[localeCode] : undefined,
+		}),
+		[i18n, localeCode],
+	);
+	return (
+		<DateSelectorDefaultsContext.Provider value={value}>
+			{children}
+		</DateSelectorDefaultsContext.Provider>
+	);
+}
 
 export function formatDateValue(
 	value: DateSelectorValue,
@@ -759,7 +800,7 @@ function DateSelectorDayPicker({
 	weekStartsOn,
 	className,
 }: DateSelectorDayPickerProps) {
-	const { i18n } = useDateSelectorContext();
+	const { i18n, locale } = useDateSelectorContext();
 	const isMobile = useIsMobile();
 
 	// Convert to react-day-picker format
@@ -840,6 +881,7 @@ function DateSelectorDayPicker({
 					numberOfMonths={isMobile ? 1 : showTwoMonths ? 2 : 1}
 					showOutsideDays={true}
 					weekStartsOn={weekStartsOn}
+					locale={locale}
 					formatters={formatters}
 					className="w-full shrink-0 p-0"
 					classNames={{
@@ -860,6 +902,7 @@ function DateSelectorDayPicker({
 					numberOfMonths={isMobile ? 1 : showTwoMonths ? 2 : 1}
 					showOutsideDays={true}
 					weekStartsOn={weekStartsOn}
+					locale={locale}
 					formatters={formatters}
 					className="w-full shrink-0 p-0"
 					classNames={{
@@ -1050,9 +1093,14 @@ export function DateSelector({
 	dayDateFormats,
 	weekStartsOn,
 }: DateSelectorProps) {
+	const defaults = useContext(DateSelectorDefaultsContext);
 	const mergedI18n = useMemo(
-		() => ({ ...DEFAULT_DATE_SELECTOR_I18N, ...i18nOverride }),
-		[i18nOverride],
+		() => ({
+			...DEFAULT_DATE_SELECTOR_I18N,
+			...defaults.i18n,
+			...i18nOverride,
+		}),
+		[defaults.i18n, i18nOverride],
 	);
 
 	const selector = useDateSelector({
@@ -1211,7 +1259,12 @@ export function DateSelector({
 
 	return (
 		<DateSelectorContext.Provider
-			value={{ i18n: mergedI18n, variant: "outline", size: "default" }}
+			value={{
+				i18n: mergedI18n,
+				locale: defaults.locale,
+				variant: "outline",
+				size: "default",
+			}}
 		>
 			<div className={cn("w-full space-y-4 sm:w-[470px]", className)}>
 				{(label || showFilterToggle) && (

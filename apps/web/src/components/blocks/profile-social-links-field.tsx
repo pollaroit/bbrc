@@ -16,6 +16,7 @@ import {
 	SelectValue,
 } from "@bbrc/ui/components/select";
 import { Plus, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 /** `site` is empty until the user picks a platform. */
 export type SocialLinkDraft = {
@@ -41,6 +42,7 @@ export function ProfileSocialLinksField({
 	errors,
 	disabled,
 }: ProfileSocialLinksFieldProps) {
+	const t = useTranslations("settings.profileForm");
 	const usedSites = new Set(links.map((link) => link.site));
 	const canAdd = links.length < socialSites.length;
 
@@ -73,9 +75,9 @@ export function ProfileSocialLinksField({
 									<SelectTrigger
 										size="sm"
 										className="w-32 border-0 bg-transparent px-1 shadow-none"
-										aria-label="Social site"
+										aria-label={t("socialSiteLabel")}
 									>
-										<SelectValue placeholder="Choose site">
+										<SelectValue placeholder={t("chooseSite")}>
 											{site?.name}
 										</SelectValue>
 									</SelectTrigger>
@@ -93,8 +95,12 @@ export function ProfileSocialLinksField({
 								inputMode="url"
 								value={link.url}
 								disabled={disabled || !site}
-								placeholder={site?.example ?? "Choose a site first"}
-								aria-label={site ? `${site.name} profile URL` : "Profile URL"}
+								placeholder={site?.example ?? t("chooseSiteFirst")}
+								aria-label={
+									site
+										? t("siteProfileUrl", { site: site.name })
+										: t("profileUrl")
+								}
 								aria-invalid={error ? true : undefined}
 								onChange={(event) =>
 									update(link.id, { url: event.target.value })
@@ -104,7 +110,7 @@ export function ProfileSocialLinksField({
 								<InputGroupButton
 									type="button"
 									size="icon-xs"
-									aria-label="Remove social link"
+									aria-label={t("removeSocialLink")}
 									disabled={disabled}
 									onClick={() =>
 										onChange(links.filter((item) => item.id !== link.id))
@@ -129,7 +135,7 @@ export function ProfileSocialLinksField({
 					onClick={() => onChange([...links, newSocialLinkDraft()])}
 				>
 					<Plus data-icon="inline-start" aria-hidden />
-					Add social link
+					{t("addSocialLink")}
 				</Button>
 			) : null}
 		</div>

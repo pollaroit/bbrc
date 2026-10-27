@@ -12,6 +12,7 @@ import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import { MessageCircle } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EditionChip } from "@/components/blocks/edition-chip";
@@ -49,6 +50,7 @@ export function FeedbackReviewList({
 	emptyMessage,
 	impressionSource = "book_reviews",
 }: FeedbackReviewListProps) {
+	const t = useTranslations("books");
 	const router = useRouter();
 	const { data: session } = authClient.useSession();
 	const [deleteOpen, setDeleteOpen] = useState(false);
@@ -57,7 +59,7 @@ export function FeedbackReviewList({
 		orpc.feedback.delete.mutationOptions({
 			onSuccess: async () => {
 				setDeleteOpen(false);
-				toast.success("Feedback deleted.");
+				toast.success(t("feedback.deleted"));
 				await invalidateFeedbackQueries();
 				if (session?.user.username) {
 					await invalidateUserPointQueries();
@@ -102,7 +104,7 @@ export function FeedbackReviewList({
 						>
 							{isPendingSlug(entry.slug) ? (
 								<span className="absolute top-3 right-3 z-10 text-muted-foreground text-xs">
-									Posting…
+									{t("feedback.posting")}
 								</span>
 							) : null}
 							<TrackImpression
@@ -132,7 +134,7 @@ export function FeedbackReviewList({
 											<Link
 												href={feedbackHref}
 												className="absolute inset-0 z-0"
-												aria-label={`Open review by ${entry.name}`}
+												aria-label={t("feedback.openBy", { name: entry.name })}
 											/>
 											<div className="pointer-events-none relative z-[1] [&_*]:pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto">
 												{contentPlainText(entry.review).trim().length > 0 ? (
@@ -145,7 +147,7 @@ export function FeedbackReviewList({
 													/>
 												) : (
 													<p className="text-muted-foreground text-sm italic">
-														Rating only — no written review.
+														{t("feedback.ratingOnly")}
 													</p>
 												)}
 											</div>
@@ -181,7 +183,7 @@ export function FeedbackReviewList({
 											<ResourceShareMenu
 												path={`/books/${bookSlug}/feedbacks/${entry.slug}`}
 												shareText={shareSnippet(entry.review)}
-												label="Share review"
+												label={t("feedback.shareReview")}
 												shareInPost={{ kind: "feedback", slug: entry.slug }}
 											/>
 											<RemoveMyMentionMenu kind="review" slug={entry.slug} />
@@ -203,7 +205,7 @@ export function FeedbackReviewList({
 														loading={deleteMutation.isPending}
 														onClick={() => setDeleteOpen(true)}
 													>
-														Delete
+														{t("feedback.delete")}
 													</LoadingButton>
 												</>
 											) : null}
@@ -218,9 +220,9 @@ export function FeedbackReviewList({
 			<DestructiveConfirmDialog
 				open={deleteOpen}
 				onOpenChange={setDeleteOpen}
-				title="Delete feedback?"
-				description="Your review will be removed from this book’s club reviews. This cannot be undone."
-				confirmLabel="Delete feedback"
+				title={t("feedback.deleteTitle")}
+				description={t("feedback.deleteDescription")}
+				confirmLabel={t("feedback.deleteConfirm")}
 				loading={deleteMutation.isPending}
 				onConfirm={() => deleteMutation.mutate(bookSlug)}
 			/>

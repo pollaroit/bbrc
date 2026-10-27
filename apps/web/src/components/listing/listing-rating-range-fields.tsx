@@ -8,6 +8,7 @@ import {
 } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { Label } from "@bbrc/ui/components/label";
+import { useTranslations } from "next-intl";
 
 type ListingRatingRangeFieldsProps = {
 	min: number | null;
@@ -43,16 +44,17 @@ export function ListingRatingRangeFields({
 	minId = "listing-rating-min",
 	maxId = "listing-rating-max",
 	legend,
-	minLabel = "Minimum",
-	maxLabel = "Maximum",
+	minLabel,
+	maxLabel,
 	step = 0.1,
 }: ListingRatingRangeFieldsProps) {
+	const t = useTranslations("listing");
 	return (
 		<FieldSet className="gap-3">
 			{legend ? <FieldLegend>{legend}</FieldLegend> : null}
 			<FieldGroup className="grid grid-cols-2 gap-3">
 				<Field>
-					<Label htmlFor={minId}>{minLabel}</Label>
+					<Label htmlFor={minId}>{minLabel ?? t("range.minimum")}</Label>
 					<Input
 						id={minId}
 						type="number"
@@ -69,7 +71,7 @@ export function ListingRatingRangeFields({
 					/>
 				</Field>
 				<Field>
-					<Label htmlFor={maxId}>{maxLabel}</Label>
+					<Label htmlFor={maxId}>{maxLabel ?? t("range.maximum")}</Label>
 					<Input
 						id={maxId}
 						type="number"

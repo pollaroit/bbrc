@@ -4,6 +4,7 @@ import type {
 } from "@bbrc/api/modules/author/author.schema";
 import { Badge } from "@bbrc/ui/components/badge";
 import { ExternalLink } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { AuthorPageEmpty, AuthorPageSection } from "./author-page-bits";
 
 const EXCERPT_LENGTH = 380;
@@ -25,6 +26,7 @@ export function AuthorPageBio({
 	profile: AuthorProfile;
 	excerpt?: boolean;
 }) {
+	const t = useTranslations("authors");
 	if (!profile.bio) {
 		return null;
 	}
@@ -58,7 +60,7 @@ export function AuthorPageBio({
 					</span>
 				) : null}
 				{profile.bioSource === "ai" ? (
-					<Badge variant="outline">AI-assisted</Badge>
+					<Badge variant="outline">{t("about.aiAssisted")}</Badge>
 				) : null}
 			</p>
 		</div>
@@ -80,9 +82,14 @@ function Fact({
 	);
 }
 
-function dateLine(date: AuthorProfile["birth"]): string | null {
-	const parts = [date.text, date.place].filter(Boolean);
-	return parts.length > 0 ? parts.join(" in ") : null;
+function dateLine(
+	date: AuthorProfile["birth"],
+	t: ReturnType<typeof useTranslations<"authors">>,
+): string | null {
+	if (date.text && date.place) {
+		return t("about.dateAt", { date: date.text, place: date.place });
+	}
+	return date.text || date.place || null;
 }
 
 export function AuthorPageAboutPanel({
@@ -95,8 +102,9 @@ export function AuthorPageAboutPanel({
 	/** Extra content for the sources block (the admin notes island). */
 	children?: React.ReactNode;
 }) {
-	const born = dateLine(profile.birth);
-	const died = dateLine(profile.death);
+	const t = useTranslations("authors");
+	const born = dateLine(profile.birth, t);
+	const died = dateLine(profile.death, t);
 	const hasFacts =
 		born ||
 		died ||
@@ -108,48 +116,45 @@ export function AuthorPageAboutPanel({
 	return (
 		<div className="flex flex-col gap-8">
 			{profile.bio ? (
-				<AuthorPageSection title="Biography">
+				<AuthorPageSection title={t("about.biography")}>
 					<AuthorPageBio profile={profile} />
 				</AuthorPageSection>
 			) : (
-				<AuthorPageEmpty>
-					No biography yet. It is added automatically for new authors and can be
-					written by an admin.
-				</AuthorPageEmpty>
+				<AuthorPageEmpty>{t("about.noBio")}</AuthorPageEmpty>
 			)}
 
 			{hasFacts ? (
-				<AuthorPageSection title="Details">
+				<AuthorPageSection title={t("about.details")}>
 					<dl className="max-w-3xl border-border border-t">
-						{born ? <Fact label="Born">{born}</Fact> : null}
-						{died ? <Fact label="Died">{died}</Fact> : null}
+						{born ? <Fact label={t("about.born")}>{born}</Fact> : null}
+						{died ? <Fact label={t("about.died")}>{died}</Fact> : null}
 						{profile.age.text ? (
-							<Fact label="Age">{profile.age.text}</Fact>
+							<Fact label={t("about.age")}>{profile.age.text}</Fact>
 						) : null}
 						{profile.nationalities.length > 0 ? (
-							<Fact label="Nationality">
+							<Fact label={t("about.nationality")}>
 								{profile.nationalities.map((c) => c.name).join(", ")}
 							</Fact>
 						) : null}
 						{profile.gender ? (
-							<Fact label="Gender">
-								{profile.gender === "non_binary"
-									? "Non-binary"
-									: profile.gender[0]?.toUpperCase() + profile.gender.slice(1)}
+							<Fact label={t("about.gender")}>
+								{t(`hero.gender.${profile.gender}`)}
 							</Fact>
 						) : null}
 						{profile.aliases.length > 0 ? (
-							<Fact label="Also written as">{profile.aliases.join(", ")}</Fact>
+							<Fact label={t("about.alsoWrittenAs")}>
+								{profile.aliases.join(", ")}
+							</Fact>
 						) : null}
 						{profile.sortName ? (
-							<Fact label="Filed under">{profile.sortName}</Fact>
+							<Fact label={t("about.filedUnder")}>{profile.sortName}</Fact>
 						) : null}
 					</dl>
 				</AuthorPageSection>
 			) : null}
 
 			{profile.links.length > 0 ? (
-				<AuthorPageSection title="Elsewhere">
+				<AuthorPageSection title={t("about.elsewhere")}>
 					<ul className="flex flex-wrap gap-2">
 						{profile.links.map((link) => (
 							<li key={link.kind}>
@@ -164,7 +169,7 @@ export function AuthorPageAboutPanel({
 										className="size-3.5 text-muted-foreground"
 										aria-hidden
 									/>
-									<span className="sr-only">(opens another website)</span>
+									<span className="sr-only">{t("about.opensNewSite")}</span>
 								</a>
 							</li>
 						))}
@@ -173,16 +178,16 @@ export function AuthorPageAboutPanel({
 			) : null}
 
 			<AuthorPageSection
-				title="Where this comes from"
-				description="Details are gathered from open sources. Anything marked AI-assisted was written from those sources, never from memory."
+				title={t("about.sourcesTitle")}
+				description={t("about.sourcesDescription")}
 			>
 				<div className="flex max-w-3xl flex-col gap-3">
 					<p className="text-sm">
 						{about.verified
-							? "An admin has checked these details."
+							? t("about.verified")
 							: about.autoFilled
-								? "These details were filled in automatically and have not been checked by an admin yet."
-								: "These details have not been checked by an admin yet."}
+								? t("about.autoFilledUnchecked")
+								: t("about.unchecked")}
 					</p>
 
 					{about.sources.length > 0 ? (
@@ -195,9 +200,11 @@ export function AuthorPageAboutPanel({
 									<span>{entry.label}</span>
 									<span className="flex items-center gap-2 text-muted-foreground text-xs">
 										{entry.source === "ai" ? (
-											<Badge variant="outline">AI-assisted</Badge>
+											<Badge variant="outline">{t("about.aiAssisted")}</Badge>
 										) : entry.source === "admin" ? null : (
-											<Badge variant="outline">Filled in automatically</Badge>
+											<Badge variant="outline">
+												{t("about.filledAutomatically")}
+											</Badge>
 										)}
 										{entry.sourceLabel}
 									</span>
@@ -208,13 +215,18 @@ export function AuthorPageAboutPanel({
 
 					{about.credits.photo ? (
 						<p className="text-muted-foreground text-xs">
-							Photo
-							{about.credits.photo.credit
-								? ` by ${about.credits.photo.credit}`
-								: ""}
-							{about.credits.photo.license
-								? `, ${about.credits.photo.license}`
-								: ""}
+							{about.credits.photo.credit && about.credits.photo.license
+								? t("about.photoByLicense", {
+										credit: about.credits.photo.credit,
+										license: about.credits.photo.license,
+									})
+								: about.credits.photo.credit
+									? t("about.photoBy", { credit: about.credits.photo.credit })
+									: about.credits.photo.license
+										? t("about.photoLicense", {
+												license: about.credits.photo.license,
+											})
+										: t("about.photo")}
 							{about.credits.photo.sourceUrl ? (
 								<>
 									{" "}
@@ -224,7 +236,7 @@ export function AuthorPageAboutPanel({
 										rel="noreferrer noopener"
 										className="underline underline-offset-4 hover:text-foreground"
 									>
-										Source
+										{t("about.source")}
 									</a>
 								</>
 							) : null}

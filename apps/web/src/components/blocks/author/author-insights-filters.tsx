@@ -1,5 +1,6 @@
 "use client";
 
+import type { Formatters } from "@bbrc/i18n";
 import { Button } from "@bbrc/ui/components/button";
 import { Calendar } from "@bbrc/ui/components/calendar";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
@@ -28,8 +29,10 @@ import {
 	SelectTrigger,
 } from "@bbrc/ui/components/select";
 import { CalendarIcon, ChevronDown, Search, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 /**
@@ -62,7 +65,7 @@ export function InsightsFilterRow({
 export function InsightsSearch({
 	value,
 	onChange,
-	placeholder = "Search…",
+	placeholder,
 	label,
 	className,
 }: {
@@ -72,6 +75,7 @@ export function InsightsSearch({
 	label: string;
 	className?: string;
 }) {
+	const t = useTranslations("authors");
 	const [draft, setDraft] = useState(value);
 	const debounced = useDebouncedValue(draft, 300);
 	const lastSent = useRef(value);
@@ -95,7 +99,7 @@ export function InsightsSearch({
 			<InputGroupInput
 				type="search"
 				value={draft}
-				placeholder={placeholder}
+				placeholder={placeholder ?? t("insights.search")}
 				aria-label={label}
 				className="pl-8"
 				onChange={(event) => setDraft(event.target.value)}
@@ -176,7 +180,7 @@ export function InsightsMultiPicker({
 	onChange,
 	onSearch,
 	isLoading = false,
-	emptyText = "Nothing found.",
+	emptyText,
 	className,
 }: {
 	label: string;
@@ -189,6 +193,7 @@ export function InsightsMultiPicker({
 	emptyText?: string;
 	className?: string;
 }) {
+	const t = useTranslations("authors");
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const known = useRef(new Map<string, InsightsOption>());
@@ -261,7 +266,10 @@ export function InsightsMultiPicker({
 			<PopoverContent align="start" className="w-80 gap-0 p-0">
 				<Command shouldFilter={onSearch == null}>
 					<CommandInput
-						placeholder={searchPlaceholder ?? `Search ${label.toLowerCase()}…`}
+						placeholder={
+							searchPlaceholder ??
+							t("insights.searchLabel", { label: label.toLowerCase() })
+						}
 						value={query}
 						onValueChange={(next) => {
 							setQuery(next);
@@ -269,15 +277,21 @@ export function InsightsMultiPicker({
 						}}
 					/>
 					<CommandList>
-						<CommandEmpty>{isLoading ? "Searching…" : emptyText}</CommandEmpty>
+						<CommandEmpty>
+							{isLoading
+								? t("insights.searching")
+								: (emptyText ?? t("insights.nothingFound"))}
+						</CommandEmpty>
 						{selectedOptions.length > 0 ? (
-							<CommandGroup heading="Selected">
+							<CommandGroup heading={t("insights.selected")}>
 								{selectedOptions.map(row)}
 							</CommandGroup>
 						) : null}
 						{rest.length > 0 ? (
 							<CommandGroup
-								heading={selectedOptions.length > 0 ? "More" : undefined}
+								heading={
+									selectedOptions.length > 0 ? t("insights.more") : undefined
+								}
 							>
 								{rest.map(row)}
 							</CommandGroup>
@@ -292,7 +306,7 @@ export function InsightsMultiPicker({
 								className="w-full"
 								onClick={() => onChange([])}
 							>
-								Clear {label.toLowerCase()}
+								{t("insights.clearLabel", { label: label.toLowerCase() })}
 							</Button>
 						</div>
 					) : null}
@@ -354,15 +368,20 @@ export function rangeToQuery(range: InsightsDateRange): {
 }
 
 export type InsightsRangePreset = {
-	id: string;
-	label: string;
+	id: "30d" | "90d" | "year" | "last-year";
 	range: () => InsightsDateRange;
 };
+
+const PRESET_KEYS = {
+	"30d": "d30",
+	"90d": "d90",
+	year: "year",
+	"last-year": "lastYear",
+} as const;
 
 export const INSIGHTS_RANGE_PRESETS: readonly InsightsRangePreset[] = [
 	{
 		id: "30d",
-		label: "Last 30 days",
 		range: () => {
 			const now = new Date();
 			return {
@@ -373,7 +392,6 @@ export const INSIGHTS_RANGE_PRESETS: readonly InsightsRangePreset[] = [
 	},
 	{
 		id: "90d",
-		label: "Last 90 days",
 		range: () => {
 			const now = new Date();
 			return {
@@ -384,7 +402,6 @@ export const INSIGHTS_RANGE_PRESETS: readonly InsightsRangePreset[] = [
 	},
 	{
 		id: "year",
-		label: "This year",
 		range: () => {
 			const now = new Date();
 			return {
@@ -395,7 +412,6 @@ export const INSIGHTS_RANGE_PRESETS: readonly InsightsRangePreset[] = [
 	},
 	{
 		id: "last-year",
-		label: "Last year",
 		range: () => {
 			const year = new Date().getFullYear() - 1;
 			return {
@@ -406,23 +422,31 @@ export const INSIGHTS_RANGE_PRESETS: readonly InsightsRangePreset[] = [
 	},
 ];
 
-function formatDay(key: string) {
+type AuthorsT = ReturnType<typeof useTranslations<"authors">>;
+
+function formatDay(f: Formatters, key: string) {
 	const date = fromDayKey(key);
 	return date
-		? date.toLocaleDateString(undefined, {
-				day: "numeric",
-				month: "short",
-				year: "numeric",
-			})
+		? f.dateWith(date, { day: "numeric", month: "short", year: "numeric" })
 		: key;
 }
 
-export function describeRange(range: InsightsDateRange) {
+export function describeRange(
+	range: InsightsDateRange,
+	f: Formatters,
+	t: AuthorsT,
+) {
 	if (range.from && range.to) {
-		return `${formatDay(range.from)} – ${formatDay(range.to)}`;
+		return t("insights.rangeFromTo", {
+			from: formatDay(f, range.from),
+			to: formatDay(f, range.to),
+		});
 	}
-	if (range.from) return `From ${formatDay(range.from)}`;
-	if (range.to) return `Until ${formatDay(range.to)}`;
+	if (range.from) {
+		return t("insights.rangeFrom", { date: formatDay(f, range.from) });
+	}
+	if (range.to)
+		return t("insights.rangeUntil", { date: formatDay(f, range.to) });
 	return null;
 }
 
@@ -430,8 +454,8 @@ export function describeRange(range: InsightsDateRange) {
 export function InsightsRangePicker({
 	value,
 	onChange,
-	label = "Dates",
-	allTimeLabel = "All time",
+	label,
+	allTimeLabel,
 	className,
 }: {
 	value: InsightsDateRange;
@@ -440,6 +464,8 @@ export function InsightsRangePicker({
 	allTimeLabel?: string;
 	className?: string;
 }) {
+	const t = useTranslations("authors");
+	const f = useFormatters();
 	const [open, setOpen] = useState(false);
 	const from = value.from ? fromDayKey(value.from) : null;
 	const to = value.to ? fromDayKey(value.to) : null;
@@ -447,7 +473,8 @@ export function InsightsRangePicker({
 		| { from: Date | undefined; to?: Date | undefined }
 		| undefined =
 		from || to ? { from: from ?? undefined, to: to ?? undefined } : undefined;
-	const text = describeRange(value) ?? allTimeLabel;
+	const allTime = allTimeLabel ?? t("insights.allTime");
+	const text = describeRange(value, f, t) ?? allTime;
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -457,7 +484,10 @@ export function InsightsRangePicker({
 						type="button"
 						variant="outline"
 						size="sm"
-						aria-label={`${label}: ${text}`}
+						aria-label={t("insights.rangeLabel", {
+							label: label ?? t("insights.dates"),
+							text,
+						})}
 						className={cn("h-8 gap-1.5 bg-background", className)}
 					/>
 				}
@@ -480,7 +510,7 @@ export function InsightsRangePicker({
 									setOpen(false);
 								}}
 							>
-								{allTimeLabel}
+								{allTime}
 							</Button>
 						</li>
 						{INSIGHTS_RANGE_PRESETS.map((preset) => (
@@ -495,7 +525,7 @@ export function InsightsRangePicker({
 										setOpen(false);
 									}}
 								>
-									{preset.label}
+									{t(`insights.preset.${PRESET_KEYS[preset.id]}`)}
 								</Button>
 							</li>
 						))}
@@ -526,6 +556,7 @@ export function InsightsClearButton({
 	active: boolean;
 	onClear: () => void;
 }) {
+	const t = useTranslations("authors");
 	if (!active) return null;
 	return (
 		<Button
@@ -536,7 +567,7 @@ export function InsightsClearButton({
 			onClick={onClear}
 		>
 			<X className="size-3.5" aria-hidden />
-			Clear filters
+			{t("insights.clearFilters")}
 		</Button>
 	);
 }

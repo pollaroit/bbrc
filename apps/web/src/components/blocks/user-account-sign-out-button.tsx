@@ -2,6 +2,7 @@
 
 import { Button } from "@bbrc/ui/components/button";
 import { LogOut } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
@@ -19,6 +20,7 @@ export function UserAccountSignOutButton({
 	className,
 	compact = false,
 }: UserAccountSignOutButtonProps) {
+	const t = useTranslations("shell.header");
 	const [loading, setLoading] = useState(false);
 	const router = useRouter();
 
@@ -29,7 +31,7 @@ export function UserAccountSignOutButton({
 			onSignedOut?.();
 			router.refresh();
 		} catch {
-			toast.error("Failed to sign out");
+			toast.error(t("signOutFailed"));
 		} finally {
 			setLoading(false);
 		}
@@ -49,7 +51,7 @@ export function UserAccountSignOutButton({
 				onClick={handleSignOut}
 			>
 				<LogOut className="size-4" aria-hidden="true" />
-				Sign out
+				{t("signOut")}
 			</Button>
 		);
 	}
@@ -65,7 +67,7 @@ export function UserAccountSignOutButton({
 			onClick={handleSignOut}
 		>
 			<LogOut className="size-4 shrink-0" aria-hidden="true" />
-			Sign out
+			{t("signOut")}
 		</button>
 	);
 }

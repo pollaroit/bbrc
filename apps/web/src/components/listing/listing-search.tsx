@@ -6,6 +6,7 @@ import {
 	InputGroupInput,
 } from "@bbrc/ui/components/input-group";
 import { Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 type ListingSearchProps = {
@@ -18,15 +19,16 @@ type ListingSearchProps = {
 export function ListingSearch({
 	value,
 	onChange,
-	placeholder = "Search…",
+	placeholder,
 	className,
 }: ListingSearchProps) {
+	const t = useTranslations("listing");
 	return (
 		<InputGroup className={cn("relative min-w-0 flex-1", className)}>
 			<InputGroupInput
 				type="search"
 				value={value}
-				placeholder={placeholder}
+				placeholder={placeholder ?? t("search.placeholder")}
 				className="pl-8"
 				onChange={(event) => {
 					const next = event.target.value;

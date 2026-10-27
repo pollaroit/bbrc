@@ -20,7 +20,7 @@ import {
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation } from "@tanstack/react-query";
 import { RotateCcw } from "lucide-react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PreferencesSection } from "@/components/blocks/preferences-ui";
@@ -33,6 +33,7 @@ type Overrides = Record<string, string>;
 
 /** Saves or resets one rating's wording; the list updates at once and rolls back on a failure. */
 function useRatingDefinitionMutations(queryKey: readonly unknown[]) {
+	const t = useTranslations("preferences.ratingsEditor");
 	const patch = (rating: number, text: string | null) => {
 		const previous = queryClient.getQueryData<{ overrides: Overrides }>(
 			queryKey,
@@ -47,7 +48,7 @@ function useRatingDefinitionMutations(queryKey: readonly unknown[]) {
 		previous?: { overrides: Overrides } | undefined;
 	}) => {
 		queryClient.setQueryData(queryKey, context?.previous);
-		toast.error("Could not save that. Try again.");
+		toast.error(t("saveFailed"));
 	};
 	const settle = () => void queryClient.invalidateQueries({ queryKey });
 
@@ -91,6 +92,7 @@ function EditDialog({
 	onSave: (text: string) => void;
 	onReset: () => void;
 }) {
+	const t = useTranslations("preferences.ratingsEditor");
 	const [draft, setDraft] = useState(text);
 	const locale = useLocale();
 	const label = defaultRatingDefinition(rating, locale).label;
@@ -108,12 +110,9 @@ function EditDialog({
 			<DialogContent className="sm:max-w-lg">
 				<DialogHeader>
 					<DialogTitle>
-						{formatFeedbackRating(rating)} stars: {label}
+						{t("dialogTitle", { rating: formatFeedbackRating(rating), label })}
 					</DialogTitle>
-					<DialogDescription>
-						Write what this rating means to you. You will see it when you rate,
-						so your ratings stay consistent.
-					</DialogDescription>
+					<DialogDescription>{t("dialogDescription")}</DialogDescription>
 				</DialogHeader>
 				<div className="flex flex-col gap-1.5">
 					<Textarea
@@ -125,7 +124,9 @@ function EditDialog({
 						}
 						rows={7}
 						autoFocus
-						aria-label={`What ${formatFeedbackRating(rating)} stars means to you`}
+						aria-label={t("textareaLabel", {
+							rating: formatFeedbackRating(rating),
+						})}
 					/>
 					<p className="text-end text-muted-foreground text-xs tabular-nums">
 						{draft.length} / {RATING_DEFINITION_MAX_LENGTH}
@@ -142,7 +143,7 @@ function EditDialog({
 						}}
 					>
 						<RotateCcw data-icon="inline-start" aria-hidden />
-						Reset to default
+						{t("resetToDefault")}
 					</Button>
 					<div className="flex gap-2">
 						<Button
@@ -150,7 +151,7 @@ function EditDialog({
 							variant="outline"
 							onClick={() => onOpenChange(false)}
 						>
-							Cancel
+							{t("cancel")}
 						</Button>
 						<Button
 							type="button"
@@ -160,7 +161,7 @@ function EditDialog({
 								onOpenChange(false);
 							}}
 						>
-							Save
+							{t("save")}
 						</Button>
 					</div>
 				</DialogFooter>
@@ -182,6 +183,7 @@ function Row({
 	onSave: (rating: number, text: string) => void;
 	onReset: (rating: number) => void;
 }) {
+	const t = useTranslations("preferences.ratingsEditor");
 	const locale = useLocale();
 	const [open, setOpen] = useState(false);
 	const definition = resolveRatingDefinition(rating, overrides, locale);
@@ -194,7 +196,7 @@ function Row({
 					<span className="font-semibold">{definition.label}</span>
 					{definition.custom ? (
 						<span className="border border-border px-1 text-2xs text-muted-foreground">
-							Your wording
+							{t("yourWording")}
 						</span>
 					) : null}
 				</p>
@@ -214,7 +216,7 @@ function Row({
 						variant="outline"
 						onClick={() => setOpen(true)}
 					>
-						Edit
+						{t("edit")}
 					</Button>
 					{definition.custom ? (
 						<Button
@@ -222,11 +224,13 @@ function Row({
 							size="sm"
 							variant="ghost"
 							onClick={() => onReset(rating)}
-							aria-label={`Reset ${formatFeedbackRating(rating)} stars to the default`}
-							title="Reset to default"
+							aria-label={t("resetLabel", {
+								rating: formatFeedbackRating(rating),
+							})}
+							title={t("resetToDefault")}
 						>
 							<RotateCcw data-icon="inline-start" aria-hidden />
-							Reset
+							{t("reset")}
 						</Button>
 					) : null}
 				</div>
@@ -248,17 +252,16 @@ function Row({
 
 /** Preferences: what each rating means to this member (the default text until they change it). */
 export function RatingDefinitionsSection() {
+	const t = useTranslations("preferences.ratingsEditor");
 	const { signedIn, overrides, queryKey } = useRatingDefinitions();
 	const { set, reset } = useRatingDefinitionMutations(queryKey);
 
 	return (
 		<PreferencesSection
 			id="ratings"
-			title="Rating definitions"
+			title={t("title")}
 			description={
-				signedIn
-					? "What each rating means to you. These are shown when you rate, so you can judge every book by the same yardstick. Change any of them, or reset one to the default."
-					: "What each rating means. Sign in to write your own wording for any of them."
+				signedIn ? t("descriptionSignedIn") : t("descriptionSignedOut")
 			}
 		>
 			<ol className="flex flex-col divide-y divide-border">

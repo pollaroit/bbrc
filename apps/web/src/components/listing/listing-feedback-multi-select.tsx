@@ -14,6 +14,7 @@ import { Input } from "@bbrc/ui/components/input";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
@@ -33,10 +34,12 @@ type ListingFeedbackMultiSelectProps = {
 };
 
 export function ListingFeedbackMultiSelect({
-	legend = "Feedbacks",
+	legend: legendProp,
 	selectedSlugs,
 	onSelectedSlugsChange,
 }: ListingFeedbackMultiSelectProps) {
+	const t = useTranslations("listing");
+	const legend = legendProp ?? t("multi.feedbacks.legend");
 	const f = useFormatters();
 	const [search, setSearch] = useState("");
 
@@ -73,9 +76,9 @@ export function ListingFeedbackMultiSelect({
 					<Input
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
-						placeholder="Search by review, book, author, or slug…"
+						placeholder={t("multi.feedbacks.placeholder")}
 						className="w-full min-w-0 pl-9"
-						aria-label="Search feedbacks in list"
+						aria-label={t("multi.feedbacks.aria")}
 					/>
 				</div>
 			</Field>
@@ -99,7 +102,7 @@ export function ListingFeedbackMultiSelect({
 						size="sm"
 						onClick={() => onSelectedSlugsChange([])}
 					>
-						Clear all
+						{t("multi.clearAll")}
 					</Button>
 				</div>
 			) : null}
@@ -115,7 +118,7 @@ export function ListingFeedbackMultiSelect({
 					</p>
 				) : visibleFeedbacks.length === 0 ? (
 					<p className="p-3 text-muted-foreground text-sm">
-						No feedbacks match. Try book title, review text, or @username.
+						{t("multi.feedbacks.none")}
 					</p>
 				) : (
 					<ul className="min-w-0 max-w-full divide-y divide-border">

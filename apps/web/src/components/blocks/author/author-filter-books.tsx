@@ -1,5 +1,6 @@
 "use client";
 
+import { type Locale, regionName } from "@bbrc/i18n";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
@@ -9,6 +10,7 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@bbrc/ui/components/toggle-group";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import type { AuthorFilterChip } from "@/components/blocks/author/author-filter-bar";
 import { ListingIntegerRangeFields } from "@/components/listing/listing-integer-range-fields";
@@ -40,6 +42,7 @@ export function AuthorFilterFacetList({
 	searchPlaceholder: string;
 	emptyText: string;
 }) {
+	const t = useTranslations("authors");
 	const [search, setSearch] = useState("");
 
 	// A pick stays listed even when other filters leave it with no books.
@@ -68,7 +71,7 @@ export function AuthorFilterFacetList({
 						size="xs"
 						onClick={() => onChange([])}
 					>
-						Clear ({selected.length})
+						{t("filters.clearCount", { count: selected.length })}
 					</Button>
 				) : null}
 			</div>
@@ -79,7 +82,7 @@ export function AuthorFilterFacetList({
 					onChange={(event) => setSearch(event.target.value)}
 					placeholder={searchPlaceholder}
 					className="pl-9"
-					aria-label={`Search ${label.toLowerCase()}`}
+					aria-label={t("filters.search", { label: label.toLowerCase() })}
 				/>
 			</div>
 			<ScrollArea className="max-h-44 border border-border">
@@ -148,6 +151,7 @@ export function AuthorFilterBooks({
 	setParams,
 	idPrefix = "author-books",
 }: AuthorFilterBooksProps) {
+	const t = useTranslations("authors");
 	const facetsQuery = useQuery(
 		orpc.author.bookFacets.queryOptions({
 			input: toAuthorBookFacetsInput(slug, params),
@@ -162,9 +166,9 @@ export function AuthorFilterBooks({
 		<div className="flex flex-col gap-5">
 			<div className="flex flex-col gap-2">
 				<AuthorFilterFacetList
-					label="Subjects"
-					searchPlaceholder="Search subjects…"
-					emptyText="No subjects to choose from."
+					label={t("filters.subjects")}
+					searchPlaceholder={t("filters.searchSubjects")}
+					emptyText={t("filters.noSubjects")}
 					isPending={facetsQuery.isPending}
 					rows={(facets?.subjects ?? []).map((subject) => ({
 						value: subject.slug,
@@ -191,18 +195,22 @@ export function AuthorFilterBooks({
 						}}
 						variant="outline"
 						size="sm"
-						aria-label="How subjects match"
+						aria-label={t("filters.subjectsMatch")}
 					>
-						<ToggleGroupItem value="any">Any subject</ToggleGroupItem>
-						<ToggleGroupItem value="all">All subjects</ToggleGroupItem>
+						<ToggleGroupItem value="any">
+							{t("filters.anySubject")}
+						</ToggleGroupItem>
+						<ToggleGroupItem value="all">
+							{t("filters.allSubjects")}
+						</ToggleGroupItem>
 					</ToggleGroup>
 				) : null}
 			</div>
 
 			<AuthorFilterFacetList
-				label="Literary origin"
-				searchPlaceholder="Search countries…"
-				emptyText="No countries to choose from."
+				label={t("filters.origin")}
+				searchPlaceholder={t("filters.searchCountries")}
+				emptyText={t("filters.noCountries")}
 				isPending={facetsQuery.isPending}
 				rows={(facets?.countries ?? []).map((country) => ({
 					value: country.alpha2,
@@ -216,7 +224,7 @@ export function AuthorFilterBooks({
 			/>
 
 			<ListingIntegerRangeFields
-				legend="Page count"
+				legend={t("filters.pageCount")}
 				minId={`${idPrefix}-min-pages`}
 				maxId={`${idPrefix}-max-pages`}
 				min={params.minPages}
@@ -236,7 +244,7 @@ export function AuthorFilterBooks({
 			/>
 
 			<ListingIntegerRangeFields
-				legend="First published (year)"
+				legend={t("filters.firstPublished")}
 				minId={`${idPrefix}-min-published`}
 				maxId={`${idPrefix}-max-published`}
 				inputMin={0}
@@ -261,7 +269,7 @@ export function AuthorFilterBooks({
 			/>
 
 			<ListingRatingRangeFields
-				legend="Club rating of the book"
+				legend={t("filters.clubRating")}
 				minId={`${idPrefix}-min-club-rating`}
 				maxId={`${idPrefix}-max-club-rating`}
 				min={params.minAverageRating}
@@ -277,27 +285,28 @@ export function AuthorFilterBooks({
 	);
 }
 
-const regionNames =
-	typeof Intl !== "undefined" && "DisplayNames" in Intl
-		? new Intl.DisplayNames(["en"], { type: "region" })
-		: null;
+type AuthorsT = ReturnType<typeof useTranslations<"authors">>;
 
 function rangeLabel(
+	t: AuthorsT,
 	name: string,
 	min: number | null,
 	max: number | null,
-	unit = "",
 ) {
-	if (min != null && max != null) return `${name} ${min}–${max}${unit}`;
-	if (min != null) return `${name} ${min}+${unit}`;
-	return `${name} up to ${max}${unit}`;
+	if (min != null && max != null) {
+		return t("filters.rangeBetween", { name, min, max });
+	}
+	if (min != null) return t("filters.rangeMin", { name, min });
+	return t("filters.rangeMax", { name, max: max ?? 0 });
 }
 
 /** One removable chip per active book filter, for the strip under the search box. */
-export function authorBookFilterChips(
+export function useAuthorBookFilterChips(
 	params: AuthorBookFilterParams,
 	setParams: AuthorBookFilterSetter,
 ): AuthorFilterChip[] {
+	const t = useTranslations("authors");
+	const locale = useLocale() as Locale;
 	const chips: AuthorFilterChip[] = [];
 
 	for (const slug of params.subjects ?? []) {
@@ -317,7 +326,7 @@ export function authorBookFilterChips(
 	for (const code of params.countries ?? []) {
 		chips.push({
 			id: `country:${code}`,
-			label: regionNames?.of(code.toUpperCase()) ?? code,
+			label: regionName(locale, code) ?? code,
 			onRemove: () => {
 				const next = (params.countries ?? []).filter((item) => item !== code);
 				void setParams({ countries: next.length > 0 ? next : null });
@@ -328,7 +337,12 @@ export function authorBookFilterChips(
 	if (params.minPages != null || params.maxPages != null) {
 		chips.push({
 			id: "pages",
-			label: rangeLabel("Pages", params.minPages, params.maxPages),
+			label: rangeLabel(
+				t,
+				t("filters.chipPages"),
+				params.minPages,
+				params.maxPages,
+			),
 			onRemove: () => void setParams({ minPages: null, maxPages: null }),
 		});
 	}
@@ -337,7 +351,8 @@ export function authorBookFilterChips(
 		chips.push({
 			id: "published",
 			label: rangeLabel(
-				"Published",
+				t,
+				t("filters.chipPublished"),
 				params.minPublishedIn,
 				params.maxPublishedIn,
 			),
@@ -350,7 +365,8 @@ export function authorBookFilterChips(
 		chips.push({
 			id: "club-rating",
 			label: rangeLabel(
-				"Club rating",
+				t,
+				t("filters.chipClubRating"),
 				params.minAverageRating,
 				params.maxAverageRating,
 			),

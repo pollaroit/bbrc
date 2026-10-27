@@ -33,3 +33,9 @@ export function isLocale(value: unknown): value is Locale {
 export function toLocale(value: unknown): Locale {
 	return isLocale(value) ? value : DEFAULT_LOCALE;
 }
+
+/** The `og:locale` value of each language (language_TERRITORY). */
+export const LOCALE_OG_TAGS: Record<Locale, string> = {
+	en: "en_US",
+	az: "az_AZ",
+};

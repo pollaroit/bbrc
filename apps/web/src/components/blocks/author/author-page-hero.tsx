@@ -1,6 +1,7 @@
 import type { AuthorGetOutput } from "@bbrc/api/modules/author/author.schema";
 import { Badge } from "@bbrc/ui/components/badge";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { CountryFlagIcon } from "@/components/blocks/country-dropdown";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { Link } from "@/i18n/navigation";
@@ -13,13 +14,6 @@ import { useFormatters } from "@/lib/i18n/use-formatters";
 import { AuthorPageAdminBar } from "./author-page-admin-bar";
 import { AuthorPhoto } from "./author-photo";
 import { FollowAuthorButton } from "./follow-author-button";
-
-const GENDER_LABEL = {
-	female: "Woman",
-	male: "Man",
-	non_binary: "Non-binary",
-	other: "Other",
-} as const;
 
 function Figure({
 	value,
@@ -53,12 +47,13 @@ function Figure({
  */
 export function AuthorPageHero({ author }: { author: AuthorGetOutput }) {
 	const f = useFormatters();
+	const t = useTranslations("authors");
 	const { profile, numbers } = author;
 	const bornAt = profile.birth.place;
 	const diedAt = profile.death.place;
 	const places =
 		bornAt && diedAt && bornAt !== diedAt
-			? `${bornAt} to ${diedAt}`
+			? t("hero.placesRange", { from: bornAt, to: diedAt })
 			: (bornAt ?? diedAt);
 
 	const slug = profile.slug;
@@ -99,7 +94,7 @@ export function AuthorPageHero({ author }: { author: AuthorGetOutput }) {
 
 				<div className="flex min-w-0 flex-1 flex-col gap-3">
 					<div className="flex flex-col gap-1">
-						<p className="text-muted-foreground text-sm">Author</p>
+						<p className="text-muted-foreground text-sm">{t("hero.author")}</p>
 						<h1 className="text-balance font-bold text-2xl tracking-tight sm:text-4xl">
 							{profile.name}
 						</h1>
@@ -114,7 +109,10 @@ export function AuthorPageHero({ author }: { author: AuthorGetOutput }) {
 					</div>
 
 					{profile.nationalities.length > 0 || profile.gender ? (
-						<ul className="flex flex-wrap gap-1.5" aria-label="Nationality">
+						<ul
+							className="flex flex-wrap gap-1.5"
+							aria-label={t("hero.nationality")}
+						>
 							{profile.nationalities.map((country) => (
 								<li key={country.code}>
 									<Badge variant="outline" className="gap-1.5">
@@ -126,7 +124,7 @@ export function AuthorPageHero({ author }: { author: AuthorGetOutput }) {
 							{profile.gender ? (
 								<li>
 									<Badge variant="outline">
-										{GENDER_LABEL[profile.gender]}
+										{t(`hero.gender.${profile.gender}`)}
 									</Badge>
 								</li>
 							) : null}
@@ -153,27 +151,27 @@ export function AuthorPageHero({ author }: { author: AuthorGetOutput }) {
 
 			<ul
 				className="grid grid-cols-3 divide-x divide-y divide-border border border-border sm:grid-cols-6 sm:divide-y-0"
-				aria-label="The club's numbers for this author"
+				aria-label={t("hero.figuresLabel")}
 			>
 				<Figure
 					href={tab("books")}
 					value={f.compact(numbers.bookCount)}
-					label={numbers.bookCount === 1 ? "book" : "books"}
+					label={t("hero.books", { count: numbers.bookCount })}
 				/>
 				<Figure
 					href={tab("reads")}
 					value={f.compact(numbers.readerCount)}
-					label={numbers.readerCount === 1 ? "reader" : "readers"}
+					label={t("hero.readers", { count: numbers.readerCount })}
 				/>
 				<Figure
 					href={tab("reads")}
 					value={f.compact(numbers.readCount)}
-					label={numbers.readCount === 1 ? "read" : "reads"}
+					label={t("hero.reads", { count: numbers.readCount })}
 				/>
 				<Figure
 					href={tab("reviews")}
 					value={f.compact(numbers.reviewCount)}
-					label={numbers.reviewCount === 1 ? "review" : "reviews"}
+					label={t("hero.reviews", { count: numbers.reviewCount })}
 				/>
 				<Figure
 					href={tab("stats")}
@@ -182,12 +180,12 @@ export function AuthorPageHero({ author }: { author: AuthorGetOutput }) {
 							? f.decimal(numbers.averageRating, 1)
 							: "–"
 					}
-					label="average rating"
+					label={t("hero.averageRating")}
 				/>
 				<Figure
 					href={tab("followers")}
 					value={f.compact(numbers.followerCount)}
-					label={numbers.followerCount === 1 ? "follower" : "followers"}
+					label={t("hero.followers", { count: numbers.followerCount })}
 				/>
 			</ul>
 		</header>
@@ -203,6 +201,7 @@ function Actions({
 	name: string;
 	followerCount: number;
 }) {
+	const t = useTranslations("authors");
 	return (
 		<>
 			<FollowAuthorButton
@@ -212,7 +211,7 @@ function Actions({
 			<ResourceShareMenu
 				path={`/authors/${slug}`}
 				shareText={name}
-				label="Share author"
+				label={t("hero.share")}
 				shareInPost={{ kind: "author", slug }}
 				size="md"
 				iconOnly

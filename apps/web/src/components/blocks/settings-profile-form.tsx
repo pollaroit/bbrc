@@ -29,6 +29,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@bbrc/ui/components/radio-group";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { CalendarIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { ProfileBirthDatePicker } from "@/components/blocks/profile-birth-date-picker";
@@ -70,11 +71,9 @@ type Draft = {
 	wpm: number;
 };
 
-const genderOptions: { value: Gender; label: string }[] = [
-	{ value: "male", label: "Male" },
-	{ value: "female", label: "Female" },
-	{ value: "not_specified", label: "Prefer not to say" },
-];
+const genderOptions: Gender[] = ["male", "female", "not_specified"];
+
+type ProfileT = ReturnType<typeof useTranslations<"settings.profileForm">>;
 
 // Birth dates are stored as UTC midnight; the calendar works in local time.
 const utcToLocalDate = (date: Date) =>
@@ -124,13 +123,16 @@ type Errors = {
 	socialLinks: Record<string, string>;
 };
 
-function validate(draft: Draft): Errors {
+function validate(draft: Draft, t: ProfileT): Errors {
 	const errors: Errors = { socialLinks: {} };
 
 	if (draft.dateOfBirth) {
 		const { earliest, latest } = getBirthDateBounds();
 		if (draft.dateOfBirth < earliest || draft.dateOfBirth > latest) {
-			errors.dateOfBirth = `You must be between ${MIN_USER_AGE} and ${MAX_USER_AGE} years old.`;
+			errors.dateOfBirth = t("ageRange", {
+				min: MIN_USER_AGE,
+				max: MAX_USER_AGE,
+			});
 		}
 	}
 
@@ -139,25 +141,26 @@ function validate(draft: Draft): Errors {
 		try {
 			if (new URL(website).protocol !== "https:") throw new Error();
 		} catch {
-			errors.websiteUrl = "Enter a valid URL that starts with https://";
+			errors.websiteUrl = t("websiteInvalid");
 		}
 	}
 
 	if (contentPlainText(draft.bio).length > PROFILE_BIO_MAX_PLAIN_CHARS) {
-		errors.bio = `Bio can be at most ${PROFILE_BIO_MAX_PLAIN_CHARS} characters.`;
+		errors.bio = t("bioTooLong", { max: PROFILE_BIO_MAX_PLAIN_CHARS });
 	}
 
 	for (const link of draft.socialLinks) {
 		const site = socialSites.find((item) => item.slug === link.site);
 		const url = link.url.trim();
 		if (!site) {
-			errors.socialLinks[link.id] = "Choose a site, or remove this link.";
+			errors.socialLinks[link.id] = t("socialChooseSite");
 		} else if (!url) {
-			errors.socialLinks[link.id] =
-				`Enter your ${site.name} URL, or remove this link.`;
+			errors.socialLinks[link.id] = t("socialEnterUrl", { site: site.name });
 		} else if (!site.regex.test(url)) {
-			errors.socialLinks[link.id] =
-				`Use a ${site.name} profile URL, like ${site.example}`;
+			errors.socialLinks[link.id] = t("socialWrongUrl", {
+				site: site.name,
+				example: site.example,
+			});
 		}
 	}
 
@@ -196,6 +199,7 @@ function Section({
 }
 
 function ProfileForm({ initial }: { initial: Profile }) {
+	const t = useTranslations("settings.profileForm");
 	const f = useFormatters();
 	const ids = {
 		dob: useId(),
@@ -210,7 +214,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 	const [wpmOpen, setWpmOpen] = useState(false);
 	const [bioPreview, setBioPreview] = useState(false);
 
-	const errors = validate(draft);
+	const errors = validate(draft, t);
 	const visibleErrors: Errors = showErrors ? errors : { socialLinks: {} };
 
 	const payload = payloadFromDraft(draft);
@@ -223,10 +227,10 @@ function ProfileForm({ initial }: { initial: Profile }) {
 			onSuccess: (result) => {
 				queryClient.setQueryData(orpc.user.getMyProfile.queryKey(), result);
 				setShowErrors(false);
-				toast.success("Profile saved");
+				toast.success(t("saved"));
 			},
 			onError: (error) => {
-				toast.error(error.message ?? "Could not save profile");
+				toast.error(error.message ?? t("saveFailed"));
 			},
 		}),
 	);
@@ -250,16 +254,16 @@ function ProfileForm({ initial }: { initial: Profile }) {
 				event.preventDefault();
 				if (hasErrors(errors)) {
 					setShowErrors(true);
-					toast.error("Fix the highlighted fields to save.");
+					toast.error(t("fixFields"));
 					return;
 				}
 				if (pristine || saveMutation.isPending) return;
 				saveMutation.mutate(payload);
 			}}
 		>
-			<Section title="About you">
+			<Section title={t("aboutYou")}>
 				<Field data-invalid={visibleErrors.dateOfBirth ? true : undefined}>
-					<FieldLabel htmlFor={ids.dob}>Date of birth</FieldLabel>
+					<FieldLabel htmlFor={ids.dob}>{t("dateOfBirth")}</FieldLabel>
 					<Popover open={dobOpen} onOpenChange={setDobOpen}>
 						<PopoverTrigger
 							render={
@@ -278,7 +282,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 							<CalendarIcon data-icon="inline-start" aria-hidden />
 							{selectedDob
 								? f.dateWith(selectedDob, { dateStyle: "long" })
-								: "Pick a date"}
+								: t("pickDate")}
 						</PopoverTrigger>
 						<PopoverContent className="w-auto p-0" align="start">
 							<ProfileBirthDatePicker
@@ -293,7 +297,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 						</PopoverContent>
 					</Popover>
 					<FieldDescription>
-						You must be between {MIN_USER_AGE} and {MAX_USER_AGE} years old.
+						{t("ageRange", { min: MIN_USER_AGE, max: MAX_USER_AGE })}
 					</FieldDescription>
 					{visibleErrors.dateOfBirth ? (
 						<p className="text-destructive text-sm">
@@ -303,22 +307,19 @@ function ProfileForm({ initial }: { initial: Profile }) {
 				</Field>
 
 				<fieldset className="flex flex-col gap-2">
-					<legend className="font-medium text-sm">Gender</legend>
+					<legend className="font-medium text-sm">{t("gender")}</legend>
 					<RadioGroup
 						value={draft.gender}
 						onValueChange={(value) => patch({ gender: value as Gender })}
 						className="grid-cols-1 sm:grid-cols-3"
 					>
-						{genderOptions.map((option) => (
-							<FieldLabel key={option.value} htmlFor={`gender-${option.value}`}>
+						{genderOptions.map((value) => (
+							<FieldLabel key={value} htmlFor={`gender-${value}`}>
 								<Field orientation="horizontal">
 									<FieldContent>
-										<FieldTitle>{option.label}</FieldTitle>
+										<FieldTitle>{t(`genders.${value}`)}</FieldTitle>
 									</FieldContent>
-									<RadioGroupItem
-										id={`gender-${option.value}`}
-										value={option.value}
-									/>
+									<RadioGroupItem id={`gender-${value}`} value={value} />
 								</Field>
 							</FieldLabel>
 						))}
@@ -326,11 +327,11 @@ function ProfileForm({ initial }: { initial: Profile }) {
 				</fieldset>
 
 				<Field>
-					<FieldLabel htmlFor={ids.location}>Location</FieldLabel>
+					<FieldLabel htmlFor={ids.location}>{t("location")}</FieldLabel>
 					<Input
 						id={ids.location}
 						autoComplete="address-level2"
-						placeholder="City, Country"
+						placeholder={t("locationPlaceholder")}
 						maxLength={PROFILE_LOCATION_MAX_CHARS}
 						value={draft.location}
 						onChange={(event) => patch({ location: event.target.value })}
@@ -339,7 +340,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 
 				<Field data-invalid={visibleErrors.bio ? true : undefined}>
 					<div className="flex items-center justify-between">
-						<FieldLabel htmlFor={ids.bio}>Bio</FieldLabel>
+						<FieldLabel htmlFor={ids.bio}>{t("bio")}</FieldLabel>
 						<div className="flex gap-1">
 							<Button
 								type="button"
@@ -348,7 +349,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 								aria-pressed={!bioPreview}
 								onClick={() => setBioPreview(false)}
 							>
-								Write
+								{t("write")}
 							</Button>
 							<Button
 								type="button"
@@ -357,7 +358,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 								aria-pressed={bioPreview}
 								onClick={() => setBioPreview(true)}
 							>
-								Preview
+								{t("preview")}
 							</Button>
 						</div>
 					</div>
@@ -368,7 +369,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 							enableMentions={false}
 							value={draft.bio}
 							onChange={(bio) => patch({ bio })}
-							placeholder="Tell other readers a little about yourself…"
+							placeholder={t("bioPlaceholder")}
 							maxPlainLength={PROFILE_BIO_MAX_PLAIN_CHARS}
 						/>
 					</div>
@@ -378,7 +379,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 								<RichContentView content={draft.bio} className="text-sm" />
 							) : (
 								<p className="text-muted-foreground text-sm">
-									Nothing to preview yet.
+									{t("nothingToPreview")}
 								</p>
 							)}
 						</div>
@@ -390,8 +391,8 @@ function ProfileForm({ initial }: { initial: Profile }) {
 			</Section>
 
 			<Section
-				title="Favorite genres"
-				description="Pick the genres you love, then narrow them down with subgenres."
+				title={t("favoriteGenres")}
+				description={t("favoriteGenresHelp")}
 			>
 				<ProfileGenrePicker
 					genreSlugs={draft.favoriteGenres}
@@ -402,9 +403,9 @@ function ProfileForm({ initial }: { initial: Profile }) {
 				/>
 			</Section>
 
-			<Section title="Links">
+			<Section title={t("links")}>
 				<Field data-invalid={visibleErrors.websiteUrl ? true : undefined}>
-					<FieldLabel htmlFor={ids.website}>Website</FieldLabel>
+					<FieldLabel htmlFor={ids.website}>{t("website")}</FieldLabel>
 					<Input
 						id={ids.website}
 						type="url"
@@ -424,7 +425,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 				</Field>
 
 				<div className="flex flex-col gap-2">
-					<p className="font-medium text-sm">Social links</p>
+					<p className="font-medium text-sm">{t("socialLinks")}</p>
 					<ProfileSocialLinksField
 						links={draft.socialLinks}
 						onChange={(socialLinks) => patch({ socialLinks })}
@@ -433,17 +434,14 @@ function ProfileForm({ initial }: { initial: Profile }) {
 				</div>
 			</Section>
 
-			<Section
-				title="Reading speed"
-				description="Used to estimate how long a book takes you to finish."
-			>
+			<Section title={t("readingSpeed")} description={t("readingSpeedHelp")}>
 				<div className="flex items-center justify-between gap-4">
 					<p>
 						<span className="font-semibold text-3xl tabular-nums">
 							{draft.wpm}
 						</span>{" "}
 						<span className="text-muted-foreground text-sm">
-							words per minute
+							{t("wordsPerMinute")}
 						</span>
 					</p>
 					<Button
@@ -451,7 +449,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 						variant="outline"
 						onClick={() => setWpmOpen(true)}
 					>
-						Set new WPM
+						{t("setWpm")}
 					</Button>
 				</div>
 				<ProfileWpmDialog
@@ -463,7 +461,7 @@ function ProfileForm({ initial }: { initial: Profile }) {
 
 			<div className="flex flex-col gap-3 border-border border-t pt-4 md:sticky md:bottom-0 md:z-10 md:-mx-1 md:flex-row md:items-center md:justify-between md:bg-background/95 md:px-1 md:py-3 md:backdrop-blur">
 				<p className="text-muted-foreground text-sm">
-					{pristine ? "No unsaved changes" : "You have unsaved changes"}
+					{pristine ? t("noChanges") : t("unsavedChanges")}
 				</p>
 				<div className="grid grid-cols-2 gap-2 md:flex">
 					<Button
@@ -475,14 +473,14 @@ function ProfileForm({ initial }: { initial: Profile }) {
 							setShowErrors(false);
 						}}
 					>
-						Discard
+						{t("discard")}
 					</Button>
 					<LoadingButton
 						type="submit"
 						loading={saveMutation.isPending}
 						disabled={pristine}
 					>
-						Save changes
+						{t("saveChanges")}
 					</LoadingButton>
 				</div>
 			</div>
@@ -491,18 +489,19 @@ function ProfileForm({ initial }: { initial: Profile }) {
 }
 
 export function SettingsProfileForm() {
+	const t = useTranslations("settings.profileForm");
 	const { data, isPending, isError, error } = useQuery(
 		orpc.user.getMyProfile.queryOptions({ refetchOnWindowFocus: false }),
 	);
 
 	if (isPending) {
-		return <p className="text-muted-foreground text-sm">Loading profile…</p>;
+		return <p className="text-muted-foreground text-sm">{t("loading")}</p>;
 	}
 
 	if (isError || !data) {
 		return (
 			<p className="text-destructive text-sm">
-				{error?.message ?? "Could not load your profile."}
+				{error?.message ?? t("loadFailed")}
 			</p>
 		);
 	}

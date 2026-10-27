@@ -8,6 +8,7 @@ import {
 } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { Label } from "@bbrc/ui/components/label";
+import { useTranslations } from "next-intl";
 
 type ListingIntegerRangeFieldsProps = {
 	min: number | null;
@@ -45,25 +46,26 @@ export function ListingIntegerRangeFields({
 	minId = "listing-int-min",
 	maxId = "listing-int-max",
 	legend,
-	minLabel = "Minimum",
-	maxLabel = "Maximum",
+	minLabel,
+	maxLabel,
 	inputMin = 1,
-	placeholderMin = "Min",
-	placeholderMax = "Max",
+	placeholderMin,
+	placeholderMax,
 }: ListingIntegerRangeFieldsProps) {
+	const t = useTranslations("listing");
 	return (
 		<FieldSet className="gap-3">
 			{legend ? <FieldLegend>{legend}</FieldLegend> : null}
 			<FieldGroup className="grid grid-cols-2 gap-3">
 				<Field>
-					<Label htmlFor={minId}>{minLabel}</Label>
+					<Label htmlFor={minId}>{minLabel ?? t("range.minimum")}</Label>
 					<Input
 						id={minId}
 						type="number"
 						min={inputMin}
 						step={1}
 						inputMode="numeric"
-						placeholder={placeholderMin}
+						placeholder={placeholderMin ?? t("range.min")}
 						className="bg-background"
 						value={min ?? ""}
 						onChange={(event) => {
@@ -72,14 +74,14 @@ export function ListingIntegerRangeFields({
 					/>
 				</Field>
 				<Field>
-					<Label htmlFor={maxId}>{maxLabel}</Label>
+					<Label htmlFor={maxId}>{maxLabel ?? t("range.maximum")}</Label>
 					<Input
 						id={maxId}
 						type="number"
 						min={inputMin}
 						step={1}
 						inputMode="numeric"
-						placeholder={placeholderMax}
+						placeholder={placeholderMax ?? t("range.max")}
 						className="bg-background"
 						value={max ?? ""}
 						onChange={(event) => {

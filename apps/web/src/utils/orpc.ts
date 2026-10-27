@@ -1,4 +1,5 @@
 import type { AppRouterClient } from "@bbrc/api/router";
+import { getMessages } from "@bbrc/i18n";
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
@@ -11,9 +12,10 @@ export function createQueryClient() {
 	return new QueryClient({
 		queryCache: new QueryCache({
 			onError: (error, query) => {
-				toast.error(`Error: ${error.message}`, {
+				const words = getMessages(getPageLocale()).shell.ui.queryError;
+				toast.error(words.prefix.replace("{message}", error.message), {
 					action: {
-						label: "retry",
+						label: words.retry,
 						onClick: () => {
 							query.invalidate();
 						},

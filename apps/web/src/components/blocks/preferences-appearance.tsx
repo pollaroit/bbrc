@@ -20,6 +20,7 @@ import {
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { Input } from "@bbrc/ui/components/input";
+import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import {
@@ -29,13 +30,12 @@ import {
 	PreferencesSection,
 	Segmented,
 } from "@/components/blocks/preferences-ui";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import {
 	updatePreference,
 	usePreferences,
 } from "@/lib/preferences/use-preferences";
 import { cn } from "@/lib/utils";
-
-const modeLabels = { system: "System", light: "Light", dark: "Dark" } as const;
 
 function useResolvedMode(): "light" | "dark" {
 	const { resolvedTheme } = useTheme();
@@ -53,6 +53,7 @@ function PaletteCard({
 	selected: boolean;
 	mode: "light" | "dark";
 }) {
+	const t = useTranslations("preferences.appearance");
 	const palette = PALETTES.find((item) => item.id === paletteId);
 	if (!palette) {
 		return null;
@@ -70,7 +71,7 @@ function PaletteCard({
 
 	return (
 		<OptionCard
-			label={`${palette.name} palette`}
+			label={t("paletteLabel", { name: palette.name })}
 			selected={selected}
 			onSelect={() => updatePreference("appearance", "palette", palette.id)}
 		>
@@ -98,7 +99,7 @@ function PaletteCard({
 				<span className="font-medium text-sm">{palette.name}</span>
 				{locked ? (
 					<Badge variant="outline" className="font-normal text-3xs">
-						{locked} only
+						{t(locked === "dark" ? "darkOnly" : "lightOnly")}
 					</Badge>
 				) : null}
 			</span>
@@ -124,6 +125,7 @@ function FontPicker({
 	ids: readonly string[];
 	onChange: (id: string) => void;
 }) {
+	const t = useTranslations("preferences.appearance");
 	return (
 		<PreferenceRow label={label} hint={hint}>
 			<ChoiceGroup label={label} className="grid gap-2 sm:grid-cols-2">
@@ -132,13 +134,13 @@ function FontPicker({
 						return (
 							<OptionCard
 								key={id}
-								label="Same as body font"
+								label={t("sameAsBodyLabel")}
 								selected={value === id}
 								onSelect={() => onChange(id)}
 							>
-								<span className="font-medium text-sm">Same as body</span>
+								<span className="font-medium text-sm">{t("sameAsBody")}</span>
 								<span className="text-muted-foreground text-xs">
-									Follows your body font
+									{t("followsBody")}
 								</span>
 							</OptionCard>
 						);
@@ -158,8 +160,8 @@ function FontPicker({
 								{option.label}
 							</span>
 							<span className="text-muted-foreground text-xs">
-								{option.note}
-								{option.cyrillic ? "" : " · Latin only"}
+								{t(`fontNotes.${id as FontId}`)}
+								{option.cyrillic ? "" : ` · ${t("latinOnly")}`}
 							</span>
 						</OptionCard>
 					);
@@ -171,43 +173,42 @@ function FontPicker({
 
 /** Sample of the club's own content, so changes are visible right away. */
 function AppearancePreview() {
+	const t = useTranslations("preferences.appearance");
+	const f = useFormatters();
 	return (
 		<div className="flex flex-col gap-3 border border-border bg-card p-4">
-			<p className="text-muted-foreground text-xs">Live preview</p>
+			<p className="text-muted-foreground text-xs">{t("livePreview")}</p>
 			<h3 className="font-semibold text-xl tracking-tight">
-				Beloved, by Toni Morrison
+				{t("previewTitle")}
 			</h3>
-			<p className="font-reading text-sm leading-relaxed">
-				“Definitions belonged to the definers, not the defined.” A story about
-				memory, freedom and what we carry. Tap a palette or font above and this
-				card changes with you.
-			</p>
+			<p className="font-reading text-sm leading-relaxed">{t("previewText")}</p>
 			<div className="flex flex-wrap items-center gap-2">
-				<Button size="sm">Mark as read</Button>
+				<Button size="sm">{t("previewMarkRead")}</Button>
 				<Button size="sm" variant="outline">
-					Add to shelf
+					{t("previewAddToShelf")}
 				</Button>
 				<span className="border border-success/30 bg-success/10 px-1.5 py-0.5 text-success-ink text-xs">
-					Completed
+					{t("previewCompleted")}
 				</span>
 				<span className="border border-info/30 bg-info/10 px-1.5 py-0.5 text-info-ink text-xs">
-					Reading
+					{t("previewReading")}
 				</span>
 				<span className="border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-warning-ink text-xs">
-					Wishlist
+					{t("previewWishlist")}
 				</span>
 				<span className="border border-pink/30 bg-pink/10 px-1.5 py-0.5 text-pink-ink text-xs">
-					Liked
+					{t("previewLiked")}
 				</span>
 			</div>
 			<p className="text-muted-foreground text-xs">
-				Muted text looks like this. 4.5 out of 5 stars · 354 pages · 12 reads.
+				{t("previewMuted", { rating: f.rating(4.5), pages: 354, reads: 12 })}
 			</p>
 		</div>
 	);
 }
 
 export function PreferencesAppearance() {
+	const t = useTranslations("preferences.appearance");
 	const { appearance } = usePreferences();
 	const resolved = useResolvedMode();
 	const locked = lockedModeFor(appearance.palette);
@@ -223,40 +224,49 @@ export function PreferencesAppearance() {
 	return (
 		<PreferencesSection
 			id="appearance"
-			title="Appearance"
-			description="Pick how the club looks. Changes apply instantly."
+			title={t("title")}
+			description={t("description")}
 		>
 			<PreferenceRow
-				label="Mode"
+				label={t("mode")}
 				hint={
 					locked
-						? `The ${appearance.palette} palette only works in ${locked} mode. Pick another palette to choose.`
-						: "Follow your device, or always use light or dark."
+						? t("modeLocked", {
+								palette: appearance.palette,
+								mode: t(locked === "dark" ? "modeDark" : "modeLight"),
+							})
+						: t("modeHint")
 				}
 			>
 				<Segmented
-					label="Mode"
+					label={t("mode")}
 					value={locked ?? appearance.mode}
 					disabled={locked != null}
-					options={COLOR_MODES.map((id) => ({ id, label: modeLabels[id] }))}
+					options={COLOR_MODES.map((id) => ({
+						id,
+						label: t(
+							id === "system"
+								? "modeSystem"
+								: id === "light"
+									? "modeLight"
+									: "modeDark",
+						),
+					}))}
 					onChange={(mode) => updatePreference("appearance", "mode", mode)}
 				/>
 			</PreferenceRow>
 
-			<PreferenceRow
-				label="Palette"
-				hint="The colours used across the site. Most come in light and dark."
-			>
+			<PreferenceRow label={t("palette")} hint={t("paletteHint")}>
 				<Input
 					type="search"
 					value={paletteQuery}
 					onChange={(event) => setPaletteQuery(event.target.value)}
-					placeholder="Search palettes…"
-					aria-label="Search palettes"
+					placeholder={t("searchPalettes")}
+					aria-label={t("searchPalettesLabel")}
 					className="max-w-xs"
 				/>
 				<ChoiceGroup
-					label="Palette"
+					label={t("palette")}
 					className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
 				>
 					{visiblePalettes.map((palette) => (
@@ -270,26 +280,28 @@ export function PreferencesAppearance() {
 				</ChoiceGroup>
 				{visiblePalettes.length === 0 ? (
 					<p className="text-muted-foreground text-sm">
-						No palette matches “{paletteQuery}”.
+						{t("noPaletteMatches", { query: paletteQuery })}
 					</p>
 				) : null}
 				<p className="text-muted-foreground text-xs">
-					Most palettes are presets from{" "}
-					<a
-						href="https://tweakcn.com"
-						target="_blank"
-						rel="noreferrer"
-						className="underline"
-					>
-						tweakcn
-					</a>
-					, lightly adjusted so text stays easy to read.
+					{t.rich("paletteCredit", {
+						link: (chunks) => (
+							<a
+								href="https://tweakcn.com"
+								target="_blank"
+								rel="noreferrer"
+								className="underline"
+							>
+								{chunks}
+							</a>
+						),
+					})}
 				</p>
 			</PreferenceRow>
 
 			<FontPicker
-				label="Body font"
-				hint="Used for most text. The default, Geist Mono, is the club's own look."
+				label={t("bodyFont")}
+				hint={t("bodyFontHint")}
 				value={appearance.fontBody}
 				ids={BODY_FONT_IDS}
 				onChange={(id) =>
@@ -301,8 +313,8 @@ export function PreferencesAppearance() {
 				}
 			/>
 			<FontPicker
-				label="Heading font"
-				hint="Titles and section headings."
+				label={t("headingFont")}
+				hint={t("headingFontHint")}
 				value={appearance.fontHeading}
 				ids={HEADING_FONT_IDS}
 				onChange={(id) =>
@@ -314,8 +326,8 @@ export function PreferencesAppearance() {
 				}
 			/>
 			<FontPicker
-				label="Reading font"
-				hint="Reviews, posts, comments and bios, where you read longer text."
+				label={t("readingFont")}
+				hint={t("readingFontHint")}
 				value={appearance.fontReading}
 				ids={READING_FONT_IDS}
 				onChange={(id) =>
@@ -327,43 +339,40 @@ export function PreferencesAppearance() {
 				}
 			/>
 
-			<PreferenceRow
-				label="Text size"
-				hint="Makes text bigger or smaller everywhere. Layout stays put."
-			>
+			<PreferenceRow label={t("textSize")} hint={t("textSizeHint")}>
 				<Segmented
-					label="Text size"
+					label={t("textSize")}
 					value={appearance.textSize}
-					options={TEXT_SIZES}
+					options={TEXT_SIZES.map((option) => ({
+						id: option.id,
+						label: t(`textSizes.${option.id}`),
+					}))}
 					onChange={(size) => updatePreference("appearance", "textSize", size)}
 				/>
 			</PreferenceRow>
-			<PreferenceRow
-				label="Line spacing"
-				hint="More space between lines can make long text easier to follow."
-			>
+			<PreferenceRow label={t("lineSpacing")} hint={t("lineSpacingHint")}>
 				<Segmented
-					label="Line spacing"
+					label={t("lineSpacing")}
 					value={appearance.lineSpacing}
-					options={LINE_SPACINGS}
+					options={LINE_SPACINGS.map((option) => ({
+						id: option.id,
+						label: t(`lineSpacings.${option.id}`),
+					}))}
 					onChange={(spacing) =>
 						updatePreference("appearance", "lineSpacing", spacing)
 					}
 				/>
 			</PreferenceRow>
 
-			<PreferenceRow
-				label="Corners"
-				hint="How round boxes, buttons and inputs are. None is the club's sharp look."
-			>
+			<PreferenceRow label={t("corners")} hint={t("cornersHint")}>
 				<ChoiceGroup
-					label="Corners"
+					label={t("corners")}
 					className="grid grid-cols-3 gap-2 sm:grid-cols-6"
 				>
 					{RADIUS_OPTIONS.map((option) => (
 						<OptionCard
 							key={option.id}
-							label={`${option.label} corners`}
+							label={t("cornersOption", { size: t(`radii.${option.id}`) })}
 							selected={appearance.radius === option.id}
 							onSelect={() =>
 								updatePreference("appearance", "radius", option.id)
@@ -386,7 +395,9 @@ export function PreferencesAppearance() {
 									strokeWidth="2"
 								/>
 							</svg>
-							<span className="font-medium text-sm">{option.label}</span>
+							<span className="font-medium text-sm">
+								{t(`radii.${option.id}`)}
+							</span>
 						</OptionCard>
 					))}
 				</ChoiceGroup>

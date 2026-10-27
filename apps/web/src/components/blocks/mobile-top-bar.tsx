@@ -1,6 +1,7 @@
 "use client";
 
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { ActiveSittingTopChip } from "@/components/blocks/active-sitting-top-chip";
 import { GlobalSearchMobileTrigger } from "@/components/blocks/global-search-trigger";
 import { Logo } from "@/components/blocks/logo";
@@ -15,6 +16,7 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 export function MobileTopBar() {
+	const t = useTranslations("shell.mobile");
 	const { data: session, isPending } = authClient.useSession();
 
 	return (
@@ -29,7 +31,7 @@ export function MobileTopBar() {
 				<Link
 					href={"/" as Route}
 					className="flex shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-					aria-label="Home"
+					aria-label={t("home")}
 				>
 					<Logo className="size-7" label="" />
 				</Link>

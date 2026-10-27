@@ -12,81 +12,82 @@ import {
 import type { Route } from "next";
 import { isMobileNavActive } from "@/lib/mobile-nav-active";
 
+export type BrowseNavId =
+	| "authors"
+	| "series"
+	| "shelves"
+	| "people"
+	| "achievements"
+	| "sittings"
+	| "leaderboard"
+	| "reels";
+
+/** The texts of a destination live in the `shell.browse.items.<id>` messages. */
 export type BrowseNavItem = {
-	label: string;
+	id: BrowseNavId;
 	href: Route;
 	icon: LucideIcon;
-	description?: string;
 	section: "catalog" | "club";
 };
 
 export const browseNavItems: BrowseNavItem[] = [
 	{
-		label: "Authors",
+		id: "authors",
 		href: "/authors" as Route,
 		icon: UserPen,
-		description: "Writers in the club catalog",
 		section: "catalog",
 	},
 	{
-		label: "Series",
+		id: "series",
 		href: "/series" as Route,
 		icon: Layers,
-		description: "Multi-volume reading order",
 		section: "catalog",
 	},
 	{
-		label: "Shelves",
+		id: "shelves",
 		href: "/shelves" as Route,
 		icon: LayoutList,
-		description: "Member-curated lists",
 		section: "catalog",
 	},
 	{
-		label: "People",
+		id: "people",
 		href: "/users" as Route,
 		icon: Users,
-		description: "Everyone in the club",
 		section: "club",
 	},
 	{
-		label: "Achievements",
+		id: "achievements",
 		href: "/achievements" as Route,
 		icon: Award,
-		description: "Badges you can earn",
 		section: "club",
 	},
 	{
-		label: "Sittings",
+		id: "sittings",
 		href: "/sittings" as Route,
 		icon: Sofa,
-		description: "Club reading rounds",
 		section: "club",
 	},
 	{
-		label: "Leaderboard",
+		id: "leaderboard",
 		href: "/leaderboard/overview" as Route,
 		icon: Trophy,
-		description: "XP, reads, and rankings",
 		section: "club",
 	},
 	{
-		label: "Reels",
+		id: "reels",
 		href: "/reels" as Route,
 		icon: Clapperboard,
-		description: "Short fact replays from the club",
 		section: "club",
 	},
 ];
 
 export type BrowseNavPlaceholderItem = {
-	label: string;
-	description: string;
+	id: "clubStats";
 	icon?: LucideIcon;
 };
 
 export const browseNavPlaceholderItems: BrowseNavPlaceholderItem[] = [
-	{ label: "Club stats", description: "Coming soon" },
+	{ id: "clubStats" },
 ];
 
 export function isBrowseNavActive(pathname: string): boolean {
@@ -115,6 +116,6 @@ export const browseMenuItems: BrowseNavItem[] = browseNavItems.filter(
 );
 
 export const browseNavSections = [
-	{ id: "catalog" as const, label: "Catalog" },
-	{ id: "club" as const, label: "Club" },
+	{ id: "catalog" as const },
+	{ id: "club" as const },
 ];

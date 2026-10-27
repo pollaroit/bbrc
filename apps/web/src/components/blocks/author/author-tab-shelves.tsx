@@ -3,6 +3,7 @@
 import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import {
 	parseAsArrayOf,
 	parseAsInteger,
@@ -31,20 +32,7 @@ const LIMIT = 12;
 const TYPES = ["ordered", "unordered"] as const;
 const SORTS = ["updated", "newest", "authorBooks", "books", "views"] as const;
 
-const TYPE_LABELS = { ordered: "Ranked", unordered: "Unranked" } as const;
-const SORT_OPTIONS = [
-	{ value: "updated", label: "Recently updated" },
-	{ value: "newest", label: "Newest first" },
-	{ value: "authorBooks", label: "Most of their books" },
-	{ value: "books", label: "Most books" },
-	{ value: "views", label: "Most viewed" },
-] as const;
-const MIN_OPTIONS = [
-	{ value: "0", label: "Any number of their books" },
-	{ value: "2", label: "2 or more of their books" },
-	{ value: "3", label: "3 or more of their books" },
-	{ value: "5", label: "5 or more of their books" },
-] as const;
+const MINIMUMS = [0, 2, 3, 5] as const;
 
 export function AuthorTabShelves({
 	slug,
@@ -53,6 +41,7 @@ export function AuthorTabShelves({
 	slug: string;
 	authorName: string;
 }) {
+	const t = useTranslations("authors");
 	const [filters, setFilters] = useQueryStates(
 		{
 			q: parseAsString.withDefault(""),
@@ -100,9 +89,20 @@ export function AuthorTabShelves({
 		filters.books.length > 0 ||
 		filters.min > 0;
 
+	const sortOptions = SORTS.map((value) => ({
+		value,
+		label: t(`shelvesTab.sort.${value}`),
+	}));
+	const minOptions = MINIMUMS.map((value) => ({
+		value: String(value),
+		label:
+			value === 0
+				? t("shelvesTab.min.any")
+				: t("shelvesTab.min.n", { count: value }),
+	}));
 	const typeOptions = TYPES.map((value) => ({
 		value,
-		label: TYPE_LABELS[value],
+		label: t(`shelvesTab.type.${value}`),
 		hint: facets?.types[value],
 	}));
 	const ownerOptions = (facets?.owners ?? []).map(({ member, count }) => ({
@@ -121,13 +121,13 @@ export function AuthorTabShelves({
 		<div className="flex flex-col gap-4">
 			<InsightsFilterRow>
 				<InsightsSearch
-					label="Search shelves"
-					placeholder="Search shelves or their owners…"
+					label={t("shelvesTab.searchLabel")}
+					placeholder={t("shelvesTab.searchPlaceholder")}
 					value={filters.q}
 					onChange={(q) => void setFilters({ q })}
 				/>
 				<InsightsMultiPicker
-					label="Type"
+					label={t("shelvesTab.typeLabel")}
 					options={typeOptions}
 					selected={filters.type}
 					onChange={(type) =>
@@ -136,7 +136,7 @@ export function AuthorTabShelves({
 				/>
 				{ownerOptions.length > 1 ? (
 					<InsightsMultiPicker
-						label="Owners"
+						label={t("shelvesTab.owners")}
 						options={ownerOptions}
 						selected={filters.owners}
 						onChange={(owners) => void setFilters({ owners })}
@@ -144,23 +144,23 @@ export function AuthorTabShelves({
 				) : null}
 				{bookOptions.length > 1 ? (
 					<InsightsMultiPicker
-						label="Books"
+						label={t("shelvesTab.books")}
 						options={bookOptions}
 						selected={filters.books}
 						onChange={(books) => void setFilters({ books })}
 					/>
 				) : null}
 				<InsightsSelect
-					label="Number of their books"
+					label={t("shelvesTab.minLabel")}
 					value={String(filters.min)}
-					options={MIN_OPTIONS}
+					options={minOptions}
 					onChange={(min) => void setFilters({ min: Number(min) })}
 				/>
 				<InsightsSelect
-					label="Sort shelves"
-					prefix="Sort"
+					label={t("shelvesTab.sortLabel")}
+					prefix={t("shelvesTab.sortPrefix")}
 					value={filters.sort}
-					options={SORT_OPTIONS}
+					options={sortOptions}
 					onChange={(sort) => void setFilters({ sort })}
 				/>
 				<InsightsClearButton
@@ -193,12 +193,12 @@ export function AuthorTabShelves({
 				emptyContent={
 					narrowed ? (
 						<div className="flex flex-col items-center gap-2 border border-border border-dashed px-4 py-10 text-center">
-							<p className="text-sm">No shelf matches these filters.</p>
+							<p className="text-sm">{t("shelvesTab.noMatch")}</p>
 						</div>
 					) : (
 						<AuthorTabEmptyContent
 							authorSlug={slug}
-							text={`No public shelf holds a book by ${authorName} yet.`}
+							text={t("shelvesTab.empty", { name: authorName })}
 						/>
 					)
 				}
@@ -209,7 +209,7 @@ export function AuthorTabShelves({
 						))}
 					</div>
 				}
-				endMessage="That is every shelf."
+				endMessage={t("shelvesTab.end")}
 			>
 				<ul className={authorTabGridClassName}>
 					{items.map((shelf) => {
@@ -235,7 +235,10 @@ export function AuthorTabShelves({
 									<div
 										className="h-1 w-full bg-muted"
 										role="img"
-										aria-label={`${share}% of this shelf is by ${authorName}`}
+										aria-label={t("shelvesTab.shareLabel", {
+											share,
+											name: authorName,
+										})}
 									>
 										<div
 											className="h-full bg-primary"
@@ -243,9 +246,11 @@ export function AuthorTabShelves({
 										/>
 									</div>
 									<p className="text-muted-foreground text-xs tabular-nums">
-										{shelf.authorBookCount} of {shelf.bookCount}{" "}
-										{shelf.bookCount === 1 ? "book is" : "books are"} by{" "}
-										{authorName}
+										{t("shelvesTab.shareLine", {
+											authorBooks: shelf.authorBookCount,
+											books: shelf.bookCount,
+											name: authorName,
+										})}
 									</p>
 								</div>
 							</li>

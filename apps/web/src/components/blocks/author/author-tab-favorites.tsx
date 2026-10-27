@@ -5,6 +5,7 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import {
 	parseAsArrayOf,
 	parseAsString,
@@ -39,17 +40,6 @@ const LIMIT = 24;
 const BOOK_SORTS = ["count", "title", "recent"] as const;
 const MEMBER_SORTS = ["recent", "name", "most"] as const;
 
-const BOOK_SORT_OPTIONS = [
-	{ value: "count", label: "Most favorited" },
-	{ value: "recent", label: "Latest favorite" },
-	{ value: "title", label: "Title A–Z" },
-] as const;
-const MEMBER_SORT_OPTIONS = [
-	{ value: "recent", label: "Latest first" },
-	{ value: "most", label: "Most of their books" },
-	{ value: "name", label: "Name A–Z" },
-] as const;
-
 export function AuthorTabFavorites({
 	slug,
 	authorName,
@@ -57,6 +47,13 @@ export function AuthorTabFavorites({
 	slug: string;
 	authorName: string;
 }) {
+	const t = useTranslations("authors");
+	const bookSortOptions = (["count", "recent", "title"] as const).map(
+		(value) => ({ value, label: t(`favorites.bookSort.${value}`) }),
+	);
+	const memberSortOptions = (["recent", "most", "name"] as const).map(
+		(value) => ({ value, label: t(`favorites.memberSort.${value}`) }),
+	);
 	const [filters, setFilters] = useQueryStates(
 		{
 			q: parseAsString.withDefault(""),
@@ -108,7 +105,7 @@ export function AuthorTabFavorites({
 		return (
 			<AuthorTabEmptyContent
 				authorSlug={slug}
-				text={`No one has put a book by ${authorName} among their favorites yet.`}
+				text={t("favorites.empty", { name: authorName })}
 			/>
 		);
 	}
@@ -132,31 +129,31 @@ export function AuthorTabFavorites({
 		<div className="flex flex-col gap-6">
 			<InsightsFilterRow>
 				<InsightsSearch
-					label="Search favorites"
-					placeholder="Search members or books…"
+					label={t("favorites.searchLabel")}
+					placeholder={t("favorites.searchPlaceholder")}
 					value={filters.q}
 					onChange={(q) => void setFilters({ q })}
 				/>
 				{bookOptions.length > 1 ? (
 					<InsightsMultiPicker
-						label="Books"
+						label={t("favorites.books")}
 						options={bookOptions}
 						selected={filters.books}
 						onChange={(books) => void setFilters({ books })}
 					/>
 				) : null}
 				<InsightsSelect
-					label="Sort books"
-					prefix="Books"
+					label={t("favorites.sortBooks")}
+					prefix={t("favorites.sortBooksPrefix")}
 					value={filters.bookSort}
-					options={BOOK_SORT_OPTIONS}
+					options={bookSortOptions}
 					onChange={(bookSort) => void setFilters({ bookSort })}
 				/>
 				<InsightsSelect
-					label="Sort members"
-					prefix="Members"
+					label={t("favorites.sortMembers")}
+					prefix={t("favorites.sortMembersPrefix")}
 					value={filters.memberSort}
-					options={MEMBER_SORT_OPTIONS}
+					options={memberSortOptions}
 					onChange={(memberSort) => void setFilters({ memberSort })}
 				/>
 				<InsightsClearButton
@@ -167,16 +164,19 @@ export function AuthorTabFavorites({
 
 			<section aria-labelledby="author-favorite-books" className="space-y-3">
 				<div id="author-favorite-books">
-					<AuthorTabHeading title="Favorite books">
+					<AuthorTabHeading title={t("favorites.headingBooks")}>
 						{first
-							? `${first.totalFavorites} ${first.totalFavorites === 1 ? "favorite" : "favorites"} from ${first.memberCount} ${first.memberCount === 1 ? "member" : "members"}. Tap a book to filter the members.`
+							? t("favorites.summary", {
+									total: first.totalFavorites,
+									members: first.memberCount,
+								})
 							: " "}
 					</AuthorTabHeading>
 				</div>
 				{first ? (
 					first.books.length === 0 ? (
 						<p className="text-muted-foreground text-sm">
-							No book matches these filters.
+							{t("favorites.noBookMatch")}
 						</p>
 					) : (
 						<ul className={authorTabGridClassName}>
@@ -203,7 +203,10 @@ export function AuthorTabFavorites({
 												<span
 													className="h-1.5 w-full bg-muted"
 													role="img"
-													aria-label={`${count} of ${topCount} at the top`}
+													aria-label={t("favorites.topLabel", {
+														count,
+														top: topCount,
+													})}
 												>
 													<span
 														className="block h-full bg-pink"
@@ -232,7 +235,7 @@ export function AuthorTabFavorites({
 
 			<section aria-labelledby="author-favorite-members" className="space-y-3">
 				<div id="author-favorite-members">
-					<AuthorTabHeading title="Members" />
+					<AuthorTabHeading title={t("favorites.headingMembers")} />
 				</div>
 				<InfiniteScroll
 					hasNextPage={query.hasNextPage}
@@ -247,11 +250,11 @@ export function AuthorTabFavorites({
 						void query.refetch();
 					}}
 					isEmpty={members.length === 0}
-					emptyTitle={narrowed ? "No member matches" : "No members to show"}
+					emptyTitle={
+						narrowed ? t("favorites.noMemberMatch") : t("favorites.noMembers")
+					}
 					emptyDescription={
-						narrowed
-							? "Try another search or clear the book filter."
-							: "Members who keep their favorites private are not listed."
+						narrowed ? t("favorites.tryAnother") : t("favorites.privateNote")
 					}
 					loadingContent={
 						<div className={authorTabGridClassName} aria-hidden>
@@ -260,7 +263,7 @@ export function AuthorTabFavorites({
 							))}
 						</div>
 					}
-					endMessage="That is every member."
+					endMessage={t("favorites.endMembers")}
 				>
 					<ul className={authorTabGridClassName}>
 						{members.map((item) => (
@@ -286,9 +289,10 @@ export function AuthorTabFavorites({
 									))}
 								</ul>
 								<p className="mt-auto text-muted-foreground text-xs">
-									{item.favoriteCount}{" "}
-									{item.favoriteCount === 1 ? "book" : "books"} · latest{" "}
-									<ClubDateTime value={item.favoritedAt} />
+									{t.rich("favorites.memberLine", {
+										count: item.favoriteCount,
+										date: () => <ClubDateTime value={item.favoritedAt} />,
+									})}
 								</p>
 							</li>
 						))}

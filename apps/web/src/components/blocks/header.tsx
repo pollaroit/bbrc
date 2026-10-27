@@ -1,6 +1,7 @@
 "use client";
 
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { Suspense } from "react";
 import { ActiveSittingTopChip } from "@/components/blocks/active-sitting-top-chip";
 import { BrowseMenuDropdown } from "@/components/blocks/browse-menu-dropdown";
@@ -17,12 +18,13 @@ import { headerToolbarControlClass } from "@/lib/header-toolbar";
 import { useLiveUserImage } from "@/lib/user-avatar-broadcast";
 
 const navLinks = [
-	{ label: "Library", href: "/books" },
-	{ label: "Sittings", href: "/sittings" },
-	{ label: "Leaderboard", href: "/leaderboard/overview" },
-];
+	{ key: "library", href: "/books" },
+	{ key: "sittings", href: "/sittings" },
+	{ key: "leaderboard", href: "/leaderboard/overview" },
+] as const;
 
 export default function Header() {
+	const t = useTranslations("shell");
 	const { data: session, isPending } = authClient.useSession();
 	const liveAvatarUrl = useLiveUserImage(session?.user.image);
 	const headerUser = session?.user
@@ -41,11 +43,11 @@ export default function Header() {
 				<nav className="flex shrink-0 items-center gap-6">
 					{navLinks.map((link) => (
 						<Link
-							key={link.label}
+							key={link.key}
 							href={link.href as Route}
 							className="font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
 						>
-							{link.label}
+							{t(`header.nav.${link.key}`)}
 						</Link>
 					))}
 					<BrowseMenuDropdown />

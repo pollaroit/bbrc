@@ -9,6 +9,7 @@ import {
 } from "@bbrc/ui/components/tooltip";
 import { LineChart } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { FeedbackEditIconButton } from "@/components/blocks/feedback-edit-icon-button";
 import { useLiveFeedback } from "@/components/blocks/feedback-live";
 import { Link } from "@/i18n/navigation";
@@ -22,6 +23,7 @@ type FeedbackDetailOwnerActionsProps = {
 export function FeedbackDetailOwnerActions({
 	feedback,
 }: FeedbackDetailOwnerActionsProps) {
+	const t = useTranslations("books");
 	const { data: session } = authClient.useSession();
 	const live = useLiveFeedback(feedback);
 
@@ -49,7 +51,7 @@ export function FeedbackDetailOwnerActions({
 									href={
 										`/books/${feedback.bookSlug}/feedbacks/${feedback.slug}/insights` as Route
 									}
-									aria-label="Review insights"
+									aria-label={t("feedback.reviewInsights")}
 								/>
 							}
 						/>
@@ -57,7 +59,7 @@ export function FeedbackDetailOwnerActions({
 				>
 					<LineChart className="size-4" aria-hidden />
 				</TooltipTrigger>
-				<TooltipContent>Insights</TooltipContent>
+				<TooltipContent>{t("feedback.insights")}</TooltipContent>
 			</Tooltip>
 			{isAuthor ? (
 				<FeedbackEditIconButton

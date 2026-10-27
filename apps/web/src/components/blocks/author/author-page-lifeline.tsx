@@ -4,6 +4,7 @@ import type { AuthorProfile } from "@bbrc/api/modules/author/author.schema";
 import { Button } from "@bbrc/ui/components/button";
 import { Star } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { useFormatters } from "@/lib/i18n/use-formatters";
@@ -46,6 +47,7 @@ export function AuthorPageLifeline({
 	currentYear,
 }: AuthorPageLifelineProps) {
 	const f = useFormatters();
+	const t = useTranslations("authors");
 	const dated = useMemo(
 		() =>
 			books
@@ -127,15 +129,13 @@ export function AuthorPageLifeline({
 	}
 
 	return (
-		<section
-			className="flex flex-col gap-3"
-			aria-label="Life and works on a timeline"
-		>
+		<section className="flex flex-col gap-3" aria-label={t("lifeline.label")}>
 			<div className="flex items-baseline justify-between gap-3">
-				<h2 className="font-semibold text-sm tracking-tight">Life and works</h2>
+				<h2 className="font-semibold text-sm tracking-tight">
+					{t("lifeline.title")}
+				</h2>
 				<p className="text-muted-foreground text-xs">
-					{born != null ? "The shaded band is their lifetime. " : ""}
-					Pick a mark to see the book.
+					{born != null ? t("lifeline.hintLife") : t("lifeline.hint")}
 				</p>
 			</div>
 
@@ -151,7 +151,7 @@ export function AuthorPageLifeline({
 							className="absolute top-0 -translate-x-1/2 whitespace-nowrap bg-background px-1 text-3xs text-muted-foreground"
 							style={{ left: `${lifeLeft}%` }}
 						>
-							Born {born}
+							{t("lifeline.born", { year: born })}
 						</span>
 					) : null}
 					{death.year != null ? (
@@ -159,7 +159,7 @@ export function AuthorPageLifeline({
 							className="absolute bottom-0 -translate-x-1/2 whitespace-nowrap bg-background px-1 text-3xs text-muted-foreground"
 							style={{ left: `${lifeRight}%` }}
 						>
-							Died {death.year}
+							{t("lifeline.died", { year: death.year })}
 						</span>
 					) : null}
 					<ul className="contents">
@@ -173,7 +173,10 @@ export function AuthorPageLifeline({
 											if (node) markers.current.set(book.slug, node);
 											else markers.current.delete(book.slug);
 										}}
-										aria-label={`${book.title}, ${book.publishedIn}`}
+										aria-label={t("lifeline.marker", {
+											title: book.title,
+											year: book.publishedIn,
+										})}
 										aria-pressed={isActive}
 										className={cn(
 											"absolute -translate-x-1/2 border border-background outline-none transition-[height,width,background-color] focus-visible:ring-2 focus-visible:ring-ring",
@@ -233,10 +236,12 @@ export function AuthorPageLifeline({
 							{active.title}
 						</p>
 						<p className="text-muted-foreground text-xs tabular-nums">
-							Published {active.publishedIn}
 							{ageAtPublication != null && ageAtPublication >= 0
-								? `, when they were ${ageAtPublication}`
-								: ""}
+								? t("lifeline.publishedAge", {
+										year: active.publishedIn,
+										age: ageAtPublication,
+									})
+								: t("lifeline.published", { year: active.publishedIn })}
 						</p>
 						<p className="flex items-center gap-3 text-muted-foreground text-xs tabular-nums">
 							{active.averageRating ? (
@@ -245,9 +250,7 @@ export function AuthorPageLifeline({
 									{f.decimal(active.averageRating, 1)}
 								</span>
 							) : null}
-							<span>
-								{active.readCount} {active.readCount === 1 ? "read" : "reads"}
-							</span>
+							<span>{t("lifeline.reads", { count: active.readCount })}</span>
 						</p>
 						<div className="mt-auto flex flex-wrap gap-2 pt-1">
 							<Button
@@ -256,14 +259,14 @@ export function AuthorPageLifeline({
 								nativeButton={false}
 								render={<Link href={`/books/${active.slug}` as Route} />}
 							>
-								Open book
+								{t("lifeline.openBook")}
 							</Button>
 							<Button
 								variant="ghost"
 								size="sm"
 								onClick={() => showInList(active.slug)}
 							>
-								Show in the list
+								{t("lifeline.showInList")}
 							</Button>
 						</div>
 					</div>

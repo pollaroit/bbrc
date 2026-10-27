@@ -12,6 +12,7 @@ import {
 	SheetTrigger,
 } from "@bbrc/ui/components/sheet";
 import { SlidersHorizontal, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import {
 	ListingSideSheetBody,
@@ -31,13 +32,14 @@ type ListingFiltersSheetProps = {
 };
 
 export function ListingFiltersSheet({
-	title = "Filters",
-	description = "Narrow results with filters and ranges.",
+	title,
+	description,
 	activeFilterCount = 0,
 	onClear,
 	children,
 	appearance = "default",
 }: ListingFiltersSheetProps) {
+	const t = useTranslations("listing");
 	const isLibrary = appearance === "library";
 
 	const filterTrigger = (
@@ -58,7 +60,7 @@ export function ListingFiltersSheet({
 			}
 		>
 			<SlidersHorizontal data-icon="inline-start" />
-			<span>Filters</span>
+			<span>{t("filters.title")}</span>
 			{activeFilterCount > 0 ? (
 				<Badge variant="secondary" className="tabular-nums">
 					{activeFilterCount}
@@ -75,7 +77,7 @@ export function ListingFiltersSheet({
 						"m-0 inline-flex min-w-0 items-stretch border border-border p-0",
 						isLibrary && "bg-background",
 					)}
-					aria-label="Filters"
+					aria-label={t("filters.title")}
 				>
 					{filterTrigger}
 					<div className="w-px shrink-0 self-stretch bg-border" aria-hidden />
@@ -87,7 +89,7 @@ export function ListingFiltersSheet({
 							"border-0 shadow-none",
 							isLibrary ? "bg-transparent" : "bg-background",
 						)}
-						aria-label="Clear all filters"
+						aria-label={t("filters.clearAll")}
 						onClick={(event) => {
 							event.preventDefault();
 							event.stopPropagation();
@@ -109,11 +111,16 @@ export function ListingFiltersSheet({
 				}
 			>
 				{isLibrary ? (
-					<ListingSideSheetHeader title={title} description={description} />
+					<ListingSideSheetHeader
+						title={title ?? t("filters.title")}
+						description={description ?? t("filters.description")}
+					/>
 				) : (
 					<SheetHeader>
-						<SheetTitle>{title}</SheetTitle>
-						<SheetDescription>{description}</SheetDescription>
+						<SheetTitle>{title ?? t("filters.title")}</SheetTitle>
+						<SheetDescription>
+							{description ?? t("filters.description")}
+						</SheetDescription>
 					</SheetHeader>
 				)}
 				{isLibrary ? (
@@ -127,13 +134,13 @@ export function ListingFiltersSheet({
 					isLibrary ? (
 						<ListingSideSheetFooter>
 							<Button type="button" variant="outline" onClick={onClear}>
-								Clear all filters
+								{t("filters.clearAll")}
 							</Button>
 						</ListingSideSheetFooter>
 					) : (
 						<SheetFooter>
 							<Button type="button" variant="outline" onClick={onClear}>
-								Clear filters
+								{t("filters.clear")}
 							</Button>
 						</SheetFooter>
 					)

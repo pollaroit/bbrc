@@ -13,6 +13,7 @@ import { Input } from "@bbrc/ui/components/input";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { orpc } from "@/utils/orpc";
 
@@ -31,10 +32,12 @@ type ListingPostMultiSelectProps = {
 };
 
 export function ListingPostMultiSelect({
-	legend = "Posts",
+	legend: legendProp,
 	selectedSlugs,
 	onSelectedSlugsChange,
 }: ListingPostMultiSelectProps) {
+	const t = useTranslations("listing");
+	const legend = legendProp ?? t("multi.posts.legend");
 	const [search, setSearch] = useState("");
 
 	const postsQuery = useQuery(
@@ -70,9 +73,9 @@ export function ListingPostMultiSelect({
 					<Input
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
-						placeholder="Search by content, slug, or author…"
+						placeholder={t("multi.posts.placeholder")}
 						className="w-full min-w-0 pl-9"
-						aria-label="Search posts in list"
+						aria-label={t("multi.posts.aria")}
 					/>
 				</div>
 			</Field>
@@ -96,7 +99,7 @@ export function ListingPostMultiSelect({
 						size="sm"
 						onClick={() => onSelectedSlugsChange([])}
 					>
-						Clear all
+						{t("multi.clearAll")}
 					</Button>
 				</div>
 			) : null}
@@ -112,7 +115,7 @@ export function ListingPostMultiSelect({
 					</p>
 				) : visiblePosts.length === 0 ? (
 					<p className="p-3 text-muted-foreground text-sm">
-						No posts match. Try searching content or @username.
+						{t("multi.posts.none")}
 					</p>
 				) : (
 					<ul className="min-w-0 max-w-full divide-y divide-border">

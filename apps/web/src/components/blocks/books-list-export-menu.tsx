@@ -34,6 +34,7 @@ import { Separator } from "@bbrc/ui/components/separator";
 import { Sheet, SheetContent } from "@bbrc/ui/components/sheet";
 import { useMutation } from "@tanstack/react-query";
 import { Download } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -45,7 +46,6 @@ import {
 } from "@/components/listing/listing-side-sheet";
 import {
 	bookExportFieldKeys,
-	bookExportFieldLabels,
 	defaultBookExportFieldKeys,
 } from "@/lib/books/export-fields";
 import {
@@ -65,23 +65,14 @@ import {
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
-const exportFormatLabels: Record<BookExportFormat, string> = {
-	csv: "CSV",
-	json: "JSON",
-	xml: "XML",
-	txt: "Plain text",
-	md: "Markdown",
-	html: "HTML",
-};
-
-const exportFormats = Object.keys(exportFormatLabels) as BookExportFormat[];
-
-const filenameModeLabels: Record<BookExportFilenameMode, string> = {
-	date: "Date only",
-	dateTime: "Date and time",
-	none: "No date prefix",
-	custom: "Custom name",
-};
+const exportFormats = [
+	"csv",
+	"json",
+	"xml",
+	"txt",
+	"md",
+	"html",
+] as const satisfies readonly BookExportFormat[];
 
 type BooksListExportMenuProps = {
 	appearance?: "default" | "library";
@@ -90,6 +81,21 @@ type BooksListExportMenuProps = {
 export function BooksListExportMenu({
 	appearance = "default",
 }: BooksListExportMenuProps) {
+	const t = useTranslations("books");
+	const exportFormatLabels: Record<BookExportFormat, string> = {
+		csv: "CSV",
+		json: "JSON",
+		xml: "XML",
+		txt: t("export.formats.txt"),
+		md: "Markdown",
+		html: "HTML",
+	};
+	const filenameModeLabels: Record<BookExportFilenameMode, string> = {
+		date: t("export.names.date"),
+		dateTime: t("export.names.dateTime"),
+		none: t("export.names.none"),
+		custom: t("export.names.custom"),
+	};
 	const isLibrary = appearance === "library";
 	const [params] = useBookListingSearchParams();
 	const [sheetOpen, setSheetOpen] = useState(false);
@@ -106,7 +112,7 @@ export function BooksListExportMenu({
 	const exportMutation = useMutation(
 		orpc.book.exportBookList.mutationOptions({
 			onError: (error) => {
-				toast.error(error.message ?? "Export failed.");
+				toast.error(error.message ?? t("export.failed"));
 			},
 		}),
 	);
@@ -134,7 +140,7 @@ export function BooksListExportMenu({
 
 	const handleExport = async () => {
 		if (selectedFields.length === 0) {
-			toast.error("Select at least one field.");
+			toast.error(t("export.noFields"));
 			return;
 		}
 
@@ -144,13 +150,13 @@ export function BooksListExportMenu({
 		});
 
 		if (result.count === 0) {
-			toast.error("No books match the current filters.");
+			toast.error(t("export.noBooks"));
 			return;
 		}
 
 		const content = serializeBookExport(format, result.items, selectedFields);
 		downloadTextFile(previewFilename, content, bookExportMimeTypes[format]);
-		toast.success(`Exported ${result.count} books.`);
+		toast.success(t("export.done", { count: result.count }));
 		setSheetOpen(false);
 	};
 
@@ -168,7 +174,7 @@ export function BooksListExportMenu({
 					}
 				>
 					<Download data-icon="inline-start" />
-					Export
+					{t("export.button")}
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" className="min-w-48">
 					{exportFormats.map((option) => (
@@ -189,23 +195,30 @@ export function BooksListExportMenu({
 					}
 				>
 					<ListingSideSheetHeader
-						title="Export book list"
-						description="Downloads the books that match your current search, filters, and sort on this page."
+						title={t("export.title")}
+						description={t("export.description")}
 					/>
 
 					<ListingSideSheetBody>
 						<div className="flex flex-wrap items-center gap-2">
 							<Badge variant="secondary">{exportFormatLabels[format]}</Badge>
 							<span className="text-muted-foreground text-xs">
-								{selectedFields.length} of {bookExportFieldKeys.length} columns
+								{t("export.columnCount", {
+									selected: selectedFields.length,
+									total: bookExportFieldKeys.length,
+								})}
 							</span>
 						</div>
 
-						<ListingSideSheetSection title="File name">
+						<ListingSideSheetSection title={t("export.fileName")}>
 							<FieldSet className="gap-3">
-								<FieldLegend className="sr-only">File name</FieldLegend>
+								<FieldLegend className="sr-only">
+									{t("export.fileName")}
+								</FieldLegend>
 								<Field>
-									<FieldLabel htmlFor="export-filename-mode">Naming</FieldLabel>
+									<FieldLabel htmlFor="export-filename-mode">
+										{t("export.naming")}
+									</FieldLabel>
 									<Select
 										value={filenameMode}
 										onValueChange={(value) => {
@@ -223,7 +236,7 @@ export function BooksListExportMenu({
 											id="export-filename-mode"
 											className="w-full bg-background"
 										>
-											<SelectValue placeholder="Choose naming">
+											<SelectValue placeholder={t("export.chooseNaming")}>
 												{filenameModeLabels[filenameMode]}
 											</SelectValue>
 										</SelectTrigger>
@@ -245,7 +258,7 @@ export function BooksListExportMenu({
 								{filenameMode === "custom" ? (
 									<Field>
 										<FieldLabel htmlFor="export-custom-filename">
-											Base name
+											{t("export.baseName")}
 										</FieldLabel>
 										<Input
 											id="export-custom-filename"
@@ -253,13 +266,15 @@ export function BooksListExportMenu({
 											onChange={(event) =>
 												setCustomBaseName(event.target.value)
 											}
-											placeholder="my-export-name"
+											placeholder={t("export.baseNamePlaceholder")}
 											className="bg-background"
 										/>
 									</Field>
 								) : null}
 								<div className="border border-border bg-muted/20 px-3 py-2">
-									<p className="text-muted-foreground text-xs">Preview</p>
+									<p className="text-muted-foreground text-xs">
+										{t("export.preview")}
+									</p>
 									<p className="truncate font-mono text-foreground text-sm">
 										{previewFilename}
 									</p>
@@ -268,8 +283,8 @@ export function BooksListExportMenu({
 						</ListingSideSheetSection>
 
 						<ListingSideSheetSection
-							title="Columns"
-							description="Choose which fields to include in the file."
+							title={t("export.columns")}
+							description={t("export.columnsHint")}
 						>
 							<div className="flex flex-wrap gap-2">
 								<Button
@@ -281,7 +296,7 @@ export function BooksListExportMenu({
 										setSelectedFields([...bookExportFieldKeys]);
 									}}
 								>
-									Select all
+									{t("export.selectAll")}
 								</Button>
 								<Button
 									type="button"
@@ -292,7 +307,7 @@ export function BooksListExportMenu({
 										setSelectedFields([]);
 									}}
 								>
-									Clear all
+									{t("export.clearAll")}
 								</Button>
 							</div>
 							<Card className="gap-0 p-0">
@@ -315,7 +330,7 @@ export function BooksListExportMenu({
 																}}
 															/>
 															<FieldTitle className="text-sm">
-																{bookExportFieldLabels[field]}
+																{t(`export.fields.${field}`)}
 															</FieldTitle>
 														</FieldLabel>
 													</Field>
@@ -333,10 +348,10 @@ export function BooksListExportMenu({
 							type="button"
 							className="w-full sm:w-auto"
 							loading={exportMutation.isPending}
-							loadingText="Exporting…"
+							loadingText={t("export.exporting")}
 							onClick={() => void handleExport()}
 						>
-							Download {exportFormatLabels[format]}
+							{t("export.download", { format: exportFormatLabels[format] })}
 						</LoadingButton>
 					</ListingSideSheetFooter>
 				</SheetContent>

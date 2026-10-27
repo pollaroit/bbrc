@@ -23,7 +23,13 @@ import { orpc, queryClient } from "@/utils/orpc";
 
 const GROUP_ORDER = ["club", "personal", "sitting", "admin"] as const;
 
+/** Bold text inside a message: `<b>Phone</b>`. */
+const b = (chunks: React.ReactNode) => (
+	<strong className="text-foreground">{chunks}</strong>
+);
+
 function CopyTopicButton({ url, label }: { url: string; label: string }) {
+	const t = useTranslations("settings.notificationsForm");
 	return (
 		<Button
 			type="button"
@@ -33,13 +39,13 @@ function CopyTopicButton({ url, label }: { url: string; label: string }) {
 			onClick={async () => {
 				try {
 					await navigator.clipboard.writeText(url);
-					toast.success(`${label} copied`);
+					toast.success(t("copied", { label }));
 				} catch {
-					toast.error("Could not copy to clipboard");
+					toast.error(t("copyFailed"));
 				}
 			}}
 		>
-			Copy topic
+			{t("copyTopic")}
 		</Button>
 	);
 }
@@ -87,6 +93,7 @@ function groupPreferences(preferences: PreferenceRow[]) {
 
 export function NotificationPreferencesForm() {
 	const t = useTranslations("notifications");
+	const tf = useTranslations("settings.notificationsForm");
 	const preferencesQuery = useQuery(
 		orpc.notification.getPreferences.queryOptions(),
 	);
@@ -127,7 +134,7 @@ export function NotificationPreferencesForm() {
 	const saveMutation = useMutation(
 		orpc.notification.updatePreferences.mutationOptions({
 			onSuccess: async () => {
-				toast.success("Notification preferences saved.");
+				toast.success(tf("saved"));
 				await queryClient.invalidateQueries({
 					queryKey: orpc.notification.getPreferences.key(),
 				});
@@ -137,17 +144,11 @@ export function NotificationPreferencesForm() {
 	);
 
 	if (preferencesQuery.isPending) {
-		return (
-			<p className="text-muted-foreground text-sm">Loading preferences…</p>
-		);
+		return <p className="text-muted-foreground text-sm">{tf("loading")}</p>;
 	}
 
 	if (preferencesQuery.isError || !preferencesQuery.data) {
-		return (
-			<p className="text-destructive text-sm">
-				Could not load notification preferences.
-			</p>
-		);
+		return <p className="text-destructive text-sm">{tf("loadFailed")}</p>;
 	}
 
 	const { ntfy, telegram } = preferencesQuery.data;
@@ -206,58 +207,41 @@ export function NotificationPreferencesForm() {
 
 			<Card>
 				<CardHeader>
-					<CardTitle className="text-base">Phone push (ntfy)</CardTitle>
+					<CardTitle className="text-base">{tf("ntfyTitle")}</CardTitle>
 					<CardDescription>
-						Push alerts go through{" "}
-						<a
-							href="https://ntfy.sh"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="inline-flex items-center gap-0.5 font-medium text-foreground underline-offset-4 hover:underline"
-						>
-							ntfy.sh
-							<ExternalLink className="size-3.5" aria-hidden />
-						</a>
-						. You set this up once; sitting updates use the same personal
-						topic—no new link each sitting.
+						{tf.rich("ntfyDescription", {
+							link: (chunks) => (
+								<a
+									href="https://ntfy.sh"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="inline-flex items-center gap-0.5 font-medium text-foreground underline-offset-4 hover:underline"
+								>
+									{chunks}
+									<ExternalLink className="size-3.5" aria-hidden />
+								</a>
+							),
+						})}
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-6">
 					<ol className="list-decimal space-y-2 pl-5 text-muted-foreground text-sm">
-						<li>
-							Install the <strong className="text-foreground">ntfy</strong> app
-							on your phone (App Store, Google Play, or F-Droid).
-						</li>
-						<li>
-							Below, turn on <strong className="text-foreground">Phone</strong>{" "}
-							for the events you want, then click{" "}
-							<strong className="text-foreground">Save preferences</strong>.
-						</li>
-						<li>
-							Copy{" "}
-							<strong className="text-foreground">Your personal topic</strong>{" "}
-							and subscribe in ntfy: open the app → add subscription → paste the
-							topic on your phone.
-						</li>
-						{hasAdminTopic ? (
-							<li>
-								Admins: also subscribe to{" "}
-								<strong className="text-foreground">Admin alerts</strong> for
-								request notifications.
-							</li>
-						) : null}
+						<li>{tf.rich("stepInstall", { b })}</li>
+						<li>{tf.rich("stepTurnOn", { b })}</li>
+						<li>{tf.rich("stepSubscribe", { b })}</li>
+						{hasAdminTopic ? <li>{tf.rich("stepAdmin", { b })}</li> : null}
 					</ol>
 
 					<TopicRow
-						label="Your personal topic"
-						description="All phone pushes for your account (including sitting polls and finishes) are delivered here. Subscribe once."
+						label={tf("personalTopic")}
+						description={tf("personalTopicHelp")}
 						url={ntfy.userTopic}
 					/>
 
 					{hasAdminTopic ? (
 						<TopicRow
-							label="Admin alerts"
-							description="Book requests and other admin-only pushes. Subscribe in addition to your personal topic."
+							label={tf("adminTopic")}
+							description={tf("adminTopicHelp")}
 							url={ntfy.adminTopic ?? ""}
 						/>
 					) : null}
@@ -266,18 +250,11 @@ export function NotificationPreferencesForm() {
 
 			<Card className="border-dashed">
 				<CardHeader className="pb-2">
-					<CardTitle className="text-base">What the toggles mean</CardTitle>
+					<CardTitle className="text-base">{tf("togglesTitle")}</CardTitle>
 				</CardHeader>
 				<CardContent className="text-muted-foreground text-sm">
-					<p>
-						<strong className="text-foreground">Bell</strong> — show in the
-						notification menu on BBRC when you are signed in.
-					</p>
-					<p className="mt-2">
-						<strong className="text-foreground">Phone</strong> — send a push to
-						your personal ntfy topic (only if you subscribed in the ntfy app and
-						saved Phone as on here).
-					</p>
+					<p>{tf.rich("toggleBell", { b })}</p>
+					<p className="mt-2">{tf.rich("togglePhone", { b })}</p>
 				</CardContent>
 			</Card>
 
@@ -323,7 +300,7 @@ export function NotificationPreferencesForm() {
 												}}
 											/>
 											<FieldLabel htmlFor={`${pref.kind}-in-app`}>
-												Bell
+												{tf("bell")}
 											</FieldLabel>
 										</Field>
 										<Field orientation="horizontal">
@@ -342,7 +319,7 @@ export function NotificationPreferencesForm() {
 												}}
 											/>
 											<FieldLabel htmlFor={`${pref.kind}-push`}>
-												Phone
+												{tf("phone")}
 											</FieldLabel>
 										</Field>
 									</FieldGroup>
@@ -354,7 +331,7 @@ export function NotificationPreferencesForm() {
 			))}
 
 			<LoadingButton type="submit" loading={saveMutation.isPending}>
-				Save preferences
+				{tf("save")}
 			</LoadingButton>
 		</form>
 	);

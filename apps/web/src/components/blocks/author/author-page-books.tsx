@@ -4,6 +4,7 @@ import { MAX_FAVORITES_PER_USER } from "@bbrc/shared";
 import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { AuthorFilteredEmpty } from "@/components/blocks/author/author-filter-bar";
 import { AuthorPageBooksToolbar } from "@/components/blocks/author/author-page-books-toolbar";
@@ -34,6 +35,7 @@ function BooksSkeleton() {
  * The author is fixed, so cards leave their name out and only name co-authors.
  */
 export function AuthorPageBooks({ slug }: { slug: string }) {
+	const t = useTranslations("authors");
 	const [params, setParams] = useBookListingSearchParams();
 	const { data: session } = authClient.useSession();
 
@@ -126,13 +128,13 @@ export function AuthorPageBooks({ slug }: { slug: string }) {
 				emptyContent={
 					<AuthorFilteredEmpty
 						filtered={filtered}
-						emptyText="Books by this author appear here once they are added to the library."
-						filteredText="No books match these filters."
+						emptyText={t("books.empty")}
+						filteredText={t("books.filteredEmpty")}
 						onClear={clearAll}
 					/>
 				}
 				loadingContent={<BooksSkeleton />}
-				endMessage="You have reached the end of the list."
+				endMessage={t("list.end")}
 			>
 				<ul className={gridClassName}>
 					{books.map((book) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@bbrc/ui/components/button";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 /** Keeps a render error inside the page area instead of blanking the whole app. */
@@ -11,6 +12,7 @@ export default function MainError({
 	error: Error & { digest?: string };
 	reset: () => void;
 }) {
+	const t = useTranslations("shell.error");
 	useEffect(() => {
 		console.error(error);
 	}, [error]);
@@ -18,13 +20,13 @@ export default function MainError({
 	return (
 		<div className="flex flex-col items-start gap-3 border border-border border-dashed p-6">
 			<div className="flex flex-col gap-1">
-				<p className="font-medium text-sm">Something went wrong on this page</p>
+				<p className="font-medium text-sm">{t("title")}</p>
 				<p className="max-w-prose text-muted-foreground text-sm">
-					Your action may have gone through. Reload the section to check.
+					{t("description")}
 				</p>
 			</div>
 			<Button type="button" size="sm" onClick={reset}>
-				Try again
+				{t("retry")}
 			</Button>
 		</div>
 	);

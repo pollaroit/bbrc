@@ -52,6 +52,7 @@
 		"qrcode": "^1.5.4",
 		"react": "catalog:",
 		"react-circle-flags": "^0.0.30",
+		"react-day-picker": "^10.0.1",
 		"react-dom": "catalog:",
 		"react-hook-form": "^7.89.0",
 		"react-image-crop": "^11.1.2",

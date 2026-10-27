@@ -7,7 +7,9 @@ export {
 	type Namespace,
 	pickMessages,
 } from "./messages";
+export { UI_NAMESPACES } from "./messages/ui-namespaces";
 export * from "./paths";
+export * from "./seo";
 export { createLooseTranslator, createServerTranslator } from "./server";
 export {
 	setValidationLocaleResolver,

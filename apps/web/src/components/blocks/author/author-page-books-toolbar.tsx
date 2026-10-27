@@ -4,6 +4,7 @@ import {
 	bookRangeableFields,
 	bookSortableFields,
 } from "@bbrc/api/modules/book/book.listing";
+import { type Locale, regionName } from "@bbrc/i18n";
 import { Field, FieldLabel } from "@bbrc/ui/components/field";
 import {
 	Select,
@@ -14,6 +15,7 @@ import {
 	SelectValue,
 } from "@bbrc/ui/components/select";
 import { useQuery } from "@tanstack/react-query";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import {
 	AuthorFilterBar,
@@ -54,15 +56,19 @@ const viewerFilterKeys = [
 	"viewerReading",
 ] as const;
 
-const regionNames =
-	typeof Intl !== "undefined" && "DisplayNames" in Intl
-		? new Intl.DisplayNames(["en"], { type: "region" })
-		: null;
+type AuthorsT = ReturnType<typeof useTranslations<"authors">>;
 
-function span(name: string, min: number | null, max: number | null) {
-	if (min != null && max != null) return `${name} ${min}–${max}`;
-	if (min != null) return `${name} ${min}+`;
-	return `${name} up to ${max}`;
+function span(
+	t: AuthorsT,
+	name: string,
+	min: number | null,
+	max: number | null,
+) {
+	if (min != null && max != null) {
+		return t("filters.rangeBetween", { name, min, max });
+	}
+	if (min != null) return t("filters.rangeMin", { name, min });
+	return t("filters.rangeMax", { name, max: max ?? 0 });
 }
 
 /**
@@ -78,6 +84,8 @@ export function AuthorPageBooksToolbar({
 	total: number | undefined;
 }) {
 	const f = useFormatters();
+	const t = useTranslations("authors");
+	const locale = useLocale() as Locale;
 	const [params, setParams] = useBookListingSearchParams();
 	const { data: session } = authClient.useSession();
 	const activeCount = countBookSheetFilters({ ...params, authors: null });
@@ -117,7 +125,7 @@ export function AuthorPageBooksToolbar({
 		})),
 		...(params.countries ?? []).map((code) => ({
 			id: `country:${code}`,
-			label: regionNames?.of(code.toUpperCase()) ?? code,
+			label: regionName(locale, code) ?? code,
 			onRemove: () => {
 				const next = (params.countries ?? []).filter((item) => item !== code);
 				void setParams({ countries: next.length > 0 ? next : null });
@@ -136,7 +144,9 @@ export function AuthorPageBooksToolbar({
 					{
 						id: "viewer-read",
 						label:
-							params.viewerRead === "read" ? "Read by me" : "Not read by me",
+							params.viewerRead === "read"
+								? t("booksToolbar.readByMe")
+								: t("booksToolbar.notReadByMe"),
 						onRemove: () => void setParams({ viewerRead: null }),
 					},
 				]
@@ -152,7 +162,12 @@ export function AuthorPageBooksToolbar({
 			? [
 					{
 						id: "pages",
-						label: span("Pages", params.minPages, params.maxPages),
+						label: span(
+							t,
+							t("booksToolbar.pages"),
+							params.minPages,
+							params.maxPages,
+						),
 						onRemove: () => void setParams({ minPages: null, maxPages: null }),
 					},
 				]
@@ -162,7 +177,8 @@ export function AuthorPageBooksToolbar({
 					{
 						id: "published",
 						label: span(
-							"Published",
+							t,
+							t("booksToolbar.published"),
 							params.minPublishedIn,
 							params.maxPublishedIn,
 						),
@@ -175,7 +191,12 @@ export function AuthorPageBooksToolbar({
 			? [
 					{
 						id: "reads",
-						label: span("Reads", params.minReads, params.maxReads),
+						label: span(
+							t,
+							t("booksToolbar.reads"),
+							params.minReads,
+							params.maxReads,
+						),
 						onRemove: () => void setParams({ minReads: null, maxReads: null }),
 					},
 				]
@@ -184,7 +205,12 @@ export function AuthorPageBooksToolbar({
 			? [
 					{
 						id: "reviews",
-						label: span("Reviews", params.minFeedbacks, params.maxFeedbacks),
+						label: span(
+							t,
+							t("booksToolbar.reviews"),
+							params.minFeedbacks,
+							params.maxFeedbacks,
+						),
 						onRemove: () =>
 							void setParams({ minFeedbacks: null, maxFeedbacks: null }),
 					},
@@ -195,7 +221,8 @@ export function AuthorPageBooksToolbar({
 					{
 						id: "club-rating",
 						label: span(
-							"Club rating",
+							t,
+							t("booksToolbar.clubRating"),
 							params.minAverageRating,
 							params.maxAverageRating,
 						),
@@ -213,7 +240,8 @@ export function AuthorPageBooksToolbar({
 					{
 						id: "ol-rating",
 						label: span(
-							"Open Library",
+							t,
+							t("booksToolbar.openLibrary"),
 							params.minOpenLibraryRating,
 							params.maxOpenLibraryRating,
 						),
@@ -229,7 +257,7 @@ export function AuthorPageBooksToolbar({
 			? [
 					{
 						id: "catalog-dates",
-						label: "Added or updated in a date range",
+						label: t("booksToolbar.catalogDates"),
 						onRemove: () =>
 							void setParams({ rangeBy: null, rangeMin: null, rangeMax: null }),
 					},
@@ -248,7 +276,9 @@ export function AuthorPageBooksToolbar({
 	const resultLabel =
 		total == null
 			? null
-			: `${f.number(total)} ${total === 1 ? "book" : "books"}${filtered ? " match" : ""}`;
+			: filtered
+				? t("booksToolbar.countMatch", { count: total })
+				: t("booksToolbar.count", { count: total });
 
 	return (
 		<AuthorFilterBar
@@ -284,18 +314,18 @@ export function AuthorPageBooksToolbar({
 					sortByLabels={bookSortByLabels}
 				/>
 			}
-			sheetTitle="Book filters"
-			sheetDescription="Filter this author's books by status, rating, pages, year or your own library."
+			sheetTitle={t("booksToolbar.sheetTitle")}
+			sheetDescription={t("booksToolbar.sheetDescription")}
 			sheetContent={
 				<>
 					{session?.user ? (
 						<ListingSideSheetSection
-							title="Your library"
-							description="Limit the list to books you have read, favorited or reviewed."
+							title={t("booksToolbar.yourLibrary")}
+							description={t("booksToolbar.yourLibraryHint")}
 						>
 							<Field className="min-w-0">
 								<FieldLabel className="text-muted-foreground text-xs">
-									Read status
+									{t("booksToolbar.readStatus")}
 								</FieldLabel>
 								<Select
 									value={params.viewerRead ?? "any"}
@@ -310,22 +340,26 @@ export function AuthorPageBooksToolbar({
 								>
 									<SelectTrigger
 										className="w-full bg-background"
-										aria-label="Filter by whether you have read the book"
+										aria-label={t("booksToolbar.readFilterLabel")}
 									>
-										<SelectValue placeholder="Any">
+										<SelectValue placeholder={t("booksToolbar.any")}>
 											{params.viewerRead === "read"
-												? "Read"
+												? t("booksToolbar.read")
 												: params.viewerRead === "unread"
-													? "Not read"
-													: "Any"}
+													? t("booksToolbar.notRead")
+													: t("booksToolbar.any")}
 										</SelectValue>
 									</SelectTrigger>
 									<SelectContent alignItemWithTrigger={false}>
 										<SelectGroup>
-											<SelectItem value="any">Any</SelectItem>
+											<SelectItem value="any">
+												{t("booksToolbar.any")}
+											</SelectItem>
 											{viewerReadFilterValues.map((value) => (
 												<SelectItem key={value} value={value}>
-													{value === "read" ? "Read" : "Not read"}
+													{value === "read"
+														? t("booksToolbar.read")
+														: t("booksToolbar.notRead")}
 												</SelectItem>
 											))}
 										</SelectGroup>
@@ -345,8 +379,8 @@ export function AuthorPageBooksToolbar({
 					) : null}
 
 					<ListingSideSheetSection
-						title="Catalog status"
-						description="Club reading phase for each title."
+						title={t("booksToolbar.catalogStatus")}
+						description={t("booksToolbar.catalogStatusHint")}
 					>
 						<ListingCheckboxList
 							options={bookStatuses.map((status) => ({
@@ -359,13 +393,13 @@ export function AuthorPageBooksToolbar({
 					</ListingSideSheetSection>
 
 					<ListingSideSheetSection
-						title="Literary origin"
-						description="Countries of this author's books."
+						title={t("booksToolbar.origin")}
+						description={t("booksToolbar.originHint")}
 					>
 						<AuthorFilterFacetList
-							label="Countries"
-							searchPlaceholder="Search countries…"
-							emptyText="No countries to choose from."
+							label={t("booksToolbar.countries")}
+							searchPlaceholder={t("booksToolbar.searchCountries")}
+							emptyText={t("booksToolbar.noCountries")}
 							isPending={facetsQuery.isPending}
 							rows={(facetsQuery.data?.countries ?? []).map((country) => ({
 								value: country.alpha2,
@@ -380,11 +414,11 @@ export function AuthorPageBooksToolbar({
 					</ListingSideSheetSection>
 
 					<ListingSideSheetSection
-						title="Ratings & size"
-						description="Open Library score, page count and publication year."
+						title={t("booksToolbar.ratingsSize")}
+						description={t("booksToolbar.ratingsSizeHint")}
 					>
 						<div className="flex flex-col gap-3">
-							<ListingFilterPanel title="Open Library rating">
+							<ListingFilterPanel title={t("booksToolbar.olRating")}>
 								<ListingOpenLibraryRatingSlider
 									min={params.minOpenLibraryRating}
 									max={params.maxOpenLibraryRating}
@@ -396,14 +430,14 @@ export function AuthorPageBooksToolbar({
 									}
 								/>
 							</ListingFilterPanel>
-							<ListingFilterPanel title="Page count">
+							<ListingFilterPanel title={t("booksToolbar.pageCount")}>
 								<ListingIntegerRangeFields
 									minId="author-books-min-pages"
 									maxId="author-books-max-pages"
 									min={params.minPages}
 									max={params.maxPages}
-									minLabel="Minimum pages"
-									maxLabel="Maximum pages"
+									minLabel={t("booksToolbar.minPages")}
+									maxLabel={t("booksToolbar.maxPages")}
 									placeholderMin={
 										facetsQuery.data?.ranges.pages
 											? String(facetsQuery.data.ranges.pages.min)
@@ -418,15 +452,15 @@ export function AuthorPageBooksToolbar({
 									onMaxChange={(maxPages) => void setParams({ maxPages })}
 								/>
 							</ListingFilterPanel>
-							<ListingFilterPanel title="First published">
+							<ListingFilterPanel title={t("booksToolbar.firstPublished")}>
 								<ListingIntegerRangeFields
 									minId="author-books-min-published"
 									maxId="author-books-max-published"
 									min={params.minPublishedIn}
 									max={params.maxPublishedIn}
 									inputMin={0}
-									minLabel="From year"
-									maxLabel="To year"
+									minLabel={t("booksToolbar.fromYear")}
+									maxLabel={t("booksToolbar.toYear")}
 									placeholderMin={
 										facetsQuery.data?.ranges.publishedIn
 											? String(facetsQuery.data.ranges.publishedIn.min)
@@ -449,17 +483,17 @@ export function AuthorPageBooksToolbar({
 					</ListingSideSheetSection>
 
 					<ListingSideSheetSection
-						title="Club activity"
-						description="How many members finished each book."
+						title={t("booksToolbar.clubActivity")}
+						description={t("booksToolbar.clubActivityHint")}
 					>
-						<ListingFilterPanel title="Member reads">
+						<ListingFilterPanel title={t("booksToolbar.memberReads")}>
 							<ListingIntegerRangeFields
 								minId="author-books-min-reads"
 								maxId="author-books-max-reads"
 								min={params.minReads}
 								max={params.maxReads}
-								minLabel="Minimum reads"
-								maxLabel="Maximum reads"
+								minLabel={t("booksToolbar.minReads")}
+								maxLabel={t("booksToolbar.maxReads")}
 								onMinChange={(minReads) => void setParams({ minReads })}
 								onMaxChange={(maxReads) => void setParams({ maxReads })}
 							/>
@@ -467,11 +501,11 @@ export function AuthorPageBooksToolbar({
 					</ListingSideSheetSection>
 
 					<ListingSideSheetSection
-						title="Reviews & club rating"
-						description="How many club reviews a book has, and how members rated it."
+						title={t("booksToolbar.reviewsRating")}
+						description={t("booksToolbar.reviewsRatingHint")}
 					>
 						<ListingIntegerRangeFields
-							legend="Club reviews"
+							legend={t("booksToolbar.clubReviews")}
 							minId="author-books-min-feedbacks"
 							maxId="author-books-max-feedbacks"
 							inputMin={0}
@@ -481,7 +515,7 @@ export function AuthorPageBooksToolbar({
 							onMaxChange={(maxFeedbacks) => void setParams({ maxFeedbacks })}
 						/>
 						<ListingRatingRangeFields
-							legend="Club rating"
+							legend={t("booksToolbar.clubRating")}
 							minId="author-books-min-club-rating"
 							maxId="author-books-max-club-rating"
 							min={params.minAverageRating}
@@ -496,8 +530,8 @@ export function AuthorPageBooksToolbar({
 					</ListingSideSheetSection>
 
 					<ListingSideSheetSection
-						title="Catalog dates"
-						description="When titles were added or last updated."
+						title={t("booksToolbar.catalogDatesTitle")}
+						description={t("booksToolbar.catalogDatesHint")}
 					>
 						<ListingRangeFields
 							rangeBy={params.rangeBy}

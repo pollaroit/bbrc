@@ -12,6 +12,7 @@ import {
 } from "@bbrc/ui/components/dropdown-menu";
 import { Compass } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import {
 	browseMenuItems,
@@ -23,6 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export function BrowseMenuDropdown() {
+	const t = useTranslations("shell.browse");
 	const pathname = usePathname();
 	const browseActive = isBrowseNavActive(pathname);
 
@@ -44,7 +46,7 @@ export function BrowseMenuDropdown() {
 				}
 			>
 				<Compass data-icon="inline-start" aria-hidden />
-				Browse
+				{t("title")}
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="min-w-56">
 				{browseNavSections.map((section) => {
@@ -58,7 +60,7 @@ export function BrowseMenuDropdown() {
 					return (
 						<DropdownMenuGroup key={section.id}>
 							<DropdownMenuLabel className="text-muted-foreground text-xs">
-								{section.label}
+								{t(`sections.${section.id}`)}
 							</DropdownMenuLabel>
 							{items.map((item) => {
 								const Icon = item.icon;
@@ -72,12 +74,10 @@ export function BrowseMenuDropdown() {
 									>
 										<Icon aria-hidden />
 										<span className="flex flex-col gap-0.5">
-											<span>{item.label}</span>
-											{item.description ? (
-												<span className="font-normal text-muted-foreground text-xs">
-													{item.description}
-												</span>
-											) : null}
+											<span>{t(`items.${item.id}.label`)}</span>
+											<span className="font-normal text-muted-foreground text-xs">
+												{t(`items.${item.id}.description`)}
+											</span>
 										</span>
 									</DropdownMenuItem>
 								);
@@ -88,16 +88,18 @@ export function BrowseMenuDropdown() {
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
 					<DropdownMenuLabel className="text-muted-foreground text-xs">
-						Later
+						{t("later")}
 					</DropdownMenuLabel>
 					{browseNavPlaceholderItems.map((item) => {
 						const Icon = item.icon;
 						return (
-							<DropdownMenuItem key={item.label} disabled>
+							<DropdownMenuItem key={item.id} disabled>
 								{Icon ? <Icon className="opacity-50" aria-hidden /> : null}
-								<span className="text-muted-foreground">{item.label}</span>
+								<span className="text-muted-foreground">
+									{t(`placeholders.${item.id}.label`)}
+								</span>
 								<span className="ms-auto text-muted-foreground text-xs">
-									{item.description}
+									{t(`placeholders.${item.id}.description`)}
 								</span>
 							</DropdownMenuItem>
 						);

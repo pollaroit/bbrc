@@ -3,6 +3,7 @@ import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { EditionChip } from "@/components/blocks/edition-chip";
 import { FeedbackCommentFocusSection } from "@/components/blocks/feedback-comment-focus-section";
 import { FeedbackCommentsSection } from "@/components/blocks/feedback-comments-section";
@@ -32,6 +33,7 @@ export function FeedbackDetail({
 	commentFocusSlug = null,
 	showCommentsSection = true,
 }: FeedbackDetailProps) {
+	const t = useTranslations("books");
 	const bookHref = `/books/${feedback.bookSlug}` as Route;
 	const feedbackHref =
 		`/books/${feedback.bookSlug}/feedbacks/${feedback.slug}` as Route;
@@ -67,7 +69,7 @@ export function FeedbackDetail({
 								href={sittingHref}
 								className="text-muted-foreground text-xs hover:text-foreground hover:underline"
 							>
-								View sitting
+								{t("feedback.viewSitting")}
 							</Link>
 						) : null}
 					</div>
@@ -103,7 +105,7 @@ export function FeedbackDetail({
 						<ResourceShareMenu
 							path={`/books/${feedback.bookSlug}/feedbacks/${feedback.slug}`}
 							shareText={`${feedback.bookTitle} · ${shareSnippet(feedback.review)}`}
-							label="Share review"
+							label={t("feedback.shareReview")}
 							shareInPost={{ kind: "feedback", slug: feedback.slug }}
 							size="md"
 						/>
@@ -125,7 +127,7 @@ export function FeedbackDetail({
 						render={<Link href={feedbackHref} />}
 						nativeButton={false}
 					>
-						View all comments on this review
+						{t("feedback.viewAllComments")}
 					</Button>
 				</>
 			) : showCommentsSection ? (

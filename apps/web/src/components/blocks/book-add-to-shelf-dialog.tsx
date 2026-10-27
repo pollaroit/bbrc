@@ -17,6 +17,7 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Library } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "@/i18n/navigation";
@@ -38,6 +39,7 @@ export function BookAddToShelfDialog({
 	className,
 	tooltipSide = "top",
 }: BookAddToShelfDialogProps) {
+	const t = useTranslations("books");
 	const [open, setOpen] = useState(false);
 	/** `owner/slug`: the same slug can exist under several owners. */
 	const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -87,7 +89,7 @@ export function BookAddToShelfDialog({
 				if (context) {
 					queryClient.setQueryData(editableKey, context.previous);
 				}
-				toast.error(error.message ?? "Could not add book.");
+				toast.error(error.message ?? t("shelfDialog.addFailed"));
 			},
 			onSettled: () => {
 				void queryClient.invalidateQueries({
@@ -126,17 +128,19 @@ export function BookAddToShelfDialog({
 								event.stopPropagation();
 								openDialog();
 							}}
-							aria-label="Add to shelf"
+							aria-label={t("shelfDialog.addToShelf")}
 						/>
 					}
 				>
 					<Library className="size-4" aria-hidden />
 				</TooltipTrigger>
-				<TooltipContent side={tooltipSide}>Add to shelf</TooltipContent>
+				<TooltipContent side={tooltipSide}>
+					{t("shelfDialog.addToShelf")}
+				</TooltipContent>
 			</Tooltip>
 		) : (
 			<Button type="button" variant="outline" size="sm" onClick={openDialog}>
-				Add to shelf
+				{t("shelfDialog.addToShelf")}
 			</Button>
 		);
 
@@ -145,18 +149,19 @@ export function BookAddToShelfDialog({
 			{triggerNode}
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
-					<DialogTitle>Add to shelf</DialogTitle>
+					<DialogTitle>{t("shelfDialog.addToShelf")}</DialogTitle>
 					<DialogDescription>
-						Pick a draft or active shelf, yours or one you collaborate on. Each
-						shelf holds up to {max} books.
+						{t("shelfDialog.description", { max })}
 					</DialogDescription>
 				</DialogHeader>
 
 				{shelvesQuery.isPending ? (
-					<p className="text-muted-foreground text-sm">Loading shelves…</p>
+					<p className="text-muted-foreground text-sm">
+						{t("shelfDialog.loading")}
+					</p>
 				) : items.length === 0 ? (
 					<p className="text-muted-foreground text-sm">
-						You do not have any shelves yet.
+						{t("shelfDialog.none")}
 					</p>
 				) : (
 					<ul className="max-h-64 space-y-2 overflow-y-auto py-1">
@@ -182,11 +187,15 @@ export function BookAddToShelfDialog({
 									>
 										<p className="font-medium leading-snug">{shelf.title}</p>
 										<p className="text-muted-foreground text-xs">
-											{shelf.isOwner ? "" : `By @${shelf.ownerUsername} · `}
-											{shelf.bookCount}/{max} books
-											{shelf.status === "draft" ? ", draft" : ""}
-											{onShelf ? ", already on shelf" : ""}
-											{atCap && !onShelf ? ", full" : ""}
+											{shelf.isOwner
+												? ""
+												: t("shelfDialog.by", {
+														username: shelf.ownerUsername,
+													})}
+											{t("shelfDialog.count", { count: shelf.bookCount, max })}
+											{shelf.status === "draft" ? t("shelfDialog.draft") : ""}
+											{onShelf ? t("shelfDialog.alreadyOn") : ""}
+											{atCap && !onShelf ? t("shelfDialog.full") : ""}
 										</p>
 									</button>
 								</li>
@@ -212,7 +221,7 @@ export function BookAddToShelfDialog({
 							});
 						}}
 					>
-						Add book
+						{t("shelfDialog.addBook")}
 					</Button>
 					<Button
 						type="button"
@@ -221,7 +230,7 @@ export function BookAddToShelfDialog({
 						nativeButton={false}
 						onClick={() => setOpen(false)}
 					>
-						Create new shelf
+						{t("shelfDialog.createNew")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

@@ -1,4 +1,4 @@
-import { pickMessages } from "@bbrc/i18n";
+import { pickMessages, UI_NAMESPACES } from "@bbrc/i18n";
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
@@ -61,7 +61,12 @@ export default async function LocaleLayout({
 			lang={locale}
 			intl={{
 				locale,
-				messages: pickMessages(locale, ["language", "notifications", "labels"]),
+				messages: pickMessages(locale, [
+					"language",
+					"notifications",
+					"labels",
+					...UI_NAMESPACES,
+				]),
 			}}
 		>
 			{children}

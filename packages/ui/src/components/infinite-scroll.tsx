@@ -1,11 +1,49 @@
 "use client";
 
 import { cn } from "cn";
-import { type ReactNode, useEffect, useRef } from "react";
+import {
+	createContext,
+	type ReactNode,
+	useContext,
+	useEffect,
+	useRef,
+} from "react";
 import { Alert, AlertDescription, AlertTitle } from "./alert";
 import { Button } from "./button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "./empty";
 import { Skeleton } from "./skeleton";
+
+export type InfiniteScrollLabels = {
+	emptyTitle: string;
+	errorTitle: string;
+	errorFallback: string;
+	retry: string;
+};
+
+const DEFAULT_LABELS: InfiniteScrollLabels = {
+	emptyTitle: "Nothing here yet",
+	errorTitle: "Something went wrong",
+	errorFallback: "Failed to load content.",
+	retry: "Try again",
+};
+
+const InfiniteScrollLabelsContext =
+	createContext<InfiniteScrollLabels>(DEFAULT_LABELS);
+
+/** Sets the built-in texts of every infinite list below it (the app passes them translated). */
+export function InfiniteScrollLabelsProvider({
+	labels,
+	children,
+}: {
+	labels: InfiniteScrollLabels;
+	children: ReactNode;
+}) {
+	return (
+		<InfiniteScrollLabelsContext.Provider value={labels}>
+			{children}
+		</InfiniteScrollLabelsContext.Provider>
+	);
+}
 
 export type InfiniteScrollProps = {
 	children: ReactNode;
@@ -49,7 +87,7 @@ export function InfiniteScroll({
 	error,
 	onRetry,
 	isEmpty = false,
-	emptyTitle = "Nothing here yet",
+	emptyTitle,
 	emptyDescription,
 	emptyContent,
 	loadingContent,
@@ -59,6 +97,7 @@ export function InfiniteScroll({
 	rootMargin = "200px",
 	threshold = 0,
 }: InfiniteScrollProps) {
+	const labels = useContext(InfiniteScrollLabelsContext);
 	const sentinelRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -106,9 +145,9 @@ export function InfiniteScroll({
 		return (
 			<div className={className}>
 				<Alert variant="destructive">
-					<AlertTitle>Something went wrong</AlertTitle>
+					<AlertTitle>{labels.errorTitle}</AlertTitle>
 					<AlertDescription>
-						{error?.message ?? "Failed to load content."}
+						{error?.message ?? labels.errorFallback}
 					</AlertDescription>
 				</Alert>
 				{onRetry ? (
@@ -118,7 +157,7 @@ export function InfiniteScroll({
 						className="mt-4"
 						onClick={onRetry}
 					>
-						Try again
+						{labels.retry}
 					</Button>
 				) : null}
 			</div>
@@ -131,7 +170,7 @@ export function InfiniteScroll({
 				{emptyContent ?? (
 					<Empty className="border">
 						<EmptyHeader>
-							<EmptyTitle>{emptyTitle}</EmptyTitle>
+							<EmptyTitle>{emptyTitle ?? labels.emptyTitle}</EmptyTitle>
 							{emptyDescription ? (
 								<EmptyDescription>{emptyDescription}</EmptyDescription>
 							) : null}

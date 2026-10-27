@@ -14,6 +14,7 @@ import { ScrollArea } from "@bbrc/ui/components/scroll-area";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { orpc } from "@/utils/orpc";
@@ -25,10 +26,12 @@ type ListingMemberMultiSelectProps = {
 };
 
 export function ListingMemberMultiSelect({
-	legend = "Members",
+	legend: legendProp,
 	selectedUsernames,
 	onSelectedUsernamesChange,
 }: ListingMemberMultiSelectProps) {
+	const t = useTranslations("listing");
+	const legend = legendProp ?? t("multi.members.legend");
 	const [search, setSearch] = useState("");
 
 	const membersQuery = useQuery(
@@ -64,9 +67,9 @@ export function ListingMemberMultiSelect({
 					<Input
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
-						placeholder="Search by name or username…"
+						placeholder={t("multi.members.placeholder")}
 						className="pl-9"
-						aria-label="Search members in list"
+						aria-label={t("multi.members.aria")}
 					/>
 				</div>
 			</Field>

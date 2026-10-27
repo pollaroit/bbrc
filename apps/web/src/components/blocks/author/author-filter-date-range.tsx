@@ -15,6 +15,7 @@ import {
 } from "@bbrc/ui/components/reui/date-selector";
 import { Separator } from "@bbrc/ui/components/separator";
 import { CalendarIcon, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +51,7 @@ export function AuthorFilterDateRange({
 	onChange,
 	minYear = 2015,
 }: AuthorFilterDateRangeProps) {
+	const t = useTranslations("authors");
 	const committed = useMemo(() => toValue(from, to), [from, to]);
 	const [open, setOpen] = useState(false);
 	const [draft, setDraft] = useState<DateSelectorValue | undefined>(committed);
@@ -61,7 +63,7 @@ export function AuthorFilterDateRange({
 
 	const text = committed
 		? formatDateValue(committed, undefined, DAY_FORMAT)
-		: "Any time";
+		: t("filters.anyTime");
 
 	return (
 		<FieldSet className="gap-2">
@@ -125,7 +127,7 @@ export function AuthorFilterDateRange({
 											setOpen(false);
 										}}
 									>
-										Cancel
+										{t("filters.cancel")}
 									</Button>
 									<Button
 										type="button"
@@ -138,7 +140,7 @@ export function AuthorFilterDateRange({
 											setOpen(false);
 										}}
 									>
-										Apply
+										{t("filters.apply")}
 									</Button>
 								</div>
 							</PopoverContent>
@@ -149,7 +151,7 @@ export function AuthorFilterDateRange({
 								variant="ghost"
 								size="icon-sm"
 								className="h-auto self-stretch border-input border-l"
-								aria-label={`Clear ${legend.toLowerCase()}`}
+								aria-label={t("filters.clearLegend", { legend })}
 								onClick={() => onChange({ from: null, to: null })}
 							>
 								<X />

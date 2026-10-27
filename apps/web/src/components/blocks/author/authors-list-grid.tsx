@@ -11,6 +11,7 @@ import {
 import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo } from "react";
 import { AuthorCard } from "@/components/blocks/author/author-card";
 import { useFormatters } from "@/lib/i18n/use-formatters";
@@ -38,6 +39,7 @@ function AuthorsListSkeleton() {
 
 export function AuthorsListGrid() {
 	const f = useFormatters();
+	const t = useTranslations("authors");
 	const [params, setParams] = useAuthorsListingSearchParams();
 	const listInput = toAuthorListCallInput(params);
 	const narrowed =
@@ -94,11 +96,7 @@ export function AuthorsListGrid() {
 
 	const filteredTotal = data?.pages[0]?.metadata.total;
 	const countLabel =
-		filteredTotal == null
-			? null
-			: filteredTotal === 1
-				? "1 author"
-				: `${f.number(filteredTotal)} authors`;
+		filteredTotal == null ? null : t("list.count", { count: filteredTotal });
 
 	return (
 		<InfiniteScroll
@@ -119,12 +117,10 @@ export function AuthorsListGrid() {
 				<Empty>
 					<EmptyHeader>
 						<EmptyTitle>
-							{narrowed ? "No authors match" : "No authors yet"}
+							{narrowed ? t("list.noMatch") : t("list.none")}
 						</EmptyTitle>
 						<EmptyDescription>
-							{narrowed
-								? "Try a different name or clear the filters."
-								: "Authors appear here once their books are in the library."}
+							{narrowed ? t("list.noMatchHint") : t("list.noneHint")}
 						</EmptyDescription>
 					</EmptyHeader>
 					{narrowed ? (
@@ -137,13 +133,13 @@ export function AuthorsListGrid() {
 								void setParams({ search: null });
 							}}
 						>
-							Clear filters
+							{t("list.clearFilters")}
 						</Button>
 					) : null}
 				</Empty>
 			}
 			loadingContent={<AuthorsListSkeleton />}
-			endMessage="You have reached the end of the list."
+			endMessage={t("list.end")}
 		>
 			{isPending && filteredTotal == null ? (
 				<Skeleton className="h-5 w-24" aria-hidden />

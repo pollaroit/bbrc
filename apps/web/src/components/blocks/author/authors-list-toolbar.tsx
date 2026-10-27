@@ -8,6 +8,7 @@ import {
 } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { Label } from "@bbrc/ui/components/label";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { ListingAuthorCountryMultiSelect } from "@/components/listing/listing-author-country-multi-select";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
@@ -20,9 +21,8 @@ import { authClient } from "@/lib/auth-client";
 import {
 	AUTHOR_GENDER_FILTERS,
 	AUTHOR_STATUS_FILTERS,
+	type AuthorSortField,
 	authorDirectorySortFieldsList,
-	authorGenderLabels,
-	authorSortByLabels,
 	authorStatusLabels,
 	clearAuthorSheetFilters,
 	countAuthorSheetFilters,
@@ -31,10 +31,10 @@ import {
 } from "@/lib/listing/authors-listing";
 
 const MINIMUMS = [
-	{ key: "minBooks", id: "author-min-books", label: "Books" },
-	{ key: "minReaders", id: "author-min-readers", label: "Readers" },
-	{ key: "minReads", id: "author-min-reads", label: "Reads" },
-	{ key: "minReviews", id: "author-min-reviews", label: "Reviews" },
+	{ key: "minBooks", id: "author-min-books" },
+	{ key: "minReaders", id: "author-min-readers" },
+	{ key: "minReads", id: "author-min-reads" },
+	{ key: "minReviews", id: "author-min-reviews" },
 ] as const;
 
 function toggled<T extends string>(
@@ -49,6 +49,10 @@ function toggled<T extends string>(
 }
 
 export function AuthorsListToolbar() {
+	const t = useTranslations("authors");
+	const sortByLabels = Object.fromEntries(
+		authorDirectorySortFieldsList.map((field) => [field, t(`sort.${field}`)]),
+	) as Record<AuthorSortField, string>;
 	const [params, setParams] = useAuthorsListingSearchParams();
 	const { data: session } = authClient.useSession();
 	const isAdmin = session?.user.isAdmin === true;
@@ -64,7 +68,7 @@ export function AuthorsListToolbar() {
 				onChange={(search) => {
 					void setParams({ search });
 				}}
-				placeholder="Search authors by name…"
+				placeholder={t("toolbar.search")}
 			/>
 
 			<div className="flex flex-wrap items-center gap-2 lg:shrink-0">
@@ -78,13 +82,13 @@ export function AuthorsListToolbar() {
 						void setParams({ sortDirection: sortDirection ?? "desc" });
 					}}
 					sortByOptions={authorDirectorySortFieldsList}
-					sortByLabels={authorSortByLabels}
+					sortByLabels={sortByLabels}
 					appearance="library"
 				/>
 
 				<ListingFiltersSheet
-					title="Author filters"
-					description="Narrow the list by nationality, gender, photo, size, readers, reviews and rating."
+					title={t("toolbar.filtersTitle")}
+					description={t("toolbar.filtersDescription")}
 					activeFilterCount={countAuthorSheetFilters(params)}
 					onClear={() => clearAuthorSheetFilters(setParams)}
 					appearance="library"
@@ -100,10 +104,10 @@ export function AuthorsListToolbar() {
 					/>
 
 					<ListingCheckboxList
-						legend="Gender"
+						legend={t("toolbar.gender")}
 						options={AUTHOR_GENDER_FILTERS.map((key) => ({
 							id: `author-gender-${key}`,
-							label: authorGenderLabels[key],
+							label: t(`toolbar.genderOption.${key}`),
 							checked: params.genders?.includes(key) ?? false,
 							onCheckedChange: (checked) => {
 								void setParams({
@@ -114,11 +118,11 @@ export function AuthorsListToolbar() {
 					/>
 
 					<ListingCheckboxList
-						legend="Photo"
+						legend={t("toolbar.photo")}
 						options={[
 							{
 								id: "author-has-photo",
-								label: "Has a photo",
+								label: t("toolbar.hasPhoto"),
 								checked: params.hasPhoto === true,
 								onCheckedChange: (checked) => {
 									void setParams({ hasPhoto: checked ? true : null });
@@ -128,17 +132,17 @@ export function AuthorsListToolbar() {
 					/>
 
 					<FieldSet className="gap-3">
-						<FieldLegend>At least</FieldLegend>
+						<FieldLegend>{t("toolbar.atLeast")}</FieldLegend>
 						<FieldGroup className="grid grid-cols-2 gap-3">
-							{MINIMUMS.map(({ key, id, label }) => (
+							{MINIMUMS.map(({ key, id }) => (
 								<Field key={key}>
-									<Label htmlFor={id}>{label}</Label>
+									<Label htmlFor={id}>{t(`toolbar.${key}`)}</Label>
 									<Input
 										id={id}
 										type="number"
 										min={1}
 										inputMode="numeric"
-										placeholder="Any"
+										placeholder={t("toolbar.any")}
 										value={params[key] ?? ""}
 										onChange={(event) => {
 											const parsed = Number.parseInt(event.target.value, 10);
@@ -154,13 +158,13 @@ export function AuthorsListToolbar() {
 					</FieldSet>
 
 					<ListingIntegerRangeFields
-						legend="Total pages"
+						legend={t("toolbar.totalPages")}
 						minId="author-min-pages"
 						maxId="author-max-pages"
 						min={params.minPages}
 						max={params.maxPages}
-						minLabel="Fewest"
-						maxLabel="Most"
+						minLabel={t("toolbar.fewest")}
+						maxLabel={t("toolbar.most")}
 						onMinChange={(minPages) => {
 							void setParams({ minPages });
 						}}
@@ -170,7 +174,7 @@ export function AuthorsListToolbar() {
 					/>
 
 					<FieldSet className="gap-3">
-						<FieldLegend>Average rating</FieldLegend>
+						<FieldLegend>{t("toolbar.averageRating")}</FieldLegend>
 						<ListingOpenLibraryRatingSlider
 							min={params.minRating}
 							max={params.maxRating}
@@ -185,7 +189,7 @@ export function AuthorsListToolbar() {
 
 					{isAdmin ? (
 						<ListingCheckboxList
-							legend="Review status (admins)"
+							legend={t("toolbar.statusAdmins")}
 							options={AUTHOR_STATUS_FILTERS.map((key) => ({
 								id: `author-status-${key}`,
 								label: authorStatusLabels[key],

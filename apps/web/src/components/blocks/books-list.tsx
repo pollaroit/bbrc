@@ -4,6 +4,7 @@ import { MAX_FAVORITES_PER_USER } from "@bbrc/shared";
 import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { BookCard } from "@/components/blocks/book-card";
 import { authClient } from "@/lib/auth-client";
@@ -35,6 +36,7 @@ type BooksListProps = {
 export function BooksList(
 	{ fixedAuthorSlug }: BooksListProps = {} as BooksListProps,
 ) {
+	const t = useTranslations("books");
 	const f = useFormatters();
 	const [params] = useBookListingSearchParams();
 	const listInput = {
@@ -100,11 +102,7 @@ export function BooksList(
 	const engagementLoading = Boolean(session?.user) && engagementQuery.isPending;
 
 	const countLabel =
-		filteredTotal == null
-			? null
-			: filteredTotal === 1
-				? "1 book"
-				: `${f.number(filteredTotal)} books`;
+		filteredTotal == null ? null : t("list.count", { count: filteredTotal });
 
 	return (
 		<InfiniteScroll
@@ -121,10 +119,10 @@ export function BooksList(
 				void refetch();
 			}}
 			isEmpty={books.length === 0}
-			emptyTitle="No books yet"
-			emptyDescription="When books are added to the club library, they will show up here."
+			emptyTitle={t("list.emptyTitle")}
+			emptyDescription={t("list.emptyDescription")}
 			loadingContent={<BooksListSkeleton />}
-			endMessage="You have reached the end of the list."
+			endMessage={t("list.end")}
 		>
 			{isPending && filteredTotal == null ? (
 				<Skeleton className="h-5 w-24" aria-hidden />

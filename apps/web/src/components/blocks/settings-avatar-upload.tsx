@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
 import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
@@ -7,14 +8,15 @@ import { refreshAuthSession } from "@/lib/refresh-auth-session";
 import { orpc } from "@/utils/orpc";
 
 export function SettingsAvatarUpload() {
+	const t = useTranslations("settings");
 	const router = useRouter();
 	const { data: session } = authClient.useSession();
 	const image = session?.user.image ?? null;
 
 	return (
 		<SingleImageUploadField
-			label="Profile photo"
-			description="Replaces your current avatar. JPEG is stored at a fixed path; PNG and WebP are accepted on upload."
+			label={t("avatar.label")}
+			description={t("avatar.description")}
 			currentUrl={image}
 			uploadTarget={{ target: "avatar" }}
 			onRemove={async () => {

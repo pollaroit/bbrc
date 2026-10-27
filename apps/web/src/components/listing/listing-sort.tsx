@@ -14,11 +14,8 @@ import {
 	ArrowUpWideNarrow,
 	ChevronDown,
 } from "lucide-react";
-import {
-	type FieldLabels,
-	labelForField,
-	sortDirectionLabels,
-} from "@/lib/listing/labels";
+import { useTranslations } from "next-intl";
+import { type FieldLabels, labelForField } from "@/lib/listing/labels";
 import { cn } from "@/lib/utils";
 
 type ListingSortProps<TSortBy extends string> = {
@@ -42,7 +39,10 @@ export function ListingSort<TSortBy extends string>({
 	className,
 	appearance = "default",
 }: ListingSortProps<TSortBy>) {
-	const sortByLabel = sortBy ? labelForField(sortByLabels, sortBy) : "Sort by";
+	const t = useTranslations("listing");
+	const sortByLabel = sortBy
+		? labelForField(sortByLabels, sortBy)
+		: t("sort.by");
 	const direction = sortDirection ?? "desc";
 	const isLibrary = appearance === "library";
 
@@ -88,7 +88,7 @@ export function ListingSort<TSortBy extends string>({
 			variant="outline"
 			size="icon-sm"
 			className={cn(isLibrary && "border-0 bg-transparent shadow-none")}
-			aria-label={sortDirectionLabels[direction]}
+			aria-label={t(direction === "asc" ? "sort.asc" : "sort.desc")}
 			onClick={() => {
 				onSortDirectionChange(direction === "asc" ? "desc" : "asc");
 			}}
@@ -104,7 +104,7 @@ export function ListingSort<TSortBy extends string>({
 					"m-0 inline-flex min-w-0 items-stretch border border-border bg-background p-0",
 					className,
 				)}
-				aria-label="Sort list"
+				aria-label={t("sort.list")}
 			>
 				{sortFieldControl}
 				<div className="w-px shrink-0 self-stretch bg-border" aria-hidden />

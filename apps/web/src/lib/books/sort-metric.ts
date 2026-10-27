@@ -1,6 +1,7 @@
 import type { GetBookListOutput } from "@bbrc/api/modules/book/book.schema";
 import type { Formatters } from "@bbrc/i18n";
 import { bookCardRatingDisplay } from "@/lib/book-card-rating";
+import type { BooksTranslator } from "@/lib/books/books-translator";
 
 type BookListItem = GetBookListOutput["items"][number];
 
@@ -21,11 +22,12 @@ export function bookSortMetric(
 	book: BookListItem,
 	sortBy: string | undefined,
 	f: Formatters,
+	t: BooksTranslator,
 ): BookSortMetric | null {
 	switch (sortBy) {
 		case "createdAt":
 			return {
-				label: "Added",
+				label: t("sortMetric.added"),
 				value: f.dateWith(book.createdAt, {
 					month: "short",
 					day: "numeric",
@@ -34,7 +36,7 @@ export function bookSortMetric(
 			};
 		case "updatedAt":
 			return {
-				label: "Updated",
+				label: t("sortMetric.updated"),
 				value: f.dateWith(book.updatedAt, {
 					month: "short",
 					day: "numeric",
@@ -45,7 +47,7 @@ export function bookSortMetric(
 			// The card shows the club rating when it has one, otherwise Open Library's.
 			if (bookCardRatingDisplay(book, f)?.suffix === "CR") return null;
 			return {
-				label: "Club rating",
+				label: t("sortMetric.clubRating"),
 				value: book.averageRating != null ? f.rating(book.averageRating) : "—",
 				href: `/books/${book.slug}/reviews`,
 			};
@@ -53,7 +55,7 @@ export function bookSortMetric(
 		case "openLibraryRating": {
 			if (bookCardRatingDisplay(book, f)?.suffix === "OL") return null;
 			return {
-				label: "Open Library",
+				label: t("sortMetric.openLibrary"),
 				value:
 					book.openLibraryRating != null
 						? f.rating(book.openLibraryRating)
@@ -62,18 +64,21 @@ export function bookSortMetric(
 		}
 		case "viewerCount":
 			return {
-				label: "Viewers",
+				label: t("sortMetric.viewers"),
 				value: String(book.viewerCount),
 				href: `/books/${book.slug}/insights`,
 			};
 		case "readingNowCount":
 			return {
-				label: "Reading now",
+				label: t("sortMetric.readingNow"),
 				value: String(book.readingNowCount),
 				href: `/books/${book.slug}/reading`,
 			};
 		case "wishlistCount":
-			return { label: "Wishlisted", value: String(book.wishlistCount) };
+			return {
+				label: t("sortMetric.wishlisted"),
+				value: String(book.wishlistCount),
+			};
 		default:
 			return null;
 	}

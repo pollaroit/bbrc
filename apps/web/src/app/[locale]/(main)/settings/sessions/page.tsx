@@ -1,7 +1,9 @@
+import { toLocale } from "@bbrc/i18n";
 import { ArrowLeft } from "lucide-react";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { RedirectType, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import {
 	type SettingsSessionItem,
 	SettingsSessionsList,
@@ -10,14 +12,25 @@ import { Link } from "@/i18n/navigation";
 import { buildPageMetadata, NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth, db } from "@/services";
 
-export const metadata: Metadata = buildPageMetadata({
-	title: "Sessions",
-	description: "Manage your active sessions.",
-	path: "/settings/sessions",
-	robots: NO_INDEX_ROBOTS,
-});
+export async function generateMetadata({
+	params,
+}: PageProps<"/[locale]/settings/sessions">): Promise<Metadata> {
+	const locale = toLocale((await params).locale);
+	const t = await getTranslations({ locale, namespace: "settings" });
+	return buildPageMetadata({
+		title: t("sessions.metaTitle"),
+		description: t("sessions.metaDescription"),
+		path: "/settings/sessions",
+		robots: NO_INDEX_ROBOTS,
+		locale,
+	});
+}
 
-export default async function SessionSettingsPage() {
+export default async function SessionSettingsPage({
+	params,
+}: PageProps<"/[locale]/settings/sessions">) {
+	const locale = toLocale((await params).locale);
+	const t = await getTranslations({ locale, namespace: "settings" });
 	const nextHeaders = await headers();
 	const session = await auth.api.getSession({ headers: nextHeaders });
 
@@ -48,11 +61,13 @@ export default async function SessionSettingsPage() {
 					className="mb-4 inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
 				>
 					<ArrowLeft className="size-4" aria-hidden />
-					Settings
+					{t("back")}
 				</Link>
-				<h1 className="font-semibold text-2xl tracking-tight">Sessions</h1>
+				<h1 className="font-semibold text-2xl tracking-tight">
+					{t("sessions.title")}
+				</h1>
 				<p className="mt-1 text-muted-foreground text-sm">
-					Devices where you are signed in. Log out of any you don't recognize.
+					{t("sessions.intro")}
 				</p>
 			</div>
 

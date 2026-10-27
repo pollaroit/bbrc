@@ -3,6 +3,7 @@
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
 import { ListingSearch } from "@/components/listing/listing-search";
@@ -51,6 +52,7 @@ export function AuthorFilterBar({
 	chips,
 	resultLabel,
 }: AuthorFilterBarProps) {
+	const t = useTranslations("authors");
 	return (
 		<div className="flex flex-col gap-3">
 			<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -77,7 +79,7 @@ export function AuthorFilterBar({
 			{chips.length > 0 ? (
 				<ul
 					className="flex flex-wrap items-center gap-1.5"
-					aria-label="Active filters"
+					aria-label={t("filters.active")}
 				>
 					{chips.map((chip) => (
 						<li key={chip.id} className="max-w-full">
@@ -86,7 +88,7 @@ export function AuthorFilterBar({
 								<button
 									type="button"
 									className="grid size-4 shrink-0 place-items-center hover:text-foreground"
-									aria-label={`Remove filter: ${chip.label}`}
+									aria-label={t("filters.remove", { label: chip.label })}
 									onClick={chip.onRemove}
 								>
 									<X className="size-3" aria-hidden />
@@ -101,7 +103,7 @@ export function AuthorFilterBar({
 							size="xs"
 							onClick={onClearAll}
 						>
-							Clear all
+							{t("filters.clearAll")}
 						</Button>
 					</li>
 				</ul>
@@ -130,12 +132,13 @@ export function AuthorFilteredEmpty({
 	onClear: () => void;
 	children?: ReactNode;
 }) {
+	const t = useTranslations("authors");
 	return (
 		<div className="flex flex-col items-center gap-3 border border-border border-dashed px-4 py-10 text-center">
 			<p className="max-w-md text-sm">{filtered ? filteredText : emptyText}</p>
 			{filtered ? (
 				<Button type="button" variant="outline" size="sm" onClick={onClear}>
-					Clear filters
+					{t("filters.clear")}
 				</Button>
 			) : (
 				children

@@ -8,6 +8,7 @@ import {
 } from "@bbrc/ui/components/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { BookCheck } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type MouseEvent, useState } from "react";
 import { BookMarkReadDialog } from "@/components/blocks/book-mark-read-dialog";
 import { BookReadingMenu } from "@/components/blocks/reading/book-reading-menu";
@@ -41,6 +42,7 @@ export function BookMarkReadButton({
 	listHasRead,
 	bookPages = 0,
 }: BookMarkReadButtonProps) {
+	const t = useTranslations("books");
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [open, setOpen] = useState(false);
 
@@ -71,7 +73,7 @@ export function BookMarkReadButton({
 		? (listHasRead ?? false)
 		: (stateQuery.data?.hasRead ?? false);
 
-	const label = hasRead ? "Edit read" : "Mark as read";
+	const label = hasRead ? t("actions.editRead") : t("actions.markAsRead");
 
 	// Marking a book read ends the reading and clears the wishlist: refresh both.
 	const changeOpen = (next: boolean) => {
@@ -120,7 +122,7 @@ export function BookMarkReadButton({
 						onClick={() => setOpen(true)}
 					>
 						<BookCheck data-icon="inline-start" />
-						{hasRead ? "Edit read" : "Mark read"}
+						{hasRead ? t("actions.editRead") : t("actions.markRead")}
 					</Button>
 					{useListMode ? null : (
 						<BookReadingMenu

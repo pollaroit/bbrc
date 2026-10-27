@@ -3,6 +3,7 @@
 import { Button } from "@bbrc/ui/components/button";
 import { ArrowRight } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { authPageHref, currentPageCallbackUrl } from "@/lib/auth-callback-url";
 
@@ -12,6 +13,7 @@ type HeaderAuthLinksProps = {
 };
 
 export function HeaderAuthLinks({ variant, onNavigate }: HeaderAuthLinksProps) {
+	const t = useTranslations("shell.header");
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 	const callbackUrl = currentPageCallbackUrl(pathname, searchParams.toString());
@@ -27,10 +29,10 @@ export function HeaderAuthLinks({ variant, onNavigate }: HeaderAuthLinksProps) {
 					variant="ghost"
 					className="text-muted-foreground hover:text-foreground"
 				>
-					Sign in
+					{t("signIn")}
 				</Button>
 				<Button render={<Link href={signUpHref} />} nativeButton={false}>
-					Get Started
+					{t("getStarted")}
 					<ArrowRight data-icon="inline-end" aria-hidden="true" />
 				</Button>
 			</>
@@ -45,14 +47,14 @@ export function HeaderAuthLinks({ variant, onNavigate }: HeaderAuthLinksProps) {
 				variant="outline"
 				className="w-full"
 			>
-				Sign in
+				{t("signIn")}
 			</Button>
 			<Button
 				render={<Link href={signUpHref} onClick={onNavigate} />}
 				nativeButton={false}
 				className="w-full"
 			>
-				Get Started
+				{t("getStarted")}
 				<ArrowRight data-icon="inline-end" aria-hidden="true" />
 			</Button>
 		</>

@@ -2,6 +2,7 @@
 
 import { Button } from "@bbrc/ui/components/button";
 import { Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useGlobalSearch } from "@/components/blocks/global-search-provider";
 import { headerToolbarIconButtonClass } from "@/lib/header-toolbar";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ export function GlobalSearchTrigger({
 	variant,
 	className,
 }: GlobalSearchTriggerProps) {
+	const t = useTranslations("shell.search");
 	const { openSearch } = useGlobalSearch();
 
 	const buttonClass = cn(headerToolbarIconButtonClass, className);
@@ -27,7 +29,7 @@ export function GlobalSearchTrigger({
 				size="icon"
 				className={buttonClass}
 				onClick={openSearch}
-				aria-label="Search"
+				aria-label={t("triggerMobile")}
 			>
 				<Search aria-hidden />
 			</Button>
@@ -41,7 +43,7 @@ export function GlobalSearchTrigger({
 			size="icon"
 			className={buttonClass}
 			onClick={openSearch}
-			aria-label="Search the club"
+			aria-label={t("triggerDesktop")}
 		>
 			<Search aria-hidden />
 		</Button>

@@ -10,9 +10,9 @@ import {
 } from "@bbrc/ui/components/card";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import { Field, FieldLabel } from "@bbrc/ui/components/field";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
 import { isStandalonePwa } from "@/lib/pwa/is-standalone";
 import {
 	readPwaEngagementPreferences,
@@ -20,6 +20,7 @@ import {
 } from "@/lib/pwa/pwa-engagement-storage";
 
 export function PwaEngagementSettingsCard() {
+	const t = useTranslations("settings.pwaAlerts");
 	const [soundsEnabled, setSoundsEnabled] = useState(false);
 	const [systemAlertsEnabled, setSystemAlertsEnabled] = useState(false);
 	const [notificationPermission, setNotificationPermission] =
@@ -46,7 +47,7 @@ export function PwaEngagementSettingsCard() {
 
 	const requestSystemAlerts = async () => {
 		if (!("Notification" in window)) {
-			toast.error("This browser does not support system alerts.");
+			toast.error(t("unsupported"));
 			return;
 		}
 
@@ -55,13 +56,13 @@ export function PwaEngagementSettingsCard() {
 
 		if (permission === "granted") {
 			persist({ soundsEnabled, systemAlertsEnabled: true });
-			toast.success("System alerts turned on");
+			toast.success(t("turnedOn"));
 			return;
 		}
 
 		persist({ soundsEnabled, systemAlertsEnabled: false });
 		if (permission === "denied") {
-			toast.error("Allow notifications in browser settings to use this.");
+			toast.error(t("denied"));
 		}
 	};
 
@@ -69,12 +70,10 @@ export function PwaEngagementSettingsCard() {
 		<Card>
 			<CardHeader>
 				<CardTitle className="text-base">
-					{installed ? "Installed app" : "App-style alerts"}
+					{installed ? t("installedTitle") : t("title")}
 				</CardTitle>
 				<CardDescription>
-					{installed
-						? "Sounds and system banners while BBRC runs from your home screen. For phone push when the app is fully closed, use ntfy below."
-						: "Optional feedback when new bell alerts arrive while this tab is open or in the background. Install BBRC for the full experience."}
+					{installed ? t("installedDescription") : t("description")}
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
@@ -89,9 +88,7 @@ export function PwaEngagementSettingsCard() {
 							});
 						}}
 					/>
-					<FieldLabel htmlFor="pwa-sounds">
-						Play a short sound for new bell alerts
-					</FieldLabel>
+					<FieldLabel htmlFor="pwa-sounds">{t("sound")}</FieldLabel>
 				</Field>
 
 				<Field orientation="horizontal">
@@ -109,9 +106,7 @@ export function PwaEngagementSettingsCard() {
 							persist({ soundsEnabled, systemAlertsEnabled: false });
 						}}
 					/>
-					<FieldLabel htmlFor="pwa-system-alerts">
-						Show a system banner when the app is in the background
-					</FieldLabel>
+					<FieldLabel htmlFor="pwa-system-alerts">{t("banner")}</FieldLabel>
 				</Field>
 
 				{notificationPermission === "default" ? (
@@ -122,14 +117,12 @@ export function PwaEngagementSettingsCard() {
 						className="w-fit"
 						onClick={() => void requestSystemAlerts()}
 					>
-						Allow system alerts
+						{t("allow")}
 					</Button>
 				) : null}
 
 				<p className="text-muted-foreground text-xs leading-relaxed">
-					These use the same bell feed as the site. They do not replace ntfy
-					push when BBRC is closed. Web Push in the service worker is planned
-					for a later release.
+					{t("note")}
 				</p>
 			</CardContent>
 		</Card>

@@ -17,6 +17,7 @@ import { Separator } from "@bbrc/ui/components/separator";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useFacetOptionsStale } from "@/lib/listing/use-facet-options-stale";
 import { orpc } from "@/utils/orpc";
@@ -29,11 +30,13 @@ type ListingAuthorMultiSelectProps = {
 };
 
 export function ListingAuthorMultiSelect({
-	legend = "Authors",
+	legend: legendProp,
 	selectedSlugs,
 	onSelectedSlugsChange,
 	facetInput,
 }: ListingAuthorMultiSelectProps) {
+	const t = useTranslations("listing");
+	const legend = legendProp ?? t("multi.authors.legend");
 	const [search, setSearch] = useState("");
 
 	const facetInputKey = useMemo(() => JSON.stringify(facetInput), [facetInput]);
@@ -103,7 +106,7 @@ export function ListingAuthorMultiSelect({
 
 	const legendLabel =
 		selectedSlugs.length > 0
-			? `${legend} (${selectedSlugs.length} selected)`
+			? t("multi.selected", { legend, count: selectedSlugs.length })
 			: legend;
 
 	return (
@@ -120,7 +123,7 @@ export function ListingAuthorMultiSelect({
 							onSelectedSlugsChange([]);
 						}}
 					>
-						Clear authors
+						{t("multi.authors.clear")}
 					</Button>
 				) : null}
 			</div>
@@ -132,10 +135,10 @@ export function ListingAuthorMultiSelect({
 				<Input
 					value={search}
 					onChange={(event) => setSearch(event.target.value)}
-					placeholder="Search authors…"
+					placeholder={t("multi.authors.placeholder")}
 					className="ps-8"
 					autoComplete="off"
-					aria-label="Search authors in list"
+					aria-label={t("multi.authors.aria")}
 				/>
 			</div>
 			<Card className="w-full p-0">
@@ -153,8 +156,8 @@ export function ListingAuthorMultiSelect({
 					) : filteredAuthors.length === 0 ? (
 						<p className="p-3 text-muted-foreground text-sm">
 							{authors.length === 0
-								? "No authors match the current filters."
-								: "No authors match your search."}
+								? t("multi.authors.noneFilters")
+								: t("multi.authors.noneSearch")}
 						</p>
 					) : (
 						<ul className="flex flex-col">
