@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { BookCardActionBar } from "@/components/blocks/book-card-action-bar";
 import { BookCardStatusStrip } from "@/components/blocks/book-card-status-strip";
@@ -91,14 +92,16 @@ function MetaStripStat({
 }
 
 function BookCardMetaStrip({ book }: { book: BookCardBook }) {
-	const f = useFormatters();
+	const t = useTranslations("books");
 	const slug = book.slug;
-	const readTitle = `${book.readCount} member${book.readCount === 1 ? "" : "s"} marked read`;
-	const reviewTitle = `${book.feedbackCount} club review${book.feedbackCount === 1 ? "" : "s"}`;
-	const shelfTitle = `${book.shelfCount} shelf${book.shelfCount === 1 ? "" : "es"}`;
-	const documentTitle = `${book.approvedDocumentCount} approved document${book.approvedDocumentCount === 1 ? "" : "s"}`;
-	const favoriteTitle = `${book.favoriteCount} favorite${book.favoriteCount === 1 ? "" : "s"}`;
-	const viewTitle = `${f.number(book.viewCount)} view${book.viewCount === 1 ? "" : "s"}`;
+	const readTitle = t("card.readTitle", { count: book.readCount });
+	const reviewTitle = t("card.reviewTitle", { count: book.feedbackCount });
+	const shelfTitle = t("card.shelfTitle", { count: book.shelfCount });
+	const documentTitle = t("card.documentTitle", {
+		count: book.approvedDocumentCount,
+	});
+	const favoriteTitle = t("card.favoriteTitle", { count: book.favoriteCount });
+	const viewTitle = t("card.viewsTitle", { count: book.viewCount });
 
 	return (
 		<div className="relative z-2 flex w-full flex-nowrap items-center justify-between gap-1 border-border border-t bg-muted/10 px-3 py-1.5 text-muted-foreground text-xs tabular-nums">
@@ -135,7 +138,7 @@ function BookCardMetaStrip({ book }: { book: BookCardBook }) {
 			<MetaStripStat
 				icon={Eye}
 				count={book.viewCount}
-				title={`${viewTitle} · open insights`}
+				title={viewTitle}
 				href={`/books/${slug}/insights` as Route}
 				compact
 			/>
@@ -152,6 +155,7 @@ function BookCardRatingRow({
 	aggregateLabel: string;
 	aggregateValue: string | null;
 }) {
+	const t = useTranslations("books");
 	const f = useFormatters();
 	if (viewerBookRating == null && aggregateValue == null) {
 		return null;
@@ -162,7 +166,7 @@ function BookCardRatingRow({
 			{viewerBookRating != null ? (
 				<p className="m-0 tabular-nums">
 					<span className="text-2xs text-muted-foreground uppercase tracking-wide">
-						You{" "}
+						{t("card.you")}{" "}
 					</span>
 					<span className="font-semibold text-base text-foreground leading-none">
 						{f.decimal(viewerBookRating, 1)}
@@ -193,12 +197,14 @@ export function BookCard({
 	sortBy,
 	excludeAuthorSlug,
 }: BookCardProps) {
+	const t = useTranslations("books");
 	const f = useFormatters();
 	const href = `/books/${book.slug}` as Route;
 	const coverSrc = bookCoverUrl(book.coverId, "M");
 	const aggregateRating = bookCardRatingDisplay(book, f);
 
-	const aggregateLabel = aggregateRating?.suffix === "CR" ? "Club" : "Open Lib";
+	const aggregateLabel =
+		aggregateRating?.suffix === "CR" ? t("card.club") : t("card.openLib");
 	const aggregateValue = aggregateRating?.value ?? null;
 
 	const coAuthorRefs = excludeAuthorSlug
@@ -221,14 +227,14 @@ export function BookCard({
 		>
 			<BookCardStatusStrip
 				book={book}
-				metric={bookSortMetric(book, sortBy, f)}
+				metric={bookSortMetric(book, sortBy, f, t)}
 			/>
 
 			<div className="relative flex min-h-[8.5rem] min-w-0">
 				<Link
 					href={href}
 					className="absolute inset-0 z-0 outline-none focus:outline-none focus-visible:outline-none"
-					aria-label={`View ${book.title}`}
+					aria-label={t("card.view", { title: book.title })}
 				/>
 
 				<div className="pointer-events-none relative z-1 flex min-w-0 flex-1">
@@ -249,7 +255,7 @@ export function BookCard({
 								/>
 							) : (
 								<div className="flex size-full items-center justify-center bg-muted px-1 text-center text-2xs text-muted-foreground leading-tight">
-									No cover
+									{t("card.noCover")}
 								</div>
 							)}
 						</div>
@@ -261,7 +267,9 @@ export function BookCard({
 							{coAuthorRefs && coAuthorRefs.length === 0 ? null : (
 								<p className="mt-1 line-clamp-1 text-sm leading-snug">
 									{coAuthorRefs ? (
-										<span className="text-muted-foreground">with </span>
+										<span className="text-muted-foreground">
+											{t("card.with")}{" "}
+										</span>
 									) : null}
 									<BookAuthorLinks
 										authors={book.authors}
@@ -282,7 +290,7 @@ export function BookCard({
 							) : null}
 
 							<p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-muted-foreground text-xs tabular-nums">
-								<span>{book.pages} pages</span>
+								<span>{t("card.pages", { count: book.pages })}</span>
 								<span aria-hidden>·</span>
 								<span>{book.publishedIn}</span>
 								{book.readingNowCount > 0 ? (
@@ -290,10 +298,12 @@ export function BookCard({
 										<span aria-hidden>·</span>
 										<span
 											className="inline-flex items-center gap-1 text-info-ink"
-											title={`${book.readingNowCount} ${book.readingNowCount === 1 ? "member is" : "members are"} reading this now`}
+											title={t("card.readingNowTitle", {
+												count: book.readingNowCount,
+											})}
 										>
 											<BookOpen className="size-3" aria-hidden />
-											{book.readingNowCount} reading
+											{t("card.readingNow", { count: book.readingNowCount })}
 										</span>
 									</>
 								) : null}

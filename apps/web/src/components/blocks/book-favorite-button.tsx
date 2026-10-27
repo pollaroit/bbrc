@@ -9,6 +9,7 @@ import {
 } from "@bbrc/ui/components/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { FavoriteReplaceSheet } from "@/components/blocks/favorite-replace-sheet";
@@ -137,6 +138,7 @@ function FavoriteHeart({
 	tooltipSide: "top" | "right" | "bottom" | "left";
 	state: FavoriteState;
 }) {
+	const t = useTranslations("books");
 	const { data: session } = authClient.useSession();
 	const [replaceOpen, setReplaceOpen] = useState(false);
 	const replaceIdRef = useRef<string | undefined>(undefined);
@@ -169,7 +171,7 @@ function FavoriteHeart({
 		},
 		onError: (error) => {
 			toast.error(
-				error instanceof Error ? error.message : "Could not update favorites.",
+				error instanceof Error ? error.message : t("actions.favoriteFailed"),
 			);
 			refreshFavoriteQueries();
 		},
@@ -267,7 +269,9 @@ function FavoriteHeart({
 		showFavorite(true);
 	};
 
-	const label = isFavorite ? "Remove from favorites" : "Add to favorites";
+	const label = isFavorite
+		? t("actions.removeFavorite")
+		: t("actions.addFavorite");
 
 	const button = (
 		<Button

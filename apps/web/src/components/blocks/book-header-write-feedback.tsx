@@ -3,6 +3,7 @@
 import { isFeedbackRatingStep } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { FeedbackFormDialog } from "@/components/blocks/feedback-form-dialog";
 import { authClient } from "@/lib/auth-client";
@@ -15,6 +16,7 @@ type BookHeaderWriteFeedbackProps = {
 export function BookHeaderWriteFeedback({
 	bookSlug,
 }: BookHeaderWriteFeedbackProps) {
+	const t = useTranslations("books");
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 
@@ -50,7 +52,7 @@ export function BookHeaderWriteFeedback({
 	return (
 		<>
 			<Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
-				{isEdit ? "Edit feedback" : "Write feedback"}
+				{isEdit ? t("actions.editFeedback") : t("actions.writeFeedback")}
 			</Button>
 			<FeedbackFormDialog
 				bookSlug={bookSlug}

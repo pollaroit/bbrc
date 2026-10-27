@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import {
@@ -28,10 +29,12 @@ type BookSubnavProps = {
 
 function tabLabel(
 	tab: (typeof BOOK_DETAIL_TABS)[number],
+	t: ReturnType<typeof useTranslations<"books">>,
 	counts?: BookTabCounts,
 ): string {
+	const label = t(`tabs.${tab.id}`);
 	if (!counts) {
-		return tab.label;
+		return label;
 	}
 
 	const count =
@@ -52,13 +55,14 @@ function tabLabel(
 									: undefined;
 
 	if (count == null || count < 1) {
-		return tab.label;
+		return label;
 	}
 
-	return `${tab.label} (${count})`;
+	return t("tabs.withCount", { label, count });
 }
 
 export function BookSubnav({ slug, counts }: BookSubnavProps) {
+	const t = useTranslations("books");
 	const pathname = usePathname() ?? "";
 	const active = bookDetailTabFromPathname(slug, pathname);
 	// Insights are for signed-in members; the book pages themselves stay cacheable.
@@ -97,7 +101,7 @@ export function BookSubnav({ slug, counts }: BookSubnavProps) {
 	return (
 		<nav
 			className="flex flex-wrap gap-1 border-border border-b pb-0"
-			aria-label="Book sections"
+			aria-label={t("tabs.nav")}
 		>
 			{tabs.map((tab) => {
 				const href = tab.href(slug);
@@ -114,7 +118,7 @@ export function BookSubnav({ slug, counts }: BookSubnavProps) {
 								: "border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground",
 						)}
 					>
-						{tabLabel(tab, effectiveCounts)}
+						{tabLabel(tab, t, effectiveCounts)}
 					</Link>
 				);
 			})}

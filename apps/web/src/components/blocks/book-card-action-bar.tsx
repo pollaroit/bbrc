@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { BookAddToShelfDialog } from "@/components/blocks/book-add-to-shelf-dialog";
 import type { BookListFavoriteEngagement } from "@/components/blocks/book-favorite-button";
@@ -37,6 +38,7 @@ export function BookCardActionBar({
 	feedbackBookSlugs,
 	layout = "column",
 }: BookCardActionBarProps) {
+	const t = useTranslations("books");
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const username = session?.user.username;
 	const tooltipSide = layout === "column" ? "left" : "top";
@@ -142,7 +144,7 @@ export function BookCardActionBar({
 			>
 				<div
 					role="toolbar"
-					aria-label={`Actions for ${bookTitle}`}
+					aria-label={t("card.actionsFor", { title: bookTitle })}
 					className="flex flex-col divide-y divide-border"
 				>
 					{columnActions}

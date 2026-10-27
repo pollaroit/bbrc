@@ -37,6 +37,7 @@ import {
 	Trash2,
 } from "lucide-react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { FeedbackHalfStarRating } from "@/components/blocks/feedback-half-star-rating";
@@ -47,6 +48,7 @@ import {
 } from "@/components/blocks/review-image-field";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import type { BooksTranslator } from "@/lib/books/books-translator";
 import { clubTimeZone } from "@/lib/club-timezone";
 import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
 import { useFormatters } from "@/lib/i18n/use-formatters";
@@ -55,7 +57,6 @@ import { useSyncedBoolean } from "@/lib/optimistic/use-synced-boolean";
 import {
 	READ_DATE_MONTH_UNSET,
 	READ_DATE_MONTHS,
-	readDateMonthLabel,
 } from "@/lib/read-date-months";
 import {
 	invalidateReadingQueries,
@@ -102,6 +103,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 function readingSummary(
 	startedAt: Date | string,
 	f: ReturnType<typeof useFormatters>,
+	t: BooksTranslator,
 ) {
 	const started = new Date(startedAt);
 	const days = Math.max(
@@ -113,7 +115,7 @@ function readingSummary(
 		day: "numeric",
 		timeZone: clubTimeZone,
 	});
-	return `Started ${date} · finishing today makes it ${days} ${days === 1 ? "day" : "days"}.`;
+	return t("markRead.summary", { date, days });
 }
 
 export function BookMarkReadDialog({
@@ -123,6 +125,7 @@ export function BookMarkReadDialog({
 	onOpenChange,
 	edition,
 }: BookMarkReadDialogProps) {
+	const t = useTranslations("books");
 	const f = useFormatters();
 	const [endYear, setEndYear] = useState("");
 	const [endMonth, setEndMonth] = useState("");
@@ -175,7 +178,7 @@ export function BookMarkReadDialog({
 		},
 		onError: (error) => {
 			toast.error(
-				error instanceof Error ? error.message : "Could not save this setting.",
+				error instanceof Error ? error.message : t("markRead.settingFailed"),
 			);
 		},
 	});
@@ -371,15 +374,15 @@ export function BookMarkReadDialog({
 				content: serializeRichDocument(plainTextToRichDocument(text)),
 				attachment: { kind: "book", slug: bookSlug },
 			});
-			toast.success("Shared to the feed");
+			toast.success(t("markRead.shared"));
 			void queryClient.invalidateQueries({
 				queryKey: orpc.post.getPostList.key(),
 			});
 		} catch (error) {
 			toast.error(
 				error instanceof Error
-					? `Marked as read, but sharing failed: ${error.message}`
-					: "Marked as read, but sharing failed.",
+					? t("markRead.readButShareFailedWith", { message: error.message })
+					: t("markRead.readButShareFailed"),
 			);
 		}
 	}
@@ -417,7 +420,7 @@ export function BookMarkReadDialog({
 				}
 				shareRef.current = null;
 				reviewImageRef.current = null;
-				toast.error(error.message || "Could not save your read");
+				toast.error(error.message || t("markRead.saveFailed"));
 			},
 			onSuccess: (data) => {
 				const share = shareRef.current;
@@ -449,7 +452,7 @@ export function BookMarkReadDialog({
 			},
 			onError: (error, _variables, snapshot) => {
 				restoreRead(snapshot);
-				toast.error(error.message || "Could not remove your read");
+				toast.error(error.message || t("markRead.removeFailed"));
 			},
 			onSettled: () => {
 				refreshReadQueries(false);
@@ -472,11 +475,11 @@ export function BookMarkReadDialog({
 			return { readEndYear: null, readEndMonth: null };
 		}
 		if (y == null || m == null) {
-			toast.error("Choose both finish month and year, or leave both empty");
+			toast.error(t("markRead.chooseBoth"));
 			return undefined;
 		}
 		if (m < 1 || m > 12) {
-			toast.error("Month must be between 1 and 12");
+			toast.error(t("markRead.monthRange"));
 			return undefined;
 		}
 		return { readEndYear: y, readEndMonth: m };
@@ -521,7 +524,7 @@ export function BookMarkReadDialog({
 		const hasReview = reviewPlain.length > 0;
 
 		if (hasReview && !hasRating) {
-			toast.error("Add a rating to publish your review.");
+			toast.error(t("markRead.addRatingToPublish"));
 			return;
 		}
 
@@ -540,10 +543,14 @@ export function BookMarkReadDialog({
 			const authors = book ? formatBookAuthors(book.authors) : null;
 			const rating =
 				offerFeedback && hasRating && feedbackRating != null
-					? ` Rated ${f.decimal(feedbackRating, 1)} out of 5.`
+					? ` ${t("markRead.ratedSuffix", { rating: f.decimal(feedbackRating, 1) })}`
 					: "";
 			shareRef.current = {
-				text: `Finished reading ${bookTitle}${authors ? ` by ${authors}` : ""}.${rating}`,
+				text: t("markRead.shareText", {
+					title: bookTitle,
+					authors: authors ?? "none",
+					rating,
+				}),
 			};
 		} else {
 			shareRef.current = null;
@@ -565,7 +572,9 @@ export function BookMarkReadDialog({
 	}
 
 	const monthValue = endMonth.length > 0 ? endMonth : READ_DATE_MONTH_UNSET;
-	const monthDisplayLabel = readDateMonthLabel(endMonth);
+	const monthDisplayLabel = endMonth.trim()
+		? t(`months.${endMonth}` as "months.1")
+		: undefined;
 	const dateIncomplete =
 		(endYear.length > 0 && endMonth.length === 0) ||
 		(endYear.length === 0 && endMonth.length > 0);
@@ -605,7 +614,7 @@ export function BookMarkReadDialog({
 						</div>
 						<div className="flex min-w-0 flex-col gap-0.5">
 							<DialogTitle>
-								{hasRead ? "Edit your read" : "Mark as read"}
+								{hasRead ? t("markRead.titleEdit") : t("markRead.titleNew")}
 							</DialogTitle>
 							<DialogDescription className="line-clamp-2">
 								{bookTitle}
@@ -618,20 +627,20 @@ export function BookMarkReadDialog({
 						{edition?.label ? (
 							<section
 								className="flex flex-col gap-1.5 border border-border bg-muted/30 p-3 text-sm"
-								aria-label="Edition"
+								aria-label={t("markRead.editionLabel")}
 							>
 								<p className="flex items-center gap-2 font-medium">
 									<BookOpen className="size-4" aria-hidden />
 									{edition.label}
 								</p>
 								<p className="text-muted-foreground text-xs leading-relaxed">
-									This is the edition that will be saved with your read.
+									{t("markRead.editionNote")}
 								</p>
 							</section>
 						) : reading && !hasRead ? (
 							<section
 								className="flex flex-col gap-1.5 border border-border bg-muted/30 p-3 text-sm"
-								aria-label="Your reading"
+								aria-label={t("markRead.yourReading")}
 							>
 								<p className="flex items-center gap-2 font-medium">
 									<BookOpen className="size-4 shrink-0" aria-hidden />
@@ -642,13 +651,13 @@ export function BookMarkReadDialog({
 									/>
 								</p>
 								<p className="text-muted-foreground text-xs leading-relaxed">
-									{readingSummary(reading.startedAt, f)}
-									{inWishlist ? " It will leave your wishlist." : ""}
+									{readingSummary(reading.startedAt, f, t)}
+									{inWishlist ? t("markRead.leavesWishlist") : ""}
 								</p>
 							</section>
 						) : inWishlist && !hasRead ? (
 							<p className="border border-border bg-muted/30 p-3 text-muted-foreground text-xs">
-								Marking it read removes it from your wishlist.
+								{t("markRead.removesFromWishlist")}
 							</p>
 						) : null}
 
@@ -658,11 +667,10 @@ export function BookMarkReadDialog({
 						>
 							<div>
 								<h3 id="read-when" className="font-medium text-sm">
-									When did you finish?
+									{t("markRead.whenTitle")}
 								</h3>
 								<p className="text-muted-foreground text-xs">
-									Optional. It places the book in your reading history and
-									stats.
+									{t("markRead.whenHint")}
 								</p>
 							</div>
 
@@ -678,20 +686,20 @@ export function BookMarkReadDialog({
 								>
 									<SelectTrigger
 										className="min-w-0 flex-1"
-										aria-label="Finish month"
+										aria-label={t("markRead.finishMonth")}
 									>
-										<SelectValue placeholder="Month">
-											{monthDisplayLabel ?? "Month"}
+										<SelectValue placeholder={t("markRead.month")}>
+											{monthDisplayLabel ?? t("markRead.month")}
 										</SelectValue>
 									</SelectTrigger>
 									<SelectContent alignItemWithTrigger={false}>
 										<SelectGroup>
 											<SelectItem value={READ_DATE_MONTH_UNSET}>
-												Month
+												{t("markRead.month")}
 											</SelectItem>
 											{READ_DATE_MONTHS.map((entry) => (
 												<SelectItem key={entry.value} value={entry.value}>
-													{entry.label}
+													{t(`months.${entry.value}`)}
 												</SelectItem>
 											))}
 										</SelectGroup>
@@ -702,12 +710,12 @@ export function BookMarkReadDialog({
 									inputMode="numeric"
 									min={1000}
 									max={2100}
-									placeholder="Year"
+									placeholder={t("markRead.year")}
 									value={endYear}
 									onChange={(event) =>
 										setEndYear(clampDigits(event.target.value, 4))
 									}
-									aria-label="Finish year"
+									aria-label={t("markRead.finishYear")}
 									className="w-24 shrink-0"
 								/>
 							</div>
@@ -719,7 +727,7 @@ export function BookMarkReadDialog({
 									size="xs"
 									onClick={() => setMonthOffset(0)}
 								>
-									This month
+									{t("markRead.thisMonth")}
 								</Button>
 								<Button
 									type="button"
@@ -727,7 +735,7 @@ export function BookMarkReadDialog({
 									size="xs"
 									onClick={() => setMonthOffset(-1)}
 								>
-									Last month
+									{t("markRead.lastMonth")}
 								</Button>
 								<Button
 									type="button"
@@ -739,13 +747,13 @@ export function BookMarkReadDialog({
 										setEndMonth("");
 									}}
 								>
-									Don't know
+									{t("markRead.dontKnow")}
 								</Button>
 							</div>
 
 							{dateIncomplete ? (
 								<p className="text-destructive text-xs" role="alert">
-									Choose both a month and a year, or clear them.
+									{t("markRead.dateIncomplete")}
 								</p>
 							) : null}
 
@@ -755,11 +763,10 @@ export function BookMarkReadDialog({
 							>
 								<span className="flex flex-col gap-0.5">
 									<span className="font-medium text-sm">
-										Start with the current month
+										{t("markRead.defaultMonthTitle")}
 									</span>
 									<span className="text-muted-foreground text-xs">
-										New reads open with this month and year filled in. You can
-										still change it.
+										{t("markRead.defaultMonthHint")}
 									</span>
 								</span>
 								<Switch
@@ -778,11 +785,10 @@ export function BookMarkReadDialog({
 							>
 								<div>
 									<h3 id="read-take" className="font-medium text-sm">
-										Your take
+										{t("markRead.takeTitle")}
 									</h3>
 									<p className="text-muted-foreground text-xs">
-										Optional. Rate it now and add a short review for the club,
-										or do it later from the book page.
+										{t("markRead.takeHint")}
 									</p>
 								</div>
 								<FeedbackHalfStarRating
@@ -805,13 +811,16 @@ export function BookMarkReadDialog({
 										<span className="min-w-0 flex-1">
 											<span className="block font-medium text-sm">
 												{reviewLength > 0
-													? "Your review"
-													: "Add a written review"}
+													? t("markRead.yourReview")
+													: t("markRead.addWrittenReview")}
 											</span>
 											<span className="block text-muted-foreground text-xs">
 												{reviewLength > 0
-													? `${reviewLength}/${REVIEW_MAX_PLAIN} characters`
-													: "Optional. Share what stayed with you."}
+													? t("markRead.characters", {
+															count: reviewLength,
+															max: REVIEW_MAX_PLAIN,
+														})
+													: t("markRead.reviewOptional")}
 											</span>
 										</span>
 										<ChevronDown
@@ -831,7 +840,7 @@ export function BookMarkReadDialog({
 												onChange={setFeedbackReview}
 												maxPlainLength={REVIEW_MAX_PLAIN}
 												minHeightClassName="min-h-[6rem]"
-												placeholder="What stayed with you?"
+												placeholder={t("markRead.reviewPlaceholder")}
 												className="border-0"
 												autoFocus
 												onSubmitShortcut={submitRead}
@@ -846,8 +855,8 @@ export function BookMarkReadDialog({
 											<div className="flex items-center justify-between gap-3 border-border border-t bg-muted/20 px-3 py-1.5 text-muted-foreground text-xs">
 												<span>
 													{reviewLength > 0 && !feedbackRating
-														? "Add a rating above to publish this review."
-														: "Press ⌘ + Enter to save."}
+														? t("markRead.needRating")
+														: t("markRead.shortcut")}
 												</span>
 												<span className="tabular-nums">
 													{reviewLength}/{REVIEW_MAX_PLAIN}
@@ -859,8 +868,7 @@ export function BookMarkReadDialog({
 							</section>
 						) : hasRead ? (
 							<p className="border-border border-t pt-4 text-muted-foreground text-xs">
-								You've already reviewed this book. Edit your review from the
-								book page.
+								{t("markRead.alreadyReviewed")}
 							</p>
 						) : null}
 					</div>
@@ -877,9 +885,11 @@ export function BookMarkReadDialog({
 								className="mt-0.5"
 							/>
 							<span className="flex flex-col gap-0.5">
-								<span className="font-medium text-sm">Share to the feed</span>
+								<span className="font-medium text-sm">
+									{t("markRead.shareTitle")}
+								</span>
 								<span className="text-muted-foreground text-xs">
-									Posts that you finished this book, with the book attached.
+									{t("markRead.shareHint")}
 								</span>
 							</span>
 						</label>
@@ -895,7 +905,7 @@ export function BookMarkReadDialog({
 								onClick={() => removeMutation.mutate({ bookSlug })}
 							>
 								<Trash2 data-icon="inline-start" />
-								Remove read
+								{t("markRead.remove")}
 							</Button>
 						) : (
 							<span />
@@ -906,10 +916,10 @@ export function BookMarkReadDialog({
 								variant="outline"
 								onClick={() => onOpenChange(false)}
 							>
-								Cancel
+								{t("markRead.cancel")}
 							</Button>
 							<Button type="submit" disabled={!ready || dateIncomplete}>
-								{hasRead ? "Save changes" : "Mark as read"}
+								{hasRead ? t("markRead.saveChanges") : t("markRead.titleNew")}
 							</Button>
 						</div>
 					</div>

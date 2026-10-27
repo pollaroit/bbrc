@@ -4,12 +4,14 @@ import { Button } from "@bbrc/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { ListChecks, Trophy } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { orpc } from "@/utils/orpc";
 
 /** Quiz entry under the cover: the label follows the viewer's quiz state. */
 export function BookQuizButton({ bookSlug }: { bookSlug: string }) {
+	const t = useTranslations("books");
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const query = useQuery({
 		...orpc.quiz.getEntryState.queryOptions({ input: { slug: bookSlug } }),
@@ -27,7 +29,7 @@ export function BookQuizButton({ bookSlug }: { bookSlug: string }) {
 				href={`/books/${bookSlug}/quizzes` as Route}
 				className="text-center text-muted-foreground text-xs underline-offset-2 hover:text-foreground hover:underline"
 			>
-				Quiz scores ({data.submissionCount})
+				{t("quiz.scores", { count: data.submissionCount })}
 			</Link>
 		) : null;
 
@@ -52,12 +54,12 @@ export function BookQuizButton({ bookSlug }: { bookSlug: string }) {
 					render={<Link href={resultsHref} />}
 				>
 					<Trophy data-icon="inline-start" />
-					Quiz results
+					{t("quiz.results")}
 				</Button>
 			) : data.state === "unavailable" ? (
 				<Button variant="outline" className="w-full" disabled>
 					<ListChecks data-icon="inline-start" />
-					Quiz unavailable
+					{t("quiz.unavailable")}
 				</Button>
 			) : (
 				<Button
@@ -66,14 +68,14 @@ export function BookQuizButton({ bookSlug }: { bookSlug: string }) {
 					render={<Link href={quizHref} />}
 				>
 					<ListChecks data-icon="inline-start" />
-					{data.state === "in_progress" ? "Continue quiz" : "Take quiz"}
+					{data.state === "in_progress" ? t("quiz.continue") : t("quiz.take")}
 				</Button>
 			)}
 			{data.state === "can_start" && !data.quizReady ? (
 				<p className="text-center text-muted-foreground text-xs">
 					{data.firstTimeLeftToday === 0
-						? "No new quizzes left today"
-						: `You can start ${data.firstTimeLeftToday} new ${data.firstTimeLeftToday === 1 ? "quiz" : "quizzes"} today`}
+						? t("quiz.noneLeftToday")
+						: t("quiz.leftToday", { count: data.firstTimeLeftToday ?? 0 })}
 				</p>
 			) : null}
 			{quizzesLink}
