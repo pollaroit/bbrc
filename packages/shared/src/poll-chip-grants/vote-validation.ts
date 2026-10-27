@@ -3,23 +3,51 @@ export type PollVoteSubmission = {
 	points: 1 | 2 | 3;
 };
 
+/** Why a ballot was refused: a stable reason the API turns into a message in the voter's language. */
+export type PollVoteFailure =
+	| "duplicate"
+	| "optionNotOnPoll"
+	| "selectAtLeast"
+	| "selectAtMost"
+	| "goldenNotAllowed"
+	| "silverNotAllowed"
+	| "invalidPoints"
+	| "oneGoldenMax"
+	| "oneSilverMax";
+
+export type PollVoteValidation =
+	| { ok: true }
+	| {
+			ok: false;
+			reason: PollVoteFailure;
+			/** Values the message needs (`min`, `max`). */
+			params?: { min: number } | { max: number };
+			/** The English sentence, for logs and anything that does not translate. */
+			message: string;
+	  };
+
 export function validatePollVoteSubmission(input: {
 	votes: PollVoteSubmission[];
 	grants: { canUseGolden: boolean; canUseSilver: boolean };
 	minChoices: number;
 	maxChoices: number;
 	allowedOptionIds: ReadonlySet<string>;
-}): { ok: true } | { ok: false; message: string } {
+}): PollVoteValidation {
 	const { votes, grants, minChoices, maxChoices, allowedOptionIds } = input;
 
 	if (votes.length !== new Set(votes.map((vote) => vote.optionId)).size) {
-		return { ok: false, message: "Duplicate poll options are not allowed" };
+		return {
+			ok: false,
+			reason: "duplicate",
+			message: "Duplicate poll options are not allowed",
+		};
 	}
 
 	for (const vote of votes) {
 		if (!allowedOptionIds.has(vote.optionId)) {
 			return {
 				ok: false,
+				reason: "optionNotOnPoll",
 				message: "One or more selected options are not on this poll",
 			};
 		}
@@ -28,6 +56,8 @@ export function validatePollVoteSubmission(input: {
 	if (votes.length < minChoices) {
 		return {
 			ok: false,
+			reason: "selectAtLeast",
+			params: { min: minChoices },
 			message: `Select at least ${minChoices} ${minChoices === 1 ? "book" : "books"}`,
 		};
 	}
@@ -35,6 +65,8 @@ export function validatePollVoteSubmission(input: {
 	if (votes.length > maxChoices) {
 		return {
 			ok: false,
+			reason: "selectAtMost",
+			params: { max: maxChoices },
 			message: `Select at most ${maxChoices} ${maxChoices === 1 ? "book" : "books"}`,
 		};
 	}
@@ -48,6 +80,7 @@ export function validatePollVoteSubmission(input: {
 			if (!grants.canUseGolden) {
 				return {
 					ok: false,
+					reason: "goldenNotAllowed",
 					message: "You cannot use a Golden chip on this poll",
 				};
 			}
@@ -56,17 +89,23 @@ export function validatePollVoteSubmission(input: {
 			if (!grants.canUseSilver) {
 				return {
 					ok: false,
+					reason: "silverNotAllowed",
 					message: "You cannot use a Silver chip on this poll",
 				};
 			}
 		} else if (vote.points !== 1) {
-			return { ok: false, message: "Invalid vote points" };
+			return {
+				ok: false,
+				reason: "invalidPoints",
+				message: "Invalid vote points",
+			};
 		}
 	}
 
 	if (goldenCount > 1) {
 		return {
 			ok: false,
+			reason: "oneGoldenMax",
 			message: "You can use at most one Golden chip",
 		};
 	}
@@ -74,6 +113,7 @@ export function validatePollVoteSubmission(input: {
 	if (silverCount > 1) {
 		return {
 			ok: false,
+			reason: "oneSilverMax",
 			message: "You can use at most one Silver chip",
 		};
 	}

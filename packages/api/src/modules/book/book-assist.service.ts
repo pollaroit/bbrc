@@ -1,6 +1,6 @@
 import type { Database } from "@bbrc/db";
 import { authorNameKey, isLikelySameAuthor } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { getGeminiConfig } from "../../lib/gemini/config";
 import { geminiGenerateJson } from "../../lib/gemini/generate-json";
 import type {
@@ -201,9 +201,7 @@ export async function suggestBookDetails(
 ): Promise<SuggestBookDetailsOutput> {
 	const config = getGeminiConfig();
 	if (!config) {
-		throw new ORPCError("PRECONDITION_FAILED", {
-			message: "Gemini is not configured (missing GEMINI_API_KEY).",
-		});
+		throw appError("PRECONDITION_FAILED", "book.aiNotAvailable");
 	}
 	const lines = [
 		`Title: ${input.title}`,
@@ -222,8 +220,8 @@ export async function suggestBookDetails(
 			timeoutMs: 20_000,
 		});
 	} catch (error) {
-		throw new ORPCError("BAD_GATEWAY", {
-			message: error instanceof Error ? error.message : "Suggestion failed",
+		throw appError("BAD_GATEWAY", "book.aiFailed", {
+			data: { cause: error instanceof Error ? error.message : undefined },
 		});
 	}
 }

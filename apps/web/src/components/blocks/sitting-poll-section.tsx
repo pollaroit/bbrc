@@ -37,6 +37,7 @@ import { PollVotesByVoterSection } from "@/components/blocks/poll-votes-by-voter
 import { Link, useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { invalidateUserPointQueries } from "@/lib/invalidate-user-points";
 import { formatPollPageRange } from "@/lib/poll-page-range";
 import { readingEstimateLabel } from "@/lib/reading-estimate";
@@ -141,6 +142,7 @@ export function SittingPollSection({
 	layout = "embedded",
 	showVoteShare = false,
 }: SittingPollSectionProps) {
+	const f = useFormatters();
 	const readonly = mode === "readonly";
 	const router = useRouter();
 	const { data: session, isPending: isSessionPending } =
@@ -537,7 +539,7 @@ export function SittingPollSection({
 										title="Open Library rating"
 									>
 										{option.book.openLibraryRating != null
-											? option.book.openLibraryRating.toFixed(1)
+											? f.decimal(option.book.openLibraryRating, 1)
 											: "—"}
 										<Star className="size-3.5" aria-hidden />
 									</span>

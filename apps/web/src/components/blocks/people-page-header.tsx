@@ -6,14 +6,8 @@ import type { Route } from "next";
 import { PeopleListingToolbar } from "@/components/blocks/people-listing-toolbar";
 import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
-
-const joinedFormat = new Intl.DateTimeFormat("en", {
-	month: "short",
-	day: "numeric",
-	year: "numeric",
-	timeZone: "UTC",
-});
 
 function OverviewStat({
 	label,
@@ -44,6 +38,7 @@ function OverviewStat({
 }
 
 export function PeoplePageHeader() {
+	const f = useFormatters();
 	const overview = useQuery(orpc.people.overview.queryOptions());
 	const { data: session } = authClient.useSession();
 	const username = session?.user.username;
@@ -75,17 +70,17 @@ export function PeoplePageHeader() {
 					<>
 						<OverviewStat
 							label="People in the club"
-							value={overview.data.total.toLocaleString()}
+							value={f.number(overview.data.total)}
 						/>
 						<OverviewStat
 							label="Active in the last 30 days"
-							value={overview.data.activeLast30Days.toLocaleString()}
+							value={f.number(overview.data.activeLast30Days)}
 						/>
 						<OverviewStat
 							label="Newest member"
 							value={
 								overview.data.newest
-									? `${overview.data.newest.name} · ${joinedFormat.format(new Date(overview.data.newest.createdAt))}`
+									? `${overview.data.newest.name} · ${f.dateWith(overview.data.newest.createdAt, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`
 									: "—"
 							}
 							href={

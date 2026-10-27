@@ -1,12 +1,12 @@
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
+import { createServerTranslator } from "@bbrc/i18n";
 import {
 	normalizeShelfPermissions,
 	resolveShelfPermissions,
-	SHELF_PERMISSION_LABELS,
 	type ShelfPermission,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
-import { WISHLIST_PROTECTED_MESSAGE } from "./shelf-visibility";
+import { appError, type ErrorKey } from "../../lib/app-error";
+import { currentLocale } from "../../lib/request-locale";
 
 type Db = Database | DatabaseTransaction;
 
@@ -74,7 +74,7 @@ export async function loadShelfAccess(
 			});
 
 	if (!owner) {
-		throw new ORPCError("NOT_FOUND", { message: "Shelf not found" });
+		throw appError("NOT_FOUND", "shelf.notFound");
 	}
 
 	const shelf = await db.shelf.findUnique({
@@ -89,8 +89,7 @@ export async function loadShelfAccess(
 	});
 
 	if (!shelf) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Shelf not found",
+		throw appError("NOT_FOUND", "shelf.notFound", {
 			data: { shelfSlug: input.shelfSlug },
 		});
 	}
@@ -102,9 +101,7 @@ export async function loadShelfAccess(
 	// Banned members can still collaborate on other people's shelves, but
 	// cannot change their own.
 	if (isOwner && owner.status === "banned") {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Your account is restricted, so you cannot change your shelves.",
-		});
+		throw appError("FORBIDDEN", "shelf.restricted");
 	}
 	const granted = row ? normalizeShelfPermissions(row.permissions) : [];
 
@@ -131,18 +128,16 @@ export function requireShelfPermission(
 		access.collaborator == null &&
 		(access.shelf.status !== "active" || access.shelf.visibility === "private")
 	) {
-		throw new ORPCError("NOT_FOUND", { message: "Shelf not found" });
+		throw appError("NOT_FOUND", "shelf.notFound");
 	}
-	throw new ORPCError("FORBIDDEN", {
-		message: `You do not have permission to do that (${SHELF_PERMISSION_LABELS[permission].toLowerCase()}).`,
+	throw appError("FORBIDDEN", "shelf.noPermission", {
+		params: { permission: permissionPhrase(permission) },
 	});
 }
 
 export function requireOwner(access: ShelfAccess): void {
 	if (!access.isOwner) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only the owner of the shelf can do that.",
-		});
+		throw appError("FORBIDDEN", "shelf.ownerOnly");
 	}
 }
 
@@ -227,9 +222,17 @@ export async function logShelfActivity(
 /** Throws for the Wishlist shelf: it cannot be deleted, renamed, retyped, re-covered or shared. */
 export function assertNotWishlist(
 	shelf: { isWishlist: boolean },
-	what = WISHLIST_PROTECTED_MESSAGE,
+	what: ErrorKey = "shelf.wishlistProtected",
 ): void {
 	if (shelf.isWishlist) {
-		throw new ORPCError("BAD_REQUEST", { message: what });
+		throw appError("BAD_REQUEST", what);
 	}
+}
+
+/** What a collaborator may do, as a phrase in the request's language ("add books"). */
+function permissionPhrase(permission: ShelfPermission): string {
+	const translate = createServerTranslator(currentLocale(), "errors") as (
+		key: string,
+	) => string;
+	return translate(`shelf.permissions.${permission}`);
 }

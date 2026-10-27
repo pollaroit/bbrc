@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 
 export type SettingsSessionItem = {
 	token: string;
@@ -48,16 +49,12 @@ function describeUserAgent(userAgent: string | null) {
 	};
 }
 
-const dateFormatter = new Intl.DateTimeFormat("en", {
-	dateStyle: "medium",
-	timeStyle: "short",
-});
-
 export function SettingsSessionsList({
 	sessions,
 }: {
 	sessions: SettingsSessionItem[];
 }) {
+	const f = useFormatters();
 	const router = useRouter();
 	const [pending, setPending] = useState<string | null>(null);
 
@@ -110,7 +107,11 @@ export function SettingsSessionsList({
 									</p>
 									<p className="truncate text-muted-foreground text-sm">
 										{item.ipAddress ? `${item.ipAddress} · ` : ""}
-										Signed in {dateFormatter.format(new Date(item.createdAt))}
+										Signed in{" "}
+										{f.dateWith(item.createdAt, {
+											dateStyle: "medium",
+											timeStyle: "short",
+										})}
 									</p>
 								</div>
 							</div>

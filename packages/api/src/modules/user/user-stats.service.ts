@@ -24,7 +24,7 @@ import {
 	USER_STATS_PAGE_BUCKETS,
 	type UserStatsMonth,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { aggregateCountryBookCounts } from "../book/book-country-filter";
 import type {
 	GetUserStatsInput,
@@ -65,7 +65,7 @@ function resolveUserStatsPeriodInput(
 	try {
 		return parseUserStatsPeriod(normalized);
 	} catch {
-		throw new ORPCError("BAD_REQUEST", { message: "Invalid stats period" });
+		throw appError("BAD_REQUEST", "user.invalidStatsPeriod");
 	}
 }
 

@@ -1,6 +1,6 @@
 import type { DatabaseTransaction } from "@bbrc/db";
 import { contentPlainText, generateUniqueSlug } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 
 const COMMENT_SLUG_MIN_LENGTH = 3;
 
@@ -43,7 +43,5 @@ export async function generateCommentSlug(
 		} catch {}
 	}
 
-	throw new ORPCError("CONFLICT", {
-		message: "Failed to generate comment slug",
-	});
+	throw appError("CONFLICT", "comment.slugFailed");
 }

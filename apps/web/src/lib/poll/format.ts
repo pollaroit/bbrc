@@ -1,4 +1,5 @@
 import type { PollOption } from "@bbrc/api/modules/post-poll/post-poll.schema";
+import type { Formatters } from "@bbrc/i18n";
 import { authorNameToSlug } from "@bbrc/shared";
 
 /** "2d 4h left", "35 min left", "Ended". */
@@ -46,9 +47,9 @@ export function pollOptionHref(option: PollOption): string | null {
 	}
 }
 
-export function percent(share: number): string {
+export function percent(f: Formatters, share: number): string {
 	const value = share * 100;
-	return `${value >= 10 || value === 0 ? Math.round(value) : value.toFixed(1)}%`;
+	return `${value >= 10 || value === 0 ? f.number(Math.round(value)) : f.decimal(value, 1)}%`;
 }
 
 export const PENDING_OPTION_PREFIX = "pending-option__";

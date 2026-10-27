@@ -18,6 +18,7 @@ import {
 } from "@bbrc/ui/components/dialog";
 import { Info } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 type MemberLevelsKind = "xp" | "rp";
@@ -108,6 +109,7 @@ export function MemberLevelsInfoDialog({
 	currentPoints,
 	triggerClassName,
 }: MemberLevelsInfoDialogProps) {
+	const f = useFormatters();
 	const [open, setOpen] = useState(false);
 	const config = CONFIG[kind];
 
@@ -140,7 +142,7 @@ export function MemberLevelsInfoDialog({
 					<p className="text-muted-foreground text-xs">
 						Your total:{" "}
 						<span className="font-medium text-foreground tabular-nums">
-							{currentPoints.toLocaleString()} {config.pointsLabel}
+							{f.number(currentPoints)} {config.pointsLabel}
 						</span>{" "}
 						({currentTier.label})
 					</p>

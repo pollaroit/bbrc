@@ -1,4 +1,5 @@
 import { VIEW_WEEKDAY_LABELS } from "@bbrc/shared";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { formatCount, hourLabel } from "./insight-format";
 
@@ -20,6 +21,7 @@ export function HeatmapGrid({
 	grid: number[][];
 	className?: string;
 }) {
+	const f = useFormatters();
 	const max = Math.max(1, ...grid.flat());
 
 	return (
@@ -39,7 +41,7 @@ export function HeatmapGrid({
 							return (
 								<span
 									key={hour}
-									title={`${VIEW_WEEKDAY_LABELS[weekday]} ${hourLabel(hour)}: ${formatCount(views)} ${views === 1 ? "view" : "views"}`}
+									title={`${VIEW_WEEKDAY_LABELS[weekday]} ${hourLabel(hour)}: ${formatCount(f, views)} ${views === 1 ? "view" : "views"}`}
 									className={cn(
 										"h-4 sm:h-5",
 										views === 0 ? "bg-muted/50" : "bg-primary",

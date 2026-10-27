@@ -5,7 +5,7 @@ import {
 	getZonedParts,
 	resolveClubTimeZone,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type {
 	BookSittingItem,
@@ -25,10 +25,7 @@ async function loadBook(slug: string, db: Database) {
 		select: { id: true, slug: true },
 	});
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
-			data: { slug },
-		});
+		throw appError("NOT_FOUND", "book.notFound", { data: { slug } });
 	}
 	return book;
 }

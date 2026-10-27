@@ -9,7 +9,7 @@ import {
 	type PostFeedSort,
 	postFeedRangeMin,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { assertNormalizedSocialContent } from "../../lib/rich-content";
 import { mergeWhereFragments } from "../../utils/searching";
 import { warmLinkPreviewsInContent } from "../link-unfurl/link-unfurl.service";
@@ -333,9 +333,7 @@ async function mapPostDetailRow(
 
 function assertPostAuthor(post: { authorId: string }, userId: string): void {
 	if (post.authorId !== userId) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only the post author can change this post",
-		});
+		throw appError("FORBIDDEN", "post.onlyAuthor");
 	}
 }
 
@@ -526,10 +524,7 @@ export async function getPostBySlug(
 	});
 
 	if (!post) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Post not found",
-			data: { slug },
-		});
+		throw appError("NOT_FOUND", "post.notFound", { data: { slug } });
 	}
 
 	const author = await db.user.findUnique({
@@ -576,9 +571,7 @@ export async function createPost(
 	const attachmentInput = resolveCreateAttachment(input);
 
 	if (input.poll && attachmentInput) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "A post with a poll cannot have another attachment.",
-		});
+		throw appError("BAD_REQUEST", "post.pollNoAttachment");
 	}
 
 	const result = await db.$transaction(async (tx) => {
@@ -655,8 +648,7 @@ export async function updatePost(
 	});
 
 	if (!post) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Post not found",
+		throw appError("NOT_FOUND", "post.notFound", {
 			data: { slug: input.slug },
 		});
 	}
@@ -664,9 +656,7 @@ export async function updatePost(
 	assertPostAuthor(post, userId);
 
 	if (post.poll && input.attachment) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "A post with a poll cannot have another attachment.",
-		});
+		throw appError("BAD_REQUEST", "post.pollNoAttachment");
 	}
 
 	const preparedContent =
@@ -761,8 +751,7 @@ export async function deletePost(
 	});
 
 	if (!post) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Post not found",
+		throw appError("NOT_FOUND", "post.notFound", {
 			data: { slug: input.slug },
 		});
 	}

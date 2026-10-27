@@ -2,6 +2,7 @@
 
 import { genres } from "@bbrc/shared";
 import { Fragment } from "react";
+import { useGenreName } from "@/lib/i18n/use-content-text";
 import { cn } from "@/lib/utils";
 
 type ProfileGenrePickerProps = {
@@ -17,6 +18,7 @@ export function ProfileGenrePicker({
 	onChange,
 	disabled,
 }: ProfileGenrePickerProps) {
+	const genreLabel = useGenreName();
 	const selectedGenres = new Set(genreSlugs);
 	const selectedSubgenres = new Set(subgenreSlugs);
 
@@ -63,7 +65,7 @@ export function ProfileGenrePicker({
 									: "border-border hover:border-pink/40 hover:bg-pink/15",
 							)}
 						>
-							{genre.name}
+							{genreLabel(genre.slug)}
 						</button>
 						{active
 							? genre.subgenres?.map((sub) => {
@@ -82,7 +84,7 @@ export function ProfileGenrePicker({
 													: "border-pink/40 border-dashed text-pink-ink hover:bg-pink/15",
 											)}
 										>
-											{sub.name}
+											{genreLabel(sub.slug)}
 										</button>
 									);
 								})

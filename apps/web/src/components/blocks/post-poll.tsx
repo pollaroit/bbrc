@@ -44,6 +44,7 @@ import { UserAvatar } from "@/components/blocks/user-avatar";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import {
 	formatTimeLeft,
 	isPendingOption,
@@ -197,6 +198,7 @@ function PollBody({
 	poll: PostPollView;
 	className?: string;
 }) {
+	const f = useFormatters();
 	const { data: session } = authClient.useSession();
 	const signedIn = Boolean(session?.user);
 	const actions = usePollActions(postSlug);
@@ -442,7 +444,7 @@ function PollBody({
 									{result ? (
 										<span className="text-end text-xs tabular-nums">
 											<span className="font-medium">
-												{percent(result.share)}
+												{percent(f, result.share)}
 											</span>
 											<span className="ps-1.5 text-muted-foreground">
 												{poll.type === "ranking"

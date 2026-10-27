@@ -1,3 +1,4 @@
+import { validationMessage } from "@bbrc/i18n";
 import { z } from "zod";
 
 const READ_DATE_YEAR_MIN = 1000;
@@ -18,7 +19,7 @@ export const ReadDatePartSchema = z
 		if (value.day != null && value.month == null) {
 			ctx.addIssue({
 				code: "custom",
-				message: "Day requires a month",
+				message: validationMessage("readDates.dayNeedsMonth"),
 				path: ["day"],
 			});
 		}
@@ -30,7 +31,7 @@ export const ReadDatePartSchema = z
 		) {
 			ctx.addIssue({
 				code: "custom",
-				message: "Invalid day for that month",
+				message: validationMessage("readDates.invalidDay"),
 				path: ["day"],
 			});
 		}
@@ -54,7 +55,7 @@ export const ReadPeriodSchema = z
 		if (startKey != null && endKey != null && startKey > endKey) {
 			ctx.addIssue({
 				code: "custom",
-				message: "End date must not be before start date",
+				message: validationMessage("readDates.endBeforeStart"),
 				path: ["end"],
 			});
 		}

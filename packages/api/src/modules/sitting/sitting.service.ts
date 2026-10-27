@@ -10,6 +10,7 @@ import {
 	formatSittingDisplayName,
 	generateSlug,
 	generateUniqueSlug,
+	type PollVoteFailure,
 	pollChipRankFromGrants,
 	resolveClubTimeZone,
 	selfJoinWindow,
@@ -18,6 +19,7 @@ import {
 	validatePollVoteSubmission,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import { appError, type ErrorKey } from "../../lib/app-error";
 import {
 	telegramAnnouncePollOpen,
 	telegramAnnounceReadingStarted,
@@ -224,9 +226,7 @@ async function generateSittingSlug(db: DatabaseTransaction): Promise<string> {
 			return existing == null;
 		});
 	} catch {
-		throw new ORPCError("CONFLICT", {
-			message: "Failed to generate a unique sitting slug",
-		});
+		throw appError("CONFLICT", "sitting.slugFailed");
 	}
 }
 
@@ -240,10 +240,7 @@ async function assertPollSlugAvailable(
 	});
 
 	if (existing) {
-		throw new ORPCError("CONFLICT", {
-			message: "Failed to generate a unique poll slug",
-			data: { slug },
-		});
+		throw appError("CONFLICT", "sitting.poll.slugFailed", { data: { slug } });
 	}
 }
 
@@ -586,6 +583,19 @@ async function loadPollOptionAggregates(
 	);
 }
 
+/** The error text for each reason a ballot can be refused (see `validatePollVoteSubmission`). */
+const voteFailureKey: Record<PollVoteFailure, ErrorKey> = {
+	duplicate: "sitting.vote.duplicate",
+	optionNotOnPoll: "sitting.vote.optionNotOnPoll",
+	selectAtLeast: "sitting.vote.selectAtLeast",
+	selectAtMost: "sitting.vote.selectAtMost",
+	goldenNotAllowed: "sitting.vote.goldenNotAllowed",
+	silverNotAllowed: "sitting.vote.silverNotAllowed",
+	invalidPoints: "sitting.vote.invalidPoints",
+	oneGoldenMax: "sitting.vote.oneGoldenMax",
+	oneSilverMax: "sitting.vote.oneSilverMax",
+};
+
 export async function getSittingList(
 	input: GetSittingListInput,
 	db: Database,
@@ -593,9 +603,7 @@ export async function getSittingList(
 ): Promise<GetSittingListOutput> {
 	const viewerId = session?.user?.id ?? null;
 	if (input.mineOnly && !viewerId) {
-		throw new ORPCError("UNAUTHORIZED", {
-			message: "Sign in to filter by your sittings.",
-		});
+		throw appError("UNAUTHORIZED", "sitting.signInToFilter");
 	}
 
 	const pagination = definePagination.cursor(input, sittingListCursorCodec);
@@ -791,10 +799,7 @@ export async function getMySittingState(
 	});
 
 	if (!sitting) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Sitting not found",
-			data: { slug },
-		});
+		throw appError("NOT_FOUND", "sitting.notFound", { data: { slug } });
 	}
 
 	const [participation, voteCount] = await Promise.all([
@@ -828,10 +833,7 @@ export async function getSittingBySlug(
 	});
 
 	if (!sitting) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Sitting not found",
-			data: { slug },
-		});
+		throw appError("NOT_FOUND", "sitting.notFound", { data: { slug } });
 	}
 
 	// A sitting's book follows its phase: reading while it runs, completed after.
@@ -1159,8 +1161,8 @@ export async function replaceSittingPollPreviewOption(
 	);
 
 	if (input.currentOptionBookIds.length !== context.take) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `Expected ${context.take} current poll options`,
+		throw appError("BAD_REQUEST", "sitting.poll.optionCountMismatch", {
+			params: { take: context.take },
 		});
 	}
 
@@ -1177,9 +1179,10 @@ export async function replaceSittingPollPreviewOption(
 	);
 
 	if (!option) {
-		throw new ORPCError("INTERNAL_SERVER_ERROR", {
-			message: "Could not load replacement book",
-		});
+		throw appError(
+			"INTERNAL_SERVER_ERROR",
+			"sitting.poll.replacementLoadFailed",
+		);
 	}
 
 	return { option, usedUniformFallback };
@@ -1196,8 +1199,8 @@ export async function shuffleSittingPollPreviewOptions(
 	);
 
 	if (input.currentOptionBookIds.length !== context.take) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `Expected ${context.take} current poll options`,
+		throw appError("BAD_REQUEST", "sitting.poll.optionCountMismatch", {
+			params: { take: context.take },
 		});
 	}
 
@@ -1228,8 +1231,7 @@ export async function createSitting(
 	});
 
 	if (ongoing) {
-		throw new ORPCError("CONFLICT", {
-			message: "A sitting is already in progress",
+		throw appError("CONFLICT", "sitting.alreadyOngoing", {
 			data: { slug: ongoing.slug },
 		});
 	}
@@ -1372,29 +1374,23 @@ export async function submitPollVotes(
 	});
 
 	if (!sitting) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Sitting not found",
+		throw appError("NOT_FOUND", "sitting.notFound", {
 			data: { slug: input.sittingSlug },
 		});
 	}
 
 	if (sitting.status !== "voting") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "This sitting is not accepting votes",
+		throw appError("BAD_REQUEST", "sitting.notAcceptingVotes", {
 			data: { status: sitting.status },
 		});
 	}
 
 	if (!sitting.poll) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "This sitting has no poll",
-		});
+		throw appError("BAD_REQUEST", "sitting.noPoll");
 	}
 
 	if (sitting.participants.length === 0) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only sitting participants can vote",
-		});
+		throw appError("FORBIDDEN", "sitting.voteParticipantsOnly");
 	}
 
 	const poll = sitting.poll;
@@ -1418,8 +1414,8 @@ export async function submitPollVotes(
 	});
 
 	if (!validation.ok) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: validation.message,
+		throw appError("BAD_REQUEST", voteFailureKey[validation.reason], {
+			params: validation.params,
 		});
 	}
 
@@ -1483,23 +1479,19 @@ export async function transitionSitting(
 		});
 
 		if (!sitting) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Sitting not found",
+			throw appError("NOT_FOUND", "sitting.notFound", {
 				data: { slug: input.slug },
 			});
 		}
 
 		if (sitting.status !== "voting") {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Only sittings in voting can start reading",
+			throw appError("BAD_REQUEST", "sitting.startReadingNeedsVoting", {
 				data: { status: sitting.status },
 			});
 		}
 
 		if (!sitting.poll) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "This sitting has no poll to close",
-			});
+			throw appError("BAD_REQUEST", "sitting.noPollToClose");
 		}
 
 		const selectedOption = sitting.poll.options.find(
@@ -1507,9 +1499,7 @@ export async function transitionSitting(
 		);
 
 		if (!selectedOption) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Selected book is not part of this poll",
-			});
+			throw appError("BAD_REQUEST", "sitting.poll.selectedNotInPoll");
 		}
 
 		const book = await db.book.findUnique({
@@ -1518,9 +1508,7 @@ export async function transitionSitting(
 		});
 
 		if (!book) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Selected book was not found",
-			});
+			throw appError("BAD_REQUEST", "sitting.selectedBookNotFound");
 		}
 
 		const clubTimeZone = resolveClubTimeZone();
@@ -1587,23 +1575,19 @@ export async function transitionSitting(
 	});
 
 	if (!sitting) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Sitting not found",
+		throw appError("NOT_FOUND", "sitting.notFound", {
 			data: { slug: input.slug },
 		});
 	}
 
 	if (sitting.status !== "reading") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Only sittings in reading can be marked finished",
+		throw appError("BAD_REQUEST", "sitting.finishNeedsReading", {
 			data: { status: sitting.status },
 		});
 	}
 
 	if (!sitting.selectedBookId) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "This sitting has no selected book to complete",
-		});
+		throw appError("BAD_REQUEST", "sitting.noSelectedBookToComplete");
 	}
 
 	void cancelSittingReadingTelegramJobs(db, input.slug);
@@ -1616,9 +1600,7 @@ export async function transitionSitting(
 	});
 
 	if (!book) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Selected book was not found",
-		});
+		throw appError("BAD_REQUEST", "sitting.selectedBookNotFound");
 	}
 
 	await db.$transaction(async (tx) => {
@@ -1670,8 +1652,7 @@ export async function transitionSitting(
 	});
 
 	if (!updated) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Sitting not found after finish",
+		throw appError("NOT_FOUND", "sitting.notFoundAfterFinish", {
 			data: { slug: input.slug },
 		});
 	}
@@ -1699,8 +1680,7 @@ export async function updateSittingDeadlines(
 	});
 
 	if (!sitting) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Sitting not found",
+		throw appError("NOT_FOUND", "sitting.notFound", {
 			data: { slug: input.slug },
 		});
 	}
@@ -1730,9 +1710,7 @@ export async function updateSittingDeadlines(
 
 	if (input.pollDeadline != null) {
 		if (!sitting.poll) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "This sitting has no poll deadline to update",
-			});
+			throw appError("BAD_REQUEST", "sitting.noPollDeadline");
 		}
 
 		await db.poll.update({
@@ -1756,7 +1734,7 @@ export async function updateSittingDeadlines(
 	});
 
 	if (!refreshed) {
-		throw new ORPCError("NOT_FOUND", { message: "Sitting not found" });
+		throw appError("NOT_FOUND", "sitting.notFound");
 	}
 
 	if (sitting.status === "reading" && sittingDeadlineChanged) {
@@ -1792,15 +1770,13 @@ export async function updateMyParticipationProgress(
 	});
 
 	if (!sitting) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Sitting not found",
+		throw appError("NOT_FOUND", "sitting.notFound", {
 			data: { slug: input.slug },
 		});
 	}
 
 	if (sitting.status !== "reading") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Progress can only be updated during the reading phase",
+		throw appError("BAD_REQUEST", "sitting.progressOnlyWhileReading", {
 			data: { status: sitting.status },
 		});
 	}
@@ -1808,9 +1784,7 @@ export async function updateMyParticipationProgress(
 	const participation = sitting.participants[0];
 
 	if (!participation) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only sitting participants can update progress",
-		});
+		throw appError("FORBIDDEN", "sitting.progressParticipantsOnly");
 	}
 
 	assertMemberCanSetProgress(participation.progress, input.progress);
@@ -1879,8 +1853,7 @@ export async function updateParticipation(
 	});
 
 	if (!sitting) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Sitting not found",
+		throw appError("NOT_FOUND", "sitting.notFound", {
 			data: { slug: input.slug },
 		});
 	}
@@ -1888,9 +1861,7 @@ export async function updateParticipation(
 	const participation = sitting.participants[0];
 
 	if (!participation) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Participant not found on this sitting",
-		});
+		throw appError("NOT_FOUND", "sitting.participantNotFound");
 	}
 
 	const previousProgress = participation.progress;
@@ -1989,8 +1960,7 @@ export async function updateParticipation(
 
 function assertSittingAcceptsParticipantChanges(status: string) {
 	if (status !== "voting" && status !== "reading") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Participants can only be changed while voting or reading",
+		throw appError("BAD_REQUEST", "sitting.participantsLocked", {
 			data: { status },
 		});
 	}
@@ -2011,8 +1981,8 @@ async function assertMembersAllowBeingAdded(
 	});
 	if (blocked.length > 0) {
 		const names = blocked.map((user) => user.name || user.username).join(", ");
-		throw new ORPCError("BAD_REQUEST", {
-			message: `${names} ${blocked.length === 1 ? "does" : "do"} not allow being added to sittings. Invite ${blocked.length === 1 ? "them" : "them"} once the sitting exists instead.`,
+		throw appError("BAD_REQUEST", "sitting.addNotAllowedMany", {
+			params: { names, count: blocked.length },
 		});
 	}
 }
@@ -2032,8 +2002,7 @@ export async function addSittingParticipant(
 	});
 
 	if (!sitting) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Sitting not found",
+		throw appError("NOT_FOUND", "sitting.notFound", {
 			data: { slug: input.slug },
 		});
 	}
@@ -2053,20 +2022,16 @@ export async function addSittingParticipant(
 	});
 
 	if (!user) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
-		});
+		throw appError("NOT_FOUND", "sitting.memberNotFound");
 	}
 
 	if (user.isHidden) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
-		});
+		throw appError("NOT_FOUND", "sitting.memberNotFound");
 	}
 
 	if (!user.allowSittingAutoAdd && user.id !== actorId) {
-		throw new ORPCError("FORBIDDEN", {
-			message: `${user.name || user.username} does not allow being added to sittings. Send them an invitation instead.`,
+		throw appError("FORBIDDEN", "sitting.addNotAllowedOne", {
+			params: { name: user.name || user.username },
 		});
 	}
 
@@ -2081,15 +2046,11 @@ export async function addSittingParticipant(
 	});
 
 	if (existing && existing.removedAt == null) {
-		throw new ORPCError("CONFLICT", {
-			message: "Member is already on this sitting",
-		});
+		throw appError("CONFLICT", "sitting.alreadyParticipant");
 	}
 	// Recovering a removed member is an admin call; only new joins are blocked.
 	if (!existing && user.status === "banned") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Banned members cannot join a sitting",
-		});
+		throw appError("BAD_REQUEST", "sitting.join.banned");
 	}
 
 	await db.$transaction(async (tx) => {
@@ -2149,8 +2110,16 @@ async function notifyAddedToSitting(
 		await dispatchNotification(db, {
 			kind: "sitting_added",
 			recipientUserIds: [userId],
-			title: "You were added to a sitting",
-			body: `An organiser added you to ${formatSittingDisplayName(sitting.slug, sitting.status, sitting.selectedBook?.title ?? null)}.`,
+			message: {
+				id: "sittingAdded",
+				values: {
+					sitting: formatSittingDisplayName(
+						sitting.slug,
+						sitting.status,
+						sitting.selectedBook?.title ?? null,
+					),
+				},
+			},
 			href: `/sittings/${sitting.slug}`,
 		});
 	} catch (error) {
@@ -2172,8 +2141,7 @@ export async function removeSittingParticipant(
 	});
 
 	if (!sitting) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Sitting not found",
+		throw appError("NOT_FOUND", "sitting.notFound", {
 			data: { slug: input.slug },
 		});
 	}
@@ -2191,15 +2159,11 @@ export async function removeSittingParticipant(
 	});
 
 	if (!participation || participation.removedAt != null) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Participant not found on this sitting",
-		});
+		throw appError("NOT_FOUND", "sitting.participantNotFound");
 	}
 
 	if (participation.progress === "completed") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Cannot remove a member who already finished the book",
-		});
+		throw appError("BAD_REQUEST", "sitting.removeFinished");
 	}
 
 	const activeCount = await db.participation.count({
@@ -2207,9 +2171,7 @@ export async function removeSittingParticipant(
 	});
 
 	if (activeCount <= 1) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Cannot remove the last participant",
-		});
+		throw appError("BAD_REQUEST", "sitting.removeLast");
 	}
 
 	const removedAt = new Date();
@@ -2263,8 +2225,7 @@ export async function getPollOptionVotes(
 	});
 
 	if (!option) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Poll option not found",
+		throw appError("NOT_FOUND", "sitting.pollOptionNotFound", {
 			data: { pollOptionId: input.pollOptionId },
 		});
 	}
@@ -2380,8 +2341,7 @@ export async function getSittingPollPreviewReaders(
 	});
 
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
+		throw appError("NOT_FOUND", "sitting.bookNotFound", {
 			data: { bookId: input.bookId },
 		});
 	}
@@ -2425,8 +2385,7 @@ export async function getPollOptionReaders(
 	});
 
 	if (!option) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Poll option not found",
+		throw appError("NOT_FOUND", "sitting.pollOptionNotFound", {
 			data: { pollOptionId: input.pollOptionId },
 		});
 	}
@@ -2439,9 +2398,7 @@ export async function getPollOptionReaders(
 		!isAdmin &&
 		!participantUserIds.some((participantId) => participantId === userId)
 	) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only sitting participants can view reader lists",
-		});
+		throw appError("FORBIDDEN", "sitting.readerListsParticipantsOnly");
 	}
 
 	return loadPollOptionReadersForParticipants(
@@ -2470,8 +2427,7 @@ export async function getPollVotesByUser(
 	});
 
 	if (!sitting?.poll) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Poll not found for this sitting",
+		throw appError("NOT_FOUND", "sitting.pollNotFound", {
 			data: { sittingSlug: input.sittingSlug },
 		});
 	}

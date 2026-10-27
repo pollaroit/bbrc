@@ -25,6 +25,7 @@ import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { authClient } from "@/lib/auth-client";
+import { useGenreName } from "@/lib/i18n/use-content-text";
 import {
 	clearPeopleSheetFilters,
 	countPeopleSheetFilters,
@@ -164,6 +165,7 @@ function ReadBooksFilter({
 }
 
 export function PeopleListingToolbar() {
+	const genreLabel = useGenreName();
 	const [params, setParams] = usePeopleListingSearchParams();
 	const { data: session } = authClient.useSession();
 	const isAdmin = session?.user.isAdmin === true;
@@ -339,7 +341,7 @@ export function PeopleListingToolbar() {
 						legend="Favorite genres"
 						options={genres.map((genre) => ({
 							id: `people-genre-${genre.slug}`,
-							label: genre.name,
+							label: genreLabel(genre.slug),
 							checked: params.genres?.includes(genre.slug) ?? false,
 							onCheckedChange: (checked) => {
 								void setParams({

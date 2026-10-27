@@ -1,6 +1,7 @@
 import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import { ORPCError } from "@orpc/server";
+import { appError, type ErrorKey, type ErrorParams } from "../../lib/app-error";
 
 export type ViewerContext = {
 	userId: string;
@@ -40,12 +41,12 @@ export function canViewMemberProfile(
 }
 
 export function throwMemberNotFound(username?: string): never {
-	throw new ORPCError("NOT_FOUND", {
-		message: username
-			? `User with ${username} username not found. Please check the username and try again.`
-			: "User not found",
-		data: username ? { username } : undefined,
-	});
+	throw username
+		? appError("NOT_FOUND", "user.notFoundByUsername", {
+				params: { username },
+				data: { username },
+			})
+		: appError("NOT_FOUND", "user.notFound");
 }
 
 export function assertMemberVisible(
@@ -60,26 +61,35 @@ export function assertMemberVisible(
 	}
 }
 
+/**
+ * What to say when content is hidden because its author is: an error key with parameters
+ * (preferred, translated by the request's language) or, for code not converted yet, plain text.
+ */
+export type ContentNotVisibleMessage =
+	| string
+	| { key: ErrorKey; params?: ErrorParams };
+
 export function assertContentNotVisible(
 	author: { id: string; isHidden: boolean },
 	viewer: ViewerContext,
-	message: string,
+	message: ContentNotVisibleMessage,
 	data?: Record<string, unknown>,
 ): void {
 	if (canViewMemberProfile(author, viewer)) {
 		return;
 	}
 
-	throw new ORPCError("NOT_FOUND", { message, data });
+	if (typeof message === "string") {
+		throw new ORPCError("NOT_FOUND", { message, data });
+	}
+	throw appError("NOT_FOUND", message.key, { params: message.params, data });
 }
 
 export function assertActorMayUseSocialFeatures(
 	user: { isHidden: boolean } | null,
 ): void {
 	if (user?.isHidden) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "This action is not available for your account.",
-		});
+		throw appError("FORBIDDEN", "user.actionUnavailable");
 	}
 }
 

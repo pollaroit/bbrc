@@ -1,5 +1,5 @@
 import type { Database } from "@bbrc/db";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { getBookPollSelect } from "../book/book.schema";
 import {
 	loadSeriesBooksStatusBySeriesId,
@@ -38,9 +38,7 @@ export async function assertParticipantsExist(
 	});
 
 	if (users.length !== uniqueParticipantIds.length) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "One or more selected participants do not exist",
-		});
+		throw appError("BAD_REQUEST", "sitting.poll.participantsMissing");
 	}
 
 	return uniqueParticipantIds;
@@ -98,8 +96,7 @@ export async function loadPollDrawContext(
 	const bookWhere = await resolveWishlistPollBookWhere(poll, db);
 
 	if (bookWhere == null) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "No wishlist books match the poll filters",
+		throw appError("BAD_REQUEST", "sitting.poll.noBooksMatch", {
 			data: { available: 0, take },
 		});
 	}
@@ -142,8 +139,8 @@ export async function loadPollDrawContext(
 	);
 
 	if (eligibleWishlistBooks.length < take) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `Not enough wishlist books match the poll filters (need at least ${take})`,
+		throw appError("BAD_REQUEST", "sitting.poll.notEnoughBooks", {
+			params: { take },
 			data: { available: eligibleWishlistBooks.length, take },
 		});
 	}
@@ -209,9 +206,7 @@ export function drawReplacementPollBookId(
 	replaceBookId: string,
 ): { bookId: string; usedUniformFallback: boolean } {
 	if (!currentOptionBookIds.includes(replaceBookId)) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "The book to replace is not in the current option list",
-		});
+		throw appError("BAD_REQUEST", "sitting.poll.replaceNotInOptions");
 	}
 
 	const exclude = new Set(currentOptionBookIds);
@@ -226,10 +221,7 @@ export function drawReplacementPollBookId(
 	const { bookId, usedUniformFallback } = result;
 
 	if (!bookId) {
-		throw new ORPCError("BAD_REQUEST", {
-			message:
-				"No other eligible wishlist books are available for this replacement",
-		});
+		throw appError("BAD_REQUEST", "sitting.poll.noReplacementAvailable");
 	}
 
 	return { bookId, usedUniformFallback };
@@ -247,16 +239,12 @@ export function shuffleUnlockedPollPreviewBookIds(
 	const lockedSet = new Set(lockedBookIds);
 	for (const bookId of lockedBookIds) {
 		if (!currentOptionBookIds.includes(bookId)) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Locked book is not in the current option list",
-			});
+			throw appError("BAD_REQUEST", "sitting.poll.lockedNotInOptions");
 		}
 	}
 
 	if (new Set(lockedBookIds).size !== lockedBookIds.length) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Duplicate locked books are not allowed",
-		});
+		throw appError("BAD_REQUEST", "sitting.poll.duplicateLocked");
 	}
 
 	const bookIds = [...currentOptionBookIds];
@@ -331,14 +319,12 @@ export async function assertValidPollOptionBookIds(
 	const unique = new Set(optionBookIds);
 
 	if (unique.size !== optionBookIds.length) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Poll options must not include duplicate books",
-		});
+		throw appError("BAD_REQUEST", "sitting.poll.duplicateOptions");
 	}
 
 	if (optionBookIds.length !== context.take) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `Poll must have exactly ${context.take} options`,
+		throw appError("BAD_REQUEST", "sitting.poll.wrongOptionCount", {
+			params: { expected: context.take },
 			data: { expected: context.take, received: optionBookIds.length },
 		});
 	}
@@ -346,10 +332,7 @@ export async function assertValidPollOptionBookIds(
 	const eligible = new Set(context.eligibleBookIds);
 	for (const bookId of optionBookIds) {
 		if (!eligible.has(bookId)) {
-			throw new ORPCError("BAD_REQUEST", {
-				message:
-					"One or more poll options are not eligible wishlist books for this configuration",
-			});
+			throw appError("BAD_REQUEST", "sitting.poll.optionsNotEligible");
 		}
 	}
 
@@ -358,8 +341,6 @@ export async function assertValidPollOptionBookIds(
 	});
 
 	if (found !== optionBookIds.length) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "One or more poll option books were not found",
-		});
+		throw appError("BAD_REQUEST", "sitting.poll.optionBooksMissing");
 	}
 }

@@ -3,24 +3,21 @@ import type {
 	EditionPage,
 	EditionSummary,
 } from "@bbrc/api/modules/edition/edition.schema";
+import type { Formatters } from "@bbrc/i18n";
 
 /** `/books/dune/editions/OL123M` */
 export const editionPath = (bookSlug: string, key: string) =>
 	`/books/${bookSlug}/editions/${key}`;
 
-const monthYear = new Intl.DateTimeFormat("en", {
-	month: "short",
-	year: "numeric",
-});
-
 /** "Oct 2026", or just the year when the month is unknown. */
 export function readMonthLabel(
+	f: Formatters,
 	year: number | null,
 	month: number | null,
 ): string | null {
 	if (year == null) return null;
 	if (month == null || month < 1 || month > 12) return String(year);
-	return monthYear.format(new Date(Date.UTC(year, month - 1, 1)));
+	return f.monthYear({ year, month }, "short");
 }
 
 /** The name at the top of the page: the edition's own title, else the book's. */

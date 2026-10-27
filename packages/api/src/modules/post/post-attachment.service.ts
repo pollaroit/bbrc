@@ -4,7 +4,7 @@ import {
 	formatAuthorLifespan,
 	formatSittingDisplayName,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { findAuthorBySlug } from "../../lib/authors";
 import {
 	POST_ATTACHMENT_TRUNCATE,
@@ -224,8 +224,7 @@ export async function resolvePostAttachmentCreateData(
 				select: { id: true },
 			});
 			if (!book) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Book not found",
+				throw appError("NOT_FOUND", "post.bookNotFound", {
 					data: { slug: input.slug },
 				});
 			}
@@ -240,15 +239,10 @@ export async function resolvePostAttachmentCreateData(
 				select: { id: true, visibility: true },
 			});
 			if (!shelf) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Shelf not found",
-				});
+				throw appError("NOT_FOUND", "post.shelfNotFound");
 			}
 			if (shelf.visibility === "private") {
-				throw new ORPCError("BAD_REQUEST", {
-					message:
-						"A private shelf cannot be shared in a post. Make it public first.",
-				});
+				throw appError("BAD_REQUEST", "post.privateShelf");
 			}
 			return { kind: "shelf", shelf: { connect: { id: shelf.id } } };
 		}
@@ -258,8 +252,7 @@ export async function resolvePostAttachmentCreateData(
 				select: { id: true },
 			});
 			if (!sitting) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Sitting not found",
+				throw appError("NOT_FOUND", "post.sittingNotFound", {
 					data: { slug: input.slug },
 				});
 			}
@@ -271,14 +264,13 @@ export async function resolvePostAttachmentCreateData(
 				select: { id: true, name: true, allowPostAttachment: true },
 			});
 			if (!user) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Member not found",
+				throw appError("NOT_FOUND", "post.memberNotFound", {
 					data: { username: input.username },
 				});
 			}
 			if (!user.allowPostAttachment && user.id !== actorId) {
-				throw new ORPCError("FORBIDDEN", {
-					message: `${user.name} does not allow being attached to posts.`,
+				throw appError("FORBIDDEN", "post.memberNoAttach", {
+					params: { name: user.name },
 				});
 			}
 			return { kind: "user", member: { connect: { id: user.id } } };
@@ -289,8 +281,7 @@ export async function resolvePostAttachmentCreateData(
 				select: { id: true },
 			});
 			if (!feedback) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Feedback not found",
+				throw appError("NOT_FOUND", "post.reviewNotFound", {
 					data: { slug: input.slug },
 				});
 			}
@@ -302,15 +293,12 @@ export async function resolvePostAttachmentCreateData(
 				select: { id: true, allowShares: true },
 			});
 			if (!attachedPost) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Post not found",
+				throw appError("NOT_FOUND", "post.notFound", {
 					data: { slug: input.slug },
 				});
 			}
 			if (!attachedPost.allowShares) {
-				throw new ORPCError("FORBIDDEN", {
-					message: "Sharing is turned off for that post.",
-				});
+				throw appError("FORBIDDEN", "post.sharingOff");
 			}
 			return {
 				kind: "post",
@@ -323,8 +311,7 @@ export async function resolvePostAttachmentCreateData(
 				select: { id: true },
 			});
 			if (!comment) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Comment not found",
+				throw appError("NOT_FOUND", "post.commentNotFound", {
 					data: { slug: input.slug },
 				});
 			}
@@ -333,8 +320,7 @@ export async function resolvePostAttachmentCreateData(
 		case "author": {
 			const author = await findAuthorBySlug(db as Database, input.slug);
 			if (!author) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Author not found",
+				throw appError("NOT_FOUND", "post.authorNotFound", {
 					data: { slug: input.slug },
 				});
 			}
@@ -375,8 +361,7 @@ async function loadAttachmentPreviewRow(
 				select: postAttachedBookCardFields,
 			});
 			if (!book) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Book not found",
+				throw appError("NOT_FOUND", "post.bookNotFound", {
 					data: { slug: input.slug },
 				});
 			}
@@ -391,7 +376,7 @@ async function loadAttachmentPreviewRow(
 				select: postAttachmentSelect.shelf.select,
 			});
 			if (!shelf) {
-				throw new ORPCError("NOT_FOUND", { message: "Shelf not found" });
+				throw appError("NOT_FOUND", "post.shelfNotFound");
 			}
 			return { kind: "shelf", ...emptyAttachmentRelations, shelf };
 		}
@@ -401,8 +386,7 @@ async function loadAttachmentPreviewRow(
 				select: postAttachmentSelect.sitting.select,
 			});
 			if (!sitting) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Sitting not found",
+				throw appError("NOT_FOUND", "post.sittingNotFound", {
 					data: { slug: input.slug },
 				});
 			}
@@ -418,14 +402,13 @@ async function loadAttachmentPreviewRow(
 				},
 			});
 			if (!member) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Member not found",
+				throw appError("NOT_FOUND", "post.memberNotFound", {
 					data: { username: input.username },
 				});
 			}
 			if (!member.allowPostAttachment && member.id !== actorId) {
-				throw new ORPCError("FORBIDDEN", {
-					message: `${member.name} does not allow being attached to posts.`,
+				throw appError("FORBIDDEN", "post.memberNoAttach", {
+					params: { name: member.name },
 				});
 			}
 			return {
@@ -444,8 +427,7 @@ async function loadAttachmentPreviewRow(
 				select: postAttachmentSelect.feedback.select,
 			});
 			if (!feedback) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Feedback not found",
+				throw appError("NOT_FOUND", "post.reviewNotFound", {
 					data: { slug: input.slug },
 				});
 			}
@@ -457,8 +439,7 @@ async function loadAttachmentPreviewRow(
 				select: postAttachmentSelect.attachedPost.select,
 			});
 			if (!attachedPost) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Post not found",
+				throw appError("NOT_FOUND", "post.notFound", {
 					data: { slug: input.slug },
 				});
 			}
@@ -470,8 +451,7 @@ async function loadAttachmentPreviewRow(
 				select: postAttachmentSelect.comment.select,
 			});
 			if (!comment) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Comment not found",
+				throw appError("NOT_FOUND", "post.commentNotFound", {
 					data: { slug: input.slug },
 				});
 			}
@@ -480,8 +460,7 @@ async function loadAttachmentPreviewRow(
 		case "author": {
 			const author = await findAuthorBySlug(db, input.slug);
 			if (!author) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Author not found",
+				throw appError("NOT_FOUND", "post.authorNotFound", {
 					data: { slug: input.slug },
 				});
 			}

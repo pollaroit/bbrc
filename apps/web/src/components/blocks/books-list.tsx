@@ -7,6 +7,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { BookCard } from "@/components/blocks/book-card";
 import { authClient } from "@/lib/auth-client";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import {
 	toBookListCallInput,
 	useBookListingSearchParams,
@@ -34,6 +35,7 @@ type BooksListProps = {
 export function BooksList(
 	{ fixedAuthorSlug }: BooksListProps = {} as BooksListProps,
 ) {
+	const f = useFormatters();
 	const [params] = useBookListingSearchParams();
 	const listInput = {
 		...toBookListCallInput(params),
@@ -102,7 +104,7 @@ export function BooksList(
 			? null
 			: filteredTotal === 1
 				? "1 book"
-				: `${filteredTotal.toLocaleString()} books`;
+				: `${f.number(filteredTotal)} books`;
 
 	return (
 		<InfiniteScroll

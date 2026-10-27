@@ -1,4 +1,5 @@
 import type { LeaderboardEntry } from "@bbrc/api/modules/leaderboard/leaderboard.schema";
+import type { Formatters } from "@bbrc/i18n";
 import {
 	Table,
 	TableBody,
@@ -10,6 +11,7 @@ import {
 import type { Route } from "next";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { Link } from "@/i18n/navigation";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 type LeaderboardStandingsProps = {
@@ -21,9 +23,9 @@ type LeaderboardStandingsProps = {
 	previewLabel?: string;
 };
 
-function formatMetric(value: number, label: string): string {
+function formatMetric(f: Formatters, value: number, label: string): string {
 	if (label === "XP" || label === "RP") {
-		return value.toLocaleString();
+		return f.number(value);
 	}
 	return String(value);
 }
@@ -35,6 +37,7 @@ export function LeaderboardStandings({
 	viewerUsername,
 	previewLabel,
 }: LeaderboardStandingsProps) {
+	const f = useFormatters();
 	const isPreview = previewLabel != null;
 	const showingCount = items.length;
 
@@ -102,7 +105,7 @@ export function LeaderboardStandings({
 										</Link>
 									</TableCell>
 									<TableCell className="text-right font-medium tabular-nums">
-										{formatMetric(entry.metric, metricLabel)}
+										{formatMetric(f, entry.metric, metricLabel)}
 									</TableCell>
 								</TableRow>
 							);

@@ -1,5 +1,7 @@
 "use client";
 
+import { toLocale } from "@bbrc/i18n";
+import { useLocale } from "next-intl";
 import { formatClubDateTime } from "@/lib/club-timezone";
 import { usePreferences } from "@/lib/preferences/use-preferences";
 
@@ -10,6 +12,7 @@ import { usePreferences } from "@/lib/preferences/use-preferences";
  */
 export function ClubDateTime({ value }: { value: Date | string }) {
 	const { time } = usePreferences();
+	const locale = toLocale(useLocale());
 	const date = typeof value === "string" ? new Date(value) : value;
 
 	return (
@@ -17,7 +20,7 @@ export function ClubDateTime({ value }: { value: Date | string }) {
 			dateTime={Number.isNaN(date.getTime()) ? undefined : date.toISOString()}
 			suppressHydrationWarning
 		>
-			{formatClubDateTime(date, time)}
+			{formatClubDateTime(date, time, locale)}
 		</time>
 	);
 }

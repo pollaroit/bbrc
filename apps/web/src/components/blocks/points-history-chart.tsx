@@ -17,6 +17,8 @@ import { useMemo } from "react";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { formatDateTime } from "@/lib/format-datetime";
 
+import { useFormatters } from "@/lib/i18n/use-formatters";
+
 type PointsHistoryChartProps = {
 	metricLabel: "RP" | "XP";
 	currentTotal: number;
@@ -35,18 +37,20 @@ export function PointsHistoryChart({
 	currentTotal,
 	points,
 }: PointsHistoryChartProps) {
+	const f = useFormatters();
 	const chartData = useMemo(
 		() =>
 			points.map((point) => ({
 				total: point.total,
 				date: point.date,
-				dateLabel: new Intl.DateTimeFormat(undefined, {
-					dateStyle: "medium",
-				}).format(
+				dateLabel: f.dateWith(
 					typeof point.date === "string" ? new Date(point.date) : point.date,
+					{
+						dateStyle: "medium",
+					},
 				),
 			})),
-		[points],
+		[points, f],
 	);
 
 	const yDomain = useMemo((): [number, number] => {

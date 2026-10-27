@@ -1,24 +1,30 @@
 import { describe, expect, test } from "bun:test";
+import { LOCALES } from "@bbrc/i18n";
 import { FEEDBACK_RATING_STEPS } from "./feedback-rating";
 import {
-	DEFAULT_RATING_DEFINITIONS,
+	defaultRatingDefinition,
 	RATING_DEFINITION_MAX_LENGTH,
 	RATING_DEFINITION_STEPS,
-	ratingKey,
 	resolveRatingDefinition,
 } from "./rating-definitions";
 
 describe("rating definitions", () => {
-	test("every rating step has a default label and text within the limit", () => {
-		for (const step of FEEDBACK_RATING_STEPS) {
-			const definition = DEFAULT_RATING_DEFINITIONS[ratingKey(step)];
-			expect(definition).toBeDefined();
-			expect(definition?.label.length).toBeGreaterThan(0);
-			expect(definition?.text.length).toBeGreaterThan(40);
-			expect(definition?.text.length).toBeLessThanOrEqual(
-				RATING_DEFINITION_MAX_LENGTH,
-			);
+	test("every rating step has a default label and text in every language, within the limit", () => {
+		for (const locale of LOCALES) {
+			for (const step of FEEDBACK_RATING_STEPS) {
+				const definition = defaultRatingDefinition(step, locale);
+				expect(definition.label.length).toBeGreaterThan(0);
+				expect(definition.text.length).toBeGreaterThan(40);
+				expect(definition.text.length).toBeLessThanOrEqual(
+					RATING_DEFINITION_MAX_LENGTH,
+				);
+			}
 		}
+	});
+
+	test("the defaults follow the language", () => {
+		expect(defaultRatingDefinition(5, "az").label).toBe("Şedevr");
+		expect(defaultRatingDefinition(5).label).toBe("Masterpiece");
 	});
 
 	test("steps are listed highest first", () => {
@@ -32,7 +38,10 @@ describe("rating definitions", () => {
 		expect(own.custom).toBe(true);
 		const blank = resolveRatingDefinition(4, { "4": "   " });
 		expect(blank.custom).toBe(false);
-		expect(blank.text).toBe(DEFAULT_RATING_DEFINITIONS["4"]?.text ?? "");
+		expect(blank.text).toBe(defaultRatingDefinition(4).text);
 		expect(resolveRatingDefinition(0.5, null).label).toBe("Almost nothing");
+		expect(resolveRatingDefinition(0.5, { "0.5": "x" }, "az").label).toBe(
+			"Demək olar ki, heç nə",
+		);
 	});
 });

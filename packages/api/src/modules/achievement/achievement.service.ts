@@ -3,6 +3,7 @@ import type { Database } from "@bbrc/db";
 import {
 	ACHIEVEMENTS,
 	type AchievementDefinition,
+	achievementName,
 	achievementProgress,
 	describeTier,
 	type EarnedTier,
@@ -12,7 +13,8 @@ import {
 	getAchievement,
 	tierName,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
+import { currentLocale } from "../../lib/request-locale";
 import { dispatchNotification } from "../notification/notification.service";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type {
@@ -34,9 +36,9 @@ const ALL_SECTIONS = new Set<FactSection>(FACT_SECTIONS);
 function tiersOf(definition: AchievementDefinition) {
 	return definition.thresholds.map((threshold, index) => ({
 		tier: index + 1,
-		name: tierName(definition, index + 1),
+		name: tierName(definition, index + 1, currentLocale()),
 		threshold,
-		description: describeTier(definition, index + 1),
+		description: describeTier(definition, index + 1, currentLocale()),
 	}));
 }
 
@@ -94,8 +96,12 @@ async function saveNewAwards(
 			await dispatchNotification(db, {
 				kind: "achievement_earned",
 				recipientUserIds: [userId],
-				title: "Achievement unlocked",
-				body: `${definition.name}${label ? ` · ${label}` : ""}${year}`,
+				message: {
+					id: "achievementEarned",
+					values: {
+						label: `${achievementName(definition.key, currentLocale())}${label ? ` · ${label}` : ""}${year}`,
+					},
+				},
 				href: `/users/${user.username}/achievements`,
 			});
 		}
@@ -225,7 +231,7 @@ function summarize(
 	return {
 		key: definition.key,
 		slug: definition.slug,
-		name: definition.name,
+		name: achievementName(definition.key, currentLocale()),
 		category: definition.category,
 		icon: definition.icon,
 		isHidden: Boolean(definition.isHidden),
@@ -300,12 +306,12 @@ export async function listAchievementEarners(
 ): Promise<ListEarnersOutput> {
 	const definition = ACHIEVEMENTS.find((item) => item.slug === input.slug);
 	if (!definition) {
-		throw new ORPCError("NOT_FOUND", { message: "Achievement not found" });
+		throw appError("NOT_FOUND", "achievement.notFound");
 	}
 	if (definition.isHidden && !session?.user.isAdmin) {
 		const viewer = session ? await viewerState(db, session.user.id) : null;
 		if ((viewer?.get(definition.key)?.tier ?? 0) === 0) {
-			throw new ORPCError("NOT_FOUND", { message: "Achievement not found" });
+			throw appError("NOT_FOUND", "achievement.notFound");
 		}
 	}
 
@@ -347,7 +353,7 @@ export async function getAchievementBySlug(
 ): Promise<GetAchievementOutput> {
 	const definition = ACHIEVEMENTS.find((item) => item.slug === slug);
 	if (!definition) {
-		throw new ORPCError("NOT_FOUND", { message: "Achievement not found" });
+		throw appError("NOT_FOUND", "achievement.notFound");
 	}
 
 	const viewerId = session?.user.id;
@@ -378,7 +384,7 @@ export async function getAchievementBySlug(
 		(mine?.tier ?? 0) === 0 &&
 		!session?.user.isAdmin
 	) {
-		throw new ORPCError("NOT_FOUND", { message: "Achievement not found" });
+		throw appError("NOT_FOUND", "achievement.notFound");
 	}
 
 	const recentEarners = collapseEarners(earners).slice(0, RECENT_EARNERS);
@@ -386,7 +392,7 @@ export async function getAchievementBySlug(
 	return {
 		...summarize(definition, counts, mine),
 		memberCount,
-		description: describeTier(definition, 1),
+		description: describeTier(definition, 1, currentLocale()),
 		recentEarners,
 	};
 }
@@ -403,7 +409,7 @@ export async function getUserAchievements(
 	const viewerId = session?.user.id;
 	const isOwner = Boolean(user && viewerId === user.id);
 	if (!user || (user.isHidden && !isOwner && !session?.user.isAdmin)) {
-		throw new ORPCError("NOT_FOUND", { message: "Member not found" });
+		throw appError("NOT_FOUND", "achievement.memberNotFound");
 	}
 
 	// A member who has never been checked (joined before achievements existed) is
@@ -480,9 +486,7 @@ export async function setShowcase(
 		select: { id: true },
 	});
 	if (owned.length !== unique.length) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "You can only pin achievements you have earned.",
-		});
+		throw appError("BAD_REQUEST", "achievement.pinNotEarned");
 	}
 
 	await db.$transaction([
@@ -510,7 +514,7 @@ export async function revokeAchievement(
 		select: { id: true },
 	});
 	if (!award) {
-		throw new ORPCError("NOT_FOUND", { message: "Award not found" });
+		throw appError("NOT_FOUND", "achievement.awardNotFound");
 	}
 	await db.userAchievement.update({
 		where: { id: awardId },

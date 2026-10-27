@@ -1,4 +1,6 @@
+import { runWithLocale } from "@bbrc/api/lib/request-locale";
 import { appRouter } from "@bbrc/api/router";
+import { DEFAULT_LOCALE } from "@bbrc/i18n";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";
@@ -32,19 +34,23 @@ const apiHandler = new OpenAPIHandler(appRouter, {
 });
 
 async function handleRequest(req: NextRequest) {
-	const rpcResult = await rpcHandler.handle(req, {
-		prefix: "/api/rpc",
-		context: await createContext(req),
-	});
-	if (rpcResult.response) return rpcResult.response;
+	const context = await createContext(req);
+	// Everything below (services, errors) runs "in" the language the page sent.
+	return runWithLocale(context.locale ?? DEFAULT_LOCALE, async () => {
+		const rpcResult = await rpcHandler.handle(req, {
+			prefix: "/api/rpc",
+			context,
+		});
+		if (rpcResult.response) return rpcResult.response;
 
-	const apiResult = await apiHandler.handle(req, {
-		prefix: "/api/rpc/api-reference",
-		context: await createContext(req),
-	});
-	if (apiResult.response) return apiResult.response;
+		const apiResult = await apiHandler.handle(req, {
+			prefix: "/api/rpc/api-reference",
+			context,
+		});
+		if (apiResult.response) return apiResult.response;
 
-	return new Response("Not found", { status: 404 });
+		return new Response("Not found", { status: 404 });
+	});
 }
 
 export const GET = handleRequest;

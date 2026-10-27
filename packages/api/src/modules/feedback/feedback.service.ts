@@ -1,7 +1,7 @@
 import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import { LikeSourceSchema } from "@bbrc/schemas";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { normalizeFeedbackReview } from "../../lib/feedback-review";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
@@ -58,10 +58,7 @@ async function loadBookBySlug(slug: string, db: Database) {
 	});
 
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
-			data: { slug },
-		});
+		throw appError("NOT_FOUND", "feedback.bookNotFound", { data: { slug } });
 	}
 
 	return book;
@@ -218,10 +215,7 @@ export async function getFeedbackBySlug(
 	});
 
 	if (!feedback) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Feedback not found",
-			data: { slug },
-		});
+		throw appError("NOT_FOUND", "feedback.notFound", { data: { slug } });
 	}
 
 	const author = await db.user.findUnique({
@@ -296,17 +290,14 @@ export async function getUserFeedbackList(
 	});
 
 	if (!user) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
+		throw appError("NOT_FOUND", "feedback.userNotFound", {
 			data: { username: input.username },
 		});
 	}
 
 	const viewerId = viewerUserId(session);
 	if (input.mutualOnly && !viewerId) {
-		throw new ORPCError("UNAUTHORIZED", {
-			message: "Sign in to filter by mutual reviews.",
-		});
+		throw appError("UNAUTHORIZED", "feedback.signInForMutual");
 	}
 
 	const pagination = definePagination.cursor(
@@ -454,18 +445,13 @@ export async function createFeedback(
 	});
 
 	if (existing) {
-		throw new ORPCError("CONFLICT", {
-			message: "You already left feedback for this book",
-		});
+		throw appError("CONFLICT", "feedback.alreadyReviewed");
 	}
 
 	const eligible = await canUserSubmitFeedback(userId, book.id, db);
 
 	if (!eligible) {
-		throw new ORPCError("FORBIDDEN", {
-			message:
-				"Mark the book completed on the sitting page before leaving feedback",
-		});
+		throw appError("FORBIDDEN", "feedback.markReadFirst");
 	}
 
 	const prepared = await prepareContentMentions(db, {
@@ -547,8 +533,7 @@ export async function updateFeedback(
 	});
 
 	if (!existing) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "You have not left feedback for this book",
+		throw appError("NOT_FOUND", "feedback.noReviewForBook", {
 			data: { bookSlug: input.bookSlug },
 		});
 	}
@@ -610,8 +595,7 @@ export async function deleteFeedback(
 	});
 
 	if (!feedback) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "You have not left feedback for this book",
+		throw appError("NOT_FOUND", "feedback.noReviewForBook", {
 			data: { bookSlug: input },
 		});
 	}

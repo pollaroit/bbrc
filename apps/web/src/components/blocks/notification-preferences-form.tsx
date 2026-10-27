@@ -15,26 +15,13 @@ import { Field, FieldGroup, FieldLabel } from "@bbrc/ui/components/field";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PwaEngagementSettingsCard } from "@/components/blocks/pwa-engagement-settings-card";
 import { orpc, queryClient } from "@/utils/orpc";
 
 const GROUP_ORDER = ["club", "personal", "sitting", "admin"] as const;
-
-const GROUP_HEADINGS: Record<(typeof GROUP_ORDER)[number], string> = {
-	club: "Club-wide",
-	personal: "About you",
-	sitting: "Sittings you join",
-	admin: "Admin",
-};
-
-const GROUP_DESCRIPTIONS: Record<(typeof GROUP_ORDER)[number], string> = {
-	club: "Events that concern the whole reading club.",
-	personal: "When someone interacts with your content.",
-	sitting: "Polls and reading progress for sittings you participate in.",
-	admin: "Moderation and library requests (admins only).",
-};
 
 function CopyTopicButton({ url, label }: { url: string; label: string }) {
 	return (
@@ -99,6 +86,7 @@ function groupPreferences(preferences: PreferenceRow[]) {
 }
 
 export function NotificationPreferencesForm() {
+	const t = useTranslations("notifications");
 	const preferencesQuery = useQuery(
 		orpc.notification.getPreferences.queryOptions(),
 	);
@@ -297,10 +285,10 @@ export function NotificationPreferencesForm() {
 				<Card key={section.group}>
 					<CardHeader>
 						<CardTitle className="text-base">
-							{GROUP_HEADINGS[section.group]}
+							{t(`groups.${section.group}`)}
 						</CardTitle>
 						<CardDescription>
-							{GROUP_DESCRIPTIONS[section.group]}
+							{t(`groupDescriptions.${section.group}`)}
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="flex flex-col gap-4">
@@ -315,7 +303,9 @@ export function NotificationPreferencesForm() {
 									key={pref.kind}
 									className="flex flex-col gap-3 border-border border-b pb-4 last:border-b-0 last:pb-0"
 								>
-									<p className="font-medium text-sm">{pref.label}</p>
+									<p className="font-medium text-sm">
+										{t(`kinds.${pref.kind}`)}
+									</p>
 									<FieldGroup className="gap-3">
 										<Field orientation="horizontal">
 											<Checkbox

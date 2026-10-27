@@ -1,5 +1,5 @@
 import type { Database } from "@bbrc/db";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import type { THealthOutputSchema } from "./health.schema";
 
 export async function check(db: Database): Promise<THealthOutputSchema> {
@@ -10,8 +10,6 @@ export async function check(db: Database): Promise<THealthOutputSchema> {
 			database: "ok",
 		};
 	} catch {
-		throw new ORPCError("INTERNAL_SERVER_ERROR", {
-			message: "Failed to connect to the API.",
-		});
+		throw appError("INTERNAL_SERVER_ERROR", "common.apiUnreachable");
 	}
 }

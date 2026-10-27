@@ -1,5 +1,6 @@
 "use client";
 
+import type { Formatters } from "@bbrc/i18n";
 import { Button } from "@bbrc/ui/components/button";
 import { Calendar } from "@bbrc/ui/components/calendar";
 import {
@@ -16,6 +17,7 @@ import {
 } from "@bbrc/ui/components/select";
 import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -62,8 +64,8 @@ function presetDate(days: number) {
 	return roundToFive(new Date(Date.now() + days * DAY_MS));
 }
 
-function formatValue(value: Date) {
-	return value.toLocaleString(undefined, {
+function formatValue(f: Formatters, value: Date) {
+	return f.dateWith(value, {
 		weekday: "short",
 		day: "numeric",
 		month: "short",
@@ -84,6 +86,7 @@ export function DateTimePicker({
 	disabled = false,
 	className,
 }: DateTimePickerProps) {
+	const f = useFormatters();
 	const [open, setOpen] = useState(false);
 	const hours = value?.getHours() ?? 12;
 	const minutes = value ? Math.round(value.getMinutes() / 5) * 5 : 0;
@@ -134,7 +137,7 @@ export function DateTimePicker({
 					}
 				>
 					<CalendarIcon data-icon="inline-start" aria-hidden />
-					{value ? formatValue(value) : placeholder}
+					{value ? formatValue(f, value) : placeholder}
 				</PopoverTrigger>
 				<PopoverContent className="w-auto p-0" align="start">
 					<div className="flex flex-col gap-3 p-3">

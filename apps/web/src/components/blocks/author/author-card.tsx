@@ -1,6 +1,7 @@
 "use client";
 
 import type { AuthorCard as AuthorCardData } from "@bbrc/api/modules/author/author.schema";
+import type { Formatters } from "@bbrc/i18n";
 import type { LucideIcon } from "lucide-react";
 import {
 	BookOpen,
@@ -18,6 +19,7 @@ import { FollowAuthorButton } from "@/components/blocks/author/follow-author-but
 import { CountryFlagIcon } from "@/components/blocks/country-dropdown";
 import { Link } from "@/i18n/navigation";
 import { bookCoverFrameClassName, bookCoverUrl } from "@/lib/book-cover";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import {
 	type AuthorSortField,
 	authorStatusLabels,
@@ -78,16 +80,12 @@ function FooterStat({
 	);
 }
 
-function plural(count: number, one: string, many = `${one}s`) {
-	return `${count.toLocaleString()} ${count === 1 ? one : many}`;
+function plural(f: Formatters, count: number, one: string, many = `${one}s`) {
+	return `${f.number(count)} ${count === 1 ? one : many}`;
 }
 
-const pagesFormat = new Intl.NumberFormat("en", {
-	notation: "compact",
-	maximumFractionDigits: 1,
-});
-
 export function AuthorCard({ author, sortBy, className }: AuthorCardProps) {
+	const f = useFormatters();
 	const href = `/authors/${author.slug}` as Route;
 	const metric = sortMetricFor(author, sortBy);
 	const [firstNationality] = author.nationalities;
@@ -133,17 +131,17 @@ export function AuthorCard({ author, sortBy, className }: AuthorCardProps) {
 					<FooterStat
 						icon={Eye}
 						value={author.readCount}
-						title={plural(author.readCount, "read")}
+						title={plural(f, author.readCount, "read")}
 					/>
 					<FooterStat
 						icon={MessageSquareText}
 						value={author.reviewCount}
-						title={plural(author.reviewCount, "review")}
+						title={plural(f, author.reviewCount, "review")}
 					/>
 					<FooterStat
 						icon={BookText}
-						value={pagesFormat.format(author.totalPages)}
-						title={plural(author.totalPages, "page")}
+						value={f.compact(author.totalPages)}
+						title={plural(f, author.totalPages, "page")}
 					/>
 				</span>
 			</div>
@@ -214,17 +212,17 @@ export function AuthorCard({ author, sortBy, className }: AuthorCardProps) {
 					<FooterStat
 						icon={BookOpen}
 						value={author.bookCount}
-						title={plural(author.bookCount, "book")}
+						title={plural(f, author.bookCount, "book")}
 					/>
 					<FooterStat
 						icon={Users}
 						value={author.readerCount}
-						title={plural(author.readerCount, "reader")}
+						title={plural(f, author.readerCount, "reader")}
 					/>
 					{author.averageRating != null ? (
 						<FooterStat
 							icon={Star}
-							value={author.averageRating.toFixed(1)}
+							value={f.decimal(author.averageRating, 1)}
 							title="Club average rating"
 						/>
 					) : null}

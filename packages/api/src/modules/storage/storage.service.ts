@@ -15,13 +15,11 @@ import {
 	type ObjectKeyParams,
 } from "@bbrc/storage";
 import { ORPCError } from "@orpc/server";
-
+import { appError } from "../../lib/app-error";
 import type { CommitUploadInput, InitUploadInput } from "./storage.schema";
 
 function storageUnavailable(): never {
-	throw new ORPCError("PRECONDITION_FAILED", {
-		message: "Object storage is not configured",
-	});
+	throw appError("PRECONDITION_FAILED", "storage.notConfigured");
 }
 
 function getR2Context() {
@@ -104,9 +102,7 @@ function assertInitUploadAllowed(
 function assertKeyAllowedForSession(key: string, session: Session): void {
 	const storageEnv = getStorageEnv();
 	if (!key.startsWith(`${storageEnv}/`)) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Invalid object key",
-		});
+		throw appError("BAD_REQUEST", "storage.invalidKey");
 	}
 
 	const user = session.user;
@@ -137,14 +133,10 @@ function assertKeyAllowedForSession(key: string, session: Session): void {
 	}
 
 	if (key.startsWith(avatarPrefix)) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Cannot access this object key",
-		});
+		throw appError("FORBIDDEN", "storage.forbiddenKey");
 	}
 
-	throw new ORPCError("FORBIDDEN", {
-		message: "Cannot access this object key",
-	});
+	throw appError("FORBIDDEN", "storage.forbiddenKey");
 }
 
 function escapeRegExp(value: string): string {
@@ -169,9 +161,7 @@ export async function initUpload(input: InitUploadInput, session: Session) {
 	const maxSize = maxSizeForKind(keyParams.kind);
 
 	if (input.contentLength > maxSize) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "File exceeds maximum size",
-		});
+		throw appError("BAD_REQUEST", "storage.fileTooLarge");
 	}
 
 	return {
@@ -188,32 +178,24 @@ export async function commitUpload(input: CommitUploadInput, session: Session) {
 	const head = await headObject(client, config, input.key);
 
 	if (!head) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Upload not found; complete the upload to storage first",
-		});
+		throw appError("BAD_REQUEST", "storage.uploadNotFound");
 	}
 
 	if (head.contentLength !== input.contentLength) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Uploaded size does not match",
-		});
+		throw appError("BAD_REQUEST", "storage.sizeMismatch");
 	}
 
 	const headType = head.contentType?.split(";")[0]?.trim();
 	const expectedType = input.contentType;
 	if (headType && headType !== expectedType) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Uploaded content type does not match",
-		});
+		throw appError("BAD_REQUEST", "storage.typeMismatch");
 	}
 
 	const maxSize = DOCUMENT_KEY_EXTENSION_PATTERN.test(input.key)
 		? MAX_DOCUMENT_SIZE
 		: MAX_IMAGE_SIZE;
 	if (head.contentLength > maxSize) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "File exceeds maximum size",
-		});
+		throw appError("BAD_REQUEST", "storage.fileTooLarge");
 	}
 
 	return {

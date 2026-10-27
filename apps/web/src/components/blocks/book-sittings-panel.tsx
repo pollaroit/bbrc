@@ -5,6 +5,7 @@ import type {
 	GetBookSittingsOutput,
 	GetMyBookSittingMarksOutput,
 } from "@bbrc/api/modules/book/book-sittings.schema";
+import type { Formatters } from "@bbrc/i18n";
 import { Button } from "@bbrc/ui/components/button";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
@@ -47,6 +48,7 @@ import {
 	filterAndSortBookSittings,
 	ordinal,
 } from "@/lib/book-sittings";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -87,13 +89,13 @@ function plural(count: number, one: string, many = `${one}s`): string {
 	return `${count} ${count === 1 ? one : many}`;
 }
 
-function formatDate(iso: string): string {
-	return new Intl.DateTimeFormat("en", {
+function formatDate(f: Formatters, iso: string): string {
+	return f.dateWith(iso, {
 		month: "short",
 		day: "numeric",
 		year: "numeric",
 		timeZone: "UTC",
-	}).format(new Date(iso));
+	});
 }
 
 function SummaryStat({
@@ -235,6 +237,7 @@ function Ranking({ item }: { item: BookSittingItem }) {
 }
 
 function ReadingTimeline({ item }: { item: BookSittingItem }) {
+	const f = useFormatters();
 	// Elapsed time depends on "now", so compute it after mount to keep the
 	// server-rendered markup and the first client render identical.
 	const [now, setNow] = useState<number | null>(null);
@@ -268,8 +271,8 @@ function ReadingTimeline({ item }: { item: BookSittingItem }) {
 				<div className="h-full bg-primary" style={{ width: `${percent}%` }} />
 			</div>
 			<p className="text-muted-foreground text-xs">
-				{formatDate(new Date(start).toISOString())} to{" "}
-				{formatDate(new Date(end).toISOString())}
+				{formatDate(f, new Date(start).toISOString())} to{" "}
+				{formatDate(f, new Date(end).toISOString())}
 				{finished ? " · finished" : ""}
 			</p>
 		</div>
@@ -277,6 +280,7 @@ function ReadingTimeline({ item }: { item: BookSittingItem }) {
 }
 
 function PickedCard({ item, mark }: { item: BookSittingItem; mark: Mark }) {
+	const f = useFormatters();
 	const [open, setOpen] = useState(false);
 	const total = item.participantCount;
 
@@ -294,8 +298,8 @@ function PickedCard({ item, mark }: { item: BookSittingItem; mark: Mark }) {
 					</h3>
 					<p className="text-muted-foreground text-sm">
 						{item.pollDeadline
-							? `Voted ${formatDate(item.pollDeadline)}`
-							: `Started ${formatDate(item.date)}`}
+							? `Voted ${formatDate(f, item.pollDeadline)}`
+							: `Started ${formatDate(f, item.date)}`}
 					</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
@@ -438,6 +442,7 @@ function PickedCard({ item, mark }: { item: BookSittingItem; mark: Mark }) {
 }
 
 function PollRow({ item, mark }: { item: BookSittingItem; mark: Mark }) {
+	const f = useFormatters();
 	const open = item.outcome === "in_poll";
 
 	return (
@@ -472,7 +477,7 @@ function PollRow({ item, mark }: { item: BookSittingItem; mark: Mark }) {
 						</span>{" "}
 						<span className="text-muted-foreground">
 							· {plural(item.points ?? 0, "point")} ·{" "}
-							{plural(item.voters, "voter")} · {formatDate(item.date)}
+							{plural(item.voters, "voter")} · {formatDate(f, item.date)}
 						</span>
 					</p>
 				)}

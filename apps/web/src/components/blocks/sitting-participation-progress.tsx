@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import type { z } from "zod";
 import { useRouter } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useProgressLabels } from "@/lib/i18n/use-labels";
 import {
 	applyProgressOptimistically,
 	restoreProgress,
@@ -17,13 +18,6 @@ import {
 import { orpc, queryClient } from "@/utils/orpc";
 
 type ParticipationProgress = z.infer<typeof ProgressSchema>;
-
-const progressLabels: Record<ParticipationProgress, string> = {
-	not_started: "Not started",
-	in_progress: "Reading",
-	completed: "Completed",
-	dnf: "Did not finish",
-};
 
 /** Participant card accent when sitting is in reading/finished. */
 const progressCardAccentClassName: Record<ParticipationProgress, string> = {
@@ -51,6 +45,7 @@ export function SittingParticipationProgress({
 	sittingStatus,
 	participants,
 }: SittingParticipationProgressProps) {
+	const progressLabels = useProgressLabels();
 	const router = useRouter();
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 
@@ -152,8 +147,4 @@ export function SittingParticipationProgress({
 	);
 }
 
-export {
-	progressCardAccentClassName,
-	progressIndicatorClassName,
-	progressLabels,
-};
+export { progressCardAccentClassName, progressIndicatorClassName };

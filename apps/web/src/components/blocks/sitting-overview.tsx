@@ -21,6 +21,8 @@ import {
 } from "@/components/blocks/sitting-card-parts";
 import { Link } from "@/i18n/navigation";
 import { bookCoverUrl } from "@/lib/book-cover";
+import { useFormatters } from "@/lib/i18n/use-formatters";
+import { useProgressLabels } from "@/lib/i18n/use-labels";
 import { cn } from "@/lib/utils";
 
 type Sitting = GetSittingBySlugOutput;
@@ -33,15 +35,6 @@ const progressBarClass = {
 } as const;
 
 const progressDotClass = progressBarClass;
-
-// Defined here: the shared labels live in a client module, which a server
-// component cannot read values from.
-const progressLabels = {
-	not_started: "Not started",
-	in_progress: "Reading",
-	completed: "Completed",
-	dnf: "Did not finish",
-} as const;
 
 const progressOrder = [
 	"completed",
@@ -82,6 +75,7 @@ function Section({
 }
 
 function ProgressSection({ sitting }: { sitting: Sitting }) {
+	const progressLabels = useProgressLabels();
 	const { stats } = sitting;
 	const total = stats.participantCount;
 	const isVoting = sitting.status === "voting";
@@ -147,6 +141,7 @@ function ProgressSection({ sitting }: { sitting: Sitting }) {
 }
 
 function BookSection({ sitting }: { sitting: Sitting }) {
+	const f = useFormatters();
 	const book = sitting.selectedBook;
 	if (!book) return null;
 
@@ -157,7 +152,7 @@ function BookSection({ sitting }: { sitting: Sitting }) {
 			? [
 					{
 						label: "Open Library",
-						value: `${book.openLibraryRating.toFixed(1)} / 5`,
+						value: `${f.decimal(book.openLibraryRating, 1)} / 5`,
 					},
 				]
 			: []),
@@ -165,7 +160,7 @@ function BookSection({ sitting }: { sitting: Sitting }) {
 			? [
 					{
 						label: "Club rating",
-						value: `${book.averageRating.toFixed(1)} / 5`,
+						value: `${f.decimal(book.averageRating, 1)} / 5`,
 					},
 				]
 			: []),
@@ -312,6 +307,7 @@ function VotingSection({ sitting }: { sitting: Sitting }) {
 }
 
 function ReadersSection({ sitting }: { sitting: Sitting }) {
+	const progressLabels = useProgressLabels();
 	const people = sitting.participants;
 	const shown = people.slice(0, 10);
 	const hidden = people.length - shown.length;
@@ -367,6 +363,7 @@ function ReadersSection({ sitting }: { sitting: Sitting }) {
 }
 
 function ReviewsSection({ sitting }: { sitting: Sitting }) {
+	const f = useFormatters();
 	const book = sitting.selectedBook;
 	if (!book || sitting.status === "voting") return null;
 
@@ -392,7 +389,9 @@ function ReviewsSection({ sitting }: { sitting: Sitting }) {
 						<Star className="size-4 fill-warning text-warning" aria-hidden />
 						<span className="font-medium tabular-nums">
 							{stats.averageRating != null
-								? formatFeedbackRating(Number(stats.averageRating.toFixed(1)))
+								? formatFeedbackRating(
+										Number(f.decimal(stats.averageRating, 1)),
+									)
 								: "—"}
 						</span>
 						<span className="text-muted-foreground">

@@ -1,13 +1,14 @@
 import type { Database } from "@bbrc/db";
+import { type Locale, withLocalePrefix } from "@bbrc/i18n";
 import {
 	defaultPushEnabledForKind,
 	isOffByDefaultKind,
 	NOTIFICATION_KIND_GROUPS,
-	NOTIFICATION_KIND_LABELS,
 	NOTIFICATION_KINDS,
 	type NotificationKind,
 } from "@bbrc/shared";
 import type { NotificationKind as DbNotificationKind } from "../../../../db/prisma/generated/enums";
+import { recipientLocale } from "../../lib/locale";
 import {
 	ntfyAdminTopic,
 	ntfySittingTopic,
@@ -15,12 +16,19 @@ import {
 	publishNtfy,
 	resolveNtfyConfig,
 } from "../../lib/ntfy";
+import { currentLocale } from "../../lib/request-locale";
 import type {
 	GetNotificationListInput,
 	GetNotificationListOutput,
 	GetNotificationPreferencesOutput,
 	UpdateNotificationPreferencesInput,
 } from "./notification.schema";
+import {
+	type NotificationMessageId,
+	type NotificationValues,
+	notificationText,
+	renderStoredNotification,
+} from "./notification-text";
 
 function kindToDb(kind: NotificationKind): DbNotificationKind {
 	return kind as DbNotificationKind;
@@ -127,7 +135,6 @@ export async function getNotificationPreferences(
 			const kind = row.kind as NotificationKind;
 			return {
 				kind,
-				label: NOTIFICATION_KIND_LABELS[kind],
 				inAppEnabled: row.inAppEnabled,
 				pushEnabled: row.pushEnabled,
 				group: preferenceGroup(kind),
@@ -194,6 +201,7 @@ export async function getNotificationList(
 	userId: string,
 	input: GetNotificationListInput,
 	db: Database,
+	locale: Locale = currentLocale(),
 ): Promise<GetNotificationListOutput> {
 	const rows = await db.notification.findMany({
 		where: { userId },
@@ -211,6 +219,7 @@ export async function getNotificationList(
 			title: true,
 			body: true,
 			href: true,
+			params: true,
 			readAt: true,
 			createdAt: true,
 		},
@@ -220,15 +229,20 @@ export async function getNotificationList(
 	const items = hasMore ? rows.slice(0, input.limit) : rows;
 
 	return {
-		items: items.map((row) => ({
-			id: row.id,
-			kind: row.kind as NotificationKind,
-			title: row.title,
-			body: row.body,
-			href: row.href,
-			readAt: row.readAt,
-			createdAt: row.createdAt,
-		})),
+		items: items.map((row) => {
+			// A row with parameters is turned into words in the reader's language now; an older
+			// row (no parameters) is shown as it was saved, in English.
+			const text = renderStoredNotification(row, locale);
+			return {
+				id: row.id,
+				kind: row.kind as NotificationKind,
+				title: text.title,
+				body: text.body,
+				href: row.href,
+				readAt: row.readAt,
+				createdAt: row.createdAt,
+			};
+		}),
 		nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null,
 	};
 }
@@ -266,16 +280,55 @@ export async function markAllNotificationsRead(
 	return { ok: true };
 }
 
-export type DispatchNotificationInput = {
+/**
+ * The words of a notification: a message id with its values (turned into text in each reader's
+ * language), or fixed English text for the kinds that are not translated (admin ones).
+ */
+export type NotificationContent =
+	| {
+			message: { id: NotificationMessageId; values: NotificationValues };
+	  }
+	| { title: string; body: string };
+
+export type NotificationMessage = {
+	id: NotificationMessageId;
+	values: NotificationValues;
+};
+
+export type DispatchNotificationInput = NotificationContent & {
 	kind: NotificationKind;
 	recipientUserIds: string[];
-	title: string;
-	body: string;
 	href?: string;
 	excludeUserIds?: string[];
 	sittingSlug?: string;
 	adminNtfy?: boolean;
 };
+
+/** The English text saved with every row, and the parameters when there are any. */
+export function contentToStored(content: NotificationContent): {
+	title: string;
+	body: string;
+	params?: { id: NotificationMessageId; values: NotificationValues };
+} {
+	if ("message" in content) {
+		const english = notificationText(
+			content.message.id,
+			content.message.values,
+			"en",
+		);
+		return { ...english, params: content.message };
+	}
+	return { title: content.title, body: content.body };
+}
+
+/** The absolute address a push opens, in the recipient's language (`/az/...`; English has no prefix). */
+function pushHref(href: string, locale: Locale): string {
+	if (href.startsWith("http")) {
+		return href;
+	}
+	const path = href.startsWith("/") ? href : `/${href}`;
+	return `${resolvePublicAppOrigin()}${withLocalePrefix(path, locale)}`;
+}
 
 export async function dispatchNotification(
 	db: Database,
@@ -308,13 +361,15 @@ export async function dispatchNotification(
 			: `${resolvePublicAppOrigin()}${input.href.startsWith("/") ? input.href : `/${input.href}`}`
 		: undefined;
 
+	const stored = contentToStored(input);
 	const inAppRows = recipientIds
 		.filter((userId) => prefByUser.get(userId)?.inAppEnabled !== false)
 		.map((userId) => ({
 			userId,
 			kind: kindToDb(input.kind),
-			title: input.title,
-			body: input.body,
+			title: stored.title,
+			body: stored.body,
+			params: stored.params,
 			href: input.href ?? null,
 		}));
 
@@ -327,15 +382,31 @@ export async function dispatchNotification(
 		return;
 	}
 
-	for (const userId of recipientIds) {
-		if (!prefByUser.get(userId)?.pushEnabled) {
-			continue;
-		}
+	// A personal push is written in the recipient's saved language, and its link opens that
+	// language's page. Shared topics (a sitting's, the admins') have mixed readers: English.
+	const pushUserIds = recipientIds.filter(
+		(userId) => prefByUser.get(userId)?.pushEnabled,
+	);
+	const localeByUser = new Map(
+		(pushUserIds.length > 0
+			? await db.user.findMany({
+					where: { id: { in: pushUserIds } },
+					select: { id: true, locale: true },
+				})
+			: []
+		).map((user) => [user.id, recipientLocale(user)]),
+	);
+	for (const userId of pushUserIds) {
+		const locale = localeByUser.get(userId) ?? "en";
+		const text =
+			"message" in input
+				? notificationText(input.message.id, input.message.values, locale)
+				: { title: stored.title, body: stored.body };
 		await publishNtfy({
 			topic: ntfyUserTopic(ntfy.topicPrefix, userId),
-			title: input.title,
-			message: input.body,
-			click: href,
+			title: text.title,
+			message: text.body,
+			click: input.href ? pushHref(input.href, locale) : undefined,
 		});
 	}
 
@@ -344,8 +415,8 @@ export async function dispatchNotification(
 		if (anyPush) {
 			await publishNtfy({
 				topic: ntfySittingTopic(ntfy.topicPrefix, input.sittingSlug),
-				title: input.title,
-				message: input.body,
+				title: stored.title,
+				message: stored.body,
 				click: href,
 			});
 		}
@@ -354,8 +425,8 @@ export async function dispatchNotification(
 	if (input.adminNtfy) {
 		await publishNtfy({
 			topic: ntfyAdminTopic(ntfy.topicPrefix),
-			title: input.title,
-			message: input.body,
+			title: stored.title,
+			message: stored.body,
 			click: href,
 		});
 	}

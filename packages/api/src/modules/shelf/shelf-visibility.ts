@@ -50,6 +50,3 @@ export function visibilityAllows(
 	if (viewer.userId == null) return false;
 	return viewer.userId === shelf.userId || viewer.isCollaborator === true;
 }
-
-export const WISHLIST_PROTECTED_MESSAGE =
-	"Your Wishlist is special: you can only change its description and who can see it.";

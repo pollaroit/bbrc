@@ -2,7 +2,7 @@ import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import { LikeSourceSchema } from "@bbrc/schemas";
 import { MAX_COMMENT_DEPTH } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { assertNormalizedSocialContent } from "../../lib/rich-content";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
@@ -164,9 +164,7 @@ function assertCommentAuthor(
 	userId: string,
 ): void {
 	if (comment.authorId !== userId) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only the comment author can change this comment",
-		});
+		throw appError("FORBIDDEN", "comment.onlyAuthor");
 	}
 }
 
@@ -180,8 +178,7 @@ async function loadPostIdBySlug(
 	});
 
 	if (!post) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Post not found",
+		throw appError("NOT_FOUND", "comment.postNotFound", {
 			data: { slug: postSlug },
 		});
 	}
@@ -199,8 +196,7 @@ async function loadFeedbackIdBySlug(
 	});
 
 	if (!feedback) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Feedback not found",
+		throw appError("NOT_FOUND", "comment.reviewNotFound", {
 			data: { slug: feedbackSlug },
 		});
 	}
@@ -264,10 +260,7 @@ export async function getCommentBySlug(
 	});
 
 	if (!comment) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Comment not found",
-			data: { slug },
-		});
+		throw appError("NOT_FOUND", "comment.notFound", { data: { slug } });
 	}
 
 	const author = await db.user.findUnique({
@@ -307,9 +300,7 @@ export async function createComment(
 			select: { allowComments: true },
 		});
 		if (post && !post.allowComments) {
-			throw new ORPCError("FORBIDDEN", {
-				message: "Comments are turned off for this post.",
-			});
+			throw appError("FORBIDDEN", "comment.commentsOff");
 		}
 	}
 	const feedbackId = input.feedbackSlug
@@ -342,15 +333,14 @@ export async function createComment(
 				(feedbackId != null && row.feedbackId === feedbackId));
 
 		if (!row || !sameTarget) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Reply target must be a comment on this thread",
+			throw appError("BAD_REQUEST", "comment.replyTargetInvalid", {
 				data: { parentSlug: input.parentSlug },
 			});
 		}
 
 		if (row.depth >= MAX_COMMENT_DEPTH) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: `Replies cannot exceed ${MAX_COMMENT_DEPTH + 1} levels deep`,
+			throw appError("BAD_REQUEST", "comment.replyTooDeep", {
+				params: { levels: MAX_COMMENT_DEPTH + 1 },
 			});
 		}
 
@@ -470,8 +460,7 @@ export async function updateComment(
 	});
 
 	if (!comment) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Comment not found",
+		throw appError("NOT_FOUND", "comment.notFound", {
 			data: { slug: input.slug },
 		});
 	}
@@ -543,8 +532,7 @@ export async function deleteComment(
 	});
 
 	if (!comment) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Comment not found",
+		throw appError("NOT_FOUND", "comment.notFound", {
 			data: { slug: input.slug },
 		});
 	}

@@ -1,5 +1,10 @@
 import type { AchievementSummary } from "@bbrc/api/modules/achievement/achievement.schema";
-import { ACHIEVEMENTS, describeTier, tierName } from "@bbrc/shared";
+import {
+	ACHIEVEMENTS,
+	achievementName,
+	describeTier,
+	tierName,
+} from "@bbrc/shared";
 import { notFound } from "next/navigation";
 import { AchievementRow } from "@/components/blocks/achievement-row";
 
@@ -21,7 +26,7 @@ function sample(index: number): AchievementSummary {
 	return {
 		key: definition.key,
 		slug: definition.slug,
-		name: definition.name,
+		name: achievementName(definition.key),
 		category: definition.category,
 		icon: definition.icon,
 		isHidden: Boolean(definition.isHidden),

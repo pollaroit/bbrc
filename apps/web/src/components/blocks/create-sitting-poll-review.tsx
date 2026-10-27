@@ -27,6 +27,7 @@ import {
 	toPreviewSittingPollOptionsInput,
 } from "@/lib/create-sitting-form";
 import { formatDateTime } from "@/lib/format-datetime";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { readingEstimateLabel } from "@/lib/reading-estimate";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
@@ -54,6 +55,7 @@ export function CreateSittingPollReview({
 	onConfirm,
 	confirmLoading,
 }: CreateSittingPollReviewProps) {
+	const f = useFormatters();
 	const [options, setOptions] = useState(initialOptions);
 	const [usedUniformFallback, setUsedUniformFallback] = useState(
 		initialUsedUniformFallback,
@@ -291,7 +293,7 @@ export function CreateSittingPollReview({
 												title="Open Library rating"
 											>
 												<Star className="size-3.5" aria-hidden />
-												{option.book.openLibraryRating.toFixed(1)}
+												{f.decimal(option.book.openLibraryRating, 1)}
 											</span>
 										) : null}
 									</p>

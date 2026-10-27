@@ -1,6 +1,5 @@
 "use client";
 
-import { getBookCountryName } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Field, FieldDescription, FieldLabel } from "@bbrc/ui/components/field";
 import { X } from "lucide-react";
@@ -8,6 +7,7 @@ import {
 	CountryDropdown,
 	CountryLabel,
 } from "@/components/blocks/country-dropdown";
+import { useCountryName } from "@/lib/i18n/use-content-text";
 
 const MAX_COUNTRIES = 8;
 
@@ -26,6 +26,7 @@ export function BookOriginCountriesField({
 	isSuggesting = false,
 	disabled = false,
 }: BookOriginCountriesFieldProps) {
+	const countryName = useCountryName();
 	const selected = value ?? [];
 	const atLimit = selected.length >= MAX_COUNTRIES;
 
@@ -49,7 +50,7 @@ export function BookOriginCountriesField({
 				{selected.length > 0 ? (
 					<ul className="flex flex-col gap-1">
 						{selected.map((code) => {
-							const name = getBookCountryName(code) ?? code;
+							const name = countryName(code);
 							return (
 								<li
 									key={code}

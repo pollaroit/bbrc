@@ -24,6 +24,7 @@ import { MemberEditionsSection } from "@/components/blocks/book-editions/member-
 import { Link } from "@/i18n/navigation";
 import { bookCoverFrameClassName, bookCoverUrl } from "@/lib/book-cover";
 import { editionPath } from "@/lib/edition/format";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { useBookEditionsListingSearchParams } from "@/lib/listing/book-editions-listing";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
@@ -230,6 +231,7 @@ export function BookEditionsPanel({
 	bookTitle,
 	workOlid,
 }: BookEditionsPanelProps) {
+	const f = useFormatters();
 	const [params, setParams] = useBookEditionsListingSearchParams();
 	const selection = useEditionSelection();
 
@@ -311,7 +313,7 @@ export function BookEditionsPanel({
 					<p className="text-muted-foreground text-sm tabular-nums">
 						{editionsQuery.data.total === 0
 							? "No editions"
-							: `${editionsQuery.data.total.toLocaleString()} edition${
+							: `${f.number(editionsQuery.data.total)} edition${
 									editionsQuery.data.total === 1 ? "" : "s"
 								}`}
 						{editionsQuery.data.totalPages > 1

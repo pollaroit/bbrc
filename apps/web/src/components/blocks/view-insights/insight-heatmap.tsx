@@ -1,5 +1,6 @@
 import { VIEW_WEEKDAY_LABELS } from "@bbrc/shared";
 import { clubTimeZone } from "@/lib/club-timezone";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { HeatmapGrid } from "./heatmap-grid";
 import { formatCount, hourLabel } from "./insight-format";
 import { InsightPanel } from "./insight-panel";
@@ -18,6 +19,7 @@ export function InsightHeatmap({
 	grid: number[][];
 	bestSlots: Slot[];
 }) {
+	const f = useFormatters();
 	const total = grid.flat().reduce((sum, value) => sum + value, 0);
 
 	return (
@@ -45,7 +47,7 @@ export function InsightHeatmap({
 											{VIEW_WEEKDAY_LABELS[slot.weekday]} {hourLabel(slot.hour)}
 										</span>
 										<span className="text-muted-foreground text-xs tabular-nums">
-											{formatCount(slot.views)}{" "}
+											{formatCount(f, slot.views)}{" "}
 											{slot.views === 1 ? "view" : "views"}
 											{index === 0 ? " · busiest" : ""}
 										</span>

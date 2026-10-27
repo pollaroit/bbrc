@@ -27,6 +27,7 @@ import { RelativeTime } from "@/components/blocks/relative-time";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { Link } from "@/i18n/navigation";
 import { bookCoverUrl } from "@/lib/book-cover";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { paceText, paceToneClass } from "@/lib/reading/pace-text";
 import {
 	useAbandonReading,
@@ -228,6 +229,7 @@ export function ReadingCard({
 	progressVisible = true,
 	className,
 }: ReadingCardProps) {
+	const f = useFormatters();
 	const update = useUpdateReadingProgress();
 	const abandon = useAbandonReading();
 	const [finishOpen, setFinishOpen] = useState(false);
@@ -240,7 +242,7 @@ export function ReadingCard({
 	const unit = byPage ? "pages" : "percent";
 	const quickSteps = byPage ? [10, 25] : [5, 10];
 	const src = coverSrc(reading);
-	const pace = readOnly ? null : paceText(reading.pace ?? null);
+	const pace = readOnly ? null : paceText(reading.pace ?? null, f);
 	const bookHref = `/books/${reading.book.slug}` as Route;
 	const finished = reading.percent >= 100;
 	const shownPercent = draft ?? reading.percent;

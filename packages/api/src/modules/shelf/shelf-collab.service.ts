@@ -8,7 +8,7 @@ import {
 	SHELF_INVITATION_TTL_DAYS,
 	SHELF_PERMISSION_PRESETS,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import { mapShelfListItem, shelfListItemSelect } from "./shelf.schema";
 import { loadCoverPreviewMap } from "./shelf.service";
@@ -59,7 +59,7 @@ async function loadActor(db: Database, userId: string) {
 		select: { id: true, name: true, username: true, image: true },
 	});
 	if (!actor) {
-		throw new ORPCError("UNAUTHORIZED", { message: "Sign in again." });
+		throw appError("UNAUTHORIZED", "shelf.signInAgain");
 	}
 	return actor;
 }
@@ -79,9 +79,7 @@ async function findCollaborator(
 		},
 	});
 	if (!row) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "That member is not a collaborator on this shelf.",
-		});
+		throw appError("NOT_FOUND", "shelf.notCollaborator");
 	}
 	return row;
 }
@@ -95,10 +93,7 @@ export async function searchInvitableMembers(
 ): Promise<SearchInvitableOutput> {
 	const access = await loadShelfAccess(db, { ...input, actorId });
 	requireShelfPermission(access, "add_collaborator");
-	assertNotWishlist(
-		access.shelf,
-		"Your Wishlist is personal, so it cannot be shared.",
-	);
+	assertNotWishlist(access.shelf, "shelf.wishlistNotShareable");
 
 	const users = await db.user.findMany({
 		where: {
@@ -165,21 +160,14 @@ export async function inviteCollaborator(
 ) {
 	const access = await loadShelfAccess(db, { ...input, actorId });
 	requireShelfPermission(access, "add_collaborator");
-	assertNotWishlist(
-		access.shelf,
-		"Your Wishlist is personal, so it cannot be shared.",
-	);
+	assertNotWishlist(access.shelf, "shelf.wishlistNotShareable");
 
 	const permissions = normalizeShelfPermissions(input.permissions);
 	if (permissions.length === 0) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Choose at least one permission.",
-		});
+		throw appError("BAD_REQUEST", "shelf.pickPermission");
 	}
 	if (missingGrants(access.permissions, permissions).length > 0) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "You can only give permissions that you have yourself.",
-		});
+		throw appError("FORBIDDEN", "shelf.grantOnlyOwn");
 	}
 
 	const invitee = await db.user.findUnique({
@@ -193,21 +181,17 @@ export async function inviteCollaborator(
 		},
 	});
 	if (!invitee || invitee.isHidden) {
-		throw new ORPCError("NOT_FOUND", { message: "Member not found." });
+		throw appError("NOT_FOUND", "shelf.memberNotFound");
 	}
 	if (invitee.id === actorId) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "You cannot invite yourself.",
-		});
+		throw appError("BAD_REQUEST", "shelf.cannotInviteSelf");
 	}
 	if (invitee.id === access.owner.id) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "That member already owns this shelf.",
-		});
+		throw appError("BAD_REQUEST", "shelf.alreadyOwner");
 	}
 	if (!invitee.allowShelfInvites) {
-		throw new ORPCError("FORBIDDEN", {
-			message: `${displayName(invitee)} is not accepting shelf invitations.`,
+		throw appError("FORBIDDEN", "shelf.notAcceptingInvites", {
+			params: { name: displayName(invitee) },
 		});
 	}
 
@@ -239,18 +223,14 @@ export async function inviteCollaborator(
 		]);
 
 	if (alreadyCollaborator) {
-		throw new ORPCError("CONFLICT", {
-			message: "That member is already a collaborator.",
-		});
+		throw appError("CONFLICT", "shelf.alreadyCollaborator");
 	}
 	if (pending && pending.expiresAt > now) {
-		throw new ORPCError("CONFLICT", {
-			message: "That member already has a pending invitation.",
-		});
+		throw appError("CONFLICT", "shelf.alreadyInvited");
 	}
 	if (collaboratorCount + pendingCount >= MAX_SHELF_COLLABORATORS) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `A shelf can have at most ${MAX_SHELF_COLLABORATORS} collaborators.`,
+		throw appError("BAD_REQUEST", "shelf.collaboratorLimit", {
+			params: { max: MAX_SHELF_COLLABORATORS },
 		});
 	}
 
@@ -281,8 +261,10 @@ export async function inviteCollaborator(
 	await notifyShelfCollaboration(db, {
 		kind: "shelf_invitation",
 		recipientUserIds: [invitee.id],
-		title: "You were invited to a shelf",
-		body: `${displayName(actor)} invited you to help with "${access.shelf.title}".`,
+		message: {
+			id: "shelfInvitation",
+			values: { actor: displayName(actor), shelf: access.shelf.title },
+		},
 		href: inviteLink(token),
 	});
 
@@ -314,7 +296,7 @@ export async function getInvitationByToken(
 
 	// A link only opens for the member it was made for.
 	if (!invitation || invitation.inviteeId !== actorId) {
-		throw new ORPCError("NOT_FOUND", { message: "Invitation not found." });
+		throw appError("NOT_FOUND", "shelf.invitationNotFound");
 	}
 
 	const coverMap = await loadCoverPreviewMap([invitation.shelf.id], db);
@@ -399,20 +381,18 @@ export async function respondToInvitation(
 	});
 
 	if (!invitation || invitation.inviteeId !== actorId) {
-		throw new ORPCError("NOT_FOUND", { message: "Invitation not found." });
+		throw appError("NOT_FOUND", "shelf.invitationNotFound");
 	}
 	if (invitation.status !== "pending") {
-		throw new ORPCError("BAD_REQUEST", {
-			message:
-				invitation.status === "cancelled"
-					? "This invitation was cancelled."
-					: "You already answered this invitation.",
-		});
+		throw appError(
+			"BAD_REQUEST",
+			invitation.status === "cancelled"
+				? "shelf.invitationCancelled"
+				: "shelf.invitationAnswered",
+		);
 	}
 	if (invitation.expiresAt <= new Date()) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "This invitation has expired. Ask for a new one.",
-		});
+		throw appError("BAD_REQUEST", "shelf.invitationExpired");
 	}
 
 	const actor = await loadActor(db, actorId);
@@ -450,10 +430,10 @@ export async function respondToInvitation(
 	await notifyShelfCollaboration(db, {
 		recipientUserIds: [invitation.invitedById, shelf.userId],
 		excludeUserIds: [actorId],
-		title: input.accept ? "Invitation accepted" : "Invitation declined",
-		body: input.accept
-			? `${displayName(actor)} joined "${shelf.title}".`
-			: `${displayName(actor)} declined to help with "${shelf.title}".`,
+		message: {
+			id: input.accept ? "shelfInvitationAccepted" : "shelfInvitationDeclined",
+			values: { actor: displayName(actor), shelf: shelf.title },
+		},
 		href: shelfPath(shelf.user.username, shelf.slug),
 	});
 
@@ -479,7 +459,7 @@ export async function cancelInvitation(
 		},
 	});
 	if (!invitation) {
-		throw new ORPCError("NOT_FOUND", { message: "Invitation not found." });
+		throw appError("NOT_FOUND", "shelf.invitationNotFound");
 	}
 
 	const access = await loadShelfAccess(db, {
@@ -561,7 +541,7 @@ export async function listCollaborators(
 			hasPendingInvitation: mine > 0,
 		})
 	) {
-		throw new ORPCError("NOT_FOUND", { message: "Shelf not found" });
+		throw appError("NOT_FOUND", "shelf.notFound");
 	}
 
 	const manages = canManageCollaborators(access.permissions);
@@ -610,28 +590,20 @@ export async function updateCollaboratorPermissions(
 
 	const target = await findCollaborator(db, access.shelf.id, input.username);
 	if (target.userId === actorId) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "You cannot change your own permissions.",
-		});
+		throw appError("BAD_REQUEST", "shelf.cannotChangeOwnPermissions");
 	}
 
 	const current = normalizeShelfPermissions(target.permissions);
 	if (!outranks(access.permissions, current)) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "That member can do more than you, so you cannot change them.",
-		});
+		throw appError("FORBIDDEN", "shelf.outranksChange");
 	}
 
 	const next = normalizeShelfPermissions(input.permissions);
 	if (next.length === 0) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Choose at least one permission, or remove the collaborator.",
-		});
+		throw appError("BAD_REQUEST", "shelf.pickPermissionOrRemove");
 	}
 	if (missingGrants(access.permissions, next).length > 0) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "You can only give permissions that you have yourself.",
-		});
+		throw appError("FORBIDDEN", "shelf.grantOnlyOwn");
 	}
 
 	await db.$transaction(async (tx) => {
@@ -651,8 +623,10 @@ export async function updateCollaboratorPermissions(
 	const actor = await loadActor(db, actorId);
 	await notifyShelfCollaboration(db, {
 		recipientUserIds: [target.userId],
-		title: "Your shelf permissions changed",
-		body: `${displayName(actor)} updated what you can do on "${access.shelf.title}".`,
+		message: {
+			id: "shelfPermissionsChanged",
+			values: { actor: displayName(actor), shelf: access.shelf.title },
+		},
 		href: shelfPath(access.owner.username, access.shelf.slug),
 	});
 
@@ -669,16 +643,12 @@ export async function removeCollaborator(
 
 	const target = await findCollaborator(db, access.shelf.id, input.username);
 	if (target.userId === actorId) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Use “Leave shelf” to remove yourself.",
-		});
+		throw appError("BAD_REQUEST", "shelf.useLeaveShelf");
 	}
 	if (
 		!outranks(access.permissions, normalizeShelfPermissions(target.permissions))
 	) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "That member can do more than you, so you cannot remove them.",
-		});
+		throw appError("FORBIDDEN", "shelf.outranksRemove");
 	}
 
 	await db.$transaction(async (tx) => {
@@ -694,8 +664,10 @@ export async function removeCollaborator(
 	const actor = await loadActor(db, actorId);
 	await notifyShelfCollaboration(db, {
 		recipientUserIds: [target.userId],
-		title: "Removed from a shelf",
-		body: `${displayName(actor)} removed you from "${access.shelf.title}".`,
+		message: {
+			id: "shelfRemoved",
+			values: { actor: displayName(actor), shelf: access.shelf.title },
+		},
 	});
 
 	return { ok: true as const, removedUserId: target.userId };
@@ -708,11 +680,10 @@ export async function leaveShelf(
 ) {
 	const access = await loadShelfAccess(db, { ...input, actorId });
 	if (access.isOwner || !access.collaborator) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: access.isOwner
-				? "Owners cannot leave their own shelf. Transfer it or delete it."
-				: "You are not a collaborator on this shelf.",
-		});
+		throw appError(
+			"BAD_REQUEST",
+			access.isOwner ? "shelf.ownerCannotLeave" : "shelf.notYourShelf",
+		);
 	}
 
 	await db.$transaction(async (tx) => {
@@ -729,8 +700,10 @@ export async function leaveShelf(
 	const actor = await loadActor(db, actorId);
 	await notifyShelfCollaboration(db, {
 		recipientUserIds: [access.owner.id],
-		title: "A collaborator left your shelf",
-		body: `${displayName(actor)} left "${access.shelf.title}".`,
+		message: {
+			id: "shelfCollaboratorLeft",
+			values: { actor: displayName(actor), shelf: access.shelf.title },
+		},
 		href: shelfPath(access.owner.username, access.shelf.slug),
 	});
 
@@ -748,10 +721,7 @@ export async function transferShelfOwnership(
 		actorId,
 	});
 	requireOwner(access);
-	assertNotWishlist(
-		access.shelf,
-		"Your Wishlist cannot be handed over to someone else.",
-	);
+	assertNotWishlist(access.shelf, "shelf.wishlistNotTransferable");
 
 	const target = await findCollaborator(db, access.shelf.id, input.username);
 	const manager = SHELF_PERMISSION_PRESETS.find(
@@ -794,8 +764,13 @@ export async function transferShelfOwnership(
 
 	await notifyShelfCollaboration(db, {
 		recipientUserIds: [target.userId],
-		title: "You now own a shelf",
-		body: `${displayName(access.owner)} handed "${access.shelf.title}" over to you.`,
+		message: {
+			id: "shelfOwnershipTransferred",
+			values: {
+				actor: displayName(access.owner),
+				shelf: access.shelf.title,
+			},
+		},
 		href: shelfPath(target.user.username, result.slug),
 	});
 
@@ -850,9 +825,7 @@ function assertCanSeeActivity(access: ShelfAccess) {
 	if (access.isOwner || canManageCollaborators(access.permissions)) {
 		return;
 	}
-	throw new ORPCError("FORBIDDEN", {
-		message: "Only people who manage collaborators can see the activity log.",
-	});
+	throw appError("FORBIDDEN", "shelf.activityLogRestricted");
 }
 
 // ── Invitation preference ───────────────────────────────────────────────────

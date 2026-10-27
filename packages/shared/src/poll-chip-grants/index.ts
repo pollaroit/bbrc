@@ -69,6 +69,8 @@ export function pollChipRankFromGrants(
 }
 
 export {
+	type PollVoteFailure,
 	type PollVoteSubmission,
+	type PollVoteValidation,
 	validatePollVoteSubmission,
 } from "./vote-validation";

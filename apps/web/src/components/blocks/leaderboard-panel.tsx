@@ -5,6 +5,8 @@ import {
 } from "@/components/blocks/leaderboard-page-header";
 import { LeaderboardStandings } from "@/components/blocks/leaderboard-standings";
 
+import { useFormatters } from "@/lib/i18n/use-formatters";
+
 type LeaderboardPanelProps = {
 	data: GetLeaderboardOutput;
 	viewerUsername?: string;
@@ -14,6 +16,7 @@ export function LeaderboardPanel({
 	data,
 	viewerUsername,
 }: LeaderboardPanelProps) {
+	const f = useFormatters();
 	const leader = data.items[0];
 	const viewerLabel =
 		data.viewer != null
@@ -40,14 +43,14 @@ export function LeaderboardPanel({
 					<>
 						<LeaderboardStat
 							label="Members ranked"
-							value={data.totalMembers.toLocaleString()}
+							value={f.number(data.totalMembers)}
 						/>
 						<LeaderboardStat label="Your rank" value={viewerLabel} />
 						<LeaderboardStat
 							label={`Top ${data.metricLabel.toLowerCase()}`}
 							value={
 								leader != null
-									? `${leader.metric.toLocaleString()} (${leader.name})`
+									? `${f.number(leader.metric)} (${leader.name})`
 									: "-"
 							}
 						/>

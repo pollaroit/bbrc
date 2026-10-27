@@ -1,14 +1,15 @@
+import { DEFAULT_LOCALE, type Locale } from "@bbrc/i18n";
 import { getZonedParts } from "../club-timezone";
 import { ACHIEVEMENTS } from "./definitions";
 import { METRICS } from "./metrics";
-import {
-	ACHIEVEMENT_TIER_NAMES,
-	type AchievementDefinition,
-	type AchievementFacts,
-	type AchievementProgress,
-	type EarnedTier,
-	type FactSection,
-	type Point,
+import { achievementDescription, achievementTierLabel } from "./text";
+import type {
+	AchievementDefinition,
+	AchievementFacts,
+	AchievementProgress,
+	EarnedTier,
+	FactSection,
+	Point,
 } from "./types";
 
 function zonedYear(date: Date, timeZone: string): number {
@@ -48,32 +49,29 @@ function finalValue(points: readonly Point[]): number {
 	return points.at(-1)?.value ?? 0;
 }
 
-/** Number of tiers an achievement has; used for tier names. */
+/** The name of a tier ("Gold"); empty for an achievement with a single tier. */
 export function tierName(
 	definition: AchievementDefinition,
 	tier: number,
+	locale: Locale = DEFAULT_LOCALE,
 ): string {
 	if (definition.thresholds.length === 1) {
 		return "";
 	}
-	return ACHIEVEMENT_TIER_NAMES[tier - 1] ?? `Tier ${tier}`;
+	return achievementTierLabel(tier, locale);
 }
 
-/** What one tier asks for, in words ("Mark 15 books as read."). */
+/** What one tier asks for, in words ("Mark 15 books as read."), in the given language. */
 export function describeTier(
 	definition: AchievementDefinition,
 	tier: number,
+	locale: Locale = DEFAULT_LOCALE,
 ): string {
-	const threshold = definition.thresholds[tier - 1] ?? 0;
-	const unit = definition.unit
-		? threshold === 1
-			? definition.unit.one
-			: definition.unit.other
-		: "";
-	return definition.description
-		.replaceAll("{n}", threshold.toLocaleString("en"))
-		.replaceAll("{unit}", unit)
-		.replace(/\s{2,}/g, " ");
+	return achievementDescription(
+		definition.key,
+		definition.thresholds[tier - 1] ?? 0,
+		locale,
+	);
 }
 
 export type EvaluateOptions = {

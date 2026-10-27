@@ -1,3 +1,4 @@
+import { validationError } from "@bbrc/i18n";
 import {
 	isFeedbackRatingStep,
 	RATING_DEFINITION_MAX_LENGTH,
@@ -7,7 +8,7 @@ import zod from "zod";
 const RatingSchema = zod
 	.number()
 	.refine((value) => isFeedbackRatingStep(value), {
-		message: "Choose a rating in half-star steps from 0 to 5",
+		error: validationError("rating.halfSteps"),
 	});
 
 /** The member's own wording, by rating key ("4.5"). A rating missing here uses the default. */
@@ -20,11 +21,12 @@ export const SetRatingDefinitionInputSchema = zod.object({
 	text: zod
 		.string()
 		.trim()
-		.min(1, "Write something, or reset to the default")
-		.max(
-			RATING_DEFINITION_MAX_LENGTH,
-			`Keep it under ${RATING_DEFINITION_MAX_LENGTH} characters`,
-		),
+		.min(1, { error: validationError("ratingDefinition.empty") })
+		.max(RATING_DEFINITION_MAX_LENGTH, {
+			error: validationError("ratingDefinition.tooLong", {
+				max: RATING_DEFINITION_MAX_LENGTH,
+			}),
+		}),
 });
 
 export const ResetRatingDefinitionInputSchema = zod.object({

@@ -11,7 +11,7 @@ import {
 	richContentPreview,
 	serializeRichDocument,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { dispatchNotification } from "../notification/notification.service";
 import {
 	MENTION_PICKER_LIMIT,
@@ -225,12 +225,19 @@ export async function notifyMentions(
 			select: { name: true, username: true },
 		});
 		if (!author) return;
+		const excerpt = richContentPreview(input.content, 140);
 		await dispatchNotification(db, {
 			kind: "mention",
 			recipientUserIds,
 			excludeUserIds: [input.authorId],
-			title: `${displayName(author)} mentioned you`,
-			body: richContentPreview(input.content, 140) || "You were mentioned.",
+			message: {
+				id: "mention",
+				values: {
+					actor: displayName(author),
+					hasExcerpt: excerpt ? "yes" : "no",
+					excerpt,
+				},
+			},
 			href: input.href,
 		});
 	} catch (error) {
@@ -556,7 +563,7 @@ export async function removeMyMention(
 		},
 	});
 	if (!row || row.mentionedUserId !== viewer.id) {
-		throw new ORPCError("NOT_FOUND", { message: "Mention not found" });
+		throw appError("NOT_FOUND", "mention.notFound");
 	}
 	const mineUsername = row.mentionedUser.username.toLowerCase();
 	const isMine = (node: MentionNode) =>

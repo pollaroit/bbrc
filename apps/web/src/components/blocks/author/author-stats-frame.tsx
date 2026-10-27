@@ -1,5 +1,6 @@
 "use client";
 
+import type { Formatters } from "@bbrc/i18n";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -45,8 +46,17 @@ export function yearToRange(year: number) {
 	return { from: `${year}-01-01`, to: `${year}-12-31` };
 }
 
+/** English-only; kept for the admin screens. Public screens use `formatNumberIn`. */
 export function formatNumber(value: number, digits = 0) {
 	return value.toLocaleString(undefined, {
+		maximumFractionDigits: digits,
+		minimumFractionDigits: 0,
+	});
+}
+
+/** A number in the language of the page, with up to `digits` decimals. */
+export function formatNumberIn(f: Formatters, value: number, digits = 0) {
+	return f.number(value, {
 		maximumFractionDigits: digits,
 		minimumFractionDigits: 0,
 	});

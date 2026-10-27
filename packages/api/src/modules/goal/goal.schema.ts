@@ -1,3 +1,4 @@
+import { validationMessage } from "@bbrc/i18n";
 import { BookSchema, UserSchema } from "@bbrc/schemas";
 import {
 	allowedGoalYears,
@@ -96,7 +97,7 @@ function refineGoalScopeFields(
 		) {
 			ctx.addIssue({
 				code: "custom",
-				message: "Remove scope filters when scope is set to all books.",
+				message: validationMessage("goal.scopeFiltersWithAllBooks"),
 				path: ["scopeKind"],
 			});
 		}
@@ -107,7 +108,7 @@ function refineGoalScopeFields(
 		if ((value.scopeCountryCodes?.length ?? 0) > 0) {
 			ctx.addIssue({
 				code: "custom",
-				message: "Pick either authors or countries, not both.",
+				message: validationMessage("goal.authorsOrCountries"),
 				path: ["scopeCountryCodes"],
 			});
 		}
@@ -115,7 +116,7 @@ function refineGoalScopeFields(
 		if (slugs.length === 0) {
 			ctx.addIssue({
 				code: "custom",
-				message: "Select at least one author.",
+				message: validationMessage("goal.selectAuthor"),
 				path: ["scopeAuthorSlugs"],
 			});
 		}
@@ -123,7 +124,7 @@ function refineGoalScopeFields(
 			if (!isAuthorSlug(slug)) {
 				ctx.addIssue({
 					code: "custom",
-					message: "Invalid author selection.",
+					message: validationMessage("goal.invalidAuthor"),
 					path: ["scopeAuthorSlugs"],
 				});
 				break;
@@ -135,7 +136,7 @@ function refineGoalScopeFields(
 	if ((value.scopeAuthorSlugs?.length ?? 0) > 0) {
 		ctx.addIssue({
 			code: "custom",
-			message: "Pick either authors or countries, not both.",
+			message: validationMessage("goal.authorsOrCountries"),
 			path: ["scopeAuthorSlugs"],
 		});
 	}
@@ -143,7 +144,7 @@ function refineGoalScopeFields(
 	if (codes.length === 0) {
 		ctx.addIssue({
 			code: "custom",
-			message: "Select at least one country.",
+			message: validationMessage("goal.selectCountry"),
 			path: ["scopeCountryCodes"],
 		});
 	}
@@ -155,7 +156,7 @@ export const CreateGoalInputSchema = GoalBodyFieldsSchema.superRefine(
 		if (value.year < min || value.year > max) {
 			ctx.addIssue({
 				code: "custom",
-				message: `Goals can only be created for ${min} or ${max}.`,
+				message: validationMessage("goal.yearOnly", { min, max }),
 				path: ["year"],
 			});
 		}

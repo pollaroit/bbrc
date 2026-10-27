@@ -1,6 +1,6 @@
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import { isSlug } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { definePagination } from "../../utils/pagination";
 import { seriesListSearching, seriesListSorting } from "./series.listing";
 import type {
@@ -115,10 +115,7 @@ async function loadSeriesBySlugOrThrow(
 	});
 
 	if (!series) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Series not found",
-			data: { slug },
-		});
+		throw appError("NOT_FOUND", "series.notFound", { data: { slug } });
 	}
 
 	return series;
@@ -134,10 +131,7 @@ async function loadBookBySlugOrThrow(
 	});
 
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
-			data: { slug: bookSlug },
-		});
+		throw appError("NOT_FOUND", "book.notFound", { data: { slug: bookSlug } });
 	}
 
 	return book;
@@ -154,8 +148,8 @@ async function assertBookNotInAnotherSeries(
 	});
 
 	if (existing && existing.seriesId !== seriesId) {
-		throw new ORPCError("CONFLICT", {
-			message: `This book is already in “${existing.series.title}”. Remove it there first.`,
+		throw appError("CONFLICT", "series.alreadyInSeries", {
+			params: { series: existing.series.title },
 			data: { seriesSlug: existing.series.slug },
 		});
 	}
@@ -248,10 +242,7 @@ export async function getSeriesBySlug(
 	});
 
 	if (!series) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Series not found",
-			data: { slug },
-		});
+		throw appError("NOT_FOUND", "series.notFound", { data: { slug } });
 	}
 
 	const { books, _count, ...rest } = series;
@@ -279,7 +270,7 @@ export async function createSeriesRecord(
 			: await generateSeriesSlug(title, db);
 
 	if (input.slug?.trim() && !isSlug(input.slug.trim())) {
-		throw new ORPCError("BAD_REQUEST", { message: "Invalid slug" });
+		throw appError("BAD_REQUEST", "series.invalidSlug");
 	}
 
 	const existingSlug = await db.series.findUnique({
@@ -288,10 +279,7 @@ export async function createSeriesRecord(
 	});
 
 	if (existingSlug) {
-		throw new ORPCError("CONFLICT", {
-			message: "A series with this slug already exists",
-			data: { slug },
-		});
+		throw appError("CONFLICT", "series.slugTaken", { data: { slug } });
 	}
 
 	await db.series.create({
@@ -364,7 +352,7 @@ export async function updateSeries(input: UpdateSeriesInput, db: Database) {
 
 	if (input.nextSlug != null && input.nextSlug !== series.slug) {
 		if (!isSlug(input.nextSlug)) {
-			throw new ORPCError("BAD_REQUEST", { message: "Invalid slug" });
+			throw appError("BAD_REQUEST", "series.invalidSlug");
 		}
 
 		const taken = await db.series.findUnique({
@@ -373,8 +361,7 @@ export async function updateSeries(input: UpdateSeriesInput, db: Database) {
 		});
 
 		if (taken) {
-			throw new ORPCError("CONFLICT", {
-				message: "A series with this slug already exists",
+			throw appError("CONFLICT", "series.slugTaken", {
 				data: { slug: input.nextSlug },
 			});
 		}
@@ -428,8 +415,8 @@ export async function placeBookInSeries(
 
 	const taken = rows.find((row) => row.position === position);
 	if (taken && (!params.shiftLater || !Number.isInteger(position))) {
-		throw new ORPCError("CONFLICT", {
-			message: `Place ${position} is taken by “${taken.book.title}”. Move the other books down or pick another place.`,
+		throw appError("CONFLICT", "series.placeTaken", {
+			params: { position: position, book: taken.book.title },
 			data: { position },
 		});
 	}
@@ -510,9 +497,7 @@ export async function removeBookFromSeries(
 		});
 
 		if (!membership || membership.seriesId !== series.id) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "This book is not in this series",
-			});
+			throw appError("NOT_FOUND", "series.bookNotInSeries");
 		}
 
 		await tx.seriesBook.delete({ where: { id: membership.id } });
@@ -543,9 +528,7 @@ export async function reorderSeriesBooks(
 		});
 
 		if (rows.length !== input.bookSlugs.length) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Reorder list must include every book in the series.",
-			});
+			throw appError("BAD_REQUEST", "series.reorderMissing");
 		}
 
 		const slugToBookId = new Map(
@@ -556,17 +539,13 @@ export async function reorderSeriesBooks(
 		for (const slug of input.bookSlugs) {
 			const bookId = slugToBookId.get(slug);
 			if (!bookId) {
-				throw new ORPCError("BAD_REQUEST", {
-					message: "Reorder list includes a book that is not in this series.",
-				});
+				throw appError("BAD_REQUEST", "series.reorderForeign");
 			}
 			orderedBookIds.push(bookId);
 		}
 
 		if (new Set(orderedBookIds).size !== orderedBookIds.length) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Reorder list contains duplicate books.",
-			});
+			throw appError("BAD_REQUEST", "series.reorderDuplicate");
 		}
 
 		for (const [i, bookId] of orderedBookIds.entries()) {

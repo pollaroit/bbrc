@@ -4,11 +4,7 @@ import type {
 	AchievementSummary,
 	ListAchievementsOutput,
 } from "@bbrc/api/modules/achievement/achievement.schema";
-import {
-	ACHIEVEMENT_CATEGORIES,
-	ACHIEVEMENT_CATEGORY_LABELS,
-	type AchievementCategory,
-} from "@bbrc/shared";
+import { ACHIEVEMENT_CATEGORIES, type AchievementCategory } from "@bbrc/shared";
 import { Input } from "@bbrc/ui/components/input";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
@@ -25,6 +21,8 @@ import {
 import { SegmentedControl } from "@/components/blocks/segmented-control";
 import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useAchievementText } from "@/lib/i18n/use-content-text";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -71,6 +69,7 @@ function Hero({
 	grouped: { category: AchievementCategory; items: AchievementSummary[] }[];
 	signedIn: boolean;
 }) {
+	const f = useFormatters();
 	const all = grouped.flatMap((group) => group.items);
 	const earned = all.filter(
 		(item) => achievementState(item) === "earned",
@@ -123,7 +122,7 @@ function Hero({
 									<span className="flex items-baseline justify-between gap-2 text-sm">
 										<span className="truncate">{item.name}</span>
 										<span className="text-muted-foreground text-xs tabular-nums">
-											{focus.value.toLocaleString("en")} /{" "}
+											{f.number(focus.value)} /{" "}
 											{focus.next?.toLocaleString("en")}
 										</span>
 									</span>
@@ -144,6 +143,7 @@ function Hero({
 }
 
 export function AchievementsCatalog() {
+	const a = useAchievementText();
 	const { data: session } = authClient.useSession();
 	const query = useQuery(orpc.achievement.list.queryOptions());
 	const [status, setStatus] = useQueryState(
@@ -263,7 +263,7 @@ export function AchievementsCatalog() {
 							},
 							...grouped.map((group) => ({
 								id: group.category,
-								label: ACHIEVEMENT_CATEGORY_LABELS[group.category],
+								label: a.category(group.category),
 								text: signedIn
 									? `${group.items.filter((item) => achievementState(item) === "earned").length}/${group.items.length}`
 									: String(group.items.length),
@@ -309,7 +309,7 @@ export function AchievementsCatalog() {
 										id={`${group.category}-heading`}
 										className="font-heading font-semibold text-lg tracking-tight"
 									>
-										{ACHIEVEMENT_CATEGORY_LABELS[group.category]}
+										{a.category(group.category)}
 									</h2>
 									<Ticks items={group.items} />
 								</div>

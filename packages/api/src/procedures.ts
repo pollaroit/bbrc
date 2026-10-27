@@ -1,6 +1,6 @@
 import type { Session } from "@bbrc/auth";
-import { ORPCError } from "@orpc/server";
 import type { UserStatus } from "../../db/prisma/generated/enums";
+import { appError } from "./lib/app-error";
 import { o } from "./o";
 
 export const publicProcedure = o;
@@ -20,9 +20,7 @@ function signedIn(session: Session | null): SignedInContext {
 
 const requireAuth = o.middleware(async ({ context, next }) => {
 	if (!context.session?.user) {
-		throw new ORPCError("UNAUTHORIZED", {
-			message: "You must be logged in to access this resource.",
-		});
+		throw appError("UNAUTHORIZED", "common.notSignedIn");
 	}
 
 	return next({ context: signedIn(context.session) });
@@ -31,16 +29,11 @@ const requireAuth = o.middleware(async ({ context, next }) => {
 const requireStatuses = (...statuses: UserStatus[]) =>
 	o.middleware(async ({ context, next }) => {
 		if (!context.session?.user) {
-			throw new ORPCError("UNAUTHORIZED", {
-				message: "You must be logged in to access this resource.",
-			});
+			throw appError("UNAUTHORIZED", "common.notSignedIn");
 		}
 
 		if (!statuses.includes(context.session.user.status as UserStatus)) {
-			throw new ORPCError("FORBIDDEN", {
-				message:
-					"You are not authorized to access this resource, because of your status.",
-			});
+			throw appError("FORBIDDEN", "common.statusNotAllowed");
 		}
 
 		return next({ context: signedIn(context.session) });
@@ -48,15 +41,11 @@ const requireStatuses = (...statuses: UserStatus[]) =>
 
 const requireAdmin = o.middleware(async ({ context, next }) => {
 	if (!context.session?.user) {
-		throw new ORPCError("UNAUTHORIZED", {
-			message: "You must be logged in to access this resource.",
-		});
+		throw appError("UNAUTHORIZED", "common.notSignedIn");
 	}
 
 	if (!context.session.user.isAdmin) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "You must be an admin to access this resource.",
-		});
+		throw appError("FORBIDDEN", "common.adminOnly");
 	}
 
 	return next({ context: signedIn(context.session) });

@@ -13,6 +13,7 @@ import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
 import { ListingToggleChip } from "@/components/listing/listing-toggle-chip";
 import { authClient } from "@/lib/auth-client";
+import { useSittingStatusLabels } from "@/lib/i18n/use-labels";
 import {
 	clearSittingSheetFilters,
 	countSittingSheetFilters,
@@ -20,11 +21,11 @@ import {
 	sittingRangeByLabels,
 	sittingSortByLabels,
 	sittingStatuses,
-	sittingStatusFilterLabels,
 	useSittingListingSearchParams,
 } from "@/lib/listing/sittings-listing";
 
 export function SittingsListingToolbar() {
+	const sittingStatusLabels = useSittingStatusLabels();
 	const { data: session } = authClient.useSession();
 	const [params, setParams] = useSittingListingSearchParams();
 
@@ -85,7 +86,7 @@ export function SittingsListingToolbar() {
 						legend="Status"
 						options={sittingStatuses.map((status) => ({
 							id: status,
-							label: sittingStatusFilterLabels[status],
+							label: sittingStatusLabels[status],
 							checked: params.statuses?.includes(status) ?? false,
 							onCheckedChange: (checked) => {
 								toggleStatus(status, checked);

@@ -1,6 +1,7 @@
 "use client";
 
 import type { PollStats as PollStatsData } from "@bbrc/api/modules/post-poll/post-poll.schema";
+import type { Formatters } from "@bbrc/i18n";
 import {
 	contentPlainText,
 	POST_POLL_BALLOT_LABELS,
@@ -39,6 +40,7 @@ import { UserAvatar } from "@/components/blocks/user-avatar";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { Link } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/format-datetime";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { formatTimeLeft, percent } from "@/lib/poll/format";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -101,12 +103,12 @@ function Kpi({
 	);
 }
 
-function dayLabel(day: string) {
-	return new Intl.DateTimeFormat(undefined, {
+function dayLabel(f: Formatters, day: string) {
+	return f.dateWith(`${day}T12:00:00Z`, {
 		month: "short",
 		day: "numeric",
 		timeZone: "UTC",
-	}).format(new Date(`${day}T12:00:00Z`));
+	});
 }
 
 function StatsSkeleton() {
@@ -142,6 +144,7 @@ function Denied({ postSlug }: { postSlug: string }) {
 }
 
 export function PollStats({ postSlug }: { postSlug: string }) {
+	const f = useFormatters();
 	const query = useQuery({
 		...orpc.postPoll.stats.queryOptions({ input: { postSlug } }),
 		retry: false,
@@ -288,22 +291,22 @@ export function PollStats({ postSlug }: { postSlug: string }) {
 			</header>
 
 			<div className="grid grid-cols-2 gap-px border border-border bg-border lg:grid-cols-5">
-				<Kpi label="Voters" value={data.totalVoters.toLocaleString()} />
+				<Kpi label="Voters" value={f.number(data.totalVoters)} />
 				<Kpi
 					label="Turnout"
-					value={percent(data.turnoutRate)}
-					hint={`of ${data.eligibleMembers.toLocaleString()} members`}
+					value={percent(f, data.turnoutRate)}
+					hint={`of ${f.number(data.eligibleMembers)} members`}
 				/>
 				<Kpi
 					label={ranking ? "Ranked picks" : "Selections"}
-					value={data.totalSelections.toLocaleString()}
+					value={f.number(data.totalSelections)}
 				/>
 				<Kpi
 					label="Changed their vote"
-					value={data.changedVotes.toLocaleString()}
+					value={f.number(data.changedVotes)}
 					hint={
 						data.totalChanges > 0
-							? `${data.totalChanges.toLocaleString()} ${data.totalChanges === 1 ? "change" : "changes"} in all`
+							? `${f.number(data.totalChanges)} ${data.totalChanges === 1 ? "change" : "changes"} in all`
 							: "Nobody yet"
 					}
 				/>
@@ -363,7 +366,7 @@ export function PollStats({ postSlug }: { postSlug: string }) {
 									<div
 										className="h-2.5 bg-muted"
 										role="img"
-										aria-label={`${percent(result?.share ?? 0)} of ${ranking ? "points" : "voters"}`}
+										aria-label={`${percent(f, result?.share ?? 0)} of ${ranking ? "points" : "voters"}`}
 									>
 										<div
 											className="h-full bg-primary"
@@ -372,7 +375,7 @@ export function PollStats({ postSlug }: { postSlug: string }) {
 									</div>
 									<p className="flex flex-wrap items-baseline gap-x-3 text-muted-foreground text-xs tabular-nums">
 										<span className="font-semibold text-base text-foreground">
-											{percent(result?.share ?? 0)}
+											{percent(f, result?.share ?? 0)}
 										</span>
 										{canListVoters && (result?.voters ?? 0) > 0 ? (
 											<button
@@ -402,7 +405,7 @@ export function PollStats({ postSlug }: { postSlug: string }) {
 												{result.voters > 0 ? (
 													<span>
 														avg position{" "}
-														{(result.rankSum / result.voters).toFixed(1)}
+														{f.decimal(result.rankSum / result.voters, 1)}
 													</span>
 												) : null}
 											</>
@@ -490,7 +493,7 @@ export function PollStats({ postSlug }: { postSlug: string }) {
 							<ComposedChart
 								data={data.timeline.map((point) => ({
 									...point,
-									label: dayLabel(point.day),
+									label: dayLabel(f, point.day),
 								}))}
 							>
 								<CartesianGrid vertical={false} />

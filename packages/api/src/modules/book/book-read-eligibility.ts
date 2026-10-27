@@ -1,4 +1,7 @@
 import type { Database } from "@bbrc/db";
+import { createServerTranslator } from "@bbrc/i18n";
+import type { ErrorKey } from "../../lib/app-error";
+import { currentLocale } from "../../lib/request-locale";
 import { userHasReadBook } from "../read/read.service";
 import { activeParticipationWhere } from "../sitting/participation-active";
 
@@ -32,14 +35,15 @@ export async function userCompletedClubRead(
 	return userHasReadBook(userId, bookId, db);
 }
 
-export async function clubReadEligibilityHint(
+/** Why the member cannot favorite this book yet, as an error key. */
+export async function clubReadEligibilityKey(
 	userId: string,
 	bookId: string,
 	db: Database,
-): Promise<string> {
+): Promise<ErrorKey> {
 	const hasRead = await userHasReadBook(userId, bookId, db);
 	if (hasRead) {
-		return "You cannot favorite this book right now.";
+		return "book.eligibility.cannotFavorite";
 	}
 
 	const participation = await db.participation.findFirst({
@@ -55,12 +59,25 @@ export async function clubReadEligibilityHint(
 	});
 
 	if (!participation) {
-		return "Mark this book as read on its page, or finish it on a sitting that chose this book.";
+		return "book.eligibility.markRead";
 	}
 
 	if (participation.progress !== "completed") {
-		return "Mark yourself as completed on that sitting's page, or mark the book read on its page.";
+		return "book.eligibility.markCompleted";
 	}
 
-	return "You cannot favorite this book right now.";
+	return "book.eligibility.cannotFavorite";
+}
+
+/** The same reason as a sentence in the language of the request. */
+export async function clubReadEligibilityHint(
+	userId: string,
+	bookId: string,
+	db: Database,
+): Promise<string> {
+	const key = await clubReadEligibilityKey(userId, bookId, db);
+	const translate = createServerTranslator(currentLocale(), "errors") as (
+		key: string,
+	) => string;
+	return translate(key);
 }

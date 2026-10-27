@@ -1,5 +1,6 @@
 "use client";
 
+import type { Formatters } from "@bbrc/i18n";
 import { clubDayKey, dayKeysBetween } from "@bbrc/shared";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +12,7 @@ import { useMemo } from "react";
 import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { clubTimeZone } from "@/lib/club-timezone";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -112,14 +114,12 @@ function ActivityHeatmap({
 	);
 }
 
-const monthLabel = (month: string) =>
-	new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en-US", {
-		month: "short",
-		timeZone: "UTC",
-	});
+const monthLabel = (f: Formatters, month: string) =>
+	f.dateWith(`${month}-01T00:00:00Z`, { month: "short", timeZone: "UTC" });
 
 /** Your reading numbers: finish times, pace, streaks, books per month and history. */
 export function ReadingStatsView() {
+	const f = useFormatters();
 	const stats = useQuery({
 		...orpc.reading.stats.queryOptions(),
 		staleTime: 60_000,
@@ -135,9 +135,13 @@ export function ReadingStatsView() {
 				Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (11 - index), 1),
 			);
 			const month = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
-			return { month, label: monthLabel(month), count: counts.get(month) ?? 0 };
+			return {
+				month,
+				label: monthLabel(f, month),
+				count: counts.get(month) ?? 0,
+			};
 		});
-	}, [stats.data]);
+	}, [stats.data, f]);
 
 	if (stats.isPending) {
 		return (
@@ -181,7 +185,7 @@ export function ReadingStatsView() {
 					value={String(data.finishedCount)}
 					hint={
 						data.pagesFinished > 0
-							? `${data.pagesFinished.toLocaleString("en-US")} pages`
+							? `${f.number(data.pagesFinished)} pages`
 							: undefined
 					}
 				/>

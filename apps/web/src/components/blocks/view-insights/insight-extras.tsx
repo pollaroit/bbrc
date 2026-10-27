@@ -3,6 +3,7 @@ import { VIEW_WEEKDAY_LABELS } from "@bbrc/shared";
 import type { Route } from "next";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { Link } from "@/i18n/navigation";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { formatCount, RESOURCE_NOUN, shortDay } from "./insight-format";
 import { InsightPanel } from "./insight-panel";
@@ -59,6 +60,7 @@ function Fact({
 
 /** Up to three one-line facts for the Overview: reach, best day, and how it stacks up. */
 export function InsightHighlights({ insights }: { insights: ViewInsights }) {
+	const f = useFormatters();
 	const noun = RESOURCE_NOUN[insights.resource];
 	const peak = peakDayOf(insights.series);
 	const { reach, comparison, mentions } = insights;
@@ -70,12 +72,12 @@ export function InsightHighlights({ insights }: { insights: ViewInsights }) {
 					(comparison.ratio >= 1.05 || comparison.ratio <= 0.95)
 						? `${comparison.ratio}× the average`
 						: "About the average",
-				note: `#${comparison.rank} of ${formatCount(comparison.outOf)} ${PLURAL[insights.resource]} by opens`,
+				note: `#${comparison.rank} of ${formatCount(f, comparison.outOf)} ${PLURAL[insights.resource]} by opens`,
 			}
 		: mentions.total > 0
 			? {
 					label: "Shared",
-					value: `In ${formatCount(mentions.total)} ${mentions.total === 1 ? "post" : "posts"}`,
+					value: `In ${formatCount(f, mentions.total)} ${mentions.total === 1 ? "post" : "posts"}`,
 					note: "Quoted or attached by members",
 				}
 			: null;
@@ -84,14 +86,14 @@ export function InsightHighlights({ insights }: { insights: ViewInsights }) {
 		<ul className="grid divide-y divide-border border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
 			<Fact
 				label="Reach"
-				value={`${formatCount(reach.viewers)} of ${formatCount(reach.members)} members`}
+				value={`${formatCount(f, reach.viewers)} of ${formatCount(f, reach.members)} members`}
 				note={`have seen this ${noun}`}
 			/>
 			{peak ? (
 				<Fact
 					label="Best day"
-					value={shortDay(peak.day)}
-					note={`${formatCount(peak.value)} ${peak.label === "opens" ? (peak.value === 1 ? "open" : "opens") : peak.value === 1 ? "view in lists" : "views in lists"}`}
+					value={shortDay(f, peak.day)}
+					note={`${formatCount(f, peak.value)} ${peak.label === "opens" ? (peak.value === 1 ? "open" : "opens") : peak.value === 1 ? "view in lists" : "views in lists"}`}
 				/>
 			) : null}
 			{third ? (
@@ -107,6 +109,7 @@ export function InsightLoyalty({
 }: {
 	loyalty: ViewInsights["loyalty"];
 }) {
+	const f = useFormatters();
 	const rows = [
 		{ label: "Visited once", value: loyalty.once },
 		{ label: "Visited twice", value: loyalty.twice },
@@ -128,7 +131,7 @@ export function InsightLoyalty({
 						<div className="flex items-baseline justify-between gap-3 text-sm">
 							<span>{row.label}</span>
 							<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-								{formatCount(row.value)} ·{" "}
+								{formatCount(f, row.value)} ·{" "}
 								{Math.round((row.value / total) * 100)}%
 							</span>
 						</div>
@@ -142,7 +145,7 @@ export function InsightLoyalty({
 				))}
 			</ul>
 			<p className="text-muted-foreground text-xs">
-				{formatCount(repeat)} of {formatCount(total)}{" "}
+				{formatCount(f, repeat)} of {formatCount(f, total)}{" "}
 				{total === 1 ? "viewer" : "viewers"} came back at least once.
 			</p>
 		</InsightPanel>
@@ -157,6 +160,7 @@ export function InsightReach({
 	reach: ViewInsights["reach"];
 	resource: ViewInsights["resource"];
 }) {
+	const f = useFormatters();
 	if (reach.members === 0) return null;
 	const share = Math.min(
 		100,
@@ -168,7 +172,8 @@ export function InsightReach({
 			description="Signed-in members who have looked at it, in this period."
 		>
 			<p className="font-heading font-semibold text-xl tracking-tight">
-				{formatCount(reach.viewers)} of {formatCount(reach.members)} members
+				{formatCount(f, reach.viewers)} of {formatCount(f, reach.members)}{" "}
+				members
 				<span className="font-normal text-muted-foreground text-sm">
 					{" "}
 					have seen this {RESOURCE_NOUN[resource]}
@@ -194,6 +199,7 @@ export function InsightSourceRates({
 }: {
 	rows: ViewInsights["sourceFunnel"];
 }) {
+	const f = useFormatters();
 	const withLists = rows.filter((row) => row.impressions > 0);
 	const openOnly = rows.filter((row) => row.impressions === 0 && row.opens > 0);
 	if (withLists.length === 0 && openOnly.length === 0) return null;
@@ -221,8 +227,8 @@ export function InsightSourceRates({
 									/>
 								</span>
 								<span className="text-muted-foreground text-xs tabular-nums">
-									Seen {formatCount(row.impressions)} · opened{" "}
-									{formatCount(row.opens)}
+									Seen {formatCount(f, row.impressions)} · opened{" "}
+									{formatCount(f, row.opens)}
 								</span>
 							</li>
 						);
@@ -233,7 +239,7 @@ export function InsightSourceRates({
 				<p className="border-border border-t pt-3 text-muted-foreground text-xs leading-relaxed">
 					Opened without being seen in a list first:{" "}
 					{openOnly
-						.map((row) => `${row.label} ${formatCount(row.opens)}`)
+						.map((row) => `${row.label} ${formatCount(f, row.opens)}`)
 						.join(" · ")}
 					.
 				</p>
@@ -244,6 +250,7 @@ export function InsightSourceRates({
 
 /** Views by day of the week, from the last 90 days of the heatmap. */
 export function InsightWeekdays({ grid }: { grid: number[][] }) {
+	const f = useFormatters();
 	const sums = grid.map((line) => line.reduce((sum, value) => sum + value, 0));
 	const total = sums.reduce((sum, value) => sum + value, 0);
 	if (total === 0) return null;
@@ -261,10 +268,10 @@ export function InsightWeekdays({ grid }: { grid: number[][] }) {
 					<li
 						key={VIEW_WEEKDAY_LABELS[weekday]}
 						className="flex flex-col items-center gap-1.5"
-						title={`${VIEW_WEEKDAY_LABELS[weekday]}: ${formatCount(value)} views`}
+						title={`${VIEW_WEEKDAY_LABELS[weekday]}: ${formatCount(f, value)} views`}
 					>
 						<span className="text-3xs text-muted-foreground tabular-nums">
-							{formatCount(value)}
+							{formatCount(f, value)}
 						</span>
 						<span className="flex h-20 w-full items-end bg-muted/50">
 							<span
@@ -293,6 +300,7 @@ export function InsightLifecycle({
 	lifecycle: NonNullable<ViewInsights["lifecycle"]>;
 	resource: ViewInsights["resource"];
 }) {
+	const f = useFormatters();
 	const steps = [
 		{ label: "First day", value: lifecycle.firstDay },
 		{ label: "First 3 days", value: lifecycle.firstThreeDays },
@@ -307,7 +315,7 @@ export function InsightLifecycle({
 	return (
 		<InsightPanel
 			title={`Life of this ${RESOURCE_NOUN[resource]}`}
-			description={`Opens after it was published (${shortDay(new Date(lifecycle.publishedAt).toISOString().slice(0, 10))}), added up.`}
+			description={`Opens after it was published (${shortDay(f, new Date(lifecycle.publishedAt).toISOString().slice(0, 10))}), added up.`}
 		>
 			<ol className="flex flex-col gap-2.5">
 				{steps.map((step, index) => (
@@ -315,7 +323,7 @@ export function InsightLifecycle({
 						<div className="flex items-baseline justify-between gap-3 text-sm">
 							<span>{step.label}</span>
 							<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-								{formatCount(step.value)}
+								{formatCount(f, step.value)}
 							</span>
 						</div>
 						<span className="block h-1.5 w-full bg-muted" aria-hidden>
@@ -332,7 +340,7 @@ export function InsightLifecycle({
 			</ol>
 			{share != null && lifecycle.firstDay > 0 ? (
 				<p className="text-sm">
-					Opened {formatCount(lifecycle.firstDay)}{" "}
+					Opened {formatCount(f, lifecycle.firstDay)}{" "}
 					{lifecycle.firstDay === 1 ? "time" : "times"} in the first day,{" "}
 					<span className="font-medium">{share}%</span> of everything this{" "}
 					{RESOURCE_NOUN[resource]} has had.
@@ -348,6 +356,7 @@ export function InsightMentions({
 }: {
 	mentions: ViewInsights["mentions"];
 }) {
+	const f = useFormatters();
 	if (mentions.total === 0) return null;
 	return (
 		<InsightPanel
@@ -355,7 +364,7 @@ export function InsightMentions({
 			description="Posts that quoted or attached it."
 		>
 			<p className="font-heading font-semibold text-xl tracking-tight">
-				Shared in {formatCount(mentions.total)}{" "}
+				Shared in {formatCount(f, mentions.total)}{" "}
 				{mentions.total === 1 ? "post" : "posts"}
 			</p>
 			<ul className="flex flex-col gap-2">
@@ -392,6 +401,7 @@ export function InsightOwnComparison({
 	resource: ViewInsights["resource"];
 	allTimeOpens: number;
 }) {
+	const f = useFormatters();
 	const noun = RESOURCE_NOUN[resource];
 	return (
 		<InsightPanel
@@ -401,11 +411,11 @@ export function InsightOwnComparison({
 			<p className="font-heading font-semibold text-xl tracking-tight">
 				{own.rank === 1
 					? `Your most opened ${noun}`
-					: `#${own.rank} of your ${formatCount(own.outOf)} ${PLURAL[resource]}`}
+					: `#${own.rank} of your ${formatCount(f, own.outOf)} ${PLURAL[resource]}`}
 			</p>
 			<p className="text-muted-foreground text-sm tabular-nums">
-				{formatCount(allTimeOpens)} opens here · your average is{" "}
-				{formatCount(own.averageOpens)}
+				{formatCount(f, allTimeOpens)} opens here · your average is{" "}
+				{formatCount(f, own.averageOpens)}
 			</p>
 		</InsightPanel>
 	);

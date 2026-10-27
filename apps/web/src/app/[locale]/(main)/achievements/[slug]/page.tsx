@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, describeTier } from "@bbrc/shared";
+import { ACHIEVEMENTS, achievementName, describeTier } from "@bbrc/shared";
 import type { Metadata } from "next";
 import { AchievementDetail } from "@/components/blocks/achievement-detail";
 import {
@@ -27,7 +27,7 @@ export async function generateMetadata({
 	}
 
 	return buildPageMetadata({
-		title: `${definition.name} · Achievements`,
+		title: `${achievementName(definition.key)} · Achievements`,
 		description: describeTier(definition, 1),
 		path: `/achievements/${slug}`,
 	});

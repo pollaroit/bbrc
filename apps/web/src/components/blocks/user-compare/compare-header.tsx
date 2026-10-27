@@ -1,6 +1,7 @@
 "use client";
 
 import type { CompareOutput } from "@bbrc/api/modules/user-compare/user-compare.schema";
+import type { Formatters } from "@bbrc/i18n";
 import { toLocale, withLocalePrefix } from "@bbrc/i18n";
 import {
 	Popover,
@@ -15,6 +16,7 @@ import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { CompareMemberPicker } from "@/components/blocks/user-compare/compare-member-picker";
 import { Link } from "@/i18n/navigation";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 type Member = CompareOutput["a"];
@@ -105,6 +107,7 @@ export function CompareHeader({
 }
 
 function MemberSide({ member, side }: { member: Member; side: "a" | "b" }) {
+	const f = useFormatters();
 	return (
 		<div
 			className={cn(
@@ -147,7 +150,7 @@ function MemberSide({ member, side }: { member: Member; side: "a" | "b" }) {
 				{member.stats ? (
 					<p className="text-muted-foreground text-xs">
 						Member since{" "}
-						{new Date(member.stats.joinedAt).toLocaleDateString(undefined, {
+						{f.dateWith(new Date(member.stats.joinedAt), {
 							month: "short",
 							year: "numeric",
 						})}
@@ -323,9 +326,9 @@ function lead(a: number | null, b: number | null): "a" | "b" | null {
 	return a > b ? "a" : "b";
 }
 
-function buildRows(a: Stats, b: Stats): Row[] {
+function buildRows(f: Formatters, a: Stats, b: Stats): Row[] {
 	const rating = (value: number | null) =>
-		value == null ? "–" : value.toFixed(2).replace(/\.?0+$/, "");
+		value == null ? "–" : f.number(value, { maximumFractionDigits: 2 });
 	return [
 		{
 			label: "Books read",
@@ -341,8 +344,8 @@ function buildRows(a: Stats, b: Stats): Row[] {
 		},
 		{
 			label: "Pages read",
-			a: a.pagesRead.toLocaleString(),
-			b: b.pagesRead.toLocaleString(),
+			a: f.number(a.pagesRead),
+			b: f.number(b.pagesRead),
 			lead: lead(a.pagesRead, b.pagesRead),
 		},
 		{
@@ -371,7 +374,8 @@ function StatsTable({
 	aStats: Stats;
 	bStats: Stats;
 }) {
-	const rows = buildRows(aStats, bStats);
+	const f = useFormatters();
+	const rows = buildRows(f, aStats, bStats);
 	return (
 		<div className="border border-border">
 			<table className="w-full table-fixed text-sm">

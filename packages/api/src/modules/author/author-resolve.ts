@@ -1,6 +1,6 @@
 import type { Database } from "@bbrc/db";
 import { authorNameKey } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import type { ViewerContext } from "../user/user-visibility";
 
 export type ResolvedAuthor = {
@@ -12,10 +12,7 @@ export type ResolvedAuthor = {
 };
 
 function notFound(slug: string): never {
-	throw new ORPCError("NOT_FOUND", {
-		message: "Author not found",
-		data: { slug },
-	});
+	throw appError("NOT_FOUND", "author.notFound", { data: { slug } });
 }
 
 /**

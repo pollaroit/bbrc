@@ -1,4 +1,5 @@
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
+import type { Locale } from "@bbrc/i18n";
 import { getBookCountryName } from "@bbrc/shared";
 import { formatPollPageRange } from "@/lib/poll-page-range";
 
@@ -43,12 +44,14 @@ function formatAuthorSlugLabel(slug: string): string {
 	return slug.replaceAll("_", " ");
 }
 
-function formatCountryFilter(codes: string[]): string {
+function formatCountryFilter(codes: string[], locale: Locale): string {
 	if (codes.length === 0) {
 		return "Any origin";
 	}
 
-	return codes.map((code) => getBookCountryName(code) ?? code).join(", ");
+	return codes
+		.map((code) => getBookCountryName(code, locale) ?? code)
+		.join(", ");
 }
 
 function formatAuthorFilter(slugs: string[]): string {
@@ -59,7 +62,10 @@ function formatAuthorFilter(slugs: string[]): string {
 	return slugs.map(formatAuthorSlugLabel).join(", ");
 }
 
-export function getPollConfigurationRows(poll: SittingPollConfiguration) {
+export function getPollConfigurationRows(
+	poll: SittingPollConfiguration,
+	locale: Locale = "en",
+) {
 	const maxChoices = poll.maxChoices ?? poll.take;
 	const pageRange = formatPollPageRange(poll.minPages, poll.maxPages);
 
@@ -92,7 +98,7 @@ export function getPollConfigurationRows(poll: SittingPollConfiguration) {
 		},
 		{
 			label: "Literary origin",
-			value: formatCountryFilter(poll.countries),
+			value: formatCountryFilter(poll.countries, locale),
 		},
 		{
 			label: "Authors",

@@ -15,6 +15,7 @@ import { ShelfCover } from "@/components/blocks/shelf-cover";
 import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { formatReadFinishedMonthField } from "@/lib/format-read-date";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -109,6 +110,7 @@ export function MemberProfileOverview({
 }
 
 function OverviewSections({ username }: MemberProfileOverviewProps) {
+	const f = useFormatters();
 	const base = `/users/${username}`;
 
 	const sittings = useQuery(
@@ -302,7 +304,7 @@ function OverviewSections({ username }: MemberProfileOverviewProps) {
 													{item.book.title}
 												</span>
 												<Badge variant="secondary" className="shrink-0">
-													{item.rating.toFixed(1)} / 5
+													{f.decimal(item.rating, 1)} / 5
 												</Badge>
 											</span>
 											<span

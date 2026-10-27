@@ -1,6 +1,7 @@
 "use client";
 
 import type { InviteLinkList } from "@bbrc/api/modules/sitting/sitting-join.schema";
+import type { Formatters } from "@bbrc/i18n";
 import {
 	DEFAULT_INVITE_LINK_DAYS,
 	MAX_SITTING_INVITE_LINKS,
@@ -19,6 +20,7 @@ import {
 	type DateTimePreset,
 } from "@/components/blocks/date-time-picker";
 import { QrCode } from "@/components/blocks/qr-code";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type Link = InviteLinkList["items"][number];
@@ -34,11 +36,8 @@ function linkUrl(token: string) {
 	return `${window.location.origin}/sittings/join/${token}`;
 }
 
-function formatDate(value: Date | string) {
-	return new Date(value).toLocaleString(undefined, {
-		dateStyle: "medium",
-		timeStyle: "short",
-	});
+function formatDate(f: Formatters, value: Date | string) {
+	return f.dateWith(value, { dateStyle: "medium", timeStyle: "short" });
 }
 
 const EXPIRY_PRESETS: readonly DateTimePreset[] = [
@@ -62,6 +61,7 @@ export function SittingJoinLinksPanel({
 }: {
 	sittingSlug: string;
 }) {
+	const f = useFormatters();
 	const uid = useId();
 	const listOptions = orpc.sitting.join.links.list.queryOptions({
 		input: { sittingSlug },
@@ -262,9 +262,9 @@ export function SittingJoinLinksPanel({
 									</span>
 								</div>
 								<p className="text-muted-foreground text-xs">
-									Created {formatDate(link.createdAt)}
+									Created {formatDate(f, link.createdAt)}
 									{link.expiresAt
-										? ` · ${live ? "expires" : "expired"} ${formatDate(link.expiresAt)}`
+										? ` · ${live ? "expires" : "expired"} ${formatDate(f, link.expiresAt)}`
 										: " · never expires"}
 								</p>
 								{live ? (
@@ -332,7 +332,7 @@ export function SittingJoinLinksPanel({
 														</span>
 													</span>
 													<span className="shrink-0 text-muted-foreground tabular-nums">
-														{formatDate(joined.joinedAt)}
+														{formatDate(f, joined.joinedAt)}
 													</span>
 												</li>
 											))}

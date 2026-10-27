@@ -3,6 +3,7 @@
 import { Field, FieldDescription } from "@bbrc/ui/components/field";
 import { Slider } from "@bbrc/ui/components/slider";
 import { useMemo } from "react";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 
 const RATING_MIN = 0;
 const RATING_MAX = 5;
@@ -15,16 +16,13 @@ type ListingOpenLibraryRatingSliderProps = {
 	onMaxChange: (value: number | null) => void;
 };
 
-function formatRating(value: number) {
-	return value.toFixed(1).replace(/\.0$/, "");
-}
-
 export function ListingOpenLibraryRatingSlider({
 	min,
 	max,
 	onMinChange,
 	onMaxChange,
 }: ListingOpenLibraryRatingSliderProps) {
+	const f = useFormatters();
 	const sliderValue = useMemo(
 		() => [min ?? RATING_MIN, max ?? RATING_MAX] as number[],
 		[min, max],
@@ -37,10 +35,10 @@ export function ListingOpenLibraryRatingSlider({
 			return "Any rating";
 		}
 		if (low === high) {
-			return `${formatRating(low)} stars`;
+			return `${f.rating(low)} stars`;
 		}
-		return `${formatRating(low)} to ${formatRating(high)} stars`;
-	}, [min, max]);
+		return `${f.rating(low)} to ${f.rating(high)} stars`;
+	}, [min, max, f]);
 
 	return (
 		<Field className="gap-3">

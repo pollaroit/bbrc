@@ -1,26 +1,24 @@
 import {
-	assertContentWithinLimit,
 	contentPlainText,
 	normalizeContentForStorage,
+	RICH_CONTENT_MAX_PLAIN_CHARS,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "./app-error";
 
 export const FEEDBACK_REVIEW_MAX_PLAIN = 500;
 
 export function normalizeFeedbackReview(input: string): string {
 	const normalized = normalizeContentForStorage(input);
-	try {
-		assertContentWithinLimit(normalized);
-	} catch (error) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: error instanceof Error ? error.message : "Invalid review",
+	const plain = contentPlainText(normalized);
+	if (plain.length > RICH_CONTENT_MAX_PLAIN_CHARS) {
+		throw appError("BAD_REQUEST", "common.contentTooLong", {
+			params: { max: RICH_CONTENT_MAX_PLAIN_CHARS },
 		});
 	}
 
-	const plainLength = contentPlainText(normalized).trim().length;
-	if (plainLength > FEEDBACK_REVIEW_MAX_PLAIN) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `Review must be at most ${FEEDBACK_REVIEW_MAX_PLAIN} characters`,
+	if (plain.trim().length > FEEDBACK_REVIEW_MAX_PLAIN) {
+		throw appError("BAD_REQUEST", "common.reviewTooLong", {
+			params: { max: FEEDBACK_REVIEW_MAX_PLAIN },
 		});
 	}
 

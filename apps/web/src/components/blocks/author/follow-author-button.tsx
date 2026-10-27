@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Bell, BellRing } from "lucide-react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { client, orpc, queryClient } from "@/utils/orpc";
 
@@ -19,11 +20,6 @@ type FollowAuthorButtonProps = {
 	showCount?: boolean;
 	className?: string;
 };
-
-const compactCount = new Intl.NumberFormat("en", {
-	notation: "compact",
-	maximumFractionDigits: 1,
-});
 
 /**
  * Follow state of one author with an optimistic toggle. The same hook backs the button,
@@ -103,6 +99,7 @@ export function FollowAuthorButton({
 	showCount = true,
 	className,
 }: FollowAuthorButtonProps) {
+	const f = useFormatters();
 	const follow = useAuthorFollow(slug, initial);
 	const Icon = follow.following ? BellRing : Bell;
 
@@ -120,7 +117,7 @@ export function FollowAuthorButton({
 			{follow.following ? "Following" : "Follow"}
 			{showCount && follow.isReady && follow.followerCount > 0 ? (
 				<span className="text-muted-foreground tabular-nums">
-					{compactCount.format(follow.followerCount)}
+					{f.compact(follow.followerCount)}
 				</span>
 			) : null}
 		</Button>

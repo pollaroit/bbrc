@@ -9,7 +9,7 @@ import {
 	VIEW_SOURCE_LABELS,
 	type ViewResourceKind,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import type {
 	AdminViewList,
 	AdminViewsOverview,
@@ -653,12 +653,10 @@ export async function getViewInsights(
 	const { resource, ref, range } = input;
 	const info = await describeViewTarget(db, resource, ref);
 	if (!info) {
-		throw new ORPCError("NOT_FOUND", { message: "That item was not found." });
+		throw appError("NOT_FOUND", "view.itemNotFound");
 	}
 	if (!canOpenInsights(resource, actor, info)) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only the author can see these insights.",
-		});
+		throw appError("FORBIDDEN", "view.insightsAuthorOnly");
 	}
 	// Members see who looked at their own things, but never at their own profile.
 	const canSeeViewers =

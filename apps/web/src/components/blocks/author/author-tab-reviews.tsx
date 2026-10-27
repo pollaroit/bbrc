@@ -1,6 +1,7 @@
 "use client";
 
 import type { AuthorReviewItem } from "@bbrc/api/modules/author/author.schema";
+import type { Formatters } from "@bbrc/i18n";
 import { formatFeedbackRating } from "@bbrc/shared";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
@@ -43,6 +44,7 @@ import {
 	bookCoverUrl,
 	formatBookSeriesCardLabel,
 } from "@/lib/book-cover";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import {
 	AUTHOR_BOOK_FILTER_RESET,
 	authorReviewSortFields,
@@ -65,12 +67,8 @@ function humanize(slug: string) {
 		.join(" ");
 }
 
-function shortDate(date: Date) {
-	return date.toLocaleDateString("en", {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-	});
+function shortDate(f: Formatters, date: Date) {
+	return f.dateWith(date, { year: "numeric", month: "short", day: "numeric" });
 }
 
 /** Five stars, filled to the rating (half steps), with the number beside it. */
@@ -225,6 +223,7 @@ export function AuthorTabReviews({
 	slug: string;
 	authorName: string;
 }) {
+	const f = useFormatters();
 	const [params, setParams] = useAuthorReviewsParams();
 	const search = useDebouncedValue(params.search);
 
@@ -347,7 +346,7 @@ export function AuthorTabReviews({
 			? [
 					{
 						id: "written",
-						label: `Written ${params.createdFrom ? shortDate(params.createdFrom) : "…"} – ${params.createdTo ? shortDate(params.createdTo) : "…"}`,
+						label: `Written ${params.createdFrom ? shortDate(f, params.createdFrom) : "…"} – ${params.createdTo ? shortDate(f, params.createdTo) : "…"}`,
 						onRemove: () =>
 							void setParams({ createdFrom: null, createdTo: null }),
 					},
@@ -359,7 +358,7 @@ export function AuthorTabReviews({
 	const resultLabel =
 		total == null
 			? null
-			: `${total.toLocaleString()} ${total === 1 ? "review" : "reviews"}${filtered ? " match" : ""}`;
+			: `${f.number(total)} ${total === 1 ? "review" : "reviews"}${filtered ? " match" : ""}`;
 
 	return (
 		<div className="flex flex-col gap-4">

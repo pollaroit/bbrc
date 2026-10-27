@@ -1,8 +1,10 @@
 import type { EditionPage } from "@bbrc/api/modules/edition/edition.schema";
+import type { Formatters } from "@bbrc/i18n";
 import { Star } from "lucide-react";
 import type { Route } from "next";
 import { EditionSection } from "@/components/blocks/edition-page/section";
 import { Link } from "@/i18n/navigation";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 
 function Tile({
 	label,
@@ -24,8 +26,8 @@ function Tile({
 	);
 }
 
-const days = (value: number) =>
-	`${value % 1 === 0 ? value : value.toFixed(1)} ${value === 1 ? "day" : "days"}`;
+const days = (f: Formatters, value: number) =>
+	`${f.decimal(value, value % 1 === 0 ? 0 : 1)} ${value === 1 ? "day" : "days"}`;
 
 /** Numbers about this edition, and the rating its readers gave the BOOK. */
 export function EditionStats({
@@ -35,6 +37,7 @@ export function EditionStats({
 	stats: EditionPage["stats"];
 	bookSlug: string;
 }) {
+	const f = useFormatters();
 	const { bookRating } = stats;
 
 	return (
@@ -50,7 +53,7 @@ export function EditionStats({
 					label="Time to finish"
 					value={
 						stats.averageDaysToFinish != null
-							? days(stats.averageDaysToFinish)
+							? days(f, stats.averageDaysToFinish)
 							: "—"
 					}
 					hint={
@@ -63,7 +66,7 @@ export function EditionStats({
 					label="Pace"
 					value={
 						stats.pagesPerDay != null
-							? `${stats.pagesPerDay % 1 === 0 ? stats.pagesPerDay : stats.pagesPerDay.toFixed(1)} p/day`
+							? `${f.decimal(stats.pagesPerDay, stats.pagesPerDay % 1 === 0 ? 0 : 1)} p/day`
 							: "—"
 					}
 					hint={stats.pagesPerDay != null ? "while reading it" : undefined}
@@ -75,7 +78,7 @@ export function EditionStats({
 					<span>
 						Readers of this edition rate the <em>book</em>{" "}
 						<strong className="tabular-nums">
-							{bookRating.average.toFixed(1)}
+							{f.rating(bookRating.average)}
 						</strong>{" "}
 						<span className="text-muted-foreground tabular-nums">
 							({bookRating.count}{" "}

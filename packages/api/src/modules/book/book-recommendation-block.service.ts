@@ -1,5 +1,5 @@
 import type { Database } from "@bbrc/db";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import type {
 	BlockOpenLibraryWorkInput,
 	ListBlockedOpenLibraryWorksOutput,
@@ -64,9 +64,7 @@ export async function unblockOpenLibraryWork(
 	});
 
 	if (deleted.count === 0) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "This work is not on the block list",
-		});
+		throw appError("NOT_FOUND", "book.notOnBlockList");
 	}
 
 	return { olid };

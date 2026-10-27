@@ -1,7 +1,7 @@
 import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import { formatSittingDisplayName } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
 import { favoriteItemSelect } from "../favorite/favorite.schema";
@@ -259,9 +259,7 @@ export async function getUserParticipationList(
 
 	const viewerId = session?.user?.id ?? null;
 	if (input.mutualOnly && !viewerId) {
-		throw new ORPCError("UNAUTHORIZED", {
-			message: "Sign in to filter by mutual sittings.",
-		});
+		throw appError("UNAUTHORIZED", "user.mutualFilterNeedsSignIn");
 	}
 
 	const pagination = definePagination.cursor(
@@ -386,8 +384,7 @@ export async function updateUserStatus(
 			},
 		});
 	} catch {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
+		throw appError("NOT_FOUND", "user.notFound", {
 			data: { username: input.username },
 		});
 	}

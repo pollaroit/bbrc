@@ -10,8 +10,8 @@ import { CopyValueButton } from "@/components/blocks/edition-page/copy-value";
 import { EditionCoverGallery } from "@/components/blocks/edition-page/edition-cover-gallery";
 import { Link } from "@/i18n/navigation";
 import { editionHeadline } from "@/lib/edition/format";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
-
 /** Where the data comes from, stamped on the record like a catalogue card. */
 export function EditionSourceBadge({
 	source,
@@ -84,6 +84,7 @@ export function EditionHero({
 }: {
 	page: Pick<EditionPage, "book" | "edition" | "isClubFavourite">;
 }) {
+	const f = useFormatters();
 	const { book, edition, isClubFavourite } = page;
 	const headline = editionHeadline(book, edition);
 
@@ -156,9 +157,7 @@ export function EditionHero({
 					{[
 						edition.language,
 						edition.format,
-						edition.pages
-							? `${edition.pages.toLocaleString("en-US")} pages`
-							: null,
+						edition.pages ? `${f.number(edition.pages)} pages` : null,
 						edition.publishedYear ? String(edition.publishedYear) : null,
 					]
 						.filter((chip): chip is string => Boolean(chip))

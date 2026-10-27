@@ -32,37 +32,6 @@ export const NOTIFICATION_KINDS = [
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
-export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
-	member_posted: "New club post",
-	comment_on_your_post: "Comment on your post",
-	reply_to_your_comment: "Reply to your comment",
-	reaction_on_your_post: "Reaction on your post",
-	member_feedback_on_book: "Book feedback",
-	book_added_to_library: "Book added to library",
-	sitting_poll_started: "Sitting poll started",
-	sitting_poll_closed: "Sitting poll closed",
-	participant_finished_book: "Participant finished reading",
-	sitting_finished: "Sitting finished",
-	book_requested: "Book requested",
-	document_submitted: "Document submitted",
-	document_approved: "Document approved",
-	document_rejected: "Document rejected",
-	achievement_earned: "Achievement earned",
-	shelf_invitation: "Shelf invitation",
-	shelf_collaboration: "Shelf collaboration",
-	poll_vote: "Votes on your poll",
-	poll_ended: "Poll ended",
-	sitting_member_joined: "Someone joined your sitting",
-	sitting_invitation: "Sitting invitation",
-	sitting_added: "Added to a sitting",
-	sitting_welcome: "Welcome to a sitting",
-	view_milestone: "Your content reached a views milestone",
-	views_digest: "Your weekly views",
-	reading_behind: "You are behind your reading pace",
-	mention: "Someone mentioned you",
-	author_new_book: "A new book by an author you follow",
-};
-
 export const NOTIFICATION_KIND_GROUPS = {
 	club: [
 		"member_posted",

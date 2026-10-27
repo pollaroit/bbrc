@@ -5,8 +5,8 @@ import { contentPlainText } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { useQuery } from "@tanstack/react-query";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
-
 /**
  * The server-rendered review plus any edit made in this tab. The page gives
  * the first values; an optimistic edit updates the cache and shows here at once.
@@ -25,10 +25,11 @@ export function FeedbackRatingBadge({
 }: {
 	feedback: GetFeedbackBySlugOutput;
 }) {
+	const f = useFormatters();
 	const live = useLiveFeedback(feedback);
 	return (
 		<Badge variant="outline" className="tabular-nums">
-			{live.rating.toFixed(1)} / 5
+			{f.decimal(live.rating, 1)} / 5
 		</Badge>
 	);
 }

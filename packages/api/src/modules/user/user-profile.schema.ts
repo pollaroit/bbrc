@@ -1,3 +1,4 @@
+import { validationError, validationMessage } from "@bbrc/i18n";
 import { GenderSchema } from "@bbrc/schemas";
 import {
 	contentPlainText,
@@ -29,13 +30,16 @@ const WebsiteUrlSchema = zod
 	.string()
 	.trim()
 	.max(PROFILE_WEBSITE_MAX_CHARS)
-	.refine((value) => {
-		try {
-			return new URL(value).protocol === "https:";
-		} catch {
-			return false;
-		}
-	}, "Website must be a valid URL starting with https://");
+	.refine(
+		(value) => {
+			try {
+				return new URL(value).protocol === "https:";
+			} catch {
+				return false;
+			}
+		},
+		{ error: validationError("profile.websiteUrl") },
+	);
 
 export const UserProfileOutputSchema = zod.object({
 	dateOfBirth: zod.coerce.date().nullable(),
@@ -80,17 +84,23 @@ export const UpdateMyProfileInputSchema = zod
 				if (plain.length > PROFILE_BIO_MAX_PLAIN_CHARS) {
 					ctx.addIssue({
 						code: "custom",
-						message: `Bio must be at most ${PROFILE_BIO_MAX_PLAIN_CHARS} characters`,
+						message: validationMessage("profile.bioTooLong", {
+							max: PROFILE_BIO_MAX_PLAIN_CHARS,
+						}),
 					});
 					return zod.NEVER;
 				}
 				return normalized;
 			}),
 		favoriteGenres: zod.array(
-			zod.string().refine(isGenreSlug, "Unknown genre"),
+			zod.string().refine(isGenreSlug, {
+				error: validationError("profile.unknownGenre"),
+			}),
 		),
 		favoriteSubgenres: zod.array(
-			zod.string().refine(isSubgenreSlug, "Unknown subgenre"),
+			zod.string().refine(isSubgenreSlug, {
+				error: validationError("profile.unknownSubgenre"),
+			}),
 		),
 		websiteUrl: WebsiteUrlSchema.nullable(),
 		socialLinks: zod.array(SocialLinkSchema).max(socialSites.length),
@@ -104,7 +114,7 @@ export const UpdateMyProfileInputSchema = zod
 				ctx.addIssue({
 					code: "custom",
 					path: ["favoriteSubgenres"],
-					message: "Pick a genre before choosing its subgenres",
+					message: validationMessage("profile.subgenreNeedsGenre"),
 				});
 				break;
 			}
@@ -117,7 +127,7 @@ export const UpdateMyProfileInputSchema = zod
 				ctx.addIssue({
 					code: "custom",
 					path: ["socialLinks", index, "site"],
-					message: "Unknown social site",
+					message: validationMessage("profile.unknownSocialSite"),
 				});
 				return;
 			}
@@ -125,7 +135,9 @@ export const UpdateMyProfileInputSchema = zod
 				ctx.addIssue({
 					code: "custom",
 					path: ["socialLinks", index, "site"],
-					message: `${site.name} is already added`,
+					message: validationMessage("profile.socialAlreadyAdded", {
+						site: site.name,
+					}),
 				});
 			}
 			seen.add(link.site);
@@ -133,7 +145,10 @@ export const UpdateMyProfileInputSchema = zod
 				ctx.addIssue({
 					code: "custom",
 					path: ["socialLinks", index, "url"],
-					message: `Enter a valid ${site.name} profile URL, like ${site.example}`,
+					message: validationMessage("profile.socialInvalidUrl", {
+						site: site.name,
+						example: site.example,
+					}),
 				});
 			}
 		});

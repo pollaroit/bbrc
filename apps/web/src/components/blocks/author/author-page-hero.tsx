@@ -9,14 +9,10 @@ import {
 	type AuthorTabId,
 	authorTabHref,
 } from "@/lib/author-tabs";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { AuthorPageAdminBar } from "./author-page-admin-bar";
 import { AuthorPhoto } from "./author-photo";
 import { FollowAuthorButton } from "./follow-author-button";
-
-const compact = new Intl.NumberFormat("en", {
-	notation: "compact",
-	maximumFractionDigits: 1,
-});
 
 const GENDER_LABEL = {
 	female: "Woman",
@@ -56,6 +52,7 @@ function Figure({
  * anything that depends on the viewer (follow state, admin tools) is a small client island.
  */
 export function AuthorPageHero({ author }: { author: AuthorGetOutput }) {
+	const f = useFormatters();
 	const { profile, numbers } = author;
 	const bornAt = profile.birth.place;
 	const diedAt = profile.death.place;
@@ -160,36 +157,36 @@ export function AuthorPageHero({ author }: { author: AuthorGetOutput }) {
 			>
 				<Figure
 					href={tab("books")}
-					value={compact.format(numbers.bookCount)}
+					value={f.compact(numbers.bookCount)}
 					label={numbers.bookCount === 1 ? "book" : "books"}
 				/>
 				<Figure
 					href={tab("reads")}
-					value={compact.format(numbers.readerCount)}
+					value={f.compact(numbers.readerCount)}
 					label={numbers.readerCount === 1 ? "reader" : "readers"}
 				/>
 				<Figure
 					href={tab("reads")}
-					value={compact.format(numbers.readCount)}
+					value={f.compact(numbers.readCount)}
 					label={numbers.readCount === 1 ? "read" : "reads"}
 				/>
 				<Figure
 					href={tab("reviews")}
-					value={compact.format(numbers.reviewCount)}
+					value={f.compact(numbers.reviewCount)}
 					label={numbers.reviewCount === 1 ? "review" : "reviews"}
 				/>
 				<Figure
 					href={tab("stats")}
 					value={
 						numbers.averageRating != null
-							? numbers.averageRating.toFixed(1)
+							? f.decimal(numbers.averageRating, 1)
 							: "–"
 					}
 					label="average rating"
 				/>
 				<Figure
 					href={tab("followers")}
-					value={compact.format(numbers.followerCount)}
+					value={f.compact(numbers.followerCount)}
 					label={numbers.followerCount === 1 ? "follower" : "followers"}
 				/>
 			</ul>

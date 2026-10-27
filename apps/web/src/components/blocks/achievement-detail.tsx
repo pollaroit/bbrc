@@ -1,9 +1,6 @@
 "use client";
 
-import {
-	ACHIEVEMENT_CATEGORY_LABELS,
-	type AchievementCategory,
-} from "@bbrc/shared";
+import type { AchievementCategory } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -24,6 +21,8 @@ import {
 	percentLabel,
 	rarityOf,
 } from "@/lib/achievements/format";
+import { useAchievementText } from "@/lib/i18n/use-content-text";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
 
 const EARNERS_PAGE = 30;
@@ -148,6 +147,8 @@ function EarnerLink({
 }
 
 export function AchievementDetail({ slug }: { slug: string }) {
+	const a = useAchievementText();
+	const f = useFormatters();
 	const query = useQuery({
 		...orpc.achievement.getBySlug.queryOptions({ input: { slug } }),
 		retry: false,
@@ -230,7 +231,7 @@ export function AchievementDetail({ slug }: { slug: string }) {
 								href={`/achievements?category=${data.category}` as Route}
 								className="underline underline-offset-4 hover:text-foreground"
 							>
-								{ACHIEVEMENT_CATEGORY_LABELS[category]}
+								{a.category(category)}
 							</Link>
 							{data.isYearly ? " · counted separately each year" : ""}
 							{data.isHidden ? " · hidden until earned" : ""}
@@ -250,8 +251,7 @@ export function AchievementDetail({ slug }: { slug: string }) {
 					/>
 					{data.viewer && focus.next != null && focus.value > 0 ? (
 						<p className="text-muted-foreground text-sm tabular-nums">
-							{focus.value.toLocaleString("en")} of{" "}
-							{focus.next.toLocaleString("en")}
+							{f.number(focus.value)} of {f.number(focus.next)}
 							{data.isYearly ? " this year" : ""} toward{" "}
 							{data.tiers[(data.viewer.nextTier ?? 1) - 1]?.name ||
 								"the next tier"}
@@ -362,7 +362,7 @@ export function AchievementDetail({ slug }: { slug: string }) {
 						id="related-heading"
 						className="font-heading font-semibold text-lg tracking-tight"
 					>
-						More in {ACHIEVEMENT_CATEGORY_LABELS[category].toLowerCase()}
+						More in {a.category(category).toLowerCase()}
 					</h2>
 					<ul className="border-border border-t">
 						{related.map((item) => (

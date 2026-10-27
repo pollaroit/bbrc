@@ -1,6 +1,6 @@
 import type { Database, DatabaseTransaction } from "@bbrc/db";
 import { loadR2ConfigFromEnv } from "@bbrc/storage";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 
 /**
  * Cover ids: a positive number is an Open Library cover; a NEGATIVE number is a
@@ -21,9 +21,7 @@ export function assertOwnCoverUrl(url: string) {
 		!clean.includes("/books/covers/") ||
 		!clean.endsWith(".webp")
 	) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "That cover was not uploaded here. Upload it again.",
-		});
+		throw appError("BAD_REQUEST", "book.coverNotUploaded");
 	}
 }
 
@@ -39,7 +37,5 @@ export async function newClubCoverId(
 		});
 		if (!taken) return candidate;
 	}
-	throw new ORPCError("INTERNAL_SERVER_ERROR", {
-		message: "Could not reserve a cover id. Try again.",
-	});
+	throw appError("INTERNAL_SERVER_ERROR", "book.coverIdFailed");
 }

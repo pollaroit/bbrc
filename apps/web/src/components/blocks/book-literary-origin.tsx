@@ -1,9 +1,9 @@
 "use client";
 
-import { getBookCountryName } from "@bbrc/shared";
 import type { Route } from "next";
 import { CountryLabel } from "@/components/blocks/country-dropdown";
 import { Link } from "@/i18n/navigation";
+import { useCountryName } from "@/lib/i18n/use-content-text";
 
 type BookLiteraryOriginProps = {
 	countries: string[];
@@ -15,6 +15,7 @@ export function BookLiteraryOrigin({
 	countries,
 	linkable = false,
 }: BookLiteraryOriginProps) {
+	const countryName = useCountryName();
 	if (countries.length === 0) {
 		return null;
 	}
@@ -28,7 +29,7 @@ export function BookLiteraryOrigin({
 			</p>
 			<ul className="flex flex-col gap-2">
 				{countries.map((code) => {
-					const name = getBookCountryName(code) ?? code;
+					const name = countryName(code);
 					const label = <CountryLabel alpha2={code} name={name} />;
 
 					return (

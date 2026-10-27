@@ -1,5 +1,5 @@
 import { loadR2ConfigFromEnv } from "@bbrc/storage";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 
 /** An edition cover must be a file we stored ourselves under `books/editions/`. */
 export function assertOwnEditionCoverUrl(url: string) {
@@ -12,8 +12,6 @@ export function assertOwnEditionCoverUrl(url: string) {
 		!clean.includes("/books/editions/") ||
 		!clean.endsWith(".webp")
 	) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "That cover was not uploaded here. Upload it again.",
-		});
+		throw appError("BAD_REQUEST", "book.coverNotUploaded");
 	}
 }

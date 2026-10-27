@@ -20,6 +20,7 @@ import { BookReadingStrip } from "@/components/blocks/reading/book-reading-strip
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { Link } from "@/i18n/navigation";
 import { bookCoverFrameClassName, bookCoverUrl } from "@/lib/book-cover";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 type BookHeaderProps = {
@@ -66,6 +67,7 @@ function StatCell({
 }
 
 export function BookHeader({ book }: BookHeaderProps) {
+	const f = useFormatters();
 	const coverSrc = bookCoverUrl(book.coverId, "L");
 	const olWorkUrl = book.olid ? openLibraryWorkPageUrl(book.olid) : null;
 
@@ -177,7 +179,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 							label="Open Library"
 							value={
 								book.openLibraryRating != null
-									? `${book.openLibraryRating.toFixed(1)} / 5`
+									? `${f.decimal(book.openLibraryRating, 1)} / 5`
 									: "—"
 							}
 						/>
@@ -185,7 +187,7 @@ export function BookHeader({ book }: BookHeaderProps) {
 							label="Club average"
 							value={
 								book.averageRating != null
-									? `${book.averageRating.toFixed(1)} / 5`
+									? `${f.decimal(book.averageRating, 1)} / 5`
 									: "—"
 							}
 						/>

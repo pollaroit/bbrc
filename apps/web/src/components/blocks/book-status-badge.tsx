@@ -1,5 +1,6 @@
 import type { GetBookListOutput } from "@bbrc/api/modules/book/book.schema";
 import { Badge } from "@bbrc/ui/components/badge";
+import { useBookStatusLabels } from "@/lib/i18n/use-labels";
 import { cn } from "@/lib/utils";
 
 export type BookStatus = GetBookListOutput["items"][number]["status"];
@@ -28,26 +29,18 @@ const statusStripClassName: Record<BookStatus, string> = {
 	wishlist: "bg-violet/10 text-violet-ink",
 };
 
-const statusDescription: Record<BookStatus, string> = {
-	completed: "The club has finished reading this title.",
-	reading: "This book is in an active club read.",
-	wishlist: "Queued for a future sitting or vote.",
-};
-
-export function formatBookStatusLabel(status: BookStatus) {
-	return status.charAt(0).toUpperCase() + status.slice(1);
-}
-
 export function BookStatusBadge({ status }: { status: BookStatus }) {
+	const { label } = useBookStatusLabels();
 	return (
 		<Badge variant="outline" className={statusBadgeClassName[status]}>
-			{formatBookStatusLabel(status)}
+			{label[status]}
 		</Badge>
 	);
 }
 
 /** Detail header: global club status for the catalog entry. */
 export function BookStatusBanner({ status }: { status: BookStatus }) {
+	const { label, description } = useBookStatusLabels();
 	return (
 		<div
 			className={cn(
@@ -55,11 +48,9 @@ export function BookStatusBanner({ status }: { status: BookStatus }) {
 				statusBannerClassName[status],
 			)}
 		>
-			<p className="font-semibold text-base leading-snug">
-				{formatBookStatusLabel(status)}
-			</p>
+			<p className="font-semibold text-base leading-snug">{label[status]}</p>
 			<p className="mt-1 max-w-2xl text-muted-foreground text-sm leading-relaxed">
-				{statusDescription[status]}
+				{description[status]}
 			</p>
 		</div>
 	);
@@ -67,6 +58,7 @@ export function BookStatusBanner({ status }: { status: BookStatus }) {
 
 /** List card: visible club status without crowding actions. */
 export function BookStatusStrip({ status }: { status: BookStatus }) {
+	const { label } = useBookStatusLabels();
 	return (
 		<div
 			className={cn(
@@ -74,7 +66,7 @@ export function BookStatusStrip({ status }: { status: BookStatus }) {
 				statusStripClassName[status],
 			)}
 		>
-			{formatBookStatusLabel(status)}
+			{label[status]}
 		</div>
 	);
 }

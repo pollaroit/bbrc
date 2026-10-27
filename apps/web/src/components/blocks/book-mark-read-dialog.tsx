@@ -49,6 +49,7 @@ import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { clubTimeZone } from "@/lib/club-timezone";
 import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { invalidateReadQueries } from "@/lib/invalidate-read-queries";
 import { useSyncedBoolean } from "@/lib/optimistic/use-synced-boolean";
 import {
@@ -98,13 +99,16 @@ const REVIEW_MAX_PLAIN = 500;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** "Started Oct 20 · finishing today makes it 5 days." */
-function readingSummary(startedAt: Date | string) {
+function readingSummary(
+	startedAt: Date | string,
+	f: ReturnType<typeof useFormatters>,
+) {
 	const started = new Date(startedAt);
 	const days = Math.max(
 		1,
 		Math.ceil((Date.now() - started.getTime()) / DAY_MS),
 	);
-	const date = started.toLocaleDateString("en-US", {
+	const date = f.dateWith(started, {
 		month: "short",
 		day: "numeric",
 		timeZone: clubTimeZone,
@@ -119,6 +123,7 @@ export function BookMarkReadDialog({
 	onOpenChange,
 	edition,
 }: BookMarkReadDialogProps) {
+	const f = useFormatters();
 	const [endYear, setEndYear] = useState("");
 	const [endMonth, setEndMonth] = useState("");
 	const [feedbackRating, setFeedbackRating] =
@@ -535,7 +540,7 @@ export function BookMarkReadDialog({
 			const authors = book ? formatBookAuthors(book.authors) : null;
 			const rating =
 				offerFeedback && hasRating && feedbackRating != null
-					? ` Rated ${feedbackRating.toFixed(1)} out of 5.`
+					? ` Rated ${f.decimal(feedbackRating, 1)} out of 5.`
 					: "";
 			shareRef.current = {
 				text: `Finished reading ${bookTitle}${authors ? ` by ${authors}` : ""}.${rating}`,
@@ -637,7 +642,7 @@ export function BookMarkReadDialog({
 									/>
 								</p>
 								<p className="text-muted-foreground text-xs leading-relaxed">
-									{readingSummary(reading.startedAt)}
+									{readingSummary(reading.startedAt, f)}
 									{inWishlist ? " It will leave your wishlist." : ""}
 								</p>
 							</section>

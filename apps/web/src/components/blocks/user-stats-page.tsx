@@ -1,7 +1,8 @@
 "use client";
 
 import type { GetUserStatsOutput } from "@bbrc/api/modules/user/user-stats.schema";
-import { authorNameToSlug, getBookCountryName } from "@bbrc/shared";
+import type { Formatters } from "@bbrc/i18n";
+import { authorNameToSlug } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Card,
@@ -53,6 +54,8 @@ import { UserStatsPeriodControls } from "@/components/blocks/user-stats-period-c
 import { UserStatsWorldMap } from "@/components/blocks/user-stats-world-map";
 import { Link } from "@/i18n/navigation";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import { useCountryName } from "@/lib/i18n/use-content-text";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { isUserStatsQueryReady } from "@/lib/user-stats-period-ui";
 import {
 	userStatsQueryInput,
@@ -75,10 +78,10 @@ const barChartConfig = {
 	count: { label: "Reads", color: "var(--chart-1)" },
 };
 
-function formatPace(value: number): string {
-	if (value >= 10) return value.toFixed(1);
-	if (value >= 1) return value.toFixed(2);
-	return value.toFixed(3);
+function formatPace(f: Formatters, value: number): string {
+	if (value >= 10) return f.decimal(value, 1);
+	if (value >= 1) return f.decimal(value, 2);
+	return f.decimal(value, 3);
 }
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
@@ -93,6 +96,7 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
 }
 
 export function UserStatsPage({ username, displayName }: UserStatsPageProps) {
+	const f = useFormatters();
 	const [params, setParams] = useUserStatsSearchParams();
 	const [allReadsOpen, setAllReadsOpen] = useState(false);
 	const [publicationMode, setPublicationMode] = useState<
@@ -364,7 +368,7 @@ export function UserStatsPage({ username, displayName }: UserStatsPageProps) {
 						data.ratingHistogram.topBucket
 							? `Most reads: ${data.ratingHistogram.topBucket} stars${
 									data.ratingHistogram.averageClubRating != null
-										? ` · avg ${data.ratingHistogram.averageClubRating.toFixed(2)}`
+										? ` · avg ${f.decimal(data.ratingHistogram.averageClubRating, 2)}`
 										: ""
 								}`
 							: "Club average rating distribution"
@@ -612,6 +616,7 @@ function PaceBlock({
 	mode: "books" | "pages";
 	periodType: GetUserStatsOutput["periodType"];
 }) {
+	const f = useFormatters();
 	const perYear = mode === "books" ? pace.booksPerYear : pace.pagesPerYear;
 	const perMonth = mode === "books" ? pace.booksPerMonth : pace.pagesPerMonth;
 	const perWeek = mode === "books" ? pace.booksPerWeek : pace.pagesPerWeek;
@@ -632,22 +637,22 @@ function PaceBlock({
 				{periodType !== "month" ? (
 					<div className="flex justify-between gap-2">
 						<dt className="text-muted-foreground">{yearLabel}</dt>
-						<dd>{formatPace(perYear)}</dd>
+						<dd>{formatPace(f, perYear)}</dd>
 					</div>
 				) : null}
 				<div className="flex justify-between gap-2">
 					<dt className="text-muted-foreground">
 						{periodType === "month" ? "In month" : "Per month"}
 					</dt>
-					<dd>{formatPace(perMonth)}</dd>
+					<dd>{formatPace(f, perMonth)}</dd>
 				</div>
 				<div className="flex justify-between gap-2">
 					<dt className="text-muted-foreground">Per week</dt>
-					<dd>{formatPace(perWeek)}</dd>
+					<dd>{formatPace(f, perWeek)}</dd>
 				</div>
 				<div className="flex justify-between gap-2">
 					<dt className="text-muted-foreground">Per day</dt>
-					<dd>{formatPace(perDay)}</dd>
+					<dd>{formatPace(f, perDay)}</dd>
 				</div>
 			</dl>
 		</div>
@@ -729,6 +734,8 @@ function TopAuthorsCountries({
 	rowsByRating: GetUserStatsOutput["topAuthorsByRating"];
 	mode: "authors" | "countries";
 }) {
+	const f = useFormatters();
+	const countryName = useCountryName();
 	const [showMostRated, setShowMostRated] = useState(false);
 	const rows = showMostRated ? rowsByRating : rowsByCount;
 	const toggleId =
@@ -771,7 +778,11 @@ function TopAuthorsCountries({
 								{mode === "countries" ? (
 									<CountryLabel
 										alpha2={row.key}
-										name={getBookCountryName(row.key) ?? row.label}
+										name={
+											countryName(row.key) === row.key
+												? row.label
+												: countryName(row.key)
+										}
 										className="font-medium"
 									/>
 								) : (
@@ -787,7 +798,7 @@ function TopAuthorsCountries({
 								<p className="text-muted-foreground text-sm tabular-nums">
 									{row.bookCount} books
 									{row.userAverageRating != null
-										? ` · your avg ${row.userAverageRating.toFixed(1)}`
+										? ` · your avg ${f.decimal(row.userAverageRating, 1)}`
 										: ""}
 								</p>
 							</div>
@@ -819,6 +830,7 @@ function RatingCompareSection({
 	rows: GetUserStatsOutput["ratedHigherThanClub"];
 	empty: string;
 }) {
+	const f = useFormatters();
 	return (
 		<Card size="sm">
 			<CardHeader>
@@ -841,10 +853,12 @@ function RatingCompareSection({
 									{book.title}
 								</Link>
 								<span className="text-muted-foreground tabular-nums">
-									You {book.userRating.toFixed(1)} · Club{" "}
-									{book.clubRating?.toFixed(1) ?? "—"} (
-									{book.delta > 0 ? "+" : ""}
-									{book.delta.toFixed(1)})
+									You {f.decimal(book.userRating, 1)} · Club{" "}
+									{book.clubRating != null
+										? f.decimal(book.clubRating, 1)
+										: "—"}{" "}
+									({book.delta > 0 ? "+" : ""}
+									{f.decimal(book.delta, 1)})
 								</span>
 							</li>
 						))}

@@ -1,5 +1,6 @@
 import type { ViewInsights } from "@bbrc/api/modules/view/view.schema";
 import { Heart, MessageSquare, Repeat2, TrendingUp } from "lucide-react";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { formatCount, RANGE_PHRASE, RESOURCE_NOUN } from "./insight-format";
 import { InsightPanel } from "./insight-panel";
@@ -10,6 +11,7 @@ export function InsightAudience({
 }: {
 	audience: ViewInsights["audience"];
 }) {
+	const f = useFormatters();
 	const groups = [
 		{
 			label: "Members",
@@ -37,8 +39,8 @@ export function InsightAudience({
 								<div className="flex items-baseline justify-between text-sm">
 									<span>{group.label}</span>
 									<span className="text-muted-foreground text-xs tabular-nums">
-										{formatCount(group.fresh)} new · {formatCount(group.back)}{" "}
-										returning
+										{formatCount(f, group.fresh)} new ·{" "}
+										{formatCount(f, group.back)} returning
 									</span>
 								</div>
 								<span
@@ -88,11 +90,12 @@ export function InsightComparison({
 	comparison: NonNullable<ViewInsights["comparison"]>;
 	resource: ViewInsights["resource"];
 }) {
+	const f = useFormatters();
 	const noun = RESOURCE_NOUN[resource];
 	const ratio = comparison.ratio;
 	const phrase =
 		ratio == null
-			? `Average ${noun}: ${formatCount(comparison.averageOpens)} opens`
+			? `Average ${noun}: ${formatCount(f, comparison.averageOpens)} opens`
 			: ratio >= 1.05
 				? `${ratio}× the average ${noun}`
 				: ratio <= 0.95
@@ -109,8 +112,8 @@ export function InsightComparison({
 					{phrase}
 				</p>
 				<p className="text-muted-foreground text-sm tabular-nums">
-					#{comparison.rank} of {formatCount(comparison.outOf)} by opens ·
-					average {formatCount(comparison.averageOpens)}
+					#{comparison.rank} of {formatCount(f, comparison.outOf)} by opens ·
+					average {formatCount(f, comparison.averageOpens)}
 				</p>
 			</div>
 		</InsightPanel>
@@ -123,6 +126,7 @@ export function InsightEngagement({
 }: {
 	engagement: NonNullable<ViewInsights["engagement"]>;
 }) {
+	const f = useFormatters();
 	const items = [
 		{ label: "Likes", value: engagement.likes, Icon: Heart },
 		{ label: "Comments", value: engagement.comments, Icon: MessageSquare },
@@ -141,7 +145,7 @@ export function InsightEngagement({
 							{label}
 						</span>
 						<span className="font-heading font-semibold text-xl tabular-nums">
-							{formatCount(value)}
+							{formatCount(f, value)}
 						</span>
 					</li>
 				))}
@@ -154,7 +158,7 @@ export function InsightEngagement({
 				) : (
 					<>
 						<span className="font-medium tabular-nums">
-							{formatCount(engagement.rate)}
+							{formatCount(f, engagement.rate)}
 						</span>{" "}
 						<span className="text-muted-foreground">
 							reactions for every 100 opens
@@ -172,6 +176,7 @@ export function InsightFunnel({
 }: {
 	funnel: NonNullable<ViewInsights["funnel"]>;
 }) {
+	const f = useFormatters();
 	const steps = [
 		{
 			label: "Opened the book",
@@ -208,7 +213,7 @@ export function InsightFunnel({
 							<div className="flex items-baseline justify-between gap-3 text-sm">
 								<span>{step.label}</span>
 								<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-									{formatCount(step.value)}
+									{formatCount(f, step.value)}
 									{per100 != null ? ` · ${per100} per 100 viewers` : ""}
 								</span>
 							</div>

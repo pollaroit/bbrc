@@ -6,6 +6,7 @@ import type { Route } from "next";
 import Image from "next/image";
 import { Link } from "@/i18n/navigation";
 import { bookCoverUrl } from "@/lib/book-cover";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -15,10 +16,11 @@ type TrendingStripProps = {
 };
 
 function Views({ count }: { count: number }) {
+	const f = useFormatters();
 	return (
 		<span className="inline-flex items-center gap-1 text-muted-foreground text-xs tabular-nums">
 			<Eye className="size-3.5" aria-hidden />
-			{count.toLocaleString("en-US")} {count === 1 ? "view" : "views"}
+			{f.number(count)} {count === 1 ? "view" : "views"}
 		</span>
 	);
 }

@@ -1,4 +1,5 @@
 import type { BookEditionItem } from "@bbrc/api/modules/book-edition/book-edition.schema";
+import { DEFAULT_LOCALE, type Locale } from "@bbrc/i18n";
 import { formatEditionLanguage } from "@bbrc/shared";
 
 export const EDITION_LANGUAGE_LABELS: Record<string, string> = {
@@ -18,7 +19,8 @@ export const EDITION_FORMAT_LABELS: Record<BookEditionItem["format"], string> =
 	};
 
 /** "Turkish" for `tur` or `/languages/tur`; never the raw Open Library key. */
-export const languageLabel = (code: string) => formatEditionLanguage(code);
+export const languageLabel = (code: string, locale: Locale = DEFAULT_LOCALE) =>
+	formatEditionLanguage(code, locale);
 
 /** "Penguin · 2003 · eng": a short line that tells editions apart. */
 export function editionLabelFromParts(parts: {

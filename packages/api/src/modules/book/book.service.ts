@@ -1,5 +1,5 @@
 import type { Database, Prisma } from "@bbrc/db";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { scheduleAuthorEnrichment } from "../../lib/author-enrichment/schedule";
 import { definePagination } from "../../utils/pagination";
 import {
@@ -127,18 +127,14 @@ export async function getRandomBook(
 			input.viewerReading) &&
 		!viewerUserId
 	) {
-		throw new ORPCError("UNAUTHORIZED", {
-			message: "Sign in to filter by your own reads.",
-		});
+		throw appError("UNAUTHORIZED", "book.signInToFilterReads");
 	}
 
 	const where = await buildBookListWhereWithAuthors(input, db, viewerUserId);
 	const matched = where == null ? 0 : await db.book.count({ where });
 
 	if (where == null || matched === 0) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "No book matches these filters.",
-		});
+		throw appError("NOT_FOUND", "book.noBookMatchesFilters");
 	}
 
 	const [book] = await db.book.findMany({
@@ -150,9 +146,7 @@ export async function getRandomBook(
 	});
 
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "No book matches these filters.",
-		});
+		throw appError("NOT_FOUND", "book.noBookMatchesFilters");
 	}
 
 	return { ...book, matched };
@@ -331,8 +325,7 @@ export async function getBookBySlug(
 	});
 
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
+		throw appError("NOT_FOUND", "book.notFound", {
 			data: {
 				slug,
 			},
@@ -373,9 +366,7 @@ async function resolveBookAuthors(
 		const ids = [...new Set(input.authorIds)];
 		const found = await tx.author.count({ where: { id: { in: ids } } });
 		if (found !== ids.length) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "One of the authors no longer exists. Pick them again.",
-			});
+			throw appError("BAD_REQUEST", "book.authorGone");
 		}
 		return { authorIds: ids, createdIds: [] };
 	}
@@ -414,8 +405,7 @@ export async function addBook(
 		});
 
 		if (existing) {
-			throw new ORPCError("CONFLICT", {
-				message: "A book with this Open Library ID is already in the catalog",
+			throw appError("CONFLICT", "book.alreadyInCatalog", {
 				data: { olid: bookInput.olid, slug: existing.slug },
 			});
 		}
@@ -544,8 +534,7 @@ export async function updateBook(
 	});
 
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
+		throw appError("NOT_FOUND", "book.notFound", {
 			data: {
 				slug: input.slug,
 			},
@@ -646,8 +635,7 @@ export async function removeBook(slug: string, db: Database): Promise<string> {
 	});
 
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
+		throw appError("NOT_FOUND", "book.notFound", {
 			data: {
 				slug,
 			},
@@ -655,9 +643,7 @@ export async function removeBook(slug: string, db: Database): Promise<string> {
 	}
 
 	if (book.status !== "wishlist") {
-		throw new ORPCError("BAD_REQUEST", {
-			message:
-				"Only wishlist books can be removed. Change status or keep the title in the catalog.",
+		throw appError("BAD_REQUEST", "book.removeOnlyWishlist", {
 			data: { slug, status: book.status },
 		});
 	}

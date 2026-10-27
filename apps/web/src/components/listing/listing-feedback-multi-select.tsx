@@ -15,6 +15,7 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
 
 function previewReview(review: string, max = 100) {
@@ -36,6 +37,7 @@ export function ListingFeedbackMultiSelect({
 	selectedSlugs,
 	onSelectedSlugsChange,
 }: ListingFeedbackMultiSelectProps) {
+	const f = useFormatters();
 	const [search, setSearch] = useState("");
 
 	const feedbacksQuery = useQuery(
@@ -137,7 +139,7 @@ export function ListingFeedbackMultiSelect({
 										<span className="block break-words text-muted-foreground text-xs [overflow-wrap:anywhere]">
 											@{feedback.author.username}
 											{" · "}
-											{feedback.rating.toFixed(1)}★{" · "}
+											{f.decimal(feedback.rating, 1)}★{" · "}
 											<span className="font-mono">{feedback.slug}</span>
 										</span>
 									</span>

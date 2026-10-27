@@ -11,7 +11,7 @@ import {
 	medianNumber,
 	resolveClubTimeZone,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import {
 	QUIZ_MAX_SCORE,
 	QUIZ_MIN_SCORE,
@@ -54,10 +54,7 @@ export async function getBookStats(
 	});
 
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
-			data: { slug: bookSlug },
-		});
+		throw appError("NOT_FOUND", "book.notFound", { data: { slug: bookSlug } });
 	}
 
 	const now = new Date();

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { MemberLevelsInfoDialog } from "@/components/blocks/member-levels-info-dialog";
 import { ReadingStreakDialog } from "@/components/blocks/reading-streak-dialog";
 import { Link } from "@/i18n/navigation";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 type MemberProfileNumbersProps = {
@@ -39,6 +40,7 @@ export function MemberProfileNumbers({
 	user,
 	className,
 }: MemberProfileNumbersProps) {
+	const f = useFormatters();
 	const [streakOpen, setStreakOpen] = useState(false);
 	const streak = user.readingStreak;
 
@@ -64,7 +66,7 @@ export function MemberProfileNumbers({
 							href={`/users/${user.username}/xp` as Route}
 							className={cellClassName}
 						>
-							<span className={valueClassName}>{user.xp.toLocaleString()}</span>
+							<span className={valueClassName}>{f.number(user.xp)}</span>
 							<span className={subClassName}>{user.xpLevel.label}</span>
 						</Link>
 					</div>
@@ -85,7 +87,7 @@ export function MemberProfileNumbers({
 							href={`/users/${user.username}/rp` as Route}
 							className={cellClassName}
 						>
-							<span className={valueClassName}>{user.rp.toLocaleString()}</span>
+							<span className={valueClassName}>{f.number(user.rp)}</span>
 							<span className={subClassName}>{user.rpLevel.label}</span>
 						</Link>
 					</div>

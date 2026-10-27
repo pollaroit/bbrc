@@ -1,4 +1,5 @@
 import type { ReadingItem } from "@bbrc/api/modules/reading/reading.schema";
+import type { Formatters } from "@bbrc/i18n";
 import { formatPaceAmount } from "@bbrc/shared";
 import { clubTimeZone } from "@/lib/club-timezone";
 
@@ -9,13 +10,8 @@ export type PaceText = {
 	tone: PaceTone;
 };
 
-const dayFormat = new Intl.DateTimeFormat("en-US", {
-	month: "short",
-	day: "numeric",
-	timeZone: clubTimeZone,
-});
-
-const formatDay = (date: Date | string) => dayFormat.format(new Date(date));
+const formatDay = (f: Formatters, date: Date | string) =>
+	f.dateWith(date, { month: "short", day: "numeric", timeZone: clubTimeZone });
 
 /**
  * One plain sentence about how a reading is going against its deadline, or
@@ -28,7 +24,10 @@ const formatDay = (date: Date | string) => dayFormat.format(new Date(date));
  * - past:      "Past the deadline."
  * - no deadline: "At this pace you finish on Oct 29."
  */
-export function paceText(pace: ReadingItem["pace"]): PaceText | null {
+export function paceText(
+	pace: ReadingItem["pace"],
+	f: Formatters,
+): PaceText | null {
 	if (!pace || pace.status === "done") return null;
 
 	const need =
@@ -42,14 +41,14 @@ export function paceText(pace: ReadingItem["pace"]): PaceText | null {
 			const early = Math.max(1, pace.daysEarly ?? 1);
 			return {
 				tone: "good",
-				text: `At this pace you finish on ${formatDay(pace.projectedFinish)}, ${early} ${early === 1 ? "day" : "days"} before the deadline.`,
+				text: `At this pace you finish on ${formatDay(f, pace.projectedFinish)}, ${early} ${early === 1 ? "day" : "days"} before the deadline.`,
 			};
 		}
 		case "on_track":
 			return {
 				tone: "good",
 				text: pace.projectedFinish
-					? `At this pace you finish right around the deadline (${formatDay(pace.projectedFinish)}).`
+					? `At this pace you finish right around the deadline (${formatDay(f, pace.projectedFinish)}).`
 					: "You are on track for the deadline.",
 			};
 		case "behind":
@@ -72,7 +71,7 @@ export function paceText(pace: ReadingItem["pace"]): PaceText | null {
 			return pace.projectedFinish
 				? {
 						tone: "muted",
-						text: `At this pace you finish on ${formatDay(pace.projectedFinish)}.`,
+						text: `At this pace you finish on ${formatDay(f, pace.projectedFinish)}.`,
 					}
 				: null;
 		default:

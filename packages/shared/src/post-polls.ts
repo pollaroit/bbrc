@@ -214,30 +214,117 @@ export function normalizeChoiceLimits(
 	return { minChoices: min, maxChoices: max };
 }
 
+/**
+ * What is wrong with a ballot or a new poll, as a stable key with parameters (the API turns it
+ * into an error in the viewer's language; `describePollProblem` gives the English sentence).
+ */
+export type PollProblem = {
+	key:
+		| "pickOnce"
+		| "optionNotOnPoll"
+		| "pickOne"
+		| "pickAtLeast"
+		| "pickAtMost"
+		| "rankAtLeast"
+		| "rankAtMost"
+		| "addMinOptions"
+		| "tooManyOptions"
+		| "choicesOrder"
+		| "choicesOverOptions"
+		| "resultsNeedDeadline"
+		| "deadlineTooSoon"
+		| "deadlineTooFar"
+		| "memberLimitsMissing"
+		| "memberLimitOverTotal"
+		| "optionsOverLimit";
+	params: Record<string, number>;
+};
+
+const plural = (count: number, one: string, other: string) =>
+	`${count} ${count === 1 ? one : other}`;
+
+/** The English sentence of a poll problem (the web form shows it until it is translated). */
+export function describePollProblem(problem: PollProblem): string {
+	const { key, params } = problem;
+	const n = params.count ?? params.min ?? params.max ?? 0;
+	switch (key) {
+		case "pickOnce":
+			return "Pick each option only once.";
+		case "optionNotOnPoll":
+			return "One of those options is not on this poll.";
+		case "pickOne":
+			return "Pick one option.";
+		case "pickAtLeast":
+			return `Please pick at least ${plural(n, "option", "options")}.`;
+		case "pickAtMost":
+			return `Please pick at most ${plural(n, "option", "options")}.`;
+		case "rankAtLeast":
+			return `Please rank at least ${plural(n, "option", "options")}.`;
+		case "rankAtMost":
+			return `Please rank at most ${plural(n, "option", "options")}.`;
+		case "addMinOptions":
+			return `Add at least ${n} options.`;
+		case "tooManyOptions":
+			return `A poll can have at most ${n} options.`;
+		case "choicesOrder":
+			return "The fewest choices cannot be more than the most.";
+		case "choicesOverOptions":
+			return "Members cannot pick more options than the poll has.";
+		case "resultsNeedDeadline":
+			return "Showing results after the deadline needs a deadline.";
+		case "deadlineTooSoon":
+			return `The deadline must be at least ${n} minutes away.`;
+		case "deadlineTooFar":
+			return `The deadline can be at most ${n} days away.`;
+		case "memberLimitsMissing":
+			return "Set how many options each member and everyone together may add.";
+		case "memberLimitOverTotal":
+			return "Each member's limit cannot be higher than the total limit.";
+		case "optionsOverLimit":
+			return `Your options plus the ones members may add cannot go over ${n}.`;
+	}
+}
+
+/** The first problem with a ballot, or null when it is valid. */
+export function ballotProblem(
+	config: PollChoiceConfig,
+	pickedOptionIds: readonly string[],
+	validOptionIds: ReadonlySet<string>,
+): PollProblem | null {
+	if (new Set(pickedOptionIds).size !== pickedOptionIds.length) {
+		return { key: "pickOnce", params: {} };
+	}
+	if (pickedOptionIds.some((id) => !validOptionIds.has(id))) {
+		return { key: "optionNotOnPoll", params: {} };
+	}
+	const count = pickedOptionIds.length;
+	if (config.type === "single") {
+		return count === 1 ? null : { key: "pickOne", params: {} };
+	}
+	const ranking = config.type === "ranking";
+	if (count < config.minChoices) {
+		return {
+			key: ranking ? "rankAtLeast" : "pickAtLeast",
+			params: { count: config.minChoices },
+		};
+	}
+	if (count > config.maxChoices) {
+		return {
+			key: ranking ? "rankAtMost" : "pickAtMost",
+			params: { count: config.maxChoices },
+		};
+	}
+	return null;
+}
+
 /** Returns a message when the picked options are not a valid ballot, otherwise null. */
 export function validateBallot(
 	config: PollChoiceConfig,
 	pickedOptionIds: readonly string[],
 	validOptionIds: ReadonlySet<string>,
 ): string | null {
-	if (new Set(pickedOptionIds).size !== pickedOptionIds.length) {
-		return "Pick each option only once.";
-	}
-	if (pickedOptionIds.some((id) => !validOptionIds.has(id))) {
-		return "One of those options is not on this poll.";
-	}
-	const count = pickedOptionIds.length;
-	if (config.type === "single") {
-		return count === 1 ? null : "Pick one option.";
-	}
-	const noun = config.type === "ranking" ? "rank" : "pick";
-	if (count < config.minChoices) {
-		return `Please ${noun} at least ${config.minChoices} ${config.minChoices === 1 ? "option" : "options"}.`;
-	}
-	if (count > config.maxChoices) {
-		return `Please ${noun} at most ${config.maxChoices} ${config.maxChoices === 1 ? "option" : "options"}.`;
-	}
-	return null;
+	const problem = ballotProblem(config, pickedOptionIds, validOptionIds);
+	return problem ? describePollProblem(problem) : null;
 }
 
 export type BallotRow = {
@@ -340,51 +427,75 @@ export type PollSetup = {
 	deadline: Date | null;
 };
 
-/** A message for the first problem with a new poll, or null when it is fine. */
-export function validatePollSetup(
+/** The first problem with a new poll, as a stable key with parameters, or null when it is fine. */
+export function pollSetupProblem(
 	setup: PollSetup,
 	now: Date = new Date(),
-): string | null {
+): PollProblem | null {
 	if (setup.optionCount < POST_POLL_LIMITS.minOptions) {
-		return `Add at least ${POST_POLL_LIMITS.minOptions} options.`;
+		return {
+			key: "addMinOptions",
+			params: { min: POST_POLL_LIMITS.minOptions },
+		};
 	}
 	if (setup.optionCount > POST_POLL_LIMITS.maxOptions) {
-		return `A poll can have at most ${POST_POLL_LIMITS.maxOptions} options.`;
+		return {
+			key: "tooManyOptions",
+			params: { max: POST_POLL_LIMITS.maxOptions },
+		};
 	}
 	if (setup.type !== "single") {
 		if (setup.minChoices > setup.maxChoices) {
-			return "The fewest choices cannot be more than the most.";
+			return { key: "choicesOrder", params: {} };
 		}
 		if (setup.maxChoices > setup.optionCount && !setup.allowUserOptions) {
-			return "Members cannot pick more options than the poll has.";
+			return { key: "choicesOverOptions", params: {} };
 		}
 	}
 	if (setup.resultsVisibility === "after_deadline" && !setup.deadline) {
-		return "Showing results after the deadline needs a deadline.";
+		return { key: "resultsNeedDeadline", params: {} };
 	}
 	if (setup.deadline) {
 		const minutes = (setup.deadline.getTime() - now.getTime()) / 60_000;
 		if (minutes < POST_POLL_LIMITS.minDeadlineMinutes) {
-			return `The deadline must be at least ${POST_POLL_LIMITS.minDeadlineMinutes} minutes away.`;
+			return {
+				key: "deadlineTooSoon",
+				params: { min: POST_POLL_LIMITS.minDeadlineMinutes },
+			};
 		}
 		if (minutes > POST_POLL_LIMITS.maxDeadlineDays * 24 * 60) {
-			return `The deadline can be at most ${POST_POLL_LIMITS.maxDeadlineDays} days away.`;
+			return {
+				key: "deadlineTooFar",
+				params: { max: POST_POLL_LIMITS.maxDeadlineDays },
+			};
 		}
 	}
 	if (setup.allowUserOptions) {
 		const perUser = setup.maxOptionsPerUser;
 		const total = setup.maxOptionsTotal;
 		if (perUser == null || total == null || perUser < 1 || total < 1) {
-			return "Set how many options each member and everyone together may add.";
+			return { key: "memberLimitsMissing", params: {} };
 		}
 		if (perUser > total) {
-			return "Each member's limit cannot be higher than the total limit.";
+			return { key: "memberLimitOverTotal", params: {} };
 		}
 		if (setup.optionCount + total > POST_POLL_LIMITS.maxOptions) {
-			return `Your options plus the ones members may add cannot go over ${POST_POLL_LIMITS.maxOptions}.`;
+			return {
+				key: "optionsOverLimit",
+				params: { max: POST_POLL_LIMITS.maxOptions },
+			};
 		}
 	}
 	return null;
+}
+
+/** A message for the first problem with a new poll, or null when it is fine. */
+export function validatePollSetup(
+	setup: PollSetup,
+	now: Date = new Date(),
+): string | null {
+	const problem = pollSetupProblem(setup, now);
+	return problem ? describePollProblem(problem) : null;
 }
 
 // ── Countries ──────────────────────────────────────────────────────────────

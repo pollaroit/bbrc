@@ -1,5 +1,6 @@
 import { normalizeBookCountryCodes } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { getGeminiConfig } from "../../lib/gemini/config";
 import { geminiGenerateJson } from "../../lib/gemini/generate-json";
 import {
@@ -38,9 +39,7 @@ function buildBookOriginUserPrompt(
 function requireGeminiConfig() {
 	const config = getGeminiConfig();
 	if (!config) {
-		throw new ORPCError("PRECONDITION_FAILED", {
-			message: "Gemini is not configured (missing GEMINI_API_KEY).",
-		});
+		throw appError("PRECONDITION_FAILED", "book.aiNotAvailable");
 	}
 	return config;
 }
@@ -66,8 +65,8 @@ export async function suggestBookOriginCountries(
 		if (error instanceof ORPCError) {
 			throw error;
 		}
-		const message =
-			error instanceof Error ? error.message : "Country suggestion failed";
-		throw new ORPCError("BAD_GATEWAY", { message });
+		throw appError("BAD_GATEWAY", "book.aiFailed", {
+			data: { cause: error instanceof Error ? error.message : undefined },
+		});
 	}
 }

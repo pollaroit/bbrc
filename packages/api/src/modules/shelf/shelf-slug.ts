@@ -1,5 +1,6 @@
 import type { Database, DatabaseTransaction } from "@bbrc/db";
 import { generateUniqueSlug } from "@bbrc/shared";
+import { appError } from "../../lib/app-error";
 
 const SHELF_SLUG_MIN_LENGTH = 3;
 const RESERVED_WISHLIST_SLUG = "wishlist";
@@ -42,5 +43,5 @@ export async function generateShelfSlug(
 		}
 	}
 
-	throw new Error("Failed to generate shelf slug");
+	throw appError("CONFLICT", "shelf.slugFailed");
 }

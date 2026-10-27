@@ -1,5 +1,6 @@
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import type { ReactNode } from "react";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import {
 	type Delta,
@@ -78,20 +79,21 @@ export function InsightStatStrip({
 	previous: Totals | null;
 	compareLabel: string;
 }) {
+	const f = useFormatters();
 	const { memberViewers, guestViewers } = totals;
 	const mix = memberViewers + guestViewers;
 	return (
 		<div className="grid grid-cols-2 divide-x divide-y divide-border border border-border bg-card lg:grid-cols-4 lg:divide-y-0">
 			<Stat
 				label="Opens"
-				value={formatCompact(totals.opens)}
+				value={formatCompact(f, totals.opens)}
 				hint="Times the page was opened"
 				delta={deltaOf(totals.opens, previous?.opens ?? null)}
 				compareLabel={compareLabel}
 			/>
 			<Stat
 				label="Seen in lists"
-				value={formatCompact(totals.impressions)}
+				value={formatCompact(f, totals.impressions)}
 				hint="Times it showed up in a list"
 				delta={deltaOf(totals.impressions, previous?.impressions ?? null)}
 				compareLabel={compareLabel}
@@ -99,7 +101,7 @@ export function InsightStatStrip({
 			<Stat
 				label="Open rate"
 				value={
-					totals.openRate == null ? "—" : `${formatCount(totals.openRate)}%`
+					totals.openRate == null ? "—" : `${formatCount(f, totals.openRate)}%`
 				}
 				hint={
 					totals.openRate == null
@@ -115,8 +117,8 @@ export function InsightStatStrip({
 			/>
 			<Stat
 				label="Viewers"
-				value={formatCompact(totals.uniqueViewers)}
-				hint={`${formatCount(memberViewers)} ${memberViewers === 1 ? "member" : "members"} · ${formatCount(guestViewers)} ${guestViewers === 1 ? "guest" : "guests"}`}
+				value={formatCompact(f, totals.uniqueViewers)}
+				hint={`${formatCount(f, memberViewers)} ${memberViewers === 1 ? "member" : "members"} · ${formatCount(f, guestViewers)} ${guestViewers === 1 ? "guest" : "guests"}`}
 				delta={deltaOf(totals.uniqueViewers, previous?.uniqueViewers ?? null)}
 				compareLabel={compareLabel}
 			>

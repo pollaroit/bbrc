@@ -8,9 +8,12 @@ import { Link } from "@/i18n/navigation";
 import { bookCoverUrl } from "@/lib/book-cover";
 import { formatReadFinishedMonthField } from "@/lib/format-read-date";
 
+import { useFormatters } from "@/lib/i18n/use-formatters";
+
 type Item = ListUserReadsOutput["items"][number];
 
 export function MemberProfileReadCard({ item }: { item: Item }) {
+	const f = useFormatters();
 	const { book } = item;
 	const coverSrc = bookCoverUrl(book.coverId, "M");
 	const finished =
@@ -88,7 +91,7 @@ export function MemberProfileReadCard({ item }: { item: Item }) {
 								className="size-3.5 fill-warning text-warning"
 								aria-hidden
 							/>
-							{item.rating.toFixed(1)}
+							{f.decimal(item.rating, 1)}
 						</span>
 					) : null}
 				</div>

@@ -459,22 +459,17 @@ async function notifyMilestone(db: Database, target: Target, mark: number) {
 	try {
 		const info = await describeViewTargetById(db, target);
 		if (!info) return;
-		const noun =
-			target.resource === "user"
-				? "Your profile"
-				: target.resource === "post"
-					? "Your post"
-					: target.resource === "shelf"
-						? "Your shelf"
-						: "Your review";
 		await dispatchNotification(db, {
 			kind: "view_milestone",
 			recipientUserIds: [target.ownerId],
-			title: `${noun} reached ${mark.toLocaleString("en-US")} views`,
-			body:
-				target.resource === "user"
-					? "See who is looking in your insights."
-					: `${info.title} · open its insights to see where views come from.`,
+			message: {
+				id: "viewMilestone",
+				values: {
+					resource: target.resource,
+					mark,
+					item: info.title,
+				},
+			},
 			href: info.insightsHref,
 		});
 	} catch (error) {

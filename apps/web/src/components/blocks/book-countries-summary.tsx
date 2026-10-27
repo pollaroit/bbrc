@@ -1,7 +1,7 @@
 "use client";
 
-import { getBookCountryName } from "@bbrc/shared";
 import { CountryLabel } from "@/components/blocks/country-dropdown";
+import { useCountryName } from "@/lib/i18n/use-content-text";
 
 type BookCountriesSummaryProps = {
 	countries: string[];
@@ -12,6 +12,7 @@ export function BookCountriesSummary({
 	countries,
 	maxVisible = 3,
 }: BookCountriesSummaryProps) {
+	const countryName = useCountryName();
 	if (countries.length === 0) {
 		return <span className="text-muted-foreground text-xs">—</span>;
 	}
@@ -22,7 +23,7 @@ export function BookCountriesSummary({
 	return (
 		<ul className="flex flex-col gap-1">
 			{visible.map((code) => {
-				const name = getBookCountryName(code) ?? code;
+				const name = countryName(code);
 				return (
 					<li key={code}>
 						<CountryLabel alpha2={code} name={name} className="text-xs" />

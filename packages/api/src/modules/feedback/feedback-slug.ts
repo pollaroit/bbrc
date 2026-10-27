@@ -4,7 +4,7 @@ import {
 	generateSlug,
 	generateUniqueSlug,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 
 const FEEDBACK_SLUG_MIN_LENGTH = 3;
 const EMPTY_REVIEW_SLUG_ATTEMPTS = 40;
@@ -50,9 +50,7 @@ async function generateEmptyReviewFeedbackSlug(
 		}
 	}
 
-	throw new ORPCError("CONFLICT", {
-		message: "Failed to generate feedback slug",
-	});
+	throw appError("CONFLICT", "feedback.slugFailed");
 }
 
 export async function generateFeedbackSlug(

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Database } from "@bbrc/db";
 import { bookAuthorEntries } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { getGeminiConfig } from "../../lib/gemini/config";
 import { geminiGenerateJson } from "../../lib/gemini/generate-json";
 import { mapWithConcurrency } from "../../lib/open-library/concurrency";
@@ -777,8 +777,8 @@ async function laneAi(db: Database, viewer: Viewer, refresh: boolean) {
 
 	const asksLeft = await aiAsksLeft(db, viewer);
 	if (asksLeft != null && asksLeft <= 0) {
-		throw new ORPCError("TOO_MANY_REQUESTS", {
-			message: `You can ask AI ${AI_ASKS_PER_MEMBER_PER_DAY} times a day. Try again tomorrow.`,
+		throw appError("TOO_MANY_REQUESTS", "bookDiscover.aiDailyLimit", {
+			params: { count: AI_ASKS_PER_MEMBER_PER_DAY },
 		});
 	}
 
@@ -794,8 +794,8 @@ async function laneAi(db: Database, viewer: Viewer, refresh: boolean) {
 			timeoutMs: 25_000,
 		});
 	} catch (error) {
-		throw new ORPCError("BAD_GATEWAY", {
-			message: error instanceof Error ? error.message : "AI suggestion failed",
+		throw appError("BAD_GATEWAY", "bookDiscover.aiFailed", {
+			data: { cause: error instanceof Error ? error.message : undefined },
 		});
 	}
 	if (!viewer.isAdmin) {
@@ -861,7 +861,7 @@ export async function getDiscoverLane(
 ): Promise<DiscoverLane> {
 	const allowedLanes = listLanesFor(viewer).map((entry) => entry.id);
 	if (!allowedLanes.includes(id)) {
-		throw new ORPCError("FORBIDDEN", { message: "That lane is not for you." });
+		throw appError("FORBIDDEN", "bookDiscover.laneNotForYou");
 	}
 	if (id === "ai") {
 		return laneAi(db, viewer, options.refresh === true);

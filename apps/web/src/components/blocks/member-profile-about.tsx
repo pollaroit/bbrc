@@ -8,6 +8,8 @@ import type { Route } from "next";
 import { useState } from "react";
 import { RichContentView } from "@/components/blocks/rich-content-view";
 import { Link } from "@/i18n/navigation";
+import { useGenreName } from "@/lib/i18n/use-content-text";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 type Profile = GetUserByUsernameOutput["profile"];
@@ -26,14 +28,12 @@ const genderLabels = {
 	female: "Female",
 } as const;
 
-const birthFormatter = new Intl.DateTimeFormat("en", {
-	dateStyle: "long",
-	timeZone: "UTC",
-});
-
 type GenreChip = { slug: string; name: string; sub: boolean };
 
-function buildGenreChips(profile: Profile): GenreChip[] {
+function buildGenreChips(
+	profile: Profile,
+	genreLabel: (slug: string) => string,
+): GenreChip[] {
 	const selectedGenres = new Set(profile.favoriteGenres);
 	const selectedSubs = new Set(profile.favoriteSubgenres);
 
@@ -41,8 +41,15 @@ function buildGenreChips(profile: Profile): GenreChip[] {
 		if (!selectedGenres.has(genre.slug)) return [];
 		const subs = (genre.subgenres ?? [])
 			.filter((sub) => selectedSubs.has(sub.slug))
-			.map((sub) => ({ slug: sub.slug, name: sub.name, sub: true }));
-		return [{ slug: genre.slug, name: genre.name, sub: false }, ...subs];
+			.map((sub) => ({
+				slug: sub.slug,
+				name: genreLabel(sub.slug),
+				sub: true,
+			}));
+		return [
+			{ slug: genre.slug, name: genreLabel(genre.slug), sub: false },
+			...subs,
+		];
 	});
 }
 
@@ -59,6 +66,8 @@ export function MemberProfileAbout({
 	isOwnProfile,
 	className,
 }: MemberProfileAboutProps) {
+	const f = useFormatters();
+	const genreLabel = useGenreName();
 	const [bioOpen, setBioOpen] = useState(false);
 	const [genresOpen, setGenresOpen] = useState(false);
 
@@ -66,7 +75,7 @@ export function MemberProfileAbout({
 	const bioIsLong =
 		hasBio && contentPlainText(profile.bio ?? "").length > BIO_COLLAPSE_CHARS;
 
-	const chips = buildGenreChips(profile);
+	const chips = buildGenreChips(profile, genreLabel);
 	const visibleChips = genresOpen
 		? chips
 		: chips.slice(0, GENRE_COLLAPSED_COUNT);
@@ -85,7 +94,7 @@ export function MemberProfileAbout({
 			? {
 					key: "born",
 					Icon: Cake,
-					text: `Born ${birthFormatter.format(profile.dateOfBirth)}`,
+					text: `Born ${f.dateWith(profile.dateOfBirth, { dateStyle: "long", timeZone: "UTC" })}`,
 				}
 			: null,
 		profile.gender !== "not_specified"

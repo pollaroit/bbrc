@@ -1,7 +1,21 @@
 import type { Messages } from "../shape";
+import { achievements } from "./achievements";
+import { errors } from "./errors";
+import { genres } from "./genres";
+import { labels } from "./labels";
+import { notifications } from "./notifications";
+import { ratings } from "./ratings";
+import { validation } from "./validation";
 
 /** Azerbaijani. Must have exactly the same keys, parameters and plural forms as English. */
 export const az: Messages = {
+	errors,
+	labels,
+	achievements,
+	genres,
+	ratings,
+	notifications,
+	validation,
 	language: {
 		title: "Dil",
 		description:
