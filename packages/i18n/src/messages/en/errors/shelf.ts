@@ -39,6 +39,8 @@ export const shelfErrors = defineMessages({
 		"Only people who manage collaborators can see the activity log.",
 	wishlistProtected:
 		"Your Wishlist is special: you can only change its description and who can see it.",
+	wishlistNoCustomCover:
+		"Your Wishlist keeps its own look, so it has no custom cover.",
 	wishlistNotShareable: "Your Wishlist is personal, so it cannot be shared.",
 	wishlistNotTransferable:
 		"Your Wishlist cannot be handed over to someone else.",

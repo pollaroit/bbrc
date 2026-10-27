@@ -39,6 +39,8 @@ export const shelfErrors: Messages["errors"]["shelf"] = {
 		"Fəaliyyət jurnalını yalnız ortaq redaktorları idarə edənlər görə bilər.",
 	wishlistProtected:
 		"İstək siyahınız xüsusidir: yalnız təsvirini və kimin görə biləcəyini dəyişə bilərsiniz.",
+	wishlistNoCustomCover:
+		"İstək siyahınızın öz görünüşü var, ona görə fərdi üz qabığı ola bilməz.",
 	wishlistNotShareable: "İstək siyahınız şəxsidir, ona görə paylaşıla bilməz.",
 	wishlistNotTransferable: "İstək siyahınız başqasına verilə bilməz.",
 	wishlistNotDeletable: "İstək siyahınız silinə bilməz.",

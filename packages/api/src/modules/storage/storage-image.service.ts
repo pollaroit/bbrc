@@ -511,10 +511,7 @@ async function loadCoverEditableShelf(
 		actorId: userId,
 	});
 	requireShelfPermission(access, "edit_cover");
-	assertNotWishlist(
-		access.shelf,
-		"Your Wishlist keeps its own look, so it has no custom cover.",
-	);
+	assertNotWishlist(access.shelf, "shelf.wishlistNoCustomCover");
 	return {
 		id: access.shelf.id,
 		slug: access.shelf.slug,
