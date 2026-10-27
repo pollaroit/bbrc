@@ -13,7 +13,7 @@ import {
 	normalizeGoalCountryCodes,
 	readCountsTowardGoal,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import {
 	assertMemberVisible,
 	type ViewerContext,
@@ -217,17 +217,15 @@ function assertGoalYearEditable(
 ): void {
 	if (isGoalExpired(existingYear, now)) {
 		if (year !== existingYear) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "The year on an expired goal cannot be changed.",
-			});
+			throw appError("BAD_REQUEST", "goal.expiredYearLocked");
 		}
 		return;
 	}
 
 	const { min, max } = allowedGoalYears(now);
 	if (year < min || year > max) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `Goals can only use ${min} or ${max} as the year.`,
+		throw appError("BAD_REQUEST", "goal.yearOutOfRange", {
+			params: { min: String(min), max: String(max) },
 		});
 	}
 }
@@ -303,10 +301,7 @@ export async function getGoalBySlug(
 	});
 
 	if (!row) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Goal not found",
-			data: { goalSlug },
-		});
+		throw appError("NOT_FOUND", "goal.notFound", { data: { goalSlug } });
 	}
 
 	const scope = mapScope(row);
@@ -352,10 +347,7 @@ export async function createGoal(
 	);
 
 	if (duplicate) {
-		throw new ORPCError("CONFLICT", {
-			message:
-				"You already have a goal for this year with the same scope. Change the scope or pick another year.",
-		});
+		throw appError("CONFLICT", "goal.duplicate");
 	}
 
 	return db.$transaction(async (tx) => {
@@ -393,8 +385,7 @@ export async function updateGoal(
 	});
 
 	if (!existing) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Goal not found",
+		throw appError("NOT_FOUND", "goal.notFound", {
 			data: { goalSlug: input.goalSlug },
 		});
 	}
@@ -414,10 +405,7 @@ export async function updateGoal(
 	);
 
 	if (duplicate) {
-		throw new ORPCError("CONFLICT", {
-			message:
-				"You already have a goal for this year with the same scope. Change the scope or pick another year.",
-		});
+		throw appError("CONFLICT", "goal.duplicate");
 	}
 
 	await db.goal.update({

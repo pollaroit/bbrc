@@ -1,5 +1,5 @@
 import type { Database } from "@bbrc/db";
-import { formatPaceAmount, readingPace } from "@bbrc/shared";
+import { readingPace } from "@bbrc/shared";
 import { dispatchNotification } from "../notification/notification.service";
 import { activeParticipationWhere } from "../sitting/participation-active";
 
@@ -95,8 +95,15 @@ export async function sweepReadingReminders(db: Database): Promise<number> {
 				await dispatchNotification(db, {
 					kind: "reading_behind",
 					recipientUserIds: [reading.userId],
-					title: `You are behind on ${sitting.selectedBook?.title ?? "your book"}`,
-					body: `You need about ${formatPaceAmount(pace.perDayNeeded, pace.unit)} a day to finish by the deadline.`,
+					message: {
+						id: "readingBehind",
+						values: {
+							hasBook: sitting.selectedBook?.title ? "yes" : "no",
+							book: sitting.selectedBook?.title ?? "",
+							unit: pace.unit,
+							amount: Math.max(1, Math.ceil(pace.perDayNeeded)),
+						},
+					},
 					href: `/sittings/${sitting.slug}`,
 				});
 				sent += 1;

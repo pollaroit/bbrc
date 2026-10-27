@@ -1,3 +1,4 @@
+import { validationError } from "@bbrc/i18n";
 import { BookSchema, UserSchema } from "@bbrc/schemas";
 import {
 	CursorPaginationInputSchema,
@@ -36,7 +37,7 @@ const OptionalFeedbackOnSetReadSchema = z.object({
 	feedbackRating: z
 		.number()
 		.refine(isFeedbackRatingStep, {
-			message: "Rating must be in half-star steps from 0 to 5",
+			error: validationError("rating.halfSteps"),
 		})
 		.optional(),
 	feedbackReview: z.string().max(500).optional(),

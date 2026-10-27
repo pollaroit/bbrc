@@ -5,7 +5,7 @@ import {
 	readFinishedMonthFromClubNow,
 	resolveClubTimeZone,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import {
 	fetchEditionDetailSummaries,
 	listWorkEditions,
@@ -53,10 +53,7 @@ async function loadBookBySlug(slug: string, db: Database) {
 	});
 
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
-			data: { slug },
-		});
+		throw appError("NOT_FOUND", "read.bookNotFound", { data: { slug } });
 	}
 
 	return book;
@@ -73,9 +70,7 @@ function resolveFinishMonthFields(input: {
 		return { readEndYear: null, readEndMonth: null };
 	}
 	if (input.readEndYear == null || input.readEndMonth == null) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Finish month and year must be set together",
-		});
+		throw appError("BAD_REQUEST", "read.finishDateIncomplete");
 	}
 	return {
 		readEndYear: input.readEndYear,
@@ -293,9 +288,7 @@ export async function setRead(
 			select: { bookId: true },
 		});
 		if (!edition || edition.bookId !== book.id) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "That edition belongs to another book.",
-			});
+			throw appError("BAD_REQUEST", "read.editionOfAnotherBook");
 		}
 	}
 
@@ -386,9 +379,7 @@ export async function removeRead(
 	});
 
 	if (deleted.count === 0) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Read record not found",
-		});
+		throw appError("NOT_FOUND", "read.notFound");
 	}
 
 	return { removed: true };
@@ -463,8 +454,7 @@ export async function listUserReads(
 	});
 
 	if (!user) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
+		throw appError("NOT_FOUND", "read.memberNotFound", {
 			data: { username: input.username },
 		});
 	}
@@ -491,9 +481,7 @@ export async function listUserReads(
 	const mutualOnly = Boolean(input.mutualOnly && viewerId);
 
 	if (input.mutualOnly && !viewerId) {
-		throw new ORPCError("UNAUTHORIZED", {
-			message: "Sign in to filter by mutual reads.",
-		});
+		throw appError("UNAUTHORIZED", "read.signInForMutualReads");
 	}
 
 	const bookFilter: Prisma.BookWhereInput =

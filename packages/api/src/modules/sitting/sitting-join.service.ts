@@ -4,18 +4,18 @@ import {
 	DEFAULT_SITTING_JOIN_CONFIG,
 	formatSittingDisplayName,
 	inviteLinkState,
-	inviteLinkStateMessage,
 	joinTypeAllows,
-	joinWindowMessage,
 	MAX_SITTING_INVITE_LINKS,
-	resolveClubTimeZone,
 	type SittingJoinConfig,
 	selfJoinWindow,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import { appError, type ErrorKey, type ErrorParams } from "../../lib/app-error";
 import {
+	contentToStored,
 	dispatchNotification,
 	listAdminUserIds,
+	type NotificationMessage,
 } from "../notification/notification.service";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import { awardParticipationXp } from "../xp/xp.service";
@@ -28,6 +28,12 @@ import type {
 	SittingJoinConfigInput,
 	SittingJoinState,
 } from "./sitting-join.schema";
+import {
+	errorText,
+	inviteLinkStateKey,
+	inviteLinkStateText,
+	joinWindowKey,
+} from "./sitting-join-text";
 
 type Db = Database | DatabaseTransaction;
 type Actor = { id: string; isAdmin: boolean };
@@ -60,7 +66,7 @@ async function loadSitting(db: Db, slug: string) {
 		select: sittingSelect,
 	});
 	if (!sitting) {
-		throw new ORPCError("NOT_FOUND", { message: "Sitting not found" });
+		throw appError("NOT_FOUND", "sitting.notFound");
 	}
 	return sitting;
 }
@@ -80,9 +86,7 @@ function assertCanManage(
 	actor: Actor,
 ) {
 	if (!canManage(sitting, actor)) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only the sitting's organisers can do that.",
-		});
+		throw appError("FORBIDDEN", "sitting.organisersOnly");
 	}
 }
 
@@ -101,7 +105,7 @@ function windowOf(sitting: SittingRow, now = new Date()) {
 	);
 	return {
 		...window,
-		message: window.reason ? joinWindowMessage(window.reason) : null,
+		message: window.reason ? errorText(joinWindowKey[window.reason]) : null,
 	};
 }
 
@@ -116,13 +120,6 @@ function displayName(sitting: SittingRow) {
 function personName(user: { name: string; username: string }) {
 	return user.name?.trim() || user.username;
 }
-
-const clubDate = (date: Date) =>
-	new Intl.DateTimeFormat("en", {
-		day: "numeric",
-		month: "short",
-		timeZone: resolveClubTimeZone(),
-	}).format(date);
 
 // ── Who can join ───────────────────────────────────────────────────────────
 
@@ -139,19 +136,33 @@ async function membershipOf(db: Db, sittingId: string, userId: string) {
 
 type JoinVia = "button" | "link" | "invitation";
 
-/** The sentence explaining why this person cannot join right now, or null when they can. */
+/** A reason this person cannot join: the text for the page and the key to throw. */
+type Blocked = { reason: string | null; reasonKey: ErrorKey | null };
+
+const open: Blocked = { reason: null, reasonKey: null };
+
+function blocked(key: ErrorKey, params?: ErrorParams): Blocked {
+	return { reason: errorText(key, params), reasonKey: key };
+}
+
+/** Why this person cannot join right now (null reason when they can). */
 async function joinBlocker(
 	db: Db,
 	sitting: SittingRow,
 	userId: string | null,
 	via: JoinVia,
-): Promise<{
-	reason: string | null;
-	isParticipant: boolean;
-	removed: boolean;
-}> {
+): Promise<
+	Blocked & {
+		isParticipant: boolean;
+		removed: boolean;
+	}
+> {
 	if (!userId) {
-		return { reason: "Sign in to join.", isParticipant: false, removed: false };
+		return {
+			...blocked("sitting.join.signIn"),
+			isParticipant: false,
+			removed: false,
+		};
 	}
 	const [user, membership] = await Promise.all([
 		db.user.findUnique({
@@ -165,50 +176,45 @@ async function joinBlocker(
 		removed: membership.removedByOrganiser,
 	};
 	if (!user || user.isHidden) {
-		return {
-			...base,
-			reason: "This action is not available for your account.",
-		};
+		return { ...base, ...blocked("sitting.join.accountUnavailable") };
 	}
 	if (user.status === "banned") {
-		return { ...base, reason: "Banned members cannot join a sitting." };
+		return { ...base, ...blocked("sitting.join.banned") };
 	}
 	if (membership.isParticipant) {
-		return { ...base, reason: "You are already in this sitting." };
+		return { ...base, ...blocked("sitting.join.alreadyIn") };
 	}
 	if (membership.removedByOrganiser) {
-		return {
-			...base,
-			reason:
-				"An organiser removed you from this sitting, so only an organiser can add you back.",
-		};
+		return { ...base, ...blocked("sitting.join.removedByOrganiser") };
 	}
 	if (sitting.status === "finished") {
-		return { ...base, reason: joinWindowMessage("finished") };
+		return { ...base, ...blocked(joinWindowKey.finished) };
 	}
 	if (via !== "invitation") {
 		if (!joinTypeAllows(sitting.joinType, via)) {
 			return {
 				...base,
-				reason:
+				...blocked(
 					sitting.joinType === "unlisted"
-						? "This sitting is joined with an invitation link."
-						: "This sitting is private. Only its organisers can add people.",
+						? "sitting.join.viaLinkOnly"
+						: "sitting.join.privateOrganisersOnly",
+				),
 			};
 		}
 		const window = windowOf(sitting);
-		if (!window.open) {
-			return { ...base, reason: window.message };
+		if (!window.open && window.reason) {
+			return { ...base, ...blocked(joinWindowKey[window.reason]) };
 		}
 	}
-	return { ...base, reason: null };
+	return { ...base, ...open };
 }
 
 function assertCanJoin(blocker: Awaited<ReturnType<typeof joinBlocker>>) {
-	if (blocker.reason) {
-		throw new ORPCError(blocker.isParticipant ? "CONFLICT" : "FORBIDDEN", {
-			message: blocker.reason,
-		});
+	if (blocker.reasonKey) {
+		throw appError(
+			blocker.isParticipant ? "CONFLICT" : "FORBIDDEN",
+			blocker.reasonKey,
+		);
 	}
 }
 
@@ -271,9 +277,7 @@ export async function updateJoinConfig(
 	const sitting = await loadSitting(db, slug);
 	assertCanManage(sitting, actor);
 	if (sitting.status === "finished") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "This sitting has finished, so its join settings are fixed.",
-		});
+		throw appError("BAD_REQUEST", "sitting.join.settingsFixed");
 	}
 	await db.sitting.update({
 		where: { id: sitting.id },
@@ -329,19 +333,27 @@ async function afterJoin(
 	const label = displayName(sitting);
 	const href = `/sittings/${sitting.slug}`;
 	const pollDeadline = sitting.poll?.deadline ?? null;
-	const body =
+	const message: NotificationMessage =
 		sitting.status === "reading"
-			? `Reading ends ${clubDate(sitting.deadline)}. Mark your progress on the sitting page as you go.`
+			? {
+					id: "sittingWelcomeReading",
+					values: {
+						sitting: label,
+						deadlineAt: sitting.deadline.toISOString(),
+					},
+				}
 			: pollDeadline
-				? `Voting is open until ${clubDate(pollDeadline)}. Pick the book you want to read.`
-				: "Voting is open. Pick the book you want to read.";
+				? {
+						id: "sittingWelcomeVoting",
+						values: { sitting: label, deadlineAt: pollDeadline.toISOString() },
+					}
+				: { id: "sittingWelcomeVotingOpen", values: { sitting: label } };
 
 	try {
 		await dispatchNotification(db, {
 			kind: "sitting_welcome",
 			recipientUserIds: [joiner.id],
-			title: `You joined ${label}`,
-			body,
+			message,
 			href,
 		});
 
@@ -393,8 +405,10 @@ async function notifyOrganiserOfJoin(
 		await dispatchNotification(db, {
 			kind: "sitting_member_joined",
 			recipientUserIds: [input.recipientId],
-			title: "Someone joined your sitting",
-			body: `${input.joinerName} joined ${label}.`,
+			message: {
+				id: "sittingMemberJoined",
+				values: { joiner: input.joinerName, sitting: label },
+			},
 			href,
 		});
 		return;
@@ -415,14 +429,23 @@ async function notifyOrganiserOfJoin(
 	await db.notification.update({
 		where: { id: existing.id },
 		data: {
-			title:
-				total > 1
-					? `${total} members joined your sitting`
-					: "Someone joined your sitting",
-			body:
-				total > 1
-					? `${input.joinerName} and ${total - 1} ${total === 2 ? "other" : "others"} joined ${label}.`
-					: `${input.joinerName} joined ${label}.`,
+			...contentToStored({
+				message:
+					total > 1
+						? {
+								id: "sittingMembersJoined",
+								values: {
+									total,
+									joiner: input.joinerName,
+									others: total - 1,
+									sitting: label,
+								},
+							}
+						: {
+								id: "sittingMemberJoined",
+								values: { joiner: input.joinerName, sitting: label },
+							},
+			}),
 		},
 	});
 }
@@ -461,21 +484,14 @@ export async function joinSitting(db: Database, slug: string, actor: Actor) {
 export async function leaveSitting(db: Database, slug: string, actor: Actor) {
 	const sitting = await loadSitting(db, slug);
 	if (sitting.status !== "voting") {
-		throw new ORPCError("BAD_REQUEST", {
-			message:
-				"You can only leave while voting is open. Once reading starts, everyone who is in stays in.",
-		});
+		throw appError("BAD_REQUEST", "sitting.join.leaveOnlyWhileVoting");
 	}
 	const membership = await membershipOf(db, sitting.id, actor.id);
 	if (!membership.isParticipant) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "You are not in this sitting.",
-		});
+		throw appError("BAD_REQUEST", "sitting.join.notInSitting");
 	}
 	if (sitting._count.participants <= 1) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "You are the last person in this sitting, so you cannot leave.",
-		});
+		throw appError("BAD_REQUEST", "sitting.join.lastPerson");
 	}
 
 	await db.$transaction([
@@ -561,28 +577,19 @@ export async function createInviteLink(
 	const sitting = await loadSitting(db, input.sittingSlug);
 	assertCanManage(sitting, actor);
 	if (sitting.joinType === "private") {
-		throw new ORPCError("BAD_REQUEST", {
-			message:
-				"Private sittings have no invitation links. Make it Unlisted or Public first.",
-		});
+		throw appError("BAD_REQUEST", "sitting.link.privateNoLinks");
 	}
 	if (sitting.status === "finished") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "This sitting has finished.",
-		});
+		throw appError("BAD_REQUEST", "sitting.finished");
 	}
 	const now = new Date();
 	if (input.expiresAt) {
 		const days = (input.expiresAt.getTime() - now.getTime()) / 86_400_000;
 		if (days <= 0) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "The expiry must be in the future.",
-			});
+			throw appError("BAD_REQUEST", "sitting.link.expiryInPast");
 		}
 		if (days > 365) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "A link can last at most a year.",
-			});
+			throw appError("BAD_REQUEST", "sitting.link.maxLifetime");
 		}
 	}
 
@@ -590,8 +597,8 @@ export async function createInviteLink(
 		where: { sittingId: sitting.id, revokedAt: null },
 	});
 	if (live >= MAX_SITTING_INVITE_LINKS) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `A sitting can have at most ${MAX_SITTING_INVITE_LINKS} links. End one first.`,
+		throw appError("BAD_REQUEST", "sitting.link.tooMany", {
+			params: { max: MAX_SITTING_INVITE_LINKS },
 		});
 	}
 
@@ -623,7 +630,7 @@ export async function revokeInviteLink(
 		},
 	});
 	if (!link) {
-		throw new ORPCError("NOT_FOUND", { message: "Link not found" });
+		throw appError("NOT_FOUND", "sitting.link.notFound");
 	}
 	assertCanManage(link.sitting, actor);
 	if (!link.revokedAt) {
@@ -649,7 +656,7 @@ async function loadLinkByToken(db: Db, token: string) {
 		},
 	});
 	if (!link) {
-		throw new ORPCError("NOT_FOUND", { message: "Invitation link not found" });
+		throw appError("NOT_FOUND", "sitting.link.invitationLinkNotFound");
 	}
 	return link;
 }
@@ -671,14 +678,14 @@ export async function previewInviteLink(
 
 	let reason = blocker.reason;
 	if (!reason && state !== "active") {
-		reason = inviteLinkStateMessage(state);
+		reason = inviteLinkStateText(state);
 	}
 
 	return {
 		linkId: link.id,
 		label: link.label,
 		state,
-		stateMessage: inviteLinkStateMessage(state),
+		stateMessage: inviteLinkStateText(state),
 		sitting: {
 			slug: sitting.slug,
 			displayName: displayName(sitting),
@@ -741,9 +748,7 @@ export async function joinWithInviteLink(
 
 	const state = inviteLinkState(link);
 	if (state !== "active") {
-		throw new ORPCError("FORBIDDEN", {
-			message: inviteLinkStateMessage(state),
-		});
+		throw appError("FORBIDDEN", inviteLinkStateKey[state]);
 	}
 
 	try {
@@ -758,9 +763,7 @@ export async function joinWithInviteLink(
 					AND (max_uses IS NULL OR uses < max_uses)
 			`;
 			if (claimed === 0) {
-				throw new ORPCError("FORBIDDEN", {
-					message: inviteLinkStateMessage("exhausted"),
-				});
+				throw appError("FORBIDDEN", inviteLinkStateKey.exhausted);
 			}
 			await addParticipation(tx, {
 				sittingId: sitting.id,
@@ -794,9 +797,7 @@ export async function createSittingInvitation(
 	const sitting = await loadSitting(db, input.sittingSlug);
 	assertCanManage(sitting, actor);
 	if (sitting.status === "finished") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "This sitting has finished.",
-		});
+		throw appError("BAD_REQUEST", "sitting.finished");
 	}
 
 	const invitee = await db.user.findFirst({
@@ -810,27 +811,25 @@ export async function createSittingInvitation(
 		},
 	});
 	if (!invitee) {
-		throw new ORPCError("NOT_FOUND", { message: "Member not found." });
+		throw appError("NOT_FOUND", "sitting.memberNotFound");
 	}
 	if (invitee.status === "banned") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Banned members cannot join a sitting.",
-		});
+		throw appError("BAD_REQUEST", "sitting.join.banned");
 	}
 	if (!invitee.allowSittingInvites) {
-		throw new ORPCError("FORBIDDEN", {
-			message: `${personName(invitee)} does not accept sitting invitations.`,
+		throw appError("FORBIDDEN", "sitting.invitation.notAccepted", {
+			params: { name: personName(invitee) },
 		});
 	}
 	const membership = await membershipOf(db, sitting.id, invitee.id);
 	if (membership.isParticipant) {
-		throw new ORPCError("CONFLICT", {
-			message: `${personName(invitee)} is already in this sitting.`,
+		throw appError("CONFLICT", "sitting.invitation.alreadyIn", {
+			params: { name: personName(invitee) },
 		});
 	}
 	if (membership.removedByOrganiser) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `${personName(invitee)} was removed from this sitting. Add them back directly instead.`,
+		throw appError("BAD_REQUEST", "sitting.invitation.wasRemoved", {
+			params: { name: personName(invitee) },
 		});
 	}
 	const pending = await db.sittingInvitation.findFirst({
@@ -838,8 +837,8 @@ export async function createSittingInvitation(
 		select: { id: true },
 	});
 	if (pending) {
-		throw new ORPCError("CONFLICT", {
-			message: `${personName(invitee)} already has an invitation.`,
+		throw appError("CONFLICT", "sitting.invitation.alreadyInvited", {
+			params: { name: personName(invitee) },
 		});
 	}
 
@@ -859,8 +858,14 @@ export async function createSittingInvitation(
 	void dispatchNotification(db, {
 		kind: "sitting_invitation",
 		recipientUserIds: [invitee.id],
-		title: "You were invited to a sitting",
-		body: `${inviter ? personName(inviter) : "An organiser"} invited you to join ${displayName(sitting)}.`,
+		message: {
+			id: "sittingInvitation",
+			values: {
+				hasInviter: inviter ? "yes" : "no",
+				inviter: inviter ? personName(inviter) : "",
+				sitting: displayName(sitting),
+			},
+		},
 		href: `/sittings/${sitting.slug}`,
 	}).catch((error) =>
 		console.error("sitting invitation notification failed", error),
@@ -883,7 +888,7 @@ export async function cancelSittingInvitation(
 		},
 	});
 	if (!invitation) {
-		throw new ORPCError("NOT_FOUND", { message: "Invitation not found." });
+		throw appError("NOT_FOUND", "sitting.invitation.notFound");
 	}
 	assertCanManage(invitation.sitting, actor);
 	if (invitation.status === "pending") {
@@ -910,7 +915,7 @@ export async function respondToSittingInvitation(
 		},
 	});
 	if (!invitation || invitation.inviteeId !== actor.id) {
-		throw new ORPCError("NOT_FOUND", { message: "Invitation not found." });
+		throw appError("NOT_FOUND", "sitting.invitation.notFound");
 	}
 	if (invitation.status !== "pending") {
 		throw new ORPCError("BAD_REQUEST", {

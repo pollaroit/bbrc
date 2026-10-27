@@ -1,6 +1,6 @@
 import type { Database, DatabaseTransaction } from "@bbrc/db";
 import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { activeParticipationWhere } from "../sitting/participation-active";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import { recomputeBookReadingCounters } from "./book-reading-counters";
@@ -87,16 +87,14 @@ async function addToWishlistInTransaction(
 			select: { id: true },
 		});
 		if (!book) {
-			throw new ORPCError("NOT_FOUND", { message: "Book not found" });
+			throw appError("NOT_FOUND", "reading.bookNotFound");
 		}
 		const hasRead = await tx.read.findUnique({
 			where: { userId_bookId: { userId, bookId: book.id } },
 			select: { userId: true },
 		});
 		if (hasRead) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "You have already read this book.",
-			});
+			throw appError("BAD_REQUEST", "reading.alreadyRead");
 		}
 		const shelf = await ensureWishlistShelf(tx, userId);
 		const existing = await tx.shelfBook.findUnique({
@@ -106,8 +104,8 @@ async function addToWishlistInTransaction(
 		const count = await tx.shelfBook.count({ where: { shelfId: shelf.id } });
 		if (existing) return { inWishlist: true, count };
 		if (count >= MAX_BOOKS_PER_SHELF) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: `Your wishlist can hold ${MAX_BOOKS_PER_SHELF} books.`,
+			throw appError("BAD_REQUEST", "reading.wishlistFull", {
+				params: { max: MAX_BOOKS_PER_SHELF },
 			});
 		}
 		const max = await tx.shelfBook.aggregate({
@@ -142,7 +140,7 @@ export async function removeFromWishlist(
 		select: { id: true },
 	});
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", { message: "Book not found" });
+		throw appError("NOT_FOUND", "reading.bookNotFound");
 	}
 	await removeBookFromWishlist(db, userId, book.id);
 	const shelf = await db.shelf.findFirst({
@@ -238,7 +236,7 @@ export async function wishlistPopularityForSitting(
 		},
 	});
 	if (!sitting) {
-		throw new ORPCError("NOT_FOUND", { message: "Sitting not found" });
+		throw appError("NOT_FOUND", "reading.sittingNotFound");
 	}
 	const { items } = await wishlistPopularityForUsers(
 		db,

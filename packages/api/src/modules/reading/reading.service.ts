@@ -9,7 +9,7 @@ import {
 	readingStats,
 	resolveClubTimeZone,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { snapshotOpenLibraryEdition } from "../edition/edition.service";
 import { editionLabelOf } from "../edition/edition-support";
 import { activeParticipationWhere } from "../sitting/participation-active";
@@ -254,7 +254,7 @@ async function loadBook(db: Db, slug: string) {
 		select: { id: true, slug: true, title: true, pages: true },
 	});
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", { message: "Book not found" });
+		throw appError("NOT_FOUND", "reading.bookNotFound");
 	}
 	return book;
 }
@@ -265,7 +265,7 @@ async function loadOwnReading(db: Db, userId: string, id: string) {
 		select: { ...readingSelect, userId: true },
 	});
 	if (!row || row.userId !== userId) {
-		throw new ORPCError("NOT_FOUND", { message: "Reading not found" });
+		throw appError("NOT_FOUND", "reading.notFound");
 	}
 	return row;
 }
@@ -437,9 +437,7 @@ export async function startReading(
 			select: { userId: true },
 		});
 		if (hasRead) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "You have already read this book.",
-			});
+			throw appError("BAD_REQUEST", "reading.alreadyRead");
 		}
 
 		let memberEdition: {
@@ -463,9 +461,7 @@ export async function startReading(
 				},
 			});
 			if (!edition || edition.bookId !== book.id) {
-				throw new ORPCError("BAD_REQUEST", {
-					message: "That edition belongs to another book.",
-				});
+				throw appError("BAD_REQUEST", "reading.editionOfAnotherBook");
 			}
 			memberEdition = {
 				id: edition.id,
@@ -524,8 +520,8 @@ export async function startReading(
 			where: { userId, finishedAt: null },
 		});
 		if (active >= MAX_ACTIVE_READINGS) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: `You can read ${MAX_ACTIVE_READINGS} books at a time. Finish or drop one first.`,
+			throw appError("BAD_REQUEST", "reading.tooManyActive", {
+				params: { max: MAX_ACTIVE_READINGS },
 			});
 		}
 
@@ -559,18 +555,14 @@ export async function updateReadingProgress(
 ): Promise<ReadingItem> {
 	const row = await loadOwnReading(db, userId, input.id);
 	if (row.finishedAt) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "This book is already finished.",
-		});
+		throw appError("BAD_REQUEST", "reading.alreadyFinished");
 	}
 
 	let page: number | null = row.currentPage;
 	let percent = row.percent;
 	if (input.page != null) {
 		if (row.totalPages == null) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Add the number of pages to track by page.",
-			});
+			throw appError("BAD_REQUEST", "reading.pagesNeeded");
 		}
 		page = Math.min(input.page, row.totalPages);
 		percent = percentFromPage(page, row.totalPages);
@@ -620,9 +612,7 @@ export async function setReadingEdition(
 ): Promise<ReadingItem> {
 	const row = await loadOwnReading(db, userId, input.id);
 	if (row.finishedAt) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "This book is already finished.",
-		});
+		throw appError("BAD_REQUEST", "reading.alreadyFinished");
 	}
 	let memberPages: number | null = null;
 	let memberLabel: string | null = null;
@@ -641,9 +631,7 @@ export async function setReadingEdition(
 			},
 		});
 		if (!edition || edition.bookId !== row.book.id) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "That edition belongs to another book.",
-			});
+			throw appError("BAD_REQUEST", "reading.editionOfAnotherBook");
 		}
 		memberPages = edition.pages;
 		memberLabel = editionLabelOf({
@@ -697,9 +685,7 @@ export async function abandonReading(
 ): Promise<void> {
 	const row = await loadOwnReading(db, userId, id);
 	if (row.finishedAt) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "A finished book cannot be dropped.",
-		});
+		throw appError("BAD_REQUEST", "reading.finishedCannotBeDropped");
 	}
 	await db.$transaction(async (tx) => {
 		await tx.reading.delete({ where: { id: row.id } });
@@ -838,7 +824,7 @@ export async function getUserCurrentReading(
 		},
 	});
 	if (!user || (user.isHidden && user.id !== viewerId)) {
-		throw new ORPCError("NOT_FOUND", { message: "Member not found" });
+		throw appError("NOT_FOUND", "reading.memberNotFound");
 	}
 	const isSelf = user.id === viewerId;
 	if (!isSelf && !user.showCurrentlyReading) {

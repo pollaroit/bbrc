@@ -1,6 +1,6 @@
 import type { ProgressSchema } from "@bbrc/schemas";
-import { ORPCError } from "@orpc/server";
 import type { z } from "zod";
+import { appError } from "../../lib/app-error";
 
 export type ParticipationProgress = z.infer<typeof ProgressSchema>;
 
@@ -19,9 +19,7 @@ export function assertMemberCanSetProgress(
 	next: ParticipationProgress,
 ): void {
 	if (next === "dnf") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "DNF is applied automatically when a sitting ends",
-		});
+		throw appError("BAD_REQUEST", "sitting.progress.dnfAutomatic");
 	}
 
 	if (current === next) {
@@ -29,8 +27,8 @@ export function assertMemberCanSetProgress(
 	}
 
 	if (!memberTransitions[current].includes(next)) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `Cannot change progress from ${current} to ${next}`,
+		throw appError("BAD_REQUEST", "sitting.progress.changeNotAllowed", {
+			params: { current, next },
 			data: { current, next },
 		});
 	}

@@ -1,7 +1,7 @@
 import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import { contentPlainText } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { fetchEditionExportMetadataBatch } from "../../lib/open-library/work-editions";
 import {
 	type BookListQueryInput,
@@ -106,8 +106,7 @@ export async function exportUserReads(
 	});
 
 	if (!user) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
+		throw appError("NOT_FOUND", "read.memberNotFound", {
 			data: { username: input.username },
 		});
 	}
@@ -125,9 +124,7 @@ export async function exportUserReads(
 	const mutualOnly = Boolean(input.mutualOnly && viewerId);
 
 	if (input.mutualOnly && !viewerId) {
-		throw new ORPCError("UNAUTHORIZED", {
-			message: "Sign in to filter by mutual reads.",
-		});
+		throw appError("UNAUTHORIZED", "read.signInForMutualReads");
 	}
 
 	const bookFilter: Prisma.BookWhereInput =

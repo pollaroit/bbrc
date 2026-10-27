@@ -8,6 +8,7 @@ import {
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import type { z } from "zod";
+import { appError } from "../../lib/app-error";
 import { definePagination } from "../../utils/pagination";
 import {
 	assertMemberVisible,
@@ -74,10 +75,7 @@ async function loadBook(slug: string, db: Database) {
 	});
 
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
-			data: { slug },
-		});
+		throw appError("NOT_FOUND", "quiz.bookNotFound", { data: { slug } });
 	}
 
 	return book;
@@ -86,9 +84,7 @@ async function loadBook(slug: string, db: Database) {
 function requireUserId(session: Session | null): string {
 	const userId = session?.user?.id;
 	if (!userId) {
-		throw new ORPCError("UNAUTHORIZED", {
-			message: "Sign in to take a quiz.",
-		});
+		throw appError("UNAUTHORIZED", "quiz.signInToTake");
 	}
 	return userId;
 }
@@ -384,9 +380,7 @@ export async function startQuiz(
 	}
 
 	if (!(await hasReadBook(userId, book.id, db))) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Mark this book as read to take its quiz.",
-		});
+		throw appError("FORBIDDEN", "quiz.markReadFirst");
 	}
 
 	const quiz = await db.quiz.findUnique({
@@ -420,9 +414,7 @@ export async function startQuiz(
 
 	// This request would call the AI: enforce the daily limits first.
 	if (!quizGenerationAvailable()) {
-		throw new ORPCError("PRECONDITION_FAILED", {
-			message: "Quizzes are not available right now.",
-		});
+		throw appError("PRECONDITION_FAILED", "quiz.unavailable");
 	}
 
 	const isAdmin = session?.user?.isAdmin === true;
@@ -523,15 +515,11 @@ export async function submitQuiz(
 	});
 
 	if (!submission) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Open the quiz before submitting it.",
-		});
+		throw appError("NOT_FOUND", "quiz.openBeforeSubmit");
 	}
 
 	if (submission.status === "submitted") {
-		throw new ORPCError("CONFLICT", {
-			message: "You already submitted this quiz.",
-		});
+		throw appError("CONFLICT", "quiz.alreadySubmitted");
 	}
 
 	if (submission.status === "forfeited" || submission.expiresAt <= now) {
@@ -561,9 +549,7 @@ export async function submitQuiz(
 	});
 
 	if (updated.count === 0) {
-		throw new ORPCError("CONFLICT", {
-			message: "This quiz was already closed.",
-		});
+		throw appError("CONFLICT", "quiz.alreadyClosed");
 	}
 
 	return { status: "submitted" };
@@ -716,9 +702,7 @@ export async function getQuizResults(
 		: null;
 
 	if (!quiz || !mine) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Take the quiz to see its results.",
-		});
+		throw appError("FORBIDDEN", "quiz.takeToSeeResults");
 	}
 
 	let status: "submitted" | "forfeited";
@@ -734,9 +718,7 @@ export async function getQuizResults(
 		});
 		status = "forfeited";
 	} else {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Submit the quiz to see its results.",
-		});
+		throw appError("FORBIDDEN", "quiz.submitToSeeResults");
 	}
 
 	const rows = await loadSubmittedRows(quiz.id, db);
@@ -856,9 +838,7 @@ export async function getQuizReview(
 	assertMemberVisible(target, viewer);
 
 	if (!viewer || (viewer.userId !== target.id && !viewer.isAdmin)) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only you can review your own answers.",
-		});
+		throw appError("FORBIDDEN", "quiz.ownAnswersOnly");
 	}
 
 	const { book, quiz } = await loadQuizByBookSlug(input.slug, db);
@@ -869,7 +849,7 @@ export async function getQuizReview(
 		: null;
 
 	if (!quiz || !submission || submission.status !== "submitted") {
-		throw new ORPCError("NOT_FOUND", { message: "No submitted quiz found." });
+		throw appError("NOT_FOUND", "quiz.noSubmission");
 	}
 
 	return {
@@ -908,14 +888,12 @@ export async function reportQuizQuestion(
 		: null;
 
 	if (!quiz || submission?.status !== "submitted") {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only people who took the quiz can report a question.",
-		});
+		throw appError("FORBIDDEN", "quiz.reportTakersOnly");
 	}
 
 	const question = quiz.questions.find((q) => q.position === input.position);
 	if (!question) {
-		throw new ORPCError("NOT_FOUND", { message: "Question not found" });
+		throw appError("NOT_FOUND", "quiz.questionNotFound");
 	}
 
 	await db.quizQuestionReport.upsert({
@@ -1140,7 +1118,7 @@ async function loadEditableQuiz(quizId: string, db: Database) {
 	});
 
 	if (!quiz) {
-		throw new ORPCError("NOT_FOUND", { message: "Quiz not found" });
+		throw appError("NOT_FOUND", "quiz.quizNotFound");
 	}
 
 	return quiz;
@@ -1148,10 +1126,7 @@ async function loadEditableQuiz(quizId: string, db: Database) {
 
 function assertNoSubmissions(count: number) {
 	if (count > 0) {
-		throw new ORPCError("CONFLICT", {
-			message:
-				"This quiz already has attempts, so it can no longer be deleted or regenerated.",
-		});
+		throw appError("CONFLICT", "quiz.hasAttempts");
 	}
 }
 
@@ -1171,9 +1146,7 @@ export async function adminClearUnavailableQuiz(
 ): Promise<{ ok: true }> {
 	const quiz = await loadEditableQuiz(quizId, db);
 	if (quiz.status !== "unavailable") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Only unavailable quizzes can be cleared.",
-		});
+		throw appError("BAD_REQUEST", "quiz.clearOnlyUnavailable");
 	}
 	await db.quiz.delete({ where: { id: quiz.id } });
 	return { ok: true };
@@ -1189,9 +1162,7 @@ export async function adminRegenerateQuiz(
 	assertNoSubmissions(quiz._count.submissions);
 
 	if (!quizGenerationAvailable()) {
-		throw new ORPCError("PRECONDITION_FAILED", {
-			message: "Gemini is not configured.",
-		});
+		throw appError("PRECONDITION_FAILED", "quiz.aiNotConfigured");
 	}
 
 	await db.quiz.update({
@@ -1204,9 +1175,7 @@ export async function adminRegenerateQuiz(
 		db,
 	);
 	if (outcome === "declined") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "The model declined to write a quiz for this book.",
-		});
+		throw appError("BAD_REQUEST", "quiz.modelDeclined");
 	}
 
 	return { ok: true };
