@@ -9,7 +9,7 @@ import {
 	scoreCatalogBookSimilarity,
 	similarPageCount,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { mapBookSeriesSummary } from "../series/series.service";
 import { publicShelfWhere } from "../shelf/shelf-visibility";
 import type { GetBookListOutput } from "./book.schema";
@@ -121,10 +121,7 @@ export async function getBookCatalogDiscovery(
 	});
 
 	if (!source) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
-			data: { slug: bookSlug },
-		});
+		throw appError("NOT_FOUND", "book.notFound", { data: { slug: bookSlug } });
 	}
 
 	const candidates = await db.book.findMany({

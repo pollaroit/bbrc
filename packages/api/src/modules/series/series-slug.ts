@@ -1,6 +1,6 @@
 import type { Database, DatabaseTransaction } from "@bbrc/db";
 import { generateUniqueSlug } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 
 const SERIES_SLUG_MIN_LENGTH = 3;
 
@@ -35,8 +35,5 @@ export async function generateSeriesSlug(
 		}
 	}
 
-	throw new ORPCError("CONFLICT", {
-		message: "Failed to generate series slug",
-		data: { title },
-	});
+	throw appError("CONFLICT", "series.slugFailed", { data: { title } });
 }

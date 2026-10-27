@@ -1,5 +1,5 @@
 import type { Database, Prisma } from "@bbrc/db";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 
 export type BookDbClient = Database | Prisma.TransactionClient;
 
@@ -86,9 +86,7 @@ export async function resolveReadAfterBookSlugs(
 	const uniqueSlugs = [...new Set(slugs)];
 
 	if (uniqueSlugs.length !== slugs.length) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Read-after books must not include duplicates",
-		});
+		throw appError("BAD_REQUEST", "book.readAfterDuplicates");
 	}
 
 	if (uniqueSlugs.length === 0) {
@@ -101,9 +99,7 @@ export async function resolveReadAfterBookSlugs(
 	});
 
 	if (books.length !== uniqueSlugs.length) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "One or more read-after books were not found in the catalog",
-		});
+		throw appError("BAD_REQUEST", "book.readAfterNotFound");
 	}
 
 	const bySlug = new Map(books.map((book) => [book.slug, book]));
@@ -123,19 +119,14 @@ export async function syncBookReadAfterPrerequisites(
 
 	for (const prereq of resolved) {
 		if (prereq.id === bookId) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "A book cannot require itself as a prior read",
-			});
+			throw appError("BAD_REQUEST", "book.readAfterSelf");
 		}
 	}
 
 	const prerequisiteIds = resolved.map((book) => book.id);
 
 	if (await wouldCreatePrerequisiteCycle(bookId, prerequisiteIds, db)) {
-		throw new ORPCError("BAD_REQUEST", {
-			message:
-				"Read-after order would create a cycle. Check earlier books in the series.",
-		});
+		throw appError("BAD_REQUEST", "book.readAfterCycle");
 	}
 
 	await db.bookReadingPrerequisite.deleteMany({

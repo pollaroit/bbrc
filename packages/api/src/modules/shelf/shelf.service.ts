@@ -9,7 +9,7 @@ import type { ShelfStatusSchema } from "./shelf.schema";
 
 type ShelfStatus = z.infer<typeof ShelfStatusSchema>;
 
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { definePagination } from "../../utils/pagination";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import {
@@ -50,10 +50,7 @@ import {
 import { buildPublicShelfListWhere } from "./shelf-list-where";
 import { displayName, notifyShelfCollaboration } from "./shelf-notify";
 import { generateShelfSlug } from "./shelf-slug";
-import {
-	publicShelfWhere,
-	WISHLIST_PROTECTED_MESSAGE,
-} from "./shelf-visibility";
+import { publicShelfWhere } from "./shelf-visibility";
 
 const COVER_PREVIEW_LIMIT = 4;
 
@@ -139,10 +136,7 @@ async function loadBookBySlug(
 	});
 
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
-			data: { slug },
-		});
+		throw appError("NOT_FOUND", "book.notFound", { data: { slug } });
 	}
 
 	return book;
@@ -278,10 +272,7 @@ export async function getShelfBySlug(
 	});
 
 	if (!shelf) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Shelf not found",
-			data: { shelfSlug },
-		});
+		throw appError("NOT_FOUND", "shelf.notFound", { data: { shelfSlug } });
 	}
 
 	const isOwner = viewerIsOwner(viewerUserId, shelf.userId);
@@ -300,7 +291,7 @@ export async function getShelfBySlug(
 			isAdmin: viewer?.isAdmin === true,
 		})
 	) {
-		throw new ORPCError("NOT_FOUND", { message: "Shelf not found" });
+		throw appError("NOT_FOUND", "shelf.notFound");
 	}
 
 	const coverMap = await loadCoverPreviewMap([shelf.id], db);
@@ -427,9 +418,7 @@ export async function updateShelf(
 			input.status !== undefined && input.status !== shelf.status;
 		const wantsType = input.type !== undefined && input.type !== shelf.type;
 		if (wantsTitle || wantsStatus || wantsType) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: WISHLIST_PROTECTED_MESSAGE,
-			});
+			throw appError("BAD_REQUEST", "shelf.wishlistProtected");
 		}
 	}
 
@@ -449,10 +438,7 @@ export async function updateShelf(
 	if (input.status !== undefined && input.status !== shelf.status) {
 		requireShelfPermission(access, "edit_status");
 		if (input.status === "draft" && shelf.status !== "draft") {
-			throw new ORPCError("BAD_REQUEST", {
-				message:
-					"A shelf that has been public or archived cannot be moved back to draft.",
-			});
+			throw appError("BAD_REQUEST", "shelf.noDraftRevert");
 		}
 		data.status = input.status;
 		changed.push("status");
@@ -465,9 +451,7 @@ export async function updateShelf(
 
 	if (input.visibility !== undefined && input.visibility !== shelf.visibility) {
 		if (!access.isOwner) {
-			throw new ORPCError("FORBIDDEN", {
-				message: "Only the owner can change who can see this shelf.",
-			});
+			throw appError("FORBIDDEN", "shelf.visibilityOwnerOnly");
 		}
 		data.visibility = input.visibility;
 		changed.push("visibility");
@@ -507,14 +491,12 @@ export async function deleteShelf(
 	});
 	requireShelfPermission(access, "delete_shelf");
 	const { shelf } = access;
-	assertNotWishlist(shelf, "Your Wishlist cannot be deleted.");
+	assertNotWishlist(shelf, "shelf.wishlistNotDeletable");
 
 	if (shelf._count.books > 0) {
 		const confirm = input.confirmTitle?.trim();
 		if (!confirm || confirm !== shelf.title) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Type the shelf title to confirm deletion.",
-			});
+			throw appError("BAD_REQUEST", "shelf.confirmTitle");
 		}
 	}
 
@@ -536,8 +518,14 @@ export async function deleteShelf(
 	await notifyShelfCollaboration(db, {
 		recipientUserIds: [shelf.userId, ...collaborators.map((row) => row.userId)],
 		excludeUserIds: [userId],
-		title: "A shared shelf was deleted",
-		body: `${actor ? displayName(actor) : "Someone"} deleted "${shelf.title}".`,
+		message: {
+			id: "shelfDeleted",
+			values: {
+				hasActor: actor ? "yes" : "no",
+				actor: actor ? displayName(actor) : "",
+				shelf: shelf.title,
+			},
+		},
 	});
 
 	return { removed: true as const };
@@ -576,10 +564,7 @@ export async function addBookToShelf(
 				select: { userId: true },
 			});
 			if (alreadyRead) {
-				throw new ORPCError("BAD_REQUEST", {
-					message:
-						"You have already read this book, so it is not for the Wishlist.",
-				});
+				throw appError("BAD_REQUEST", "shelf.wishlistAlreadyRead");
 			}
 		}
 
@@ -597,8 +582,8 @@ export async function addBookToShelf(
 		}
 
 		if (shelf._count.books >= MAX_BOOKS_PER_SHELF) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: `A shelf can hold at most ${MAX_BOOKS_PER_SHELF} books.`,
+			throw appError("BAD_REQUEST", "shelf.bookLimit", {
+				params: { max: MAX_BOOKS_PER_SHELF },
 			});
 		}
 
@@ -717,9 +702,7 @@ export async function reorderShelfBooks(
 		});
 
 		if (rows.length !== bookSlugs.length) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Reorder list must include every book on the shelf.",
-			});
+			throw appError("BAD_REQUEST", "shelf.reorderMissing");
 		}
 
 		const slugToBookId = new Map(
@@ -733,17 +716,13 @@ export async function reorderShelfBooks(
 		for (const slug of bookSlugs) {
 			const bookId = slugToBookId.get(slug);
 			if (!bookId) {
-				throw new ORPCError("BAD_REQUEST", {
-					message: "Reorder list includes a book that is not on this shelf.",
-				});
+				throw appError("BAD_REQUEST", "shelf.reorderForeign");
 			}
 			orderedBookIds.push(bookId);
 		}
 
 		if (new Set(orderedBookIds).size !== orderedBookIds.length) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Reorder list contains duplicate books.",
-			});
+			throw appError("BAD_REQUEST", "shelf.reorderDuplicate");
 		}
 
 		for (const [i, bookId] of orderedBookIds.entries()) {
@@ -818,9 +797,7 @@ export async function updateBookNotes(
 			select: { notes: true },
 		});
 		if (!existing) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "That book is not on this shelf.",
-			});
+			throw appError("NOT_FOUND", "shelf.bookNotOnShelf");
 		}
 		if (existing.notes === notes) {
 			return { notes };

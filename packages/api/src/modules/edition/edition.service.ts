@@ -7,7 +7,7 @@ import {
 	parseEditionKey,
 	richContentPreview,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import {
 	fetchIsBorrowable,
 	fetchOpenLibraryEditionFull,
@@ -61,7 +61,7 @@ async function loadBook(db: Database, slug: string) {
 			olid: true,
 		},
 	});
-	if (!book) throw new ORPCError("NOT_FOUND", { message: "Book not found" });
+	if (!book) throw appError("NOT_FOUND", "book.notFound");
 	return book;
 }
 type BookRow = Awaited<ReturnType<typeof loadBook>>;
@@ -371,8 +371,7 @@ async function resolveKey(
 	context: UsageContext,
 ): Promise<Resolved> {
 	const parsed = parseEditionKey(rawKey);
-	if (!parsed)
-		throw new ORPCError("NOT_FOUND", { message: "Edition not found" });
+	if (!parsed) throw appError("NOT_FOUND", "edition.notFound");
 
 	if (parsed.kind === "open_library") {
 		return { type: "open_library", olid: parsed.olid };
@@ -393,7 +392,7 @@ async function resolveKey(
 				? { type: "redirect", key: tombstone.redirectKey }
 				: { type: "removed" };
 		}
-		throw new ORPCError("NOT_FOUND", { message: "Edition not found" });
+		throw appError("NOT_FOUND", "edition.notFound");
 	}
 
 	// An ISBN: ours first, then Open Library's (cached, so a bad ISBN is cheap).
@@ -407,7 +406,7 @@ async function resolveKey(
 	if (found && (!found.workOlid || found.workOlid === book.olid)) {
 		return { type: "redirect", key: openLibraryEditionKey(found.olid) };
 	}
-	throw new ORPCError("NOT_FOUND", { message: "Edition not found" });
+	throw appError("NOT_FOUND", "edition.notFound");
 }
 
 // ── edition.get ────────────────────────────────────────────────────────────
@@ -432,8 +431,7 @@ export async function getEdition(
 		core = coreFromMember(resolved.row, null);
 	} else {
 		const loaded = await loadOpenLibraryCore(db, book, resolved.olid, context);
-		if (!loaded)
-			throw new ORPCError("NOT_FOUND", { message: "Edition not found" });
+		if (!loaded) throw appError("NOT_FOUND", "edition.notFound");
 		core = loaded.core;
 	}
 
@@ -561,7 +559,7 @@ async function usageFilter(db: Database, book: BookRow, rawKey: string) {
 	const context = await loadUsageContext(db, book.id);
 	const resolved = await resolveKey(db, book, rawKey, context);
 	if (resolved.type !== "open_library" && resolved.type !== "member") {
-		throw new ORPCError("NOT_FOUND", { message: "Edition not found" });
+		throw appError("NOT_FOUND", "edition.notFound");
 	}
 	const olid = resolved.type === "open_library" ? resolved.olid : null;
 	const memberIds =
@@ -694,7 +692,7 @@ export async function getEditionViewer(
 	const context = await loadUsageContext(db, book.id);
 	const resolved = await resolveKey(db, book, rawKey, context);
 	if (resolved.type !== "open_library" && resolved.type !== "member") {
-		throw new ORPCError("NOT_FOUND", { message: "Edition not found" });
+		throw appError("NOT_FOUND", "edition.notFound");
 	}
 	const olid = resolved.type === "open_library" ? resolved.olid : null;
 	const memberIds =
@@ -781,15 +779,14 @@ export async function compareEditions(
 						: { type: "removed" };
 		}
 		if (resolved.type === "removed") {
-			throw new ORPCError("NOT_FOUND", { message: "Edition not found" });
+			throw appError("NOT_FOUND", "edition.notFound");
 		}
 		const key =
 			resolved.type === "member"
 				? canonicalKeyOfMember(resolved.row)
 				: openLibraryEditionKey(resolved.olid);
 		const summary = await summaryForKey(db, book, key, context);
-		if (!summary)
-			throw new ORPCError("NOT_FOUND", { message: "Edition not found" });
+		if (!summary) throw appError("NOT_FOUND", "edition.notFound");
 		items.push(summary);
 	}
 	return { items };

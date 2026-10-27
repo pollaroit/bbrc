@@ -6,7 +6,7 @@ import {
 	normalizeIsbn,
 	openLibraryEditionKey,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import {
 	fetchOpenLibraryEditionFull,
 	resolveOpenLibraryEditionByIsbn,
@@ -113,7 +113,7 @@ async function loadBook(db: Database, slug: string) {
 		where: { slug },
 		select: { id: true, slug: true },
 	});
-	if (!book) throw new ORPCError("NOT_FOUND", { message: "Book not found" });
+	if (!book) throw appError("NOT_FOUND", "book.notFound");
 	return book;
 }
 
@@ -175,8 +175,7 @@ async function assertNoDuplicate(
 		select: { id: true },
 	});
 	if (existing && existing.id !== exceptId) {
-		throw new ORPCError("CONFLICT", {
-			message: "This edition (same ISBN) is already listed.",
+		throw appError("CONFLICT", "edition.alreadyListed", {
 			data: { editionId: existing.id },
 		});
 	}
@@ -189,8 +188,8 @@ export async function createBookEdition(
 ) {
 	const book = await loadBook(db, input.bookSlug);
 	if ((await addsLeftToday(db, actor.id)) <= 0 && !actor.isAdmin) {
-		throw new ORPCError("TOO_MANY_REQUESTS", {
-			message: `You can add ${MAX_EDITIONS_PER_MEMBER_PER_DAY} editions a day. Try again tomorrow.`,
+		throw appError("TOO_MANY_REQUESTS", "edition.dailyLimit", {
+			params: { count: MAX_EDITIONS_PER_MEMBER_PER_DAY },
 		});
 	}
 	const isbn = isbnFields(input.isbn);
@@ -233,7 +232,7 @@ async function loadEdition(db: Database, id: string) {
 		where: { id },
 		select: editionSelect,
 	});
-	if (!row) throw new ORPCError("NOT_FOUND", { message: "Edition not found" });
+	if (!row) throw appError("NOT_FOUND", "edition.notFound");
 	return row as EditionRow & { createdById: string | null };
 }
 
@@ -252,9 +251,7 @@ export async function updateBookEdition(
 ) {
 	const existing = await loadEdition(db, input.id);
 	if (!actor.isAdmin && existing.createdById !== actor.id) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only the member who added it or an admin can edit it.",
-		});
+		throw appError("FORBIDDEN", "edition.onlyOwnerOrAdminEdit");
 	}
 	const data: Record<string, unknown> = {};
 	if (input.title !== undefined) data.title = input.title;
@@ -306,16 +303,11 @@ export async function deleteBookEdition(
 	const existing = await loadEdition(db, id);
 	const isCreator = existing.createdById === actor.id;
 	if (!actor.isAdmin && !isCreator) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only the member who added it or an admin can delete it.",
-		});
+		throw appError("FORBIDDEN", "edition.onlyOwnerOrAdminDelete");
 	}
 	const readers = existing._count.reads + existing._count.readings;
 	if (!actor.isAdmin && readers > 0) {
-		throw new ORPCError("FORBIDDEN", {
-			message:
-				"Members are using this edition, so only an admin can delete it.",
-		});
+		throw appError("FORBIDDEN", "edition.inUseAdminOnlyDelete");
 	}
 	await db.$transaction(async (tx) => {
 		const full = await tx.bookEdition.findUnique({ where: { id } });
@@ -381,21 +373,17 @@ export async function mergeBookEditions(
 	intoId: string,
 ) {
 	if (fromId === intoId) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Pick two different editions.",
-		});
+		throw appError("BAD_REQUEST", "edition.pickTwoDifferent");
 	}
 	const [from, into] = await Promise.all([
 		db.bookEdition.findUnique({ where: { id: fromId } }),
 		db.bookEdition.findUnique({ where: { id: intoId } }),
 	]);
 	if (!from || !into) {
-		throw new ORPCError("NOT_FOUND", { message: "Edition not found" });
+		throw appError("NOT_FOUND", "edition.notFound");
 	}
 	if (from.bookId !== into.bookId) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Those editions belong to different books.",
-		});
+		throw appError("BAD_REQUEST", "edition.differentBooks");
 	}
 	let copiedCover = false;
 	await db.$transaction(async (tx) => {
@@ -463,19 +451,14 @@ export async function linkBookEdition(
 	}
 	const full = await fetchOpenLibraryEditionFull(openLibraryOlid);
 	if (!full || (full.workOlid && full.workOlid !== book?.olid)) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "That Open Library edition was not found for this book.",
-		});
+		throw appError("BAD_REQUEST", "edition.openLibraryEditionNotFound");
 	}
 	const taken = await db.bookEdition.findFirst({
 		where: { openLibraryOlid, NOT: { id } },
 		select: { id: true },
 	});
 	if (taken) {
-		throw new ORPCError("CONFLICT", {
-			message:
-				"Another member edition is already linked to that Open Library edition.",
-		});
+		throw appError("CONFLICT", "edition.openLibraryEditionLinked");
 	}
 	await db.bookEdition.update({ where: { id }, data: { openLibraryOlid } });
 }
@@ -493,7 +476,7 @@ export async function checkEditionIsbn(
 		where: { slug: bookSlug },
 		select: { id: true, olid: true },
 	});
-	if (!book) throw new ORPCError("NOT_FOUND", { message: "Book not found" });
+	if (!book) throw appError("NOT_FOUND", "book.notFound");
 
 	const pair = isbnPair(isbn);
 	const [memberRow, found] = await Promise.all([

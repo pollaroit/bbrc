@@ -1,8 +1,9 @@
 import type { Database } from "@bbrc/db";
 import { MAX_FAVORITES_PER_USER } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import {
 	clubReadEligibilityHint,
+	clubReadEligibilityKey,
 	userCompletedClubRead,
 } from "../book/book-read-eligibility";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
@@ -26,10 +27,7 @@ async function loadBookBySlug(slug: string, db: Database) {
 	});
 
 	if (!book) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Book not found",
-			data: { slug },
-		});
+		throw appError("NOT_FOUND", "book.notFound", { data: { slug } });
 	}
 
 	return book;
@@ -42,8 +40,7 @@ async function loadUserByUsername(username: string, db: Database) {
 	});
 
 	if (!user) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Member not found",
+		throw appError("NOT_FOUND", "favorite.memberNotFound", {
 			data: { username },
 		});
 	}
@@ -193,8 +190,10 @@ export async function addFavorite(
 
 	const canFavorite = await userCompletedClubRead(userId, book.id, db);
 	if (!canFavorite) {
-		const hint = await clubReadEligibilityHint(userId, book.id, db);
-		throw new ORPCError("FORBIDDEN", { message: hint });
+		throw appError(
+			"FORBIDDEN",
+			await clubReadEligibilityKey(userId, book.id, db),
+		);
 	}
 
 	// Idempotent: adding a book that is already a favorite just returns it, so a
@@ -221,16 +220,14 @@ export async function addFavorite(
 
 	if (favorites.length >= MAX_FAVORITES_PER_USER) {
 		if (!input.replaceFavoriteId) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: `You can keep at most ${MAX_FAVORITES_PER_USER} favorites. Choose one to replace.`,
+			throw appError("BAD_REQUEST", "favorite.limitReached", {
+				params: { max: MAX_FAVORITES_PER_USER },
 			});
 		}
 
 		const toReplace = favorites.find((f) => f.id === input.replaceFavoriteId);
 		if (!toReplace) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "That favorite slot is not yours.",
-			});
+			throw appError("BAD_REQUEST", "favorite.slotNotYours");
 		}
 
 		await db.favorite.delete({ where: { id: toReplace.id } });
@@ -253,9 +250,7 @@ export async function addFavorite(
 		if (raced) {
 			return raced;
 		}
-		throw new ORPCError("CONFLICT", {
-			message: "Could not add this favorite. Try again.",
-		});
+		throw appError("CONFLICT", "favorite.addFailed");
 	}
 }
 
