@@ -27,6 +27,11 @@ import {
 	getUserProfileCard,
 } from "./user.service";
 import {
+	SetLocaleInputSchema,
+	SetLocaleOutputSchema,
+} from "./user-locale.schema";
+import { setMyLocale } from "./user-locale.service";
+import {
 	GetMyPreferencesOutputSchema,
 	UpdateMyPreferencesInputSchema,
 	UpdateMyPreferencesOutputSchema,
@@ -60,6 +65,13 @@ import {
 } from "./username-update.service";
 
 export const userRouter = {
+	/** Saves the member's language; it is used on every device and for text written for them. */
+	setLocale: protectedProcedure
+		.input(SetLocaleInputSchema)
+		.output(SetLocaleOutputSchema)
+		.handler(async ({ input, context }) =>
+			setMyLocale(context.session.user.id, input, context.db),
+		),
 	getUserList: publicProcedure
 		.input(GetUserListInputSchema)
 		.output(GetUserListOutputSchema)
