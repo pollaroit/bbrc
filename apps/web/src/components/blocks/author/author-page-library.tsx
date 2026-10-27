@@ -1,5 +1,6 @@
 import { Star } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useFormatters } from "@/lib/i18n/use-formatters";
 import { AuthorPageCover, authorBookAnchor } from "./author-page-bits";
@@ -16,6 +17,7 @@ export type LibraryBook = {
 /** The author's books as small cards: cover, year, series place, rating and reads. */
 export function AuthorPageLibrary({ books }: { books: LibraryBook[] }) {
 	const f = useFormatters();
+	const t = useTranslations("authors");
 	return (
 		<ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 			{books.map((book) => (
@@ -37,7 +39,9 @@ export function AuthorPageLibrary({ books }: { books: LibraryBook[] }) {
 								{book.title}
 							</span>
 							<span className="text-muted-foreground text-xs tabular-nums">
-								{book.publishedIn > 0 ? book.publishedIn : "Year unknown"}
+								{book.publishedIn > 0
+									? book.publishedIn
+									: t("library.yearUnknown")}
 							</span>
 							{book.series ? (
 								<span className="truncate text-muted-foreground text-xs">
@@ -51,9 +55,7 @@ export function AuthorPageLibrary({ books }: { books: LibraryBook[] }) {
 										{f.decimal(book.averageRating, 1)}
 									</span>
 								) : null}
-								<span>
-									{book.readCount} {book.readCount === 1 ? "read" : "reads"}
-								</span>
+								<span>{t("library.reads", { count: book.readCount })}</span>
 							</span>
 						</div>
 					</Link>

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { AuthorPhoto } from "@/components/blocks/author/author-photo";
 import { FollowAuthorButton } from "@/components/blocks/author/follow-author-button";
 import { CountryFlagIcon } from "@/components/blocks/country-dropdown";
@@ -39,11 +40,12 @@ type SortMetric = { label: string; value: string };
 function sortMetricFor(
 	author: AuthorCardData,
 	sortBy: AuthorSortField | undefined,
+	t: ReturnType<typeof useTranslations<"authors">>,
 ): SortMetric | null {
 	switch (sortBy) {
 		case "birthYear":
 			return {
-				label: "Born",
+				label: t("card.born"),
 				value: author.birthYear != null ? String(author.birthYear) : "—",
 			};
 		case "createdAt":
@@ -68,6 +70,7 @@ function FooterStat({
 	value: number | string;
 	title: string;
 }) {
+	const t = useTranslations("authors");
 	return (
 		<span
 			className="inline-flex shrink-0 items-center gap-0.5 tabular-nums"
@@ -75,19 +78,16 @@ function FooterStat({
 		>
 			<Icon className="size-3.5 shrink-0" aria-hidden />
 			<span aria-hidden>{value}</span>
-			<span className="sr-only">{`${title}: ${value}`}</span>
+			<span className="sr-only">{t("card.stat", { title, value })}</span>
 		</span>
 	);
 }
 
-function plural(f: Formatters, count: number, one: string, many = `${one}s`) {
-	return `${f.number(count)} ${count === 1 ? one : many}`;
-}
-
 export function AuthorCard({ author, sortBy, className }: AuthorCardProps) {
 	const f = useFormatters();
+	const t = useTranslations("authors");
 	const href = `/authors/${author.slug}` as Route;
-	const metric = sortMetricFor(author, sortBy);
+	const metric = sortMetricFor(author, sortBy, t);
 	const [firstNationality] = author.nationalities;
 	const extraNationalities = author.nationalities.length - 1;
 	const covers = author.coverIds.flatMap((coverId) => {
@@ -117,7 +117,9 @@ export function AuthorCard({ author, sortBy, className }: AuthorCardProps) {
 						) : null}
 					</span>
 				) : (
-					<span className="min-w-0 truncate">Nationality unknown</span>
+					<span className="min-w-0 truncate">
+						{t("card.nationalityUnknown")}
+					</span>
 				)}
 				<span className="flex shrink-0 items-center gap-3 tabular-nums">
 					{metric ? (
@@ -131,17 +133,17 @@ export function AuthorCard({ author, sortBy, className }: AuthorCardProps) {
 					<FooterStat
 						icon={Eye}
 						value={author.readCount}
-						title={plural(f, author.readCount, "read")}
+						title={t("count.reads", { count: author.readCount })}
 					/>
 					<FooterStat
 						icon={MessageSquareText}
 						value={author.reviewCount}
-						title={plural(f, author.reviewCount, "review")}
+						title={t("count.reviews", { count: author.reviewCount })}
 					/>
 					<FooterStat
 						icon={BookText}
 						value={f.compact(author.totalPages)}
-						title={plural(f, author.totalPages, "page")}
+						title={t("count.pages", { count: author.totalPages })}
 					/>
 				</span>
 			</div>
@@ -149,7 +151,7 @@ export function AuthorCard({ author, sortBy, className }: AuthorCardProps) {
 			<div className="relative flex min-h-[8.5rem] flex-1">
 				<Link
 					href={href}
-					aria-label={`View ${author.name}`}
+					aria-label={t("card.view", { name: author.name })}
 					className="absolute inset-0 z-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 				/>
 				<div className="pointer-events-none relative z-1 flex min-w-0 flex-1 gap-3 p-3 sm:gap-4 sm:p-4">
@@ -200,7 +202,7 @@ export function AuthorCard({ author, sortBy, className }: AuthorCardProps) {
 						) : (
 							<p className="mt-auto inline-flex items-center gap-1 pt-2 text-muted-foreground text-xs">
 								<UserRound className="size-3.5" aria-hidden />
-								No covers yet
+								{t("card.noCovers")}
 							</p>
 						)}
 					</div>
@@ -212,18 +214,18 @@ export function AuthorCard({ author, sortBy, className }: AuthorCardProps) {
 					<FooterStat
 						icon={BookOpen}
 						value={author.bookCount}
-						title={plural(f, author.bookCount, "book")}
+						title={t("count.books", { count: author.bookCount })}
 					/>
 					<FooterStat
 						icon={Users}
 						value={author.readerCount}
-						title={plural(f, author.readerCount, "reader")}
+						title={t("count.readers", { count: author.readerCount })}
 					/>
 					{author.averageRating != null ? (
 						<FooterStat
 							icon={Star}
 							value={f.decimal(author.averageRating, 1)}
-							title="Club average rating"
+							title={t("card.averageRating")}
 						/>
 					) : null}
 				</div>

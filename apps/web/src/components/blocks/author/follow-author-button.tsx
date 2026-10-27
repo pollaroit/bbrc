@@ -3,6 +3,7 @@
 import { Button } from "@bbrc/ui/components/button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Bell, BellRing } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { useFormatters } from "@/lib/i18n/use-formatters";
@@ -26,6 +27,7 @@ type FollowAuthorButtonProps = {
  * so a count shown elsewhere on the page can read it without a second request.
  */
 export function useAuthorFollow(slug: string, initial?: AuthorFollowState) {
+	const t = useTranslations("authors");
 	const { data: session } = authClient.useSession();
 	const input = { target: { type: "author" as const, slug } };
 	const options = orpc.follow.state.queryOptions({ input });
@@ -59,14 +61,16 @@ export function useAuthorFollow(slug: string, initial?: AuthorFollowState) {
 			if (context) {
 				queryClient.setQueryData(options.queryKey, context.previous);
 			}
-			toast.error("Could not update your follow. Try again.");
+			toast.error(t("follow.failed"));
 		},
 		onSuccess: (data) => {
 			queryClient.setQueryData<AuthorFollowState>(options.queryKey, {
 				following: data.following,
 				followerCount: data.followerCount,
 			});
-			toast.success(data.following ? "Following this author" : "Unfollowed");
+			toast.success(
+				data.following ? t("follow.nowFollowing") : t("follow.unfollowed"),
+			);
 		},
 		onSettled: () => {
 			void queryClient.invalidateQueries({ queryKey: orpc.follow.mine.key() });
@@ -84,7 +88,7 @@ export function useAuthorFollow(slug: string, initial?: AuthorFollowState) {
 		isPending: mutation.isPending,
 		toggle: () => {
 			if (!session?.user) {
-				toast.info("Sign in to follow authors.");
+				toast.info(t("follow.signIn"));
 				return;
 			}
 			mutation.mutate();
@@ -100,6 +104,7 @@ export function FollowAuthorButton({
 	className,
 }: FollowAuthorButtonProps) {
 	const f = useFormatters();
+	const t = useTranslations("authors");
 	const follow = useAuthorFollow(slug, initial);
 	const Icon = follow.following ? BellRing : Bell;
 
@@ -114,7 +119,7 @@ export function FollowAuthorButton({
 			className={cn("shrink-0", className)}
 		>
 			<Icon className="size-4" aria-hidden />
-			{follow.following ? "Following" : "Follow"}
+			{follow.following ? t("follow.following") : t("follow.follow")}
 			{showCount && follow.isReady && follow.followerCount > 0 ? (
 				<span className="text-muted-foreground tabular-nums">
 					{f.compact(follow.followerCount)}

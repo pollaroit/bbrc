@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import {
 	AUTHOR_TABS,
@@ -10,12 +11,13 @@ import { cn } from "@/lib/utils";
 
 /** Scrolls sideways on a phone so thirteen tabs never wrap into a wall. */
 export function AuthorPageTabs({ slug }: { slug: string }) {
+	const t = useTranslations("authors");
 	const active = authorTabFromPathname(slug, usePathname() ?? "");
 
 	return (
 		<nav
 			className="-mx-4 overflow-x-auto border-border border-b px-4 sm:mx-0 sm:px-0"
-			aria-label="Author sections"
+			aria-label={t("tabs.label")}
 		>
 			<ul className="flex w-max min-w-full gap-1">
 				{AUTHOR_TABS.map((tab) => {
@@ -32,7 +34,7 @@ export function AuthorPageTabs({ slug }: { slug: string }) {
 										: "border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground",
 								)}
 							>
-								{tab.label}
+								{t(`tabs.${tab.id}`)}
 							</Link>
 						</li>
 					);

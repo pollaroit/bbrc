@@ -1,5 +1,6 @@
 import type { Route } from "next";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { bookCoverFrameClassName, bookCoverUrl } from "@/lib/book-cover";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ export function AuthorPageCover({
 	className?: string;
 	sizes?: string;
 }) {
+	const t = useTranslations("authors");
 	const src = bookCoverUrl(coverId);
 
 	return (
@@ -34,14 +36,14 @@ export function AuthorPageCover({
 			{src ? (
 				<Image
 					src={src}
-					alt={`Cover of ${title}`}
+					alt={t("bits.coverOf", { title })}
 					fill
 					className="object-cover"
 					sizes={sizes}
 				/>
 			) : (
 				<div className="flex size-full items-center justify-center px-1 text-center text-2xs text-muted-foreground leading-tight">
-					No cover
+					{t("bits.noCover")}
 				</div>
 			)}
 		</div>
@@ -64,6 +66,7 @@ export function AuthorPageSection({
 	children: React.ReactNode;
 	className?: string;
 }) {
+	const t = useTranslations("authors");
 	return (
 		<section className={cn("flex flex-col gap-3", className)}>
 			<div className="flex items-baseline justify-between gap-3">
@@ -78,7 +81,7 @@ export function AuthorPageSection({
 						href={href}
 						className="shrink-0 text-muted-foreground text-xs underline-offset-4 hover:text-foreground hover:underline"
 					>
-						{hrefLabel ?? "See all"}
+						{hrefLabel ?? t("bits.seeAll")}
 					</Link>
 				) : null}
 			</div>
