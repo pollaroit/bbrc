@@ -17,7 +17,7 @@ import {
 } from "@/components/blocks/author/author-filter-bar";
 import {
 	AuthorFilterBooks,
-	authorBookFilterChips,
+	useAuthorBookFilterChips,
 } from "@/components/blocks/author/author-filter-books";
 import { AuthorFilterDateRange } from "@/components/blocks/author/author-filter-date-range";
 import {
@@ -304,7 +304,7 @@ export function AuthorTabReads({
 					},
 				]
 			: []),
-		...authorBookFilterChips(params, setParams),
+		...useAuthorBookFilterChips(params, setParams),
 	];
 
 	const resultLabel =
