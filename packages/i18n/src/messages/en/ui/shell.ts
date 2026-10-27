@@ -458,12 +458,42 @@ export const shell = defineMessages({
 		},
 	},
 	error: {
-		title: "Something went wrong",
-		description: "An unexpected error happened. You can try again.",
+		title: "Something went wrong on this page",
+		description:
+			"Your action may have gone through. Reload the section to check.",
 		retry: "Try again",
 	},
 	offline: {
 		title: "No connection",
 		body: "Pages you already opened may still work. Anything new needs the network.",
+		tryAgain: "Try again",
+		goHome: "Go to home",
+	},
+	home: {
+		meta: {
+			title: "Feed",
+			description: "Club activity and the current reading sitting at a glance.",
+		},
+		title: "Feed",
+		subtitle: "Club activity and the current sitting at a glance.",
+	},
+	ongoing: {
+		pollCloses: "Poll closes",
+		readingDeadline: "Reading deadline",
+		participants: "Participants",
+		voteInPoll: "Vote in poll",
+		openSitting: "Open sitting",
+		openSittingAria: "Open sitting: {title}",
+		sittingInProgress: "Sitting in progress",
+		seeParticipants:
+			"{count, plural, one {See the # participant} other {See the # participants}}",
+	},
+	trending: {
+		title: "Most viewed this week",
+		views: "{count, plural, one {# view} other {# views}}",
+	},
+	theme: {
+		toggle: "Toggle light and dark theme",
+		tooltip: "Toggle theme",
 	},
 });

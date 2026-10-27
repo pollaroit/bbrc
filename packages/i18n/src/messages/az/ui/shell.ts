@@ -459,12 +459,42 @@ export const shell: Messages["shell"] = {
 		},
 	},
 	error: {
-		title: "Nəsə səhv getdi",
-		description: "Gözlənilməz xəta baş verdi. Yenidən cəhd edə bilərsiniz.",
+		title: "Bu səhifədə nəsə səhv getdi",
+		description:
+			"Əməliyyatınız tamamlanmış ola bilər. Yoxlamaq üçün bölməni yenidən yükləyin.",
 		retry: "Yenidən cəhd et",
 	},
 	offline: {
 		title: "Bağlantı yoxdur",
 		body: "Əvvəl açdığınız səhifələr hələ də işləyə bilər. Yeni hər şey şəbəkə tələb edir.",
+		tryAgain: "Yenidən cəhd et",
+		goHome: "Ana səhifəyə get",
+	},
+	home: {
+		meta: {
+			title: "Lent",
+			description: "Klubun fəaliyyəti və hazırkı oxuma sessiyası bir baxışda.",
+		},
+		title: "Lent",
+		subtitle: "Klubun fəaliyyəti və hazırkı oxuma sessiyası bir baxışda.",
+	},
+	ongoing: {
+		pollCloses: "Səsvermə bitir",
+		readingDeadline: "Oxuma son tarixi",
+		participants: "İştirakçılar",
+		voteInPoll: "Səsvermədə iştirak et",
+		openSitting: "Oxuma sessiyasını aç",
+		openSittingAria: "Oxuma sessiyasını aç: {title}",
+		sittingInProgress: "Oxuma sessiyası davam edir",
+		seeParticipants:
+			"{count, plural, one {# iştirakçıya bax} other {# iştirakçıya bax}}",
+	},
+	trending: {
+		title: "Bu həftə ən çox baxılanlar",
+		views: "{count, plural, one {# baxış} other {# baxış}}",
+	},
+	theme: {
+		toggle: "Açıq və tünd mövzunu dəyiş",
+		tooltip: "Mövzunu dəyiş",
 	},
 };

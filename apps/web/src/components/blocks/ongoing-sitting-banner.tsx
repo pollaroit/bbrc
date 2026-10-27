@@ -1,6 +1,7 @@
 import type { GetOngoingSittingOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { Progress, ProgressLabel } from "@bbrc/ui/components/progress";
+import { useTranslations } from "next-intl";
 import { OngoingSittingAction } from "@/components/blocks/ongoing-sitting-action";
 import { SittingParticipantAvatarStack } from "@/components/blocks/sitting-participant-avatar-stack";
 import { SittingStatusBadge } from "@/components/blocks/sitting-status-badge";
@@ -9,7 +10,7 @@ import { formatDateTimeCompact } from "@/lib/format-datetime";
 import {
 	getSittingDeadlineProgress,
 	getSittingPhaseDeadline,
-	getSittingPhaseDeadlineLabel,
+	getSittingPhaseDeadlineLabelKey,
 } from "@/lib/sitting-deadline";
 
 type OngoingSittingBannerProps = {
@@ -17,8 +18,9 @@ type OngoingSittingBannerProps = {
 };
 
 export function OngoingSittingBanner({ sitting }: OngoingSittingBannerProps) {
+	const t = useTranslations("shell.ongoing");
 	const phaseDeadline = getSittingPhaseDeadline(sitting);
-	const deadlineLabel = getSittingPhaseDeadlineLabel(sitting);
+	const deadlineLabel = t(getSittingPhaseDeadlineLabelKey(sitting));
 	const deadlineProgress = getSittingDeadlineProgress(sitting);
 
 	const bookTitle = sitting.selectedBookTitle?.trim();
@@ -72,7 +74,9 @@ export function OngoingSittingBanner({ sitting }: OngoingSittingBannerProps) {
 				) : null}
 
 				<div className="flex flex-wrap items-center gap-2.5">
-					<span className="text-muted-foreground text-sm">Participants</span>
+					<span className="text-muted-foreground text-sm">
+						{t("participants")}
+					</span>
 					<SittingParticipantAvatarStack
 						participants={sitting.participantPreview}
 						totalCount={sitting.participantCount}

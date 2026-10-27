@@ -4,9 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Eye, Flame } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { bookCoverUrl } from "@/lib/book-cover";
-import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -16,11 +16,11 @@ type TrendingStripProps = {
 };
 
 function Views({ count }: { count: number }) {
-	const f = useFormatters();
+	const t = useTranslations("shell.trending");
 	return (
 		<span className="inline-flex items-center gap-1 text-muted-foreground text-xs tabular-nums">
 			<Eye className="size-3.5" aria-hidden />
-			{f.number(count)} {count === 1 ? "view" : "views"}
+			{t("views", { count })}
 		</span>
 	);
 }
@@ -30,6 +30,7 @@ function Views({ count }: { count: number }) {
  * something to show, so quiet weeks leave no gap on the page.
  */
 export function TrendingStrip({ resource, className }: TrendingStripProps) {
+	const t = useTranslations("shell.trending");
 	const { data } = useQuery(
 		orpc.view.trending.queryOptions({
 			input: { resource, days: 7, limit: 8 },
@@ -49,7 +50,7 @@ export function TrendingStrip({ resource, className }: TrendingStripProps) {
 				className="flex items-center gap-2 font-medium text-sm"
 			>
 				<Flame className="size-4 text-warning-ink" aria-hidden />
-				Most viewed this week
+				{t("title")}
 			</h2>
 			{/* `relative` keeps the screen-reader-only text (absolutely positioned) inside the scroller, so it cannot widen the page. */}
 			<ul className="relative -mx-6 flex snap-x gap-3 overflow-x-auto px-6 pb-1 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden">

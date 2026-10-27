@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Users } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { authClient } from "@/lib/auth-client";
 import { formatBookAuthors } from "@/lib/book-cover";
@@ -20,6 +21,7 @@ function ChipPlaceholder() {
 }
 
 export function ActiveSittingTopChip({ className }: { className?: string }) {
+	const t = useTranslations("shell.ongoing");
 	const { data: session, isPending: isSessionPending } =
 		authClient.useSession();
 	const { data: ongoing, isPending: isOngoingPending } = useQuery({
@@ -50,7 +52,7 @@ export function ActiveSittingTopChip({ className }: { className?: string }) {
 	const titleLine =
 		ongoing.selectedBookTitle?.trim() ||
 		ongoing.displayName ||
-		"Sitting in progress";
+		t("sittingInProgress");
 
 	const authorsLine =
 		ongoing.selectedBookAuthors.length > 0
@@ -59,7 +61,7 @@ export function ActiveSittingTopChip({ className }: { className?: string }) {
 
 	const metaLine = [
 		authorsLine,
-		phaseDeadline ? formatDateTimeCompact(phaseDeadline) : "Open sitting",
+		phaseDeadline ? formatDateTimeCompact(phaseDeadline) : t("openSitting"),
 	]
 		.filter(Boolean)
 		.join(" · ");
@@ -76,7 +78,7 @@ export function ActiveSittingTopChip({ className }: { className?: string }) {
 			<Link
 				href={href}
 				className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-1 ps-2.5 pe-2 leading-tight focus-visible:outline-none"
-				aria-label={`Open sitting: ${titleLine}`}
+				aria-label={t("openSittingAria", { title: titleLine })}
 			>
 				<span className="truncate font-medium">{titleLine}</span>
 				<span className="truncate text-2xs text-muted-foreground">
@@ -86,8 +88,8 @@ export function ActiveSittingTopChip({ className }: { className?: string }) {
 			<Link
 				href={participantsHref}
 				className="my-1 me-1 inline-flex shrink-0 items-center gap-0.5 self-center border border-border bg-background px-1.5 py-0.5 text-muted-foreground tabular-nums transition-colors hover:border-foreground/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				aria-label={`See the ${ongoing.participantCount} participants`}
-				title="Participants"
+				aria-label={t("seeParticipants", { count: ongoing.participantCount })}
+				title={t("participants")}
 			>
 				<Users className="size-3.5" aria-hidden />
 				{ongoing.participantCount}

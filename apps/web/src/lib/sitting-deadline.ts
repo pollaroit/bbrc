@@ -12,10 +12,11 @@ export function getSittingPhaseDeadline(
 	return null;
 }
 
-export function getSittingPhaseDeadlineLabel(
+/** Which phase deadline text applies; the words come from `shell.ongoing`. */
+export function getSittingPhaseDeadlineLabelKey(
 	sitting: NonNullable<GetOngoingSittingOutput>,
-): string {
-	return sitting.status === "voting" ? "Poll closes" : "Reading deadline";
+): "pollCloses" | "readingDeadline" {
+	return sitting.status === "voting" ? "pollCloses" : "readingDeadline";
 }
 
 /** Elapsed fraction toward the current phase deadline (0–100), or null if unknown. */

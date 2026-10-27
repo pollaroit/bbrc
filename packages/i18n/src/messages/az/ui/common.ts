@@ -1,3 +1,43 @@
 import type { Messages } from "../../shape";
 
-export const common: Messages["common"] = {};
+export const common: Messages["common"] = {
+	actions: {
+		apply: "Tətbiq et",
+		back: "Geri",
+		cancel: "Ləğv et",
+		clear: "Təmizlə",
+		close: "Bağla",
+		confirm: "Təsdiq et",
+		copy: "Kopyala",
+		delete: "Sil",
+		done: "Hazırdır",
+		edit: "Redaktə et",
+		next: "Növbəti",
+		previous: "Əvvəlki",
+		reset: "Sıfırla",
+		retry: "Yenidən cəhd et",
+		save: "Yadda saxla",
+		search: "Axtar",
+		share: "Paylaş",
+		showLess: "Daha az göstər",
+		showMore: "Daha çox göstər",
+		submit: "Göndər",
+		viewAll: "Hamısına bax",
+	},
+	states: {
+		copied: "Kopyalandı",
+		loading: "Yüklənir…",
+		noResults: "Nəticə yoxdur",
+		saving: "Yadda saxlanılır…",
+		saved: "Yadda saxlanıldı",
+		optional: "İstəyə bağlı",
+		required: "Məcburi",
+	},
+	words: {
+		and: "və",
+		no: "Xeyr",
+		or: "və ya",
+		you: "Siz",
+		yes: "Bəli",
+	},
+};

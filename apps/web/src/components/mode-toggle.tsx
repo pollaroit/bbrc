@@ -7,11 +7,13 @@ import {
 	TooltipTrigger,
 } from "@bbrc/ui/components/tooltip";
 import { Moon, Sun } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { headerToolbarIconButtonClass } from "@/lib/header-toolbar";
 import { useColorMode } from "@/lib/preferences/use-color-mode";
 
 export function ModeToggle() {
+	const t = useTranslations("shell.theme");
 	const { toggle } = useColorMode();
 	const [mounted, setMounted] = useState(false);
 
@@ -29,7 +31,7 @@ export function ModeToggle() {
 						type="button"
 						className={`relative ${headerToolbarIconButtonClass}`}
 						onClick={toggle}
-						aria-label="Toggle light and dark theme"
+						aria-label={t("toggle")}
 					/>
 				}
 			>
@@ -43,7 +45,7 @@ export function ModeToggle() {
 				)}
 			</TooltipTrigger>
 			<TooltipContent side="bottom">
-				Toggle theme
+				{t("tooltip")}
 				<span className="text-muted-foreground"> · </span>
 				<kbd className="font-mono text-xs">d</kbd>
 			</TooltipContent>

@@ -4,6 +4,7 @@ import { Button } from "@bbrc/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { SittingCardJoinButton } from "@/components/blocks/sitting-card-join-button";
 import { Link } from "@/i18n/navigation";
 import { orpc } from "@/utils/orpc";
@@ -23,6 +24,7 @@ export function OngoingSittingAction({
 	status,
 	deadline,
 }: OngoingSittingActionProps) {
+	const t = useTranslations("shell.ongoing");
 	const { data: state } = useQuery(
 		orpc.sitting.join.state.queryOptions({ input: { sittingSlug: slug } }),
 	);
@@ -54,7 +56,7 @@ export function OngoingSittingAction({
 			size="sm"
 			className="w-full md:w-auto"
 		>
-			{votes ? "Vote in poll" : "Open sitting"}
+			{votes ? t("voteInPoll") : t("openSitting")}
 			<ArrowRight data-icon="inline-end" />
 		</Button>
 	);
