@@ -8,6 +8,7 @@ import {
 	TooltipTrigger,
 } from "@bbrc/ui/components/tooltip";
 import { PenLine } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import {
 	FeedbackFormDialog,
@@ -34,6 +35,7 @@ export function FeedbackEditIconButton({
 	feedbackSlug,
 	className,
 }: FeedbackEditIconButtonProps) {
+	const t = useTranslations("books");
 	const [open, setOpen] = useState(false);
 
 	if (!isFeedbackRatingStep(rating)) {
@@ -65,13 +67,13 @@ export function FeedbackEditIconButton({
 								event.stopPropagation();
 								setOpen(true);
 							}}
-							aria-label="Edit feedback"
+							aria-label={t("feedback.edit")}
 						/>
 					}
 				>
 					<PenLine className="size-4" aria-hidden />
 				</TooltipTrigger>
-				<TooltipContent>Edit feedback</TooltipContent>
+				<TooltipContent>{t("feedback.edit")}</TooltipContent>
 			</Tooltip>
 			<FeedbackFormDialog
 				bookSlug={bookSlug}

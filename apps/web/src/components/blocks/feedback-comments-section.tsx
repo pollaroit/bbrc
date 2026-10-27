@@ -2,6 +2,7 @@
 
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { CommentThreadList } from "@/components/blocks/comment-thread-list";
 import { PostCommentForm } from "@/components/blocks/post-comment-form";
@@ -18,6 +19,7 @@ export function FeedbackCommentsSection({
 	feedbackSlug,
 	bookSlug,
 }: FeedbackCommentsSectionProps) {
+	const t = useTranslations("books");
 	const [replyingToSlug, setReplyingToSlug] = useState<string | null>(null);
 
 	const query = useInfiniteQuery(
@@ -61,11 +63,11 @@ export function FeedbackCommentsSection({
 		>
 			<div className="flex flex-wrap items-baseline justify-between gap-2">
 				<h2 id="feedback-comments-heading" className="font-semibold text-lg">
-					Discussion
+					{t("feedback.discussion")}
 				</h2>
 				{comments.length > 0 && !loadingThread ? (
 					<p className="text-muted-foreground text-sm tabular-nums">
-						{comments.length} {comments.length === 1 ? "comment" : "comments"}
+						{t("feedback.commentCount", { count: comments.length })}
 					</p>
 				) : null}
 			</div>
@@ -83,7 +85,7 @@ export function FeedbackCommentsSection({
 				<p className="text-destructive text-sm">{query.error.message}</p>
 			) : comments.length === 0 ? (
 				<p className="border border-border border-dashed px-4 py-8 text-center text-muted-foreground text-sm">
-					No comments yet. Start the discussion above.
+					{t("feedback.noComments")}
 				</p>
 			) : (
 				<div className="border border-border px-3 pt-4 pb-1 sm:px-4">

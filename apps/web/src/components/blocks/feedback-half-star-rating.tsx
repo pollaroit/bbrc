@@ -4,14 +4,14 @@ import type { Locale } from "@bbrc/i18n";
 import {
 	defaultRatingDefinition,
 	type FeedbackRatingStep,
-	formatFeedbackRating,
 	isFeedbackRatingStep,
 } from "@bbrc/shared";
 import { cn } from "@bbrc/ui/lib/utils";
 import { Star } from "lucide-react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { RatingGuideSheet } from "@/components/blocks/rating-guide";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 
 type FeedbackHalfStarRatingProps = {
 	value: FeedbackRatingStep;
@@ -55,6 +55,8 @@ export function FeedbackHalfStarRating({
 	allowClear = false,
 	className,
 }: FeedbackHalfStarRatingProps) {
+	const t = useTranslations("books");
+	const f = useFormatters();
 	const locale = useLocale();
 	const trackRef = useRef<HTMLDivElement>(null);
 	const draggingRef = useRef(false);
@@ -81,14 +83,17 @@ export function FeedbackHalfStarRating({
 					ref={trackRef}
 					role="slider"
 					tabIndex={disabled ? -1 : 0}
-					aria-label="Rating"
+					aria-label={t("rating.label")}
 					aria-valuemin={0}
 					aria-valuemax={5}
 					aria-valuenow={value}
 					aria-valuetext={
 						value > 0
-							? `${formatFeedbackRating(value)} out of 5, ${describeRating(value, locale)}`
-							: "No rating"
+							? t("rating.valueText", {
+									rating: f.rating(value),
+									label: describeRating(value, locale),
+								})
+							: t("rating.none")
 					}
 					aria-disabled={disabled}
 					className={cn(
@@ -165,18 +170,12 @@ export function FeedbackHalfStarRating({
 
 				<div className="flex min-w-0 items-baseline gap-3" aria-live="polite">
 					{hasValue ? (
-						<>
-							<p className="tabular-nums leading-none">
-								<span className="font-semibold text-2xl">
-									{formatFeedbackRating(shown)}
-								</span>
-								<span className="ml-1 text-muted-foreground text-sm">/ 5</span>
-							</p>
-						</>
-					) : (
-						<p className="text-muted-foreground text-sm">
-							Tap a star, or drag across them
+						<p className="tabular-nums leading-none">
+							<span className="font-semibold text-2xl">{f.rating(shown)}</span>
+							<span className="ml-1 text-muted-foreground text-sm">/ 5</span>
 						</p>
+					) : (
+						<p className="text-muted-foreground text-sm">{t("rating.hint")}</p>
 					)}
 					{allowClear && value > 0 && !disabled ? (
 						<button
@@ -184,7 +183,7 @@ export function FeedbackHalfStarRating({
 							className="text-muted-foreground text-xs underline-offset-2 hover:text-foreground hover:underline"
 							onClick={() => onChange(0)}
 						>
-							Clear
+							{t("rating.clear")}
 						</button>
 					) : null}
 					{/* Always there, rated or not, so nothing moves when a rating is chosen. */}

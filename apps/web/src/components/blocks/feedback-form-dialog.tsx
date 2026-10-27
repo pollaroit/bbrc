@@ -23,6 +23,7 @@ import {
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { FeedbackHalfStarRating } from "@/components/blocks/feedback-half-star-rating";
@@ -77,6 +78,7 @@ export function FeedbackFormDialog({
 	feedbackSlug,
 	navigateToReview = true,
 }: FeedbackFormDialogProps) {
+	const t = useTranslations("books");
 	const router = useRouter();
 	const { data: session } = authClient.useSession();
 	const isEdit = mode === "edit";
@@ -150,7 +152,7 @@ export function FeedbackFormDialog({
 					void uploadReviewImage(context.draft.imageFile, result.slug);
 				}
 				if (result.xpAwarded > 0) {
-					toast.success(`Feedback saved (+${result.xpAwarded} XP)`);
+					toast.success(t("feedbackForm.saved", { xp: result.xpAwarded }));
 				}
 				void invalidateUserPointQueries();
 				if (navigateToReview) {
@@ -213,13 +215,13 @@ export function FeedbackFormDialog({
 		const plain = contentPlainText(review).trim();
 		if (plain.length > FEEDBACK_REVIEW_MAX_PLAIN) {
 			toast.error(
-				`Review must be at most ${FEEDBACK_REVIEW_MAX_PLAIN} characters`,
+				t("feedbackForm.tooLong", { max: FEEDBACK_REVIEW_MAX_PLAIN }),
 			);
 			return;
 		}
 
 		if (!isFeedbackRatingStep(rating)) {
-			toast.error("Choose a rating in half-star steps from 0 to 5");
+			toast.error(t("feedbackForm.badRating"));
 			return;
 		}
 
@@ -245,17 +247,15 @@ export function FeedbackFormDialog({
 			<DialogContent className="max-w-md">
 				<DialogHeader>
 					<DialogTitle>
-						{isEdit ? "Edit your review" : "Your club review"}
+						{isEdit ? t("feedbackForm.titleEdit") : t("feedbackForm.titleNew")}
 					</DialogTitle>
 					<DialogDescription>
-						{isEdit
-							? "Update your rating and review text. Slug and comments stay linked."
-							: "Rate the book in half-star steps. Review text is optional."}
+						{isEdit ? t("feedbackForm.descEdit") : t("feedbackForm.descNew")}
 					</DialogDescription>
 				</DialogHeader>
 				<FieldGroup>
 					<Field>
-						<FieldLabel>Rating</FieldLabel>
+						<FieldLabel>{t("feedbackForm.rating")}</FieldLabel>
 						<FeedbackHalfStarRating
 							value={rating}
 							onChange={setRating}
@@ -263,7 +263,9 @@ export function FeedbackFormDialog({
 						/>
 					</Field>
 					<Field>
-						<FieldLabel htmlFor="feedback-dialog-review">Review</FieldLabel>
+						<FieldLabel htmlFor="feedback-dialog-review">
+							{t("feedbackForm.review")}
+						</FieldLabel>
 						{open ? (
 							<RichTextEditor
 								instanceKey={
@@ -275,16 +277,16 @@ export function FeedbackFormDialog({
 								onSubmitShortcut={handleSubmit}
 								maxPlainLength={FEEDBACK_REVIEW_MAX_PLAIN}
 								minHeightClassName="min-h-[6rem]"
-								placeholder="What did you think of the book? (optional)"
+								placeholder={t("feedbackForm.placeholder")}
 								disabled={pending}
 							/>
 						) : null}
 						<FieldDescription>
-							Optional — up to {FEEDBACK_REVIEW_MAX_PLAIN} characters.
+							{t("feedbackForm.optional", { max: FEEDBACK_REVIEW_MAX_PLAIN })}
 						</FieldDescription>
 					</Field>
 					<Field>
-						<FieldLabel>Photo</FieldLabel>
+						<FieldLabel>{t("feedbackForm.photo")}</FieldLabel>
 						{isEdit ? (
 							<ReviewImageField
 								mode="edit"
@@ -310,7 +312,7 @@ export function FeedbackFormDialog({
 								disabled={pending}
 							/>
 							<FieldLabel htmlFor="feedback-dialog-spoiler" className="mb-0">
-								Mark entire review as spoiler
+								{t("feedbackForm.spoiler")}
 							</FieldLabel>
 						</div>
 					</Field>
@@ -322,7 +324,7 @@ export function FeedbackFormDialog({
 						loading={pending}
 						onClick={handleSubmit}
 					>
-						{isEdit ? "Save changes" : "Submit feedback"}
+						{isEdit ? t("feedbackForm.saveChanges") : t("feedbackForm.submit")}
 					</LoadingButton>
 				</DialogFooter>
 			</DialogContent>

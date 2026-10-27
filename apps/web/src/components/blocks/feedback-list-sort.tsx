@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ListingSort } from "@/components/listing/listing-sort";
 import {
 	DEFAULT_FEEDBACK_LIST_SORT,
@@ -7,7 +8,6 @@ import {
 	type FeedbackListSortDirection,
 	type FeedbackListSortField,
 	feedbackListSortFields,
-	feedbackListSortLabels,
 } from "@/lib/feedback/list-sort";
 
 type FeedbackListSortProps = {
@@ -23,6 +23,7 @@ export function FeedbackListSort({
 	onSortByChange,
 	onSortDirectionChange,
 }: FeedbackListSortProps) {
+	const t = useTranslations("books");
 	return (
 		<ListingSort
 			sortBy={sortBy}
@@ -34,7 +35,10 @@ export function FeedbackListSort({
 				onSortDirectionChange(value ?? DEFAULT_FEEDBACK_LIST_SORT_DIRECTION);
 			}}
 			sortByOptions={feedbackListSortFields}
-			sortByLabels={feedbackListSortLabels}
+			sortByLabels={{
+				createdAt: t("feedback.sortBy.createdAt"),
+				rating: t("feedback.sortBy.rating"),
+			}}
 		/>
 	);
 }

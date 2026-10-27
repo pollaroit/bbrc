@@ -2,7 +2,6 @@
 
 import {
 	type FeedbackRatingStep,
-	formatFeedbackRating,
 	RATING_DEFINITION_STEPS,
 	resolveRatingDefinition,
 } from "@bbrc/shared";
@@ -17,8 +16,9 @@ import {
 } from "@bbrc/ui/components/sheet";
 import { Info, Star } from "lucide-react";
 import type { Route } from "next";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { useRatingDefinitions } from "@/lib/rating/use-rating-definitions";
 import { cn } from "@/lib/utils";
 
@@ -30,11 +30,13 @@ export function MiniStars({
 	rating: number;
 	className?: string;
 }) {
+	const t = useTranslations("books");
+	const f = useFormatters();
 	return (
 		<span
 			className={cn("inline-flex items-center gap-1.5 tabular-nums", className)}
 			role="img"
-			aria-label={`${formatFeedbackRating(rating)} out of 5`}
+			aria-label={t("rating.outOfFive", { rating: f.rating(rating) })}
 		>
 			<span className="flex gap-px" aria-hidden>
 				{[1, 2, 3, 4, 5].map((index) => {
@@ -54,9 +56,7 @@ export function MiniStars({
 					);
 				})}
 			</span>
-			<span className="font-semibold text-sm">
-				{formatFeedbackRating(rating)}
-			</span>
+			<span className="font-semibold text-sm">{f.rating(rating)}</span>
 		</span>
 	);
 }
@@ -72,6 +72,7 @@ export function RatingGuideSheet({
 	current?: FeedbackRatingStep | null;
 	className?: string;
 }) {
+	const t = useTranslations("books");
 	const locale = useLocale();
 	const { overrides, signedIn } = useRatingDefinitions();
 
@@ -84,8 +85,8 @@ export function RatingGuideSheet({
 						variant="ghost"
 						size="icon-sm"
 						className={cn("text-muted-foreground", className)}
-						aria-label="What every rating means"
-						title="What every rating means"
+						aria-label={t("rating.guideOpen")}
+						title={t("rating.guideOpen")}
 					/>
 				}
 			>
@@ -93,17 +94,21 @@ export function RatingGuideSheet({
 			</SheetTrigger>
 			<SheetContent className="gap-0 sm:max-w-md">
 				<SheetHeader className="border-border border-b">
-					<SheetTitle>What every rating means</SheetTitle>
+					<SheetTitle>{t("rating.guideTitle")}</SheetTitle>
 					<SheetDescription>
-						A guide to keep your ratings consistent. You can rewrite any of
-						these in{" "}
-						<Link
-							href={"/settings/preferences#ratings" as Route}
-							className="text-foreground underline underline-offset-4"
-						>
-							Preferences
-						</Link>
-						{signedIn ? "." : " after you sign in."}
+						{t.rich(
+							signedIn ? "rating.guideSignedIn" : "rating.guideSignedOut",
+							{
+								link: (chunks) => (
+									<Link
+										href={"/settings/preferences#ratings" as Route}
+										className="text-foreground underline underline-offset-4"
+									>
+										{chunks}
+									</Link>
+								),
+							},
+						)}
 					</SheetDescription>
 				</SheetHeader>
 				{/* A ladder: the rail runs from 5 down to 0, and the rating being chosen is marked on it. */}
@@ -144,7 +149,7 @@ export function RatingGuideSheet({
 									</span>
 									{definition.custom ? (
 										<span className="border border-border px-1 text-2xs text-muted-foreground">
-											Your wording
+											{t("rating.yourWording")}
 										</span>
 									) : null}
 								</p>
