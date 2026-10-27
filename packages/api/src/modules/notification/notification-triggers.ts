@@ -38,8 +38,10 @@ export async function notifyMemberPosted(
 		kind: "member_posted",
 		recipientUserIds,
 		excludeUserIds: [authorId, ...alsoExclude],
-		title: "New club post",
-		body: `${memberDisplayName(author)} shared a new post.`,
+		message: {
+			id: "memberPosted",
+			values: { actor: memberDisplayName(author) },
+		},
 		href: `/posts/${postSlug}`,
 	});
 }
@@ -76,8 +78,10 @@ export async function notifyCommentOnYourPost(
 		kind: "comment_on_your_post",
 		recipientUserIds: [post.authorId],
 		excludeUserIds: [commentAuthorId, ...alsoExclude],
-		title: "New comment on your post",
-		body: `${memberDisplayName(commentAuthor)} commented on your post.`,
+		message: {
+			id: "commentOnYourPost",
+			values: { actor: memberDisplayName(commentAuthor) },
+		},
 		href: `/posts/${postSlug}`,
 	});
 }
@@ -108,8 +112,10 @@ export async function notifyReplyToYourComment(
 		kind: "reply_to_your_comment",
 		recipientUserIds: [parentAuthorId],
 		excludeUserIds: [replyAuthorId, ...alsoExclude],
-		title: "Reply to your comment",
-		body: `${memberDisplayName(replyAuthor)} replied to your comment.`,
+		message: {
+			id: "replyToYourComment",
+			values: { actor: memberDisplayName(replyAuthor) },
+		},
 		href: `/posts/${postSlug}#comment-${commentSlug}`,
 	});
 }
@@ -141,8 +147,10 @@ export async function notifyReactionOnYourPost(
 		kind: "reaction_on_your_post",
 		recipientUserIds: [post.authorId],
 		excludeUserIds: [reactorUserId],
-		title: "Reaction on your post",
-		body: `${memberDisplayName(reactor)} liked your post.`,
+		message: {
+			id: "reactionOnYourPost",
+			values: { actor: memberDisplayName(reactor) },
+		},
 		href: `/posts/${postSlug}`,
 	});
 }
@@ -174,8 +182,10 @@ export async function notifyMemberFeedbackOnBook(
 		kind: "member_feedback_on_book",
 		recipientUserIds,
 		excludeUserIds: [authorId, ...alsoExclude],
-		title: "New book feedback",
-		body: `${memberDisplayName(author)} reviewed “${book.title}”.`,
+		message: {
+			id: "memberFeedbackOnBook",
+			values: { actor: memberDisplayName(author), book: book.title },
+		},
 		href: `/books/${bookSlug}`,
 	});
 }
@@ -296,8 +306,7 @@ export async function notifyBookAddedToLibrary(
 	await dispatchNotification(db, {
 		kind: "book_added_to_library",
 		recipientUserIds,
-		title: "Book added to library",
-		body: `“${book.title}” was added to the club library.`,
+		message: { id: "bookAddedToLibrary", values: { book: book.title } },
 		href: `/books/${bookSlug}`,
 	});
 }
@@ -349,23 +358,29 @@ export async function notifyFollowersOfNewBook(
 		}
 	}
 
-	// One notification per distinct wording, so a follower of two authors gets a single one.
-	const followersByTitle = new Map<string, string[]>();
+	// One notification per distinct set of authors, so a follower of two authors gets a single one.
+	const followersByAuthors = new Map<string, string[]>();
 	for (const [followerId, names] of authorNamesByFollower) {
-		const label =
-			names.length <= 2 ? names.join(" and ") : `${names[0]} and others`;
-		const title = `A new book by ${label}`;
-		const list = followersByTitle.get(title) ?? [];
+		const key = JSON.stringify(names.slice(0, 3));
+		const list = followersByAuthors.get(key) ?? [];
 		list.push(followerId);
-		followersByTitle.set(title, list);
+		followersByAuthors.set(key, list);
 	}
 
-	for (const [title, recipientUserIds] of followersByTitle) {
+	for (const [key, recipientUserIds] of followersByAuthors) {
+		const names = JSON.parse(key) as string[];
 		await dispatchNotification(db, {
 			kind: "author_new_book",
 			recipientUserIds,
-			title,
-			body: `“${book.title}” was added to the club library.`,
+			message: {
+				id: "authorNewBook",
+				values: {
+					count: names.length,
+					first: names[0] ?? "",
+					second: names[1] ?? "",
+					book: book.title,
+				},
+			},
 			href: `/books/${bookSlug}`,
 		});
 	}
@@ -383,8 +398,7 @@ export async function notifySittingPollStarted(
 	await dispatchNotification(db, {
 		kind: "sitting_poll_started",
 		recipientUserIds,
-		title: "Sitting poll started",
-		body: "Vote for the next club read before the deadline.",
+		message: { id: "sittingPollStarted", values: {} },
 		href: `/sittings/${sittingSlug}`,
 		sittingSlug,
 	});
@@ -403,8 +417,7 @@ export async function notifySittingPollClosed(
 	await dispatchNotification(db, {
 		kind: "sitting_poll_closed",
 		recipientUserIds,
-		title: "Poll closed — reading starts",
-		body: `The club will read “${bookTitle}”.`,
+		message: { id: "sittingPollClosed", values: { book: bookTitle } },
 		href: `/sittings/${sittingSlug}`,
 		sittingSlug,
 	});
@@ -422,8 +435,7 @@ export async function notifySittingFinished(
 	await dispatchNotification(db, {
 		kind: "sitting_finished",
 		recipientUserIds,
-		title: "Sitting finished",
-		body: "Reading time is over. Share your feedback on the book.",
+		message: { id: "sittingFinished", values: {} },
 		href: `/sittings/${sittingSlug}`,
 		sittingSlug,
 	});
@@ -460,8 +472,10 @@ export async function notifyParticipantFinishedBook(
 		kind: "participant_finished_book",
 		recipientUserIds,
 		excludeUserIds: [completedUserId],
-		title: "Participant finished reading",
-		body: `${memberDisplayName(completedUser)} finished the sitting book.`,
+		message: {
+			id: "participantFinishedBook",
+			values: { actor: memberDisplayName(completedUser) },
+		},
 		href: `/sittings/${sittingSlug}`,
 		sittingSlug,
 	});

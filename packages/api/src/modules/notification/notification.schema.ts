@@ -49,7 +49,6 @@ export const MarkAllNotificationsReadOutputSchema = zod.object({
 
 export const NotificationPreferenceItemSchema = zod.object({
 	kind: NotificationKindSchema,
-	label: zod.string(),
 	inAppEnabled: zod.boolean(),
 	pushEnabled: zod.boolean(),
 	group: zod.enum(["club", "personal", "sitting", "admin"]),
