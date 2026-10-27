@@ -1,67 +1,64 @@
-const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
-	dateStyle: "medium",
-	timeStyle: "short",
-});
+import {
+	DEFAULT_LOCALE,
+	formatDateTime as formatLocaleDateTime,
+	formatDateTimeCompact as formatLocaleDateTimeCompact,
+	LOCALE_INTL_TAGS,
+	type Locale,
+} from "@bbrc/i18n";
 
-const compactDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
-	day: "numeric",
-	month: "short",
-	hour: "numeric",
-	minute: "2-digit",
-});
-
-/** "2:00 PM" -> "2PM", "3:46 PM" -> "3:46PM". */
-function tidyTime(text: string): string {
+/** "2:00 PM" -> "2PM", "3:46 PM" -> "3:46PM" (English clocks only; other languages are left alone). */
+function tidyTime(text: string, locale: Locale): string {
+	if (locale !== "en") {
+		return text;
+	}
 	return text
 		.replace(/:00[\s\u202f\u00a0]*(AM|PM)/gi, "$1")
 		.replace(/[\s\u202f\u00a0]+(AM|PM)/gi, "$1");
 }
 
-export function formatDateTimeCompact(value: Date | string): string {
-	const date = typeof value === "string" ? new Date(value) : value;
-
-	if (Number.isNaN(date.getTime())) {
-		return "—";
-	}
-
-	return tidyTime(compactDateTimeFormatter.format(date));
+/** "27 Oct, 3:46PM": day, month and time in the language of the page. */
+export function formatDateTimeCompact(
+	value: Date | string,
+	locale: Locale = DEFAULT_LOCALE,
+): string {
+	return tidyTime(formatLocaleDateTimeCompact(locale, value), locale);
 }
 
-export function formatDateTime(value: Date | string): string {
-	const date = typeof value === "string" ? new Date(value) : value;
-
-	if (Number.isNaN(date.getTime())) {
-		return "—";
-	}
-
-	return tidyTime(dateTimeFormatter.format(date));
+export function formatDateTime(
+	value: Date | string,
+	locale: Locale = DEFAULT_LOCALE,
+): string {
+	return tidyTime(formatLocaleDateTime(locale, value), locale);
 }
 
 export function formatDateTimeInTimeZone(
 	value: Date | string,
 	timeZone: string | undefined,
-	options: { hour12?: boolean; showZone?: boolean } = {},
+	options: { hour12?: boolean; showZone?: boolean; locale?: Locale } = {},
 ): string {
+	const locale = options.locale ?? DEFAULT_LOCALE;
 	const date = typeof value === "string" ? new Date(value) : value;
 
 	if (Number.isNaN(date.getTime())) {
 		return "—";
 	}
 
-	return tidyTime(
-		new Intl.DateTimeFormat(undefined, {
-			dateStyle: "medium",
-			timeStyle: "short",
-			...(timeZone ? { timeZone } : {}),
-			...(options.hour12 === undefined ? {} : { hour12: options.hour12 }),
-		}).format(date) +
-			(options.showZone
-				? ` ${
-						new Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
-							.formatToParts(date)
-							.find((part) => part.type === "timeZoneName")?.value ?? ""
-					}`
-				: ""),
+	const zone = options.showZone
+		? new Intl.DateTimeFormat(LOCALE_INTL_TAGS[locale], {
+				timeZoneName: "short",
+			})
+				.formatToParts(date)
+				.find((part) => part.type === "timeZoneName")?.value
+		: undefined;
+
+	return (
+		tidyTime(
+			formatLocaleDateTime(locale, date, {
+				...(timeZone ? { timeZone } : {}),
+				...(options.hour12 === undefined ? {} : { hour12: options.hour12 }),
+			}),
+			locale,
+		) + (zone ? ` ${zone}` : "")
 	);
 }
 

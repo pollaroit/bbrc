@@ -1,3 +1,4 @@
+import type { Locale } from "@bbrc/i18n";
 import type { UserPreferences } from "@bbrc/shared";
 import { resolveClubTimeZone } from "@bbrc/shared";
 import { ENV } from "@/env";
@@ -14,9 +15,10 @@ export const clubTimeZone = resolveClubTimeZone(ENV.CLUB_TIMEZONE);
 export function formatClubDateTime(
 	value: Date | string,
 	time?: UserPreferences["time"],
+	locale?: Locale,
 ): string {
 	if (!time || (time.zone === "club" && time.clock === "auto")) {
-		return formatDateTimeInTimeZone(value, clubTimeZone);
+		return formatDateTimeInTimeZone(value, clubTimeZone, { locale });
 	}
 
 	return formatDateTimeInTimeZone(
@@ -25,6 +27,7 @@ export function formatClubDateTime(
 		{
 			hour12: time.clock === "auto" ? undefined : time.clock === "12h",
 			showZone: time.zone === "device",
+			locale,
 		},
 	);
 }
