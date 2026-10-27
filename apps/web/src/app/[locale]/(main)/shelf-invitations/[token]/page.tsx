@@ -1,3 +1,4 @@
+import { toLocale } from "@bbrc/i18n";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -16,12 +17,18 @@ export const metadata: Metadata = buildPageMetadata({
 export default async function ShelfInvitationRoute({
 	params,
 }: PageProps<"/[locale]/shelf-invitations/[token]">) {
-	const { token } = await params;
+	const { token, locale } = await params;
 	const session = await auth.api.getSession({ headers: await headers() });
 
 	// Sign in first, then come straight back to the invitation.
 	if (!session?.user) {
-		redirect(authPageHref("/sign-in", `/shelf-invitations/${token}`) as Route);
+		redirect(
+			authPageHref(
+				"/sign-in",
+				`/shelf-invitations/${token}`,
+				toLocale(locale),
+			) as Route,
+		);
 	}
 
 	return <ShelfInvitationPage token={token} />;

@@ -1,3 +1,4 @@
+import { toLocale } from "@bbrc/i18n";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -16,12 +17,18 @@ export const metadata: Metadata = buildPageMetadata({
 export default async function SittingJoinRoute({
 	params,
 }: PageProps<"/[locale]/sittings/join/[token]">) {
-	const { token } = await params;
+	const { token, locale } = await params;
 	const session = await auth.api.getSession({ headers: await headers() });
 
 	// Sign in (or sign up) first, then come straight back to this page.
 	if (!session?.user) {
-		redirect(authPageHref("/sign-in", `/sittings/join/${token}`) as Route);
+		redirect(
+			authPageHref(
+				"/sign-in",
+				`/sittings/join/${token}`,
+				toLocale(locale),
+			) as Route,
+		);
 	}
 
 	return <SittingJoinPage token={token} />;

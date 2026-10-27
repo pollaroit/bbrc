@@ -5,4 +5,5 @@ export {
 	type Namespace,
 	pickMessages,
 } from "./messages";
+export * from "./paths";
 export { createServerTranslator } from "./server";
