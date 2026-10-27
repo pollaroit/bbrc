@@ -2,6 +2,7 @@ import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import {
 	ballotAccess,
+	ballotProblem,
 	bookCountryCodeSchema,
 	canSeeResults,
 	formatAuthorLifespan,
@@ -13,15 +14,14 @@ import {
 	POST_POLL_VOTE_MILESTONES,
 	type PostPollOptionKind,
 	pollEnded,
+	pollSetupProblem,
 	refDedupeKey,
 	resolveClubTimeZone,
 	searchPollCountries,
 	tallyBallots,
 	textDedupeKey,
-	validateBallot,
-	validatePollSetup,
 } from "@bbrc/shared";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { findAuthorBySlug } from "../../lib/authors";
 import { dispatchNotification } from "../notification/notification.service";
 import {
@@ -355,7 +355,7 @@ async function loadPollRow(db: Db, postSlug: string): Promise<PollRow> {
 		select: pollSelect,
 	});
 	if (!row) {
-		throw new ORPCError("NOT_FOUND", { message: "Poll not found" });
+		throw appError("NOT_FOUND", "postPoll.notFound");
 	}
 	const [withPhotos] = await withAuthorPhotos(db, [row]);
 	return withPhotos ?? row;
@@ -419,8 +419,7 @@ async function notifyPollEnded(
 	await dispatchNotification(db, {
 		kind: "poll_ended",
 		recipientUserIds: [row.post.authorId, ...voterIds],
-		title: "A poll has ended",
-		body: "Voting is closed. Take a look at how it turned out.",
+		message: { id: "pollEnded", values: {} },
 		href: `/posts/${row.post.slug}`,
 	});
 }
@@ -463,7 +462,7 @@ async function resolveOption(
 	if (kind === "text") {
 		const text = input.text?.trim();
 		if (!text) {
-			throw new ORPCError("BAD_REQUEST", { message: "Type the option first." });
+			throw appError("BAD_REQUEST", "postPoll.typeOptionFirst");
 		}
 		return {
 			kind,
@@ -475,7 +474,7 @@ async function resolveOption(
 
 	const key = input.key?.trim();
 	if (!key) {
-		throw new ORPCError("BAD_REQUEST", { message: "Pick something first." });
+		throw appError("BAD_REQUEST", "postPoll.pickFirst");
 	}
 
 	if (kind === "book") {
@@ -483,7 +482,7 @@ async function resolveOption(
 			where: { slug: key },
 			select: { id: true, title: true },
 		});
-		if (!book) throw new ORPCError("NOT_FOUND", { message: "Book not found." });
+		if (!book) throw appError("NOT_FOUND", "postPoll.bookNotFound");
 		return {
 			kind,
 			label: book.title,
@@ -498,8 +497,7 @@ async function resolveOption(
 			where: { slug: key },
 			select: { id: true, title: true },
 		});
-		if (!series)
-			throw new ORPCError("NOT_FOUND", { message: "Series not found." });
+		if (!series) throw appError("NOT_FOUND", "postPoll.seriesNotFound");
 		return {
 			kind,
 			label: series.title,
@@ -512,7 +510,7 @@ async function resolveOption(
 	if (kind === "author") {
 		const author = await findAuthorBySlug(db, key);
 		if (!author) {
-			throw new ORPCError("NOT_FOUND", { message: "Author not found." });
+			throw appError("NOT_FOUND", "postPoll.authorNotFound");
 		}
 		return {
 			kind,
@@ -527,7 +525,7 @@ async function resolveOption(
 		const parsed = bookCountryCodeSchema.safeParse(key);
 		const name = parsed.success ? getBookCountryName(parsed.data) : null;
 		if (!parsed.success || !name) {
-			throw new ORPCError("NOT_FOUND", { message: "Country not found." });
+			throw appError("NOT_FOUND", "postPoll.countryNotFound");
 		}
 		return {
 			kind,
@@ -549,11 +547,11 @@ async function resolveOption(
 		},
 	});
 	if (!member || member.isHidden) {
-		throw new ORPCError("NOT_FOUND", { message: "Member not found." });
+		throw appError("NOT_FOUND", "postPoll.memberNotFound");
 	}
 	if (!member.allowPollOptions && member.id !== actorId) {
-		throw new ORPCError("FORBIDDEN", {
-			message: `${authorName(member)} does not allow being used in polls.`,
+		throw appError("FORBIDDEN", "postPoll.memberNoPolls", {
+			params: { name: authorName(member) },
 		});
 	}
 	return {
@@ -599,9 +597,7 @@ export async function createPostPoll(
 		resolved.push(await resolveOption(tx, input.optionKind, option, ownerId));
 	}
 	if (new Set(resolved.map((o) => o.dedupeKey)).size !== resolved.length) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Two of your options are the same.",
-		});
+		throw appError("BAD_REQUEST", "postPoll.duplicateOptions");
 	}
 
 	const limits = normalizeChoiceLimits(
@@ -610,7 +606,7 @@ export async function createPostPoll(
 		input.maxChoices,
 		resolved.length,
 	);
-	const problem = validatePollSetup({
+	const problem = pollSetupProblem({
 		type: input.type,
 		optionKind: input.optionKind,
 		optionCount: resolved.length,
@@ -623,7 +619,9 @@ export async function createPostPoll(
 		deadline: input.deadline ?? null,
 	});
 	if (problem) {
-		throw new ORPCError("BAD_REQUEST", { message: problem });
+		throw appError("BAD_REQUEST", `postPoll.problem.${problem.key}`, {
+			params: problem.params,
+		});
 	}
 
 	const poll = await tx.postPoll.create({
@@ -667,32 +665,28 @@ export async function addPollOption(
 	const isOwner = row.post.authorId === actorId;
 
 	if (pollEnded(row, now)) {
-		throw new ORPCError("BAD_REQUEST", { message: "This poll has ended." });
+		throw appError("BAD_REQUEST", "postPoll.ended");
 	}
 	if (!isOwner) {
 		if (!row.allowUserOptions) {
-			throw new ORPCError("FORBIDDEN", {
-				message: "Only the poll owner can add options.",
-			});
+			throw appError("FORBIDDEN", "postPoll.ownerOnlyAddOptions");
 		}
 		const mine = row.options.filter(
 			(o) => o.userAdded && o.addedById === actorId,
 		).length;
 		const all = row.options.filter((o) => o.userAdded).length;
 		if (row.maxOptionsPerUser != null && mine >= row.maxOptionsPerUser) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: `You can add up to ${row.maxOptionsPerUser} ${row.maxOptionsPerUser === 1 ? "option" : "options"}.`,
+			throw appError("BAD_REQUEST", "postPoll.limitPerMember", {
+				params: { count: row.maxOptionsPerUser },
 			});
 		}
 		if (row.maxOptionsTotal != null && all >= row.maxOptionsTotal) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Members have added all the options this poll allows.",
-			});
+			throw appError("BAD_REQUEST", "postPoll.optionsFull");
 		}
 	}
 	if (row.options.length >= POST_POLL_LIMITS.maxOptions) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `A poll can have at most ${POST_POLL_LIMITS.maxOptions} options.`,
+		throw appError("BAD_REQUEST", "postPoll.maxOptions", {
+			params: { max: POST_POLL_LIMITS.maxOptions },
 		});
 	}
 
@@ -703,9 +697,7 @@ export async function addPollOption(
 			(existing) => textDedupeKey(existing.label) === resolved.dedupeKey,
 		)
 	) {
-		throw new ORPCError("CONFLICT", {
-			message: "That option is already on the poll.",
-		});
+		throw appError("CONFLICT", "postPoll.optionExists");
 	}
 
 	const position =
@@ -716,9 +708,7 @@ export async function addPollOption(
 		});
 	} catch (error) {
 		if ((error as { code?: string }).code === "P2002") {
-			throw new ORPCError("CONFLICT", {
-				message: "That option is already on the poll.",
-			});
+			throw appError("CONFLICT", "postPoll.optionExists");
 		}
 		throw error;
 	}
@@ -737,18 +727,17 @@ export async function removePollOption(
 	const view = buildPollView(row, actor);
 	const option = view.options.find((candidate) => candidate.id === optionId);
 	if (!option) {
-		throw new ORPCError("NOT_FOUND", { message: "Option not found." });
+		throw appError("NOT_FOUND", "postPoll.optionNotFound");
 	}
 	if (!option.canRemove) {
-		throw new ORPCError("FORBIDDEN", {
-			message: view.ended
-				? "This poll has ended."
-				: "This option cannot be removed any more.",
-		});
+		throw appError(
+			"FORBIDDEN",
+			view.ended ? "postPoll.ended" : "postPoll.optionLocked",
+		);
 	}
 	if (view.options.length <= POST_POLL_LIMITS.minOptions) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: `A poll needs at least ${POST_POLL_LIMITS.minOptions} options.`,
+		throw appError("BAD_REQUEST", "postPoll.minOptions", {
+			params: { min: POST_POLL_LIMITS.minOptions },
 		});
 	}
 
@@ -779,23 +768,23 @@ export async function votePoll(
 ): Promise<PostPollView> {
 	const row = await loadPollRow(db, postSlug);
 	if (pollEnded(row, new Date())) {
-		throw new ORPCError("BAD_REQUEST", { message: "This poll has ended." });
+		throw appError("BAD_REQUEST", "postPoll.ended");
 	}
 
 	const hadBallot = row.votes.some((vote) => vote.userId === userId);
 	if (hadBallot && !row.allowVoteChange) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Votes cannot be changed on this poll.",
-		});
+		throw appError("FORBIDDEN", "postPoll.votesLocked");
 	}
 
-	const problem = validateBallot(
+	const problem = ballotProblem(
 		{ type: row.type, minChoices: row.minChoices, maxChoices: row.maxChoices },
 		optionIds,
 		new Set(row.options.map((option) => option.id)),
 	);
 	if (problem) {
-		throw new ORPCError("BAD_REQUEST", { message: problem });
+		throw appError("BAD_REQUEST", `postPoll.problem.${problem.key}`, {
+			params: problem.params,
+		});
 	}
 
 	await db.$transaction(async (tx) => {
@@ -825,14 +814,10 @@ export async function votePoll(
 			void dispatchNotification(db, {
 				kind: "poll_vote",
 				recipientUserIds: [row.post.authorId],
-				title:
+				message:
 					voters === 1
-						? "Your poll got its first vote"
-						: `${voters} votes on your poll`,
-				body:
-					voters === 1
-						? "Someone just voted on your poll."
-						: `${voters} members have voted on your poll so far.`,
+						? { id: "pollVoteFirst", values: {} }
+						: { id: "pollVoteMany", values: { count: voters } },
 				href: `/posts/${row.post.slug}`,
 			}).catch((error) =>
 				console.error("poll vote notification failed", error),
@@ -851,12 +836,10 @@ export async function retractVote(
 ): Promise<PostPollView> {
 	const row = await loadPollRow(db, postSlug);
 	if (pollEnded(row, new Date())) {
-		throw new ORPCError("BAD_REQUEST", { message: "This poll has ended." });
+		throw appError("BAD_REQUEST", "postPoll.ended");
 	}
 	if (!row.allowVoteChange) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Votes cannot be changed on this poll.",
-		});
+		throw appError("FORBIDDEN", "postPoll.votesLocked");
 	}
 	await db.$transaction([
 		db.postPollVote.deleteMany({ where: { pollId: row.id, userId } }),
@@ -870,9 +853,7 @@ export async function retractVote(
 async function loadOwnedPoll(db: Db, postSlug: string, actor: PollViewer) {
 	const row = await loadPollRow(db, postSlug);
 	if (row.post.authorId !== actor.userId && !actor.isAdmin) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Only the poll owner can change this poll.",
-		});
+		throw appError("FORBIDDEN", "postPoll.ownerOnlyChange");
 	}
 	return row;
 }
@@ -898,7 +879,7 @@ export async function updatePollSettings(
 	const row = await loadOwnedPoll(db, input.postSlug, actor);
 	const now = new Date();
 	if (pollEnded(row, now)) {
-		throw new ORPCError("BAD_REQUEST", { message: "This poll has ended." });
+		throw appError("BAD_REQUEST", "postPoll.ended");
 	}
 	const hasVotes = row.votes.length > 0;
 	const data: Prisma.PostPollUpdateInput = {};
@@ -909,10 +890,7 @@ export async function updatePollSettings(
 		(input.maxChoices != null && input.maxChoices !== row.maxChoices);
 	if (typeChange) {
 		if (hasVotes) {
-			throw new ORPCError("BAD_REQUEST", {
-				message:
-					"The poll type and choice limits cannot change once people have voted.",
-			});
+			throw appError("BAD_REQUEST", "postPoll.typeLocked");
 		}
 		const type = input.type ?? row.type;
 		const limits = normalizeChoiceLimits(
@@ -933,9 +911,7 @@ export async function updatePollSettings(
 			row.deadline &&
 			input.deadline < row.deadline
 		) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Once people have voted the deadline can only move later.",
-			});
+			throw appError("BAD_REQUEST", "postPoll.deadlineLaterOnly");
 		}
 		data.deadline = input.deadline;
 	}
@@ -944,9 +920,7 @@ export async function updatePollSettings(
 	const finalDeadline =
 		input.deadline !== undefined ? input.deadline : row.deadline;
 	if (resultsVisibility === "after_deadline" && !finalDeadline) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Showing results after the deadline needs a deadline.",
-		});
+		throw appError("BAD_REQUEST", "postPoll.resultsNeedDeadline");
 	}
 	if (input.resultsVisibility) data.resultsVisibility = input.resultsVisibility;
 
@@ -961,10 +935,7 @@ export async function updatePollSettings(
 				row.ballotVisibility,
 			)
 		) {
-			throw new ORPCError("BAD_REQUEST", {
-				message:
-					"People already voted under the current privacy, so it can only become more private.",
-			});
+			throw appError("BAD_REQUEST", "postPoll.privacyOnlyStricter");
 		}
 		data.ballotVisibility = input.ballotVisibility;
 	}
@@ -978,7 +949,7 @@ export async function updatePollSettings(
 	if (allowUserOptions) {
 		const perUser = input.maxOptionsPerUser ?? row.maxOptionsPerUser;
 		const total = input.maxOptionsTotal ?? row.maxOptionsTotal;
-		const problem = validatePollSetup({
+		const problem = pollSetupProblem({
 			type: (data.type as PollRow["type"] | undefined) ?? row.type,
 			optionKind: row.optionKind,
 			optionCount: row.options.length,
@@ -990,8 +961,10 @@ export async function updatePollSettings(
 			resultsVisibility,
 			deadline: null,
 		});
-		if (problem && !problem.includes("Your options plus")) {
-			throw new ORPCError("BAD_REQUEST", { message: problem });
+		if (problem && problem.key !== "optionsOverLimit") {
+			throw appError("BAD_REQUEST", `postPoll.problem.${problem.key}`, {
+				params: problem.params,
+			});
 		}
 		data.maxOptionsPerUser = perUser;
 		data.maxOptionsTotal = total;
@@ -1197,7 +1170,7 @@ export async function getPollStats(
 		},
 	});
 	if (!post) {
-		throw new ORPCError("NOT_FOUND", { message: "Poll not found" });
+		throw appError("NOT_FOUND", "postPoll.notFound");
 	}
 	void session;
 

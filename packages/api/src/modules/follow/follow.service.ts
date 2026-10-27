@@ -1,5 +1,5 @@
 import type { Database } from "@bbrc/db";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { findAuthorBySlugOrRedirect } from "../author-admin/author-core";
 import type { FollowTarget } from "./follow.schema";
 
@@ -7,18 +7,16 @@ export type FollowState = { following: boolean; followerCount: number };
 
 type ResolvedTarget = { type: "author"; id: string; slug: string };
 
-const NOT_YET = "Following members is not available yet.";
-
 async function resolveTarget(
 	db: Database,
 	target: FollowTarget,
 ): Promise<ResolvedTarget> {
 	if (target.type === "user") {
-		throw new ORPCError("BAD_REQUEST", { message: NOT_YET });
+		throw appError("BAD_REQUEST", "follow.notAvailable");
 	}
 	const author = await findAuthorBySlugOrRedirect(db, target.slug);
 	if (!author) {
-		throw new ORPCError("NOT_FOUND", { message: "Author not found." });
+		throw appError("NOT_FOUND", "follow.authorNotFound");
 	}
 	return { type: "author", id: author.id, slug: author.slug };
 }

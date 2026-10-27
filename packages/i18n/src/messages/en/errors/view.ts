@@ -1,4 +1,6 @@
 import { defineMessages } from "../../types";
 
-/** Errors of the `view` area. Key = what went wrong; ICU parameters like {max}. */
-export const viewErrors = defineMessages({});
+export const viewErrors = defineMessages({
+	itemNotFound: "That item was not found.",
+	insightsAuthorOnly: "Only the author can see these insights.",
+});

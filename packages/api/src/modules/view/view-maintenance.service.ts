@@ -186,8 +186,14 @@ export async function sendWeeklyViewsDigest(
 			await dispatchNotification(db, {
 				kind: "views_digest",
 				recipientUserIds: [userId],
-				title: `Your week on BBRC: ${entry.total.toLocaleString("en-US")} ${entry.total === 1 ? "view" : "views"}`,
-				body: `Most opened: ${entry.top.title} (${entry.top.views}).`,
+				message: {
+					id: "viewsDigest",
+					values: {
+						total: entry.total,
+						top: entry.top.title,
+						views: entry.top.views,
+					},
+				},
 				href: entry.top.href,
 			});
 			sent += 1;

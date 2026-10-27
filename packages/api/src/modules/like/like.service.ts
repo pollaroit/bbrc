@@ -1,6 +1,6 @@
 import type { Database, Prisma } from "@bbrc/db";
 import { LikeSourceSchema } from "@bbrc/schemas";
-import { ORPCError } from "@orpc/server";
+import { appError } from "../../lib/app-error";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
 import { notifyReactionOnYourPost } from "../notification/notification-triggers";
@@ -80,16 +80,13 @@ async function resolvePostTarget(
 	});
 
 	if (!post) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Post not found",
+		throw appError("NOT_FOUND", "like.postNotFound", {
 			data: { slug: postSlug },
 		});
 	}
 
 	if (!post.allowLikes) {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Likes are turned off for this post.",
-		});
+		throw appError("FORBIDDEN", "like.likesOff");
 	}
 
 	return {
@@ -111,8 +108,7 @@ async function resolveCommentTarget(
 	});
 
 	if (!comment) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Comment not found",
+		throw appError("NOT_FOUND", "like.commentNotFound", {
 			data: { slug: commentSlug },
 		});
 	}
@@ -136,8 +132,7 @@ async function resolveFeedbackTarget(
 	});
 
 	if (!feedback) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "Feedback not found",
+		throw appError("NOT_FOUND", "like.reviewNotFound", {
 			data: { slug: feedbackSlug },
 		});
 	}
@@ -167,9 +162,7 @@ async function resolveLikeTarget(
 		return resolveFeedbackTarget(input.feedbackSlug, db);
 	}
 
-	throw new ORPCError("BAD_REQUEST", {
-		message: "Provide postSlug, commentSlug, or feedbackSlug",
-	});
+	throw appError("BAD_REQUEST", "like.targetRequired");
 }
 
 async function countLikesForTarget(
