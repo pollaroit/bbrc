@@ -18,6 +18,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { EyeOff, Heart, ImageIcon, MessageCircle, Star } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import {
 	AuthorFilterBar,
 	type AuthorFilterChip,
@@ -48,7 +49,6 @@ import { useFormatters } from "@/lib/i18n/use-formatters";
 import {
 	AUTHOR_BOOK_FILTER_RESET,
 	authorReviewSortFields,
-	authorReviewSortLabels,
 	countAuthorBookFilters,
 	toAuthorReviewsInput,
 	useAuthorReviewsParams,
@@ -73,11 +73,14 @@ function shortDate(f: Formatters, date: Date) {
 
 /** Five stars, filled to the rating (half steps), with the number beside it. */
 function RatingStars({ rating }: { rating: number }) {
+	const t = useTranslations("authors");
 	return (
 		<span
 			className="inline-flex shrink-0 items-center gap-1.5"
 			role="img"
-			aria-label={`Rated ${formatFeedbackRating(rating)} out of 5`}
+			aria-label={t("reviewsTab.rated", {
+				rating: formatFeedbackRating(rating),
+			})}
 		>
 			<span className="relative inline-flex" aria-hidden>
 				<span className="inline-flex text-muted-foreground/40">
@@ -102,6 +105,7 @@ function RatingStars({ rating }: { rating: number }) {
 }
 
 function ReviewCard({ item }: { item: AuthorReviewItem }) {
+	const t = useTranslations("authors");
 	const href = `/books/${item.book.slug}/feedbacks/${item.slug}` as Route;
 	const coverSrc = bookCoverUrl(item.book.coverId, "S");
 	const series = item.series;
@@ -111,7 +115,10 @@ function ReviewCard({ item }: { item: AuthorReviewItem }) {
 			<Link
 				href={href}
 				className="absolute inset-0 z-0"
-				aria-label={`Open ${item.member.name}'s review of ${item.book.title}`}
+				aria-label={t("reviewsTab.open", {
+					name: item.member.name,
+					book: item.book.title,
+				})}
 			/>
 
 			<div className="relative z-10 flex items-start justify-between gap-3 px-4 pt-4">
@@ -172,30 +179,36 @@ function ReviewCard({ item }: { item: AuthorReviewItem }) {
 				{item.isSpoiler ? (
 					<p className="inline-flex items-center gap-2 text-muted-foreground text-sm italic">
 						<EyeOff className="size-4 shrink-0" aria-hidden />
-						Contains spoilers. Open the review to read it.
+						{t("reviewsTab.spoiler")}
 					</p>
 				) : item.excerpt ? (
 					<p className="line-clamp-6 text-sm leading-relaxed">{item.excerpt}</p>
 				) : (
 					<p className="text-muted-foreground text-sm italic">
-						Rating only, no written review.
+						{t("reviewsTab.ratingOnly")}
 					</p>
 				)}
 			</div>
 
 			<div className="relative z-10 mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 border-border border-t bg-muted/20 px-4 py-2 text-muted-foreground text-xs tabular-nums">
-				<span className="inline-flex items-center gap-1" title="Likes">
+				<span
+					className="inline-flex items-center gap-1"
+					title={t("reviewsTab.likes")}
+				>
 					<Heart className="size-3.5" aria-hidden />
 					{item.likeCount}
 				</span>
-				<span className="inline-flex items-center gap-1" title="Comments">
+				<span
+					className="inline-flex items-center gap-1"
+					title={t("reviewsTab.comments")}
+				>
 					<MessageCircle className="size-3.5" aria-hidden />
 					{item.commentCount}
 				</span>
 				{item.hasImage ? (
 					<span className="inline-flex items-center gap-1">
 						<ImageIcon className="size-3.5" aria-hidden />
-						Image
+						{t("reviewsTab.image")}
 					</span>
 				) : null}
 			</div>
@@ -224,6 +237,13 @@ export function AuthorTabReviews({
 	authorName: string;
 }) {
 	const f = useFormatters();
+	const t = useTranslations("authors");
+	const sortLabels = Object.fromEntries(
+		authorReviewSortFields.map((field) => [
+			field,
+			t(`reviewsTab.sort.${field}`),
+		]),
+	) as Record<(typeof authorReviewSortFields)[number], string>;
 	const [params, setParams] = useAuthorReviewsParams();
 	const search = useDebouncedValue(params.search);
 
@@ -284,10 +304,13 @@ export function AuthorTabReviews({
 						id: "rating",
 						label:
 							params.minRating != null && params.maxRating != null
-								? `Rated ${params.minRating}–${params.maxRating}`
+								? t("reviewsTab.ratedBetween", {
+										min: params.minRating,
+										max: params.maxRating,
+									})
 								: params.minRating != null
-									? `Rated ${params.minRating}+`
-									: `Rated up to ${params.maxRating}`,
+									? t("reviewsTab.ratedMin", { min: params.minRating })
+									: t("reviewsTab.ratedMax", { max: params.maxRating ?? 0 }),
 						onRemove: () =>
 							void setParams({ minRating: null, maxRating: null }),
 					},
@@ -309,7 +332,7 @@ export function AuthorTabReviews({
 		})),
 		...(params.series ?? []).map((seriesSlug) => ({
 			id: `series:${seriesSlug}`,
-			label: `Series: ${humanize(seriesSlug)}`,
+			label: t("reviewsTab.seriesChip", { name: humanize(seriesSlug) }),
 			onRemove: () =>
 				void setParams({ series: withoutValue(params.series, seriesSlug) }),
 		})),
@@ -319,7 +342,9 @@ export function AuthorTabReviews({
 					{
 						id: "type",
 						label:
-							params.reviewType === "written" ? "With text" : "Rating only",
+							params.reviewType === "written"
+								? t("reviewsTab.withText")
+								: t("reviewsTab.ratingOnlyChip"),
 						onRemove: () => void setParams({ reviewType: null }),
 					},
 				]
@@ -328,7 +353,7 @@ export function AuthorTabReviews({
 			? [
 					{
 						id: "image",
-						label: "Has an image",
+						label: t("reviewsTab.hasImage"),
 						onRemove: () => void setParams({ hasImage: null }),
 					},
 				]
@@ -337,7 +362,10 @@ export function AuthorTabReviews({
 			? [
 					{
 						id: "spoilers",
-						label: params.spoilers === "only" ? "Spoilers only" : "No spoilers",
+						label:
+							params.spoilers === "only"
+								? t("reviewsTab.spoilersOnly")
+								: t("reviewsTab.noSpoilers"),
 						onRemove: () => void setParams({ spoilers: null }),
 					},
 				]
@@ -346,7 +374,10 @@ export function AuthorTabReviews({
 			? [
 					{
 						id: "written",
-						label: `Written ${params.createdFrom ? shortDate(f, params.createdFrom) : "…"} – ${params.createdTo ? shortDate(f, params.createdTo) : "…"}`,
+						label: t("reviewsTab.writtenChip", {
+							from: params.createdFrom ? shortDate(f, params.createdFrom) : "…",
+							to: params.createdTo ? shortDate(f, params.createdTo) : "…",
+						}),
 						onRemove: () =>
 							void setParams({ createdFrom: null, createdTo: null }),
 					},
@@ -358,14 +389,16 @@ export function AuthorTabReviews({
 	const resultLabel =
 		total == null
 			? null
-			: `${f.number(total)} ${total === 1 ? "review" : "reviews"}${filtered ? " match" : ""}`;
+			: filtered
+				? t("reviewsTab.countMatch", { count: total })
+				: t("reviewsTab.count", { count: total });
 
 	return (
 		<div className="flex flex-col gap-4">
 			<AuthorFilterBar
 				search={params.search}
 				onSearchChange={(value) => void setParams({ search: value })}
-				searchPlaceholder="Search reviews, reviewers or books…"
+				searchPlaceholder={t("reviewsTab.search")}
 				sort={
 					<ListingSort
 						sortBy={params.sortBy ?? "createdAt"}
@@ -375,17 +408,19 @@ export function AuthorTabReviews({
 							void setParams({ sortDirection })
 						}
 						sortByOptions={authorReviewSortFields}
-						sortByLabels={authorReviewSortLabels}
+						sortByLabels={sortLabels}
 					/>
 				}
-				sheetTitle="Review filters"
-				sheetDescription={`Narrow down the reviews of books by ${authorName}.`}
+				sheetTitle={t("reviewsTab.sheetTitle")}
+				sheetDescription={t("reviewsTab.sheetDescription", {
+					name: authorName,
+				})}
 				sheetContent={
 					<>
 						<AuthorFilterMembers
 							slug={slug}
 							source="reviews"
-							label="Reviewers"
+							label={t("reviewsTab.reviewers")}
 							selected={params.members ?? []}
 							onChange={(next) =>
 								void setParams({ members: next.length > 0 ? next : null })
@@ -407,7 +442,7 @@ export function AuthorTabReviews({
 						/>
 
 						<ListingRatingRangeFields
-							legend="Rating given"
+							legend={t("reviewsTab.ratingGiven")}
 							minId="author-reviews-min-rating"
 							maxId="author-reviews-max-rating"
 							step={0.5}
@@ -418,7 +453,7 @@ export function AuthorTabReviews({
 						/>
 
 						<FieldSet className="gap-2">
-							<FieldLegend>Kind of review</FieldLegend>
+							<FieldLegend>{t("reviewsTab.kind")}</FieldLegend>
 							<ToggleGroup
 								value={[params.reviewType ?? "any"]}
 								onValueChange={(value) => {
@@ -433,18 +468,22 @@ export function AuthorTabReviews({
 								variant="outline"
 								size="sm"
 								className="flex-wrap"
-								aria-label="Kind of review"
+								aria-label={t("reviewsTab.kind")}
 							>
-								<ToggleGroupItem value="any">Any</ToggleGroupItem>
-								<ToggleGroupItem value="written">With text</ToggleGroupItem>
+								<ToggleGroupItem value="any">
+									{t("reviewsTab.any")}
+								</ToggleGroupItem>
+								<ToggleGroupItem value="written">
+									{t("reviewsTab.withText")}
+								</ToggleGroupItem>
 								<ToggleGroupItem value="rating_only">
-									Rating only
+									{t("reviewsTab.ratingOnlyChip")}
 								</ToggleGroupItem>
 							</ToggleGroup>
 						</FieldSet>
 
 						<FieldSet className="gap-2">
-							<FieldLegend>Spoilers</FieldLegend>
+							<FieldLegend>{t("reviewsTab.spoilersLegend")}</FieldLegend>
 							<ToggleGroup
 								value={[params.spoilers ?? "any"]}
 								onValueChange={(value) => {
@@ -456,11 +495,17 @@ export function AuthorTabReviews({
 								variant="outline"
 								size="sm"
 								className="flex-wrap"
-								aria-label="Spoilers"
+								aria-label={t("reviewsTab.spoilersLegend")}
 							>
-								<ToggleGroupItem value="any">Show all</ToggleGroupItem>
-								<ToggleGroupItem value="hide">Hide spoilers</ToggleGroupItem>
-								<ToggleGroupItem value="only">Spoilers only</ToggleGroupItem>
+								<ToggleGroupItem value="any">
+									{t("reviewsTab.showAll")}
+								</ToggleGroupItem>
+								<ToggleGroupItem value="hide">
+									{t("reviewsTab.hideSpoilers")}
+								</ToggleGroupItem>
+								<ToggleGroupItem value="only">
+									{t("reviewsTab.spoilersOnly")}
+								</ToggleGroupItem>
 							</ToggleGroup>
 						</FieldSet>
 
@@ -473,13 +518,13 @@ export function AuthorTabReviews({
 									}
 								/>
 								<FieldTitle className="text-foreground text-sm">
-									Only reviews with an image
+									{t("reviewsTab.onlyImage")}
 								</FieldTitle>
 							</FieldLabel>
 						</Field>
 
 						<AuthorFilterDateRange
-							legend="Written between"
+							legend={t("reviewsTab.writtenBetween")}
 							from={params.createdFrom}
 							to={params.createdTo}
 							onChange={({ from, to }) =>
@@ -519,19 +564,19 @@ export function AuthorTabReviews({
 						<AuthorFilteredEmpty
 							filtered
 							emptyText=""
-							filteredText="No reviews match these filters."
+							filteredText={t("reviewsTab.noMatch")}
 							onClear={clearAll}
 						/>
 					) : (
 						<AuthorTabEmptyContent
 							authorSlug={slug}
-							text={`No one has reviewed a book by ${authorName} yet — be the first.`}
-							linkLabel="Pick a book to review"
+							text={t("reviewsTab.empty", { name: authorName })}
+							linkLabel={t("reviewsTab.pickBook")}
 						/>
 					)
 				}
 				loadingContent={<ReviewsSkeleton />}
-				endMessage="That is every review."
+				endMessage={t("reviewsTab.end")}
 			>
 				<ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
 					{items.map((item) => (
