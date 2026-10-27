@@ -8,6 +8,7 @@ import {
 } from "@bbrc/ui/components/input-group";
 import { ToggleGroup, ToggleGroupItem } from "@bbrc/ui/components/toggle-group";
 import { Search, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { SubjectMatchMode } from "@/lib/listing/books-listing";
 import {
@@ -44,6 +45,7 @@ export function BooksListingSubjectSearch({
 	inputClassName,
 	ref,
 }: BooksListingSubjectSearchProps) {
+	const t = useTranslations("books");
 	const [inputValue, setInputValue] = useState(search ?? "");
 	const skipSyncRef = useRef(false);
 	const rootRef = useRef<HTMLDivElement>(null);
@@ -138,8 +140,8 @@ export function BooksListingSubjectSearch({
 	const matchMode: SubjectMatchMode = subjectsMatch ?? "any";
 	const hasInlineChips = subjects.length > 0;
 	const searchPlaceholder = compactPlaceholder
-		? "Search…"
-		: "Search title or author (#subject + space)";
+		? t("search.placeholderCompact")
+		: t("search.placeholder");
 
 	return (
 		<div
@@ -174,7 +176,9 @@ export function BooksListingSubjectSearch({
 						<button
 							type="button"
 							className="cursor-pointer p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							aria-label={`Remove subject ${subjectSlugToLabel(slug)}`}
+							aria-label={t("search.removeSubject", {
+								subject: subjectSlugToLabel(slug),
+							})}
 							onClick={() => {
 								const next = subjects.filter((value) => value !== slug);
 								onSubjectsChange(next.length > 0 ? next : null);
@@ -198,13 +202,13 @@ export function BooksListingSubjectSearch({
 						size="sm"
 						spacing={0}
 						className="h-6 shrink-0"
-						aria-label="Subject filter match"
+						aria-label={t("search.matchAria")}
 					>
 						<ToggleGroupItem value="any" className="h-6 px-2 text-xs">
-							Any
+							{t("search.any")}
 						</ToggleGroupItem>
 						<ToggleGroupItem value="all" className="h-6 px-2 text-xs">
-							All
+							{t("search.all")}
 						</ToggleGroupItem>
 					</ToggleGroup>
 				) : null}

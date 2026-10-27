@@ -573,4 +573,43 @@ export const authors: Messages["authors"] = {
 		viewAsTable: "Cədvəl kimi bax",
 		nothing: "Bu filtrlər üçün göstəriləcək heç nə yoxdur.",
 	},
+	charts: {
+		activity: {
+			title: "Aylar üzrə fəaliyyət",
+			description:
+				"Yalnız həmin aya baxmaq üçün aya klikləyin. Aşağıdan xətləri açıb-bağlaya bilərsiniz.",
+			label:
+				"{count} ayın hər biri üzrə oxumalar, rəylər, yeni oxucular və yeni izləyicilər",
+		},
+		series: {
+			reads: "Oxumalar",
+			reviews: "Rəylər",
+			newReaders: "Yeni oxucular",
+			newFollowers: "Yeni izləyicilər",
+		},
+		month: "Ay",
+		growth: {
+			title: "Zaman üzrə artım",
+			description: "Aylar üzrə yığılmış cəm.",
+			of: "Artım göstəricisi",
+			readers: "Oxucular",
+			followers: "İzləyicilər",
+			new: "Yeni",
+			total: "Cəmi",
+			label: "{label} üzrə aylıq cəm, indi {total}",
+		},
+		years: {
+			title: "İllər üzrə oxumalar",
+			description: "Həmin ilə baxmaq üçün sütuna klikləyin.",
+			year: "İl",
+			label: "{count} ilin hər biri üzrə oxumalar",
+		},
+		season: {
+			title: "İnsanlar hansı aylarda bitirir",
+			peak: "{month} ən məşğul aydır: {total} oxumadan {count}-i.",
+			all: "Təqvim ayları üzrə oxumalar, bütün illər birlikdə.",
+			label: "Təqvim ayları üzrə oxumalar",
+			tip: "{month}: {count, plural, one {# oxuma} other {# oxuma}}",
+		},
+	},
 };

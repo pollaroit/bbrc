@@ -570,4 +570,43 @@ export const authors = defineMessages({
 		viewAsTable: "View as table",
 		nothing: "Nothing to show for these filters.",
 	},
+	charts: {
+		activity: {
+			title: "Activity by month",
+			description:
+				"Click a month to look at just that month. Switch lines on and off below.",
+			label:
+				"Reads, reviews, new readers and new followers for each of {count} months",
+		},
+		series: {
+			reads: "Reads",
+			reviews: "Reviews",
+			newReaders: "New readers",
+			newFollowers: "New followers",
+		},
+		month: "Month",
+		growth: {
+			title: "Growth over time",
+			description: "Running total, month by month.",
+			of: "Growth of",
+			readers: "Readers",
+			followers: "Followers",
+			new: "New",
+			total: "Total",
+			label: "{label} total by month, now {total}",
+		},
+		years: {
+			title: "Reads per year",
+			description: "Click a bar to look at that year.",
+			year: "Year",
+			label: "Reads for each of {count} years",
+		},
+		season: {
+			title: "Which months people finish it",
+			peak: "{month} is the busiest month, with {count} of {total} reads.",
+			all: "Reads by calendar month, every year together.",
+			label: "Reads by calendar month",
+			tip: "{month}: {count, plural, one {# read} other {# reads}}",
+		},
+	},
 });

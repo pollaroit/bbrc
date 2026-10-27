@@ -29,6 +29,57 @@ export const books: Messages["books"] = {
 		with: "ilə",
 		you: "Siz",
 	},
+	export: {
+		baseName: "Əsas ad",
+		baseNamePlaceholder: "mənim-eksportum",
+		button: "Eksport",
+		chooseNaming: "Adlandırma seçin",
+		clearAll: "Hamısını təmizlə",
+		columnCount: "{total} sütundan {selected}",
+		columns: "Sütunlar",
+		columnsHint: "Fayla hansı sahələrin daxil ediləcəyini seçin.",
+		description:
+			"Bu səhifədə cari axtarış, süzgəc və sıralamaya uyğun kitabları yükləyir.",
+		done: "{count} kitab eksport edildi.",
+		download: "{format} yüklə",
+		exporting: "Eksport edilir…",
+		failed: "Eksport alınmadı.",
+		fields: {
+			authors: "Müəlliflər",
+			averageRating: "Orta qiymət",
+			createdAt: "Əlavə olunma tarixi",
+			excerpt: "Qısa məzmun",
+			favoriteCount: "Sevimli sayı",
+			feedbackCount: "Rəy sayı",
+			olid: "Open Library ID",
+			openLibraryRating: "Open Library qiyməti",
+			pages: "Səhifə",
+			publishedIn: "Nəşr ili",
+			slug: "Ünvan adı",
+			status: "Vəziyyət",
+			subjectPeople: "Mövzu şəxsləri",
+			subjectTimes: "Mövzu dövrləri",
+			subjects: "Mövzular",
+			title: "Ad",
+			updatedAt: "Son yenilənmə",
+		},
+		fileName: "Fayl adı",
+		formats: {
+			txt: "Sadə mətn",
+		},
+		names: {
+			custom: "Fərdi ad",
+			date: "Yalnız tarix",
+			dateTime: "Tarix və vaxt",
+			none: "Tarix prefiksi olmadan",
+		},
+		naming: "Adlandırma",
+		noBooks: "Cari süzgəclərə uyğun kitab yoxdur.",
+		noFields: "Ən azı bir sahə seçin.",
+		preview: "Önbaxış",
+		selectAll: "Hamısını seç",
+		title: "Kitab siyahısını eksport et",
+	},
 	feedback: {
 		clubReviews: "Klub rəyləri",
 		comment: "Şərh",
@@ -100,6 +151,48 @@ export const books: Messages["books"] = {
 		seriesPosition: "<series>{title}</series> seriyasında #{position}",
 		shareBook: "Kitabı paylaş",
 	},
+	list: {
+		count: "{count} kitab",
+		emptyDescription:
+			"Kitablar klub kitabxanasına əlavə edildikdə burada görünəcək.",
+		emptyTitle: "Hələ kitab yoxdur",
+		end: "Siyahının sonuna çatdınız.",
+		intro:
+			"Hər kitabın oxuma vəziyyəti ilə klub kataloqu. Növbəti oxunacaq və ya rəy yazılacaq kitabı tapmaq üçün axtarın, süzün və sıralayın.",
+		title: "Kitablar",
+	},
+	listing: {
+		rangeBy: {
+			createdAt: "Əlavə olunma tarixi",
+			updatedAt: "Son yenilənmə",
+		},
+		sortBy: {
+			averageRating: "Klub qiyməti",
+			createdAt: "Əlavə olunma tarixi",
+			documents: "Sənədlər",
+			favorites: "Sevimlilər",
+			feedbacks: "Rəylər",
+			openLibraryRating: "Open Library qiyməti",
+			pages: "Səhifə sayı",
+			publishedIn: "Nəşr ili",
+			readingNowCount: "İndi oxuyur",
+			reads: "Üzv oxumaları",
+			shelves: "Rəflərdə yerləşmə",
+			status: "Oxuma vəziyyəti",
+			title: "Ad",
+			updatedAt: "Son yenilənmə",
+			viewCount: "Baxışlar",
+			viewerCount: "Baxanlar",
+			wishlistCount: "Ən çox istək siyahısında",
+		},
+		viewer: {
+			viewerFavorite: "Sevimli",
+			viewerRead: "Oxumuşam",
+			viewerReading: "İndi oxuyuram",
+			viewerReviewed: "Rəy yazmışam",
+			viewerWishlist: "İstək siyahımda",
+		},
+	},
 	markRead: {
 		addRatingToPublish: "Rəyi dərc etmək üçün qiymət verin.",
 		addWrittenReview: "Yazılı rəy əlavə et",
@@ -157,6 +250,72 @@ export const books: Messages["books"] = {
 		yourReading: "Sizin oxumanız",
 		yourReview: "Rəyiniz",
 	},
+	meta: {
+		about: {
+			description: "{title} üçün qısa məzmun, mövzular və kataloq qeydləri.",
+			title: "Haqqında",
+		},
+		editions: {
+			descriptionCount:
+				"{title} üçün {count} Open Library nəşri — üz qabıqları, nəşriyyatlar, dillər və nəşr tarixləri.",
+			descriptionLinked:
+				"{title} üçün Open Library nəşrləri — üz qabıqları, nəşriyyatlar və nəşr tarixləri.",
+			descriptionNone:
+				"Nəşr siyahısı əlçatan deyil — {title} hələ Open Library əsərinə bağlı deyil.",
+			title: "Nəşrlər",
+		},
+		favorites: {
+			description: "{title} kitabını sevimlilərinə əlavə edən üzvlər.",
+			title: "Sevimlilər",
+		},
+		insights: {
+			description: "Kim nə vaxt baxır.",
+			title: "Təhlil · {title}",
+		},
+		listDescription: "BBRC kitabxanasına və klubun oxu siyahısına baxın.",
+		listTitle: "Kitablar",
+		more: {
+			description:
+				"{authors} müəllifinin {title} kitabına bənzər kitablar — BBRC kataloqunda eyni müəllif, ölkə, dövr və uzunluq.",
+			title: "Daha çox oxumaq üçün",
+		},
+		notFoundDescription: "Bu kitab BBRC-də tapılmadı.",
+		notFoundTitle: "Kitab tapılmadı",
+		overview: {
+			fallback: "{authors} müəllifinin {title} kitabı BBRC kitabxanasında.",
+			title: "İcmal",
+		},
+		quizzes: {
+			description: "Klub üzvlərinin {title} viktorinasında topladığı xallar.",
+			title: "Viktorinalar",
+		},
+		reading: {
+			description: "Hazırda {title} kitabını oxuyan üzvlər.",
+			title: "İndi oxuyanlar",
+		},
+		reads: {
+			description: "{title} kitabını bitirən üzvlər və oxuma tarixləri.",
+			title: "Oxumalar",
+		},
+		reviews: {
+			description: "{title} üçün üzv rəyləri və qiymətləri.",
+			title: "Rəylər",
+		},
+		shelves: {
+			description: "{title} kitabı olan üzv rəfləri.",
+			title: "Rəflər",
+		},
+		sittings: {
+			description:
+				"{title} kitabını seçən klub oxuma sessiyaları və iştirak etdiyi səsvermələr.",
+			title: "Oxuma sessiyaları",
+		},
+		stats: {
+			description:
+				"{title} üçün oxuyucular, qiymətlər, səsvermə nəticələri və viktorina xalları.",
+			title: "Statistika",
+		},
+	},
 	months: {
 		"1": "Yanvar",
 		"10": "Oktyabr",
@@ -199,6 +358,14 @@ export const books: Messages["books"] = {
 	readCount: {
 		title: "{count, plural, one {# üzv oxuyub} other {# üzv oxuyub}}",
 	},
+	search: {
+		all: "Hamısı",
+		any: "İstənilən",
+		matchAria: "Mövzu süzgəcinin uyğunluğu",
+		placeholder: "Ad və ya müəllif axtar (#mövzu + boşluq)",
+		placeholderCompact: "Axtar…",
+		removeSubject: "{subject} mövzusunu sil",
+	},
 	shelfDialog: {
 		addBook: "Kitabı əlavə et",
 		addFailed: "Kitab əlavə edilmədi.",
@@ -240,5 +407,51 @@ export const books: Messages["books"] = {
 		sittings: "Oxuma sessiyaları",
 		stats: "Statistika",
 		withCount: "{label} ({count})",
+	},
+	toolbar: {
+		any: "İstənilən",
+		catalogDates: "Kataloq tarixləri",
+		catalogDatesHint: "Kitabların nə vaxt əlavə edildiyi və ya son yenilədiyi.",
+		catalogStatus: "Kataloq vəziyyəti",
+		catalogStatusHint: "Hər kitab üçün klubun oxuma mərhələsi.",
+		clubActivity: "Klub fəaliyyəti",
+		clubActivityHint: "Hər kitabı neçə üzvün bitirdiyi.",
+		clubRating: "Klub qiyməti",
+		clubReviews: "Klub rəyləri",
+		dateRange: "Tarix aralığı",
+		description:
+			"Müəllif, vəziyyət, qiymət, səhifə, tarix və ya şəxsi kitabxananıza görə süzün.",
+		firstPublished: "İlk nəşr",
+		firstPublishedYear: "İlk nəşr (il)",
+		fromYear: "İldən",
+		maxPages: "Maksimum səhifə",
+		maxReads: "Maksimum oxuma",
+		memberReads: "Üzv oxumaları",
+		minPages: "Minimum səhifə",
+		minReads: "Minimum oxuma",
+		openLibraryRating: "Open Library qiyməti",
+		pageCount: "Səhifə sayı",
+		peoplePlaces: "İnsanlar və yerlər",
+		peoplePlacesHint: "Kataloqda təmsil olunan müəlliflər və ölkələr.",
+		peoplePlacesLinked:
+			"Ölkələr seçilmiş müəlliflərə uyğun yenilənir. Müəllif seçimləri ölkə süzgəclərini nəzərə almır.",
+		placeholderFrom: "məs. 1900",
+		placeholderTo: "məs. {year}",
+		ratingsSize: "Qiymətlər və ölçü",
+		ratingsSizeHint: "Open Library qiyməti, səhifə sayı və nəşr ili.",
+		read: "Oxunub",
+		readFilterAria: "Kitabı oxuyub-oxumadığınıza görə süzün",
+		readStatus: "Oxuma vəziyyəti",
+		reviewsRating: "Rəylər və klub qiyməti",
+		reviewsRatingHint:
+			"Kitabın neçə klub rəyi olduğu və üzvlərin ona necə qiymət verdiyi.",
+		status: "Vəziyyət",
+		title: "Kitab süzgəcləri",
+		toYear: "İlədək",
+		unread: "Oxunmayıb",
+		yourLibrary: "Sizin kitabxana",
+		yourLibraryHint:
+			"Siyahını oxuduğunuz, sevimli etdiyiniz və ya rəy yazdığınız kitablarla məhdudlaşdırın.",
+		yourReads: "Sizin oxumalarınız",
 	},
 };

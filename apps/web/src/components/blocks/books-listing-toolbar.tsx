@@ -13,6 +13,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@bbrc/ui/components/select";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { BooksListExportMenu } from "@/components/blocks/books-list-export-menu";
@@ -32,6 +33,8 @@ import { ListingRatingRangeFields } from "@/components/listing/listing-rating-ra
 import { ListingSideSheetSection } from "@/components/listing/listing-side-sheet";
 import { ListingSort } from "@/components/listing/listing-sort";
 import { authClient } from "@/lib/auth-client";
+import type { BooksTranslator } from "@/lib/books/books-translator";
+import { useBookStatusLabels } from "@/lib/i18n/use-labels";
 import {
 	type BookListingStatus,
 	bookRangeByLabels,
@@ -47,6 +50,7 @@ import {
 	viewerBookFilterLabels,
 	viewerReadFilterValues,
 } from "@/lib/listing/books-listing";
+import { useBookListingLabels } from "@/lib/listing/books-listing-labels";
 import { cn } from "@/lib/utils";
 
 const viewerFilterKeys = [
@@ -56,14 +60,17 @@ const viewerFilterKeys = [
 	"viewerReading",
 ] as const;
 
-function viewerReadFilterLabel(value: ViewerReadFilter | null | undefined) {
+function viewerReadFilterLabel(
+	value: ViewerReadFilter | null | undefined,
+	t: BooksTranslator,
+) {
 	if (value === "read") {
-		return "Read";
+		return t("toolbar.read");
 	}
 	if (value === "unread") {
-		return "Not read";
+		return t("toolbar.unread");
 	}
-	return "Any";
+	return t("toolbar.any");
 }
 
 type BooksListingToolbarProps = {
@@ -76,6 +83,9 @@ export function BooksListingToolbar({
 	variant = "library",
 	appearance = "default",
 }: BooksListingToolbarProps) {
+	const t = useTranslations("books");
+	const labels = useBookListingLabels();
+	const statusLabels = useBookStatusLabels().label;
 	const isLibraryChrome = appearance === "library";
 	const [params, setParams] = useBookListingSearchParams();
 	const { data: session } = authClient.useSession();
@@ -168,29 +178,31 @@ export function BooksListingToolbar({
 					void setParams({ sortDirection });
 				}}
 				sortByOptions={bookSortableFields}
-				sortByLabels={bookSortByLabels}
+				sortByLabels={labels.sortBy}
 				appearance={isLibraryChrome ? "library" : "default"}
 			/>
 			<BooksListExportMenu
 				appearance={isLibraryChrome ? "library" : "default"}
 			/>
 			<ListingFiltersSheet
-				title="Book filters"
-				description="Filter by author, status, rating, pages, date, or your library."
+				title={t("toolbar.title")}
+				description={t("toolbar.description")}
 				activeFilterCount={sheetFilterCount}
 				onClear={() => clearBookSheetFilters(setParams)}
 				appearance={isLibraryChrome ? "library" : "default"}
 			>
 				{session?.user
 					? filterSection(
-							"Your library",
-							"Limit the list to books you have read, favorited, or reviewed.",
+							t("toolbar.yourLibrary"),
+							t("toolbar.yourLibraryHint"),
 							<>
 								<Field className="min-w-0">
-									{isLibraryChrome ? null : <FieldLabel>Your reads</FieldLabel>}
+									{isLibraryChrome ? null : (
+										<FieldLabel>{t("toolbar.yourReads")}</FieldLabel>
+									)}
 									{isLibraryChrome ? (
 										<FieldLabel className="text-muted-foreground text-xs">
-											Read status
+											{t("toolbar.readStatus")}
 										</FieldLabel>
 									) : null}
 									<Select
@@ -208,18 +220,20 @@ export function BooksListingToolbar({
 									>
 										<SelectTrigger
 											className="w-full bg-background"
-											aria-label="Filter by whether you have read the book"
+											aria-label={t("toolbar.readFilterAria")}
 										>
-											<SelectValue placeholder="Any">
-												{viewerReadFilterLabel(params.viewerRead)}
+											<SelectValue placeholder={t("toolbar.any")}>
+												{viewerReadFilterLabel(params.viewerRead, t)}
 											</SelectValue>
 										</SelectTrigger>
 										<SelectContent alignItemWithTrigger={false}>
 											<SelectGroup>
-												<SelectItem value="any">Any</SelectItem>
+												<SelectItem value="any">{t("toolbar.any")}</SelectItem>
 												{viewerReadFilterValues.map((value) => (
 													<SelectItem key={value} value={value}>
-														{value === "read" ? "Read" : "Not read"}
+														{value === "read"
+															? t("toolbar.read")
+															: t("toolbar.unread")}
 													</SelectItem>
 												))}
 											</SelectGroup>
@@ -227,10 +241,12 @@ export function BooksListingToolbar({
 									</Select>
 								</Field>
 								<ListingCheckboxList
-									legend={isLibraryChrome ? undefined : "Your library"}
+									legend={
+										isLibraryChrome ? undefined : t("toolbar.yourLibrary")
+									}
 									options={viewerFilterKeys.map((key) => ({
 										id: key,
-										label: viewerBookFilterLabels[key],
+										label: labels.viewer[key],
 										checked: params[key] === true,
 										onCheckedChange: (checked) => {
 											toggleViewerFilter(key, checked);
@@ -242,13 +258,13 @@ export function BooksListingToolbar({
 					: null}
 
 				{filterSection(
-					"Catalog status",
-					"Club reading phase for each title.",
+					t("toolbar.catalogStatus"),
+					t("toolbar.catalogStatusHint"),
 					<ListingCheckboxList
-						legend={isLibraryChrome ? undefined : "Status"}
+						legend={isLibraryChrome ? undefined : t("toolbar.status")}
 						options={bookStatuses.map((status) => ({
 							id: status,
-							label: bookStatusFilterLabels[status],
+							label: statusLabels[status],
 							checked: params.statuses?.includes(status) ?? false,
 							onCheckedChange: (checked) => {
 								toggleStatus(status, checked);
@@ -258,11 +274,11 @@ export function BooksListingToolbar({
 				)}
 
 				{filterSection(
-					"Ratings & size",
-					"Open Library score, page count, and publication year.",
+					t("toolbar.ratingsSize"),
+					t("toolbar.ratingsSizeHint"),
 					<div className="flex flex-col gap-3">
 						{isLibraryChrome ? (
-							<ListingFilterPanel title="Open Library rating">
+							<ListingFilterPanel title={t("toolbar.openLibraryRating")}>
 								<ListingOpenLibraryRatingSlider
 									min={params.minOpenLibraryRating}
 									max={params.maxOpenLibraryRating}
@@ -287,14 +303,14 @@ export function BooksListingToolbar({
 							/>
 						)}
 						{isLibraryChrome ? (
-							<ListingFilterPanel title="Page count">
+							<ListingFilterPanel title={t("toolbar.pageCount")}>
 								<ListingIntegerRangeFields
 									minId="book-filter-min-pages"
 									maxId="book-filter-max-pages"
 									min={params.minPages}
 									max={params.maxPages}
-									minLabel="Minimum pages"
-									maxLabel="Maximum pages"
+									minLabel={t("toolbar.minPages")}
+									maxLabel={t("toolbar.maxPages")}
 									onMinChange={(minPages) => {
 										void setParams({ minPages });
 									}}
@@ -305,7 +321,7 @@ export function BooksListingToolbar({
 							</ListingFilterPanel>
 						) : (
 							<ListingIntegerRangeFields
-								legend="Page count"
+								legend={t("toolbar.pageCount")}
 								minId="book-filter-min-pages"
 								maxId="book-filter-max-pages"
 								min={params.minPages}
@@ -319,17 +335,19 @@ export function BooksListingToolbar({
 							/>
 						)}
 						{isLibraryChrome ? (
-							<ListingFilterPanel title="First published">
+							<ListingFilterPanel title={t("toolbar.firstPublished")}>
 								<ListingIntegerRangeFields
 									minId="book-filter-min-published"
 									maxId="book-filter-max-published"
 									min={params.minPublishedIn}
 									max={params.maxPublishedIn}
 									inputMin={0}
-									minLabel="From year"
-									maxLabel="To year"
-									placeholderMin="e.g. 1900"
-									placeholderMax={`e.g. ${new Date().getFullYear()}`}
+									minLabel={t("toolbar.fromYear")}
+									maxLabel={t("toolbar.toYear")}
+									placeholderMin={t("toolbar.placeholderFrom")}
+									placeholderMax={t("toolbar.placeholderTo", {
+										year: new Date().getFullYear(),
+									})}
 									onMinChange={(minPublishedIn) => {
 										void setParams({ minPublishedIn });
 									}}
@@ -340,14 +358,16 @@ export function BooksListingToolbar({
 							</ListingFilterPanel>
 						) : (
 							<ListingIntegerRangeFields
-								legend="First published (year)"
+								legend={t("toolbar.firstPublishedYear")}
 								minId="book-filter-min-published"
 								maxId="book-filter-max-published"
 								min={params.minPublishedIn}
 								max={params.maxPublishedIn}
 								inputMin={0}
-								placeholderMin="e.g. 1900"
-								placeholderMax={`e.g. ${new Date().getFullYear()}`}
+								placeholderMin={t("toolbar.placeholderFrom")}
+								placeholderMax={t("toolbar.placeholderTo", {
+									year: new Date().getFullYear(),
+								})}
 								onMinChange={(minPublishedIn) => {
 									void setParams({ minPublishedIn });
 								}}
@@ -360,17 +380,17 @@ export function BooksListingToolbar({
 				)}
 
 				{filterSection(
-					"Club activity",
-					"How many members have finished each book.",
+					t("toolbar.clubActivity"),
+					t("toolbar.clubActivityHint"),
 					isLibraryChrome ? (
-						<ListingFilterPanel title="Member reads">
+						<ListingFilterPanel title={t("toolbar.memberReads")}>
 							<ListingIntegerRangeFields
 								minId="book-filter-min-reads"
 								maxId="book-filter-max-reads"
 								min={params.minReads}
 								max={params.maxReads}
-								minLabel="Minimum reads"
-								maxLabel="Maximum reads"
+								minLabel={t("toolbar.minReads")}
+								maxLabel={t("toolbar.maxReads")}
 								onMinChange={(minReads) => {
 									void setParams({ minReads });
 								}}
@@ -381,7 +401,7 @@ export function BooksListingToolbar({
 						</ListingFilterPanel>
 					) : (
 						<ListingIntegerRangeFields
-							legend="Member reads"
+							legend={t("toolbar.memberReads")}
 							minId="book-filter-min-reads"
 							maxId="book-filter-max-reads"
 							min={params.minReads}
@@ -397,11 +417,11 @@ export function BooksListingToolbar({
 				)}
 
 				{filterSection(
-					"Reviews & club rating",
-					"How many club reviews a book has, and how members rated it.",
+					t("toolbar.reviewsRating"),
+					t("toolbar.reviewsRatingHint"),
 					<>
 						<ListingIntegerRangeFields
-							legend="Club reviews"
+							legend={t("toolbar.clubReviews")}
 							minId="book-filter-min-feedbacks"
 							maxId="book-filter-max-feedbacks"
 							inputMin={0}
@@ -415,7 +435,7 @@ export function BooksListingToolbar({
 							}}
 						/>
 						<ListingRatingRangeFields
-							legend="Club rating"
+							legend={t("toolbar.clubRating")}
 							minId="book-filter-min-club-rating"
 							maxId="book-filter-max-club-rating"
 							min={params.minAverageRating}
@@ -432,10 +452,10 @@ export function BooksListingToolbar({
 
 				{variant === "library"
 					? filterSection(
-							"People & places",
+							t("toolbar.peoplePlaces"),
 							params.authors && params.authors.length > 0
-								? "Countries update to match selected authors. Author options ignore country filters."
-								: "Authors and countries represented in the catalog.",
+								? t("toolbar.peoplePlacesLinked")
+								: t("toolbar.peoplePlacesHint"),
 							<>
 								<ListingAuthorMultiSelect
 									selectedSlugs={params.authors ?? []}
@@ -460,8 +480,8 @@ export function BooksListingToolbar({
 					: null}
 
 				{filterSection(
-					"Catalog dates",
-					"When titles were added or last updated.",
+					t("toolbar.catalogDates"),
+					t("toolbar.catalogDatesHint"),
 					<ListingRangeFields
 						rangeBy={params.rangeBy}
 						rangeMin={params.rangeMin}
@@ -476,8 +496,8 @@ export function BooksListingToolbar({
 							void setParams({ rangeMax });
 						}}
 						rangeByOptions={bookRangeableFields}
-						rangeByLabels={bookRangeByLabels}
-						legend={isLibraryChrome ? undefined : "Date range"}
+						rangeByLabels={labels.rangeBy}
+						legend={isLibraryChrome ? undefined : t("toolbar.dateRange")}
 					/>,
 				)}
 			</ListingFiltersSheet>

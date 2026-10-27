@@ -33,6 +33,57 @@ export const books = defineMessages({
 		with: "with",
 		you: "You",
 	},
+	export: {
+		baseName: "Base name",
+		baseNamePlaceholder: "my-export-name",
+		button: "Export",
+		chooseNaming: "Choose naming",
+		clearAll: "Clear all",
+		columnCount: "{selected} of {total} columns",
+		columns: "Columns",
+		columnsHint: "Choose which fields to include in the file.",
+		description:
+			"Downloads the books that match your current search, filters, and sort on this page.",
+		done: "Exported {count, plural, one {# book} other {# books}}.",
+		download: "Download {format}",
+		exporting: "Exporting…",
+		failed: "Export failed.",
+		fields: {
+			authors: "Authors",
+			averageRating: "Average rating",
+			createdAt: "Date added",
+			excerpt: "Excerpt",
+			favoriteCount: "Favorite count",
+			feedbackCount: "Feedback count",
+			olid: "Open Library ID",
+			openLibraryRating: "Open Library rating",
+			pages: "Pages",
+			publishedIn: "Publication year",
+			slug: "Slug",
+			status: "Status",
+			subjectPeople: "Subject people",
+			subjectTimes: "Subject times",
+			subjects: "Subjects",
+			title: "Title",
+			updatedAt: "Last updated",
+		},
+		fileName: "File name",
+		formats: {
+			txt: "Plain text",
+		},
+		names: {
+			custom: "Custom name",
+			date: "Date only",
+			dateTime: "Date and time",
+			none: "No date prefix",
+		},
+		naming: "Naming",
+		noBooks: "No books match the current filters.",
+		noFields: "Select at least one field.",
+		preview: "Preview",
+		selectAll: "Select all",
+		title: "Export book list",
+	},
 	feedback: {
 		clubReviews: "Club reviews",
 		comment: "Comment",
@@ -105,6 +156,48 @@ export const books = defineMessages({
 		seriesPosition: "#{position} in <series>{title}</series>",
 		shareBook: "Share book",
 	},
+	list: {
+		count: "{count, plural, one {# book} other {# books}}",
+		emptyDescription:
+			"When books are added to the club library, they will show up here.",
+		emptyTitle: "No books yet",
+		end: "You have reached the end of the list.",
+		intro:
+			"Club catalog with reading status on every title. Search, filter, and sort to find what to read or review next.",
+		title: "Books",
+	},
+	listing: {
+		rangeBy: {
+			createdAt: "Date added",
+			updatedAt: "Last updated",
+		},
+		sortBy: {
+			averageRating: "Club rating",
+			createdAt: "Date added",
+			documents: "Documents",
+			favorites: "Favorites",
+			feedbacks: "Reviews",
+			openLibraryRating: "Open Library rating",
+			pages: "Page count",
+			publishedIn: "Publication year",
+			readingNowCount: "Reading now",
+			reads: "Member reads",
+			shelves: "Shelf placements",
+			status: "Reading status",
+			title: "Title",
+			updatedAt: "Last updated",
+			viewCount: "Views",
+			viewerCount: "Viewers",
+			wishlistCount: "Most wishlisted",
+		},
+		viewer: {
+			viewerFavorite: "Favorite",
+			viewerRead: "Read",
+			viewerReading: "Reading now",
+			viewerReviewed: "Reviewed",
+			viewerWishlist: "On my wishlist",
+		},
+	},
 	markRead: {
 		addRatingToPublish: "Add a rating to publish your review.",
 		addWrittenReview: "Add a written review",
@@ -158,6 +251,72 @@ export const books = defineMessages({
 		yourReading: "Your reading",
 		yourReview: "Your review",
 	},
+	meta: {
+		about: {
+			description: "Excerpt, subjects, and catalog notes for {title}.",
+			title: "About",
+		},
+		editions: {
+			descriptionCount:
+				"{count} Open Library editions for {title} — covers, publishers, languages, and publication dates.",
+			descriptionLinked:
+				"Open Library editions for {title} — covers, publishers, and publication dates.",
+			descriptionNone:
+				"Edition list unavailable — {title} is not linked to an Open Library work yet.",
+			title: "Editions",
+		},
+		favorites: {
+			description: "Members who added {title} to their favorites.",
+			title: "Favorites",
+		},
+		insights: {
+			description: "Who looks, and when.",
+			title: "Insights · {title}",
+		},
+		listDescription: "Browse the BBRC library and club reading list.",
+		listTitle: "Books",
+		more: {
+			description:
+				"Books like {title} by {authors} — same author, country, era, and length in the BBRC catalog.",
+			title: "More to read",
+		},
+		notFoundDescription: "This book could not be found on BBRC.",
+		notFoundTitle: "Book not found",
+		overview: {
+			fallback: "{title} by {authors} in the BBRC library.",
+			title: "Overview",
+		},
+		quizzes: {
+			description: "How club members scored on the {title} quiz.",
+			title: "Quizzes",
+		},
+		reading: {
+			description: "Members who are reading {title} right now.",
+			title: "Reading now",
+		},
+		reads: {
+			description: "Members who finished {title} and when they read it.",
+			title: "Reads",
+		},
+		reviews: {
+			description: "Member reviews and ratings for {title}.",
+			title: "Reviews",
+		},
+		shelves: {
+			description: "Member shelves that include {title}.",
+			title: "Shelves",
+		},
+		sittings: {
+			description:
+				"Club sittings that picked {title}, and the polls it was part of.",
+			title: "Sittings",
+		},
+		stats: {
+			description:
+				"Readers, ratings, poll results and quiz scores for {title}.",
+			title: "Stats",
+		},
+	},
 	months: {
 		"1": "January",
 		"10": "October",
@@ -202,6 +361,14 @@ export const books = defineMessages({
 		title:
 			"{count, plural, one {# member marked read} other {# members marked read}}",
 	},
+	search: {
+		all: "All",
+		any: "Any",
+		matchAria: "Subject filter match",
+		placeholder: "Search title or author (#subject + space)",
+		placeholderCompact: "Search…",
+		removeSubject: "Remove subject {subject}",
+	},
 	shelfDialog: {
 		addBook: "Add book",
 		addFailed: "Could not add book.",
@@ -243,5 +410,51 @@ export const books = defineMessages({
 		sittings: "Sittings",
 		stats: "Stats",
 		withCount: "{label} ({count})",
+	},
+	toolbar: {
+		any: "Any",
+		catalogDates: "Catalog dates",
+		catalogDatesHint: "When titles were added or last updated.",
+		catalogStatus: "Catalog status",
+		catalogStatusHint: "Club reading phase for each title.",
+		clubActivity: "Club activity",
+		clubActivityHint: "How many members have finished each book.",
+		clubRating: "Club rating",
+		clubReviews: "Club reviews",
+		dateRange: "Date range",
+		description:
+			"Filter by author, status, rating, pages, date, or your library.",
+		firstPublished: "First published",
+		firstPublishedYear: "First published (year)",
+		fromYear: "From year",
+		maxPages: "Maximum pages",
+		maxReads: "Maximum reads",
+		memberReads: "Member reads",
+		minPages: "Minimum pages",
+		minReads: "Minimum reads",
+		openLibraryRating: "Open Library rating",
+		pageCount: "Page count",
+		peoplePlaces: "People & places",
+		peoplePlacesHint: "Authors and countries represented in the catalog.",
+		peoplePlacesLinked:
+			"Countries update to match selected authors. Author options ignore country filters.",
+		placeholderFrom: "e.g. 1900",
+		placeholderTo: "e.g. {year}",
+		ratingsSize: "Ratings & size",
+		ratingsSizeHint: "Open Library score, page count, and publication year.",
+		read: "Read",
+		readFilterAria: "Filter by whether you have read the book",
+		readStatus: "Read status",
+		reviewsRating: "Reviews & club rating",
+		reviewsRatingHint:
+			"How many club reviews a book has, and how members rated it.",
+		status: "Status",
+		title: "Book filters",
+		toYear: "To year",
+		unread: "Not read",
+		yourLibrary: "Your library",
+		yourLibraryHint:
+			"Limit the list to books you have read, favorited, or reviewed.",
+		yourReads: "Your reads",
 	},
 });
