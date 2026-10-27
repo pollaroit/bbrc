@@ -4,12 +4,9 @@ import type { UserAward } from "@bbrc/api/modules/achievement/achievement.schema
 import {
 	ACHIEVEMENT_BY_KEY,
 	ACHIEVEMENT_CATEGORIES,
-	ACHIEVEMENT_CATEGORY_LABELS,
 	ACHIEVEMENTS,
 	type AchievementCategory,
 	type AchievementDefinition,
-	describeTier,
-	tierName,
 } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
@@ -23,6 +20,7 @@ import { TierLadder } from "@/components/blocks/tier-ladder";
 import { Link } from "@/i18n/navigation";
 import { formatAchievementDate } from "@/lib/achievements/format";
 import { authClient } from "@/lib/auth-client";
+import { useAchievementText } from "@/lib/i18n/use-content-text";
 import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -71,10 +69,11 @@ function groupAwards(awards: UserAward[]): Earned[] {
 }
 
 function awardLabel(
+	a: ReturnType<typeof useAchievementText>,
 	definition: AchievementDefinition,
 	award: UserAward,
 ): string {
-	return [tierName(definition, award.tier), award.periodKey]
+	return [a.tier(definition, award.tier), award.periodKey]
 		.filter(Boolean)
 		.join(" ");
 }
@@ -94,6 +93,7 @@ function Ledger({
 	total: number;
 	byCategory: { category: AchievementCategory; count: number; total: number }[];
 }) {
+	const a = useAchievementText();
 	return (
 		<section
 			aria-label="Summary"
@@ -109,7 +109,7 @@ function Ledger({
 				{byCategory.map((row) => (
 					<li key={row.category} className="flex flex-col gap-1">
 						<span className="flex items-baseline justify-between text-sm">
-							{ACHIEVEMENT_CATEGORY_LABELS[row.category]}
+							{a.category(row.category)}
 							<span className="text-muted-foreground text-xs tabular-nums">
 								{row.count}/{row.total}
 							</span>
@@ -130,6 +130,7 @@ function Ledger({
 }
 
 export function UserAchievementsPanel({ username }: { username: string }) {
+	const a = useAchievementText();
 	const f = useFormatters();
 	const { data: session } = authClient.useSession();
 	const isAdmin = session?.user.isAdmin === true;
@@ -301,10 +302,10 @@ export function UserAchievementsPanel({ username }: { username: string }) {
 										tierCount={definition.thresholds.length}
 									/>
 									<span className="font-heading font-semibold text-sm leading-tight">
-										{definition.name}
+										{a.name(definition.key)}
 									</span>
 									<span className="text-muted-foreground text-xs">
-										{awardLabel(definition, award) || "Earned"}
+										{awardLabel(a, definition, award) || "Earned"}
 									</span>
 								</Link>
 							</li>
@@ -334,7 +335,7 @@ export function UserAchievementsPanel({ username }: { username: string }) {
 					return (
 						<div key={category} className="flex flex-col gap-3">
 							<h3 className="border-border border-b pb-2 font-medium text-sm">
-								{ACHIEVEMENT_CATEGORY_LABELS[category]}
+								{a.category(category)}
 								<span className="ps-2 font-normal text-muted-foreground text-xs">
 									{items.length}
 								</span>
@@ -354,7 +355,7 @@ export function UserAchievementsPanel({ username }: { username: string }) {
 												tierCount={definition.thresholds.length}
 											/>
 											<span className="font-heading font-semibold text-sm leading-tight">
-												{definition.name}
+												{a.name(definition.key)}
 											</span>
 											<span className="text-muted-foreground text-xs">
 												{item.best.length > 1
@@ -362,7 +363,7 @@ export function UserAchievementsPanel({ username }: { username: string }) {
 															.map((entry) => entry.periodKey)
 															.filter(Boolean)
 															.join(", ")
-													: awardLabel(definition, award) || "Earned"}
+													: awardLabel(a, definition, award) || "Earned"}
 											</span>
 											<span className="text-2xs text-muted-foreground/80">
 												{formatAchievementDate(award.earnedAt)}
@@ -383,7 +384,7 @@ export function UserAchievementsPanel({ username }: { username: string }) {
 												<button
 													type="button"
 													aria-pressed={selected}
-													aria-label={`${selected ? "Unpin" : "Pin"} ${definition.name}`}
+													aria-label={`${selected ? "Unpin" : "Pin"} ${a.name(definition.key)}`}
 													onClick={() => toggleDraft(award.id)}
 													className={tileClass}
 												>
@@ -392,7 +393,7 @@ export function UserAchievementsPanel({ username }: { username: string }) {
 											) : (
 												<Link
 													href={`/achievements/${definition.slug}` as Route}
-													title={describeTier(definition, item.highestTier)}
+													title={a.describe(definition, item.highestTier)}
 													className={tileClass}
 												>
 													{body}
@@ -460,10 +461,10 @@ export function UserAchievementsPanel({ username }: { username: string }) {
 											/>
 											<span className="flex min-w-0 flex-col">
 												<span className="font-heading font-semibold text-sm">
-													{definition.name}
+													{a.name(definition.key)}
 												</span>
 												<span className="text-muted-foreground text-xs">
-													{describeTier(definition, item.tier + 1)}
+													{a.describe(definition, item.tier + 1)}
 												</span>
 											</span>
 											<span className="col-span-2 flex items-center justify-between gap-4 ps-16 sm:col-span-1 sm:flex-col sm:items-end sm:gap-1.5 sm:ps-0">
@@ -479,7 +480,7 @@ export function UserAchievementsPanel({ username }: { username: string }) {
 														aria-valuenow={Math.round(progress * 100)}
 														aria-valuemin={0}
 														aria-valuemax={100}
-														aria-label={`Progress on ${definition.name}`}
+														aria-label={`Progress on ${a.name(definition.key)}`}
 													>
 														<span
 															className="block h-full bg-primary"

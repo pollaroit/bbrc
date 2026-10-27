@@ -3,6 +3,7 @@ import type { Database } from "@bbrc/db";
 import {
 	ACHIEVEMENTS,
 	type AchievementDefinition,
+	achievementName,
 	achievementProgress,
 	describeTier,
 	type EarnedTier,
@@ -13,6 +14,7 @@ import {
 	tierName,
 } from "@bbrc/shared";
 import { appError } from "../../lib/app-error";
+import { currentLocale } from "../../lib/request-locale";
 import { dispatchNotification } from "../notification/notification.service";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type {
@@ -34,9 +36,9 @@ const ALL_SECTIONS = new Set<FactSection>(FACT_SECTIONS);
 function tiersOf(definition: AchievementDefinition) {
 	return definition.thresholds.map((threshold, index) => ({
 		tier: index + 1,
-		name: tierName(definition, index + 1),
+		name: tierName(definition, index + 1, currentLocale()),
 		threshold,
-		description: describeTier(definition, index + 1),
+		description: describeTier(definition, index + 1, currentLocale()),
 	}));
 }
 
@@ -97,7 +99,7 @@ async function saveNewAwards(
 				message: {
 					id: "achievementEarned",
 					values: {
-						label: `${definition.name}${label ? ` · ${label}` : ""}${year}`,
+						label: `${achievementName(definition.key, currentLocale())}${label ? ` · ${label}` : ""}${year}`,
 					},
 				},
 				href: `/users/${user.username}/achievements`,
@@ -229,7 +231,7 @@ function summarize(
 	return {
 		key: definition.key,
 		slug: definition.slug,
-		name: definition.name,
+		name: achievementName(definition.key, currentLocale()),
 		category: definition.category,
 		icon: definition.icon,
 		isHidden: Boolean(definition.isHidden),
@@ -390,7 +392,7 @@ export async function getAchievementBySlug(
 	return {
 		...summarize(definition, counts, mine),
 		memberCount,
-		description: describeTier(definition, 1),
+		description: describeTier(definition, 1, currentLocale()),
 		recentEarners,
 	};
 }

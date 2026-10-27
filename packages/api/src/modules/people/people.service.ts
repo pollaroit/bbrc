@@ -4,11 +4,13 @@ import {
 	bookAuthorEntries,
 	computeReadingStreak,
 	contentPlainText,
+	genreName,
 	genres,
 	type LevelTier,
 	RP_LEVEL_TIERS,
 	XP_LEVEL_TIERS,
 } from "@bbrc/shared";
+import { currentLocale } from "../../lib/request-locale";
 import { loadAchievementCounts } from "../achievement/achievement.service";
 import { userMemberLevelsFromPoints } from "../user/member-levels";
 import {
@@ -26,9 +28,8 @@ const BIO_PREVIEW_CHARS = 140;
 const MAX_CARD_GENRES = 3;
 const ACTIVE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
-const genreNameBySlug = new Map<string, string>(
-	genres.map((genre) => [genre.slug, genre.name]),
-);
+/** Genre names are written in the language of the request, only for slugs that exist. */
+const knownGenreSlugs = new Set<string>(genres.map((genre) => genre.slug));
 
 /** Shared with the author followers list. */
 export const userListSelect = {
@@ -412,8 +413,8 @@ export async function buildItems(
 			bio: bio || null,
 			location: row.profile?.location ?? null,
 			favoriteGenres: (row.profile?.favoriteGenres ?? [])
-				.map((slug) => genreNameBySlug.get(slug))
-				.filter((name): name is string => name != null)
+				.filter((slug) => knownGenreSlugs.has(slug))
+				.map((slug) => genreName(slug, currentLocale()))
 				.slice(0, MAX_CARD_GENRES),
 			reads: row._count.reads,
 			reviews: row._count.feedbacks,

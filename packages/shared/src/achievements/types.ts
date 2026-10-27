@@ -14,25 +14,6 @@ export const ACHIEVEMENT_CATEGORIES = [
 ] as const;
 export type AchievementCategory = (typeof ACHIEVEMENT_CATEGORIES)[number];
 
-export const ACHIEVEMENT_CATEGORY_LABELS: Record<AchievementCategory, string> =
-	{
-		reading: "Reading",
-		sittings: "Sittings",
-		community: "Community",
-		library: "Library",
-		goals: "Goals",
-		club: "Club",
-	};
-
-/** Names for tiers, lowest first. A achievement with n tiers uses the first n. */
-export const ACHIEVEMENT_TIER_NAMES = [
-	"Bronze",
-	"Silver",
-	"Gold",
-	"Platinum",
-	"Diamond",
-] as const;
-
 /** Parts of a member's activity an achievement needs, so triggers load only what changed. */
 export const FACT_SECTIONS = [
 	"reads",
@@ -209,9 +190,7 @@ export type MetricKey =
 export type AchievementDefinition = {
 	key: string;
 	slug: string;
-	name: string;
-	/** Use `{n}` for the tier's threshold and `{unit}` for the unit noun. */
-	description: string;
+	/** Its name and description live in the `achievements.items.<key>` messages (see `text.ts`). */
 	category: AchievementCategory;
 	/** A lucide icon name; the web app maps it to a component. */
 	icon: string;
@@ -220,7 +199,6 @@ export type AchievementDefinition = {
 	period: "all" | "year";
 	/** Values at which each tier is earned, ascending. */
 	thresholds: readonly number[];
-	unit?: { one: string; other: string };
 	/** Hidden achievements are not listed until the member earns them. */
 	isHidden?: boolean;
 	/** Counts only once the period is over (for example a full year without a DNF). */

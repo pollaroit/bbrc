@@ -10,9 +10,11 @@ import type { Route } from "next";
 import { AchievementBadge } from "@/components/blocks/achievement-badge";
 import { usePinnedAwards } from "@/components/blocks/user-achievements-panel";
 import { Link } from "@/i18n/navigation";
+import { useAchievementText } from "@/lib/i18n/use-content-text";
 
 /** The member's pinned achievements, shown on their profile header. Renders nothing when none are pinned. */
 export function PinnedAchievements({ username }: { username: string }) {
+	const a = useAchievementText();
 	const query = usePinnedAwards(username);
 	const pinned = (query.data?.awards ?? [])
 		.filter((award) => award.pinOrder != null)
@@ -37,7 +39,7 @@ export function PinnedAchievements({ username }: { username: string }) {
 								render={
 									<Link
 										href={`/users/${username}/achievements` as Route}
-										aria-label={`${definition.name}, pinned achievement`}
+										aria-label={`${a.name(definition.key)}, pinned achievement`}
 									/>
 								}
 							>
@@ -48,7 +50,7 @@ export function PinnedAchievements({ username }: { username: string }) {
 									size="sm"
 								/>
 							</TooltipTrigger>
-							<TooltipContent>{definition.name}</TooltipContent>
+							<TooltipContent>{a.name(definition.key)}</TooltipContent>
 						</Tooltip>
 					</li>
 				);

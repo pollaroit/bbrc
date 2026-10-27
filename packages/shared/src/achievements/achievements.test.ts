@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { LOCALES } from "@bbrc/i18n";
+import { genreName } from "../genre-text";
 import { ACHIEVEMENTS, getAchievement } from "./definitions";
 import {
 	achievementProgress,
@@ -7,6 +9,7 @@ import {
 	tierName,
 } from "./evaluate";
 import { METRICS } from "./metrics";
+import { achievementName } from "./text";
 import type { AchievementFacts, ReadFact } from "./types";
 
 const d = (iso: string) => new Date(iso);
@@ -389,5 +392,36 @@ describe("reading achievements", () => {
 		for (const key of ["pace_setter", "page_by_page", "wishlist_keeper"]) {
 			expect(getAchievement(key)?.needs).toEqual(["reading"]);
 		}
+	});
+});
+
+describe("achievement texts", () => {
+	test("every achievement has a name and a description in every language", () => {
+		for (const locale of LOCALES) {
+			for (const definition of ACHIEVEMENTS) {
+				expect(achievementName(definition.key, locale).length).toBeGreaterThan(
+					0,
+				);
+				for (let tier = 1; tier <= definition.thresholds.length; tier++) {
+					expect(describeTier(definition, tier, locale).length).toBeGreaterThan(
+						0,
+					);
+				}
+			}
+		}
+	});
+
+	test("Azerbaijani reads in Azerbaijani, with the number in place", () => {
+		const bookworm = ACHIEVEMENTS.find((item) => item.key === "bookworm");
+		expect(bookworm && describeTier(bookworm, 1, "az")).toBe(
+			"3 kitabı oxunmuş kimi qeyd edin.",
+		);
+		expect(achievementName("bookworm", "az")).toBe("Kitab qurdu");
+		expect(bookworm && tierName(bookworm, 3, "az")).toBe("Qızıl");
+	});
+
+	test("genre names follow the language", () => {
+		expect(genreName("science_fiction")).toBe("Science Fiction");
+		expect(genreName("science_fiction", "az")).toBe("Elmi fantastika");
 	});
 });

@@ -26,8 +26,9 @@ import { getUserByUsername } from "@bbrc/api/modules/user/user.service";
 import { getCompareOgSnapshot } from "@bbrc/api/modules/user-compare/user-compare-og.service";
 import { DEFAULT_LOCALE, type Locale } from "@bbrc/i18n";
 import {
-	ACHIEVEMENT_CATEGORY_LABELS,
 	ACHIEVEMENTS,
+	achievementCategoryLabel,
+	achievementName,
 	contentPlainText,
 	describeTier,
 	formatSittingSlugLabel,
@@ -1274,9 +1275,9 @@ async function resolveAchievementOg(slug: string): Promise<OgImageContent> {
 	const last = definition.thresholds.at(-1) ?? 0;
 	return {
 		kind: "Achievement",
-		title: definition.name,
+		title: achievementName(definition.key),
 		body: describeTier(definition, 1),
-		badge: ACHIEVEMENT_CATEGORY_LABELS[definition.category],
+		badge: achievementCategoryLabel(definition.category),
 		facts: [
 			fact("Tiers", num(definition.thresholds.length)),
 			fact("Top tier", num(last)),
