@@ -5,6 +5,7 @@ import { Button } from "@bbrc/ui/components/button";
 import { cn } from "cn";
 import { XIcon } from "lucide-react";
 import type * as React from "react";
+import { useUiLabels } from "./ui-labels";
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
 	return <DialogPrimitive.Root data-slot="dialog" {...props} />;
@@ -46,6 +47,7 @@ function DialogContent({
 }: DialogPrimitive.Popup.Props & {
 	showCloseButton?: boolean;
 }) {
+	const labels = useUiLabels();
 	return (
 		<DialogPortal>
 			<DialogOverlay />
@@ -70,7 +72,7 @@ function DialogContent({
 						}
 					>
 						<XIcon />
-						<span className="sr-only">Close</span>
+						<span className="sr-only">{labels.close}</span>
 					</DialogPrimitive.Close>
 				)}
 			</DialogPrimitive.Popup>

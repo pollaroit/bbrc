@@ -526,5 +526,16 @@ export const shell: Messages["shell"] = {
 			placeholder: "Tarix seçin...",
 			rangePlaceholder: "Tarix aralığı seçin...",
 		},
+		labels: {
+			close: "Bağla",
+			loading: "Yüklənir",
+			toggleSidebar: "Yan paneli aç/bağla",
+			scrollToEnd: "Sona qədər sürüşdür",
+			scrollToStart: "Başlanğıca qədər sürüşdür",
+		},
+		queryError: {
+			prefix: "Xəta: {message}",
+			retry: "yenidən cəhd et",
+		},
 	},
 };

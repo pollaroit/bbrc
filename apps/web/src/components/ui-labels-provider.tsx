@@ -6,6 +6,7 @@ import {
 	DateSelectorDefaultsProvider,
 	DEFAULT_DATE_SELECTOR_I18N,
 } from "@bbrc/ui/components/reui/date-selector";
+import { UiLabelsProvider as BaseUiLabelsProvider } from "@bbrc/ui/components/ui-labels";
 import { useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useMemo } from "react";
 
@@ -80,11 +81,24 @@ export function UiLabelsProvider({ children }: { children: ReactNode }) {
 		[t],
 	);
 
+	const words = useMemo(
+		() => ({
+			close: t("labels.close"),
+			loading: t("labels.loading"),
+			toggleSidebar: t("labels.toggleSidebar"),
+			scrollToEnd: t("labels.scrollToEnd"),
+			scrollToStart: t("labels.scrollToStart"),
+		}),
+		[t],
+	);
+
 	return (
-		<InfiniteScrollLabelsProvider labels={lists}>
-			<DateSelectorDefaultsProvider i18n={dates} localeCode={locale}>
-				{children}
-			</DateSelectorDefaultsProvider>
-		</InfiniteScrollLabelsProvider>
+		<BaseUiLabelsProvider labels={words}>
+			<InfiniteScrollLabelsProvider labels={lists}>
+				<DateSelectorDefaultsProvider i18n={dates} localeCode={locale}>
+					{children}
+				</DateSelectorDefaultsProvider>
+			</InfiniteScrollLabelsProvider>
+		</BaseUiLabelsProvider>
 	);
 }

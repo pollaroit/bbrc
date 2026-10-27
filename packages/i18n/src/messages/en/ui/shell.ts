@@ -525,5 +525,16 @@ export const shell = defineMessages({
 			placeholder: "Select date...",
 			rangePlaceholder: "Select date range...",
 		},
+		labels: {
+			close: "Close",
+			loading: "Loading",
+			toggleSidebar: "Toggle Sidebar",
+			scrollToEnd: "Scroll to end",
+			scrollToStart: "Scroll to start",
+		},
+		queryError: {
+			prefix: "Error: {message}",
+			retry: "retry",
+		},
 	},
 });

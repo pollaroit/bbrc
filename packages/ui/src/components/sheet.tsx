@@ -5,6 +5,7 @@ import { Button } from "@bbrc/ui/components/button";
 import { cn } from "cn";
 import { XIcon } from "lucide-react";
 import type * as React from "react";
+import { useUiLabels } from "./ui-labels";
 
 function Sheet({ ...props }: SheetPrimitive.Root.Props) {
 	return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -45,6 +46,7 @@ function SheetContent({
 	side?: "top" | "right" | "bottom" | "left";
 	showCloseButton?: boolean;
 }) {
+	const labels = useUiLabels();
 	return (
 		<SheetPortal>
 			<SheetOverlay />
@@ -70,7 +72,7 @@ function SheetContent({
 						}
 					>
 						<XIcon />
-						<span className="sr-only">Close</span>
+						<span className="sr-only">{labels.close}</span>
 					</SheetPrimitive.Close>
 				)}
 			</SheetPrimitive.Popup>
