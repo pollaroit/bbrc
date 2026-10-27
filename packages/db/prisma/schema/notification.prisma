@@ -47,6 +47,10 @@ model Notification {
   /// @zod.max(500)
   href  String?
 
+  /// Plain values (names, titles, counts) the text is built from. `title` and `body` stay as the
+  /// English fallback; rows without params (older ones) are shown as stored.
+  params Json?
+
   readAt DateTime? @map("read_at")
 
   @@index([userId, readAt, createdAt])
