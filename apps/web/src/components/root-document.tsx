@@ -21,6 +21,7 @@ import { buildBootScript, PALETTES } from "@bbrc/shared";
 import { SerwistProvider } from "@serwist/turbopack/react";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { LocaleSync } from "@/components/blocks/locale-sync";
 import Providers from "@/components/providers";
 import { DefaultSiteJsonLd } from "@/components/seo/default-site-json-ld";
 
@@ -207,6 +208,7 @@ export function RootDocument({ lang, intl, children }: RootDocumentProps) {
 				<DefaultSiteJsonLd />
 				{intl ? (
 					<NextIntlClientProvider locale={intl.locale} messages={intl.messages}>
+						<LocaleSync />
 						{app}
 					</NextIntlClientProvider>
 				) : (

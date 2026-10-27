@@ -5,6 +5,7 @@ import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { RPC_PATH, resolveAppOrigin } from "@/lib/app-origin";
+import { getPageLocale } from "@/lib/i18n/page-locale";
 
 export function createQueryClient() {
 	return new QueryClient({
@@ -50,7 +51,9 @@ export const link = new RPCLink({
 	headers: async () => {
 		// Browser sends cookies via `credentials: "include"`. Avoid `headers()` on
 		// the server so ISR/static routes are not forced dynamic (DYNAMIC_SERVER_USAGE).
-		return {};
+		// The browser tells the API which language its page is in; calls made while a page is
+		// rendered on the server send nothing (English) until that text is translated.
+		return typeof window === "undefined" ? {} : { "x-locale": getPageLocale() };
 	},
 });
 
