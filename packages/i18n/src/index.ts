@@ -8,6 +8,7 @@ export {
 	pickMessages,
 } from "./messages";
 export * from "./paths";
+export * from "./seo";
 export { createLooseTranslator, createServerTranslator } from "./server";
 export {
 	setValidationLocaleResolver,
