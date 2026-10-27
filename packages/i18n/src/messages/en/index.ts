@@ -5,6 +5,7 @@ import { genres } from "./genres";
 import { labels } from "./labels";
 import { notifications } from "./notifications";
 import { ratings } from "./ratings";
+import { ui } from "./ui";
 import { validation } from "./validation";
 
 /**
@@ -19,6 +20,7 @@ export const en = defineMessages({
 	achievements,
 	genres,
 	ratings,
+	...ui,
 	notifications,
 	validation,
 	language: {
