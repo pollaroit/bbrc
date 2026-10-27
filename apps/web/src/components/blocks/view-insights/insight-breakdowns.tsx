@@ -1,4 +1,5 @@
 import type { ViewInsights } from "@bbrc/api/modules/view/view.schema";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { formatCount } from "./insight-format";
 import { InsightPanel } from "./insight-panel";
 
@@ -6,6 +7,7 @@ type Rows = ViewInsights["sources"];
 
 /** Horizontal bars, longest first, with the share of all views beside each. */
 export function BarList({ rows }: { rows: Rows }) {
+	const f = useFormatters();
 	const total = rows.reduce((sum, row) => sum + row.views, 0);
 	const max = Math.max(1, ...rows.map((row) => row.views));
 	if (rows.length === 0) {
@@ -20,7 +22,7 @@ export function BarList({ rows }: { rows: Rows }) {
 						<div className="flex items-baseline justify-between gap-3 text-sm">
 							<span className="min-w-0 truncate">{row.label}</span>
 							<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-								{formatCount(row.views)} · {share}%
+								{formatCount(f, row.views)} · {share}%
 							</span>
 						</div>
 						<span className="block h-1.5 w-full bg-muted" aria-hidden>

@@ -1,15 +1,10 @@
 import type { ViewInsights } from "@bbrc/api/modules/view/view.schema";
+import type { Formatters } from "@bbrc/i18n";
 import type { InsightRange, ViewResourceKind } from "@bbrc/shared";
 
-const numberFormat = new Intl.NumberFormat("en-US");
-const compactFormat = new Intl.NumberFormat("en-US", {
-	notation: "compact",
-	maximumFractionDigits: 1,
-});
-
-export const formatCount = (value: number) => numberFormat.format(value);
-export const formatCompact = (value: number) =>
-	value >= 10_000 ? compactFormat.format(value) : numberFormat.format(value);
+export const formatCount = (f: Formatters, value: number) => f.number(value);
+export const formatCompact = (f: Formatters, value: number) =>
+	value >= 10_000 ? f.compact(value) : f.number(value);
 
 export const RANGE_OPTIONS: { id: InsightRange; label: string }[] = [
 	{ id: "7d", label: "7 days" },
@@ -63,16 +58,16 @@ export function deltaOf(
 export type Totals = ViewInsights["totals"];
 
 /** `2026-10-25` to `Oct 25`. */
-export function shortDay(key: string) {
-	return new Date(`${key}T00:00:00Z`).toLocaleDateString("en-US", {
+export function shortDay(f: Formatters, key: string) {
+	return f.dateWith(`${key}T00:00:00Z`, {
 		month: "short",
 		day: "numeric",
 		timeZone: "UTC",
 	});
 }
 
-export function longDay(key: string) {
-	return new Date(`${key}T00:00:00Z`).toLocaleDateString("en-US", {
+export function longDay(f: Formatters, key: string) {
+	return f.dateWith(`${key}T00:00:00Z`, {
 		weekday: "short",
 		month: "short",
 		day: "numeric",

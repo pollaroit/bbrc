@@ -3,6 +3,7 @@ import type { Route } from "next";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { Link } from "@/i18n/navigation";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { formatCount } from "./insight-format";
 import { InsightPanel } from "./insight-panel";
 
@@ -15,6 +16,7 @@ function ViewerList({
 	viewers: Viewer[];
 	show: "views" | "recent";
 }) {
+	const f = useFormatters();
 	if (viewers.length === 0) {
 		return <p className="text-muted-foreground text-sm">No members yet.</p>;
 	}
@@ -33,7 +35,7 @@ function ViewerList({
 					</Link>
 					<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
 						{show === "views" ? (
-							`${formatCount(viewer.views)} ${viewer.views === 1 ? "open" : "opens"}`
+							`${formatCount(f, viewer.views)} ${viewer.views === 1 ? "open" : "opens"}`
 						) : (
 							<RelativeTime date={viewer.lastSeenAt} />
 						)}

@@ -1,9 +1,11 @@
 "use client";
 
+import type { Formatters } from "@bbrc/i18n";
 import type { ProgressSchema } from "@bbrc/schemas";
 import type { z } from "zod";
 import { ClubDateTime } from "@/components/blocks/club-date-time";
 import { formatRelativeTime } from "@/lib/format-relative-time";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 type Progress = z.infer<typeof ProgressSchema>;
@@ -49,18 +51,12 @@ export function VotingProgress({
 	);
 }
 
-const shortDate = new Intl.DateTimeFormat("en", {
-	month: "short",
-	day: "numeric",
-});
-const shortDateWithYear = new Intl.DateTimeFormat("en", {
-	month: "short",
-	day: "numeric",
-	year: "numeric",
-});
-
-function formatShortDate(date: Date, withYear: boolean) {
-	return (withYear ? shortDateWithYear : shortDate).format(date);
+function formatShortDate(f: Formatters, date: Date, withYear: boolean) {
+	return f.dateWith(date, {
+		month: "short",
+		day: "numeric",
+		...(withYear ? { year: "numeric" } : {}),
+	});
 }
 
 /** Start-to-deadline bar for reading and finished sittings. */
@@ -73,6 +69,7 @@ export function ReadingTimeline({
 	end: Date;
 	finished: boolean;
 }) {
+	const f = useFormatters();
 	const now = Date.now();
 	const span = end.getTime() - start.getTime();
 	const percent = finished
@@ -109,13 +106,13 @@ export function ReadingTimeline({
 				/>
 			</div>
 			<div className="flex items-baseline justify-between gap-2 text-muted-foreground text-xs tabular-nums">
-				<span>{formatShortDate(start, withYear)}</span>
+				<span>{formatShortDate(f, start, withYear)}</span>
 				{finished ? null : (
 					<span className={cn(overdue && "text-destructive")}>
 						Due {formatRelativeTime(end)}
 					</span>
 				)}
-				<span>{formatShortDate(end, withYear)}</span>
+				<span>{formatShortDate(f, end, withYear)}</span>
 			</div>
 		</div>
 	);

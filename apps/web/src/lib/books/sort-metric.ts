@@ -1,4 +1,5 @@
 import type { GetBookListOutput } from "@bbrc/api/modules/book/book.schema";
+import type { Formatters } from "@bbrc/i18n";
 import { bookCardRatingDisplay } from "@/lib/book-card-rating";
 
 type BookListItem = GetBookListOutput["items"][number];
@@ -10,12 +11,6 @@ export type BookSortMetric = {
 	href?: string;
 };
 
-const dateFormat = new Intl.DateTimeFormat("en", {
-	month: "short",
-	day: "numeric",
-	year: "numeric",
-});
-
 /**
  * The figure the list is sorted by, when it is not already visible on the card.
  * It goes in the card's top strip (like the people cards). Sorts whose number is
@@ -25,28 +20,43 @@ const dateFormat = new Intl.DateTimeFormat("en", {
 export function bookSortMetric(
 	book: BookListItem,
 	sortBy: string | undefined,
+	f: Formatters,
 ): BookSortMetric | null {
 	switch (sortBy) {
 		case "createdAt":
-			return { label: "Added", value: dateFormat.format(book.createdAt) };
+			return {
+				label: "Added",
+				value: f.dateWith(book.createdAt, {
+					month: "short",
+					day: "numeric",
+					year: "numeric",
+				}),
+			};
 		case "updatedAt":
-			return { label: "Updated", value: dateFormat.format(book.updatedAt) };
+			return {
+				label: "Updated",
+				value: f.dateWith(book.updatedAt, {
+					month: "short",
+					day: "numeric",
+					year: "numeric",
+				}),
+			};
 		case "averageRating": {
 			// The card shows the club rating when it has one, otherwise Open Library's.
-			if (bookCardRatingDisplay(book)?.suffix === "CR") return null;
+			if (bookCardRatingDisplay(book, f)?.suffix === "CR") return null;
 			return {
 				label: "Club rating",
-				value: book.averageRating != null ? book.averageRating.toFixed(1) : "—",
+				value: book.averageRating != null ? f.rating(book.averageRating) : "—",
 				href: `/books/${book.slug}/reviews`,
 			};
 		}
 		case "openLibraryRating": {
-			if (bookCardRatingDisplay(book)?.suffix === "OL") return null;
+			if (bookCardRatingDisplay(book, f)?.suffix === "OL") return null;
 			return {
 				label: "Open Library",
 				value:
 					book.openLibraryRating != null
-						? book.openLibraryRating.toFixed(1)
+						? f.rating(book.openLibraryRating)
 						: "—",
 			};
 		}

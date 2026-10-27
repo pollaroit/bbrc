@@ -1,3 +1,4 @@
+import type { Formatters } from "@bbrc/i18n";
 /** Minimum club feedback count before we show club average instead of Open Library. */
 export const MIN_CLUB_RATINGS_FOR_CARD = 1;
 
@@ -9,16 +10,17 @@ type BookCardRatingSource = {
 
 export function bookCardRatingDisplay(
 	book: BookCardRatingSource,
+	f: Formatters,
 ): { value: string; suffix: "CR" | "OL" } | null {
 	if (
 		book.feedbackCount >= MIN_CLUB_RATINGS_FOR_CARD &&
 		book.averageRating != null
 	) {
-		return { value: book.averageRating.toFixed(1), suffix: "CR" };
+		return { value: f.rating(book.averageRating), suffix: "CR" };
 	}
 
 	if (book.openLibraryRating != null) {
-		return { value: book.openLibraryRating.toFixed(1), suffix: "OL" };
+		return { value: f.rating(book.openLibraryRating), suffix: "OL" };
 	}
 
 	return null;

@@ -5,6 +5,7 @@ import { Button } from "@bbrc/ui/components/button";
 import { Input } from "@bbrc/ui/components/input";
 import { Slider } from "@bbrc/ui/components/slider";
 import { useEffect, useId, useState } from "react";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { paceText, paceToneClass } from "@/lib/reading/pace-text";
 import { useUpdateReadingProgress } from "@/lib/reading/use-reading";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export function ReadingProgressControl({
 	className,
 	hidePace,
 }: Props) {
+	const f = useFormatters();
 	const uid = useId();
 	const update = useUpdateReadingProgress();
 	const [dragging, setDragging] = useState<number | null>(null);
@@ -89,7 +91,7 @@ export function ReadingProgressControl({
 				},
 			];
 
-	const pace = hidePace ? null : paceText(reading.pace);
+	const pace = hidePace ? null : paceText(reading.pace, f);
 
 	return (
 		<div className={cn("flex flex-col gap-3", className)}>

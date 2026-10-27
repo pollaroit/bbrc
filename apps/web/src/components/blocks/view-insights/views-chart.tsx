@@ -7,6 +7,7 @@ import {
 	ChartTooltipContent,
 } from "@bbrc/ui/components/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { formatCount, longDay, shortDay } from "./insight-format";
 
 export type SeriesPoint = {
@@ -32,6 +33,7 @@ export function ViewsChart({
 	series: SeriesPoint[];
 	metric: ChartMetric;
 }) {
+	const f = useFormatters();
 	return (
 		<ChartContainer config={config} className="aspect-auto h-56 w-full sm:h-64">
 			<AreaChart data={series} margin={{ left: 0, right: 8, top: 8 }}>
@@ -54,7 +56,7 @@ export function ViewsChart({
 					dataKey="day"
 					tickLine={false}
 					axisLine={false}
-					tickFormatter={shortDay}
+					tickFormatter={(day: string) => shortDay(f, day)}
 					interval="preserveStartEnd"
 					minTickGap={36}
 				/>
@@ -69,11 +71,11 @@ export function ViewsChart({
 						<ChartTooltipContent
 							labelFormatter={(_, payload) => {
 								const day = payload?.[0]?.payload?.day;
-								return typeof day === "string" ? longDay(day) : "";
+								return typeof day === "string" ? longDay(f, day) : "";
 							}}
 							formatter={(value) => (
 								<span className="font-medium tabular-nums">
-									{formatCount(Number(value))}{" "}
+									{formatCount(f, Number(value))}{" "}
 									{config[metric].label.toLowerCase()}
 								</span>
 							)}

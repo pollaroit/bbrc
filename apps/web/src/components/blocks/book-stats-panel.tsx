@@ -1,6 +1,7 @@
 "use client";
 
 import type { GetBookStatsOutput } from "@bbrc/api/modules/book/book-stats.schema";
+import type { Formatters } from "@bbrc/i18n";
 import { formatFeedbackRating } from "@bbrc/shared";
 import {
 	Card,
@@ -80,8 +81,8 @@ function formatMonth(row: { year: number; month: number } | null): string {
 	return row ? `${MONTH_NAMES[row.month - 1]} ${row.year}` : "—";
 }
 
-function formatAverage(value: number | null): string {
-	return value == null ? "—" : value.toFixed(2);
+function formatAverage(f: Formatters, value: number | null): string {
+	return value == null ? "—" : f.decimal(value, 2);
 }
 
 function plural(count: number, one: string, many = `${one}s`): string {
@@ -369,10 +370,10 @@ export function BookStatsPanel({ bookSlug, initialData }: BookStatsPanelProps) {
 				{data.totals.clubRating != null ? (
 					<StatCard
 						label="Club rating"
-						value={formatAverage(data.totals.clubRating)}
+						value={formatAverage(f, data.totals.clubRating)}
 						hint={
 							clubDelta != null
-								? `${clubDelta >= 0 ? "+" : "−"}${Math.abs(clubDelta).toFixed(2)} vs library average`
+								? `${clubDelta >= 0 ? "+" : "−"}${f.decimal(Math.abs(clubDelta), 2)} vs library average`
 								: undefined
 						}
 					/>
@@ -380,7 +381,7 @@ export function BookStatsPanel({ bookSlug, initialData }: BookStatsPanelProps) {
 				{data.book.openLibraryRating != null ? (
 					<StatCard
 						label="Open Library rating"
-						value={formatAverage(data.book.openLibraryRating)}
+						value={formatAverage(f, data.book.openLibraryRating)}
 					/>
 				) : null}
 				{data.polls.appearances > 0 ? (
@@ -389,7 +390,7 @@ export function BookStatsPanel({ bookSlug, initialData }: BookStatsPanelProps) {
 						value={data.polls.appearances}
 						hint={
 							data.polls.closed > 0
-								? `Average rank ${formatAverage(data.polls.averageRank)} · average ${formatAverage(data.polls.averagePoints)} points · chosen ${plural(data.polls.chosen, "time")}`
+								? `Average rank ${formatAverage(f, data.polls.averageRank)} · average ${formatAverage(f, data.polls.averagePoints)} points · chosen ${plural(data.polls.chosen, "time")}`
 								: "In a poll right now"
 						}
 					/>
@@ -404,7 +405,7 @@ export function BookStatsPanel({ bookSlug, initialData }: BookStatsPanelProps) {
 					<StatCard
 						label="Quiz takers"
 						value={data.totals.quizTakers}
-						hint={`Average score ${formatAverage(data.totals.quizAverageScore)} of ${data.quiz?.maxScore ?? 0}`}
+						hint={`Average score ${formatAverage(f, data.totals.quizAverageScore)} of ${data.quiz?.maxScore ?? 0}`}
 					/>
 				) : null}
 				{data.totals.pagesReadTogether > 0 ? (
@@ -595,7 +596,7 @@ export function BookStatsPanel({ bookSlug, initialData }: BookStatsPanelProps) {
 					title="Ratings by star"
 					description={
 						data.ratings.average != null
-							? `Average ${formatAverage(data.ratings.average)} · median ${formatAverage(data.ratings.median)}`
+							? `Average ${formatAverage(f, data.ratings.average)} · median ${formatAverage(f, data.ratings.median)}`
 							: undefined
 					}
 				>
@@ -874,7 +875,7 @@ export function BookStatsPanel({ bookSlug, initialData }: BookStatsPanelProps) {
 					<>
 						<ChartCard
 							title="Quiz scores"
-							description={`Scores run from ${data.quiz.minScore} to ${data.quiz.maxScore} · average ${formatAverage(data.quiz.averageScore)}`}
+							description={`Scores run from ${data.quiz.minScore} to ${data.quiz.maxScore} · average ${formatAverage(f, data.quiz.averageScore)}`}
 						>
 							<ChartContainer config={countConfig} className="h-56 w-full">
 								<BarChart

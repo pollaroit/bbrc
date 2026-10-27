@@ -1,5 +1,6 @@
 "use client";
 
+import type { Formatters } from "@bbrc/i18n";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import {
@@ -14,17 +15,15 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "@/i18n/navigation";
 import { headerToolbarIconButtonClass } from "@/lib/header-toolbar";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc, queryClient } from "@/utils/orpc";
 
-function formatNotificationTime(value: Date | string): string {
-	const date = value instanceof Date ? value : new Date(value);
-	return new Intl.DateTimeFormat(undefined, {
-		dateStyle: "medium",
-		timeStyle: "short",
-	}).format(date);
+function formatNotificationTime(f: Formatters, value: Date | string): string {
+	return f.dateWith(value, { dateStyle: "medium", timeStyle: "short" });
 }
 
 export function NotificationBell() {
+	const f = useFormatters();
 	const [open, setOpen] = useState(false);
 
 	const unreadQuery = useQuery({
@@ -192,7 +191,7 @@ export function NotificationBell() {
 											{item.body}
 										</span>
 										<span className="mt-1 block text-muted-foreground text-xs">
-											{formatNotificationTime(item.createdAt)}
+											{formatNotificationTime(f, item.createdAt)}
 										</span>
 									</>
 								);

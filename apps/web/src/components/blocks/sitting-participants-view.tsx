@@ -3,6 +3,7 @@
 import type { ListBookReadersOutputSchema } from "@bbrc/api/modules/reading/reading.schema";
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
 import type { ParticipantJoinInfo } from "@bbrc/api/modules/sitting/sitting-join.schema";
+import type { Formatters } from "@bbrc/i18n";
 import {
 	Avatar,
 	AvatarFallback,
@@ -27,6 +28,7 @@ import { SittingParticipationProgressPickerDialog } from "@/components/blocks/si
 import { ListingSearch } from "@/components/listing/listing-search";
 import { ListingSort } from "@/components/listing/listing-sort";
 import { Link } from "@/i18n/navigation";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { useProgressLabels } from "@/lib/i18n/use-labels";
 import type { FieldLabels } from "@/lib/listing/labels";
 import { sortDirectionParser } from "@/lib/listing/parsers";
@@ -76,12 +78,12 @@ const JOIN_SOURCE_LABELS: Record<JoinInfo["source"], string> = {
 	invitation: "Accepted an invitation",
 };
 
-function describeJoin(info: JoinInfo) {
+function describeJoin(f: Formatters, info: JoinInfo) {
 	const how =
 		info.source === "link" && info.linkLabel
 			? `Joined with the link “${info.linkLabel}”`
 			: JOIN_SOURCE_LABELS[info.source];
-	return `${how} · ${new Date(info.joinedAt).toLocaleDateString(undefined, { dateStyle: "medium" })}`;
+	return `${how} · ${f.dateWith(info.joinedAt, { dateStyle: "medium" })}`;
 }
 
 /** Progress and edition of a participant who is reading the picked book now (same data as the book's reading page). */
@@ -163,6 +165,7 @@ function ParticipantRow({
 	onRemove,
 	removeDisabledReason,
 }: RowProps) {
+	const f = useFormatters();
 	const progressLabels = useProgressLabels();
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const isSelf = participant.userId === viewerUserId;
@@ -216,7 +219,7 @@ function ParticipantRow({
 						@{participant.username}
 					</p>
 					<p className="text-muted-foreground text-xs tabular-nums">
-						{participant.rpLevel.label} · {participant.rp.toLocaleString()} RP
+						{participant.rpLevel.label} · {f.number(participant.rp)} RP
 					</p>
 				</div>
 
@@ -246,7 +249,7 @@ function ParticipantRow({
 					) : null}
 					{joinInfo ? (
 						<p className="text-muted-foreground text-xs">
-							{describeJoin(joinInfo)}
+							{describeJoin(f, joinInfo)}
 						</p>
 					) : null}
 				</div>

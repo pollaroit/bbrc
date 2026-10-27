@@ -31,7 +31,7 @@ import {
 	ChartEmpty,
 	ChartFrame,
 	formatMonthKey,
-	formatNumber,
+	formatNumberIn,
 	MONTH_NAMES_SHORT,
 	monthKeyToRange,
 	SeriesLegend,
@@ -40,6 +40,7 @@ import {
 } from "@/components/blocks/author/author-stats-frame";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { Link } from "@/i18n/navigation";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 type Stats = AuthorInsightStatsOutput;
@@ -366,6 +367,7 @@ export function YearsChart({
 // ── Seasonality (a heat strip) ─────────────────────────────────────────────
 
 export function SeasonChart({ stats }: { stats: Stats }) {
+	const f = useFormatters();
 	const data = stats.readsByMonthOfYear;
 	const max = Math.max(1, ...data.map((point) => point.count));
 	const total = data.reduce((sum, point) => sum + point.count, 0);
@@ -379,7 +381,7 @@ export function SeasonChart({ stats }: { stats: Stats }) {
 			title="Which months people finish it"
 			description={
 				peak && total > 0
-					? `${MONTH_NAMES_SHORT[peak.month - 1]} is the busiest month, with ${formatNumber(peak.count)} of ${formatNumber(total)} reads.`
+					? `${MONTH_NAMES_SHORT[peak.month - 1]} is the busiest month, with ${formatNumberIn(f, peak.count)} of ${formatNumberIn(f, total)} reads.`
 					: "Reads by calendar month, every year together."
 			}
 			table={{
@@ -680,6 +682,7 @@ export function BooksChart({
 // ── Ratings ────────────────────────────────────────────────────────────────
 
 export function RatingDistributionChart({ stats }: { stats: Stats }) {
+	const f = useFormatters();
 	const data = stats.ratingDistribution;
 	const total = data.reduce((sum, point) => sum + point.count, 0);
 
@@ -688,7 +691,7 @@ export function RatingDistributionChart({ stats }: { stats: Stats }) {
 			title="How the books are rated"
 			description={
 				total > 0
-					? `${formatNumber(total)} ratings in half-star steps.`
+					? `${formatNumberIn(f, total)} ratings in half-star steps.`
 					: "Half-star steps from 0.5 to 5."
 			}
 			table={{
@@ -828,6 +831,7 @@ export function RatingOverTimeChart({
 // ── Shelf funnel (donut) ───────────────────────────────────────────────────
 
 export function FunnelDonut({ stats }: { stats: Stats }) {
+	const f = useFormatters();
 	const { read, readingNow, wishlist } = stats.funnel.totals;
 	const data = [
 		{ key: "read", label: "Read", value: read, fill: C1 },
@@ -890,7 +894,7 @@ export function FunnelDonut({ stats }: { stats: Stats }) {
 								/>
 								<span className="text-muted-foreground">{item.label}</span>
 								<span className="ms-auto ps-4 font-medium tabular-nums">
-									{formatNumber(item.value)}
+									{formatNumberIn(f, item.value)}
 								</span>
 							</li>
 						))}
@@ -904,6 +908,7 @@ export function FunnelDonut({ stats }: { stats: Stats }) {
 // ── Reading time ───────────────────────────────────────────────────────────
 
 export function ReadingTimeChart({ stats }: { stats: Stats }) {
+	const f = useFormatters();
 	const { distribution, finishedCount, medianDays, averageDays } =
 		stats.readingTime;
 	return (
@@ -911,7 +916,7 @@ export function ReadingTimeChart({ stats }: { stats: Stats }) {
 			title="How long it takes to finish"
 			description={
 				finishedCount > 0 && medianDays != null && averageDays != null
-					? `Median ${formatNumber(medianDays, 1)} days, average ${formatNumber(averageDays, 1)}, from ${formatNumber(finishedCount)} finished readings.`
+					? `Median ${formatNumberIn(f, medianDays, 1)} days, average ${formatNumberIn(f, averageDays, 1)}, from ${formatNumberIn(f, finishedCount)} finished readings.`
 					: "From readings members started and finished here."
 			}
 			table={{

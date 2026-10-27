@@ -11,6 +11,7 @@ import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { Link } from "@/i18n/navigation";
 import { readMonthLabel } from "@/lib/edition/format";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
 
 /**
@@ -55,6 +56,7 @@ export function EditionReaders({
 }
 
 function ReadersBody({ data }: { data: EditionReadersData }) {
+	const f = useFormatters();
 	const { readingNow, finished, signedIn } = data;
 	const hiddenReading = Math.max(0, readingNow.total - readingNow.items.length);
 
@@ -151,8 +153,11 @@ function ReadersBody({ data }: { data: EditionReadersData }) {
 										{reader.isViewer ? "You" : reader.name}
 									</Link>
 									<span className="text-muted-foreground text-xs tabular-nums">
-										{readMonthLabel(reader.readEndYear, reader.readEndMonth) ??
-											"Date not set"}
+										{readMonthLabel(
+											f,
+											reader.readEndYear,
+											reader.readEndMonth,
+										) ?? "Date not set"}
 									</span>
 								</div>
 							</li>

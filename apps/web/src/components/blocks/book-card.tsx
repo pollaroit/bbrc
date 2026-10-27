@@ -45,11 +45,6 @@ type BookCardProps = {
 	excludeAuthorSlug?: string;
 };
 
-const compactCount = new Intl.NumberFormat("en", {
-	notation: "compact",
-	maximumFractionDigits: 1,
-});
-
 function MetaStripStat({
 	icon: Icon,
 	count,
@@ -64,10 +59,11 @@ function MetaStripStat({
 	/** Shorten large numbers (1.2k) so the strip never outgrows the card. */
 	compact?: boolean;
 }) {
+	const f = useFormatters();
 	const body = (
 		<>
 			<Icon className="size-3.5 shrink-0" aria-hidden />
-			<span>{compact ? compactCount.format(count) : count}</span>
+			<span>{compact ? f.compact(count) : count}</span>
 		</>
 	);
 
@@ -197,9 +193,10 @@ export function BookCard({
 	sortBy,
 	excludeAuthorSlug,
 }: BookCardProps) {
+	const f = useFormatters();
 	const href = `/books/${book.slug}` as Route;
 	const coverSrc = bookCoverUrl(book.coverId, "M");
-	const aggregateRating = bookCardRatingDisplay(book);
+	const aggregateRating = bookCardRatingDisplay(book, f);
 
 	const aggregateLabel = aggregateRating?.suffix === "CR" ? "Club" : "Open Lib";
 	const aggregateValue = aggregateRating?.value ?? null;
@@ -222,7 +219,10 @@ export function BookCard({
 				className,
 			)}
 		>
-			<BookCardStatusStrip book={book} metric={bookSortMetric(book, sortBy)} />
+			<BookCardStatusStrip
+				book={book}
+				metric={bookSortMetric(book, sortBy, f)}
+			/>
 
 			<div className="relative flex min-h-[8.5rem] min-w-0">
 				<Link

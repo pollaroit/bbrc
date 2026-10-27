@@ -9,13 +9,6 @@ import { authClient } from "@/lib/auth-client";
 import { useFormatters } from "@/lib/i18n/use-formatters";
 import { orpc } from "@/utils/orpc";
 
-const joinedFormat = new Intl.DateTimeFormat("en", {
-	month: "short",
-	day: "numeric",
-	year: "numeric",
-	timeZone: "UTC",
-});
-
 function OverviewStat({
 	label,
 	value,
@@ -87,7 +80,7 @@ export function PeoplePageHeader() {
 							label="Newest member"
 							value={
 								overview.data.newest
-									? `${overview.data.newest.name} · ${joinedFormat.format(new Date(overview.data.newest.createdAt))}`
+									? `${overview.data.newest.name} · ${f.dateWith(overview.data.newest.createdAt, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`
 									: "—"
 							}
 							href={

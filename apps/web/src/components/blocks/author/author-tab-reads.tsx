@@ -1,6 +1,7 @@
 "use client";
 
 import type { AuthorReadItem } from "@bbrc/api/modules/author/author.schema";
+import type { Formatters } from "@bbrc/i18n";
 import { formatReadFinishedMonth } from "@bbrc/shared";
 import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
@@ -35,6 +36,7 @@ import {
 	bookCoverUrl,
 	formatBookSeriesCardLabel,
 } from "@/lib/book-cover";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import {
 	AUTHOR_BOOK_FILTER_RESET,
 	authorReadSortFields,
@@ -65,12 +67,8 @@ function humanize(slug: string) {
 		.join(" ");
 }
 
-function shortDate(date: Date) {
-	return date.toLocaleDateString("en", {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-	});
+function shortDate(f: Formatters, date: Date) {
+	return f.dateWith(date, { year: "numeric", month: "short", day: "numeric" });
 }
 
 function ReadCard({ item }: { item: AuthorReadItem }) {
@@ -161,6 +159,7 @@ function ReadCard({ item }: { item: AuthorReadItem }) {
 }
 
 function ReadRow({ item }: { item: AuthorReadItem }) {
+	const f = useFormatters();
 	const finished = finishedLabel(item.finishedYear, item.finishedMonth);
 
 	return (
@@ -182,7 +181,7 @@ function ReadRow({ item }: { item: AuthorReadItem }) {
 				{finished ?? "Date not set"}
 			</span>
 			<span className="hidden shrink-0 text-muted-foreground text-xs sm:inline">
-				Logged {shortDate(item.createdAt)}
+				Logged {shortDate(f, item.createdAt)}
 			</span>
 		</div>
 	);
@@ -217,6 +216,7 @@ export function AuthorTabReads({
 	slug: string;
 	authorName: string;
 }) {
+	const f = useFormatters();
 	const [params, setParams] = useAuthorReadsParams();
 	const search = useDebouncedValue(params.search);
 	const compact = params.density === "compact";
@@ -288,7 +288,7 @@ export function AuthorTabReads({
 			? [
 					{
 						id: "finished",
-						label: `Finished ${params.finishedFrom ? shortDate(params.finishedFrom) : "…"} – ${params.finishedTo ? shortDate(params.finishedTo) : "…"}`,
+						label: `Finished ${params.finishedFrom ? shortDate(f, params.finishedFrom) : "…"} – ${params.finishedTo ? shortDate(f, params.finishedTo) : "…"}`,
 						onRemove: () =>
 							void setParams({ finishedFrom: null, finishedTo: null }),
 					},
@@ -298,7 +298,7 @@ export function AuthorTabReads({
 			? [
 					{
 						id: "logged",
-						label: `Logged ${params.loggedFrom ? shortDate(params.loggedFrom) : "…"} – ${params.loggedTo ? shortDate(params.loggedTo) : "…"}`,
+						label: `Logged ${params.loggedFrom ? shortDate(f, params.loggedFrom) : "…"} – ${params.loggedTo ? shortDate(f, params.loggedTo) : "…"}`,
 						onRemove: () =>
 							void setParams({ loggedFrom: null, loggedTo: null }),
 					},
@@ -310,7 +310,7 @@ export function AuthorTabReads({
 	const resultLabel =
 		total == null
 			? null
-			: `${total.toLocaleString()} ${total === 1 ? "read" : "reads"}${filtered ? " match" : ""}`;
+			: `${f.number(total)} ${total === 1 ? "read" : "reads"}${filtered ? " match" : ""}`;
 
 	return (
 		<div className="flex flex-col gap-4">

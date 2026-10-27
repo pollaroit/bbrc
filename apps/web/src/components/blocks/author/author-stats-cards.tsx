@@ -5,7 +5,8 @@ import { ChartContainer } from "@bbrc/ui/components/chart";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import type { ReactNode } from "react";
 import { Area, AreaChart } from "recharts";
-import { formatNumber } from "@/components/blocks/author/author-stats-frame";
+import { formatNumberIn } from "@/components/blocks/author/author-stats-frame";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import { cn } from "@/lib/utils";
 
 type Stats = AuthorInsightStatsOutput;
@@ -20,6 +21,7 @@ function Delta({
 	tone: "up-good" | "neutral";
 	unit?: string;
 }) {
+	const f = useFormatters();
 	if (stat.delta == null) return null;
 
 	const direction = stat.delta > 0 ? "up" : stat.delta < 0 ? "down" : "flat";
@@ -31,8 +33,8 @@ function Delta({
 				: Minus;
 	const amount =
 		stat.deltaPercent != null
-			? `${formatNumber(Math.abs(stat.deltaPercent), 0)}%`
-			: `${formatNumber(Math.abs(stat.delta), 1)}${unit ?? ""}`;
+			? `${formatNumberIn(f, Math.abs(stat.deltaPercent), 0)}%`
+			: `${formatNumberIn(f, Math.abs(stat.delta), 1)}${unit ?? ""}`;
 
 	return (
 		<span
@@ -46,7 +48,7 @@ function Delta({
 			)}
 			title={
 				stat.previous != null
-					? `${formatNumber(stat.previous, 1)} in the period before`
+					? `${formatNumberIn(f, stat.previous, 1)} in the period before`
 					: undefined
 			}
 		>
@@ -138,6 +140,7 @@ function StatCard({
 
 /** The headline numbers, each with its change against the period before when a range is set. */
 export function AuthorStatsCards({ stats }: { stats: Stats }) {
+	const f = useFormatters();
 	const { cards } = stats;
 	const last = <T,>(rows: T[]) => rows.slice(-24);
 
@@ -145,18 +148,18 @@ export function AuthorStatsCards({ stats }: { stats: Stats }) {
 		<dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 			<StatCard
 				label="Books"
-				value={formatNumber(cards.books.value)}
+				value={formatNumberIn(f, cards.books.value)}
 				hint={
 					stats.scope.hasRange
 						? "In the library"
-						: `${formatNumber(stats.funnel.totals.read)} reads in all`
+						: `${formatNumberIn(f, stats.funnel.totals.read)} reads in all`
 				}
 				color="var(--chart-1)"
 				spark={last(stats.publicationTimeline.map((row) => row.readCount))}
 			/>
 			<StatCard
 				label="Readers"
-				value={formatNumber(cards.readers.value)}
+				value={formatNumberIn(f, cards.readers.value)}
 				stat={cards.readers}
 				hint="Members with a read"
 				color="var(--chart-2)"
@@ -164,11 +167,11 @@ export function AuthorStatsCards({ stats }: { stats: Stats }) {
 			/>
 			<StatCard
 				label="Reads"
-				value={formatNumber(cards.reads.value)}
+				value={formatNumberIn(f, cards.reads.value)}
 				stat={cards.reads}
 				hint={
 					stats.scope.undatedReads > 0
-						? `${formatNumber(stats.scope.undatedReads)} without a date`
+						? `${formatNumberIn(f, stats.scope.undatedReads)} without a date`
 						: undefined
 				}
 				color="var(--chart-1)"
@@ -176,7 +179,7 @@ export function AuthorStatsCards({ stats }: { stats: Stats }) {
 			/>
 			<StatCard
 				label="Reviews"
-				value={formatNumber(cards.reviews.value)}
+				value={formatNumberIn(f, cards.reviews.value)}
 				stat={cards.reviews}
 				color="var(--chart-3)"
 				spark={last(stats.reviewsPerMonth.map((row) => row.count))}
@@ -185,7 +188,7 @@ export function AuthorStatsCards({ stats }: { stats: Stats }) {
 				label="Average rating"
 				value={
 					cards.averageRating.value > 0
-						? formatNumber(cards.averageRating.value, 2)
+						? formatNumberIn(f, cards.averageRating.value, 2)
 						: "–"
 				}
 				suffix={cards.averageRating.value > 0 ? "/ 5" : undefined}
@@ -196,7 +199,7 @@ export function AuthorStatsCards({ stats }: { stats: Stats }) {
 			/>
 			<StatCard
 				label="Pages read"
-				value={formatNumber(cards.pagesRead.value)}
+				value={formatNumberIn(f, cards.pagesRead.value)}
 				stat={cards.pagesRead}
 				hint="One count per read"
 				color="var(--chart-5)"
@@ -205,7 +208,7 @@ export function AuthorStatsCards({ stats }: { stats: Stats }) {
 				label="Days to finish"
 				value={
 					cards.averageDaysToFinish.value > 0
-						? formatNumber(cards.averageDaysToFinish.value, 1)
+						? formatNumberIn(f, cards.averageDaysToFinish.value, 1)
 						: "–"
 				}
 				suffix={cards.averageDaysToFinish.value > 0 ? "days" : undefined}
@@ -214,14 +217,14 @@ export function AuthorStatsCards({ stats }: { stats: Stats }) {
 				deltaUnit=" d"
 				hint={
 					stats.readingTime.medianDays != null
-						? `Median ${formatNumber(stats.readingTime.medianDays, 1)} days`
+						? `Median ${formatNumberIn(f, stats.readingTime.medianDays, 1)} days`
 						: "From finished readings"
 				}
 				color="var(--chart-2)"
 			/>
 			<StatCard
 				label="Followers"
-				value={formatNumber(cards.followers.value)}
+				value={formatNumberIn(f, cards.followers.value)}
 				stat={cards.followers}
 				hint={stats.scope.hasRange ? "New in this period" : "All time"}
 				color="var(--chart-3)"

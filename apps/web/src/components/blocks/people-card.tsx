@@ -1,6 +1,7 @@
 "use client";
 
 import type { PeopleListItem } from "@bbrc/api/modules/people/people.schema";
+import type { Formatters } from "@bbrc/i18n";
 import type { LucideIcon } from "lucide-react";
 import {
 	BookOpen,
@@ -15,6 +16,7 @@ import type { Route } from "next";
 import { useImpressionRef } from "@/components/blocks/track-impression";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { Link } from "@/i18n/navigation";
+import { useFormatters } from "@/lib/i18n/use-formatters";
 import type { PeopleSortField } from "@/lib/listing/people-listing";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +36,7 @@ type SortMetric = { label: string; value: string; href?: string };
 function sortMetricFor(
 	person: PeopleListItem,
 	sortBy: PeopleSortField | undefined,
+	f: Formatters,
 ): SortMetric | null {
 	const base = `/users/${person.username}`;
 	switch (sortBy) {
@@ -42,7 +45,7 @@ function sortMetricFor(
 				label: "Avg rating given",
 				value:
 					person.averageRatingGiven != null
-						? person.averageRatingGiven.toFixed(2)
+						? f.decimal(person.averageRatingGiven, 2)
 						: "—",
 				href: `${base}/feedbacks`,
 			};
@@ -91,12 +94,6 @@ function sortMetricFor(
 			return null;
 	}
 }
-
-const joinedFormat = new Intl.DateTimeFormat("en", {
-	month: "short",
-	year: "numeric",
-	timeZone: "UTC",
-});
 
 type Highlight = { label: string; className: string; href?: Route };
 
@@ -200,10 +197,11 @@ export function PeopleCard({
 	isViewer = false,
 	sortBy,
 }: PeopleCardProps) {
+	const f = useFormatters();
 	const profileHref = `/users/${person.username}` as Route;
 	const countImpression = useImpressionRef("user", person.username, "people");
 	const highlight = highlightFor(person, isViewer);
-	const metric = sortMetricFor(person, sortBy);
+	const metric = sortMetricFor(person, sortBy, f);
 	const about =
 		person.bio ??
 		(person.favoriteGenres.length > 0
@@ -248,7 +246,12 @@ export function PeopleCard({
 					)
 				) : (
 					<span className="shrink-0 font-normal opacity-80">
-						Joined {joinedFormat.format(new Date(person.createdAt))}
+						Joined{" "}
+						{f.dateWith(person.createdAt, {
+							month: "short",
+							year: "numeric",
+							timeZone: "UTC",
+						})}
 					</span>
 				)}
 			</div>
