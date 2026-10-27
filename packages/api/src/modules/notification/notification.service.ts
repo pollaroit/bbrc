@@ -1,5 +1,5 @@
 import type { Database } from "@bbrc/db";
-import type { Locale } from "@bbrc/i18n";
+import { type Locale, withLocalePrefix } from "@bbrc/i18n";
 import {
 	defaultPushEnabledForKind,
 	isOffByDefaultKind,
@@ -8,6 +8,7 @@ import {
 	type NotificationKind,
 } from "@bbrc/shared";
 import type { NotificationKind as DbNotificationKind } from "../../../../db/prisma/generated/enums";
+import { recipientLocale } from "../../lib/locale";
 import {
 	ntfyAdminTopic,
 	ntfySittingTopic,
@@ -320,6 +321,15 @@ export function contentToStored(content: NotificationContent): {
 	return { title: content.title, body: content.body };
 }
 
+/** The absolute address a push opens, in the recipient's language (`/az/...`; English has no prefix). */
+function pushHref(href: string, locale: Locale): string {
+	if (href.startsWith("http")) {
+		return href;
+	}
+	const path = href.startsWith("/") ? href : `/${href}`;
+	return `${resolvePublicAppOrigin()}${withLocalePrefix(path, locale)}`;
+}
+
 export async function dispatchNotification(
 	db: Database,
 	input: DispatchNotificationInput,
@@ -372,15 +382,31 @@ export async function dispatchNotification(
 		return;
 	}
 
-	for (const userId of recipientIds) {
-		if (!prefByUser.get(userId)?.pushEnabled) {
-			continue;
-		}
+	// A personal push is written in the recipient's saved language, and its link opens that
+	// language's page. Shared topics (a sitting's, the admins') have mixed readers: English.
+	const pushUserIds = recipientIds.filter(
+		(userId) => prefByUser.get(userId)?.pushEnabled,
+	);
+	const localeByUser = new Map(
+		(pushUserIds.length > 0
+			? await db.user.findMany({
+					where: { id: { in: pushUserIds } },
+					select: { id: true, locale: true },
+				})
+			: []
+		).map((user) => [user.id, recipientLocale(user)]),
+	);
+	for (const userId of pushUserIds) {
+		const locale = localeByUser.get(userId) ?? "en";
+		const text =
+			"message" in input
+				? notificationText(input.message.id, input.message.values, locale)
+				: { title: stored.title, body: stored.body };
 		await publishNtfy({
 			topic: ntfyUserTopic(ntfy.topicPrefix, userId),
-			title: stored.title,
-			message: stored.body,
-			click: href,
+			title: text.title,
+			message: text.body,
+			click: input.href ? pushHref(input.href, locale) : undefined,
 		});
 	}
 
