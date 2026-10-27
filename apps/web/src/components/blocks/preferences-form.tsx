@@ -65,25 +65,26 @@ function SwitchRow({
 }
 
 function AccessibilitySection() {
+	const t = useTranslations("preferences");
 	const { accessibility } = usePreferences();
 
 	return (
 		<PreferencesSection
 			id="accessibility"
-			title="Accessibility"
-			description="Make the site calmer and easier to read."
+			title={t("accessibility.title")}
+			description={t("accessibility.description")}
 		>
 			<PreferenceRow
-				label="Motion"
-				hint="Animations like the like heart and sliding panels."
+				label={t("accessibility.motion")}
+				hint={t("accessibility.motionHint")}
 			>
 				<Segmented
-					label="Motion"
+					label={t("accessibility.motion")}
 					value={accessibility.motion}
 					options={[
-						{ id: "system", label: "Match my device" },
-						{ id: "reduce", label: "Reduce" },
-						{ id: "full", label: "Full" },
+						{ id: "system", label: t("accessibility.motionSystem") },
+						{ id: "reduce", label: t("accessibility.motionReduce") },
+						{ id: "full", label: t("accessibility.motionFull") },
 					]}
 					onChange={(motion) =>
 						updatePreference("accessibility", "motion", motion)
@@ -92,8 +93,8 @@ function AccessibilitySection() {
 			</PreferenceRow>
 			<SwitchRow
 				id="pref-contrast"
-				label="High contrast"
-				hint="Stronger borders and darker secondary text, in any palette."
+				label={t("accessibility.contrast")}
+				hint={t("accessibility.contrastHint")}
 				checked={accessibility.contrast === "high"}
 				onChange={(checked) =>
 					updatePreference(
@@ -104,8 +105,8 @@ function AccessibilitySection() {
 				}
 			/>
 			<PreferenceRow
-				label="Easy-reading preset"
-				hint="Atkinson Hyperlegible font, larger text and roomier lines."
+				label={t("accessibility.easyReading")}
+				hint={t("accessibility.easyReadingHint")}
 			>
 				<div>
 					<Button
@@ -124,10 +125,10 @@ function AccessibilitySection() {
 									lineSpacing: "relaxed",
 								},
 							});
-							toast.success("Easy-reading preset applied");
+							toast.success(t("accessibility.easyReadingApplied"));
 						}}
 					>
-						Apply preset
+						{t("accessibility.applyPreset")}
 					</Button>
 				</div>
 			</PreferenceRow>
@@ -136,6 +137,7 @@ function AccessibilitySection() {
 }
 
 function ReadingSection() {
+	const t = useTranslations("preferences");
 	const { reading } = usePreferences();
 	const { data: session } = authClient.useSession();
 	const signedIn = Boolean(session?.user);
@@ -155,7 +157,7 @@ function ReadingSection() {
 			},
 			onError: (_error, _variables, context) => {
 				queryClient.setQueryData(key, context?.previous);
-				toast.error("Could not save that setting.");
+				toast.error(t("common.saveFailed"));
 			},
 			onSettled: () => {
 				void queryClient.invalidateQueries({ queryKey: key });
@@ -166,19 +168,19 @@ function ReadingSection() {
 	return (
 		<PreferencesSection
 			id="reading"
-			title="Reading"
-			description="How reviews, spoilers and reads behave for you."
+			title={t("reading.title")}
+			description={t("reading.description")}
 		>
 			<PreferenceRow
-				label="Spoilers"
-				hint="Reviews, posts and comments marked as spoilers."
+				label={t("reading.spoilers")}
+				hint={t("reading.spoilersHint")}
 			>
 				<Segmented
-					label="Spoilers"
+					label={t("reading.spoilers")}
 					value={reading.spoilers}
 					options={[
-						{ id: "hide", label: "Hide until I tap" },
-						{ id: "show", label: "Always show" },
+						{ id: "hide", label: t("reading.spoilersHide") },
+						{ id: "show", label: t("reading.spoilersShow") },
 					]}
 					onChange={(spoilers) =>
 						updatePreference("reading", "spoilers", spoilers)
@@ -187,11 +189,9 @@ function ReadingSection() {
 			</PreferenceRow>
 			<SwitchRow
 				id="pref-read-date"
-				label="Fill in today's date when I mark a book as read"
+				label={t("reading.defaultDate")}
 				hint={
-					signedIn
-						? "You can still change the month and year each time."
-						: "Sign in to change this one."
+					signedIn ? t("reading.defaultDateHint") : t("common.signInToChange")
 				}
 				checked={preferencesQuery.data?.defaultToCurrentDate ?? true}
 				disabled={!signedIn || preferencesQuery.isPending}
@@ -204,6 +204,7 @@ function ReadingSection() {
 }
 
 function ReadingPrivacySection() {
+	const t = useTranslations("preferences");
 	const { data: session } = authClient.useSession();
 	const signedIn = Boolean(session?.user);
 
@@ -223,7 +224,7 @@ function ReadingPrivacySection() {
 			},
 			onError: (_error, _variables, context) => {
 				queryClient.setQueryData(key, context?.previous);
-				toast.error("Could not save that setting.");
+				toast.error(t("common.saveFailed"));
 			},
 			onSettled: () => {
 				void queryClient.invalidateQueries({ queryKey: key });
@@ -238,32 +239,27 @@ function ReadingPrivacySection() {
 		showCurrentlyReading: preferencesQuery.data?.showCurrentlyReading ?? true,
 		showReadingProgress: preferencesQuery.data?.showReadingProgress ?? true,
 	};
-	const hint = (text: string) =>
-		signedIn ? text : "Sign in to change this one.";
+	const hint = (text: string) => (signedIn ? text : t("common.signInToChange"));
 	const disabled = !signedIn || preferencesQuery.isPending;
 
 	return (
 		<PreferencesSection
 			id="reading-privacy"
-			title="Wishlist and what I'm reading"
-			description="Who can see your wishlist and the books you are reading right now."
+			title={t("privacy.title")}
+			description={t("privacy.description")}
 		>
 			<SwitchRow
 				id="pref-wishlist-private"
-				label="Keep my wishlist private"
-				hint={hint(
-					"On: only you can open your wishlist. Others only see how many members want a book, never who. Off: anyone can open it.",
-				)}
+				label={t("privacy.wishlistPrivate")}
+				hint={hint(t("privacy.wishlistPrivateHint"))}
 				checked={current.wishlistPrivate}
 				disabled={disabled}
 				onChange={(wishlistPrivate) => mutation.mutate({ wishlistPrivate })}
 			/>
 			<SwitchRow
 				id="pref-show-reading"
-				label="Show what I'm reading"
-				hint={hint(
-					"Members can see your current books on your profile and on each book's Reading page. Off: you still count in the totals, without your name.",
-				)}
+				label={t("privacy.showReading")}
+				hint={hint(t("privacy.showReadingHint"))}
 				checked={current.showCurrentlyReading}
 				disabled={disabled}
 				onChange={(showCurrentlyReading) =>
@@ -272,10 +268,8 @@ function ReadingPrivacySection() {
 			/>
 			<SwitchRow
 				id="pref-show-progress"
-				label="Show my reading progress"
-				hint={hint(
-					"On: others see how far along you are. Off: they only see that you are reading the book.",
-				)}
+				label={t("privacy.showProgress")}
+				hint={hint(t("privacy.showProgressHint"))}
 				checked={current.showReadingProgress}
 				disabled={disabled}
 				onChange={(showReadingProgress) =>
@@ -287,6 +281,7 @@ function ReadingPrivacySection() {
 }
 
 function ShelvesSection() {
+	const t = useTranslations("preferences");
 	const { data: session } = authClient.useSession();
 	const signedIn = Boolean(session?.user);
 
@@ -305,7 +300,7 @@ function ShelvesSection() {
 			},
 			onError: (_error, _variables, context) => {
 				queryClient.setQueryData(key, context?.previous);
-				toast.error("Could not save that setting.");
+				toast.error(t("common.saveFailed"));
 			},
 			onSettled: () => {
 				void queryClient.invalidateQueries({ queryKey: key });
@@ -316,16 +311,14 @@ function ShelvesSection() {
 	return (
 		<PreferencesSection
 			id="shelves"
-			title="Shelves"
-			description="How other members can work with you on shelves."
+			title={t("shelves.title")}
+			description={t("shelves.description")}
 		>
 			<SwitchRow
 				id="pref-shelf-invites"
-				label="Allow people to invite me to collaborate on shelves"
+				label={t("shelves.allowInvites")}
 				hint={
-					signedIn
-						? "When this is off, nobody can invite you. Shelves you already collaborate on are not affected."
-						: "Sign in to change this one."
+					signedIn ? t("shelves.allowInvitesHint") : t("common.signInToChange")
 				}
 				checked={preferenceQuery.data?.allowInvites ?? true}
 				disabled={!signedIn || preferenceQuery.isPending}
@@ -336,6 +329,7 @@ function ShelvesSection() {
 }
 
 function PollsSection() {
+	const t = useTranslations("preferences");
 	const { data: session } = authClient.useSession();
 	const signedIn = Boolean(session?.user);
 
@@ -354,7 +348,7 @@ function PollsSection() {
 			},
 			onError: (_error, _variables, context) => {
 				queryClient.setQueryData(key, context?.previous);
-				toast.error("Could not save that setting.");
+				toast.error(t("common.saveFailed"));
 			},
 			onSettled: () => {
 				void queryClient.invalidateQueries({ queryKey: key });
@@ -365,16 +359,14 @@ function PollsSection() {
 	return (
 		<PreferencesSection
 			id="polls"
-			title="Polls"
-			description="How other members can include you in their polls."
+			title={t("polls.title")}
+			description={t("polls.description")}
 		>
 			<SwitchRow
 				id="pref-poll-options"
-				label="Allow people to use me as an option in polls"
+				label={t("polls.allowOption")}
 				hint={
-					signedIn
-						? "When this is off, nobody can pick you as a poll option. Polls that already include you stay as they are."
-						: "Sign in to change this one."
+					signedIn ? t("polls.allowOptionHint") : t("common.signInToChange")
 				}
 				checked={preferenceQuery.data?.allowPollOptions ?? true}
 				disabled={!signedIn || preferenceQuery.isPending}
@@ -385,6 +377,7 @@ function PollsSection() {
 }
 
 function MentionsSection() {
+	const t = useTranslations("preferences");
 	const { data: session } = authClient.useSession();
 	const signedIn = Boolean(session?.user);
 
@@ -403,7 +396,7 @@ function MentionsSection() {
 			},
 			onError: (_error, _variables, context) => {
 				queryClient.setQueryData(key, context?.previous);
-				toast.error("Could not save that setting.");
+				toast.error(t("common.saveFailed"));
 			},
 			onSettled: () => {
 				void queryClient.invalidateQueries({ queryKey: key });
@@ -414,17 +407,13 @@ function MentionsSection() {
 	return (
 		<PreferencesSection
 			id="mentions"
-			title="Mentions"
-			description="Whether other members can mention you with @ in posts, comments and reviews."
+			title={t("mentions.title")}
+			description={t("mentions.description")}
 		>
 			<SwitchRow
 				id="pref-allow-mentions"
-				label="Allow others to mention me"
-				hint={
-					signedIn
-						? "Turn off to stop appearing when people type @. Mentions that already exist stay."
-						: "Sign in to change this one."
-				}
+				label={t("mentions.allow")}
+				hint={signedIn ? t("mentions.allowHint") : t("common.signInToChange")}
 				checked={preferenceQuery.data?.allowMentions ?? true}
 				disabled={!signedIn || preferenceQuery.isPending}
 				onChange={(allowMentions) => mutation.mutate({ allowMentions })}
@@ -434,6 +423,7 @@ function MentionsSection() {
 }
 
 function CompareSection() {
+	const t = useTranslations("preferences");
 	const { data: session } = authClient.useSession();
 	const signedIn = Boolean(session?.user);
 
@@ -452,7 +442,7 @@ function CompareSection() {
 			},
 			onError: (_error, _variables, context) => {
 				queryClient.setQueryData(key, context?.previous);
-				toast.error("Could not save that setting.");
+				toast.error(t("common.saveFailed"));
 			},
 			onSettled: () => {
 				void queryClient.invalidateQueries({ queryKey: key });
@@ -463,17 +453,13 @@ function CompareSection() {
 	return (
 		<PreferencesSection
 			id="compare"
-			title="Comparing"
-			description="Whether other members can compare their reading with yours."
+			title={t("compare.title")}
+			description={t("compare.description")}
 		>
 			<SwitchRow
 				id="pref-allow-compare"
-				label="Allow others to compare with me"
-				hint={
-					signedIn
-						? "Other members can compare their reading with yours. Admins can always compare."
-						: "Sign in to change this one."
-				}
+				label={t("compare.allow")}
+				hint={signedIn ? t("compare.allowHint") : t("common.signInToChange")}
 				checked={preferenceQuery.data?.allowCompare ?? true}
 				disabled={!signedIn || preferenceQuery.isPending}
 				onChange={(allowCompare) => mutation.mutate({ allowCompare })}
@@ -483,6 +469,7 @@ function CompareSection() {
 }
 
 function PostsSection() {
+	const t = useTranslations("preferences");
 	const { data: session } = authClient.useSession();
 	const signedIn = Boolean(session?.user);
 
@@ -501,7 +488,7 @@ function PostsSection() {
 			},
 			onError: (_error, _variables, context) => {
 				queryClient.setQueryData(key, context?.previous);
-				toast.error("Could not save that setting.");
+				toast.error(t("common.saveFailed"));
 			},
 			onSettled: () => {
 				void queryClient.invalidateQueries({ queryKey: key });
@@ -512,16 +499,14 @@ function PostsSection() {
 	return (
 		<PreferencesSection
 			id="posts"
-			title="Posts"
-			description="How other members can mention you in their posts."
+			title={t("posts.title")}
+			description={t("posts.description")}
 		>
 			<SwitchRow
 				id="pref-post-attachment"
-				label="Allow people to attach me to their posts"
+				label={t("posts.allowAttach")}
 				hint={
-					signedIn
-						? "When this is off, nobody can attach your profile to a post. Posts that already include you stay as they are."
-						: "Sign in to change this one."
+					signedIn ? t("posts.allowAttachHint") : t("common.signInToChange")
 				}
 				checked={preferenceQuery.data?.allowPostAttachment ?? true}
 				disabled={!signedIn || preferenceQuery.isPending}
@@ -534,6 +519,7 @@ function PostsSection() {
 }
 
 function SittingsSection() {
+	const t = useTranslations("preferences");
 	const { data: session } = authClient.useSession();
 	const signedIn = Boolean(session?.user);
 
@@ -552,7 +538,7 @@ function SittingsSection() {
 			},
 			onError: (_error, _variables, context) => {
 				queryClient.setQueryData(key, context?.previous);
-				toast.error("Could not save that setting.");
+				toast.error(t("common.saveFailed"));
 			},
 			onSettled: () => {
 				void queryClient.invalidateQueries({ queryKey: key });
@@ -563,21 +549,18 @@ function SittingsSection() {
 		allowAutoAdd: preferenceQuery.data?.allowAutoAdd ?? true,
 		allowInvites: preferenceQuery.data?.allowInvites ?? true,
 	};
-	const hint = (text: string) =>
-		signedIn ? text : "Sign in to change this one.";
+	const hint = (text: string) => (signedIn ? text : t("common.signInToChange"));
 
 	return (
 		<PreferencesSection
 			id="sittings"
-			title="Sittings"
-			description="How organisers can bring you into a sitting."
+			title={t("sittings.title")}
+			description={t("sittings.description")}
 		>
 			<SwitchRow
 				id="pref-sitting-auto-add"
-				label="Allow organisers to add me to sittings"
-				hint={hint(
-					"When this is off, organisers cannot add you directly. They can invite you instead, and you choose whether to accept. You can still join on your own.",
-				)}
+				label={t("sittings.allowAutoAdd")}
+				hint={hint(t("sittings.allowAutoAddHint"))}
 				checked={current.allowAutoAdd}
 				disabled={!signedIn || preferenceQuery.isPending}
 				onChange={(allowAutoAdd) =>
@@ -586,10 +569,8 @@ function SittingsSection() {
 			/>
 			<SwitchRow
 				id="pref-sitting-invites"
-				label="Allow organisers to invite me to sittings"
-				hint={hint(
-					"When this is off, organisers cannot send you invitations either. You can still join with an invitation link or the Join button.",
-				)}
+				label={t("sittings.allowInvites")}
+				hint={hint(t("sittings.allowInvitesHint"))}
 				checked={current.allowInvites}
 				disabled={!signedIn || preferenceQuery.isPending}
 				onChange={(allowInvites) =>
@@ -601,43 +582,46 @@ function SittingsSection() {
 }
 
 function TimeSection() {
+	const t = useTranslations("preferences");
 	const { time } = usePreferences();
 	const sample = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
 	return (
 		<PreferencesSection
 			id="time"
-			title="Time and format"
-			description="How deadlines and dates are written."
+			title={t("time.title")}
+			description={t("time.description")}
 		>
 			<PreferenceRow
-				label="Time zone"
-				hint={`Deadlines are set in club time (${clubTimeZone}). Choose to see them in your device's time instead.`}
+				label={t("time.zone")}
+				hint={t("time.zoneHint", { zone: clubTimeZone })}
 			>
 				<Segmented
-					label="Time zone"
+					label={t("time.zone")}
 					value={time.zone}
 					options={[
-						{ id: "club", label: "Club time" },
-						{ id: "device", label: "My device's time" },
+						{ id: "club", label: t("time.zoneClub") },
+						{ id: "device", label: t("time.zoneDevice") },
 					]}
 					onChange={(zone) => updatePreference("time", "zone", zone)}
 				/>
 			</PreferenceRow>
-			<PreferenceRow label="Clock">
+			<PreferenceRow label={t("time.clock")}>
 				<Segmented
-					label="Clock"
+					label={t("time.clock")}
 					value={time.clock}
 					options={[
-						{ id: "auto", label: "Match my device" },
-						{ id: "12h", label: "12-hour" },
-						{ id: "24h", label: "24-hour" },
+						{ id: "auto", label: t("time.clockAuto") },
+						{ id: "12h", label: t("time.clock12") },
+						{ id: "24h", label: t("time.clock24") },
 					]}
 					onChange={(clock) => updatePreference("time", "clock", clock)}
 				/>
 			</PreferenceRow>
 			<p className="border border-border bg-muted/20 px-3 py-2 text-sm">
-				Example: voting closes <ClubDateTime value={sample} />
+				{t.rich("time.example", {
+					date: () => <ClubDateTime value={sample} />,
+				})}
 			</p>
 		</PreferencesSection>
 	);
@@ -658,6 +642,7 @@ function LanguageSection() {
 }
 
 function SearchSection() {
+	const t = useTranslations("preferences");
 	// The saved list lives in this browser, so it is read after hydration (reading it during
 	// render gives the server and the first client render different text).
 	const [recentCount, setRecentCount] = useState(0);
@@ -668,8 +653,8 @@ function SearchSection() {
 	return (
 		<PreferencesSection
 			id="search"
-			title="Search"
-			description="Search remembers the last few things you opened on this device."
+			title={t("search.title")}
+			description={t("search.description")}
 		>
 			<div className="flex flex-wrap items-center gap-3">
 				<Button
@@ -680,15 +665,15 @@ function SearchSection() {
 					onClick={() => {
 						clearRecentHits();
 						setRecentCount(0);
-						toast.success("Recent searches cleared");
+						toast.success(t("search.cleared"));
 					}}
 				>
-					Clear recent searches
+					{t("search.clear")}
 				</Button>
 				<span className="text-muted-foreground text-xs">
 					{recentCount === 0
-						? "Nothing saved right now."
-						: `${recentCount} saved on this device.`}
+						? t("search.none")
+						: t("search.saved", { count: recentCount })}
 				</span>
 			</div>
 		</PreferencesSection>
@@ -696,6 +681,7 @@ function SearchSection() {
 }
 
 function SyncSection() {
+	const t = useTranslations("preferences");
 	const { data: session } = authClient.useSession();
 	const [deviceOnly, setDeviceOnly] = useDeviceOnly();
 	const [confirmReset, setConfirmReset] = useState(false);
@@ -703,18 +689,18 @@ function SyncSection() {
 	return (
 		<PreferencesSection
 			id="sync"
-			title="Sync and reset"
-			description="Your choices are saved on this device straight away."
+			title={t("sync.title")}
+			description={t("sync.description")}
 		>
 			<SwitchRow
 				id="pref-device-only"
-				label="Keep these on this device only"
+				label={t("sync.deviceOnly")}
 				hint={
 					session?.user
 						? deviceOnly
-							? "Other devices keep their own settings."
-							: "Your settings follow you to every device you sign in on."
-						: "Sign in to have your settings follow you to other devices."
+							? t("sync.deviceOnlyOn")
+							: t("sync.deviceOnlyOff")
+						: t("sync.deviceOnlySignedOut")
 				}
 				checked={deviceOnly}
 				disabled={!session?.user}
@@ -730,10 +716,10 @@ function SyncSection() {
 							onClick={() => {
 								writePreferences(DEFAULT_PREFERENCES);
 								setConfirmReset(false);
-								toast.success("Preferences reset to the defaults");
+								toast.success(t("sync.resetDone"));
 							}}
 						>
-							Yes, reset everything
+							{t("sync.confirmReset")}
 						</Button>
 						<Button
 							type="button"
@@ -741,7 +727,7 @@ function SyncSection() {
 							variant="ghost"
 							onClick={() => setConfirmReset(false)}
 						>
-							Keep my settings
+							{t("sync.keep")}
 						</Button>
 					</>
 				) : (
@@ -751,7 +737,7 @@ function SyncSection() {
 						variant="outline"
 						onClick={() => setConfirmReset(true)}
 					>
-						Reset to defaults
+						{t("sync.reset")}
 					</Button>
 				)}
 			</div>
@@ -760,37 +746,37 @@ function SyncSection() {
 }
 
 const sections = [
-	{ id: "appearance", label: "Appearance" },
-	{ id: "language", label: "Language" },
-	{ id: "accessibility", label: "Accessibility" },
-	{ id: "reading", label: "Reading" },
-	{ id: "reading-privacy", label: "Wishlist" },
-	{ id: "ratings", label: "Ratings" },
-	{ id: "shelves", label: "Shelves" },
-	{ id: "polls", label: "Polls" },
-	{ id: "mentions", label: "Mentions" },
-	{ id: "compare", label: "Comparing" },
-	{ id: "posts", label: "Posts" },
-	{ id: "sittings", label: "Sittings" },
-	{ id: "time", label: "Time and format" },
-	{ id: "search", label: "Search" },
-	{ id: "sync", label: "Sync and reset" },
+	{ id: "appearance" },
+	{ id: "language" },
+	{ id: "accessibility" },
+	{ id: "reading" },
+	{ id: "reading-privacy" },
+	{ id: "ratings" },
+	{ id: "shelves" },
+	{ id: "polls" },
+	{ id: "mentions" },
+	{ id: "compare" },
+	{ id: "posts" },
+	{ id: "sittings" },
+	{ id: "time" },
+	{ id: "search" },
+	{ id: "sync" },
 ] as const;
 
 export function PreferencesForm() {
+	const t = useTranslations("preferences");
 	const { data: session } = authClient.useSession();
 
 	return (
 		<div className="flex flex-col gap-6">
 			{!session?.user ? (
 				<p className="border border-border bg-muted/20 px-4 py-3 text-muted-foreground text-sm">
-					You are not signed in, so these settings stay on this device. Sign in
-					to keep them everywhere.
+					{t("signedOutNotice")}
 				</p>
 			) : null}
 
 			<nav
-				aria-label="Preference sections"
+				aria-label={t("sectionsLabel")}
 				className="flex flex-wrap gap-x-4 gap-y-1"
 			>
 				{sections
@@ -803,7 +789,7 @@ export function PreferencesForm() {
 							href={`#${section.id}`}
 							className="text-muted-foreground text-sm underline-offset-4 hover:text-foreground hover:underline"
 						>
-							{section.label}
+							{t(`sections.${section.id}`)}
 						</a>
 					))}
 			</nav>
