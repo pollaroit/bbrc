@@ -1,4 +1,10 @@
 import { defineMessages } from "../types";
+import { achievements } from "./achievements";
+import { errors } from "./errors";
+import { genres } from "./genres";
+import { labels } from "./labels";
+import { notifications } from "./notifications";
+import { ratings } from "./ratings";
 
 /**
  * English, the source of every text. Messages are ICU: `{name}` for a value, and
@@ -7,6 +13,12 @@ import { defineMessages } from "../types";
  * differently).
  */
 export const en = defineMessages({
+	errors,
+	labels,
+	achievements,
+	genres,
+	ratings,
+	notifications,
 	language: {
 		title: "Language",
 		description:
