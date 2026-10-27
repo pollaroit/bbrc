@@ -1,6 +1,7 @@
 "use client";
 
 import type { CompareOutput } from "@bbrc/api/modules/user-compare/user-compare.schema";
+import { toLocale, withLocalePrefix } from "@bbrc/i18n";
 import {
 	Popover,
 	PopoverContent,
@@ -9,6 +10,7 @@ import {
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { CircleHelp } from "lucide-react";
 import type { Route } from "next";
+import { useLocale } from "next-intl";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { CompareMemberPicker } from "@/components/blocks/user-compare/compare-member-picker";
@@ -39,6 +41,7 @@ export function CompareHeader({
 	onChangeMember?: (side: "a" | "b", username: string) => void;
 }) {
 	const { a, b, score } = data;
+	const locale = toLocale(useLocale());
 
 	function change(side: "a" | "b", username: string) {
 		if (onChangeMember) return onChangeMember(side, username);
@@ -48,7 +51,7 @@ export function CompareHeader({
 		);
 		// Updates the address at once (Next keeps usePathname in step), so the comparison
 		// does not wait for a server round trip before the page and the URL follow.
-		window.history.pushState(null, "", href);
+		window.history.pushState(null, "", withLocalePrefix(href, locale));
 	}
 
 	// A member always sees themselves on the left; only admins can swap either side.

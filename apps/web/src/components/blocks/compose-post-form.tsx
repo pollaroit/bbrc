@@ -1,6 +1,7 @@
 "use client";
 
 import type { PostAttachmentInput } from "@bbrc/api/modules/post/post-attachment.schema";
+import { stripLocalePrefix } from "@bbrc/i18n";
 import { contentPlainText } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
@@ -205,7 +206,9 @@ export function ComposePostDialog({
 				const seenInFeed =
 					context.submittedFrom === "/" ||
 					context.submittedFrom?.startsWith("/feed") === true;
-				const stillThere = window.location.pathname === context.submittedFrom;
+				// `submittedFrom` is the language-less path; the address bar may carry `/az`.
+				const stillThere =
+					stripLocalePrefix(window.location.pathname) === context.submittedFrom;
 
 				// On the feed the post is already on screen; elsewhere open it, as before.
 				if (stillThere && !seenInFeed) {

@@ -1,3 +1,4 @@
+import { stripLocalePrefix } from "@bbrc/i18n";
 import type { InternalLinkRef } from "./types";
 
 /**
@@ -14,6 +15,9 @@ export function internalLinkRefFromHref(href: string): InternalLinkRef | null {
 	if (!path.startsWith("/")) {
 		return null;
 	}
+
+	// A link written in another language (`/az/books/x`) points at the same thing.
+	path = stripLocalePrefix(path);
 
 	// Query strings and anchors do not change what the link points at.
 	path = path.split(/[?#]/)[0] ?? path;

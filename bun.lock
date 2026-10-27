@@ -188,6 +188,7 @@
     "packages/shared": {
       "name": "@bbrc/shared",
       "dependencies": {
+        "@bbrc/i18n": "workspace:*",
         "country-data-list": "^1.6.3",
         "zod": "catalog:",
       },

@@ -24,6 +24,7 @@ import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.sch
 import { getSittingBySlug } from "@bbrc/api/modules/sitting/sitting.service";
 import { getUserByUsername } from "@bbrc/api/modules/user/user.service";
 import { getCompareOgSnapshot } from "@bbrc/api/modules/user-compare/user-compare-og.service";
+import { DEFAULT_LOCALE, type Locale } from "@bbrc/i18n";
 import {
 	ACHIEVEMENT_CATEGORY_LABELS,
 	ACHIEVEMENTS,
@@ -1359,6 +1360,9 @@ async function resolveEditionOg(
 
 export async function resolveOgImageContent(
 	pathSegments: string[],
+	// The language of the card. Texts are English until the interface is translated; the
+	// route already passes the language of the page the card belongs to.
+	_locale: Locale = DEFAULT_LOCALE,
 ): Promise<OgImageContent> {
 	if (pathSegments.length === 0) {
 		return STATIC_PAGES[""] as OgImageContent;

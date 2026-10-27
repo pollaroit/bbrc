@@ -1,3 +1,4 @@
+import { stripLocalePrefix } from "@bbrc/i18n";
 import { type InternalLinkRef, internalLinkRefFromHref } from "@bbrc/shared";
 
 /**
@@ -12,7 +13,8 @@ export function toSitePath(href: string): string {
 	try {
 		const url = new URL(trimmed);
 		if (url.origin === window.location.origin) {
-			return `${url.pathname}${url.search}${url.hash}`;
+			// Stored without a language prefix: a link is the same page in every language.
+			return stripLocalePrefix(`${url.pathname}${url.search}${url.hash}`);
 		}
 	} catch {
 		// not a URL; leave it
