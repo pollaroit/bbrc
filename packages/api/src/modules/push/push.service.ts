@@ -1,10 +1,15 @@
 import type { Database } from "@bbrc/db";
-import { buildPushPayload, describeDevice } from "@bbrc/shared";
+import {
+	buildPushPayload,
+	describeDevice,
+	NOTIFICATION_KINDS_PUSH_ENABLED_BY_DEFAULT,
+} from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { resolvePublicAppOrigin } from "../../lib/public-origin";
 import { pushToMembers } from "../../lib/push/delivery";
 import { getAblyRest } from "../../lib/realtime/ably";
 import { realtimeClientId } from "../../lib/realtime/client-id";
+import { ensureNotificationPreferences } from "../notification/notification.service";
 import type { PushDeviceView, RegisterPushDeviceInput } from "./push.schema";
 
 function requireAbly() {
@@ -71,6 +76,8 @@ export async function registerPushDevice(
 		} as Parameters<typeof rest.push.admin.deviceRegistrations.save>[0]);
 	}
 
+	await enableDefaultPushKindsIfNoneOn(db, userId);
+
 	const label = describeDevice(input.userAgent);
 	await db.pushDevice.upsert({
 		where: { deviceId: input.deviceId },
@@ -79,6 +86,26 @@ export async function registerPushDevice(
 		create: { userId, deviceId: input.deviceId, label },
 	});
 	return { ok: true };
+}
+
+/**
+ * A member who has just turned push on for a device but has no event set to push
+ * would get nothing (their old "Phone" settings were for ntfy). Give them the
+ * default set once; they can change it in the Push boxes.
+ */
+async function enableDefaultPushKindsIfNoneOn(db: Database, userId: string) {
+	await ensureNotificationPreferences(userId, db);
+	const anyOn = await db.notificationPreference.count({
+		where: { userId, pushEnabled: true },
+	});
+	if (anyOn > 0) return;
+	await db.notificationPreference.updateMany({
+		where: {
+			userId,
+			kind: { in: [...NOTIFICATION_KINDS_PUSH_ENABLED_BY_DEFAULT] },
+		},
+		data: { pushEnabled: true },
+	});
 }
 
 export async function listPushDevices(
