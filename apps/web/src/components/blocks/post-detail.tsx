@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { LiveViewCount } from "@/components/blocks/live-view-count";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
 import { PostCommentFocusSection } from "@/components/blocks/post-comment-focus-section";
@@ -13,6 +12,7 @@ import { PostCommentsSection } from "@/components/blocks/post-comments-section";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
 import { PostOwnerMenu } from "@/components/blocks/post-owner-menu";
 import { PostPoll } from "@/components/blocks/post-poll";
+import { LivePostViewsAction } from "@/components/blocks/post-views-action";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
@@ -58,11 +58,6 @@ export function PostDetail({
 									<RelativeTime date={post.editedAt} className="inline" />
 								</p>
 							) : null}
-							<LiveViewCount
-								resource="post"
-								itemRef={post.slug}
-								className="mt-0.5 justify-end"
-							/>
 						</div>
 						<PostOwnerMenu
 							slug={post.slug}
@@ -117,6 +112,10 @@ export function PostDetail({
 							<MessageCircle className="size-4" aria-hidden />
 							{post.commentCount}
 						</Link>
+						<LivePostViewsAction
+							slug={post.slug}
+							authorUsername={post.author.username}
+						/>
 						<ResourceShareMenu
 							path={`/posts/${post.slug}`}
 							shareText={shareSnippet(contentPlainText(post.content))}

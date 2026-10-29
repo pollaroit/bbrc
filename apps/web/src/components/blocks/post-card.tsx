@@ -14,12 +14,12 @@ import { PostCommentForm } from "@/components/blocks/post-comment-form";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
 import { PostOwnerMenu } from "@/components/blocks/post-owner-menu";
 import { PostPoll } from "@/components/blocks/post-poll";
+import { PostViewsAction } from "@/components/blocks/post-views-action";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { useImpressionRef } from "@/components/blocks/track-impression";
 import { UserPanel } from "@/components/blocks/user-panel";
-import { ViewCountLabel } from "@/components/blocks/view-count-label";
 import { isPendingSlug } from "@/lib/optimistic/infinite-lists";
 import { shareSnippet } from "@/lib/share-snippet";
 import { cn } from "@/lib/utils";
@@ -258,7 +258,11 @@ function PostCardInner({
 					<MessageCircle className="size-4" aria-hidden />
 					{post.commentCount}
 				</Button>
-				<ViewCountLabel count={viewCount} className="px-2" />
+				<PostViewsAction
+					slug={post.slug}
+					authorUsername={post.author.username}
+					count={viewCount}
+				/>
 				<ResourceShareMenu
 					path={`/posts/${post.slug}`}
 					shareText={shareSnippet(contentPlainText(post.content))}
