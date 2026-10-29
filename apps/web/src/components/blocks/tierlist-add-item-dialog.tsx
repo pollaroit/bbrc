@@ -70,6 +70,7 @@ export function TierlistAddItemDialog({
 	draft,
 	onAdd,
 }: Props) {
+	const [tab, setTab] = useState("book");
 	const [text, setText] = useState("");
 	const [caption, setCaption] = useState("");
 	const [cropFile, setCropFile] = useState<File | null>(null);
@@ -96,6 +97,7 @@ export function TierlistAddItemDialog({
 			setCropFile(null);
 			setPicture(null);
 			setAdded(0);
+			setTab("book");
 		}
 	}, [open]);
 
@@ -162,7 +164,7 @@ export function TierlistAddItemDialog({
 
 	return (
 		<>
-			<Dialog open={open && !cropFile} onOpenChange={onOpenChange}>
+			<Dialog open={open} onOpenChange={onOpenChange}>
 				<DialogContent className="flex max-h-[min(90vh,640px)] flex-col gap-3 sm:max-w-md">
 					<DialogHeader>
 						<DialogTitle>Add to {tierName || "this tier"}</DialogTitle>
@@ -178,7 +180,8 @@ export function TierlistAddItemDialog({
 						</p>
 					) : (
 						<Tabs
-							defaultValue="book"
+							value={tab}
+							onValueChange={(next) => setTab(String(next))}
 							className="min-h-0 flex-1 overflow-y-auto"
 						>
 							<TabsList className="w-full">
@@ -227,6 +230,9 @@ export function TierlistAddItemDialog({
 									className="flex gap-2"
 									onSubmit={(event) => {
 										event.preventDefault();
+										// This dialog sits inside the post form in React's tree: without this the
+										// whole post would be submitted too.
+										event.stopPropagation();
 										addText();
 									}}
 								>
