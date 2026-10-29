@@ -19,6 +19,8 @@ type YouTubeApi = {
 			height?: string | number;
 			width?: string | number;
 			videoId?: string;
+			/** The privacy-enhanced address, which sets no cookies until something plays. */
+			host?: string;
 			playerVars?: Record<string, string | number>;
 			events?: {
 				onReady?: (event: { target: YouTubePlayer }) => void;

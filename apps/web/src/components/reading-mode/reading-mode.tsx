@@ -1,12 +1,10 @@
 "use client";
 
 import {
-	formatClock,
 	formatDuration,
 	plainTextToRichDocument,
 	serializeRichDocument,
 	TIMER_MAX_READING_MS,
-	type TimerConfig,
 } from "@bbrc/shared";
 import {
 	AlertDialog,
@@ -21,7 +19,6 @@ import {
 import { Button } from "@bbrc/ui/components/button";
 import {
 	DropdownMenu,
-	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
@@ -31,34 +28,29 @@ import { Skeleton } from "@bbrc/ui/components/skeleton";
 import {
 	ArrowLeft,
 	BookCheck,
+	Moon,
 	MoreHorizontal,
-	Pause,
-	Play,
 	RotateCcw,
-	SkipForward,
-	Square,
 	Trash2,
-	Volume2,
-	VolumeX,
 } from "lucide-react";
 import type { Route } from "next";
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useComposePost } from "@/components/blocks/compose-post-provider";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { ClockHero } from "@/components/reading-mode/clock-hero";
 import { ConfirmDialog } from "@/components/reading-mode/confirm-dialog";
+import { Dock } from "@/components/reading-mode/dock";
 import { ModeSetup } from "@/components/reading-mode/mode-setup";
-import { MusicMiniPlayer } from "@/components/reading-mode/music-player";
-import { PageStepper } from "@/components/reading-mode/page-stepper";
+import { NowPlaying } from "@/components/reading-mode/now-playing";
 import { PresenceLine } from "@/components/reading-mode/presence-line";
 import { SessionSummary } from "@/components/reading-mode/session-summary";
-import { SoundSheet } from "@/components/reading-mode/sound-sheet";
+import { SoundsPanel } from "@/components/reading-mode/sounds-panel";
 import { useSounds } from "@/components/reading-mode/use-sounds";
-import { bookCoverUrl } from "@/lib/book-cover";
+import { WhereYouAre } from "@/components/reading-mode/where-you-are";
 import { useAbandonReading, useReadingState } from "@/lib/reading/use-reading";
 import {
 	DEFAULT_MODE_PREFS,
@@ -66,9 +58,9 @@ import {
 	type ModePrefs,
 	saveModePrefs,
 } from "@/lib/reading-mode/storage";
+import { useMediaQuery } from "@/lib/reading-mode/use-media-query";
 import { useReadingSession } from "@/lib/reading-mode/use-reading-session";
 import { useWakeLock } from "@/lib/reading-mode/use-wake-lock";
-import { cn } from "@/lib/utils";
 
 // The finish dialog carries the editor and the review form, so it loads when asked.
 const BookMarkReadDialog = dynamic(
@@ -79,24 +71,11 @@ const BookMarkReadDialog = dynamic(
 	{ ssr: false },
 );
 
-function phaseLabel(
-	mode: TimerConfig["mode"],
-	phase: "reading" | "break",
-	status: string,
-	cycles: number,
-): string {
-	if (status === "paused") return "Paused";
-	if (status === "done") return "Done";
-	if (mode === "pomodoro") {
-		return phase === "break" ? "Break" : `Reading · round ${cycles + 1}`;
-	}
-	if (mode === "countdown") return "Time left";
-	return "Reading";
-}
-
 /**
- * Reading Mode: a calm, full-screen companion while you read. A big clock, the
- * page you are on, sounds if you want them, and nothing else on screen.
+ * Reading Mode: a calm, full-screen companion while you read. One big clock,
+ * the page you are on, sounds if you want them, and nothing else. On a phone it
+ * is a single column with the controls under your thumb; on a wide screen the
+ * book and the sounds sit beside the clock.
  */
 export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 	const router = useRouter();
@@ -105,6 +84,7 @@ export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 	const abandon = useAbandonReading();
 	const { openCompose } = useComposePost();
 	const sounds = useSounds();
+	const wide = useMediaQuery("(min-width: 1024px)");
 
 	const session = useReadingSession(reading?.id ?? "");
 	const { phase, timer, reading: clock } = session;
@@ -163,15 +143,22 @@ export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 
 	if (state.isPending || (reading && phase.kind === "loading")) {
 		return (
-			<div className="grid min-h-dvh place-items-center bg-background p-6">
-				<Skeleton className="h-40 w-72" aria-hidden />
+			<div className="grid h-dvh place-items-center bg-background p-6">
+				<div
+					className="flex w-full max-w-sm flex-col items-center gap-4"
+					aria-hidden
+				>
+					<Skeleton className="h-6 w-24" />
+					<Skeleton className="h-24 w-72" />
+					<Skeleton className="h-7 w-full" />
+				</div>
 			</div>
 		);
 	}
 
 	if (!reading) {
 		return (
-			<main className="grid min-h-dvh place-items-center bg-background p-6">
+			<main className="grid h-dvh place-items-center bg-background p-6">
 				<div className="flex max-w-sm flex-col items-center gap-4 text-center">
 					<h1 className="font-semibold text-xl tracking-tight">
 						You are not reading this book
@@ -191,47 +178,21 @@ export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 		);
 	}
 
-	const cover = reading.edition?.coverUrl
-		? reading.edition.coverUrl
-		: bookCoverUrl(reading.edition?.coverId ?? reading.book.coverId, "M");
 	const byPage = reading.totalPages != null && reading.currentPage != null;
-
 	const config = timer?.config;
-	const progress =
-		clock && config
-			? config.mode === "countdown" && config.targetMs
-				? clock.readMs / config.targetMs
-				: config.mode === "pomodoro" && clock.remainingMs != null
-					? 1 -
-						clock.remainingMs /
-							(clock.phase === "reading" ? config.workMs : config.breakMs)
-					: reading.percent / 100
-			: reading.percent / 100;
-
+	const active = phase.kind === "active" && clock != null && config != null;
 	const canKeepReading = (clock?.readMs ?? 0) < TIMER_MAX_READING_MS;
 	const isBreak = clock?.phase === "break";
-	const done = clock?.status === "done";
-	const paused = clock?.status === "paused";
+
+	const book = <WhereYouAre reading={reading} />;
+	const player = sounds.station ? <NowPlaying sounds={sounds} /> : null;
 
 	return (
 		<div
-			className={cn(
-				"relative flex min-h-dvh flex-col bg-background text-foreground transition-[filter] duration-300 motion-reduce:transition-none",
-			)}
+			className="flex h-dvh flex-col bg-background text-foreground transition-[filter] duration-300 motion-reduce:transition-none"
 			style={prefs.dim ? { filter: "brightness(0.55)" } : undefined}
 		>
-			{/* A hairline across the top fills with the countdown, the phase, or the book. */}
-			<span
-				aria-hidden
-				className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-muted"
-			>
-				<span
-					className="block h-full bg-primary transition-[width] duration-500 ease-linear motion-reduce:transition-none"
-					style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
-				/>
-			</span>
-
-			<header className="flex items-center gap-3 px-3 pt-4 pb-2">
+			<header className="flex items-center gap-2 border-border border-b px-3 py-2.5">
 				<Button
 					type="button"
 					variant="ghost"
@@ -241,39 +202,24 @@ export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 				>
 					<ArrowLeft aria-hidden />
 				</Button>
-				<div className="flex min-w-0 flex-1 items-center gap-3">
-					<span className="relative block aspect-2/3 w-8 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10">
-						{cover ? (
-							<Image
-								src={cover}
-								alt=""
-								fill
-								className="object-cover"
-								sizes="32px"
-							/>
-						) : null}
-					</span>
-					<div className="min-w-0">
-						<p className="truncate font-medium text-sm leading-tight">
-							{reading.book.title}
-						</p>
-						<p className="truncate text-muted-foreground text-xs">
-							{reading.book.authors.join(", ")}
-						</p>
-					</div>
+				<div className="min-w-0 flex-1">
+					<p className="truncate font-medium text-sm leading-tight">
+						{reading.book.title}
+					</p>
+					<p className="truncate text-muted-foreground text-xs">
+						{reading.book.authors.join(", ")}
+					</p>
 				</div>
 				<Button
 					type="button"
-					variant="ghost"
+					variant={prefs.dim ? "secondary" : "ghost"}
 					className="size-11 shrink-0"
-					onClick={() => setSoundsOpen(true)}
-					aria-label={sounds.anyPlaying ? "Sounds (playing)" : "Sounds"}
+					aria-pressed={prefs.dim}
+					aria-label="Dim the screen"
+					title="Dim the screen"
+					onClick={() => changePrefs({ ...prefs, dim: !prefs.dim })}
 				>
-					{sounds.anyPlaying ? (
-						<Volume2 aria-hidden />
-					) : (
-						<VolumeX aria-hidden className="text-muted-foreground" />
-					)}
+					<Moon aria-hidden />
 				</Button>
 				<DropdownMenu>
 					<DropdownMenuTrigger
@@ -289,21 +235,12 @@ export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 						<MoreHorizontal aria-hidden />
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end" className="min-w-56">
-						<DropdownMenuCheckboxItem
-							checked={prefs.dim}
-							onCheckedChange={(checked) =>
-								changePrefs({ ...prefs, dim: checked === true })
-							}
-						>
-							Dim the screen
-						</DropdownMenuCheckboxItem>
 						{phase.kind === "active" ? (
 							<DropdownMenuItem onClick={() => setStartOverOpen(true)}>
 								<RotateCcw aria-hidden />
 								Start over
 							</DropdownMenuItem>
 						) : null}
-						<DropdownMenuSeparator />
 						<DropdownMenuItem
 							onClick={() => {
 								// Save the session first, then ask about the book.
@@ -317,6 +254,7 @@ export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 						>
 							<BookCheck aria-hidden />I finished the book
 						</DropdownMenuItem>
+						<DropdownMenuSeparator />
 						<DropdownMenuItem
 							variant="destructive"
 							onClick={() => setAbandonOpen(true)}
@@ -328,209 +266,135 @@ export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 				</DropdownMenu>
 			</header>
 
-			<main className="flex flex-1 flex-col items-center justify-center gap-6 px-4 py-6">
-				{phase.kind === "setup" ? (
-					<>
-						<div className="flex flex-col items-center gap-2 text-center">
-							<p className="font-heading font-semibold text-7xl text-muted-foreground/50 tabular-nums leading-none tracking-tight sm:text-8xl">
-								00:00
-							</p>
-							<p className="text-muted-foreground text-sm">
-								Ready when you are
-							</p>
-						</div>
-						<ModeSetup
-							prefs={prefs}
-							onChange={changePrefs}
-							busy={session.busy}
-							onStart={(next) =>
-								void session.begin(next).catch((error: unknown) => fail(error))
-							}
-						/>
-						<PresenceLine bookSlug={bookSlug} refresh />
-					</>
-				) : null}
+			<div className="flex min-h-0 flex-1 lg:grid lg:grid-cols-[minmax(0,1fr)_25rem]">
+				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
+					<main className="min-h-0 flex-1 overflow-y-auto">
+						{/* The clock sits in the middle when there is room. */}
+						<div className="mx-auto flex min-h-full w-full max-w-xl flex-col items-center justify-center gap-6 px-4 py-6">
+							{phase.kind === "setup" ? (
+								<>
+									<div className="flex flex-col items-center gap-2 text-center">
+										<p className="font-heading font-semibold text-7xl text-muted-foreground/40 tabular-nums leading-none tracking-tight sm:text-8xl">
+											00:00
+										</p>
+										<p className="text-muted-foreground text-sm">
+											Ready when you are
+										</p>
+									</div>
+									<ModeSetup
+										prefs={prefs}
+										onChange={changePrefs}
+										busy={session.busy}
+										onStart={(next) =>
+											void session
+												.begin(next)
+												.catch((error: unknown) => fail(error))
+										}
+									/>
+								</>
+							) : null}
 
-				{phase.kind === "active" && clock && config ? (
-					<>
-						<div className="flex flex-col items-center gap-3 text-center">
-							<p
-								className={cn(
-									"text-sm",
-									isBreak ? "text-info-ink" : "text-muted-foreground",
-								)}
-							>
-								{phaseLabel(
-									config.mode,
-									clock.phase,
-									clock.status,
-									clock.cycles,
-								)}
-							</p>
-							<p
-								className={cn(
-									"font-heading font-semibold text-7xl tabular-nums leading-none tracking-tight sm:text-8xl md:text-9xl",
-									paused && "opacity-60",
-									isBreak && "text-info-ink",
-								)}
-								role="timer"
-								aria-label={
-									clock.direction === "down"
-										? `${formatDuration(clock.displayMs / 1000)} left`
-										: `${formatDuration(clock.displayMs / 1000)} read`
-								}
-							>
-								{formatClock(clock.displayMs)}
-							</p>
-							<p className="text-muted-foreground text-sm tabular-nums">
-								{clock.direction === "down"
-									? `${formatDuration(clock.readMs / 1000)} read`
-									: config.mode === "free"
-										? "Counting up"
-										: ""}
-							</p>
-						</div>
+							{active && clock && config ? (
+								<ClockHero
+									clock={clock}
+									config={config}
+									notice={session.notice}
+									canKeepReading={canKeepReading}
+									onKeepReading={() => session.keepReading()}
+									onDismissNotice={() => session.dismissNotice()}
+								/>
+							) : null}
 
-						{session.notice ? (
-							<div
-								role="status"
-								className="flex w-full max-w-sm flex-col gap-2 border border-primary/30 bg-primary/10 p-3 text-sm"
-							>
-								<p className="font-medium">{session.notice.title}</p>
-								<p className="text-muted-foreground">{session.notice.body}</p>
-								<div className="flex flex-wrap gap-2">
-									{done && canKeepReading ? (
-										<Button
-											type="button"
-											size="sm"
-											onClick={() => session.keepReading()}
-										>
-											Keep reading
-										</Button>
-									) : null}
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										onClick={() => session.dismissNotice()}
-									>
-										Dismiss
-									</Button>
+							{phase.kind === "ended" ? (
+								<SessionSummary
+									summary={phase.summary}
+									seconds={phase.seconds}
+									notice={phase.notice}
+									byPage={byPage}
+									bookTitle={reading.book.title}
+									onShare={() => {
+										const gained =
+											phase.summary &&
+											phase.summary.pageFrom != null &&
+											phase.summary.pageTo != null
+												? phase.summary.pageTo - phase.summary.pageFrom
+												: 0;
+										const text = `Read ${reading.book.title} for ${formatDuration(phase.seconds)}${
+											gained > 0 ? ` (${gained} pages)` : ""
+										}.`;
+										openCompose(
+											{ kind: "book", slug: bookSlug },
+											serializeRichDocument(plainTextToRichDocument(text)),
+										);
+									}}
+									onAgain={() => session.backToSetup()}
+									onDone={goBack}
+								/>
+							) : null}
+
+							{phase.kind !== "ended" ? (
+								<PresenceLine bookSlug={bookSlug} refresh />
+							) : null}
+
+							{/* On a phone the book, the music and the sounds sit under the clock. */}
+							{!wide && phase.kind !== "ended" ? (
+								<div className="flex w-full flex-col gap-3">
+									{book}
+									{player}
+									{soundsOpen ? <SoundsPanel sounds={sounds} /> : null}
 								</div>
-							</div>
-						) : null}
+							) : null}
+						</div>
+					</main>
 
-						<PresenceLine bookSlug={bookSlug} refresh />
-					</>
+					{active && clock ? (
+						<Dock
+							status={clock.status}
+							canKeepReading={canKeepReading}
+							isBreak={isBreak}
+							soundsPlaying={sounds.anyPlaying}
+							soundsOpen={soundsOpen}
+							showSoundsButton={!wide}
+							onPause={() => session.pause()}
+							onResume={() => void session.resume()}
+							onKeepReading={() => session.keepReading()}
+							onFinishSession={() => setFinishSessionOpen(true)}
+							onSkipBreak={() => session.skip()}
+							onToggleSounds={() => setSoundsOpen((open) => !open)}
+						/>
+					) : null}
+
+					{phase.kind === "setup" && !wide ? (
+						<div
+							className="border-border border-t bg-background px-4 pt-3"
+							style={{
+								paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+							}}
+						>
+							<Button
+								type="button"
+								variant="outline"
+								className="h-12 w-full"
+								aria-pressed={soundsOpen}
+								onClick={() => setSoundsOpen((open) => !open)}
+							>
+								{soundsOpen ? "Hide sounds" : "Sounds"}
+							</Button>
+						</div>
+					) : null}
+				</div>
+
+				{wide ? (
+					<aside
+						aria-label="Book and sounds"
+						className="flex min-h-0 flex-col gap-3 overflow-y-auto border-border border-l p-4"
+					>
+						{phase.kind !== "ended" ? book : null}
+						{player}
+						<SoundsPanel sounds={sounds} />
+					</aside>
 				) : null}
-
-				{phase.kind === "ended" ? (
-					<SessionSummary
-						summary={phase.summary}
-						seconds={phase.seconds}
-						notice={phase.notice}
-						byPage={byPage}
-						bookTitle={reading.book.title}
-						onShare={() => {
-							const text = `Read ${reading.book.title} for ${formatDuration(phase.seconds)}${
-								phase.summary &&
-								phase.summary.pageFrom != null &&
-								phase.summary.pageTo != null &&
-								phase.summary.pageTo > phase.summary.pageFrom
-									? ` (${phase.summary.pageTo - phase.summary.pageFrom} pages)`
-									: ""
-							}.`;
-							openCompose(
-								{ kind: "book", slug: bookSlug },
-								serializeRichDocument(plainTextToRichDocument(text)),
-							);
-						}}
-						onAgain={() => session.backToSetup()}
-						onDone={goBack}
-					/>
-				) : null}
-			</main>
-
-			{phase.kind === "active" && clock ? (
-				<footer
-					className="flex flex-col gap-3 border-border border-t bg-background px-4 pt-3"
-					style={{
-						paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
-					}}
-				>
-					<PageStepper reading={reading} />
-					<div className="grid grid-cols-[1fr_auto] gap-2">
-						{done ? (
-							canKeepReading ? (
-								<Button
-									type="button"
-									className="h-14 text-base"
-									onClick={() => session.keepReading()}
-								>
-									<Play data-icon="inline-start" aria-hidden />
-									Keep reading
-								</Button>
-							) : (
-								<Button
-									type="button"
-									className="h-14 text-base"
-									onClick={() => void session.finish().catch(fail)}
-								>
-									<Square data-icon="inline-start" aria-hidden />
-									Finish session
-								</Button>
-							)
-						) : paused ? (
-							<Button
-								type="button"
-								className="h-14 text-base"
-								onClick={() => void session.resume()}
-							>
-								<Play data-icon="inline-start" aria-hidden />
-								Resume
-							</Button>
-						) : (
-							<Button
-								type="button"
-								variant="outline"
-								className="h-14 text-base"
-								onClick={() => session.pause()}
-							>
-								<Pause data-icon="inline-start" aria-hidden />
-								Pause
-							</Button>
-						)}
-						{isBreak ? (
-							<Button
-								type="button"
-								variant="outline"
-								className="h-14 px-4"
-								onClick={() => session.skip()}
-							>
-								<SkipForward data-icon="inline-start" aria-hidden />
-								Skip break
-							</Button>
-						) : (
-							<Button
-								type="button"
-								variant="outline"
-								className="h-14 px-4"
-								onClick={() => setFinishSessionOpen(true)}
-							>
-								<Square data-icon="inline-start" aria-hidden />
-								Finish
-							</Button>
-						)}
-					</div>
-				</footer>
-			) : null}
-
-			<MusicMiniPlayer sounds={sounds} />
-			<SoundSheet
-				open={soundsOpen}
-				onOpenChange={setSoundsOpen}
-				sounds={sounds}
-			/>
+			</div>
 
 			{/* Another device or tab has a session for this book open. */}
 			<AlertDialog open={phase.kind === "takeover"}>
