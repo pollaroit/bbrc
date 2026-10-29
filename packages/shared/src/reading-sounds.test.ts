@@ -14,3 +14,15 @@ describe("music stations", () => {
 		);
 	});
 });
+
+describe("recorded loops", () => {
+	test("each one points inside the sounds folder and is an mp3", async () => {
+		const { AMBIENT_SOUNDS } = await import("./reading-sounds");
+		for (const sound of AMBIENT_SOUNDS) {
+			if (sound.kind === "file" && sound.src) {
+				expect(sound.src.startsWith("/sounds/")).toBe(true);
+				expect(sound.src.endsWith(".mp3")).toBe(true);
+			}
+		}
+	});
+});

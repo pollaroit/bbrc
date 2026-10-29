@@ -26,9 +26,13 @@ export const AMBIENT_SOUNDS: readonly AmbientSound[] = [
 	{ id: "rain", label: "Rain", kind: "generated" },
 	{ id: "fire", label: "Fireplace", kind: "generated" },
 	{ id: "wind", label: "Soft wind", kind: "generated" },
-	// Waiting for CC0 recordings (see the PR). They appear once `src` is set.
-	{ id: "cafe", label: "Café", kind: "file", src: null },
-	{ id: "forest", label: "Forest", kind: "file", src: null },
+	{ id: "cafe", label: "Café", kind: "file", src: "/sounds/cafe_ambient.mp3" },
+	{
+		id: "forest",
+		label: "Forest",
+		kind: "file",
+		src: "/sounds/forest_ambience.mp3",
+	},
 ];
 
 export function availableAmbientSounds(): AmbientSound[] {
