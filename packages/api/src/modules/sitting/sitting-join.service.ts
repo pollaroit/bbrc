@@ -704,6 +704,45 @@ export async function previewInviteLink(
 	};
 }
 
+/**
+ * What a link preview card (Open Graph) may say, without signing in.
+ * Only a working link gets details; unknown, ended, expired and used-up
+ * links all return null, so a card never shows whether a token ever existed.
+ */
+export async function getInviteLinkOgSummary(
+	db: Database,
+	token: string,
+): Promise<{
+	slug: string;
+	status: "voting" | "reading" | "finished";
+	participantCount: number;
+} | null> {
+	const link = await db.sittingInviteLink.findUnique({
+		where: { token },
+		select: {
+			expiresAt: true,
+			maxUses: true,
+			uses: true,
+			revokedAt: true,
+			sitting: {
+				select: {
+					slug: true,
+					status: true,
+					_count: { select: { participants: { where: { removedAt: null } } } },
+				},
+			},
+		},
+	});
+	if (!link || inviteLinkState(link) !== "active") {
+		return null;
+	}
+	return {
+		slug: link.sitting.slug,
+		status: link.sitting.status,
+		participantCount: link.sitting._count.participants,
+	};
+}
+
 /** Count each person once per link, so "opens" means people. */
 export async function recordInviteLinkOpen(
 	db: Database,

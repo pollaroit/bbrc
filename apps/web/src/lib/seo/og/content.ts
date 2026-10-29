@@ -22,6 +22,7 @@ import { getSeriesBySlug } from "@bbrc/api/modules/series/series.service";
 import { getShelfBySlug } from "@bbrc/api/modules/shelf/shelf.service";
 import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.schema";
 import { getSittingBySlug } from "@bbrc/api/modules/sitting/sitting.service";
+import { getInviteLinkOgSummary } from "@bbrc/api/modules/sitting/sitting-join.service";
 import { getUserByUsername } from "@bbrc/api/modules/user/user.service";
 import { getCompareOgSnapshot } from "@bbrc/api/modules/user-compare/user-compare-og.service";
 import {
@@ -1196,6 +1197,38 @@ async function resolveSittingOg(
 	}
 }
 
+/**
+ * Invitation links are private. A working link shows the sitting's name,
+ * status and head count; every other token gets the same generic card, so the
+ * image never reveals whether a link exists, expired or was ended.
+ */
+async function resolveSittingInviteOg(
+	token: string | undefined,
+): Promise<OgImageContent> {
+	const generic: OgImageContent = {
+		kind: "Invitation",
+		title: "You are invited",
+		subtitle: "A BBRC reading sitting",
+		body: "Sign in to join the club and read along.",
+	};
+	if (!token) return generic;
+
+	try {
+		const summary = await getInviteLinkOgSummary(db, token);
+		if (!summary) return generic;
+		return {
+			kind: "Invitation",
+			title: "You are invited",
+			subtitle: formatSittingSlugLabel(summary.slug),
+			body: "Sign in to join this reading sitting and read along with the club.",
+			badge: sittingStatusFilterLabels[summary.status],
+			facts: [fact("Readers in", num(summary.participantCount))],
+		};
+	} catch {
+		return generic;
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Achievements
 // ---------------------------------------------------------------------------
@@ -1477,6 +1510,10 @@ export async function resolveOgImageContent(
 			achievements: "achievements",
 		};
 		return resolveMemberOg(slug, sections[rest[0] ?? ""] ?? "overview");
+	}
+
+	if (section === "sittings" && slug === "join") {
+		return resolveSittingInviteOg(rest[0]);
 	}
 
 	if (section === "sittings") {

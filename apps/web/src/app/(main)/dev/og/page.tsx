@@ -1,3 +1,4 @@
+import { inviteLinkState } from "@bbrc/shared";
 import { notFound } from "next/navigation";
 import { leaderboardSitemapPaths } from "@/lib/leaderboard/paths";
 import { db } from "@/services";
@@ -179,6 +180,25 @@ export default async function OgDevPage() {
 			select: { slug: true },
 		}),
 	]);
+
+	// Invitation links: a working one, an ended one, and a token that never existed.
+	const inviteLinks = await db.sittingInviteLink.findMany({
+		orderBy: { createdAt: "desc" },
+		take: 30,
+		select: {
+			token: true,
+			expiresAt: true,
+			maxUses: true,
+			uses: true,
+			revokedAt: true,
+		},
+	});
+	const activeInvite = inviteLinks.find(
+		(link) => inviteLinkState(link) === "active",
+	);
+	const endedInvite = inviteLinks.find(
+		(link) => inviteLinkState(link) !== "active",
+	);
 
 	const openLibraryEdition = olidEditionPath(
 		olEditionUse
@@ -402,6 +422,24 @@ export default async function OgDevPage() {
 			entries: [
 				entry("sittings", "Sittings list", "/sittings", ""),
 				entry("sittings-new", "Start a sitting", "/sittings/new", ""),
+				entry(
+					"invite-valid",
+					"Invitation · working link",
+					activeInvite ? `/sittings/join/${activeInvite.token}` : null,
+					"No working invitation link in this database.",
+				),
+				entry(
+					"invite-ended",
+					"Invitation · expired, ended or used up (generic)",
+					endedInvite ? `/sittings/join/${endedInvite.token}` : null,
+					"No ended invitation link in this database.",
+				),
+				entry(
+					"invite-unknown",
+					"Invitation · unknown token (generic)",
+					"/sittings/join/this-token-does-not-exist",
+					"",
+				),
 				entry(
 					"sitting-voting",
 					"Sitting · voting",
