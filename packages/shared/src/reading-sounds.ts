@@ -1,0 +1,93 @@
+/**
+ * Reading Mode sounds. Edit this file to change what members can pick; nothing
+ * else needs to change.
+ *
+ * - `generated`: made in the browser (no file, no licence, loops forever).
+ * - `file`: a recording we host. Add the file under `apps/web/public/sounds/`
+ *   and set `src`; entries without a `src` stay hidden.
+ * - YouTube: an embedded stream or long mix. Only videos that allow embedding
+ *   work, and a video can be taken down later, so check the list now and then.
+ */
+
+export type AmbientSound = {
+	id: string;
+	label: string;
+	kind: "generated" | "file";
+	/** For `file` sounds: the loop, relative to the site root. Hidden while empty. */
+	src?: string | null;
+};
+
+export const AMBIENT_SOUNDS: readonly AmbientSound[] = [
+	{ id: "rain", label: "Rain", kind: "generated" },
+	{ id: "fire", label: "Fireplace", kind: "generated" },
+	{ id: "wind", label: "Soft wind", kind: "generated" },
+	// Waiting for CC0 recordings (see the PR). They appear once `src` is set.
+	{ id: "cafe", label: "Café", kind: "file", src: null },
+	{ id: "forest", label: "Forest", kind: "file", src: null },
+];
+
+export function availableAmbientSounds(): AmbientSound[] {
+	return AMBIENT_SOUNDS.filter(
+		(sound) => sound.kind === "generated" || Boolean(sound.src),
+	);
+}
+
+export type MusicStation = {
+	id: string;
+	/** The YouTube video id. */
+	videoId: string;
+	label: string;
+	group: "lofi" | "classical";
+};
+
+/**
+ * Streams and long mixes members can read to. Each id was checked on
+ * 2026-10-29 to be public and embeddable. Lofi Girl's streams were left out on
+ * purpose: their main stream id changed and the current ones are seasonal.
+ */
+export const MUSIC_STATIONS: readonly MusicStation[] = [
+	{
+		id: "chillhop-radio",
+		videoId: "5yx6BWlEVcY",
+		label: "Chillhop Radio (live)",
+		group: "lofi",
+	},
+	{
+		id: "chillhop-cafe",
+		videoId: "QyGbnE-RHKA",
+		label: "Chillhop Plant Café (live)",
+		group: "lofi",
+	},
+	{
+		id: "chillhop-daydreams",
+		videoId: "Cae61o04YRU",
+		label: "Chillhop daydreams",
+		group: "lofi",
+	},
+	{
+		id: "classical-soul",
+		videoId: "-ZIgEHLh1Lw",
+		label: "Classical for the soul",
+		group: "classical",
+	},
+	{
+		id: "classical-30",
+		videoId: "d3LED8ieSfc",
+		label: "30 beautiful classical works",
+		group: "classical",
+	},
+	{
+		id: "classical-100",
+		videoId: "2uUv5VBAtBk",
+		label: "100 beautiful pieces",
+		group: "classical",
+	},
+	{
+		id: "debussy",
+		videoId: "0DKHswQbr_8",
+		label: "Gentle Debussy",
+		group: "classical",
+	},
+];
+
+export const YOUTUBE_VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;

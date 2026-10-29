@@ -1,6 +1,6 @@
 "use client";
 
-import { clubDayKey, dayKeysBetween } from "@bbrc/shared";
+import { clubDayKey, dayKeysBetween, formatDuration } from "@bbrc/shared";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen } from "lucide-react";
@@ -197,6 +197,19 @@ export function ReadingStatsView() {
 					label="Pages per day"
 					value={data.pagesPerDay != null ? String(data.pagesPerDay) : "—"}
 					hint="Over finished books"
+				/>
+				<Stat
+					label="Time read"
+					value={
+						data.sessions.count > 0
+							? formatDuration(data.sessions.totalSeconds)
+							: "—"
+					}
+					hint={
+						data.sessions.count > 0
+							? `${data.sessions.count} ${data.sessions.count === 1 ? "session" : "sessions"} · longest ${formatDuration(data.sessions.longestSeconds)}`
+							: "In Reading Mode"
+					}
 				/>
 				<Stat
 					label="Current streak"

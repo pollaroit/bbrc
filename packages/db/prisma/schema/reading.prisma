@@ -35,7 +35,8 @@ model Reading {
   /// 0 to 100, always kept (derived from the page when the pages are known).
   percent     Int  @default(0)
 
-  logs ReadingLog[]
+  logs     ReadingLog[]
+  sessions ReadingSession[]
 
   @@index([userId, finishedAt])
   @@index([bookId, finishedAt])

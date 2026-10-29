@@ -4,24 +4,19 @@ import type { ReadingItem } from "@bbrc/api/modules/reading/reading.schema";
 import { Button } from "@bbrc/ui/components/button";
 import { Input } from "@bbrc/ui/components/input";
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@bbrc/ui/components/popover";
-import {
 	BookCheck,
 	BookCopy,
 	BookOpen,
 	Flag,
-	Hash,
 	Plus,
 	Square,
+	Timer,
 } from "lucide-react";
 import type { Route } from "next";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { type CSSProperties, useId, useState } from "react";
+import { type CSSProperties, useEffect, useId, useState } from "react";
 import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
 import { RelativeTime } from "@/components/blocks/relative-time";
@@ -73,6 +68,10 @@ export type ReadingCardProps = {
 	readOnly?: boolean;
 	/** False hides the bar and the numbers (the member keeps progress private). */
 	progressVisible?: boolean;
+	/** False on the book's own page, where the cover and title would repeat. */
+	showBook?: boolean;
+	/** True on the sitting's own page, where the "Club read" badge would repeat. */
+	hideSitting?: boolean;
 	className?: string;
 };
 
@@ -130,102 +129,81 @@ function ProgressSlider({
 	);
 }
 
-function SetPositionPopover({
+/** "I'm on page 120 of 340": type it straight in. Saves on Enter or when you leave the box. */
+function PositionInput({
 	reading,
-	disabled,
 	onSet,
 }: {
 	reading: ReadingCardData;
-	disabled?: boolean;
 	onSet: (input: { page: number } | { percent: number }) => void;
 }) {
 	const id = useId();
 	const byPage = reading.totalPages != null && reading.currentPage != null;
-	const [open, setOpen] = useState(false);
-	const [value, setValue] = useState("");
 	const max = byPage ? (reading.totalPages ?? 0) : 100;
+	const saved = byPage ? (reading.currentPage ?? 0) : reading.percent;
+	const [value, setValue] = useState(String(saved));
 
-	function submit() {
+	// Follow the server (and other screens) when we are not typing.
+	useEffect(() => {
+		setValue(String(saved));
+	}, [saved]);
+
+	function commit() {
 		const parsed = Number.parseInt(value, 10);
-		if (!Number.isFinite(parsed)) return;
+		if (!Number.isFinite(parsed)) {
+			setValue(String(saved));
+			return;
+		}
 		const clamped = Math.min(max, Math.max(0, parsed));
-		onSet(byPage ? { page: clamped } : { percent: clamped });
-		setOpen(false);
-		setValue("");
+		setValue(String(clamped));
+		if (clamped !== saved)
+			onSet(byPage ? { page: clamped } : { percent: clamped });
 	}
 
 	return (
-		<Popover
-			open={open}
-			onOpenChange={(next) => {
-				setOpen(next);
-				if (next) {
-					setValue(
-						String(byPage ? (reading.currentPage ?? 0) : reading.percent),
-					);
-				}
+		<form
+			className="flex items-center gap-1.5"
+			onSubmit={(event) => {
+				event.preventDefault();
+				commit();
 			}}
 		>
-			<PopoverTrigger
-				render={
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						disabled={disabled}
-					/>
-				}
-			>
-				<Hash data-icon="inline-start" aria-hidden />
-				{byPage ? "Set page" : "Set %"}
-			</PopoverTrigger>
-			<PopoverContent align="start" className="w-64 gap-3">
-				<form
-					className="flex flex-col gap-2"
-					onSubmit={(event) => {
-						event.preventDefault();
-						submit();
-					}}
-				>
-					<label htmlFor={id} className="font-medium text-sm">
-						{byPage ? "I'm on page" : "I'm this far along (%)"}
-					</label>
-					<div className="flex items-center gap-2">
-						<Input
-							id={id}
-							type="number"
-							inputMode="numeric"
-							min={0}
-							max={max}
-							value={value}
-							autoFocus
-							onChange={(event) => setValue(event.target.value)}
-							className="tabular-nums"
-						/>
-						{byPage ? (
-							<span className="shrink-0 text-muted-foreground text-sm tabular-nums">
-								of {reading.totalPages}
-							</span>
-						) : null}
-					</div>
-					<Button type="submit" size="sm">
-						Save
-					</Button>
-				</form>
-			</PopoverContent>
-		</Popover>
+			<label htmlFor={id} className="text-muted-foreground text-sm">
+				{byPage ? "I'm on page" : "I'm at"}
+			</label>
+			<Input
+				id={id}
+				type="text"
+				inputMode="numeric"
+				value={value}
+				onChange={(event) => setValue(event.target.value.replace(/\D/g, ""))}
+				onBlur={commit}
+				className="h-8 w-16 text-center tabular-nums"
+			/>
+			<span className="text-muted-foreground text-sm tabular-nums">
+				{byPage ? `of ${max}` : "%"}
+			</span>
+		</form>
 	);
 }
 
 /**
- * One book being read: cover, how far along, a draggable bar, quick +pages,
- * and "Finished" / "Stop reading". Every change shows at once (optimistic).
- * `readOnly` is for other members' cards.
+ * One book being read: cover, how far along, a draggable bar, the page you are
+ * on, a quick +pages, Reading Mode, and "Finished" / "Stop reading". Every
+ * change shows at once (optimistic). This is the one reading card: the home
+ * feed, the profile, the book page and the sitting page all use it.
+ *
+ * - `readOnly`: someone else's card, no controls.
+ * - `showBook={false}`: on the book's own page (or its sitting) the cover and
+ *   title would only repeat what is already there.
+ * - `hideSitting`: on the sitting's own page the "Club read" badge is redundant.
  */
 export function ReadingCard({
 	reading,
 	readOnly = false,
 	progressVisible = true,
+	showBook = true,
+	hideSitting = false,
 	className,
 }: ReadingCardProps) {
 	const update = useUpdateReadingProgress();
@@ -237,8 +215,7 @@ export function ReadingCard({
 	const [draft, setDraft] = useState<number | null>(null);
 
 	const byPage = reading.totalPages != null && reading.currentPage != null;
-	const unit = byPage ? "pages" : "percent";
-	const quickSteps = byPage ? [10, 25] : [5, 10];
+	const quickStep = byPage ? 10 : 5;
 	const src = coverSrc(reading);
 	const pace = readOnly ? null : paceText(reading.pace ?? null);
 	const bookHref = `/books/${reading.book.slug}` as Route;
@@ -252,6 +229,7 @@ export function ReadingCard({
 		byPage && progressVisible
 			? `Page ${shownPage} of ${reading.totalPages}`
 			: `${shownPercent}%`;
+	const sitting = hideSitting ? undefined : reading.sitting;
 
 	function bump(amount: number) {
 		if (byPage) {
@@ -269,6 +247,88 @@ export function ReadingCard({
 			});
 		}
 	}
+
+	const editionButton = readOnly ? null : (
+		<Button
+			type="button"
+			size="xs"
+			variant="outline"
+			onClick={() => setEditionOpen(true)}
+		>
+			<BookCopy data-icon="inline-start" aria-hidden />
+			Change edition
+		</Button>
+	);
+
+	const meta = (
+		<p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
+			<span>
+				Started <RelativeTime date={reading.startedAt} />
+			</span>
+			<EditionLabelLink
+				bookSlug={reading.book.slug}
+				edition={reading.edition}
+				totalPages={reading.totalPages}
+			/>
+			{editionButton}
+		</p>
+	);
+
+	const progress = progressVisible ? (
+		<div className="flex flex-col gap-1.5">
+			<div className="flex items-end justify-between gap-3 tabular-nums">
+				<p
+					className="font-heading font-semibold text-4xl leading-none tracking-tight"
+					aria-live="polite"
+				>
+					{shownPercent}
+					<span className="ms-0.5 font-normal text-lg text-muted-foreground">
+						%
+					</span>
+				</p>
+				<p className="pb-0.5 text-right text-muted-foreground text-xs sm:text-sm">
+					{byPage ? (
+						progressLabel
+					) : (
+						<span className="max-sm:hidden">of the book</span>
+					)}
+				</p>
+			</div>
+			{readOnly ? (
+				// The numbers above say the same thing, so the bar is only a picture.
+				<div className="h-2.5 w-full bg-muted" aria-hidden>
+					<div
+						className="h-full bg-primary"
+						style={{ width: `${reading.percent}%` }}
+					/>
+				</div>
+			) : (
+				<div className="relative pb-4">
+					<ProgressSlider
+						percent={reading.percent}
+						label={`Progress on ${reading.book.title}`}
+						valueText={progressLabel}
+						draft={draft}
+						onDraft={setDraft}
+						onCommit={(percent) => update.mutate({ id: reading.id, percent })}
+					/>
+					{/* Quarter marks under the bar, like a ruler. */}
+					<span
+						aria-hidden
+						className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between text-3xs text-muted-foreground"
+					>
+						{["0", "25", "50", "75", "100"].map((tick) => (
+							<span key={tick} className="tabular-nums">
+								{tick}
+							</span>
+						))}
+					</span>
+				</div>
+			)}
+		</div>
+	) : (
+		<p className="text-muted-foreground text-sm">Reading</p>
+	);
 
 	return (
 		<article
@@ -291,183 +351,133 @@ export function ReadingCard({
 				</span>
 			) : null}
 
-			<div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-4 gap-y-4 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-x-5">
-				<Link
-					href={bookHref}
-					className="relative block aspect-2/3 w-full shrink-0 self-start overflow-hidden bg-muted shadow-md ring-1 ring-foreground/10 transition-transform duration-200 group-hover/reading:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover/reading:translate-y-0 sm:row-span-2"
-					tabIndex={-1}
-					aria-hidden
-				>
-					{src ? (
-						<Image
-							src={src}
-							alt=""
-							fill
-							className="object-cover"
-							sizes="112px"
-						/>
-					) : (
-						<BookOpen
-							className="absolute inset-0 m-auto size-6 text-muted-foreground"
-							aria-hidden
-						/>
-					)}
-				</Link>
-
-				<div className="flex min-w-0 flex-col gap-1">
-					{reading.sitting ? (
-						<Link
-							href={`/sittings/${reading.sitting.slug}` as Route}
-							className="inline-flex w-fit items-center gap-1 border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-medium text-2xs text-foreground uppercase tracking-wide hover:bg-primary/15"
-						>
-							<Flag className="size-3" aria-hidden />
-							Club read
-						</Link>
-					) : null}
-					<h3 className="text-pretty font-semibold text-lg leading-tight tracking-tight sm:text-xl">
-						<Link href={bookHref} className="hover:underline">
-							{reading.book.title}
-						</Link>
-					</h3>
-					<p className="text-muted-foreground text-sm">
-						<BookAuthorLinks authors={reading.book.authors} />
-					</p>
-					<p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-muted-foreground text-xs">
-						<span>
-							Started <RelativeTime date={reading.startedAt} />
-						</span>
-						<EditionLabelLink
-							bookSlug={reading.book.slug}
-							edition={reading.edition}
-							totalPages={reading.totalPages}
-						/>
-						{readOnly ? null : (
-							<button
-								type="button"
-								onClick={() => setEditionOpen(true)}
-								className="inline-flex items-center gap-1 text-foreground underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-							>
-								<BookCopy className="size-3" aria-hidden />
-								Change edition
-							</button>
-						)}
-					</p>
-				</div>
-
-				{progressVisible ? (
-					<div className="col-span-2 flex flex-col gap-1.5 sm:col-span-1 sm:col-start-2">
-						<div className="flex items-end justify-between gap-3 tabular-nums">
-							<p
-								className="font-heading font-semibold text-4xl leading-none tracking-tight"
-								aria-live="polite"
-							>
-								{shownPercent}
-								<span className="ms-0.5 font-normal text-lg text-muted-foreground">
-									%
-								</span>
-							</p>
-							<p className="pb-0.5 text-right text-muted-foreground text-xs sm:text-sm">
-								{byPage ? (
-									progressLabel
-								) : (
-									<span className="max-sm:hidden">of the book</span>
-								)}
-							</p>
-						</div>
-						{readOnly ? (
-							// The numbers above say the same thing, so the bar is only a picture.
-							<div className="h-2.5 w-full bg-muted" aria-hidden>
-								<div
-									className="h-full bg-primary"
-									style={{ width: `${reading.percent}%` }}
-								/>
-							</div>
+			{showBook ? (
+				<div className="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-4 gap-y-4 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-x-5">
+					<Link
+						href={bookHref}
+						className="relative block aspect-2/3 w-full shrink-0 self-start overflow-hidden bg-muted shadow-md ring-1 ring-foreground/10 transition-transform duration-200 group-hover/reading:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover/reading:translate-y-0 sm:row-span-2"
+						tabIndex={-1}
+						aria-hidden
+					>
+						{src ? (
+							<Image
+								src={src}
+								alt=""
+								fill
+								className="object-cover"
+								sizes="112px"
+							/>
 						) : (
-							<div className="relative pb-4">
-								<ProgressSlider
-									percent={reading.percent}
-									label={`Progress on ${reading.book.title}`}
-									valueText={progressLabel}
-									draft={draft}
-									onDraft={setDraft}
-									onCommit={(percent) =>
-										update.mutate({ id: reading.id, percent })
-									}
-								/>
-								{/* Quarter marks under the bar, like a ruler. */}
-								<span
-									aria-hidden
-									className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between text-3xs text-muted-foreground"
-								>
-									{["0", "25", "50", "75", "100"].map((tick) => (
-										<span key={tick} className="tabular-nums">
-											{tick}
-										</span>
-									))}
-								</span>
-							</div>
+							<BookOpen
+								className="absolute inset-0 m-auto size-6 text-muted-foreground"
+								aria-hidden
+							/>
 						)}
-					</div>
-				) : (
-					<p className="col-span-2 text-muted-foreground text-sm sm:col-span-1 sm:col-start-2">
-						Reading
-					</p>
-				)}
-			</div>
+					</Link>
 
-			{readOnly ? null : finished ? (
-				<div className="flex flex-wrap items-center gap-2 border border-success/30 bg-success/5 p-2.5 text-sm">
-					<span className="me-auto text-success-ink">
-						You reached the end. Finished?
-					</span>
-					<Button size="sm" onClick={() => setFinishOpen(true)}>
-						<BookCheck data-icon="inline-start" aria-hidden />
-						Mark as read
-					</Button>
+					<div className="flex min-w-0 flex-col gap-1">
+						{sitting ? (
+							<Link
+								href={`/sittings/${sitting.slug}` as Route}
+								className="inline-flex w-fit items-center gap-1 border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-medium text-2xs text-foreground uppercase tracking-wide hover:bg-primary/15"
+							>
+								<Flag className="size-3" aria-hidden />
+								Club read
+							</Link>
+						) : null}
+						<h3 className="text-pretty font-semibold text-lg leading-tight tracking-tight sm:text-xl">
+							<Link href={bookHref} className="hover:underline">
+								{reading.book.title}
+							</Link>
+						</h3>
+						<p className="text-muted-foreground text-sm">
+							<BookAuthorLinks authors={reading.book.authors} />
+						</p>
+						{meta}
+					</div>
+
+					<div className="col-span-2 sm:col-span-1 sm:col-start-2">
+						{progress}
+					</div>
 				</div>
 			) : (
-				<div className="flex flex-wrap items-center gap-2">
-					<div className="grid w-full grid-cols-3 gap-1.5 sm:flex sm:w-auto sm:items-center">
-						{quickSteps.map((step) => (
-							<Button
-								key={step}
-								type="button"
-								size="sm"
-								variant="outline"
-								onClick={() => bump(step)}
-								aria-label={`Add ${step} ${unit === "pages" ? "pages" : "percent"}`}
-							>
-								<Plus data-icon="inline-start" aria-hidden />
-								{step}
-								{unit === "pages" ? "" : "%"}
-							</Button>
-						))}
-						<SetPositionPopover
-							reading={reading}
-							onSet={(input) => update.mutate({ id: reading.id, ...input })}
-						/>
+				<>
+					<div className="flex min-w-0 flex-col gap-1">
+						<p className="font-medium text-sm">You're reading this</p>
+						{meta}
 					</div>
-					<span className="flex-1" />
-					<Button
-						type="button"
-						size="icon-sm"
-						variant="ghost"
-						className="text-muted-foreground"
-						onClick={() => setStopOpen(true)}
-						aria-label="Stop reading this book"
-						title="Stop reading"
-					>
-						<Square aria-hidden />
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						className="flex-1 sm:flex-none"
-						onClick={() => setFinishOpen(true)}
-					>
-						<BookCheck data-icon="inline-start" aria-hidden />
-						Finished
-					</Button>
+					{progress}
+				</>
+			)}
+
+			{readOnly ? null : (
+				<div className="flex flex-col gap-3">
+					{finished ? (
+						<div className="flex flex-wrap items-center gap-2 border border-success/30 bg-success/5 p-2.5 text-sm">
+							<span className="me-auto text-success-ink">
+								You reached the end. Finished?
+							</span>
+							<Button size="sm" onClick={() => setFinishOpen(true)}>
+								<BookCheck data-icon="inline-start" aria-hidden />
+								Mark as read
+							</Button>
+						</div>
+					) : (
+						<>
+							<div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+								<PositionInput
+									reading={reading}
+									onSet={(input) => update.mutate({ id: reading.id, ...input })}
+								/>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									onClick={() => bump(quickStep)}
+									aria-label={`Add ${quickStep} ${byPage ? "pages" : "percent"}`}
+								>
+									<Plus data-icon="inline-start" aria-hidden />
+									{quickStep}
+									{byPage ? "" : "%"}
+								</Button>
+							</div>
+							<div className="flex flex-wrap items-center gap-2">
+								<Button
+									render={
+										<Link href={`/reading/${reading.book.slug}` as Route} />
+									}
+									nativeButton={false}
+									size="sm"
+									variant="outline"
+									className="flex-1 sm:flex-none"
+								>
+									<Timer data-icon="inline-start" aria-hidden />
+									Reading Mode
+								</Button>
+								<span className="hidden flex-1 sm:block" />
+								<Button
+									type="button"
+									size="icon-sm"
+									variant="ghost"
+									className="text-muted-foreground"
+									onClick={() => setStopOpen(true)}
+									aria-label="Stop reading this book"
+									title="Stop reading"
+								>
+									<Square aria-hidden />
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									className="flex-1 sm:flex-none"
+									onClick={() => setFinishOpen(true)}
+								>
+									<BookCheck data-icon="inline-start" aria-hidden />
+									Finished
+								</Button>
+							</div>
+						</>
+					)}
 				</div>
 			)}
 

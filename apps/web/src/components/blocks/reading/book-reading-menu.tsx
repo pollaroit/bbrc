@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { ReadingProgressControl } from "@/components/blocks/reading/reading-progress-control";
+import { ReadingCard } from "@/components/blocks/reading/reading-card";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { useAbandonReading, useReadingState } from "@/lib/reading/use-reading";
 import { useWishlistAction } from "@/lib/reading/use-wishlist-action";
@@ -166,7 +166,7 @@ export function BookReadingMenu({
 							<DialogTitle>Update your progress</DialogTitle>
 							<DialogDescription>{bookTitle}</DialogDescription>
 						</DialogHeader>
-						<ReadingProgressControl reading={reading} />
+						<ReadingCard reading={reading} showBook={false} />
 					</DialogContent>
 				</Dialog>
 			) : null}

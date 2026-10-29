@@ -14,6 +14,7 @@ import type { z } from "zod";
 import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { PresenceLine } from "@/components/reading-mode/presence-line";
 import { authClient } from "@/lib/auth-client";
 import { editionDisplayLabel } from "@/lib/reading/edition-text";
 import { useReadingState } from "@/lib/reading/use-reading";
@@ -79,6 +80,7 @@ export function BookReadersPanel({ bookSlug, bookTitle, bookPages }: Props) {
 
 	return (
 		<div className="flex flex-col gap-4">
+			<PresenceLine bookSlug={bookSlug} className="justify-start" />
 			{items.length === 0 ? (
 				<div className="flex flex-col items-start gap-3 border border-border border-dashed p-6">
 					<BookOpen className="size-5 text-muted-foreground" aria-hidden />

@@ -1,13 +1,10 @@
 "use client";
 
 import { Button } from "@bbrc/ui/components/button";
-import { BookCopy, BookOpen } from "lucide-react";
+import { BookCopy } from "lucide-react";
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import { useState } from "react";
-import { EditionLabelLink } from "@/components/blocks/reading/edition-label-link";
-import { ReadingProgressControl } from "@/components/blocks/reading/reading-progress-control";
-import { bookCoverUrl } from "@/lib/book-cover";
+import { ReadingCard } from "@/components/blocks/reading/reading-card";
 import { useReadingState } from "@/lib/reading/use-reading";
 
 const StartReadingDialog = dynamic(
@@ -76,65 +73,5 @@ export function SittingReadingPanel({
 		);
 	}
 
-	const src =
-		reading.edition?.coverUrl ??
-		(reading.edition?.coverId
-			? bookCoverUrl(reading.edition.coverId, "M")
-			: bookCoverUrl(reading.book.coverId, "M"));
-
-	return (
-		<section
-			aria-label="Your reading"
-			className="flex flex-col gap-3 border border-border bg-muted/20 p-3 sm:p-4"
-		>
-			<header className="flex items-start gap-3">
-				<span className="relative block aspect-2/3 w-10 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10">
-					{src ? (
-						<Image
-							src={src}
-							alt=""
-							fill
-							className="object-cover"
-							sizes="40px"
-						/>
-					) : (
-						<BookOpen
-							className="absolute inset-0 m-auto size-4 text-muted-foreground"
-							aria-hidden
-						/>
-					)}
-				</span>
-				<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-					<p className="font-medium text-sm">Your copy</p>
-					<p className="truncate text-muted-foreground text-xs">
-						<EditionLabelLink
-							bookSlug={reading.book.slug}
-							edition={reading.edition}
-							totalPages={reading.totalPages}
-						/>
-					</p>
-				</div>
-				<Button
-					type="button"
-					size="xs"
-					variant="outline"
-					onClick={() => setOpen(true)}
-				>
-					<BookCopy data-icon="inline-start" aria-hidden />
-					Change edition
-				</Button>
-			</header>
-			<ReadingProgressControl reading={reading} />
-			{open ? (
-				<StartReadingDialog
-					bookSlug={bookSlug}
-					bookTitle={bookTitle}
-					bookPages={bookPages}
-					open={open}
-					onOpenChange={setOpen}
-					reading={reading}
-				/>
-			) : null}
-		</section>
-	);
+	return <ReadingCard reading={reading} showBook={false} hideSitting />;
 }

@@ -114,6 +114,8 @@ export type ReadingFacts = {
 	onTimeFinishes: Date[];
 	/** The longest run of days with progress logged, and the day it ended. */
 	longestStreak: { days: number; at: Date } | null;
+	/** Seconds spent reading in Reading Mode, all sessions together. */
+	sessionSeconds: number;
 	/** Books on the wishlist now, and when the shelf last changed. */
 	wishlistSize: number;
 	wishlistAt: Date | null;
@@ -208,6 +210,7 @@ export type MetricKey =
 	| "profileOpens"
 	| "paceSetter"
 	| "readingStreak"
+	| "readingHours"
 	| "wishlistKeeper"
 	| "founder"
 	| "tenure";
