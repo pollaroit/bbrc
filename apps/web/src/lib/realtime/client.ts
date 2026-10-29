@@ -27,6 +27,13 @@ let idleTimer: number | null = null;
 let releaseTimer: number | null = null;
 let watching = false;
 const listeners = new Set<Listener>();
+/** What this connection's token has already been renewed for (see `reauthorizeRealtime`). */
+const authorizedFor = new Set<string>();
+/** Times the browser asked the server for a token, newest last. */
+const tokenRequests: number[] = [];
+
+/** More than this many token requests in a minute means something is looping. */
+const MAX_TOKEN_REQUESTS_PER_MINUTE = 6;
 
 const RELEASE_DELAY_MS = 10_000;
 
@@ -62,6 +69,21 @@ async function authCallback(
 		token: Ably.TokenRequest | null,
 	) => void,
 ) {
+	// A circuit breaker: a loop must never hammer the server and Ably. Stop and fall back.
+	const now = Date.now();
+	tokenRequests.push(now);
+	while (tokenRequests.length > 0 && now - (tokenRequests[0] ?? now) > 60_000) {
+		tokenRequests.shift();
+	}
+	if (tokenRequests.length > MAX_TOKEN_REQUESTS_PER_MINUTE) {
+		console.warn(
+			"Realtime asked for too many tokens in a minute and was switched off for this tab.",
+		);
+		unavailable = true;
+		emit();
+		callback("Too many token requests.", null);
+		return;
+	}
 	try {
 		const response = await fetch("/api/realtime/auth", {
 			method: "POST",
@@ -118,6 +140,10 @@ function ensureClient(): Ably.Realtime | null {
 		client.connection.on((change) => {
 			// Ably gave up (its connection limit, a refused token): fall back for this tab.
 			if (change.current === "failed") unavailable = true;
+			// A new connection starts with a fresh token (read from the database just now).
+			if (change.current === "connected" && change.previous !== "connected") {
+				authorizedFor.clear();
+			}
 			emit();
 		});
 		watchVisibility();
@@ -152,14 +178,28 @@ export function acquireRealtime(options?: { keepAlive?: boolean }): () => void {
 	};
 }
 
-/** Asks for a fresh token, so what the member may do matches the database again (a session started or ended). */
-export async function reauthorizeRealtime(): Promise<void> {
+/**
+ * Asks for a fresh token, so what the member may do matches the database again
+ * (a session started or ended). With a `scope` it asks at most once per
+ * connection for that scope; without one it always asks (and forgets the
+ * scopes, because the new token reflects the database as it is now).
+ */
+export async function reauthorizeRealtime(scope?: string): Promise<void> {
 	if (!client || unavailable) return;
 	const state = client.connection.state;
 	if (state !== "connected" && state !== "connecting") return;
+	if (scope && authorizedFor.has(scope)) return;
 	try {
 		await client.auth.authorize();
+		if (scope) authorizedFor.add(scope);
+		else authorizedFor.clear();
 	} catch {
 		// The next connection will ask again; nothing to do now.
 	}
+}
+
+/** How many token requests this tab has made in the last minute (for /dev/realtime). */
+export function recentTokenRequests(): number {
+	const now = Date.now();
+	return tokenRequests.filter((at) => now - at <= 60_000).length;
 }

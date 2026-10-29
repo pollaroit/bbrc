@@ -62,6 +62,9 @@ export function useLivePresence(bookSlug: string, enabled: boolean) {
 		});
 
 		const onConnection = (change: Ably.ConnectionStateChange) => {
+			// An "update" event (a renewed token) has the same state before and after:
+			// it is not a new connection, and reacting to it would loop.
+			if (change.current === change.previous) return;
 			if (change.current === "connected") {
 				// After a closed connection the channel has to be attached again.
 				void channel
@@ -112,7 +115,7 @@ export function useEnterReadingPresence(bookSlug: string, active: boolean) {
 
 		async function enter() {
 			try {
-				await reauthorizeRealtime();
+				await reauthorizeRealtime(bookSlug);
 				if (cancelled) return;
 				await channel.presence.enter();
 				entered = true;
@@ -122,6 +125,8 @@ export function useEnterReadingPresence(bookSlug: string, active: boolean) {
 		}
 
 		const onConnection = (change: Ably.ConnectionStateChange) => {
+			// Only a real (re)connection, never an "update" after a token renewal.
+			if (change.current === change.previous) return;
 			if (change.current === "connected" && !cancelled) void enter();
 		};
 		client.connection.on(onConnection);
@@ -131,7 +136,11 @@ export function useEnterReadingPresence(bookSlug: string, active: boolean) {
 			cancelled = true;
 			client.connection.off(onConnection);
 			if (entered && client.connection.state === "connected") {
-				void channel.presence.leave().catch(() => undefined);
+				// Leave, then renew the token so it no longer allows presence on this book.
+				void channel.presence
+					.leave()
+					.catch(() => undefined)
+					.then(() => reauthorizeRealtime());
 			}
 			release();
 		};

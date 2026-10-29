@@ -8,6 +8,7 @@ import {
 	acquireRealtime,
 	getRealtimeClient,
 	reauthorizeRealtime,
+	recentTokenRequests,
 } from "@/lib/realtime/client";
 import { useRealtimeState } from "@/lib/realtime/use-realtime";
 import { cn } from "@/lib/utils";
@@ -263,6 +264,12 @@ export function RealtimeDevPanel() {
 							)}
 						>
 							{state}
+						</span>
+					</Row>
+					<Row label="Token requests in the last minute">
+						{recentTokenRequests()}{" "}
+						<span className="font-normal text-muted-foreground">
+							(a handful at most; more than 6 switches realtime off)
 						</span>
 					</Row>
 					<Row label={`Present on ${CHANNEL}`}>
