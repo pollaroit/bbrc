@@ -14,6 +14,7 @@ import { PostCommentForm } from "@/components/blocks/post-comment-form";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
 import { PostOwnerMenu } from "@/components/blocks/post-owner-menu";
 import { PostPoll } from "@/components/blocks/post-poll";
+import { PostTierlistSection } from "@/components/blocks/post-tierlist";
 import { PostViewsAction } from "@/components/blocks/post-views-action";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
@@ -232,6 +233,16 @@ function PostCardInner({
 					<PostPoll
 						postSlug={post.slug}
 						initial={post.poll}
+						className="relative z-[1]"
+					/>
+				) : null}
+
+				{post.tierlist ? (
+					<PostTierlistSection
+						slug={post.slug}
+						isSpoiler={post.isSpoiler}
+						tierlist={post.tierlist}
+						compact
 						className="relative z-[1]"
 					/>
 				) : null}

@@ -14,6 +14,10 @@ import {
 	PostPollViewSchema,
 } from "../post-poll/post-poll.schema";
 import {
+	CreateTierlistInputSchema,
+	PostTierlistViewSchema,
+} from "../post-tierlist/post-tierlist.schema";
+import {
 	postListFiltersSchema,
 	postListRanging,
 	postListSearching,
@@ -88,6 +92,7 @@ export const PostListItemSchema = PostSchema.pick({
 	author: PostAuthorSchema,
 	attachment: PostAttachmentOutputSchema.nullable(),
 	poll: PostPollViewSchema.nullable(),
+	tierlist: PostTierlistViewSchema.nullable(),
 	likeCount: zod.number().int().min(0),
 	commentCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
@@ -156,6 +161,8 @@ export const CreatePostInputSchema = PostSchema.pick({
 		attachment: PostAttachmentInputSchema.optional(),
 		/** A poll replaces every other attachment and the image. */
 		poll: CreatePollInputSchema.optional(),
+		/** A tierlist replaces every other attachment, the poll and the image. */
+		tierlist: CreateTierlistInputSchema.optional(),
 	});
 
 export const CreatePostOutputSchema = PostSchema.pick({
@@ -179,6 +186,7 @@ export const GetPostBySlugOutputSchema = PostSchema.omit({
 	author: PostAuthorSchema,
 	attachment: PostAttachmentOutputSchema.nullable(),
 	poll: PostPollViewSchema.nullable(),
+	tierlist: PostTierlistViewSchema.nullable(),
 	likeCount: zod.number().int().min(0),
 	commentCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),

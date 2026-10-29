@@ -1,0 +1,74 @@
+enum PostTierlistItemKind {
+  text
+  image
+  book
+  author
+}
+
+/// A tierlist attached to a post. The post's text is the title. It is published once and never changes afterwards.
+model PostTierlist {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  postId String @unique @map("post_id")
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  tiers PostTierlistTier[]
+  items PostTierlistItem[]
+
+  @@map("post_tierlist")
+}
+
+model PostTierlistTier {
+  /// @zod.uuid("Invalid UUID")
+  id String @id @default(uuid())
+
+  tierlistId String       @map("tierlist_id")
+  tierlist   PostTierlist @relation(fields: [tierlistId], references: [id], onDelete: Cascade)
+
+  name String
+  /// A theme colour key (see `TIERLIST_COLORS` in `@bbrc/shared`), never a hex value.
+  color String
+  position Int
+
+  items PostTierlistItem[]
+
+  @@index([tierlistId, position])
+  @@map("post_tierlist_tier")
+}
+
+model PostTierlistItem {
+  /// @zod.uuid("Invalid UUID")
+  id String @id @default(uuid())
+
+  tierlistId String       @map("tierlist_id")
+  tierlist   PostTierlist @relation(fields: [tierlistId], references: [id], onDelete: Cascade)
+
+  tierId String           @map("tier_id")
+  tier   PostTierlistTier @relation(fields: [tierId], references: [id], onDelete: Cascade)
+
+  kind PostTierlistItemKind
+
+  /// The text of a text item, the optional caption of an image item, or the name of the book or author (kept if that is deleted later).
+  label String?
+
+  /// Our own storage, for image items.
+  imageUrl String? @map("image_url")
+
+  bookId String? @map("book_id")
+  book   Book?   @relation(fields: [bookId], references: [id], onDelete: SetNull)
+
+  authorId String? @map("author_id")
+  author   Author? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  /// Lower-case text, an image address, or `kind:id` (the author's id for authors), so the same thing cannot be placed twice.
+  dedupeKey String @map("dedupe_key")
+
+  /// Order inside the tier.
+  position Int
+
+  @@unique([tierlistId, dedupeKey])
+  @@index([tierId, position])
+  @@map("post_tierlist_item")
+}

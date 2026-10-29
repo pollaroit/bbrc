@@ -1,4 +1,4 @@
-import { PALETTES, type PaletteMode } from "@bbrc/shared";
+import { PALETTES, type PaletteMode, TIERLIST_COLORS } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import {
@@ -12,6 +12,7 @@ import { Input } from "@bbrc/ui/components/input";
 import { Progress } from "@bbrc/ui/components/progress";
 import { Switch } from "@bbrc/ui/components/switch";
 import { notFound } from "next/navigation";
+import { tierColorClasses } from "@/lib/tierlist-colors";
 import { cn } from "@/lib/utils";
 
 const statusChips = [
@@ -76,6 +77,19 @@ function Sample({ paletteId, mode }: { paletteId: string; mode: PaletteMode }) {
 							</span>
 						))}
 						<Badge variant="outline">Badge</Badge>
+					</div>
+					<div className="flex flex-wrap gap-1">
+						{TIERLIST_COLORS.map((color) => (
+							<span
+								key={color}
+								className={cn(
+									"border px-1.5 py-0.5 text-xs",
+									tierColorClasses(color).label,
+								)}
+							>
+								{tierColorClasses(color).name}
+							</span>
+						))}
 					</div>
 					<Input placeholder="Search…" aria-label="Sample input" />
 					<div className="flex items-center gap-3">

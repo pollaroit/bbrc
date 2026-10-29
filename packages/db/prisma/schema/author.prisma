@@ -96,6 +96,7 @@ model Author {
   aliases       AuthorAlias[]
   slugRedirects AuthorSlugRedirect[]
   followers     Follow[]
+  tierlistItems PostTierlistItem[]
 
   @@index([nameKey])
   @@index([status])

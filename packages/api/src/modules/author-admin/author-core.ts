@@ -528,6 +528,25 @@ export async function mergeAuthors(
 			where: { authorSlug: from.slug },
 			data: { authorSlug: into.slug, authorName: into.name },
 		});
+		// Tierlist items follow the kept author; a list that already has both keeps one.
+		const keptInTierlists = await tx.postTierlistItem.findMany({
+			where: { authorId: into.id },
+			select: { tierlistId: true },
+		});
+		await tx.postTierlistItem.deleteMany({
+			where: {
+				authorId: from.id,
+				tierlistId: { in: keptInTierlists.map((row) => row.tierlistId) },
+			},
+		});
+		await tx.postTierlistItem.updateMany({
+			where: { authorId: from.id },
+			data: {
+				authorId: into.id,
+				label: into.name,
+				dedupeKey: `author:${into.id}`,
+			},
+		});
 
 		// The merged author's own fields only fill what the kept one lacks.
 		const intoMeta = (into.fieldMeta ?? {}) as AuthorFieldMeta;

@@ -28,6 +28,17 @@ const STATUS_NAMES = [
 	"pink",
 ] as const;
 
+const TIER_NAMES = [
+	"red",
+	"orange",
+	"yellow",
+	"green",
+	"teal",
+	"blue",
+	"violet",
+	"pink",
+] as const;
+
 /**
  * Checks the colour pairs the app relies on. Returns a list of problems
  * (empty when the palette is readable); used by the tests and by the preset
@@ -137,6 +148,24 @@ export function paletteContrastProblems(
 			get("background"),
 			name === "warning" ? WARNING_GRAPHIC : STATUS_GRAPHIC,
 		);
+	}
+
+	// Tier labels are ink on a light tint of the tier colour, like status chips.
+	for (const name of TIER_NAMES) {
+		const mid = get(`tier-${name}`);
+		const ink = get(`tier-${name}-ink`);
+		for (const [label, backdrop] of [
+			["background", get("background")],
+			["card", get("card")],
+		] as const) {
+			const surface = compositeOver(oklch(mid.l, mid.c, mid.h, 0.15), backdrop);
+			const ratio = contrastRgb(oklchToSrgb(ink), surface);
+			if (ratio < AA_TEXT) {
+				problems.push(
+					`tier-${name}-ink on tier-${name} tint over ${label}: ${ratio.toFixed(2)} (needs ${AA_TEXT})`,
+				);
+			}
+		}
 	}
 
 	return problems;

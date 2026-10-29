@@ -12,6 +12,7 @@ import { PostCommentsSection } from "@/components/blocks/post-comments-section";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
 import { PostOwnerMenu } from "@/components/blocks/post-owner-menu";
 import { PostPoll } from "@/components/blocks/post-poll";
+import { PostTierlistSection } from "@/components/blocks/post-tierlist";
 import { LivePostViewsAction } from "@/components/blocks/post-views-action";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
@@ -94,6 +95,14 @@ export function PostDetail({
 					) : null}
 
 					{post.poll ? <PostPoll postSlug={post.slug} /> : null}
+
+					{post.tierlist ? (
+						<PostTierlistSection
+							slug={post.slug}
+							isSpoiler={post.isSpoiler}
+							tierlist={post.tierlist}
+						/>
+					) : null}
 
 					<div className="flex flex-wrap items-center gap-4 border-t pt-4 text-muted-foreground text-sm">
 						{post.allowLikes ? (

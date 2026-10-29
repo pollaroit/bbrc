@@ -207,10 +207,12 @@ export async function loadAchievementFacts(
 					select: {
 						createdAt: true,
 						comments: { select: { createdAt: true, authorId: true } },
+						tierlist: { select: { id: true } },
 					},
 				});
 				facts.posts = rows.map((row) => ({
 					createdAt: row.createdAt,
+					hasTierlist: row.tierlist != null,
 					commentTimes: row.comments
 						.filter((comment) => comment.authorId !== userId)
 						.map((comment) => comment.createdAt),

@@ -48,6 +48,12 @@ describe("buildObjectKey", () => {
 		).toBe("production/books/editions/abc.webp");
 	});
 
+	test("tierlist image", () => {
+		expect(
+			buildObjectKey("production", { kind: "tierlist-image", imageUid: "abc" }),
+		).toBe("production/tierlists/abc.webp");
+	});
+
 	test("author photo", () => {
 		expect(
 			buildObjectKey("production", { kind: "author-photo", photoUid: "abc" }),

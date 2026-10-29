@@ -84,6 +84,41 @@ export const STATUS_TOKENS: Record<PaletteMode, Record<string, Oklch>> = {
 	},
 };
 
+/**
+ * Hue of each tier colour (see `TIERLIST_COLORS`). They are spread round the
+ * wheel, at least 30 degrees apart, and unlike the status colours no palette
+ * can override them, so all eight always look different from each other.
+ */
+export const TIER_HUES = {
+	red: 25,
+	orange: 58,
+	yellow: 98,
+	green: 145,
+	teal: 188,
+	blue: 240,
+	violet: 295,
+	pink: 350,
+} as const;
+
+function buildTierTokens(mode: PaletteMode): Record<string, Oklch> {
+	const light = mode === "light";
+	const tokens: Record<string, Oklch> = {};
+	for (const [name, hue] of Object.entries(TIER_HUES)) {
+		tokens[`tier-${name}`] = light
+			? oklch(0.62, 0.19, hue)
+			: oklch(0.72, 0.17, hue);
+		tokens[`tier-${name}-ink`] = light
+			? oklch(0.36, 0.09, hue)
+			: oklch(0.9, 0.07, hue);
+	}
+	return tokens;
+}
+
+export const TIER_TOKENS: Record<PaletteMode, Record<string, Oklch>> = {
+	light: buildTierTokens("light"),
+	dark: buildTierTokens("dark"),
+};
+
 const DEFAULT_PALETTE: Palette = {
 	id: "default",
 	name: "Brigada",
@@ -189,6 +224,7 @@ export function paletteTokens(
 		return {
 			...mapTokens(hue, given["chart-1"]?.c === 0 ? 0 : 1),
 			...STATUS_TOKENS[mode],
+			...TIER_TOKENS[mode],
 			...given,
 		};
 	}
@@ -222,6 +258,7 @@ export function paletteTokens(
 		"sidebar-border": tone.border,
 		"sidebar-ring": tone.ring,
 		...STATUS_TOKENS[mode],
+		...TIER_TOKENS[mode],
 	};
 
 	const chroma = tone.chartChroma ?? 1;

@@ -239,6 +239,32 @@ describe("evaluateAchievements", () => {
 		expect(progress).toMatchObject({ value: 2, tier: 0, next: 3 });
 	});
 
+	test("tier maker counts only posts that carry a tierlist", () => {
+		const post = (hasTierlist: boolean, iso: string) => ({
+			createdAt: d(iso),
+			commentTimes: [],
+			hasTierlist,
+		});
+		const f = facts({
+			posts: [
+				post(true, "2024-03-01T10:00:00Z"),
+				post(false, "2024-03-02T10:00:00Z"),
+				post(true, "2024-03-03T10:00:00Z"),
+				post(true, "2024-03-04T10:00:00Z"),
+				post(true, "2024-03-05T10:00:00Z"),
+				post(true, "2024-03-06T10:00:00Z"),
+			],
+		});
+		// Five tierlists and one plain post: the first two tiers, not the third.
+		expect(earnedOf(f, "tier_maker").map((item) => item.tier)).toEqual([1, 2]);
+		expect(
+			earnedOf(
+				facts({ posts: [post(false, "2024-03-01T10:00:00Z")] }),
+				"tier_maker",
+			),
+		).toEqual([]);
+	});
+
 	test("founding member, anniversaries and hidden bonus achievements", () => {
 		const f = facts({
 			user: {
@@ -246,7 +272,13 @@ describe("evaluateAchievements", () => {
 				joinRank: 3,
 				hasAvatar: true,
 			},
-			posts: [{ createdAt: d("2024-02-29T01:00:00Z"), commentTimes: [] }],
+			posts: [
+				{
+					createdAt: d("2024-02-29T01:00:00Z"),
+					commentTimes: [],
+					hasTierlist: false,
+				},
+			],
 		});
 		expect(earnedOf(f, "founding_member")).toHaveLength(1);
 		expect(earnedOf(f, "still_here").map((item) => item.tier)).toEqual([1, 2]);

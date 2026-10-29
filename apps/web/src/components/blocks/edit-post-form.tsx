@@ -19,6 +19,7 @@ import {
 	type PostSettings,
 	PostSettingsFields,
 } from "@/components/blocks/post-settings-fields";
+import { PostTierlist } from "@/components/blocks/post-tierlist";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
@@ -107,6 +108,7 @@ export function EditPostForm({ post }: EditPostFormProps) {
 	const [detachAttachment, setDetachAttachment] = useState(false);
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const hasPoll = post.poll != null;
+	const hasTierlist = post.tierlist != null;
 	const livePoll = useLivePoll(post.slug);
 
 	const updateMutation = useMutation(
@@ -201,7 +203,9 @@ export function EditPostForm({ post }: EditPostFormProps) {
 					<p className="mt-1 text-muted-foreground text-sm">
 						{hasPoll
 							? "Change the question, how people can interact, and the poll rules."
-							: "Change the text, the photo or attachment, and how people can interact."}
+							: hasTierlist
+								? "Change the text and how people can interact. The tierlist itself is final."
+								: "Change the text, the photo or attachment, and how people can interact."}
 					</p>
 				</div>
 			</header>
@@ -215,9 +219,13 @@ export function EditPostForm({ post }: EditPostFormProps) {
 			>
 				<div className="flex min-w-0 flex-col gap-5">
 					<Section
-						title={hasPoll ? "Question" : "Text"}
+						title={hasPoll ? "Question" : hasTierlist ? "Title" : "Text"}
 						description={
-							hasPoll ? "Your text is what the poll asks." : undefined
+							hasPoll
+								? "Your text is what the poll asks."
+								: hasTierlist
+									? "Your text is the title of the tierlist."
+									: undefined
 						}
 					>
 						<RichTextEditor
@@ -241,6 +249,15 @@ export function EditPostForm({ post }: EditPostFormProps) {
 							) : (
 								<p className="text-muted-foreground text-sm">Loading poll…</p>
 							)}
+						</Section>
+					) : hasTierlist ? (
+						<Section
+							title="Tierlist"
+							description="A tierlist cannot be changed once it is posted. Delete the post to make a new one."
+						>
+							{post.tierlist ? (
+								<PostTierlist tierlist={post.tierlist} compact />
+							) : null}
 						</Section>
 					) : (
 						<Section

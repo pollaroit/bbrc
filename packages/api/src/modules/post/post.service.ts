@@ -7,6 +7,7 @@ import {
 	type PostFeedCursor,
 	type PostFeedRange,
 	type PostFeedSort,
+	postAttachmentConflict,
 	postFeedRangeMin,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
@@ -25,6 +26,11 @@ import {
 	loadPollViews,
 	pollViewer,
 } from "../post-poll/post-poll.service";
+import {
+	createPostTierlist,
+	loadTierlistViews,
+	tierlistImageUrls,
+} from "../post-tierlist/post-tierlist.service";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import {
 	assertContentNotVisible,
@@ -271,6 +277,7 @@ function mapPostListRow(
 	likedPostIds: Set<string>,
 	topCommentsByPostId: Map<string, PostListItem["topComments"]>,
 	polls: Map<string, PostListItem["poll"]>,
+	tierlists: Map<string, PostListItem["tierlist"]>,
 ): PostListItem {
 	return {
 		slug: row.slug,
@@ -281,6 +288,7 @@ function mapPostListRow(
 		allowComments: row.allowComments,
 		allowShares: row.allowShares,
 		poll: polls.get(row.id) ?? null,
+		tierlist: tierlists.get(row.id) ?? null,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -301,9 +309,10 @@ async function mapPostDetailRow(
 	db: Database,
 ): Promise<GetPostBySlugOutput> {
 	const userId = viewerUserId(session);
-	const [likedPostIds, polls] = await Promise.all([
+	const [likedPostIds, polls, tierlists] = await Promise.all([
 		loadLikedPostIds([row.id], userId, db),
 		loadPollViews(db, [row.id], pollViewer(session)),
+		loadTierlistViews(db, [row.id]),
 	]);
 
 	const attachment = mapPostAttachmentFromPostRow({
@@ -321,6 +330,7 @@ async function mapPostDetailRow(
 		allowComments: row.allowComments,
 		allowShares: row.allowShares,
 		poll: polls.get(row.id) ?? null,
+		tierlist: tierlists.get(row.id) ?? null,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -392,14 +402,16 @@ async function hydratePostListPage(
 ): Promise<PostListItem[]> {
 	const postIds = rows.map((row) => row.id);
 	const userId = viewerUserId(session);
-	const [likedPostIds, topCommentsByPostId, polls] = await Promise.all([
-		loadLikedPostIds(postIds, userId, db),
-		loadTopCommentsByPostId(postIds, userId, db),
-		loadPollViews(db, postIds, pollViewer(session)),
-	]);
+	const [likedPostIds, topCommentsByPostId, polls, tierlists] =
+		await Promise.all([
+			loadLikedPostIds(postIds, userId, db),
+			loadTopCommentsByPostId(postIds, userId, db),
+			loadPollViews(db, postIds, pollViewer(session)),
+			loadTierlistViews(db, postIds),
+		]);
 
 	const items = rows.map((row) =>
-		mapPostListRow(row, likedPostIds, topCommentsByPostId, polls),
+		mapPostListRow(row, likedPostIds, topCommentsByPostId, polls, tierlists),
 	);
 	await fillAuthorAttachments(
 		db,
@@ -575,10 +587,13 @@ export async function createPost(
 	await warmLinkPreviewsInContent(db, userId, content);
 	const attachmentInput = resolveCreateAttachment(input);
 
-	if (input.poll && attachmentInput) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "A post with a poll cannot have another attachment.",
-		});
+	const conflict = postAttachmentConflict({
+		poll: input.poll != null,
+		tierlist: input.tierlist != null,
+		attachment: attachmentInput != null,
+	});
+	if (conflict) {
+		throw new ORPCError("BAD_REQUEST", { message: conflict });
 	}
 
 	const result = await db.$transaction(async (tx) => {
@@ -600,6 +615,9 @@ export async function createPost(
 
 		if (input.poll) {
 			await createPostPoll(tx, post.id, userId, input.poll);
+		}
+		if (input.tierlist) {
+			await createPostTierlist(tx, post.id, input.tierlist);
 		}
 
 		const attachedBookId = await syncPostAttachment(
@@ -651,6 +669,7 @@ export async function updatePost(
 			content: true,
 			imageUrl: true,
 			poll: { select: { id: true } },
+			tierlist: { select: { id: true } },
 		},
 	});
 
@@ -663,10 +682,15 @@ export async function updatePost(
 
 	assertPostAuthor(post, userId);
 
-	if (post.poll && input.attachment) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "A post with a poll cannot have another attachment.",
+	if (input.attachment) {
+		const conflict = postAttachmentConflict({
+			poll: post.poll != null,
+			tierlist: post.tierlist != null,
+			attachment: true,
 		});
+		if (conflict) {
+			throw new ORPCError("BAD_REQUEST", { message: conflict });
+		}
 	}
 
 	const preparedContent =
@@ -770,6 +794,9 @@ export async function deletePost(
 	assertPostAuthor(post, userId);
 
 	await tryDeleteR2PublicUrl(post.imageUrl);
+	for (const url of await tierlistImageUrls(db, post.id)) {
+		await tryDeleteR2PublicUrl(url);
+	}
 
 	await db.post.delete({
 		where: { id: post.id },

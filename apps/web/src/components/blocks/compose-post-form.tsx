@@ -13,7 +13,14 @@ import {
 } from "@bbrc/ui/components/dialog";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
-import { BarChart3, ImagePlus, Link2, Plus, Settings2 } from "lucide-react";
+import {
+	BarChart3,
+	ImagePlus,
+	Link2,
+	Plus,
+	Rows3,
+	Settings2,
+} from "lucide-react";
 import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -43,6 +50,7 @@ import {
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { uploadImageForEntity } from "@/components/blocks/single-image-upload-field";
 import { SubmitShortcutHint } from "@/components/blocks/submit-shortcut-hint";
+import { TierlistBuilder } from "@/components/blocks/tierlist-builder";
 import { ToolButton } from "@/components/blocks/tool-button";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { authClient } from "@/lib/auth-client";
@@ -52,6 +60,13 @@ import {
 	removeFromLists,
 	swapListItemSlug,
 } from "@/lib/optimistic/infinite-lists";
+import {
+	emptyTierlistDraft,
+	type TierlistDraft,
+	tierlistDraftProblem,
+	tierlistDraftToInput,
+	tierlistDraftToView,
+} from "@/lib/tierlist/draft";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -80,6 +95,9 @@ export function ComposePostDialog({
 	const [imageFile, setImageFile] = useState<File | null>(null);
 	const [pollOn, setPollOn] = useState(false);
 	const [pollDraft, setPollDraft] = useState<PollDraft>(emptyPollDraft);
+	const [tierlistOn, setTierlistOn] = useState(false);
+	const [tierlistDraft, setTierlistDraft] =
+		useState<TierlistDraft>(emptyTierlistDraft);
 	const imageInput = usePendingImageInput(setImageFile, { variant: "post" });
 
 	useEffect(() => {
@@ -97,6 +115,8 @@ export function ComposePostDialog({
 		setImageFile(null);
 		setPollOn(false);
 		setPollDraft(emptyPollDraft());
+		setTierlistOn(false);
+		setTierlistDraft(emptyTierlistDraft());
 		if (imageInput.inputRef.current) {
 			imageInput.inputRef.current.value = "";
 		}
@@ -106,6 +126,10 @@ export function ComposePostDialog({
 	const hasMedia = imageFile != null || attachment != null;
 	const plain = contentPlainText(content).trim();
 	const pollProblem = pollOn ? pollDraftProblem(pollDraft) : null;
+	const tierlistProblem = tierlistOn
+		? tierlistDraftProblem(tierlistDraft)
+		: null;
+	const problem = pollProblem ?? tierlistProblem;
 
 	const createMutation = useMutation(
 		orpc.post.create.mutationOptions({
@@ -121,6 +145,8 @@ export function ComposePostDialog({
 					imageFile,
 					pollOn,
 					pollDraft,
+					tierlistOn,
+					tierlistDraft,
 				};
 				const submittedFrom = pathname;
 
@@ -148,6 +174,9 @@ export function ComposePostDialog({
 							attachment: null,
 							poll: draft.pollOn
 								? pollDraftToPreview(draft.pollDraft, author)
+								: null,
+							tierlist: draft.tierlistOn
+								? tierlistDraftToView(draft.tierlistDraft)
 								: null,
 							likeCount: 0,
 							commentCount: 0,
@@ -178,6 +207,8 @@ export function ComposePostDialog({
 					setImageFile(context.draft.imageFile);
 					setPollOn(context.draft.pollOn);
 					setPollDraft(context.draft.pollDraft);
+					setTierlistOn(context.draft.tierlistOn);
+					setTierlistDraft(context.draft.tierlistDraft);
 					onOpenChange(true);
 				}
 				toast.error(error.message);
@@ -238,8 +269,8 @@ export function ComposePostDialog({
 			toast.error("Content must be at most 5000 characters");
 			return;
 		}
-		if (pollProblem) {
-			toast.error(pollProblem);
+		if (problem) {
+			toast.error(problem);
 			return;
 		}
 
@@ -251,9 +282,11 @@ export function ComposePostDialog({
 			allowShares: settings.allowShares,
 			...(pollOn
 				? { poll: pollDraftToInput(pollDraft) }
-				: attachment
-					? { attachment }
-					: {}),
+				: tierlistOn
+					? { tierlist: tierlistDraftToInput(tierlistDraft) }
+					: attachment
+						? { attachment }
+						: {}),
 		});
 	}
 
@@ -288,7 +321,9 @@ export function ComposePostDialog({
 						<DialogDescription className="truncate text-xs">
 							{pollOn
 								? "Your text is the question. Add the options below."
-								: "Share an update with the club."}
+								: tierlistOn
+									? "Your text is the title. Build the tierlist below."
+									: "Share an update with the club."}
 						</DialogDescription>
 					</div>
 				</DialogHeader>
@@ -314,7 +349,9 @@ export function ComposePostDialog({
 							placeholder={
 								pollOn
 									? "Ask your question…"
-									: "What are you reading or thinking about?"
+									: tierlistOn
+										? "Name your tierlist…"
+										: "What are you reading or thinking about?"
 							}
 						/>
 
@@ -342,15 +379,27 @@ export function ComposePostDialog({
 							<PollBuilder draft={pollDraft} onChange={setPollDraft} />
 						) : null}
 
+						{tierlistOn ? (
+							<>
+								<TierlistBuilder
+									draft={tierlistDraft}
+									onChange={setTierlistDraft}
+								/>
+								<p className="text-muted-foreground text-xs">
+									A tierlist cannot be changed after you post it.
+								</p>
+							</>
+						) : null}
+
 						{settingsOpen ? (
 							<PostSettingsFields value={settings} onChange={setSettings} />
 						) : null}
 					</div>
 
 					<DialogFooter className="flex-col gap-2 border-border border-t px-5 py-3 sm:flex-col sm:items-stretch">
-						{pollProblem ? (
+						{problem ? (
 							<p className="text-destructive text-xs" aria-live="polite">
-								{pollProblem}
+								{problem}
 							</p>
 						) : null}
 						<div className="flex items-center justify-between gap-3">
@@ -363,26 +412,45 @@ export function ComposePostDialog({
 									icon={<ImagePlus className="size-[18px]" aria-hidden />}
 									label={imageFile ? "Change photo" : "Add a photo"}
 									active={imageFile != null}
-									disabled={pollOn}
-									reason="A poll replaces photos and attachments."
+									disabled={pollOn || tierlistOn}
+									reason="A poll or tierlist replaces photos and attachments."
 									onClick={imageInput.openPicker}
 								/>
 								<ToolButton
 									icon={<Link2 className="size-[18px]" aria-hidden />}
 									label="Attach a book, shelf or member"
 									active={attachmentOpen || attachment != null}
-									disabled={pollOn}
-									reason="A poll replaces photos and attachments."
+									disabled={pollOn || tierlistOn}
+									reason="A poll or tierlist replaces photos and attachments."
 									onClick={() => setAttachmentOpen((current) => !current)}
 								/>
 								<ToolButton
 									icon={<BarChart3 className="size-[18px]" aria-hidden />}
 									label="Add a poll"
 									active={pollOn}
-									disabled={hasMedia}
-									reason="Remove the photo or attachment to add a poll."
+									disabled={hasMedia || tierlistOn}
+									reason={
+										tierlistOn
+											? "A post has either a poll or a tierlist."
+											: "Remove the photo or attachment to add a poll."
+									}
 									onClick={() => {
 										setPollOn((current) => !current);
+										setAttachmentOpen(false);
+									}}
+								/>
+								<ToolButton
+									icon={<Rows3 className="size-[18px]" aria-hidden />}
+									label="Add a tierlist"
+									active={tierlistOn}
+									disabled={hasMedia || pollOn}
+									reason={
+										pollOn
+											? "A post has either a poll or a tierlist."
+											: "Remove the photo or attachment to add a tierlist."
+									}
+									onClick={() => {
+										setTierlistOn((current) => !current);
 										setAttachmentOpen(false);
 									}}
 								/>
@@ -404,7 +472,7 @@ export function ComposePostDialog({
 								<LoadingButton
 									type="submit"
 									loading={false}
-									disabled={plain.length < 1 || pollProblem != null}
+									disabled={plain.length < 1 || problem != null}
 								>
 									Post
 								</LoadingButton>
