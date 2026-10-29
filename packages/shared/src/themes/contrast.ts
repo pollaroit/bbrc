@@ -26,6 +26,8 @@ const STATUS_NAMES = [
 	"destructive",
 	"violet",
 	"pink",
+	"orange",
+	"teal",
 ] as const;
 
 /**

@@ -21,6 +21,8 @@ const statusChips = [
 	["Warned", "warning"],
 	["Banned", "destructive"],
 	["Liked", "pink"],
+	["Hot", "orange"],
+	["Fresh", "teal"],
 ] as const;
 
 const chipClass: Record<(typeof statusChips)[number][1], string> = {
@@ -30,6 +32,8 @@ const chipClass: Record<(typeof statusChips)[number][1], string> = {
 	warning: "border-warning/30 bg-warning/10 text-warning-ink",
 	destructive: "border-destructive/30 bg-destructive/10 text-destructive-ink",
 	pink: "border-pink/30 bg-pink/10 text-pink-ink",
+	orange: "border-orange/30 bg-orange/10 text-orange-ink",
+	teal: "border-teal/30 bg-teal/10 text-teal-ink",
 };
 
 /** A slice of real UI, rendered inside a wrapper that sets only the palette. */

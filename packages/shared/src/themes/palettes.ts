@@ -67,6 +67,10 @@ export const STATUS_TOKENS: Record<PaletteMode, Record<string, Oklch>> = {
 		"violet-ink": oklch(0.283, 0.141, 291.089),
 		pink: oklch(0.656, 0.241, 354.308),
 		"pink-ink": oklch(0.284, 0.109, 3.907),
+		orange: oklch(0.646, 0.222, 41.116),
+		"orange-ink": oklch(0.408, 0.123, 38.172),
+		teal: oklch(0.6, 0.118, 184.704),
+		"teal-ink": oklch(0.386, 0.063, 188.416),
 	},
 	dark: {
 		success: oklch(0.696, 0.17, 162.48),
@@ -81,6 +85,10 @@ export const STATUS_TOKENS: Record<PaletteMode, Record<string, Oklch>> = {
 		"violet-ink": oklch(0.894, 0.057, 293.283),
 		pink: oklch(0.718, 0.202, 349.761),
 		"pink-ink": oklch(0.899, 0.061, 343.231),
+		orange: oklch(0.705, 0.213, 47.604),
+		"orange-ink": oklch(0.901, 0.076, 70.697),
+		teal: oklch(0.704, 0.14, 182.503),
+		"teal-ink": oklch(0.91, 0.096, 180.426),
 	},
 };
 
