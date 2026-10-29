@@ -80,7 +80,11 @@ export function BookReadersPanel({ bookSlug, bookTitle, bookPages }: Props) {
 
 	return (
 		<div className="flex flex-col gap-4">
-			<PresenceLine bookSlug={bookSlug} className="justify-start" />
+			<PresenceLine
+				bookSlug={bookSlug}
+				highlightNew
+				className="justify-start"
+			/>
 			{items.length === 0 ? (
 				<div className="flex flex-col items-start gap-3 border border-border border-dashed p-6">
 					<BookOpen className="size-5 text-muted-foreground" aria-hidden />

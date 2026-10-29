@@ -19,6 +19,7 @@
 		"@orpc/openapi": "catalog:",
 		"@orpc/server": "catalog:",
 		"@orpc/zod": "catalog:",
+		"ably": "^2.30.0",
 		"better-auth": "catalog:",
 		"sharp": "0.35.5",
 		"zod": "catalog:"

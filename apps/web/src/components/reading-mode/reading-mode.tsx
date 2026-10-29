@@ -61,6 +61,7 @@ import {
 import { useMediaQuery } from "@/lib/reading-mode/use-media-query";
 import { useReadingSession } from "@/lib/reading-mode/use-reading-session";
 import { useWakeLock } from "@/lib/reading-mode/use-wake-lock";
+import { useEnterReadingPresence } from "@/lib/realtime/use-realtime";
 
 // The finish dialog carries the editor and the review form, so it loads when asked.
 const BookMarkReadDialog = dynamic(
@@ -106,6 +107,8 @@ export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 	}
 
 	const running = phase.kind === "active" && timer?.status === "running";
+	// Show up as reading to others, live, for as long as the session is open.
+	useEnterReadingPresence(bookSlug, phase.kind === "active");
 	useWakeLock(running);
 
 	// Closing the tab mid-session asks first; the time is kept either way.

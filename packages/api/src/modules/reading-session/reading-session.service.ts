@@ -7,6 +7,7 @@ import {
 	READING_SESSION_STALE_MS,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import { realtimeClientId } from "../../lib/realtime/client-id";
 import { getMyReadingStats } from "../reading/reading.service";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type {
@@ -238,8 +239,15 @@ export async function getReadingPresence(
 	db: Database,
 	viewerId: string | null,
 	bookSlug: string,
+	liveClientIds?: string[],
 ): Promise<ReadingPresenceOutput> {
-	const since = new Date(Date.now() - READING_PRESENCE_TTL_MS);
+	// Realtime says who is on the channel right now, as opaque ids. Only the
+	// server can match them to members, so nobody watching can tell who is who.
+	const live = liveClientIds ? new Set(liveClientIds) : null;
+	const since = new Date(
+		Date.now() -
+			(live ? READING_SESSION_MAX_SECONDS * 1000 : READING_PRESENCE_TTL_MS),
+	);
 	const rows = await db.readingSession.findMany({
 		where: {
 			endedAt: null,
@@ -263,11 +271,20 @@ export async function getReadingPresence(
 		},
 	});
 	const now = new Date();
-	const present = rows.filter((row) => isReadingNow(row.lastBeatAt, now));
+	const present = live
+		? rows.filter((row) => {
+				const id = realtimeClientId(row.user.id);
+				return id != null && live.has(id);
+			})
+		: rows.filter((row) => isReadingNow(row.lastBeatAt, now));
+	// One member in two tabs or on two devices is one reader.
+	const members = [
+		...new Map(present.map((row) => [row.user.id, row])).values(),
+	];
 	return {
-		count: present.length,
-		viewerPresent: present.some((row) => row.user.id === viewerId),
-		readers: present
+		count: members.length,
+		viewerPresent: members.some((row) => row.user.id === viewerId),
+		readers: members
 			.filter(
 				(row) => row.user.showCurrentlyReading && row.user.id !== viewerId,
 			)
