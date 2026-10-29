@@ -60,6 +60,12 @@ export const EndReadingSessionOutputSchema = ReadingSessionSchema.extend({
 
 export const ReadingPresenceInputSchema = zod.object({
 	bookSlug: zod.string().min(1),
+	/**
+	 * Realtime: the opaque ids present on the book's channel right now. When given,
+	 * the answer is who they are (names only for members who show what they read)
+	 * instead of who beat recently.
+	 */
+	liveClientIds: zod.array(zod.string().min(1).max(64)).max(200).optional(),
 });
 
 export const ReadingPresenceOutputSchema = zod.object({

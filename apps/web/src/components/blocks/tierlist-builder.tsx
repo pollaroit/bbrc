@@ -41,7 +41,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Check, GripVertical, Plus, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { TierlistAddItemDialog } from "@/components/blocks/tierlist-add-item-dialog";
 import { TierlistTileFace } from "@/components/blocks/tierlist-tile";
 import {
@@ -66,6 +66,49 @@ type TierlistBuilderProps = {
 	draft: TierlistDraft;
 	onChange: (draft: TierlistDraft) => void;
 };
+
+/**
+ * While something is being dragged, nothing else may scroll: the dialog or page
+ * behind it would otherwise move under the finger and make dropping impossible.
+ * Touch scrolling is cancelled, and every scrollable container around the
+ * builder is frozen until the drag ends. (The drag library can still scroll
+ * them by itself when you drag near an edge.)
+ */
+function useLockScrollWhileDragging(
+	active: boolean,
+	root: RefObject<HTMLElement | null>,
+) {
+	useEffect(() => {
+		if (!active) return;
+
+		const cancelTouchScroll = (event: TouchEvent) => {
+			if (event.cancelable) event.preventDefault();
+		};
+		document.addEventListener("touchmove", cancelTouchScroll, {
+			passive: false,
+		});
+
+		const frozen: { element: HTMLElement; overflow: string }[] = [];
+		for (
+			let node: HTMLElement | null = root.current?.parentElement ?? null;
+			node;
+			node = node.parentElement
+		) {
+			const { overflowY } = getComputedStyle(node);
+			if (overflowY === "auto" || overflowY === "scroll") {
+				frozen.push({ element: node, overflow: node.style.overflow });
+				node.style.overflow = "hidden";
+			}
+		}
+
+		return () => {
+			document.removeEventListener("touchmove", cancelTouchScroll);
+			for (const { element, overflow } of frozen) {
+				element.style.overflow = overflow;
+			}
+		};
+	}, [active, root]);
+}
 
 /** The tier an id belongs to: the tier itself, its drop area, or one of its items. */
 function findTier(draft: TierlistDraft, id: string | number) {
@@ -119,6 +162,8 @@ const collisionDetection: CollisionDetection = (args) => {
 export function TierlistBuilder({ draft, onChange }: TierlistBuilderProps) {
 	const [addingTo, setAddingTo] = useState<string | null>(null);
 	const [activeId, setActiveId] = useState<string | null>(null);
+	const rootRef = useRef<HTMLDivElement>(null);
+	useLockScrollWhileDragging(activeId != null, rootRef);
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -246,7 +291,11 @@ export function TierlistBuilder({ draft, onChange }: TierlistBuilderProps) {
 	const total = tierlistDraftItemCount(draft);
 
 	return (
-		<div className="flex flex-col gap-2" data-slot="tierlist-builder">
+		<div
+			ref={rootRef}
+			className="flex flex-col gap-2"
+			data-slot="tierlist-builder"
+		>
 			<DndContext
 				sensors={sensors}
 				collisionDetection={collisionDetection}

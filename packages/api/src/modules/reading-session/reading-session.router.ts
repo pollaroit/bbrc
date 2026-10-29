@@ -65,6 +65,7 @@ export const readingSessionRouter = {
 				context.db,
 				context.session?.user.id ?? null,
 				input.bookSlug,
+				input.liveClientIds,
 			),
 		),
 };

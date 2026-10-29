@@ -1,9 +1,11 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import { Loader2, type LucideIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { type MouseEvent, type ReactNode, useState } from "react";
+import { pageIsAtTop, refreshPage, scrollPageToTop } from "@/lib/refresh-page";
 import { cn } from "@/lib/utils";
 
 const tabClassName = (active: boolean, className?: string) =>
@@ -55,6 +57,14 @@ type MobileNavTabLinkProps = {
 	className?: string;
 } & Omit<React.ComponentProps<typeof Link>, "href" | "className" | "children">;
 
+/** The spinner stays at least this long, so a quick refresh still reads as one. */
+const MIN_REFRESH_MS = 700;
+
+/**
+ * A bottom-bar tab. Tapping the tab of the page you are already on does what
+ * installed apps do: the first tap scrolls to the top, and a tap while you are
+ * at the top refreshes the page. From anywhere else it is an ordinary link.
+ */
 export function MobileNavTab({
 	href,
 	label,
@@ -62,17 +72,55 @@ export function MobileNavTab({
 	icon,
 	iconSlot,
 	className,
+	onClick,
 	...linkProps
 }: MobileNavTabLinkProps) {
+	const router = useRouter();
+	const pathname = usePathname();
+	const [refreshing, setRefreshing] = useState(false);
+
+	function handleClick(event: MouseEvent<HTMLAnchorElement>) {
+		onClick?.(event);
+		if (event.defaultPrevented) return;
+		// Only the tab's own page; a book inside Library still navigates to Library.
+		if (pathname !== href) return;
+		event.preventDefault();
+		if (!pageIsAtTop()) {
+			scrollPageToTop();
+			return;
+		}
+		if (refreshing) return;
+		setRefreshing(true);
+		void Promise.all([
+			refreshPage(router).catch(() => undefined),
+			new Promise((resolve) => window.setTimeout(resolve, MIN_REFRESH_MS)),
+		]).finally(() => setRefreshing(false));
+	}
+
 	return (
 		<Link
 			href={href}
 			className={tabClassName(active, className)}
 			aria-current={active ? "page" : undefined}
+			aria-busy={refreshing || undefined}
+			onClick={handleClick}
 			{...linkProps}
 		>
 			<TabIndicator active={active} />
-			<TabContent label={label} icon={icon} iconSlot={iconSlot} />
+			<TabContent
+				label={refreshing ? "Refreshing" : label}
+				icon={refreshing ? undefined : icon}
+				iconSlot={
+					refreshing ? (
+						<Loader2
+							className="size-5 shrink-0 animate-spin motion-reduce:animate-none"
+							aria-hidden
+						/>
+					) : (
+						iconSlot
+					)
+				}
+			/>
 		</Link>
 	);
 }
