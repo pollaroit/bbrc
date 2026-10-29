@@ -27,6 +27,10 @@ enum NotificationKind {
   reading_behind
   mention
   author_new_book
+  sitting_opened
+  sitting_midterm_checkin
+  sitting_deadline_24h
+  sitting_reading_reminder
 }
 
 model Notification {
@@ -66,4 +70,25 @@ model NotificationPreference {
 
   @@id([userId, kind])
   @@map("notification_preference")
+}
+
+/// A browser or installed app that receives this member's push notifications (registered with Ably Push).
+/// Ably holds the registration; this row gives it a name for the settings page and ties it to the member.
+model PushDevice {
+  /// @zod.uuid("Invalid UUID")
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now()) @map("created_at")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Ably's id for the device.
+  deviceId String @unique @map("device_id")
+  /// What the member sees in their device list, for example "Chrome on macOS".
+  label    String
+
+  @@index([userId])
+  @@map("push_device")
 }

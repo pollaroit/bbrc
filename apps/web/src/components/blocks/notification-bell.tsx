@@ -27,10 +27,8 @@ function formatNotificationTime(value: Date | string): string {
 export function NotificationBell() {
 	const [open, setOpen] = useState(false);
 
-	const unreadQuery = useQuery({
-		...orpc.notification.getUnreadCount.queryOptions(),
-		refetchInterval: 60_000,
-	});
+	// Kept live (and polled as a fallback) by `PwaNotificationEngagement`.
+	const unreadQuery = useQuery(orpc.notification.getUnreadCount.queryOptions());
 
 	const listQuery = useQuery({
 		...orpc.notification.getNotificationList.queryOptions({

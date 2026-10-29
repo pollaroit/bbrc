@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
+import { releasePushOnSignOut } from "@/lib/push/sign-out";
 import { cn } from "@/lib/utils";
 
 type UserAccountSignOutButtonProps = {
@@ -25,6 +26,7 @@ export function UserAccountSignOutButton({
 	const handleSignOut = async () => {
 		setLoading(true);
 		try {
+			await releasePushOnSignOut();
 			await authClient.signOut();
 			onSignedOut?.();
 			router.refresh();

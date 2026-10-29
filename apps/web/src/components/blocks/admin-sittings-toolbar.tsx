@@ -40,7 +40,6 @@ function countAdminSittingSheetFilters(
 	if (params.ongoingOnly != null) count += 1;
 	if (
 		params.hasSelectedBook != null ||
-		params.telegramPollAnnounced != null ||
 		params.deadlineOverdue != null ||
 		params.hasMidtermScheduled != null
 	) {
@@ -175,7 +174,6 @@ function SittingFiltersSheet({
 					statuses: null,
 					ongoingOnly: null,
 					hasSelectedBook: null,
-					telegramPollAnnounced: null,
 					deadlineOverdue: null,
 					hasMidtermScheduled: null,
 					participantUsernames: null,
@@ -227,17 +225,6 @@ function SittingFiltersSheet({
 						onCheckedChange: (checked) => {
 							void setParams({
 								hasSelectedBook: checked ? true : null,
-								...resetPage,
-							});
-						},
-					},
-					{
-						id: "telegramPollAnnounced",
-						label: "Telegram poll announced",
-						checked: params.telegramPollAnnounced === true,
-						onCheckedChange: (checked) => {
-							void setParams({
-								telegramPollAnnounced: checked ? true : null,
 								...resetPage,
 							});
 						},

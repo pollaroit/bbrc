@@ -49,6 +49,12 @@ const nextConfig: NextConfig = {
 				destination: "/leaderboard/overview/week",
 				permanent: true,
 			},
+			// The Account connections page only held the Telegram link, which is gone.
+			{
+				source: "/settings/accounts",
+				destination: "/settings",
+				permanent: true,
+			},
 		];
 	},
 	async rewrites() {

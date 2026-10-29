@@ -25,6 +25,7 @@ import { GlobalSearchThumb } from "@/components/blocks/global-search-thumb";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { authClient } from "@/lib/auth-client";
 import { useColorMode } from "@/lib/preferences/use-color-mode";
+import { releasePushOnSignOut } from "@/lib/push/sign-out";
 import {
 	bookFiltersToSearchParams,
 	buildSearchCommands,
@@ -282,6 +283,7 @@ export function GlobalSearchDialog({
 			case "signout":
 				close();
 				try {
+					await releasePushOnSignOut();
 					await authClient.signOut();
 					router.refresh();
 				} catch {

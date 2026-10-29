@@ -102,8 +102,6 @@ function mapAdminUserRow(row: AdminUserListRow) {
 		xp: row.xp,
 		rp: row.rp,
 		emailVerified: row.emailVerified,
-		telegramUserId: row.telegramUserId,
-		telegramUsername: row.telegramUsername,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 		counts: {

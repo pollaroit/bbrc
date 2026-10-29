@@ -28,6 +28,10 @@ export const NOTIFICATION_KINDS = [
 	"reading_behind",
 	"mention",
 	"author_new_book",
+	"sitting_opened",
+	"sitting_midterm_checkin",
+	"sitting_deadline_24h",
+	"sitting_reading_reminder",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -61,6 +65,10 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
 	reading_behind: "You are behind your reading pace",
 	mention: "Someone mentioned you",
 	author_new_book: "A new book by an author you follow",
+	sitting_opened: "A new sitting is open",
+	sitting_midterm_checkin: "Midterm check-in",
+	sitting_deadline_24h: "24 hours left to finish",
+	sitting_reading_reminder: "Daily reading reminder",
 };
 
 export const NOTIFICATION_KIND_GROUPS = {
@@ -68,6 +76,7 @@ export const NOTIFICATION_KIND_GROUPS = {
 		"member_posted",
 		"member_feedback_on_book",
 		"book_added_to_library",
+		"sitting_opened",
 	] as const satisfies readonly NotificationKind[],
 	personal: [
 		"comment_on_your_post",
@@ -95,6 +104,9 @@ export const NOTIFICATION_KIND_GROUPS = {
 		"participant_finished_book",
 		"sitting_finished",
 		"sitting_member_joined",
+		"sitting_midterm_checkin",
+		"sitting_deadline_24h",
+		"sitting_reading_reminder",
 	] as const satisfies readonly NotificationKind[],
 	admin: [
 		"book_requested",
@@ -102,7 +114,11 @@ export const NOTIFICATION_KIND_GROUPS = {
 	] as const satisfies readonly NotificationKind[],
 };
 
-/** Push (ntfy) on by default for these kinds when preferences are first created. */
+/**
+ * Push on by default for these kinds when preferences are first created. It only
+ * takes effect once a member turns push on for a device. The daily reading
+ * reminder is deliberately not here: it is opt-in.
+ */
 export const NOTIFICATION_KINDS_PUSH_ENABLED_BY_DEFAULT = [
 	"book_added_to_library",
 	"comment_on_your_post",

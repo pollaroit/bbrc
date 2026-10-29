@@ -1,5 +1,6 @@
 import type { Database } from "@bbrc/db";
 import { fetchOpenLibraryWorkTitle } from "../../lib/open-library/work-titles";
+import { activeParticipationWhere } from "../sitting/participation-active";
 import {
 	dispatchNotification,
 	listActiveMemberUserIds,
@@ -211,7 +212,6 @@ export async function notifyBookRequested(
 		title: "Book requested",
 		body: `${memberDisplayName(requester)} requested “${titleLabel}”.`,
 		href: `/books/new?olid=${encodeURIComponent(olid)}`,
-		adminNtfy: true,
 	});
 }
 
@@ -240,7 +240,6 @@ export async function notifyDocumentSubmitted(
 		title: "Document submitted",
 		body: `${memberDisplayName(submitter)} submitted a document for “${bookTitle}”.`,
 		href: `/books/${bookSlug}`,
-		adminNtfy: true,
 	});
 }
 
@@ -386,7 +385,6 @@ export async function notifySittingPollStarted(
 		title: "Sitting poll started",
 		body: "Vote for the next club read before the deadline.",
 		href: `/sittings/${sittingSlug}`,
-		sittingSlug,
 	});
 }
 
@@ -406,7 +404,6 @@ export async function notifySittingPollClosed(
 		title: "Poll closed — reading starts",
 		body: `The club will read “${bookTitle}”.`,
 		href: `/sittings/${sittingSlug}`,
-		sittingSlug,
 	});
 }
 
@@ -425,7 +422,6 @@ export async function notifySittingFinished(
 		title: "Sitting finished",
 		body: "Reading time is over. Share your feedback on the book.",
 		href: `/sittings/${sittingSlug}`,
-		sittingSlug,
 	});
 }
 
@@ -463,7 +459,95 @@ export async function notifyParticipantFinishedBook(
 		title: "Participant finished reading",
 		body: `${memberDisplayName(completedUser)} finished the sitting book.`,
 		href: `/sittings/${sittingSlug}`,
-		sittingSlug,
+	});
+}
+
+/** Participants who are still reading (not finished, not removed). */
+async function listUnfinishedParticipantUserIds(
+	db: Database,
+	sittingId: string,
+): Promise<string[]> {
+	const rows = await db.participation.findMany({
+		where: {
+			sittingId,
+			...activeParticipationWhere,
+			progress: { in: ["not_started", "in_progress"] },
+		},
+		select: { userId: true },
+	});
+	return rows.map((row) => row.userId);
+}
+
+/**
+ * A new sitting is open: tell the whole club, except the people who already
+ * hear about it as participants, and whoever created it.
+ */
+export async function notifySittingOpened(
+	db: Database,
+	sittingSlug: string,
+	createdById: string | null | undefined,
+): Promise<void> {
+	const sittingId = await sittingIdBySlug(db, sittingSlug);
+	const [everyone, participants] = await Promise.all([
+		listActiveMemberUserIds(db),
+		listSittingParticipantUserIds(sittingId, db),
+	]);
+
+	await dispatchNotification(db, {
+		kind: "sitting_opened",
+		recipientUserIds: everyone,
+		excludeUserIds: [...(createdById ? [createdById] : []), ...participants],
+		title: "A new sitting is open",
+		body: "Join the sitting and vote for the next club read.",
+		href: `/sittings/${sittingSlug}`,
+	});
+}
+
+/** Halfway through reading: a nudge to the people who have not finished. */
+export async function notifySittingMidtermCheckin(
+	db: Database,
+	sittingSlug: string,
+	bookTitle: string,
+): Promise<void> {
+	const sittingId = await sittingIdBySlug(db, sittingSlug);
+	await dispatchNotification(db, {
+		kind: "sitting_midterm_checkin",
+		recipientUserIds: await listUnfinishedParticipantUserIds(db, sittingId),
+		title: "Halfway through the sitting",
+		body: `How is “${bookTitle}” going? Update your page so the club can see.`,
+		href: `/sittings/${sittingSlug}`,
+	});
+}
+
+/** A day before the deadline, to the people who have not finished. */
+export async function notifySittingDeadline24h(
+	db: Database,
+	sittingSlug: string,
+	bookTitle: string,
+): Promise<void> {
+	const sittingId = await sittingIdBySlug(db, sittingSlug);
+	await dispatchNotification(db, {
+		kind: "sitting_deadline_24h",
+		recipientUserIds: await listUnfinishedParticipantUserIds(db, sittingId),
+		title: "24 hours left",
+		body: `Finish “${bookTitle}” before the sitting ends.`,
+		href: `/sittings/${sittingSlug}`,
+	});
+}
+
+/** The daily nudge while a sitting is being read. */
+export async function notifySittingReadingReminder(
+	db: Database,
+	sittingSlug: string,
+	bookTitle: string,
+): Promise<void> {
+	const sittingId = await sittingIdBySlug(db, sittingSlug);
+	await dispatchNotification(db, {
+		kind: "sitting_reading_reminder",
+		recipientUserIds: await listUnfinishedParticipantUserIds(db, sittingId),
+		title: "Time to read",
+		body: `Pick up “${bookTitle}” today.`,
+		href: `/sittings/${sittingSlug}`,
 	});
 }
 

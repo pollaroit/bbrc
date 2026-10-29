@@ -1,16 +1,6 @@
 import { protectedProcedure, publicProcedure } from "../../procedures";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import {
-	BeginTelegramLinkOutputSchema,
-	GetTelegramLinkStatusOutputSchema,
-	UnlinkTelegramOutputSchema,
-} from "./telegram-link.schema";
-import {
-	beginTelegramLinkChallenge,
-	getTelegramLinkStatus,
-	unlinkTelegramAccount,
-} from "./telegram-link.service";
-import {
 	GetUserByUsernameInputSchema,
 	GetUserByUsernameOutputSchema,
 	GetUserListInputSchema,
@@ -93,21 +83,6 @@ export const userRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await getUserStats(input, context.db, context.session),
-		),
-	getTelegramLinkStatus: protectedProcedure
-		.output(GetTelegramLinkStatusOutputSchema)
-		.handler(async ({ context }) =>
-			getTelegramLinkStatus(context.session.user.id, context.db),
-		),
-	beginTelegramLink: protectedProcedure
-		.output(BeginTelegramLinkOutputSchema)
-		.handler(async ({ context }) =>
-			beginTelegramLinkChallenge(context.session.user.id, context.db),
-		),
-	unlinkTelegram: protectedProcedure
-		.output(UnlinkTelegramOutputSchema)
-		.handler(async ({ context }) =>
-			unlinkTelegramAccount(context.session.user.id, context.db),
 		),
 	getUsernameUpdateStatus: protectedProcedure
 		.output(GetUsernameUpdateStatusOutputSchema)

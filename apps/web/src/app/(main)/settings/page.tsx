@@ -33,11 +33,6 @@ const settingsLinks = [
 		description: "Authors you follow and new-book alerts.",
 	},
 	{
-		href: "/settings/accounts",
-		title: "Account connections",
-		description: "Link Telegram for club bot features.",
-	},
-	{
 		href: "/settings/sessions",
 		title: "Sessions",
 		description: "See where you're signed in and log out of devices.",
@@ -45,7 +40,7 @@ const settingsLinks = [
 	{
 		href: "/settings/notifications",
 		title: "Notifications",
-		description: "Bell alerts and one-time ntfy phone setup.",
+		description: "What reaches your bell and your phone, and your devices.",
 	},
 ] as const;
 
@@ -58,7 +53,6 @@ export default async function SettingsPage() {
 		redirect("/sign-in" as Route);
 	}
 
-	const telegramLinked = Boolean(session.user.telegramUserId);
 	const currentName = session.user.name;
 
 	return (
@@ -69,27 +63,6 @@ export default async function SettingsPage() {
 					Preferences for your account.
 				</p>
 			</div>
-
-			{!telegramLinked ? (
-				<section
-					className="border border-border bg-muted/30 px-4 py-4 text-sm"
-					aria-labelledby="telegram-nudge-heading"
-				>
-					<h2 id="telegram-nudge-heading" className="font-medium">
-						Connect Telegram
-					</h2>
-					<p className="mt-1 text-muted-foreground leading-relaxed">
-						Link your Telegram account so BBRC can recognize you in the club
-						group bot.{" "}
-						<Link
-							href={"/settings/accounts" as Route}
-							className="font-medium text-foreground underline underline-offset-4"
-						>
-							Account connections
-						</Link>
-					</p>
-				</section>
-			) : null}
 
 			<section
 				className="border border-border px-4 py-5"

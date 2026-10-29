@@ -132,7 +132,6 @@ export function AdminSittingsOverview() {
 					/>
 					<StatCard label="Finished" value={kpis.finished} />
 					<StatCard label="With selected book" value={kpis.withSelectedBook} />
-					<StatCard label="Telegram announced" value={kpis.telegramAnnounced} />
 					<StatCard
 						label="Overdue voting deadlines"
 						value={kpis.overdueVotingDeadlines}

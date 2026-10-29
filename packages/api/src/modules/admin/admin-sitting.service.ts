@@ -263,12 +263,6 @@ function adminSittingExtraWhere(
 	if (input.hasSelectedBook === false) {
 		parts.push({ selectedBookId: null });
 	}
-	if (input.telegramPollAnnounced === true) {
-		parts.push({ telegramPollOpenSentAt: { not: null } });
-	}
-	if (input.telegramPollAnnounced === false) {
-		parts.push({ telegramPollOpenSentAt: null });
-	}
 	if (input.deadlineOverdue === true) {
 		parts.push({
 			deadline: { lt: now },
@@ -462,7 +456,6 @@ function mapAdminSittingListRow(
 		updatedAt: row.updatedAt,
 		readingStartedAt: row.readingStartedAt,
 		midtermAt: row.midtermAt,
-		telegramPollAnnounced: row.telegramPollOpenSentAt != null,
 		selectedBook: row.selectedBook,
 		pollSlug: row.poll?.slug ?? null,
 		counts,
@@ -609,7 +602,6 @@ function emptyAdminSittingOverview(): AdminSittingOverviewOutput {
 			reading: 0,
 			finished: 0,
 			withSelectedBook: 0,
-			telegramAnnounced: 0,
 			overdueVotingDeadlines: 0,
 			startedLast30Days: 0,
 			finishedLast30Days: 0,
@@ -639,7 +631,6 @@ export async function getAdminSittingOverview(
 			createdAt: true,
 			updatedAt: true,
 			selectedBookId: true,
-			telegramPollOpenSentAt: true,
 			deadline: true,
 		},
 	});
@@ -648,7 +639,6 @@ export async function getAdminSittingOverview(
 	let reading = 0;
 	let finished = 0;
 	let withSelectedBook = 0;
-	let telegramAnnounced = 0;
 	let overdueVotingDeadlines = 0;
 	let startedLast30Days = 0;
 	let finishedLast30Days = 0;
@@ -664,9 +654,6 @@ export async function getAdminSittingOverview(
 
 		if (sitting.selectedBookId) {
 			withSelectedBook += 1;
-		}
-		if (sitting.telegramPollOpenSentAt) {
-			telegramAnnounced += 1;
 		}
 		if (sitting.status === "voting" && sitting.deadline < now) {
 			overdueVotingDeadlines += 1;
@@ -689,7 +676,6 @@ export async function getAdminSittingOverview(
 			reading,
 			finished,
 			withSelectedBook,
-			telegramAnnounced,
 			overdueVotingDeadlines,
 			startedLast30Days,
 			finishedLast30Days,

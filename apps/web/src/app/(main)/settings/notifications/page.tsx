@@ -36,7 +36,7 @@ export default async function NotificationSettingsPage() {
 				<h1 className="font-semibold text-2xl tracking-tight">Notifications</h1>
 				<p className="mt-1 text-muted-foreground text-sm">
 					Choose what appears in the bell on the site and what is sent to your
-					phone through ntfy. Set up phone push once using your personal topic
+					phone or computer as a push notification. Turn push on for each device
 					below.
 				</p>
 			</div>

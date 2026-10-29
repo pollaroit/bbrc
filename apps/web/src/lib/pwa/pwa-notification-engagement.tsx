@@ -1,71 +1,117 @@
 "use client";
 
+import { notifyChannel } from "@bbrc/shared";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import type { Route } from "next";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth-client";
 import { playNotificationChime } from "@/lib/pwa/play-notification-chime";
 import { readPwaEngagementPreferences } from "@/lib/pwa/pwa-engagement-storage";
-import { orpc } from "@/utils/orpc";
+import { acquireRealtime, getRealtimeClient } from "@/lib/realtime/client";
+import { useRealtimeState } from "@/lib/realtime/use-realtime";
+import { orpc, queryClient } from "@/utils/orpc";
 
-function showSystemAlert(unread: number) {
-	if (!("Notification" in window) || Notification.permission !== "granted") {
-		return;
-	}
+type LiveNotification = {
+	notification: {
+		id: string;
+		kind: string;
+		title: string;
+		body: string;
+		href: string | null;
+	};
+	unreadCount: number;
+};
 
-	const body =
-		unread === 1
-			? "You have a new alert in the bell menu."
-			: `You have ${unread} unread alerts in the bell menu.`;
+/** Polling is only the safety net: fast when realtime is down, rare when it is up. */
+const POLL_WITHOUT_REALTIME_MS = 60_000;
+const POLL_WITH_REALTIME_MS = 5 * 60_000;
 
-	try {
-		const notification = new Notification("BBRC", {
-			body,
-			tag: "bbrc-unread",
-		});
-		notification.onclick = () => {
-			window.focus();
-			notification.close();
-		};
-	} catch {
-		// unsupported in this context
-	}
-}
-
+/**
+ * Keeps the bell and the notification list live for a signed-in member: a new
+ * notification arrives on their private channel, shows as a toast and updates
+ * the count; the count also follows reads made on another screen. If realtime
+ * is unavailable the count is polled instead.
+ */
 export function PwaNotificationEngagement() {
 	const { data: session } = authClient.useSession();
-	const previousUnread = useRef<number | null>(null);
+	const router = useRouter();
+	const signedIn = Boolean(session?.user);
+	const realtime = useRealtimeState();
+	const live = realtime === "connected";
 
-	const unreadQuery = useQuery({
+	useQuery({
 		...orpc.notification.getUnreadCount.queryOptions(),
-		enabled: Boolean(session?.user),
-		refetchInterval: 60_000,
+		enabled: signedIn,
+		refetchInterval: live ? POLL_WITH_REALTIME_MS : POLL_WITHOUT_REALTIME_MS,
 	});
 
 	useEffect(() => {
-		const unread = unreadQuery.data?.count;
-		if (unread === undefined) {
-			return;
+		if (!signedIn) return;
+		const release = acquireRealtime();
+		const client = getRealtimeClient();
+		if (!client) return release;
+
+		const unreadKey = orpc.notification.getUnreadCount.queryKey();
+		const listKey = orpc.notification.getNotificationList.key();
+		let channel: ReturnType<typeof client.channels.get> | null = null;
+
+		const onNotification = (message: { data?: unknown }) => {
+			const data = message.data as LiveNotification | undefined;
+			if (!data?.notification) return;
+			queryClient.setQueryData(unreadKey, { count: data.unreadCount });
+			void queryClient.invalidateQueries({ queryKey: listKey });
+
+			const prefs = readPwaEngagementPreferences();
+			if (prefs.soundsEnabled) playNotificationChime();
+
+			const { id, title, body, href } = data.notification;
+			toast(title, {
+				id,
+				description: body,
+				action: href
+					? { label: "Open", onClick: () => router.push(href as Route) }
+					: undefined,
+			});
+		};
+
+		const onUnread = (message: { data?: unknown }) => {
+			const data = message.data as { count?: number } | undefined;
+			if (typeof data?.count !== "number") return;
+			queryClient.setQueryData(unreadKey, { count: data.count });
+			void queryClient.invalidateQueries({ queryKey: listKey });
+		};
+
+		function subscribe() {
+			const clientId = client?.auth.clientId;
+			if (!client || !clientId || channel) return;
+			channel = client.channels.get(notifyChannel(clientId));
+			channel.subscribe("notification", onNotification).catch(() => {});
+			channel.subscribe("unread", onUnread).catch(() => {});
 		}
 
-		const previous = previousUnread.current;
-		previousUnread.current = unread;
+		// The member's id is known once the first token has been issued.
+		if (client.connection.state === "connected") subscribe();
+		const onConnection = (change: { current: string; previous: string }) => {
+			if (change.current === "connected") {
+				subscribe();
+				// Anything missed while disconnected: ask once.
+				if (change.previous !== "connected") {
+					void queryClient.invalidateQueries({ queryKey: unreadKey });
+				}
+			}
+		};
+		client.connection.on(onConnection);
 
-		if (previous === null || unread <= previous) {
-			return;
-		}
-
-		const prefs = readPwaEngagementPreferences();
-		const hidden = document.visibilityState !== "visible";
-
-		if (prefs.soundsEnabled) {
-			playNotificationChime();
-		}
-
-		if (prefs.systemAlertsEnabled && hidden) {
-			showSystemAlert(unread);
-		}
-	}, [unreadQuery.data?.count]);
+		return () => {
+			client.connection.off(onConnection);
+			channel?.unsubscribe("notification", onNotification);
+			channel?.unsubscribe("unread", onUnread);
+			release();
+		};
+	}, [signedIn, router]);
 
 	return null;
 }

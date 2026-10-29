@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import {
@@ -119,9 +118,6 @@ export function AdminSittingsTable() {
 										DNF
 									</TableHead>
 									<TableHead className="hidden lg:table-cell">
-										Telegram
-									</TableHead>
-									<TableHead className="hidden lg:table-cell">
 										Started
 									</TableHead>
 								</TableRow>
@@ -189,13 +185,6 @@ export function AdminSittingsTable() {
 										</TableCell>
 										<TableCell className="hidden text-right tabular-nums xl:table-cell">
 											{sitting.counts.dnfParticipants}
-										</TableCell>
-										<TableCell className="hidden lg:table-cell">
-											{sitting.telegramPollAnnounced ? (
-												<Badge variant="secondary">Announced</Badge>
-											) : (
-												<span className="text-muted-foreground text-xs">—</span>
-											)}
 										</TableCell>
 										<TableCell className="hidden text-muted-foreground text-xs lg:table-cell">
 											{formatDate(sitting.createdAt)}

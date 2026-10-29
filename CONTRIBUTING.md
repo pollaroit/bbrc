@@ -77,7 +77,7 @@ For a fresh Neon database, set at minimum:
 - `BETTER_AUTH_SECRET` — long random string
 - `BETTER_AUTH_URL` — e.g. `http://localhost:3001` locally
 
-See `apps/web/.env.schema` for cron, QStash, Telegram, R2, and other optional integrations. Local dev can leave many optional vars empty.
+See `apps/web/.env.schema` for cron, QStash, Ably, R2, and other optional integrations. Local dev can leave many optional vars empty.
 
 **Pull env from Vercel** (if the owner shared project access):
 

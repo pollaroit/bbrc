@@ -52,11 +52,6 @@ model User {
   /// Reading performance points; may go negative after moderation.
   rp Int @default(0)
 
-  /// Telegram user id from Login Widget / bot (string for JSON-safe ids).
-  telegramUserId                        String? @unique @map("telegram_user_id")
-  telegramUsername                      String? @map("telegram_username")
-  /// Daily 14:00 club-time DM nudge while a sitting is in reading (requires Telegram link + bot /start).
-  telegramSittingReadingReminderEnabled Boolean @default(true) @map("telegram_sitting_reading_reminder_enabled")
 
   sessions       Session[]
   accounts       Account[]
@@ -108,6 +103,7 @@ model User {
   sittingsCreated            Sitting[]                @relation("SittingCreatedBy")
   readings                   Reading[]
   readingSessions            ReadingSession[]
+  pushDevices                PushDevice[]
   authorsCreated             Author[]                 @relation("AuthorCreator")
   followsMade                Follow[]                 @relation("FollowsMade")
   followedBy                 Follow[]                 @relation("FollowedBy")

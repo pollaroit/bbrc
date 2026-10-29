@@ -26,10 +26,10 @@ model Sitting {
   readingStartedAt DateTime? @map("reading_started_at")
   midtermAt        DateTime? @map("midterm_at")
 
-  qstashMidtermMessageId        String? @map("qstash_midterm_message_id")
-  qstashReadingWarningMessageId String? @map("qstash_reading_warning_message_id")
-
-  telegramPollOpenSentAt DateTime? @map("telegram_poll_open_sent_at")
+  /// When the midterm check-in, the "24 hours left" notice and the last daily reading reminder went out, so each is sent once.
+  midtermNotifiedAt         DateTime? @map("midterm_notified_at")
+  deadlineWarningNotifiedAt DateTime? @map("deadline_warning_notified_at")
+  readingReminderSentAt     DateTime? @map("reading_reminder_sent_at")
 
   /// @zod.import(["import { isSlug } from '@bbrc/shared'"])
   /// @zod.min(3, "Slug must be at least 3 characters long").max(60, "Slug must be at most 60 characters long").refine((v) => isSlug(v), { message: "Invalid slug" })
