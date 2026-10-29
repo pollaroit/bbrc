@@ -6,6 +6,7 @@ import {
 	formatEditionLanguage,
 	type PaceResult,
 	readingPace,
+	readingSessionStats,
 	readingStats,
 	resolveClubTimeZone,
 } from "@bbrc/shared";
@@ -736,6 +737,11 @@ export async function finalizeReadingForRead(
 		await db.readingLog.create({
 			data: { readingId: active.id, percent: 100, page: finalPage },
 		});
+		// A Reading Mode session still open on a finished book ends here (it keeps the time it saved).
+		await db.readingSession.updateMany({
+			where: { readingId: active.id, endedAt: null },
+			data: { endedAt: new Date(), percentTo: 100, pageTo: finalPage },
+		});
 		if (active.editionOlid || active.bookEditionId) {
 			await db.read.updateMany({
 				where: { userId, bookId, editionId: null, bookEditionId: null },
@@ -927,7 +933,7 @@ export async function getMyReadingStats(
 	db: Database,
 	userId: string,
 ): Promise<ReadingStatsOutput> {
-	const [finishedRows, logs] = await Promise.all([
+	const [finishedRows, logs, sessionRows] = await Promise.all([
 		db.reading.findMany({
 			where: { userId, finishedAt: { not: null } },
 			orderBy: { finishedAt: "desc" },
@@ -943,6 +949,10 @@ export async function getMyReadingStats(
 		db.readingLog.findMany({
 			where: { reading: { userId } },
 			select: { createdAt: true },
+		}),
+		db.readingSession.findMany({
+			where: { userId },
+			select: { activeSeconds: true },
 		}),
 	]);
 	const finished = finishedRows.flatMap((row) =>
@@ -974,6 +984,7 @@ export async function getMyReadingStats(
 
 	return {
 		...stats,
+		sessions: readingSessionStats(sessionRows),
 		finished: finished.map((row) => ({
 			book: row.book,
 			startedAt: row.startedAt,

@@ -40,6 +40,7 @@ function facts(overrides: Partial<AchievementFacts> = {}): AchievementFacts {
 		reading: {
 			onTimeFinishes: [],
 			longestStreak: null,
+			sessionSeconds: 0,
 			wishlistSize: 0,
 			wishlistAt: null,
 		},
@@ -239,6 +240,25 @@ describe("evaluateAchievements", () => {
 		expect(progress).toMatchObject({ value: 2, tier: 0, next: 3 });
 	});
 
+	test("hours between the pages counts whole hours of Reading Mode", () => {
+		const f = (sessionSeconds: number) =>
+			facts({
+				reading: {
+					onTimeFinishes: [],
+					longestStreak: null,
+					sessionSeconds,
+					wishlistSize: 0,
+					wishlistAt: null,
+				},
+			});
+		expect(earnedOf(f(3599), "hours_between_pages")).toEqual([]);
+		expect(
+			earnedOf(f(11 * 3600 + 59), "hours_between_pages").map(
+				(item) => item.tier,
+			),
+		).toEqual([1, 2]);
+	});
+
 	test("tier maker counts only posts that carry a tierlist", () => {
 		const post = (hasTierlist: boolean, iso: string) => ({
 			createdAt: d(iso),
@@ -379,6 +399,7 @@ describe("reading achievements", () => {
 					d("2026-10-20T10:00:00Z"),
 				],
 				longestStreak: null,
+				sessionSeconds: 0,
 				wishlistSize: 0,
 				wishlistAt: null,
 			},
@@ -394,6 +415,7 @@ describe("reading achievements", () => {
 			reading: {
 				onTimeFinishes: [],
 				longestStreak: { days: 8, at: d("2026-10-18T10:00:00Z") },
+				sessionSeconds: 0,
 				wishlistSize: 0,
 				wishlistAt: null,
 			},
@@ -408,6 +430,7 @@ describe("reading achievements", () => {
 			reading: {
 				onTimeFinishes: [],
 				longestStreak: null,
+				sessionSeconds: 0,
 				wishlistSize: 16,
 				wishlistAt: d("2026-10-02T10:00:00Z"),
 			},

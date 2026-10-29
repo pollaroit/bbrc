@@ -12,7 +12,10 @@ import {
 import { ComposePostDialog } from "@/components/blocks/compose-post-form";
 
 type ComposePostContextValue = {
-	openCompose: (initialAttachment?: PostAttachmentInput | null) => void;
+	openCompose: (
+		initialAttachment?: PostAttachmentInput | null,
+		initialContent?: string | null,
+	) => void;
 };
 
 const ComposePostContext = createContext<ComposePostContextValue | null>(null);
@@ -29,10 +32,15 @@ export function ComposePostProvider({ children }: { children: ReactNode }) {
 	const [open, setOpen] = useState(false);
 	const [initialAttachment, setInitialAttachment] =
 		useState<PostAttachmentInput | null>(null);
+	const [initialContent, setInitialContent] = useState<string | null>(null);
 
 	const openCompose = useCallback(
-		(attachment: PostAttachmentInput | null = null) => {
+		(
+			attachment: PostAttachmentInput | null = null,
+			content: string | null = null,
+		) => {
 			setInitialAttachment(attachment);
+			setInitialContent(content);
 			setOpen(true);
 		},
 		[],
@@ -47,7 +55,11 @@ export function ComposePostProvider({ children }: { children: ReactNode }) {
 				open={open}
 				onOpenChange={setOpen}
 				initialAttachment={initialAttachment}
-				onClosed={() => setInitialAttachment(null)}
+				initialContent={initialContent}
+				onClosed={() => {
+					setInitialAttachment(null);
+					setInitialContent(null);
+				}}
 			/>
 		</ComposePostContext>
 	);

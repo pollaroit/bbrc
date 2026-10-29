@@ -174,6 +174,13 @@ export const ReadingStatsOutputSchema = z.object({
 	currentStreak: Count,
 	perMonth: z.array(z.object({ month: z.string(), count: Count })),
 	pagesFinished: Count,
+	/** Reading Mode: saved sessions of at least half a minute. */
+	sessions: z.object({
+		count: Count,
+		totalSeconds: Count,
+		averageSeconds: Count,
+		longestSeconds: Count,
+	}),
 	finished: z.array(
 		z.object({
 			book: z.object({

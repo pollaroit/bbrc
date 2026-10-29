@@ -44,6 +44,7 @@ function emptyFacts(
 		reading: {
 			onTimeFinishes: [],
 			longestStreak: null,
+			sessionSeconds: 0,
 			wishlistSize: 0,
 			wishlistAt: null,
 		},
@@ -466,7 +467,7 @@ export async function loadAchievementFacts(
 	if (want("reading")) {
 		tasks.push(
 			(async () => {
-				const [onTime, logDays, wishlist] = await Promise.all([
+				const [onTime, logDays, wishlist, sessions] = await Promise.all([
 					// Finished a tracked book on or before the deadline of a sitting that picked it.
 					db.$queryRaw<{ finished_at: Date }[]>`
 						SELECT DISTINCT r.id, r.finished_at FROM reading r
@@ -484,6 +485,10 @@ export async function loadAchievementFacts(
 					db.shelf.findFirst({
 						where: { userId, isWishlist: true },
 						select: { updatedAt: true, _count: { select: { books: true } } },
+					}),
+					db.readingSession.aggregate({
+						where: { userId },
+						_sum: { activeSeconds: true },
 					}),
 				]);
 
@@ -503,6 +508,7 @@ export async function loadAchievementFacts(
 				facts.reading = {
 					onTimeFinishes: onTime.map((row) => row.finished_at),
 					longestStreak: longest,
+					sessionSeconds: sessions._sum.activeSeconds ?? 0,
 					wishlistSize: wishlist?._count.books ?? 0,
 					wishlistAt: wishlist?.updatedAt ?? null,
 				};

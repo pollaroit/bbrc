@@ -74,6 +74,8 @@ type ComposePostDialogProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	initialAttachment?: PostAttachmentInput | null;
+	/** Serialized rich text to start the post with. */
+	initialContent?: string | null;
 	onClosed?: () => void;
 };
 
@@ -81,6 +83,7 @@ export function ComposePostDialog({
 	open,
 	onOpenChange,
 	initialAttachment = null,
+	initialContent = null,
 	onClosed,
 }: ComposePostDialogProps) {
 	const router = useRouter();
@@ -104,7 +107,10 @@ export function ComposePostDialog({
 		if (open && initialAttachment) {
 			setAttachment(initialAttachment);
 		}
-	}, [open, initialAttachment]);
+		if (open && initialContent) {
+			setContent(initialContent);
+		}
+	}, [open, initialAttachment, initialContent]);
 
 	function reset() {
 		setContent("");

@@ -1,0 +1,45 @@
+enum ReadingSessionMode {
+  free
+  countdown
+  pomodoro
+
+  @@map("reading_session_mode")
+}
+
+/// One sitting in Reading Mode. The page saves its reading time while it runs, so closing the tab keeps what was read.
+/// At most one open session per member (a partial unique index in the migration). Abandoning the reading deletes its sessions.
+model ReadingSession {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  readingId String  @map("reading_id")
+  reading   Reading @relation(fields: [readingId], references: [id], onDelete: Cascade)
+
+  startedAt DateTime  @default(now()) @map("started_at")
+  /// The last time the open page said it was still reading; also what "reading now" is worked out from.
+  lastBeatAt DateTime @default(now()) @map("last_beat_at")
+  /// Null while the session is open.
+  endedAt   DateTime? @map("ended_at")
+
+  /// Reading time in seconds (breaks and pauses are not counted).
+  activeSeconds Int @default(0) @map("active_seconds")
+
+  mode          ReadingSessionMode @default(free)
+  /// Countdown: the minutes the member aimed for.
+  targetMinutes Int?               @map("target_minutes")
+
+  /// Where the member was when the session began and ended.
+  percentFrom Int  @default(0) @map("percent_from")
+  percentTo   Int? @map("percent_to")
+  pageFrom    Int? @map("page_from")
+  pageTo      Int? @map("page_to")
+
+  @@index([userId, endedAt])
+  @@index([readingId])
+  @@index([endedAt, lastBeatAt])
+  @@map("reading_session")
+}

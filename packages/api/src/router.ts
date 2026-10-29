@@ -31,6 +31,7 @@ import { quizRouter } from "./modules/quiz/quiz.router";
 import { ratingDefinitionRouter } from "./modules/rating-definition/rating-definition.router";
 import { readRouter } from "./modules/read/read.router";
 import { readingRouter } from "./modules/reading/reading.router";
+import { readingSessionRouter } from "./modules/reading-session/reading-session.router";
 import { rpRouter } from "./modules/rp/rp.router";
 import { globalSearchRouter } from "./modules/search/global-search.router";
 import { seriesRouter } from "./modules/series/series.router";
@@ -76,6 +77,7 @@ export const appRouter = {
 	quiz: quizRouter,
 	read: readRouter,
 	reading: readingRouter,
+	readingSession: readingSessionRouter,
 	series: seriesRouter,
 	linkPreview: linkPreviewRouter,
 	postPoll: postPollRouter,

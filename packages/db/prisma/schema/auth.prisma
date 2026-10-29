@@ -107,6 +107,7 @@ model User {
 
   sittingsCreated            Sitting[]                @relation("SittingCreatedBy")
   readings                   Reading[]
+  readingSessions            ReadingSession[]
   authorsCreated             Author[]                 @relation("AuthorCreator")
   followsMade                Follow[]                 @relation("FollowsMade")
   followedBy                 Follow[]                 @relation("FollowedBy")

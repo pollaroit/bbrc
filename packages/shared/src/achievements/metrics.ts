@@ -521,6 +521,10 @@ export const METRICS: Record<MetricKey, Metric> = {
 			facts.reading.onTimeFinishes.map((at) => ({ at, period: at })),
 			inWindow,
 		),
+	readingHours: (facts) => {
+		const hours = Math.floor(facts.reading.sessionSeconds / 3600);
+		return hours > 0 ? [{ at: facts.now, value: hours }] : [];
+	},
 	readingStreak: (facts) =>
 		facts.reading.longestStreak && facts.reading.longestStreak.days > 0
 			? [
