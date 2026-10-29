@@ -34,10 +34,6 @@ import {
 	RemoveSittingParticipantInputSchema,
 	ReplaceSittingPollPreviewOptionInputSchema,
 	ReplaceSittingPollPreviewOptionOutputSchema,
-	ResendSittingTelegramPollOpenInputSchema,
-	ResendSittingTelegramPollOpenOutputSchema,
-	SendSittingTelegramProgressPollInputSchema,
-	SendSittingTelegramProgressPollOutputSchema,
 	ShuffleSittingPollPreviewOptionsInputSchema,
 	ShuffleSittingPollPreviewOptionsOutputSchema,
 	SittingParticipantMutationInputSchema,
@@ -68,8 +64,6 @@ import {
 	previewSittingPollOptions,
 	removeSittingParticipant,
 	replaceSittingPollPreviewOption,
-	resendSittingTelegramPollOpen,
-	sendSittingTelegramProgressPoll,
 	shuffleSittingPollPreviewOptions,
 	submitPollVotes,
 	transitionSitting,
@@ -259,18 +253,4 @@ export const sittingRouter = {
 			revalidateSittingIsr(context, input.slug);
 			return result;
 		}),
-	sendSittingTelegramProgressPoll: adminProcedure
-		.input(SendSittingTelegramProgressPollInputSchema)
-		.output(SendSittingTelegramProgressPollOutputSchema)
-		.handler(
-			async ({ input, context }) =>
-				await sendSittingTelegramProgressPoll(input, context.db),
-		),
-	resendSittingTelegramPollOpen: adminProcedure
-		.input(ResendSittingTelegramPollOpenInputSchema)
-		.output(ResendSittingTelegramPollOpenOutputSchema)
-		.handler(
-			async ({ input, context }) =>
-				await resendSittingTelegramPollOpen(input, context.db),
-		),
 };

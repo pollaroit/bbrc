@@ -27,6 +27,7 @@ import { notificationRouter } from "./modules/notification/notification.router";
 import { peopleRouter } from "./modules/people/people.router";
 import { postRouter } from "./modules/post/post.router";
 import { postPollRouter } from "./modules/post-poll/post-poll.router";
+import { pushRouter } from "./modules/push/push.router";
 import { quizRouter } from "./modules/quiz/quiz.router";
 import { ratingDefinitionRouter } from "./modules/rating-definition/rating-definition.router";
 import { readRouter } from "./modules/read/read.router";
@@ -76,6 +77,7 @@ export const appRouter = {
 	post: postRouter,
 	quiz: quizRouter,
 	read: readRouter,
+	push: pushRouter,
 	reading: readingRouter,
 	readingSession: readingSessionRouter,
 	series: seriesRouter,

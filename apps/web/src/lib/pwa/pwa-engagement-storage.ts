@@ -3,13 +3,11 @@ const STORAGE_KEY = "bbrc:pwa-engagement:v1";
 export type PwaEngagementPreferences = {
 	v: 1;
 	soundsEnabled: boolean;
-	systemAlertsEnabled: boolean;
 };
 
 const DEFAULTS: PwaEngagementPreferences = {
 	v: 1,
 	soundsEnabled: false,
-	systemAlertsEnabled: false,
 };
 
 export function readPwaEngagementPreferences(): PwaEngagementPreferences {
@@ -29,7 +27,6 @@ export function readPwaEngagementPreferences(): PwaEngagementPreferences {
 		return {
 			v: 1,
 			soundsEnabled: parsed.soundsEnabled === true,
-			systemAlertsEnabled: parsed.systemAlertsEnabled === true,
 		};
 	} catch {
 		return DEFAULTS;

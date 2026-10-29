@@ -76,7 +76,6 @@ export const adminSittingsListingSearchParams = {
 	).withOptions({ shallow: false }),
 	ongoingOnly: booleanFilterParser.withOptions({ shallow: false }),
 	hasSelectedBook: booleanFilterParser.withOptions({ shallow: false }),
-	telegramPollAnnounced: booleanFilterParser.withOptions({ shallow: false }),
 	deadlineOverdue: booleanFilterParser.withOptions({ shallow: false }),
 	hasMidtermScheduled: booleanFilterParser.withOptions({ shallow: false }),
 	participantUsernames: parseAsArrayOf(parseAsString).withOptions({
@@ -104,7 +103,6 @@ function buildAdminSittingFilterCallInput(
 		statuses: params.statuses,
 		ongoingOnly: params.ongoingOnly,
 		hasSelectedBook: params.hasSelectedBook,
-		telegramPollAnnounced: params.telegramPollAnnounced,
 		deadlineOverdue: params.deadlineOverdue,
 		hasMidtermScheduled: params.hasMidtermScheduled,
 		participantUsernames: params.participantUsernames,

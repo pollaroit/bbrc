@@ -2,15 +2,15 @@ import type { Database } from "@bbrc/db";
 import { transitionSitting } from "./sitting.service";
 import { pickPollWinningOptionId } from "./sitting-poll-winner";
 import {
-	runSittingReadingDmReminders,
-	type SittingReadingDmReminderResult,
-} from "./sitting-reading-dm-reminder.service";
+	runSittingReminders,
+	type SittingRemindersResult,
+} from "./sitting-reminders.service";
 
 export type SittingDeadlineCronResult = {
 	pollsClosed: string[];
 	sittingsFinished: string[];
 	errors: { slug: string; step: "poll" | "finish"; message: string }[];
-	readingDmReminders: SittingReadingDmReminderResult;
+	reminders: SittingRemindersResult;
 };
 
 export async function runSittingDeadlineCron(
@@ -21,7 +21,7 @@ export async function runSittingDeadlineCron(
 		pollsClosed: [],
 		sittingsFinished: [],
 		errors: [],
-		readingDmReminders: { skipped: true, reason: "not_club_hour" },
+		reminders: { midterm: [], deadline24h: [], daily: [] },
 	};
 
 	const duePolls = await db.sitting.findMany({
@@ -88,7 +88,16 @@ export async function runSittingDeadlineCron(
 		}
 	}
 
-	result.readingDmReminders = await runSittingReadingDmReminders(db, now);
+	// Midterm check-in, "24 hours left" and the daily reading reminder.
+	try {
+		result.reminders = await runSittingReminders(db, now);
+	} catch (error) {
+		result.errors.push({
+			slug: "reminders",
+			step: "poll",
+			message: error instanceof Error ? error.message : "Unknown error",
+		});
+	}
 
 	return result;
 }

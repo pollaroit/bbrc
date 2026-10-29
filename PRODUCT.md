@@ -28,7 +28,7 @@ A sitting-centric reading club with enforced participation rules (warn/ban ladde
 - Books enter the catalog via admin add or member **Open Library** request flow.
 - **Sitting** lifecycle: poll → reading → finished; one selected book per sitting.
 - Participation: vote in poll, read by deadline, submit feedback when eligible; failure paths affect warn/ban and future participation.
-- Surfaces include library browse, book/author detail, sittings, member profiles (reads, shelves, goals, stats, feedbacks), home feed, leaderboards, series, search, notifications (in-app + ntfy).
+- Surfaces include library browse, book/author detail, sittings, member profiles (reads, shelves, goals, stats, feedbacks), home feed, leaderboards, series, search, notifications (in-app + web push).
 
 ## Capabilities and Constraints
 

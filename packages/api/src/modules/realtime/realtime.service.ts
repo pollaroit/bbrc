@@ -38,6 +38,7 @@ export async function createRealtimeTokenRequest(
 
 	const capability = buildMemberCapability({
 		presenceBookSlug: await openSessionBookSlug(db, session.user.id),
+		clientId,
 		dev: process.env.NODE_ENV !== "production",
 	});
 

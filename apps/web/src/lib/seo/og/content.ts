@@ -137,7 +137,7 @@ const STATIC_PAGES: Record<string, OgImageContent> = {
 	"settings/notifications": {
 		kind: "Settings",
 		title: "Notifications",
-		body: "In-app alerts and phone push via ntfy.",
+		body: "Choose what reaches your bell and your phone.",
 	},
 	"sign-in": {
 		kind: "Account",

@@ -395,7 +395,7 @@ export function CreateSittingPollReview({
 			<div className="flex flex-col gap-3 border-border border-t pt-4 md:sticky md:bottom-0 md:z-10 md:bg-background/95 md:py-3 md:backdrop-blur">
 				<p className="text-muted-foreground text-xs leading-relaxed">
 					Starting the sitting opens voting, gives every reader participation
-					XP, and announces the poll on Telegram.
+					XP, and tells the club a new sitting is open.
 				</p>
 				<div className="grid grid-cols-2 gap-2 sm:flex">
 					<Button

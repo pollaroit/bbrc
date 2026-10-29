@@ -32,7 +32,6 @@ export const AdminSittingOverviewOutputSchema = z.object({
 		reading: z.number().int().min(0),
 		finished: z.number().int().min(0),
 		withSelectedBook: z.number().int().min(0),
-		telegramAnnounced: z.number().int().min(0),
 		overdueVotingDeadlines: z.number().int().min(0),
 		startedLast30Days: z.number().int().min(0),
 		finishedLast30Days: z.number().int().min(0),
@@ -129,7 +128,6 @@ export const AdminSittingListItemSchema = SittingSchema.pick({
 	midtermAt: true,
 }).extend({
 	deadline: SittingStoredDeadlineSchema,
-	telegramPollAnnounced: z.boolean(),
 	selectedBook: z
 		.object({
 			slug: z.string(),
@@ -203,7 +201,6 @@ export const adminSittingListSelect = {
 	updatedAt: true,
 	readingStartedAt: true,
 	midtermAt: true,
-	telegramPollOpenSentAt: true,
 	selectedBook: {
 		select: {
 			slug: true,

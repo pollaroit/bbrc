@@ -23,8 +23,36 @@ describe("reading channel names", () => {
 });
 
 describe("buildMemberCapability", () => {
-	test("everyone may watch the reading channels and nothing more", () => {
-		expect(buildMemberCapability({})).toEqual({ "reading:*": ["subscribe"] });
+	test("everyone may watch the reading channels and register their own device for push", () => {
+		expect(buildMemberCapability({})).toEqual({
+			"reading:*": ["subscribe"],
+			"*": ["push-subscribe"],
+		});
+	});
+
+	test("a member may watch only their own notification channel", () => {
+		const capability = buildMemberCapability({
+			clientId: "abc123XYZ_-abc123XYZ_-",
+		});
+		expect(capability["notify:abc123XYZ_-abc123XYZ_-"]).toEqual(["subscribe"]);
+		expect(
+			Object.keys(capability).filter((key) => key.startsWith("notify:")),
+		).toHaveLength(1);
+	});
+
+	test("a client id that could smuggle in a pattern gets no notification channel", () => {
+		for (const bad of [
+			"*",
+			"a*b*c*d*e*f",
+			"short",
+			"has space here ok",
+			"x:y:z:abcdefgh",
+		]) {
+			const capability = buildMemberCapability({ clientId: bad });
+			expect(
+				Object.keys(capability).some((key) => key.startsWith("notify:")),
+			).toBe(false);
+		}
 	});
 
 	test("presence is allowed only on the book of the open session", () => {
@@ -32,6 +60,7 @@ describe("buildMemberCapability", () => {
 		expect(capability["reading:dune"]).toEqual(["subscribe", "presence"]);
 		expect(capability["reading:*"]).toEqual(["subscribe"]);
 		expect(Object.keys(capability).sort()).toEqual([
+			"*",
 			"reading:*",
 			"reading:dune",
 		]);
@@ -52,7 +81,7 @@ describe("buildMemberCapability", () => {
 	test("a slug that could smuggle in a pattern is refused", () => {
 		for (const slug of ["*", "dune*", "a:b", "", "has space", "../x"]) {
 			const capability = buildMemberCapability({ presenceBookSlug: slug });
-			expect(Object.keys(capability)).toEqual(["reading:*"]);
+			expect(Object.keys(capability).sort()).toEqual(["*", "reading:*"]);
 		}
 	});
 

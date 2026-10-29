@@ -54,7 +54,6 @@ export const adminSittingListSearching = defineSearching<
 export const adminSittingListFiltersSchema = sittingListFiltersSchema
 	.extend({
 		hasSelectedBook: z.boolean(),
-		telegramPollAnnounced: z.boolean(),
 		deadlineOverdue: z.boolean(),
 		hasMidtermScheduled: z.boolean(),
 		minParticipants: z.number().int().min(0),

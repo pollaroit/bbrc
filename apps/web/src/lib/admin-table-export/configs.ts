@@ -62,16 +62,6 @@ export const adminUsersExportFields: AdminTableExportField<UserItem>[] = [
 	},
 	{ key: "xp", label: "XP", getValue: (r) => r.xp },
 	{ key: "rp", label: "RP", getValue: (r) => r.rp },
-	{
-		key: "telegramUserId",
-		label: "Telegram user ID",
-		getValue: (r) => r.telegramUserId,
-	},
-	{
-		key: "telegramUsername",
-		label: "Telegram username",
-		getValue: (r) => r.telegramUsername,
-	},
 	{ key: "posts", label: "Posts", getValue: (r) => r.counts.posts },
 	{ key: "comments", label: "Comments", getValue: (r) => r.counts.comments },
 	{ key: "likes", label: "Likes", getValue: (r) => r.counts.likes },
@@ -188,11 +178,6 @@ export const adminSittingsExportFields: AdminTableExportField<SittingItem>[] = [
 		getValue: (r) => r.readingStartedAt,
 	},
 	{ key: "midtermAt", label: "Midterm", getValue: (r) => r.midtermAt },
-	{
-		key: "telegramPollAnnounced",
-		label: "Telegram poll announced",
-		getValue: (r) => r.telegramPollAnnounced,
-	},
 	{
 		key: "selectedBookSlug",
 		label: "Selected book slug",

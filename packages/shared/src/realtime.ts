@@ -7,6 +7,8 @@ import { isSlug } from "./slug";
  * - `reading:<book>`   who is in Reading Mode on a book (presence). Every
  *                      signed-in member may watch; only a member with an open
  *                      Reading Mode session for that book may enter.
+ * - `notify:<id>`      a member's own live notifications and unread count. Only
+ *                      that member may subscribe; only the server publishes.
  * - `dev:*`            for the /dev/realtime page, in development only.
  *
  * A member can never publish to the reading channels: presence is the only thing
@@ -20,10 +22,16 @@ export const REALTIME_TOKEN_TTL_MS = 60 * 60 * 1000;
 export const REALTIME_IDLE_CLOSE_MS = 2 * 60 * 1000;
 
 export const READING_CHANNEL_PREFIX = "reading:";
+export const NOTIFY_CHANNEL_PREFIX = "notify:";
 export const DEV_CHANNEL_PREFIX = "dev:";
 
 export function readingChannel(bookSlug: string): string {
 	return `${READING_CHANNEL_PREFIX}${bookSlug}`;
+}
+
+/** A member's private notification channel, named by their opaque realtime id (never their user id). */
+export function notifyChannel(clientId: string): string {
+	return `${NOTIFY_CHANNEL_PREFIX}${clientId}`;
 }
 
 /** The book a reading channel belongs to, or null for any other name. */
@@ -45,11 +53,21 @@ export type RealtimeCapability = Record<string, string[]>;
  */
 export function buildMemberCapability(input: {
 	presenceBookSlug?: string | null;
+	/** The member's own opaque realtime id: they may watch their own notification channel. */
+	clientId?: string | null;
 	dev?: boolean;
 }): RealtimeCapability {
 	const capability: RealtimeCapability = {
 		[`${READING_CHANNEL_PREFIX}*`]: ["subscribe"],
 	};
+
+	// A device may register itself for push (and only itself; the server sends the pushes).
+	capability["*"] = ["push-subscribe"];
+
+	// A clientId made of anything but plain characters could smuggle in a pattern.
+	if (input.clientId && /^[A-Za-z0-9_-]{8,64}$/.test(input.clientId)) {
+		capability[notifyChannel(input.clientId)] = ["subscribe"];
+	}
 
 	const slug = input.presenceBookSlug;
 	if (slug && isSlug(slug)) {

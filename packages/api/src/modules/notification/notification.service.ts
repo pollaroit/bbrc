@@ -1,5 +1,6 @@
 import type { Database } from "@bbrc/db";
 import {
+	buildPushPayload,
 	defaultPushEnabledForKind,
 	isOffByDefaultKind,
 	NOTIFICATION_KIND_GROUPS,
@@ -8,13 +9,8 @@ import {
 	type NotificationKind,
 } from "@bbrc/shared";
 import type { NotificationKind as DbNotificationKind } from "../../../../db/prisma/generated/enums";
-import {
-	ntfyAdminTopic,
-	ntfySittingTopic,
-	ntfyUserTopic,
-	publishNtfy,
-	resolveNtfyConfig,
-} from "../../lib/ntfy";
+import { resolvePublicAppOrigin } from "../../lib/public-origin";
+import { publishLive, pushToMembers } from "../../lib/push/delivery";
 import type {
 	GetNotificationListInput,
 	GetNotificationListOutput,
@@ -71,23 +67,6 @@ export async function ensureNotificationPreferences(
 	});
 }
 
-function resolvePublicAppOrigin(): string {
-	const authUrl = process.env.BETTER_AUTH_URL?.trim();
-	if (authUrl) {
-		return authUrl.replace(/\/$/, "");
-	}
-	const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
-	if (vercel) {
-		return vercel.startsWith("http")
-			? vercel.replace(/\/$/, "")
-			: `https://${vercel}`;
-	}
-	if (process.env.VERCEL_URL) {
-		return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;
-	}
-	return "http://localhost:3001";
-}
-
 export async function getNotificationPreferences(
 	userId: string,
 	isAdmin: boolean,
@@ -95,34 +74,13 @@ export async function getNotificationPreferences(
 ): Promise<GetNotificationPreferencesOutput> {
 	await ensureNotificationPreferences(userId, db);
 
-	const [rows, user] = await Promise.all([
-		db.notificationPreference.findMany({
-			where: { userId },
-			orderBy: { kind: "asc" },
-		}),
-		db.user.findUnique({
-			where: { id: userId },
-			select: {
-				telegramUserId: true,
-				telegramSittingReadingReminderEnabled: true,
-			},
-		}),
-	]);
-
-	const participations = await db.participation.findMany({
-		where: {
-			userId,
-			sitting: { status: { in: ["voting", "reading"] } },
-		},
-		select: { sitting: { select: { slug: true } } },
+	const rows = await db.notificationPreference.findMany({
+		where: { userId },
+		orderBy: { kind: "asc" },
 	});
 
-	const ntfy = resolveNtfyConfig();
-	const prefix = ntfy?.topicPrefix ?? "bbrc";
-	const baseUrl = ntfy?.baseUrl ?? "https://ntfy.sh";
-
 	const preferences = rows
-		.filter((row) => isAdmin || row.kind !== "book_requested")
+		.filter((row) => isAdmin || !isAdminOnlyKind(row.kind as NotificationKind))
 		.map((row) => {
 			const kind = row.kind as NotificationKind;
 			return {
@@ -134,23 +92,11 @@ export async function getNotificationPreferences(
 			};
 		});
 
-	return {
-		preferences,
-		telegram: {
-			linked: user?.telegramUserId != null,
-			sittingReadingReminderEnabled:
-				user?.telegramSittingReadingReminderEnabled ?? true,
-		},
-		ntfy: {
-			baseUrl,
-			userTopic: ntfyUserTopic(prefix, userId),
-			adminTopic: isAdmin ? ntfyAdminTopic(prefix) : null,
-			sittingTopics: participations.map(({ sitting }) => ({
-				sittingSlug: sitting.slug,
-				topic: ntfySittingTopic(prefix, sitting.slug),
-			})),
-		},
-	};
+	return { preferences };
+}
+
+function isAdminOnlyKind(kind: NotificationKind): boolean {
+	return (NOTIFICATION_KIND_GROUPS.admin as readonly string[]).includes(kind);
 }
 
 export async function updateNotificationPreferences(
@@ -162,7 +108,7 @@ export async function updateNotificationPreferences(
 	await ensureNotificationPreferences(userId, db);
 
 	for (const pref of input.preferences) {
-		if (!isAdmin && pref.kind === "book_requested") {
+		if (!isAdmin && isAdminOnlyKind(pref.kind)) {
 			continue;
 		}
 
@@ -173,16 +119,6 @@ export async function updateNotificationPreferences(
 			data: {
 				inAppEnabled: pref.inAppEnabled,
 				pushEnabled: pref.pushEnabled,
-			},
-		});
-	}
-
-	if (input.telegramSittingReadingReminderEnabled !== undefined) {
-		await db.user.update({
-			where: { id: userId },
-			data: {
-				telegramSittingReadingReminderEnabled:
-					input.telegramSittingReadingReminderEnabled,
 			},
 		});
 	}
@@ -243,6 +179,12 @@ export async function getUnreadNotificationCount(
 	return { count };
 }
 
+/** Tells the member's other open screens the new unread count, so the bell agrees everywhere. */
+async function publishUnreadCount(userId: string, db: Database) {
+	const { count } = await getUnreadNotificationCount(userId, db);
+	await publishLive([{ userId, name: "unread", data: { count } }]);
+}
+
 export async function markNotificationRead(
 	userId: string,
 	notificationId: string,
@@ -252,6 +194,7 @@ export async function markNotificationRead(
 		where: { id: notificationId, userId },
 		data: { readAt: new Date() },
 	});
+	await publishUnreadCount(userId, db);
 	return { ok: true };
 }
 
@@ -263,6 +206,7 @@ export async function markAllNotificationsRead(
 		where: { userId, readAt: null },
 		data: { readAt: new Date() },
 	});
+	await publishUnreadCount(userId, db);
 	return { ok: true };
 }
 
@@ -273,10 +217,18 @@ export type DispatchNotificationInput = {
 	body: string;
 	href?: string;
 	excludeUserIds?: string[];
-	sittingSlug?: string;
-	adminNtfy?: boolean;
 };
 
+/**
+ * Tells each recipient, the way they asked to be told:
+ * - **Bell** (`inAppEnabled`): a row in their notifications, shown live in any
+ *   open screen of theirs (with the new unread count);
+ * - **Push** (`pushEnabled`): a push to every device they have turned push on
+ *   for, whether or not the bell is on.
+ *
+ * Nothing here ever throws on delivery trouble: the action that caused the
+ * notification must not fail because a phone could not be reached.
+ */
 export async function dispatchNotification(
 	db: Database,
 	input: DispatchNotificationInput,
@@ -285,8 +237,7 @@ export async function dispatchNotification(
 	const recipientIds = [...new Set(input.recipientUserIds)].filter(
 		(id) => !exclude.has(id),
 	);
-
-	if (recipientIds.length === 0 && !input.adminNtfy && !input.sittingSlug) {
+	if (recipientIds.length === 0) {
 		return;
 	}
 
@@ -300,64 +251,75 @@ export async function dispatchNotification(
 			kind: kindToDb(input.kind),
 		},
 	});
-
 	const prefByUser = new Map(prefs.map((p) => [p.userId, p]));
-	const href = input.href
-		? input.href.startsWith("http")
-			? input.href
-			: `${resolvePublicAppOrigin()}${input.href.startsWith("/") ? input.href : `/${input.href}`}`
-		: undefined;
 
-	const inAppRows = recipientIds
-		.filter((userId) => prefByUser.get(userId)?.inAppEnabled !== false)
-		.map((userId) => ({
-			userId,
-			kind: kindToDb(input.kind),
-			title: input.title,
-			body: input.body,
-			href: input.href ?? null,
-		}));
+	const bellRecipients = recipientIds.filter(
+		(userId) => prefByUser.get(userId)?.inAppEnabled !== false,
+	);
+	const created =
+		bellRecipients.length > 0
+			? await db.notification.createManyAndReturn({
+					data: bellRecipients.map((userId) => ({
+						userId,
+						kind: kindToDb(input.kind),
+						title: input.title,
+						body: input.body,
+						href: input.href ?? null,
+					})),
+					select: { id: true, userId: true, createdAt: true },
+				})
+			: [];
+	const idByUser = new Map(created.map((row) => [row.userId, row]));
 
-	if (inAppRows.length > 0) {
-		await db.notification.createMany({ data: inAppRows });
-	}
-
-	const ntfy = resolveNtfyConfig();
-	if (!ntfy) {
-		return;
-	}
-
-	for (const userId of recipientIds) {
-		if (!prefByUser.get(userId)?.pushEnabled) {
-			continue;
-		}
-		await publishNtfy({
-			topic: ntfyUserTopic(ntfy.topicPrefix, userId),
-			title: input.title,
-			message: input.body,
-			click: href,
+	// Live: the new notification and the new unread count, in one message each.
+	if (created.length > 0) {
+		const counts = await db.notification.groupBy({
+			by: ["userId"],
+			where: { userId: { in: created.map((row) => row.userId) }, readAt: null },
+			_count: { _all: true },
 		});
+		const unread = new Map(counts.map((row) => [row.userId, row._count._all]));
+		await publishLive(
+			created.map((row) => ({
+				userId: row.userId,
+				name: "notification" as const,
+				data: {
+					notification: {
+						id: row.id,
+						kind: input.kind,
+						title: input.title,
+						body: input.body,
+						href: input.href ?? null,
+						createdAt: row.createdAt.toISOString(),
+					},
+					unreadCount: unread.get(row.userId) ?? 1,
+				},
+			})),
+		);
 	}
 
-	if (input.sittingSlug) {
-		const anyPush = recipientIds.some((id) => prefByUser.get(id)?.pushEnabled);
-		if (anyPush) {
-			await publishNtfy({
-				topic: ntfySittingTopic(ntfy.topicPrefix, input.sittingSlug),
-				title: input.title,
-				message: input.body,
-				click: href,
-			});
-		}
-	}
-
-	if (input.adminNtfy) {
-		await publishNtfy({
-			topic: ntfyAdminTopic(ntfy.topicPrefix),
-			title: input.title,
-			message: input.body,
-			click: href,
-		});
+	// Push: to every device of each member who switched it on for this kind.
+	const origin = resolvePublicAppOrigin();
+	const pushRecipients = recipientIds.filter(
+		(userId) => prefByUser.get(userId)?.pushEnabled === true,
+	);
+	if (pushRecipients.length > 0) {
+		await pushToMembers(
+			pushRecipients.map((userId) => ({
+				userId,
+				payload: buildPushPayload(
+					{
+						// One id per notification, so a repeat replaces the earlier one on the device.
+						notificationId: idByUser.get(userId)?.id ?? crypto.randomUUID(),
+						kind: input.kind,
+						title: input.title,
+						body: input.body,
+						href: input.href,
+					},
+					origin,
+				),
+			})),
+		);
 	}
 }
 

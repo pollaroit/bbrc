@@ -21,7 +21,7 @@ import {
 	SheetTitle,
 } from "@bbrc/ui/components/sheet";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { BookOpenIcon, CheckIcon, FlagIcon, SendIcon } from "lucide-react";
+import { BookOpenIcon, CheckIcon, FlagIcon } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -131,17 +131,6 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 		}),
 	);
 
-	const resendTelegramPollOpen = useMutation(
-		orpc.sitting.resendSittingTelegramPollOpen.mutationOptions({
-			onSuccess: () => {
-				toast.success("Poll open announcement sent to Telegram");
-			},
-			onError: (error) => {
-				toast.error(error.message);
-			},
-		}),
-	);
-
 	const finishSitting = useMutation(
 		orpc.sitting.transitionSitting.mutationOptions({
 			onSuccess: async () => {
@@ -179,24 +168,6 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 		<>
 			{sitting.status === "voting" && sitting.poll ? (
 				<>
-					<SittingAdminToolRow
-						icon={<SendIcon />}
-						title="Telegram announcement"
-						description="Post the poll in the club group again, for example if people missed it."
-					>
-						<LoadingButton
-							type="button"
-							size="sm"
-							variant="outline"
-							loading={resendTelegramPollOpen.isPending}
-							onClick={() =>
-								resendTelegramPollOpen.mutate({ slug: sitting.slug })
-							}
-						>
-							Announce poll
-						</LoadingButton>
-					</SittingAdminToolRow>
-
 					<SittingAdminToolRow
 						icon={<BookOpenIcon />}
 						title="Close voting"

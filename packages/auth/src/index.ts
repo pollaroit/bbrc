@@ -73,18 +73,6 @@ export function createAuth(env: AuthConfig, database: Database) {
 					unique: true,
 					index: true,
 				},
-				telegramUserId: {
-					type: "string",
-					returned: true,
-					required: false,
-					input: false,
-				},
-				telegramUsername: {
-					type: "string",
-					returned: true,
-					required: false,
-					input: false,
-				},
 			},
 		},
 		advanced: {
