@@ -8,14 +8,6 @@ import {
 	type TierlistColor,
 } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@bbrc/ui/components/dropdown-menu";
 import { Input } from "@bbrc/ui/components/input";
 import {
 	Popover,
@@ -23,6 +15,7 @@ import {
 	PopoverTrigger,
 } from "@bbrc/ui/components/popover";
 import {
+	type CollisionDetection,
 	closestCenter,
 	DndContext,
 	type DragEndEvent,
@@ -31,6 +24,8 @@ import {
 	type DragStartEvent,
 	KeyboardSensor,
 	PointerSensor,
+	pointerWithin,
+	rectIntersection,
 	TouchSensor,
 	useDroppable,
 	useSensor,
@@ -42,9 +37,10 @@ import {
 	SortableContext,
 	sortableKeyboardCoordinates,
 	useSortable,
+	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from "lucide-react";
+import { Check, GripVertical, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { TierlistAddItemDialog } from "@/components/blocks/tierlist-add-item-dialog";
 import { TierlistTileFace } from "@/components/blocks/tierlist-tile";
@@ -64,36 +60,77 @@ import { cn } from "@/lib/utils";
 const GRID =
 	"grid grid-cols-[repeat(auto-fill,minmax(3.25rem,1fr))] content-start gap-1 p-1 sm:grid-cols-[repeat(auto-fill,minmax(4rem,1fr))]";
 
+const ZONE_PREFIX = "zone:";
+
 type TierlistBuilderProps = {
 	draft: TierlistDraft;
 	onChange: (draft: TierlistDraft) => void;
 };
 
+/** The tier an id belongs to: the tier itself, its drop area, or one of its items. */
 function findTier(draft: TierlistDraft, id: string | number) {
+	const key = String(id);
+	const tierId = key.startsWith(ZONE_PREFIX)
+		? key.slice(ZONE_PREFIX.length)
+		: key;
 	return draft.tiers.find(
-		(tier) => tier.id === id || tier.items.some((item) => item.id === id),
+		(tier) => tier.id === tierId || tier.items.some((item) => item.id === key),
 	);
 }
 
 /**
- * Builds the tierlist: tiers you name and colour, and things you place in them
- * by dragging (press and hold on a phone) or by tapping a tile and choosing a
- * tier. Anything you add lives in a tier, so nothing is left unplaced.
+ * Dragging a tier only ever lands on other tiers. Dragging an item lands on the
+ * item or tier area under the pointer, never on a whole tier, so an item can be
+ * dropped between items, at the end of a tier, or into an empty one.
+ */
+const collisionDetection: CollisionDetection = (args) => {
+	const type = args.active.data.current?.type;
+	if (type === "tier") {
+		return closestCenter({
+			...args,
+			droppableContainers: args.droppableContainers.filter(
+				(container) => container.data.current?.type === "tier",
+			),
+		});
+	}
+
+	const containers = args.droppableContainers.filter(
+		(container) => container.data.current?.type !== "tier",
+	);
+	const within = pointerWithin({ ...args, droppableContainers: containers });
+	const hits = within.length
+		? within
+		: rectIntersection({ ...args, droppableContainers: containers });
+	const itemHit = hits.find(
+		(hit) =>
+			containers.find((container) => container.id === hit.id)?.data.current
+				?.type === "item",
+	);
+	return itemHit ? [itemHit] : hits.slice(0, 1);
+};
+
+/**
+ * Builds the tierlist. Everything is dragged: grab a tier by its handle to
+ * reorder it, and any tile to move it inside its tier or into another one
+ * (press and hold on a phone; with a keyboard, focus it, press Space, use the
+ * arrow keys and Space again). Whatever you add lives in a tier, so nothing is
+ * left unplaced.
  */
 export function TierlistBuilder({ draft, onChange }: TierlistBuilderProps) {
 	const [addingTo, setAddingTo] = useState<string | null>(null);
 	const [activeId, setActiveId] = useState<string | null>(null);
 
 	const sensors = useSensors(
-		useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+		useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
 		useSensor(TouchSensor, {
-			activationConstraint: { delay: 220, tolerance: 8 },
+			activationConstraint: { delay: 180, tolerance: 8 },
 		}),
 		useSensor(KeyboardSensor, {
 			coordinateGetter: sortableKeyboardCoordinates,
 		}),
 	);
 
+	const activeTier = draft.tiers.find((tier) => tier.id === activeId);
 	const activeItem = activeId
 		? draft.tiers.flatMap((tier) => tier.items).find((i) => i.id === activeId)
 		: undefined;
@@ -129,13 +166,6 @@ export function TierlistBuilder({ draft, onChange }: TierlistBuilderProps) {
 		onChange({ tiers: draft.tiers.filter((tier) => tier.id !== id) });
 	}
 
-	function moveTier(id: string, by: -1 | 1) {
-		const from = draft.tiers.findIndex((tier) => tier.id === id);
-		const to = from + by;
-		if (from < 0 || to < 0 || to >= draft.tiers.length) return;
-		onChange({ tiers: arrayMove(draft.tiers, from, to) });
-	}
-
 	function addItem(tierId: string, item: Omit<TierlistDraftItem, "id">) {
 		onChange({
 			tiers: draft.tiers.map((tier) =>
@@ -158,28 +188,13 @@ export function TierlistBuilder({ draft, onChange }: TierlistBuilderProps) {
 		});
 	}
 
-	/** Moves an item to the end of another tier (the tap alternative to dragging). */
-	function sendItem(itemId: string, toTierId: string) {
-		const item = draft.tiers
-			.flatMap((tier) => tier.items)
-			.find((entry) => entry.id === itemId);
-		if (!item) return;
-		onChange({
-			tiers: draft.tiers.map((tier) => {
-				const without = tier.items.filter((entry) => entry.id !== itemId);
-				return tier.id === toTierId
-					? { ...tier, items: [...without, item] }
-					: { ...tier, items: without };
-			}),
-		});
-	}
-
 	function onDragStart(event: DragStartEvent) {
 		setActiveId(String(event.active.id));
 	}
 
+	/** While an item is dragged over another tier, it moves there at once, so the tiers make room. */
 	function onDragOver({ active, over }: DragOverEvent) {
-		if (!over) return;
+		if (!over || active.data.current?.type !== "item") return;
 		const from = findTier(draft, active.id);
 		const to = findTier(draft, over.id);
 		if (!from || !to || from.id === to.id) return;
@@ -210,9 +225,18 @@ export function TierlistBuilder({ draft, onChange }: TierlistBuilderProps) {
 	function onDragEnd({ active, over }: DragEndEvent) {
 		setActiveId(null);
 		if (!over || active.id === over.id) return;
+
+		if (active.data.current?.type === "tier") {
+			const from = draft.tiers.findIndex((tier) => tier.id === active.id);
+			const to = draft.tiers.findIndex((tier) => tier.id === over.id);
+			if (from >= 0 && to >= 0) {
+				onChange({ tiers: arrayMove(draft.tiers, from, to) });
+			}
+			return;
+		}
+
 		const tier = findTier(draft, active.id);
 		if (!tier || tier.id !== findTier(draft, over.id)?.id) return;
-
 		const from = tier.items.findIndex((item) => item.id === active.id);
 		const to = tier.items.findIndex((item) => item.id === over.id);
 		if (from < 0 || to < 0) return;
@@ -225,34 +249,48 @@ export function TierlistBuilder({ draft, onChange }: TierlistBuilderProps) {
 		<div className="flex flex-col gap-2" data-slot="tierlist-builder">
 			<DndContext
 				sensors={sensors}
-				collisionDetection={closestCenter}
+				collisionDetection={collisionDetection}
 				onDragStart={onDragStart}
 				onDragOver={onDragOver}
 				onDragEnd={onDragEnd}
 				onDragCancel={() => setActiveId(null)}
 			>
-				{draft.tiers.map((tier, index) => (
-					<BuilderTier
-						key={tier.id}
-						tier={tier}
-						allTiers={draft.tiers}
-						isFirst={index === 0}
-						isLast={index === draft.tiers.length - 1}
-						canRemove={draft.tiers.length > TIERLIST_MIN_TIERS}
-						onRename={(name) => setTier(tier.id, { name })}
-						onRecolor={(color) => setTier(tier.id, { color })}
-						onMove={(by) => moveTier(tier.id, by)}
-						onRemove={() => removeTier(tier.id)}
-						onAdd={() => setAddingTo(tier.id)}
-						onSendItem={sendItem}
-						onRemoveItem={removeItem}
-					/>
-				))}
+				<SortableContext
+					items={draft.tiers.map((tier) => tier.id)}
+					strategy={verticalListSortingStrategy}
+				>
+					{draft.tiers.map((tier) => (
+						<BuilderTier
+							key={tier.id}
+							tier={tier}
+							canRemove={draft.tiers.length > TIERLIST_MIN_TIERS}
+							onRename={(name) => setTier(tier.id, { name })}
+							onRecolor={(color) => setTier(tier.id, { color })}
+							onRemove={() => removeTier(tier.id)}
+							onAdd={() => setAddingTo(tier.id)}
+							onRemoveItem={removeItem}
+						/>
+					))}
+				</SortableContext>
 
-				<DragOverlay>
+				<DragOverlay dropAnimation={{ duration: 160 }}>
 					{activeItem ? (
-						<div className="w-14 opacity-90 shadow-lg sm:w-16">
+						<div className="w-14 rotate-3 cursor-grabbing shadow-lg sm:w-16">
 							<TierlistTileFace item={draftItemToView(activeItem)} />
+						</div>
+					) : activeTier ? (
+						<div
+							className={cn(
+								"flex cursor-grabbing items-center gap-2 border p-2 font-semibold text-sm shadow-lg",
+								tierColorClasses(activeTier.color).label,
+							)}
+						>
+							<GripVertical className="size-4" aria-hidden />
+							{activeTier.name || "Tier"}
+							<span className="ms-auto font-normal text-xs opacity-80">
+								{activeTier.items.length}{" "}
+								{activeTier.items.length === 1 ? "item" : "items"}
+							</span>
 						</div>
 					) : null}
 				</DragOverlay>
@@ -291,39 +329,60 @@ export function TierlistBuilder({ draft, onChange }: TierlistBuilderProps) {
 
 type BuilderTierProps = {
 	tier: TierlistDraftTier;
-	allTiers: TierlistDraftTier[];
-	isFirst: boolean;
-	isLast: boolean;
 	canRemove: boolean;
 	onRename: (name: string) => void;
 	onRecolor: (color: TierlistColor) => void;
-	onMove: (by: -1 | 1) => void;
 	onRemove: () => void;
 	onAdd: () => void;
-	onSendItem: (itemId: string, toTierId: string) => void;
 	onRemoveItem: (itemId: string) => void;
 };
 
 function BuilderTier({
 	tier,
-	allTiers,
-	isFirst,
-	isLast,
 	canRemove,
 	onRename,
 	onRecolor,
-	onMove,
 	onRemove,
 	onAdd,
-	onSendItem,
 	onRemoveItem,
 }: BuilderTierProps) {
-	const { setNodeRef, isOver } = useDroppable({ id: tier.id });
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		setActivatorNodeRef,
+		transform,
+		transition,
+		isDragging,
+	} = useSortable({ id: tier.id, data: { type: "tier" } });
+	const { setNodeRef: setZoneRef, isOver } = useDroppable({
+		id: `${ZONE_PREFIX}${tier.id}`,
+		data: { type: "zone", tierId: tier.id },
+	});
 	const colors = tierColorClasses(tier.color);
 
 	return (
-		<div className="border border-border">
+		<div
+			ref={setNodeRef}
+			style={{ transform: CSS.Translate.toString(transform), transition }}
+			className={cn(
+				"border border-border bg-background",
+				isDragging && "opacity-40",
+			)}
+		>
 			<div className={cn("flex items-center gap-1 border-b p-1", colors.label)}>
+				<button
+					type="button"
+					ref={setActivatorNodeRef}
+					className="grid size-9 shrink-0 cursor-grab touch-none place-items-center active:cursor-grabbing"
+					aria-label={`Reorder tier ${tier.name || ""}`.trim()}
+					title="Drag to reorder"
+					{...attributes}
+					{...listeners}
+				>
+					<GripVertical className="size-4" aria-hidden />
+				</button>
+
 				<Popover>
 					<PopoverTrigger
 						render={
@@ -373,38 +432,16 @@ function BuilderTier({
 					className="h-8 min-w-0 flex-1 bg-background/60 font-semibold"
 				/>
 
-				<div className="flex shrink-0 items-center">
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-sm"
-						disabled={isFirst}
-						onClick={() => onMove(-1)}
-						aria-label={`Move ${tier.name || "tier"} up`}
-					>
-						<ArrowUp aria-hidden />
-					</Button>
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-sm"
-						disabled={isLast}
-						onClick={() => onMove(1)}
-						aria-label={`Move ${tier.name || "tier"} down`}
-					>
-						<ArrowDown aria-hidden />
-					</Button>
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-sm"
-						disabled={!canRemove}
-						onClick={onRemove}
-						aria-label={`Remove ${tier.name || "tier"}`}
-					>
-						<Trash2 aria-hidden />
-					</Button>
-				</div>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-sm"
+					disabled={!canRemove}
+					onClick={onRemove}
+					aria-label={`Remove tier ${tier.name || ""}`.trim()}
+				>
+					<Trash2 aria-hidden />
+				</Button>
 			</div>
 
 			<SortableContext
@@ -412,16 +449,18 @@ function BuilderTier({
 				strategy={rectSortingStrategy}
 			>
 				<ul
-					ref={setNodeRef}
-					className={cn(GRID, "min-h-[4.5rem]", isOver && "bg-muted/40")}
+					ref={setZoneRef}
+					className={cn(
+						GRID,
+						"min-h-[4.75rem] transition-colors",
+						isOver && "bg-muted/50 ring-1 ring-foreground/30 ring-inset",
+					)}
 				>
 					{tier.items.map((item) => (
 						<BuilderTile
 							key={item.id}
 							item={item}
-							tiers={allTiers}
-							currentTierId={tier.id}
-							onSend={(toTierId) => onSendItem(item.id, toTierId)}
+							tierId={tier.id}
 							onRemove={() => onRemoveItem(item.id)}
 						/>
 					))}
@@ -435,6 +474,11 @@ function BuilderTier({
 							<Plus className="size-5" aria-hidden />
 						</button>
 					</li>
+					{tier.items.length === 0 ? (
+						<li className="col-span-full px-1 pb-1 text-muted-foreground text-xs">
+							Drag items here from another tier, or add one with +.
+						</li>
+					) : null}
 				</ul>
 			</SortableContext>
 		</div>
@@ -443,69 +487,46 @@ function BuilderTier({
 
 function BuilderTile({
 	item,
-	tiers,
-	currentTierId,
-	onSend,
+	tierId,
 	onRemove,
 }: {
 	item: TierlistDraftItem;
-	tiers: TierlistDraftTier[];
-	currentTierId: string;
-	onSend: (toTierId: string) => void;
+	tierId: string;
 	onRemove: () => void;
 }) {
 	const {
 		attributes,
 		listeners,
 		setNodeRef,
+		setActivatorNodeRef,
 		transform,
 		transition,
 		isDragging,
-	} = useSortable({ id: item.id });
+	} = useSortable({ id: item.id, data: { type: "item", tierId } });
 
 	return (
 		<li
 			ref={setNodeRef}
-			style={{ transform: CSS.Transform.toString(transform), transition }}
-			className={cn("min-w-0 touch-manipulation", isDragging && "opacity-30")}
-			{...attributes}
-			{...listeners}
+			style={{ transform: CSS.Translate.toString(transform), transition }}
+			className={cn("relative min-w-0", isDragging && "opacity-30")}
 		>
-			<DropdownMenu>
-				<DropdownMenuTrigger
-					render={
-						<button
-							type="button"
-							className="block w-full outline-offset-2 focus-visible:outline-2"
-							aria-label={`${item.label || "Item"}: move or remove`}
-						/>
-					}
-				>
-					<TierlistTileFace item={draftItemToView(item)} />
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="start" className="min-w-44">
-					<DropdownMenuLabel>Move to</DropdownMenuLabel>
-					{tiers
-						.filter((tier) => tier.id !== currentTierId)
-						.map((tier) => (
-							<DropdownMenuItem key={tier.id} onClick={() => onSend(tier.id)}>
-								<span
-									className={cn(
-										"size-3 shrink-0",
-										tierColorClasses(tier.color).swatch,
-									)}
-									aria-hidden
-								/>
-								{tier.name || "Unnamed tier"}
-							</DropdownMenuItem>
-						))}
-					<DropdownMenuSeparator />
-					<DropdownMenuItem variant="destructive" onClick={onRemove}>
-						<Trash2 aria-hidden />
-						Remove
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
+			{/* The whole tile is the handle. The remove button sits outside it. */}
+			<div
+				ref={setActivatorNodeRef}
+				className="cursor-grab touch-manipulation outline-offset-2 focus-visible:outline-2 active:cursor-grabbing"
+				{...attributes}
+				{...listeners}
+			>
+				<TierlistTileFace item={draftItemToView(item)} />
+			</div>
+			<button
+				type="button"
+				onClick={onRemove}
+				className="absolute -top-1 -right-1 grid size-5 place-items-center border border-border bg-background text-foreground shadow-sm transition-colors hover:bg-destructive hover:text-background focus-visible:outline-2"
+				aria-label={`Remove ${item.label || "item"}`}
+			>
+				<X className="size-3" aria-hidden />
+			</button>
 		</li>
 	);
 }

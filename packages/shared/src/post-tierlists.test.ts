@@ -16,7 +16,7 @@ const text = (label: string) => ({ kind: "text" as const, label });
 function tiers(...sets: TierlistTierDraft["items"][]): TierlistTierDraft[] {
 	return sets.map((items, index) => ({
 		name: `T${index + 1}`,
-		color: TIERLIST_COLORS[index] ?? "info",
+		color: TIERLIST_COLORS[index] ?? "blue",
 		items,
 	}));
 }
@@ -42,7 +42,8 @@ describe("tierlist colours", () => {
 
 	test("hex values and unknown names are not colours", () => {
 		expect(isTierlistColor("#ff0000")).toBe(false);
-		expect(isTierlistColor("red")).toBe(false);
+		expect(isTierlistColor("destructive")).toBe(false);
+		expect(isTierlistColor("crimson")).toBe(false);
 	});
 });
 
@@ -108,7 +109,7 @@ describe("tierlistSetupProblems", () => {
 	test("two tiers may share a colour", () => {
 		const same = tiers([text("a")], [text("b")]).map((tier) => ({
 			...tier,
-			color: "info",
+			color: "blue",
 		}));
 		expect(tierlistSetupProblems(same)).toEqual([]);
 	});

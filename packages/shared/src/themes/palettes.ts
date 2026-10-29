@@ -67,10 +67,6 @@ export const STATUS_TOKENS: Record<PaletteMode, Record<string, Oklch>> = {
 		"violet-ink": oklch(0.283, 0.141, 291.089),
 		pink: oklch(0.656, 0.241, 354.308),
 		"pink-ink": oklch(0.284, 0.109, 3.907),
-		orange: oklch(0.646, 0.222, 41.116),
-		"orange-ink": oklch(0.408, 0.123, 38.172),
-		teal: oklch(0.6, 0.118, 184.704),
-		"teal-ink": oklch(0.386, 0.063, 188.416),
 	},
 	dark: {
 		success: oklch(0.696, 0.17, 162.48),
@@ -85,11 +81,42 @@ export const STATUS_TOKENS: Record<PaletteMode, Record<string, Oklch>> = {
 		"violet-ink": oklch(0.894, 0.057, 293.283),
 		pink: oklch(0.718, 0.202, 349.761),
 		"pink-ink": oklch(0.899, 0.061, 343.231),
-		orange: oklch(0.705, 0.213, 47.604),
-		"orange-ink": oklch(0.901, 0.076, 70.697),
-		teal: oklch(0.704, 0.14, 182.503),
-		"teal-ink": oklch(0.91, 0.096, 180.426),
 	},
+};
+
+/**
+ * Hue of each tier colour (see `TIERLIST_COLORS`). They are spread round the
+ * wheel, at least 30 degrees apart, and unlike the status colours no palette
+ * can override them, so all eight always look different from each other.
+ */
+export const TIER_HUES = {
+	red: 25,
+	orange: 58,
+	yellow: 98,
+	green: 145,
+	teal: 188,
+	blue: 240,
+	violet: 295,
+	pink: 350,
+} as const;
+
+function buildTierTokens(mode: PaletteMode): Record<string, Oklch> {
+	const light = mode === "light";
+	const tokens: Record<string, Oklch> = {};
+	for (const [name, hue] of Object.entries(TIER_HUES)) {
+		tokens[`tier-${name}`] = light
+			? oklch(0.62, 0.19, hue)
+			: oklch(0.72, 0.17, hue);
+		tokens[`tier-${name}-ink`] = light
+			? oklch(0.36, 0.09, hue)
+			: oklch(0.9, 0.07, hue);
+	}
+	return tokens;
+}
+
+export const TIER_TOKENS: Record<PaletteMode, Record<string, Oklch>> = {
+	light: buildTierTokens("light"),
+	dark: buildTierTokens("dark"),
 };
 
 const DEFAULT_PALETTE: Palette = {
@@ -197,6 +224,7 @@ export function paletteTokens(
 		return {
 			...mapTokens(hue, given["chart-1"]?.c === 0 ? 0 : 1),
 			...STATUS_TOKENS[mode],
+			...TIER_TOKENS[mode],
 			...given,
 		};
 	}
@@ -230,6 +258,7 @@ export function paletteTokens(
 		"sidebar-border": tone.border,
 		"sidebar-ring": tone.ring,
 		...STATUS_TOKENS[mode],
+		...TIER_TOKENS[mode],
 	};
 
 	const chroma = tone.chartChroma ?? 1;

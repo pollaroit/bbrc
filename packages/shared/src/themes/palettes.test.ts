@@ -10,6 +10,8 @@ import {
 	type PaletteMode,
 	paletteTokens,
 	STATUS_TOKENS,
+	TIER_HUES,
+	TIER_TOKENS,
 } from "./palettes";
 
 const styles = join(import.meta.dir, "../../../ui/src/styles");
@@ -38,16 +40,16 @@ const REQUIRED_TOKENS = [
 	"info",
 	"violet",
 	"pink",
-	"orange",
-	"teal",
 	"success-ink",
 	"warning-ink",
 	"info-ink",
 	"destructive-ink",
 	"violet-ink",
 	"pink-ink",
-	"orange-ink",
-	"teal-ink",
+	...Object.keys(TIER_HUES).flatMap((name) => [
+		`tier-${name}`,
+		`tier-${name}-ink`,
+	]),
 	"chart-1",
 	"chart-5",
 	"sidebar",
@@ -114,6 +116,32 @@ describe("palettes", () => {
 			expect(problems).toEqual([]);
 		});
 	}
+
+	test("the eight tier colours stay clearly different from each other", () => {
+		const hues = Object.values(TIER_HUES).sort((a, b) => a - b);
+		for (let index = 0; index < hues.length; index++) {
+			const next = hues[(index + 1) % hues.length] as number;
+			const gap = (next - (hues[index] as number) + 360) % 360;
+			expect(gap).toBeGreaterThanOrEqual(30);
+		}
+		for (const mode of ["light", "dark"] as const) {
+			const names = Object.keys(TIER_HUES);
+			for (const a of names) {
+				for (const b of names) {
+					if (a >= b) continue;
+					const x = TIER_TOKENS[mode][`tier-${a}`];
+					const y = TIER_TOKENS[mode][`tier-${b}`];
+					if (!x || !y) throw new Error("missing tier token");
+					const rad = (deg: number) => (deg * Math.PI) / 180;
+					const distance = Math.hypot(
+						x.c * Math.cos(rad(x.h)) - y.c * Math.cos(rad(y.h)),
+						x.c * Math.sin(rad(x.h)) - y.c * Math.sin(rad(y.h)),
+					);
+					expect(distance).toBeGreaterThan(0.08);
+				}
+			}
+		}
+	});
 
 	test("status tokens are defined for both modes", () => {
 		expect(Object.keys(STATUS_TOKENS.light).sort()).toEqual(

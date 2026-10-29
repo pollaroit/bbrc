@@ -2,55 +2,55 @@ import type { TierlistColor } from "@bbrc/shared";
 
 /**
  * The classes for each tier colour. Written out in full (never built from the
- * key) so Tailwind can see them, and made only of theme tokens so every palette
- * keeps them readable.
+ * key) so Tailwind can see them. They use the dedicated `tier-*` theme tokens,
+ * which every palette defines the same way, so all eight stay different.
  */
 export const TIER_COLOR_CLASSES: Record<
 	TierlistColor,
 	{ name: string; label: string; swatch: string }
 > = {
-	destructive: {
+	red: {
 		name: "Red",
-		label: "border-destructive/30 bg-destructive/10 text-destructive-ink",
-		swatch: "bg-destructive",
+		label: "border-tier-red/30 bg-tier-red/10 text-tier-red-ink",
+		swatch: "bg-tier-red",
 	},
 	orange: {
 		name: "Orange",
-		label: "border-orange/30 bg-orange/10 text-orange-ink",
-		swatch: "bg-orange",
+		label: "border-tier-orange/30 bg-tier-orange/10 text-tier-orange-ink",
+		swatch: "bg-tier-orange",
 	},
-	warning: {
+	yellow: {
 		name: "Yellow",
-		label: "border-warning/30 bg-warning/10 text-warning-ink",
-		swatch: "bg-warning",
+		label: "border-tier-yellow/30 bg-tier-yellow/10 text-tier-yellow-ink",
+		swatch: "bg-tier-yellow",
 	},
-	success: {
+	green: {
 		name: "Green",
-		label: "border-success/30 bg-success/10 text-success-ink",
-		swatch: "bg-success",
+		label: "border-tier-green/30 bg-tier-green/10 text-tier-green-ink",
+		swatch: "bg-tier-green",
 	},
 	teal: {
 		name: "Teal",
-		label: "border-teal/30 bg-teal/10 text-teal-ink",
-		swatch: "bg-teal",
+		label: "border-tier-teal/30 bg-tier-teal/10 text-tier-teal-ink",
+		swatch: "bg-tier-teal",
 	},
-	info: {
+	blue: {
 		name: "Blue",
-		label: "border-info/30 bg-info/10 text-info-ink",
-		swatch: "bg-info",
+		label: "border-tier-blue/30 bg-tier-blue/10 text-tier-blue-ink",
+		swatch: "bg-tier-blue",
 	},
 	violet: {
 		name: "Violet",
-		label: "border-violet/30 bg-violet/10 text-violet-ink",
-		swatch: "bg-violet",
+		label: "border-tier-violet/30 bg-tier-violet/10 text-tier-violet-ink",
+		swatch: "bg-tier-violet",
 	},
 	pink: {
 		name: "Pink",
-		label: "border-pink/30 bg-pink/10 text-pink-ink",
-		swatch: "bg-pink",
+		label: "border-tier-pink/30 bg-tier-pink/10 text-tier-pink-ink",
+		swatch: "bg-tier-pink",
 	},
 };
 
 export function tierColorClasses(color: string) {
-	return TIER_COLOR_CLASSES[color as TierlistColor] ?? TIER_COLOR_CLASSES.info;
+	return TIER_COLOR_CLASSES[color as TierlistColor] ?? TIER_COLOR_CLASSES.blue;
 }

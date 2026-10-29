@@ -25,17 +25,17 @@ export const TIERLIST_MAX_TIER_NAME = 20;
 export const TIERLIST_MAX_ITEM_LABEL = 40;
 
 /**
- * Theme colour keys a tier can use, one per possible tier so all eight can
- * differ. These are keys, never colours: the screen maps each to its theme
- * token (`bg-<key>/10 text-<key>-ink`), so every palette stays readable.
+ * Colours a tier can use, one per possible tier so all eight can differ.
+ * These are keys, never colours: the screen maps each to its own theme token
+ * (`tier-<key>`, see `TIER_HUES` in the palettes), which no palette overrides.
  */
 export const TIERLIST_COLORS = [
-	"destructive",
+	"red",
 	"orange",
-	"warning",
-	"success",
+	"yellow",
+	"green",
 	"teal",
-	"info",
+	"blue",
 	"violet",
 	"pink",
 ] as const;
@@ -50,10 +50,10 @@ export const DEFAULT_TIERLIST_TIERS: readonly {
 	color: TierlistColor;
 }[] = [
 	{ name: "S", color: "violet" },
-	{ name: "A", color: "success" },
-	{ name: "B", color: "info" },
-	{ name: "C", color: "warning" },
-	{ name: "D", color: "destructive" },
+	{ name: "A", color: "green" },
+	{ name: "B", color: "blue" },
+	{ name: "C", color: "yellow" },
+	{ name: "D", color: "red" },
 ];
 
 /** What a member places: one thing, of one kind. Book and author are picked from the catalog. */

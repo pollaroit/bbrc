@@ -645,12 +645,12 @@ async function resolveSeriesDetailOg(slug: string): Promise<OgImageContent> {
  * follow the member's theme, so tokens cannot be used here.
  */
 const OG_TIER_COLORS: Record<string, string> = {
-	destructive: "#ef4444",
+	red: "#ef4444",
 	orange: "#f97316",
-	warning: "#fbbf24",
-	success: "#10b981",
+	yellow: "#eab308",
+	green: "#22c55e",
 	teal: "#14b8a6",
-	info: "#0ea5e9",
+	blue: "#3b82f6",
 	violet: "#8b5cf6",
 	pink: "#ec4899",
 };
@@ -662,7 +662,7 @@ async function tierlistMedia(
 	const rows = await Promise.all(
 		tierlist.tiers.slice(0, 6).map(async (tier) => ({
 			label: tier.name,
-			color: OG_TIER_COLORS[tier.color] ?? "#0ea5e9",
+			color: OG_TIER_COLORS[tier.color] ?? "#3b82f6",
 			tiles: await Promise.all(
 				tier.items.slice(0, 7).map(async (item) => {
 					const url =
