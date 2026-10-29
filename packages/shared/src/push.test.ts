@@ -61,7 +61,12 @@ describe("buildPushPayload", () => {
 			url: "/posts/abc",
 		});
 		expect(payload.web.tag).toBe("n1");
-		expect(payload.ttl).toBeGreaterThan(0);
+		// Ably refuses fields it does not know (a top-level `ttl` failed a whole batch).
+		expect(Object.keys(payload).sort()).toEqual([
+			"data",
+			"notification",
+			"web",
+		]);
 	});
 
 	test("long text is cut, and white space is tidied", () => {

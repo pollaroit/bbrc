@@ -5,8 +5,6 @@
 
 export const PUSH_TITLE_MAX = 80;
 export const PUSH_BODY_MAX = 180;
-/** How long a push waits for a device that is offline, in seconds. */
-export const PUSH_TTL_SECONDS = 24 * 60 * 60;
 
 /** The page a push opens when its notification has no link of its own. */
 export const PUSH_FALLBACK_HREF = "/notifications";
@@ -64,7 +62,6 @@ export function buildPushPayload(input: PushPayloadInput, origin: string) {
 			icon: "/web-app-manifest-192x192.png",
 			badge: "/web-app-manifest-192x192.png",
 		},
-		ttl: PUSH_TTL_SECONDS,
 	};
 }
 
