@@ -1,5 +1,6 @@
 import type { Session } from "@bbrc/auth";
 import type { Database } from "@bbrc/db";
+import { postAttachmentConflict } from "@bbrc/shared";
 import {
 	type AllowedImageMimeType,
 	buildObjectKey,
@@ -353,6 +354,36 @@ export async function uploadEditionCoverDirect(
 }
 
 /**
+ * Uploads a finished tierlist picture (cropped to 2:3 by the browser) and
+ * returns its public URL. Any signed-in member who is not banned; the picture
+ * is attached when the tierlist is published with its post.
+ */
+export async function uploadTierlistImageDirect(
+	file: {
+		buffer: Buffer;
+		contentType: AllowedImageMimeType;
+		contentLength: number;
+	},
+	session: Session,
+) {
+	if (session.user.status === "banned") {
+		throw new ORPCError("FORBIDDEN", {
+			message: "Your account cannot upload pictures.",
+		});
+	}
+	const key = buildObjectKey(getStorageEnv(), {
+		kind: "tierlist-image",
+		imageUid: crypto.randomUUID(),
+	});
+	const body: ImageUploadBody = {
+		contentType: file.contentType,
+		contentLength: file.contentLength,
+	};
+	const publicUrl = await putImageAtKey(key, body, file.buffer);
+	return { publicUrl };
+}
+
+/**
  * Uploads a finished author photo (cropped by the browser) and returns its public URL.
  * Admins only; the author itself is updated by `authorAdmin.uploadPhoto`.
  */
@@ -455,10 +486,17 @@ async function loadOwnedPostForUpload(
 		where: { postId: post.id },
 		select: { id: true },
 	});
-	if (poll) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "A post with a poll cannot have an image.",
-		});
+	const tierlist = await db.postTierlist.findFirst({
+		where: { postId: post.id },
+		select: { id: true },
+	});
+	const conflict = postAttachmentConflict({
+		poll: poll != null,
+		tierlist: tierlist != null,
+		image: true,
+	});
+	if (conflict) {
+		throw new ORPCError("BAD_REQUEST", { message: conflict });
 	}
 	return post;
 }

@@ -181,6 +181,12 @@ export default async function OgDevPage() {
 		}),
 	]);
 
+	const postWithTierlist = await db.post.findFirst({
+		where: { tierlist: { isNot: null } },
+		orderBy: { createdAt: "desc" },
+		select: { slug: true },
+	});
+
 	// Invitation links: a working one, an ended one, and a token that never existed.
 	const inviteLinks = await db.sittingInviteLink.findMany({
 		orderBy: { createdAt: "desc" },
@@ -321,6 +327,12 @@ export default async function OgDevPage() {
 					"Post with a photo",
 					postWithImage ? `/posts/${postWithImage.slug}` : null,
 					"No post with an image in this database.",
+				),
+				entry(
+					"post-tierlist",
+					"Post with a tierlist",
+					postWithTierlist ? `/posts/${postWithTierlist.slug}` : null,
+					"No post with a tierlist in this database.",
 				),
 				entry(
 					"post-comment",

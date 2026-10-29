@@ -640,13 +640,57 @@ async function resolveSeriesDetailOg(slug: string): Promise<OgImageContent> {
 // Posts, comments, reviews
 // ---------------------------------------------------------------------------
 
+/**
+ * Hex colours for tier rows. The card has its own fixed dark look and does not
+ * follow the member's theme, so tokens cannot be used here.
+ */
+const OG_TIER_COLORS: Record<string, string> = {
+	destructive: "#ef4444",
+	orange: "#f97316",
+	warning: "#fbbf24",
+	success: "#10b981",
+	teal: "#14b8a6",
+	info: "#0ea5e9",
+	violet: "#8b5cf6",
+	pink: "#ec4899",
+};
+
+/** Up to six tiers and seven tiles each; every picture is fetched once, in parallel. */
+async function tierlistMedia(
+	tierlist: NonNullable<Awaited<ReturnType<typeof getPostBySlug>>["tierlist"]>,
+): Promise<NonNullable<OgImageContent["media"]>> {
+	const rows = await Promise.all(
+		tierlist.tiers.slice(0, 6).map(async (tier) => ({
+			label: tier.name,
+			color: OG_TIER_COLORS[tier.color] ?? "#0ea5e9",
+			tiles: await Promise.all(
+				tier.items.slice(0, 7).map(async (item) => {
+					const url =
+						item.kind === "book"
+							? bookCoverUrl(item.book?.coverId, "S")
+							: item.kind === "author"
+								? item.author?.photoUrl
+								: item.imageUrl;
+					return {
+						src: await ogImageData(url),
+						text: item.label ?? "",
+					};
+				}),
+			),
+		})),
+	);
+	return { kind: "tiers", rows };
+}
+
 async function resolvePostOg(slug: string): Promise<OgImageContent> {
 	try {
 		const post = await getPostBySlug(slug, db, anonymousSession);
 		const photo = await ogImageData(post.imageUrl);
-		const media = photo
-			? ({ kind: "photo", src: photo } as const)
-			: await avatarMedia(post.author);
+		const media = post.tierlist
+			? await tierlistMedia(post.tierlist)
+			: photo
+				? ({ kind: "photo", src: photo } as const)
+				: await avatarMedia(post.author);
 		const attachment = post.attachment
 			? postAttachmentLabel(post.attachment)
 			: null;
@@ -654,12 +698,17 @@ async function resolvePostOg(slug: string): Promise<OgImageContent> {
 		return {
 			kind: "Post",
 			title: post.author.name,
-			subtitle: attachment
-				? `@${post.author.username} · ${attachment}`
-				: `@${post.author.username}`,
+			subtitle: post.tierlist
+				? `@${post.author.username} · Tierlist`
+				: attachment
+					? `@${post.author.username} · ${attachment}`
+					: `@${post.author.username}`,
 			body: plain(post.content) || "Shared an update with the club.",
 			media,
 			facts: [
+				...(post.tierlist
+					? [fact("Ranked", num(post.tierlist.itemCount))]
+					: []),
 				fact("Likes", num(post.likeCount)),
 				fact("Comments", num(post.commentCount)),
 				fact("Posted", formatOgDate(post.createdAt)),

@@ -19,7 +19,17 @@ export type OgMedia =
 	| { kind: "cover"; src: string }
 	| { kind: "avatar"; src: string | null; initial: string }
 	| { kind: "photo"; src: string }
-	| { kind: "covers"; srcs: string[] };
+	| { kind: "covers"; srcs: string[] }
+	/** A tierlist: up to six tier rows, each a coloured label and a few small tiles. */
+	| {
+			kind: "tiers";
+			rows: {
+				label: string;
+				/** A hex colour: the card has its own fixed dark look, it does not follow the theme. */
+				color: string;
+				tiles: { src: string | null; text: string }[];
+			}[];
+	  };
 
 /** Two members side by side with a line of text between them (comparison cards). */
 export type OgCompare = {
@@ -228,6 +238,97 @@ function Media({ media, height }: { media: OgMedia; height: number }) {
 				height={height}
 				style={{ objectFit: "cover" }}
 			/>
+		);
+	}
+
+	if (media.kind === "tiers") {
+		const rows = media.rows.slice(0, 6);
+		const rowH = Math.min(
+			52,
+			Math.floor((height - 56 - (rows.length - 1) * 4) / rows.length),
+		);
+		const tileH = rowH - 8;
+		const tileW = Math.round((tileH * 2) / 3);
+		return (
+			<div
+				style={{
+					display: "flex",
+					flexDirection: "column",
+					gap: 4,
+					width: 316,
+				}}
+			>
+				{rows.map((row, rowIndex) => (
+					<div
+						key={`${rowIndex}-${row.label}`}
+						style={{
+							display: "flex",
+							alignItems: "center",
+							height: rowH,
+							border: line,
+							overflow: "hidden",
+						}}
+					>
+						<div
+							style={{
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								width: 52,
+								height: rowH,
+								flexShrink: 0,
+								background: row.color,
+								color: "#0b0b0c",
+								fontSize: 20,
+								fontWeight: 700,
+								overflow: "hidden",
+							}}
+						>
+							{row.label.slice(0, 3)}
+						</div>
+						<div
+							style={{
+								display: "flex",
+								alignItems: "center",
+								gap: 3,
+								padding: "0 4px",
+								overflow: "hidden",
+							}}
+						>
+							{row.tiles.slice(0, 7).map((tile, tileIndex) =>
+								tile.src ? (
+									// biome-ignore lint/performance/noImgElement: satori image
+									<img
+										key={`${tileIndex}-${tile.src.length}`}
+										src={tile.src}
+										alt=""
+										width={tileW}
+										height={tileH}
+										style={{ objectFit: "cover", border: line }}
+									/>
+								) : (
+									<div
+										key={`${tileIndex}-${tile.text}`}
+										style={{
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "center",
+											width: tileW,
+											height: tileH,
+											border: line,
+											background: "rgba(250, 250, 250, 0.1)",
+											fontSize: 14,
+											fontWeight: 600,
+										}}
+									>
+										{tile.text.slice(0, 1).toUpperCase()}
+									</div>
+								),
+							)}
+						</div>
+					</div>
+				))}
+			</div>
 		);
 	}
 

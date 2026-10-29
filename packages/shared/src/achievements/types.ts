@@ -71,7 +71,12 @@ export type FeedbackFact = {
 	likeTimes: Date[];
 };
 
-export type PostFact = { createdAt: Date; commentTimes: Date[] };
+export type PostFact = {
+	createdAt: Date;
+	commentTimes: Date[];
+	/** The post carries a tierlist. */
+	hasTierlist: boolean;
+};
 
 export type ParticipationFact = {
 	progress: "not_started" | "in_progress" | "completed" | "dnf";
@@ -184,6 +189,7 @@ export type MetricKey =
 	| "likesReceived"
 	| "posts"
 	| "postComments"
+	| "tierlists"
 	| "comments"
 	| "nightPosts"
 	| "leapDay"

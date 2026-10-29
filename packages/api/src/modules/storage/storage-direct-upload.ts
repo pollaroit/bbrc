@@ -16,6 +16,7 @@ import {
 	uploadFeedbackImageDirect,
 	uploadPostImageDirect,
 	uploadShelfCoverDirect,
+	uploadTierlistImageDirect,
 } from "./storage-image.service";
 
 const DirectUploadTargetSchema = z.discriminatedUnion("target", [
@@ -35,6 +36,7 @@ const DirectUploadTargetSchema = z.discriminatedUnion("target", [
 	z.object({ target: z.literal("book-cover") }),
 	z.object({ target: z.literal("edition-cover") }),
 	z.object({ target: z.literal("author-photo") }),
+	z.object({ target: z.literal("tierlist-image") }),
 	z.object({
 		target: z.literal("shelf-cover"),
 		ownerUsername: z.string().min(3).max(20).optional(),
@@ -145,6 +147,9 @@ export async function handleDirectImageUpload(
 				break;
 			case "author-photo":
 				result = await uploadAuthorPhotoDirect(payload, session);
+				break;
+			case "tierlist-image":
+				result = await uploadTierlistImageDirect(payload, session);
 				break;
 			case "shelf-cover":
 				result = await uploadShelfCoverDirect(

@@ -368,6 +368,14 @@ export const METRICS: Record<MetricKey, Metric> = {
 			inWindow,
 		),
 
+	tierlists: (facts, inWindow) =>
+		countPoints(
+			facts.posts
+				.filter((post) => post.hasTierlist)
+				.map((post) => ({ at: post.createdAt, period: post.createdAt })),
+			inWindow,
+		),
+
 	postComments: (facts, inWindow) => {
 		const raw: Point[] = [];
 		for (const post of facts.posts) {
