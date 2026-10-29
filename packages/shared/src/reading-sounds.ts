@@ -4,7 +4,12 @@
  *
  * - `generated`: made in the browser (no file, no licence, loops forever).
  * - `file`: a recording we host. Add the file under `apps/web/public/sounds/`
- *   and set `src`; entries without a `src` stay hidden.
+ *   and set `src`; entries without a `src` stay hidden. Use **MP3, stereo,
+ *   44.1 kHz, about 128 kbps, 60 to 120 seconds** (1 to 2 MB). The browser
+ *   decodes the whole file into memory (about 10 MB per minute of stereo), so
+ *   long files cost memory, not just download time. The loop point is smoothed
+ *   in code, so the cut does not need to be perfect. To convert and trim:
+ *   `ffmpeg -i input.wav -ss 30 -t 90 -ar 44100 -ac 2 -b:a 128k cafe.mp3`.
  * - YouTube: an embedded stream or long mix. Only videos that allow embedding
  *   work, and a video can be taken down later, so check the list now and then.
  */

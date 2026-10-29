@@ -1,7 +1,15 @@
 "use client";
 
 import { Button } from "@bbrc/ui/components/button";
-import { ExternalLink, Loader2, Pause, Play, X } from "lucide-react";
+import {
+	ExternalLink,
+	Eye,
+	EyeOff,
+	Loader2,
+	Pause,
+	Play,
+	X,
+} from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { Sounds } from "@/components/reading-mode/use-sounds";
 import { loadYouTubeApi, type YouTubePlayer } from "@/lib/reading-mode/youtube";
@@ -34,6 +42,8 @@ export function NowPlaying({ sounds }: { sounds: Sounds }) {
 		musicStatus,
 		musicError,
 		musicVolume,
+		showVideo,
+		setShowVideo,
 		reportMusic,
 		chooseStation,
 	} = sounds;
@@ -148,9 +158,17 @@ export function NowPlaying({ sounds }: { sounds: Sounds }) {
 			aria-label="Now playing"
 			className="flex flex-col border border-border bg-card"
 		>
-			<div className="relative aspect-video w-full bg-muted">
+			{/* Hidden, the video stays loaded and playing, just off the screen: only the sound is left. */}
+			<div
+				className={
+					showVideo
+						? "relative aspect-video w-full bg-muted"
+						: "pointer-events-none absolute top-0 -left-[9999px] aspect-video w-80 overflow-hidden"
+				}
+				aria-hidden={!showVideo}
+			>
 				<div ref={host} className="absolute inset-0 size-full" />
-				{loading ? (
+				{loading && showVideo ? (
 					<span className="pointer-events-none absolute inset-0 grid place-items-center bg-background/60">
 						<Loader2
 							className="size-6 animate-spin motion-reduce:animate-none"
@@ -202,6 +220,18 @@ export function NowPlaying({ sounds }: { sounds: Sounds }) {
 				>
 					<ExternalLink className="size-4" aria-hidden />
 				</a>
+				<Button
+					type="button"
+					variant="outline"
+					size="icon"
+					className="size-10"
+					aria-pressed={!showVideo}
+					aria-label={showVideo ? "Hide the video" : "Show the video"}
+					title={showVideo ? "Hide the video" : "Show the video"}
+					onClick={() => setShowVideo(!showVideo)}
+				>
+					{showVideo ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
+				</Button>
 				<Button
 					type="button"
 					variant="ghost"

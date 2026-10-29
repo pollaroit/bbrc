@@ -98,6 +98,38 @@ function stereoNoise(
 	return buffer;
 }
 
+/**
+ * Makes a recording loop without a gap or a click, whatever its format: the
+ * last second flows into the first (equal power). MP3 and AAC add a little
+ * silence at each end, and recordings are rarely cut at a perfect loop point;
+ * this hides both.
+ */
+function smoothLoop(ctx: AudioContext, source: AudioBuffer): AudioBuffer {
+	const fade = Math.min(
+		Math.floor(source.sampleRate * 1.5),
+		Math.floor(source.length / 4),
+	);
+	const length = source.length - fade;
+	if (fade < 1 || length < 1) return source;
+	const out = ctx.createBuffer(
+		source.numberOfChannels,
+		length,
+		source.sampleRate,
+	);
+	for (let channel = 0; channel < source.numberOfChannels; channel++) {
+		const input = source.getChannelData(channel);
+		const target = out.getChannelData(channel);
+		target.set(input.subarray(0, length));
+		for (let index = 0; index < fade; index++) {
+			const mix = index / fade;
+			target[index] =
+				(input[index] ?? 0) * Math.sin((mix * Math.PI) / 2) +
+				(input[length + index] ?? 0) * Math.cos((mix * Math.PI) / 2);
+		}
+	}
+	return out;
+}
+
 function loop(ctx: AudioContext, buffer: AudioBuffer) {
 	const source = ctx.createBufferSource();
 	source.buffer = buffer;
@@ -459,8 +491,8 @@ export class AmbientMixer {
 		try {
 			const response = await fetch(src);
 			if (!response.ok) throw new Error("Could not load the sound.");
-			const buffer = await ctx.decodeAudioData(await response.arrayBuffer());
-			const source = loop(ctx, buffer);
+			const decoded = await ctx.decodeAudioData(await response.arrayBuffer());
+			const source = loop(ctx, smoothLoop(ctx, decoded));
 			source.connect(gain);
 			source.start();
 			this.channels.set(id, {

@@ -15,6 +15,8 @@ type Saved = {
 	volumes: Record<string, number>;
 	musicVolume: number;
 	stationId: string | null;
+	/** Whether the video shows. Off, only the sound plays. */
+	showVideo?: boolean;
 };
 
 function load(): Saved {
@@ -51,6 +53,7 @@ export function useSounds() {
 	const [volumes, setVolumes] = useState<Record<string, number>>({});
 	const [musicVolume, setMusicVolume] = useState(60);
 	const [stationId, setStationId] = useState<string | null>(null);
+	const [showVideo, setShowVideo] = useState(true);
 	const [musicStatus, setMusicStatus] = useState<MusicStatus>("idle");
 	const [musicError, setMusicError] = useState<string | null>(null);
 	const ready = useRef(false);
@@ -62,6 +65,7 @@ export function useSounds() {
 		const saved = load();
 		setVolumes(saved.volumes);
 		setMusicVolume(saved.musicVolume);
+		setShowVideo(saved.showVideo ?? true);
 		// The station is remembered, but never started by itself.
 		ready.current = true;
 		return () => mixer.current?.stopAll();
@@ -72,12 +76,17 @@ export function useSounds() {
 		try {
 			window.localStorage.setItem(
 				KEY,
-				JSON.stringify({ volumes, musicVolume, stationId } satisfies Saved),
+				JSON.stringify({
+					volumes,
+					musicVolume,
+					stationId,
+					showVideo,
+				} satisfies Saved),
 			);
 		} catch {
 			// A convenience only.
 		}
-	}, [volumes, musicVolume, stationId]);
+	}, [volumes, musicVolume, stationId, showVideo]);
 
 	const volumeOf = useCallback(
 		(id: string) => (volumes[id] ?? 50) / 100,
@@ -155,6 +164,8 @@ export function useSounds() {
 		chooseStation,
 		musicVolume,
 		setMusicVolume,
+		showVideo,
+		setShowVideo,
 		musicStatus,
 		musicError,
 		reportMusic,
