@@ -39,7 +39,13 @@ export function ConfirmDialog({
 				</AlertDialogHeader>
 				<AlertDialogFooter>
 					<AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
-					<AlertDialogAction onClick={onConfirm}>
+					<AlertDialogAction
+						onClick={() => {
+							// The action button does not close the dialog by itself.
+							onOpenChange(false);
+							onConfirm();
+						}}
+					>
 						{confirmLabel}
 					</AlertDialogAction>
 				</AlertDialogFooter>
