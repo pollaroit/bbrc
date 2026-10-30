@@ -4,6 +4,8 @@ import type { Route } from "next";
 export function postAttachmentHref(
 	attachment: PostAttachmentOutput,
 ): Route | null {
+	// A locked attachment has nothing to open.
+	if (attachment.locked) return null;
 	switch (attachment.kind) {
 		case "book":
 			return `/books/${attachment.book.slug}` as Route;

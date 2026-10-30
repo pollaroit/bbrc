@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { SittingSettingsView } from "@/components/blocks/sitting-settings-view";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { loadSittingBySlugForIsr } from "@/lib/isr-data";
+import { getRequestViewer } from "@/lib/request-viewer";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { auth, db } from "@/services";
 
@@ -45,7 +46,8 @@ export default async function SittingSettingsPage({
 
 	let canManage = false;
 	try {
-		canManage = (await getJoinState(db, slug, session)).viewer.canManage;
+		canManage = (await getJoinState(db, slug, await getRequestViewer())).viewer
+			.canManage;
 	} catch {
 		notFound();
 	}

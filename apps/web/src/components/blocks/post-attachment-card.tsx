@@ -308,7 +308,7 @@ function PostAttachmentCommentCard({
 }: {
 	comment: Extract<PostAttachmentOutput, { kind: "comment" }>["comment"];
 }) {
-	const href = postAttachmentHref({ kind: "comment", comment });
+	const href = postAttachmentHref({ kind: "comment", comment, locked: false });
 	if (!href) {
 		return null;
 	}
@@ -371,10 +371,48 @@ function PostAttachmentAuthorCard({
 	);
 }
 
+const LOCKED_KIND_LABELS: Record<PostAttachmentOutput["kind"], string> = {
+	book: "A book",
+	shelf: "A shelf",
+	sitting: "A sitting",
+	user: "A member",
+	feedback: "A review",
+	post: "A post",
+	comment: "A comment",
+	author: "An author",
+};
+
+/** What the viewer sees when they may not open the thing a post attaches: the kind, nothing else. */
+function LockedAttachment({
+	kind,
+	className,
+}: {
+	kind: PostAttachmentOutput["kind"];
+	className?: string;
+}) {
+	return (
+		<div
+			className={cn(
+				"flex items-center gap-3 border border-border border-dashed p-3 text-muted-foreground text-sm",
+				className,
+			)}
+		>
+			<Lock className="size-4 shrink-0" aria-hidden />
+			<span>
+				{LOCKED_KIND_LABELS[kind]} the person who shared this can see, but you
+				can't open.
+			</span>
+		</div>
+	);
+}
+
 export function PostAttachmentCard({
 	attachment,
 	className,
 }: PostAttachmentCardProps) {
+	if (attachment.locked) {
+		return <LockedAttachment kind={attachment.kind} className={className} />;
+	}
 	switch (attachment.kind) {
 		case "book":
 			return (

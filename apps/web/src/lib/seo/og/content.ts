@@ -28,6 +28,7 @@ import { getCompareOgSnapshot } from "@bbrc/api/modules/user-compare/user-compar
 import {
 	ACHIEVEMENT_CATEGORY_LABELS,
 	ACHIEVEMENTS,
+	ANONYMOUS_VIEWER,
 	contentPlainText,
 	describeTier,
 	formatSittingSlugLabel,
@@ -48,7 +49,8 @@ import {
 import { ogImageData, ogImagesData } from "./images";
 import type { OgFact, OgImageContent } from "./template";
 
-const anonymousSession = null;
+/** Cards are built without a session: they show only what an anonymous visitor may see. */
+const anonymousSession = ANONYMOUS_VIEWER;
 
 const num = (value: number) => value.toLocaleString("en-US");
 
@@ -247,7 +249,12 @@ async function resolveSittingsListOg(): Promise<OgImageContent> {
 async function resolveLeaderboardHubOg(
 	period: LeaderboardPeriod = "month",
 ): Promise<OgImageContent> {
-	const snapshot = await getLeaderboardOgSnapshot("xp", db, period);
+	const snapshot = await getLeaderboardOgSnapshot(
+		"xp",
+		db,
+		ANONYMOUS_VIEWER,
+		period,
+	);
 	const periodLabel = LEADERBOARD_PERIOD_META[period].label;
 
 	return {
@@ -269,7 +276,12 @@ async function resolveLeaderboardKindOg(
 ): Promise<OgImageContent> {
 	const meta = LEADERBOARD_KIND_META[kind];
 	const periodLabel = LEADERBOARD_PERIOD_META[period].label;
-	const snapshot = await getLeaderboardOgSnapshot(kind, db, period);
+	const snapshot = await getLeaderboardOgSnapshot(
+		kind,
+		db,
+		ANONYMOUS_VIEWER,
+		period,
+	);
 
 	return {
 		kind: "Leaderboard",
@@ -546,7 +558,7 @@ async function resolveBookOg(
 }
 
 async function resolveAuthorDetailOg(slug: string): Promise<OgImageContent> {
-	const author = await getAuthor(slug, db, null);
+	const author = await getAuthor(slug, db, ANONYMOUS_VIEWER);
 	const { profile, numbers } = author;
 	const books = await getAuthorBooks(
 		AuthorBooksInputSchema.parse({
@@ -556,7 +568,7 @@ async function resolveAuthorDetailOg(slug: string): Promise<OgImageContent> {
 			sortDirection: "desc",
 		}),
 		db,
-		null,
+		ANONYMOUS_VIEWER,
 	);
 	const photo = profile.photo ? await ogImageData(profile.photo.url) : null;
 	const subtitle = [profile.lifespan, profile.nationalities[0]?.name]
@@ -853,7 +865,7 @@ async function resolveMemberOg(
 	section: MemberSection,
 ): Promise<OgImageContent> {
 	try {
-		const user = await getUserByUsername({ username }, db);
+		const user = await getUserByUsername({ username }, db, ANONYMOUS_VIEWER);
 		const byUser = { user: { username } };
 		const [
 			posts,
@@ -878,7 +890,7 @@ async function resolveMemberOg(
 			}),
 			db.participation.count({ where: byUser }),
 			db.shelf.count({ where: { ...byUser, ...OG_PUBLIC_SHELF } }),
-			listGoalsByUsername(username, null, db),
+			listGoalsByUsername(username, ANONYMOUS_VIEWER, db),
 		]);
 
 		const reads = readRows.length;
@@ -992,6 +1004,7 @@ async function resolveCompareOg(
 	try {
 		const snapshot = await getCompareOgSnapshot(
 			db,
+			ANONYMOUS_VIEWER,
 			decodeURIComponent(usernameA),
 			decodeURIComponent(usernameB),
 		);
@@ -1039,8 +1052,8 @@ async function resolveShelfOg(
 ): Promise<OgImageContent> {
 	try {
 		const [user, shelf] = await Promise.all([
-			getUserByUsername({ username }, db),
-			getShelfBySlug(username, shelfSlug, null, db),
+			getUserByUsername({ username }, db, ANONYMOUS_VIEWER),
+			getShelfBySlug(username, shelfSlug, ANONYMOUS_VIEWER, db),
 		]);
 
 		return {
@@ -1074,8 +1087,8 @@ async function resolveGoalOg(
 ): Promise<OgImageContent> {
 	try {
 		const [user, goal] = await Promise.all([
-			getUserByUsername({ username }, db),
-			getGoalBySlug(username, goalSlug, null, db),
+			getUserByUsername({ username }, db, ANONYMOUS_VIEWER),
+			getGoalBySlug(username, goalSlug, ANONYMOUS_VIEWER, db),
 		]);
 
 		return {
@@ -1112,7 +1125,7 @@ async function resolveSittingOg(
 	view: "main" | "vote" | "participants",
 ): Promise<OgImageContent> {
 	try {
-		const sitting = await getSittingBySlug(slug, db, anonymousSession);
+		const sitting = await getSittingBySlug(slug, anonymousSession, db);
 		const name = formatSittingSlugLabel(sitting.slug);
 		const statusLabel = sittingStatusFilterLabels[sitting.status];
 		const participants = sitting.participants.length;

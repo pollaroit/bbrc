@@ -1,5 +1,6 @@
 import { getCommentBySlug } from "@bbrc/api/modules/comment/comment.service";
 import { getFeedbackBySlug } from "@bbrc/api/modules/feedback/feedback.service";
+import { ANONYMOUS_VIEWER } from "@bbrc/shared";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FeedbackDetail } from "@/components/blocks/feedback-detail";
@@ -14,7 +15,8 @@ import { db } from "@/services";
 /** On-demand only — too many comments for static generation or sitemap. */
 export const dynamic = "force-dynamic";
 
-const anonymousSession = null;
+/** Cached pages are built for an anonymous visitor. */
+const anonymousSession = ANONYMOUS_VIEWER;
 
 export async function generateMetadata({
 	params,

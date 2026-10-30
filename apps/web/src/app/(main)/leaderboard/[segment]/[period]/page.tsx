@@ -18,6 +18,7 @@ import {
 	parseLeaderboardRouteSegment,
 	periodFromSlug,
 } from "@/lib/leaderboard/paths";
+import { getRequestViewer } from "@/lib/request-viewer";
 import { auth } from "@/services";
 
 export const dynamic = "force-dynamic";
@@ -57,13 +58,14 @@ export default async function LeaderboardSegmentPeriodPage({
 		headers: await headers(),
 	});
 	const viewerUsername = session?.user?.username;
+	const viewer = await getRequestViewer();
 
 	if (routeSegment === LEADERBOARD_OVERVIEW_SEGMENT) {
-		const data = await loadLeaderboardHubForIsr(period, viewerUsername);
+		const data = await loadLeaderboardHubForIsr(period, viewer);
 		return <LeaderboardHub data={data} viewerUsername={viewerUsername} />;
 	}
 
-	const data = await loadFullLeaderboard(routeSegment, period, viewerUsername);
+	const data = await loadFullLeaderboard(routeSegment, period, viewer);
 
 	return <LeaderboardPanel data={data} viewerUsername={viewerUsername} />;
 }
