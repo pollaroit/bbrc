@@ -8,6 +8,7 @@ import { Lock } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { FriendsList } from "@/components/blocks/friends-list";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { useFriendActions } from "@/lib/friends/use-friends";
 import { cn } from "@/lib/utils";
@@ -140,26 +141,7 @@ function BlockedRow({ member }: { member: FriendMember }) {
 }
 
 function FriendsTab() {
-	const query = useQuery(
-		orpc.friend.list.queryOptions({ input: { limit: 100 } }),
-	);
-	if (query.isPending) return <ListSkeleton />;
-	const items = query.data?.items ?? [];
-	if (items.length === 0) {
-		return (
-			<Empty
-				title="No friends yet"
-				hint="Open a member's profile and choose Add friend. They have to accept."
-			/>
-		);
-	}
-	return (
-		<ul className="flex flex-col gap-2">
-			{items.map((item) => (
-				<FriendRow key={item.username} member={item} />
-			))}
-		</ul>
-	);
+	return <FriendsList isOwn />;
 }
 
 function RequestsTab() {

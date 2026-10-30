@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MemberFriendsList } from "@/components/blocks/member-friends-list";
+import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import {
 	buildNotFoundMetadata,
@@ -35,5 +36,9 @@ export default async function UserFriendsPage({
 	const { username } = await params;
 	const user = await loadUserByUsernameForPage(username);
 
-	return <MemberFriendsList username={user.username} name={user.name} />;
+	return (
+		<ListingSearchParamsBoundary>
+			<MemberFriendsList username={user.username} name={user.name} />
+		</ListingSearchParamsBoundary>
+	);
 }

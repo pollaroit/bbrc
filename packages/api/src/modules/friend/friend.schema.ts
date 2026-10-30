@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import zod from "zod";
+import { PeopleListItemSchema } from "../people/people.schema";
 
 const Username = zod.string().min(3).max(20);
 
@@ -39,17 +40,30 @@ export const SendFriendRequestOutputSchema = zod.object({
 });
 
 export const ListFriendsInputSchema = zod.object({
+	/** Whose friends; omitted means your own. */
 	username: Username.optional(),
-	limit: zod.number().int().min(1).max(100).default(50),
+	/** Name or username. */
+	search: zod.string().trim().max(60).optional(),
+	/** Only friends you are also friends with (for someone else's list). */
+	mutualOnly: zod.boolean().optional(),
+	limit: zod.number().int().min(1).max(60).default(24),
 	cursor: zod.string().optional(),
 });
 
 export const ListFriendsOutputSchema = zod.object({
 	/** False when the viewer may only see the count. */
 	visible: zod.boolean(),
+	/** All of the member's friends, whatever the search says. */
 	count: zod.number().int().min(0),
-	items: zod.array(FriendMemberSchema.extend({ since: zod.coerce.date() })),
-	nextCursor: zod.string().nullable(),
+	/** Members matching the search and filters (before paging). */
+	total: zod.number().int().min(0),
+	/** The same cards the people list shows, so privacy is handled in one place. */
+	items: zod.array(PeopleListItemSchema),
+	metadata: zod.object({
+		limit: zod.number().int(),
+		hasNextPage: zod.boolean(),
+		nextCursor: zod.string().nullable(),
+	}),
 });
 
 export const FriendRequestItemSchema = FriendMemberSchema.extend({
@@ -71,3 +85,5 @@ export const FriendBadgeOutputSchema = zod.object({
 
 export type FriendState = z.infer<typeof FriendStateSchema>;
 export type FriendMember = z.infer<typeof FriendMemberSchema>;
+
+export type ListFriendsInput = z.infer<typeof ListFriendsInputSchema>;

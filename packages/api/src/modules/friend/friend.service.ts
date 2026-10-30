@@ -11,6 +11,8 @@ import {
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { dispatchNotification } from "../notification/notification.service";
+import { buildItems, userListSelect } from "../people/people.service";
+import { loadFriendIds } from "../visibility/viewer";
 import type { FriendMember, FriendState } from "./friend.schema";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -394,13 +396,21 @@ export async function unblockMember(
 }
 
 /**
- * A member's friends. The full list is for the member and their friends (and
- * admins); everyone else gets the count only.
+ * A member's friends as people cards (the same shape and the same privacy
+ * handling as the people list). The full list is for the member and their
+ * friends (and admins); everyone else gets the count only. `mutualOnly` keeps the
+ * friends the viewer shares with the member.
  */
 export async function listFriends(
 	db: Database,
 	viewer: Viewer,
-	input: { username?: string; limit: number; cursor?: string },
+	input: {
+		username?: string;
+		search?: string;
+		mutualOnly?: boolean;
+		limit: number;
+		cursor?: string;
+	},
 ) {
 	const owner =
 		input.username != null
@@ -414,6 +424,11 @@ export async function listFriends(
 	if (!owner) {
 		throw new ORPCError("NOT_FOUND", { message: "Member not found." });
 	}
+	const empty = {
+		items: [],
+		total: 0,
+		metadata: { limit: input.limit, hasNextPage: false, nextCursor: null },
+	};
 	const count = await countFriends(db, owner.id);
 	const mayList =
 		viewer.kind === "member" &&
@@ -421,39 +436,56 @@ export async function listFriends(
 			viewer.userId === owner.id ||
 			viewer.friendIds.has(owner.id)) &&
 		!viewer.blockedIds.has(owner.id);
-	if (!mayList) {
-		return { visible: false, count, items: [], nextCursor: null };
+	if (!mayList || viewer.kind !== "member") {
+		return { visible: false, count, ...empty };
 	}
 
-	const rows = await db.friendship.findMany({
-		where: {
-			status: "accepted",
-			OR: [
-				{ userLowId: owner.id, userHigh: { status: { not: "banned" } } },
-				{ userHighId: owner.id, userLow: { status: { not: "banned" } } },
-			],
-		},
-		orderBy: [{ respondedAt: "desc" }, { id: "asc" }],
-		take: input.limit + 1,
-		...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
-		select: {
-			id: true,
-			respondedAt: true,
-			createdAt: true,
-			userLowId: true,
-			userLow: { select: memberSelect },
-			userHigh: { select: memberSelect },
-		},
-	});
+	let ids = await loadFriendIds(db, owner.id);
+	// Blocked members are not listed (admins have no blocks loaded).
+	ids = ids.filter((id) => !viewer.blockedIds.has(id));
+	if (input.mutualOnly && viewer.userId !== owner.id) {
+		const mine = new Set(
+			viewer.isAdmin
+				? await loadFriendIds(db, viewer.userId)
+				: viewer.friendIds,
+		);
+		ids = ids.filter((id) => mine.has(id));
+	}
+
+	const search = input.search?.trim();
+	const where = {
+		id: { in: ids },
+		...(search
+			? {
+					OR: [
+						{ name: { contains: search, mode: "insensitive" as const } },
+						{ username: { contains: search, mode: "insensitive" as const } },
+					],
+				}
+			: {}),
+	};
+	const [total, rows] = await Promise.all([
+		db.user.count({ where }),
+		db.user.findMany({
+			where,
+			orderBy: [{ name: "asc" }, { id: "asc" }],
+			take: input.limit + 1,
+			...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+			select: userListSelect,
+		}),
+	]);
 	const page = rows.slice(0, input.limit);
+	const items = await buildItems(page, db, viewer);
 	return {
 		visible: true,
 		count,
-		items: page.map((row) => ({
-			...toMember(row.userLowId === owner.id ? row.userHigh : row.userLow),
-			since: row.respondedAt ?? row.createdAt,
-		})),
-		nextCursor: rows.length > input.limit ? (page.at(-1)?.id ?? null) : null,
+		total,
+		items,
+		metadata: {
+			limit: input.limit,
+			hasNextPage: rows.length > input.limit,
+			nextCursor: rows.length > input.limit ? (page.at(-1)?.id ?? null) : null,
+		},
 	};
 }
 
