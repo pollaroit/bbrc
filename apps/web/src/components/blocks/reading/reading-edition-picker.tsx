@@ -16,6 +16,7 @@
  */
 
 import type { BookEditionItem } from "@bbrc/api/modules/book-edition/book-edition.schema";
+import { type EditionFormat, editionFormatFromText } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Input } from "@bbrc/ui/components/input";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
@@ -49,6 +50,8 @@ export type ReadingEditionChoice = {
 	editionLabel: string | null;
 	bookEditionId: string | null;
 	totalPages: number | null;
+	/** An Open Library edition's format (a member edition carries its own on the server). */
+	editionFormat?: EditionFormat | null;
 };
 
 export const EMPTY_EDITION_CHOICE: ReadingEditionChoice = {
@@ -222,6 +225,7 @@ export function ReadingEditionPicker({
 					language: edition.languages[0],
 				}),
 				bookEditionId: null,
+				editionFormat: editionFormatFromText(edition.physicalFormat),
 			},
 		}));
 		return [...memberRows, ...olRows];

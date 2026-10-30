@@ -93,7 +93,17 @@ export function useUpdateReadingProgress() {
 				return patchEverywhere(input.id, (item) => {
 					let page = item.currentPage;
 					let percent = item.percent;
-					if (input.page != null && item.totalPages) {
+					let seconds = item.currentSeconds;
+					if (input.seconds != null && item.totalSeconds) {
+						seconds = Math.min(input.seconds, item.totalSeconds);
+						percent = Math.min(
+							100,
+							Math.round((seconds / item.totalSeconds) * 100),
+						);
+						page = item.totalPages
+							? Math.round((percent / 100) * item.totalPages)
+							: null;
+					} else if (input.page != null && item.totalPages) {
 						page = Math.min(input.page, item.totalPages);
 						percent = Math.min(100, Math.round((page / item.totalPages) * 100));
 					} else if (input.percent != null) {
@@ -102,7 +112,15 @@ export function useUpdateReadingProgress() {
 							? Math.round((percent / 100) * item.totalPages)
 							: null;
 					}
-					return { ...item, percent, currentPage: page };
+					if (input.seconds == null && item.trackByTime && item.totalSeconds) {
+						seconds = Math.round((percent / 100) * item.totalSeconds);
+					}
+					return {
+						...item,
+						percent,
+						currentPage: page,
+						currentSeconds: seconds,
+					};
 				});
 			},
 			onError: (error, _input, context) => {
@@ -207,6 +225,44 @@ export function useSetReadingEdition() {
 					});
 				}
 			},
+		}),
+	);
+}
+
+/** Puts the server's version of one reading into every cache that holds it. */
+function replaceEverywhere(saved: ReadingItem) {
+	const mine = queryClient.getQueryData<Mine>(mineKey());
+	if (mine) {
+		queryClient.setQueryData<Mine>(mineKey(), {
+			items: mine.items.map((item) => (item.id === saved.id ? saved : item)),
+		});
+	}
+	const key = stateKey(saved.book.slug);
+	const state = queryClient.getQueryData<ReadingBookState>(key);
+	if (state?.reading?.id === saved.id) {
+		queryClient.setQueryData<ReadingBookState>(key, {
+			...state,
+			reading: saved,
+		});
+	}
+}
+
+/** Counts a reading in listening time (an audiobook) or back in pages. */
+export function useSetReadingTracking() {
+	return useMutation(
+		orpc.reading.setTracking.mutationOptions({
+			onError: (error) => toast.error(error.message),
+			onSuccess: replaceEverywhere,
+		}),
+	);
+}
+
+/** Saves the learned pace, or turns "move my page for me" on or off. */
+export function useSetReadingPace() {
+	return useMutation(
+		orpc.reading.setPace.mutationOptions({
+			onError: (error) => toast.error(error.message),
+			onSuccess: replaceEverywhere,
 		}),
 	);
 }

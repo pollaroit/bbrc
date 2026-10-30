@@ -11,7 +11,9 @@ import {
 	ReadingPreferencesSchema,
 	ReadingStatsOutputSchema,
 	SetReadingEditionInputSchema,
+	SetReadingPaceInputSchema,
 	SetReadingPreferencesInputSchema,
+	SetReadingTrackingInputSchema,
 	StartReadingInputSchema,
 	UpdateReadingProgressInputSchema,
 	UserCurrentReadingInputSchema,
@@ -31,7 +33,9 @@ import {
 	listBookReaders,
 	listMyReadings,
 	setReadingEdition,
+	setReadingPace,
 	setReadingPreferences,
+	setReadingTracking,
 	startReading,
 	updateReadingProgress,
 } from "./reading.service";
@@ -71,6 +75,18 @@ export const readingRouter = {
 		.output(ReadingItemSchema)
 		.handler(({ input, context }) =>
 			setReadingEdition(context.db, context.session.user.id, input),
+		),
+	setTracking: notBannedProcedure
+		.input(SetReadingTrackingInputSchema)
+		.output(ReadingItemSchema)
+		.handler(({ input, context }) =>
+			setReadingTracking(context.db, context.session.user.id, input),
+		),
+	setPace: notBannedProcedure
+		.input(SetReadingPaceInputSchema)
+		.output(ReadingItemSchema)
+		.handler(({ input, context }) =>
+			setReadingPace(context.db, context.session.user.id, input),
 		),
 	abandon: notBannedProcedure
 		.input(ReadingIdInputSchema)

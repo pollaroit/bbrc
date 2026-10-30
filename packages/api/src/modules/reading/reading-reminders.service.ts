@@ -56,6 +56,7 @@ export async function sweepReadingReminders(db: Database): Promise<number> {
 					currentPage: true,
 					startedAt: true,
 					logs: {
+						where: { estimated: false },
 						orderBy: { createdAt: "desc" },
 						take: 40,
 						select: { createdAt: true, percent: true, page: true },

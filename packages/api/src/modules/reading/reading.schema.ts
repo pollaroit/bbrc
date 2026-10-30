@@ -1,3 +1,4 @@
+import { AUDIO_MAX_SECONDS, EDITION_FORMATS } from "@bbrc/shared";
 import { z } from "zod";
 
 const Count = z.number().int().min(0);
@@ -51,6 +52,16 @@ export const ReadingItemSchema = z.object({
 		pages: z.number().int(),
 	}),
 	edition: ReadingEditionSchema.nullable(),
+	/** What kind of edition it is, when known (saved when the edition was picked). */
+	editionFormat: z.enum(EDITION_FORMATS).nullable(),
+	/** Progress is counted in listening time (an audiobook). */
+	trackByTime: z.boolean(),
+	totalSeconds: z.number().int().nullable(),
+	currentSeconds: z.number().int().nullable(),
+	/** Learned reading speed per active minute (pages, percent or seconds of audio). */
+	learnedPace: z.number().nullable(),
+	/** The page moves by the learned pace while the timer runs. */
+	autoPage: z.boolean(),
 	/** The sitting this reading counts towards (the book is its pick and you are in it). */
 	sitting: z
 		.object({
@@ -94,6 +105,8 @@ export const StartReadingInputSchema = z.object({
 	bookEditionId: z.string().uuid().nullish(),
 	/** Typed by hand when no edition has it. */
 	totalPages: z.number().int().min(1).max(20000).nullish(),
+	/** The Open Library edition's format, worked out by the picker (a member edition carries its own). */
+	editionFormat: z.enum(EDITION_FORMATS).nullish(),
 });
 
 export const UpdateReadingProgressInputSchema = z
@@ -101,10 +114,31 @@ export const UpdateReadingProgressInputSchema = z
 		id: z.string().uuid(),
 		page: z.number().int().min(0).max(20000).optional(),
 		percent: z.number().int().min(0).max(100).optional(),
+		/** Seconds into the recording (a reading counted in listening time). */
+		seconds: z.number().int().min(0).max(AUDIO_MAX_SECONDS).optional(),
+		/** Moved by the estimate (auto page), not typed: left out of pace and streaks. */
+		estimated: z.boolean().optional(),
 	})
-	.refine((value) => value.page != null || value.percent != null, {
-		message: "Send a page or a percentage.",
-	});
+	.refine(
+		(value) =>
+			value.page != null || value.percent != null || value.seconds != null,
+		{ message: "Send a page, a percentage or a time." },
+	);
+
+export const SetReadingTrackingInputSchema = z.object({
+	id: z.string().uuid(),
+	/** Count progress in listening time. */
+	trackByTime: z.boolean(),
+	/** The length of the recording, asked once. */
+	totalSeconds: z.number().int().min(60).max(AUDIO_MAX_SECONDS).optional(),
+});
+
+export const SetReadingPaceInputSchema = z.object({
+	id: z.string().uuid(),
+	/** A newly learned pace (units per active minute), or null to forget it. */
+	learnedPace: z.number().positive().max(1000).nullable().optional(),
+	autoPage: z.boolean().optional(),
+});
 
 export const SetReadingEditionInputSchema = StartReadingInputSchema.omit({
 	bookSlug: true,

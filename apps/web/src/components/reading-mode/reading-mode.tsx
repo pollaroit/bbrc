@@ -187,7 +187,14 @@ export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 	const canKeepReading = (clock?.readMs ?? 0) < TIMER_MAX_READING_MS;
 	const isBreak = clock?.phase === "break";
 
-	const book = <WhereYouAre reading={reading} />;
+	const book = (
+		<WhereYouAre
+			reading={reading}
+			activeSeconds={session.secondsNow}
+			running={running}
+			sessionActive={phase.kind === "active"}
+		/>
+	);
 	const player = sounds.station ? <NowPlaying sounds={sounds} /> : null;
 
 	return (

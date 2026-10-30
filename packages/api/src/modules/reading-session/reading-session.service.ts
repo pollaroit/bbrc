@@ -14,12 +14,15 @@ import type {
 	EndReadingSessionOutput,
 	ReadingPresenceOutput,
 	ReadingSessionView,
+	StartFreeReadingSessionInput,
 	StartReadingSessionInput,
 } from "./reading-session.schema";
 
 const sessionSelect = {
 	id: true,
 	readingId: true,
+	label: true,
+	pageTo: true,
 	startedAt: true,
 	lastBeatAt: true,
 	endedAt: true,
@@ -96,6 +99,74 @@ export async function startReadingSession(
 	});
 }
 
+/**
+ * A session without a book: the timer, sounds and music, nothing else. It is saved
+ * (closing the tab keeps the time) but never counted in reading stats, streaks,
+ * achievements or "reading now". Starting one ends any other open session.
+ */
+export async function startFreeReadingSession(
+	db: Database,
+	userId: string,
+	input: StartFreeReadingSessionInput,
+): Promise<ReadingSessionView> {
+	const now = new Date();
+	return db.$transaction(async (tx) => {
+		await tx.readingSession.updateMany({
+			where: { userId, endedAt: null },
+			data: { endedAt: now },
+		});
+		const created = await tx.readingSession.create({
+			data: {
+				userId,
+				readingId: null,
+				label: input.label?.trim() || null,
+				startedAt: now,
+				lastBeatAt: now,
+				mode: input.mode,
+				targetMinutes:
+					input.mode === "countdown" ? (input.targetMinutes ?? null) : null,
+				pageFrom: 0,
+				pageTo: 0,
+			},
+			select: sessionSelect,
+		});
+		return view(created);
+	});
+}
+
+/** The member's open session without a book, if there still is one. */
+export async function getCurrentFreeReadingSession(
+	db: Database,
+	userId: string,
+): Promise<ReadingSessionView | null> {
+	await closeStaleSessions(db, userId, new Date());
+	const row = await db.readingSession.findFirst({
+		where: { userId, readingId: null, endedAt: null },
+		select: sessionSelect,
+	});
+	return row ? view(row) : null;
+}
+
+/** Pages typed by hand during a session without a book. */
+export async function setFreeSessionPages(
+	db: Database,
+	userId: string,
+	input: { sessionId: string; pages: number },
+): Promise<ReadingSessionView> {
+	const row = await loadOwnOpenSession(db, userId, input.sessionId);
+	if (row.readingId != null) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Update the page on the book itself.",
+		});
+	}
+	const updated = await db.readingSession.update({
+		where: { id: row.id },
+		data: { pageTo: input.pages },
+		select: sessionSelect,
+	});
+	return view(updated);
+}
+
 /** The member's open session on this reading, if there still is one. */
 export async function getCurrentReadingSession(
 	db: Database,
@@ -122,7 +193,7 @@ export async function resumeReadingSession(
 ): Promise<ReadingSessionView> {
 	const row = await loadOwnOpenSession(db, userId, input.sessionId);
 	const now = new Date();
-	if (row.reading.finishedAt) {
+	if (row.reading?.finishedAt) {
 		throw new ORPCError("BAD_REQUEST", {
 			message: "This book is already finished.",
 		});
@@ -206,10 +277,14 @@ export async function endReadingSession(
 				now,
 			});
 
-	const reading = await db.reading.findFirst({
-		where: { id: row.readingId, userId },
-		select: { percent: true, currentPage: true },
-	});
+	const reading = row.readingId
+		? await db.reading.findFirst({
+				where: { id: row.readingId, userId },
+				select: { percent: true, currentPage: true },
+			})
+		: null;
+	// Without a book there is nothing to read back: the pages typed in stay as they are.
+	const pageTo = row.readingId ? (reading?.currentPage ?? null) : row.pageTo;
 
 	const saved = row.endedAt
 		? row
@@ -220,7 +295,7 @@ export async function endReadingSession(
 					lastBeatAt: now,
 					endedAt: now,
 					percentTo: reading?.percent ?? row.percentFrom,
-					pageTo: reading?.currentPage ?? null,
+					pageTo,
 				},
 				select: sessionSelect,
 			});
@@ -229,7 +304,7 @@ export async function endReadingSession(
 	return {
 		...view(saved),
 		percentTo: reading?.percent ?? row.percentFrom,
-		pageTo: reading?.currentPage ?? null,
+		pageTo,
 		streakDays: stats.currentStreak,
 	};
 }
@@ -303,7 +378,7 @@ export async function totalReadingSeconds(
 	userId: string,
 ): Promise<number> {
 	const sum = await db.readingSession.aggregate({
-		where: { userId },
+		where: { userId, readingId: { not: null } },
 		_sum: { activeSeconds: true },
 	});
 	return sum._sum.activeSeconds ?? 0;

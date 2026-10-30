@@ -30,13 +30,29 @@ export const EndReadingSessionInputSchema = BeatReadingSessionInputSchema;
 
 export const ResumeReadingSessionInputSchema = BeatReadingSessionInputSchema;
 
+/** A session without a book: a timer, sounds and music (and, if wanted, a page count). */
+export const StartFreeReadingSessionInputSchema = zod.object({
+	mode: ModeSchema,
+	targetMinutes: StartReadingSessionInputSchema.shape.targetMinutes,
+	label: zod.string().trim().max(40).nullish(),
+});
+
+/** The pages the member read in a session without a book, typed by hand (optional). */
+export const SetSessionPagesInputSchema = zod.object({
+	sessionId: zod.string().min(1),
+	pages: zod.number().int().min(0).max(20000),
+});
+
 export const CurrentReadingSessionInputSchema = zod.object({
 	readingId: zod.string().min(1),
 });
 
 export const ReadingSessionSchema = zod.object({
 	id: zod.string(),
-	readingId: zod.string(),
+	/** Null for a session without a book. */
+	readingId: zod.string().nullable(),
+	/** What a session without a book was for. */
+	label: zod.string().nullable(),
 	startedAt: zod.coerce.date(),
 	lastBeatAt: zod.coerce.date(),
 	endedAt: zod.coerce.date().nullable(),
@@ -45,6 +61,8 @@ export const ReadingSessionSchema = zod.object({
 	targetMinutes: zod.number().int().nullable(),
 	percentFrom: zod.number().int(),
 	pageFrom: zod.number().int().nullable(),
+	/** Without a book: the pages typed in so far (from 0). */
+	pageTo: zod.number().int().nullable(),
 });
 
 export const CurrentReadingSessionOutputSchema = zod.object({
@@ -53,7 +71,6 @@ export const CurrentReadingSessionOutputSchema = zod.object({
 
 export const EndReadingSessionOutputSchema = ReadingSessionSchema.extend({
 	percentTo: zod.number().int(),
-	pageTo: zod.number().int().nullable(),
 	/** Days in a row with reading logged, counting today. */
 	streakDays: zod.number().int().min(0),
 });
@@ -83,6 +100,9 @@ export const ReadingPresenceOutputSchema = zod.object({
 	),
 });
 
+export type StartFreeReadingSessionInput = z.infer<
+	typeof StartFreeReadingSessionInputSchema
+>;
 export type StartReadingSessionInput = z.infer<
 	typeof StartReadingSessionInputSchema
 >;

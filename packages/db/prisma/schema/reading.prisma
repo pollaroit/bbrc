@@ -35,6 +35,20 @@ model Reading {
   /// 0 to 100, always kept (derived from the page when the pages are known).
   percent     Int  @default(0)
 
+  /// What kind of edition this is, saved when the edition is picked (like the label), so Reading Mode knows an audiobook.
+  editionFormat BookEditionFormat? @map("edition_format")
+  /// Progress is counted in listening time (an audiobook), not pages. Percent is derived from it.
+  trackByTime   Boolean            @default(false) @map("track_by_time")
+  /// Length of the recording and how far in the member is, in seconds (only with `trackByTime`).
+  totalSeconds   Int? @map("total_seconds")
+  currentSeconds Int? @map("current_seconds")
+
+  /// The learned reading speed in units per active minute (pages, percent, or seconds of audio); null until learned.
+  learnedPace   Float?    @map("learned_pace")
+  paceLearnedAt DateTime? @map("pace_learned_at")
+  /// The member lets Reading Mode move their page by their pace while the timer runs.
+  autoPage      Boolean   @default(false) @map("auto_page")
+
   logs     ReadingLog[]
   sessions ReadingSession[]
 
@@ -54,6 +68,9 @@ model ReadingLog {
 
   percent Int  @default(0)
   page    Int?
+
+  /// Moved by the estimate (auto page), not typed by the member: left out of pace, streaks and the sitting's "ahead or behind".
+  estimated Boolean @default(false)
 
   @@index([readingId, createdAt])
   @@map("reading_log")

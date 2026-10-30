@@ -16,8 +16,11 @@ model ReadingSession {
   userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  readingId String  @map("reading_id")
-  reading   Reading @relation(fields: [readingId], references: [id], onDelete: Cascade)
+  /// Null for a session without a book: it is saved, but never counted in reading stats, streaks, achievements or "reading now".
+  readingId String?  @map("reading_id")
+  reading   Reading? @relation(fields: [readingId], references: [id], onDelete: Cascade)
+  /// What a session without a book was for, said by the member ("Studying").
+  label     String?
 
   startedAt DateTime  @default(now()) @map("started_at")
   /// The last time the open page said it was still reading; also what "reading now" is worked out from.

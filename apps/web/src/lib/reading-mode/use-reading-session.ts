@@ -101,7 +101,19 @@ function describe(event: TimerEvent, config: TimerConfig): TimerNotice {
 	}
 }
 
-export function useReadingSession(readingId: string) {
+/** The storage key of a session without a book (there is at most one open session per member). */
+export const FREE_SESSION_KEY = "free";
+
+/**
+ * `options.free`: a session without a book (the page at `/reading`). It is saved
+ * and recovered the same way, but never touches a reading.
+ */
+export function useReadingSession(
+	readingId: string,
+	options?: { free?: boolean },
+) {
+	const free = options?.free === true;
+	const key = free ? FREE_SESSION_KEY : readingId;
 	const [phase, setPhase] = useState<SessionPhase>({ kind: "loading" });
 	const [timer, setTimer] = useState<TimerState | null>(null);
 	const [now, setNow] = useState(() => Date.now());
@@ -116,9 +128,9 @@ export function useReadingSession(readingId: string) {
 			timerRef.current = next;
 			setTimer(next);
 			const id = sessionIdRef.current;
-			if (next && id) saveSession(readingId, { sessionId: id, timer: next });
+			if (next && id) saveSession(key, { sessionId: id, timer: next });
 		},
-		[readingId],
+		[key],
 	);
 
 	const announce = useCallback((events: TimerEvent[], config: TimerConfig) => {
@@ -144,7 +156,7 @@ export function useReadingSession(readingId: string) {
 			const seconds = timerRef.current
 				? readSeconds(timerRef.current, Date.now())
 				: (summary?.activeSeconds ?? 0);
-			clearSavedSession(readingId);
+			clearSavedSession(key);
 			sessionIdRef.current = null;
 			timerRef.current = null;
 			setTimer(null);
@@ -159,7 +171,7 @@ export function useReadingSession(readingId: string) {
 				queryKey: orpc.readingSession.key(),
 			});
 		},
-		[readingId],
+		[key],
 	);
 
 	const restore = useCallback(
@@ -177,16 +189,17 @@ export function useReadingSession(readingId: string) {
 	// ── Boot: find out where this session stands ─────────────────────────
 	useEffect(() => {
 		// The reading is still loading.
-		if (!readingId) return;
+		if (!key) return;
 		let cancelled = false;
 
 		async function boot() {
-			const saved = loadSavedSession(readingId);
+			const saved = loadSavedSession(key);
 			let current: ReadingSessionView | null = null;
 			let reachable = true;
 			try {
-				current = (await orpc.readingSession.current.call({ readingId }))
-					.session;
+				current = free
+					? (await orpc.readingSession.currentFree.call()).session
+					: (await orpc.readingSession.current.call({ readingId })).session;
 			} catch {
 				reachable = false;
 			}
@@ -214,11 +227,11 @@ export function useReadingSession(readingId: string) {
 					restore(saved.timer, saved.sessionId);
 					return;
 				} catch {
-					clearSavedSession(readingId);
+					clearSavedSession(key);
 				}
 			} else if (saved) {
 				// A different session is open now; ours was replaced.
-				clearSavedSession(readingId);
+				clearSavedSession(key);
 			}
 
 			setPhase(
@@ -230,7 +243,7 @@ export function useReadingSession(readingId: string) {
 		return () => {
 			cancelled = true;
 		};
-	}, [readingId, restore]);
+	}, [key, free, readingId, restore]);
 
 	// ── Keep the display moving, and notice boundaries ───────────────────
 	const active = phase.kind === "active";
@@ -313,18 +326,25 @@ export function useReadingSession(readingId: string) {
 
 	// ── Actions ──────────────────────────────────────────────────────────
 	const begin = useCallback(
-		async (config: TimerConfig) => {
+		async (config: TimerConfig, label?: string | null) => {
 			setBusy(true);
 			try {
 				await unlockAudio();
-				const session = await orpc.readingSession.start.call({
-					readingId,
-					mode: config.mode,
-					targetMinutes:
-						config.mode === "countdown" && config.targetMs
-							? Math.round(config.targetMs / MINUTE_MS)
-							: null,
-				});
+				const targetMinutes =
+					config.mode === "countdown" && config.targetMs
+						? Math.round(config.targetMs / MINUTE_MS)
+						: null;
+				const session = free
+					? await orpc.readingSession.startFree.call({
+							mode: config.mode,
+							targetMinutes,
+							label: label ?? null,
+						})
+					: await orpc.readingSession.start.call({
+							readingId,
+							mode: config.mode,
+							targetMinutes,
+						});
 				sessionIdRef.current = session.id;
 				commit(startTimer(createTimer(config), Date.now()));
 				setNotice(null);
@@ -334,7 +354,7 @@ export function useReadingSession(readingId: string) {
 				setBusy(false);
 			}
 		},
-		[commit, readingId],
+		[commit, free, readingId],
 	);
 
 	const adopt = useCallback(
@@ -412,10 +432,10 @@ export function useReadingSession(readingId: string) {
 	}, [finishedWith]);
 
 	const backToSetup = useCallback(() => {
-		clearSavedSession(readingId);
+		clearSavedSession(key);
 		setNotice(null);
 		setPhase({ kind: "setup" });
-	}, [readingId]);
+	}, [key]);
 
 	const reading: TimerReading | null = timer ? readTimer(timer, now) : null;
 
@@ -434,6 +454,8 @@ export function useReadingSession(readingId: string) {
 		skip,
 		finish,
 		backToSetup,
+		/** The open session's id, if any (for saving things that belong to it). */
+		sessionId: () => sessionIdRef.current,
 		/** Time read so far, in seconds, for showing in dialogs. */
 		secondsNow: () =>
 			timerRef.current ? readSeconds(timerRef.current, Date.now()) : 0,

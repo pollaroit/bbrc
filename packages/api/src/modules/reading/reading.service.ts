@@ -1,10 +1,13 @@
 import type { Database, DatabaseTransaction } from "@bbrc/db";
 import {
 	canonicalEditionKey,
+	clampAudioPosition,
 	cleanEditionLabel,
 	clubDayKey,
+	type EditionFormat,
 	formatEditionLanguage,
 	type PaceResult,
+	percentFromSeconds,
 	readingPace,
 	readingSessionStats,
 	readingStats,
@@ -41,6 +44,13 @@ const readingSelect = {
 	editionLabel: true,
 	editionCoverUrl: true,
 	bookEditionId: true,
+	editionFormat: true,
+	trackByTime: true,
+	totalSeconds: true,
+	currentSeconds: true,
+	learnedPace: true,
+	paceLearnedAt: true,
+	autoPage: true,
 	bookEdition: {
 		select: {
 			id: true,
@@ -67,6 +77,8 @@ const readingSelect = {
 	logs: {
 		orderBy: { createdAt: "desc" as const },
 		take: 40,
+		// Moves made by the estimate say nothing about real pace.
+		where: { estimated: false },
 		select: { createdAt: true, percent: true, page: true },
 	},
 } as const;
@@ -83,6 +95,13 @@ type ReadingRow = {
 	editionCoverId: number | null;
 	editionLabel: string | null;
 	editionCoverUrl: string | null;
+	editionFormat: EditionFormat | null;
+	trackByTime: boolean;
+	totalSeconds: number | null;
+	currentSeconds: number | null;
+	learnedPace: number | null;
+	paceLearnedAt: Date | null;
+	autoPage: boolean;
 	bookEdition: {
 		id: string;
 		publicId: string;
@@ -238,6 +257,12 @@ function mapReading(
 			pages: row.book.pages,
 		},
 		edition: mapEdition(row),
+		editionFormat: row.editionFormat,
+		trackByTime: row.trackByTime,
+		totalSeconds: row.totalSeconds,
+		currentSeconds: row.currentSeconds,
+		learnedPace: row.learnedPace,
+		autoPage: row.autoPage,
 		sitting: sitting
 			? {
 					slug: sitting.slug,
@@ -428,6 +453,7 @@ export async function startReading(
 		editionLabel?: string | null;
 		bookEditionId?: string | null;
 		totalPages?: number | null;
+		editionFormat?: EditionFormat | null;
 	},
 ): Promise<ReadingItem> {
 	const book = await loadBook(db, input.bookSlug);
@@ -445,6 +471,7 @@ export async function startReading(
 
 		let memberEdition: {
 			id: string;
+			format: EditionFormat;
 			pages: number;
 			label: string;
 			coverUrl: string | null;
@@ -461,6 +488,7 @@ export async function startReading(
 					publishedYear: true,
 					language: true,
 					coverUrl: true,
+					format: true,
 				},
 			});
 			if (!edition || edition.bookId !== book.id) {
@@ -470,6 +498,7 @@ export async function startReading(
 			}
 			memberEdition = {
 				id: edition.id,
+				format: edition.format,
 				pages: edition.pages,
 				label: editionLabelOf({
 					title: edition.title,
@@ -500,6 +529,9 @@ export async function startReading(
 			editionCoverUrl: memberEdition?.coverUrl ?? null,
 			bookEditionId: memberEdition?.id ?? null,
 			totalPages,
+			...formatFields(
+				memberEdition ? memberEdition.format : (input.editionFormat ?? null),
+			),
 		};
 
 		const existing = await tx.reading.findFirst({
@@ -507,11 +539,12 @@ export async function startReading(
 			select: { id: true, percent: true },
 		});
 		if (existing) {
-			// Starting again just updates the edition.
+			// Starting again just updates the edition (a new edition has its own pace).
 			return tx.reading.update({
 				where: { id: existing.id },
 				data: {
 					...editionFields,
+					...RESET_PACE,
 					currentPage:
 						totalPages != null
 							? Math.round((existing.percent / 100) * totalPages)
@@ -553,10 +586,33 @@ export async function startReading(
 	return mapReading(result, sittings.get(book.id), new Date());
 }
 
+/** A new edition has its own page size, so what was learned about the pace no longer applies. */
+const RESET_PACE = {
+	learnedPace: null,
+	paceLearnedAt: null,
+	autoPage: false,
+} as const;
+
+/**
+ * What an edition's format says about how progress is counted: an audiobook is
+ * counted in listening time. An unknown format changes nothing.
+ */
+function formatFields(format: EditionFormat | null) {
+	return format == null
+		? { editionFormat: null }
+		: { editionFormat: format, trackByTime: format === "audiobook" };
+}
+
 export async function updateReadingProgress(
 	db: Database,
 	userId: string,
-	input: { id: string; page?: number; percent?: number },
+	input: {
+		id: string;
+		page?: number;
+		percent?: number;
+		seconds?: number;
+		estimated?: boolean;
+	},
 ): Promise<ReadingItem> {
 	const row = await loadOwnReading(db, userId, input.id);
 	if (row.finishedAt) {
@@ -567,7 +623,20 @@ export async function updateReadingProgress(
 
 	let page: number | null = row.currentPage;
 	let percent = row.percent;
-	if (input.page != null) {
+	let seconds: number | null = row.currentSeconds;
+	if (input.seconds != null) {
+		if (!row.trackByTime || row.totalSeconds == null) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "Add the length of the recording to track by time.",
+			});
+		}
+		seconds = clampAudioPosition(input.seconds, row.totalSeconds);
+		percent = percentFromSeconds(seconds, row.totalSeconds);
+		page =
+			row.totalPages != null
+				? Math.round((percent / 100) * row.totalPages)
+				: null;
+	} else if (input.page != null) {
 		if (row.totalPages == null) {
 			throw new ORPCError("BAD_REQUEST", {
 				message: "Add the number of pages to track by page.",
@@ -582,17 +651,29 @@ export async function updateReadingProgress(
 				? Math.round((percent / 100) * row.totalPages)
 				: null;
 	}
+	// A reading counted in time keeps its time in step when the page or percent moves.
+	if (input.seconds == null && row.trackByTime && row.totalSeconds != null) {
+		seconds = Math.round((percent / 100) * row.totalSeconds);
+	}
 
-	const changed = percent !== row.percent || page !== row.currentPage;
+	const changed =
+		percent !== row.percent ||
+		page !== row.currentPage ||
+		seconds !== row.currentSeconds;
 	const updated = await db.$transaction(async (tx) => {
 		const saved = await tx.reading.update({
 			where: { id: row.id },
-			data: { percent, currentPage: page },
+			data: { percent, currentPage: page, currentSeconds: seconds },
 			select: readingSelect,
 		});
 		if (changed) {
 			await tx.readingLog.create({
-				data: { readingId: row.id, percent, page },
+				data: {
+					readingId: row.id,
+					percent,
+					page,
+					estimated: input.estimated === true,
+				},
 			});
 		}
 		// Moving off zero also makes the sitting "in progress".
@@ -617,6 +698,7 @@ export async function setReadingEdition(
 		editionLabel?: string | null;
 		bookEditionId?: string | null;
 		totalPages?: number | null;
+		editionFormat?: EditionFormat | null;
 	},
 ): Promise<ReadingItem> {
 	const row = await loadOwnReading(db, userId, input.id);
@@ -628,10 +710,12 @@ export async function setReadingEdition(
 	let memberPages: number | null = null;
 	let memberLabel: string | null = null;
 	let memberCoverUrl: string | null = null;
+	let memberFormat: EditionFormat | null = null;
 	if (input.bookEditionId) {
 		const edition = await db.bookEdition.findUnique({
 			where: { id: input.bookEditionId },
 			select: {
+				format: true,
 				bookId: true,
 				pages: true,
 				title: true,
@@ -647,6 +731,7 @@ export async function setReadingEdition(
 			});
 		}
 		memberPages = edition.pages;
+		memberFormat = edition.format;
 		memberLabel = editionLabelOf({
 			title: edition.title,
 			publisher: edition.publisher,
@@ -675,6 +760,10 @@ export async function setReadingEdition(
 			editionCoverUrl: input.bookEditionId ? memberCoverUrl : null,
 			bookEditionId: input.bookEditionId ?? null,
 			totalPages,
+			...formatFields(
+				input.bookEditionId ? memberFormat : (input.editionFormat ?? null),
+			),
+			...RESET_PACE,
 			// Keep the same place in the book, whatever the edition's length.
 			currentPage:
 				totalPages != null
@@ -686,6 +775,86 @@ export async function setReadingEdition(
 	if (input.editionOlid && !input.bookEditionId) {
 		snapshotOpenLibraryEdition(db, row.book.id, input.editionOlid);
 	}
+	const sittings = await sittingsFor(db, userId, [row.book.id]);
+	return mapReading(updated, sittings.get(row.book.id), new Date());
+}
+
+/** Counts a reading's progress in listening time (or back in pages), and keeps the recording's length. */
+export async function setReadingTracking(
+	db: Database,
+	userId: string,
+	input: { id: string; trackByTime: boolean; totalSeconds?: number },
+): Promise<ReadingItem> {
+	const row = await loadOwnReading(db, userId, input.id);
+	if (row.finishedAt) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "This book is already finished.",
+		});
+	}
+	const totalSeconds = input.trackByTime
+		? (input.totalSeconds ?? row.totalSeconds)
+		: row.totalSeconds;
+	if (input.trackByTime && totalSeconds == null) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Add the length of the recording first.",
+		});
+	}
+	const switched = input.trackByTime !== row.trackByTime;
+	const updated = await db.reading.update({
+		where: { id: row.id },
+		data: {
+			trackByTime: input.trackByTime,
+			totalSeconds,
+			currentSeconds:
+				input.trackByTime && totalSeconds != null
+					? Math.round((row.percent / 100) * totalSeconds)
+					: null,
+			// Pages and listening time are different units: what was learned no longer fits.
+			...(switched ? RESET_PACE : {}),
+		},
+		select: readingSelect,
+	});
+	const sittings = await sittingsFor(db, userId, [row.book.id]);
+	return mapReading(updated, sittings.get(row.book.id), new Date());
+}
+
+/** Saves a learned pace (and forgets it with `null`), or turns "move my page for me" on or off. */
+export async function setReadingPace(
+	db: Database,
+	userId: string,
+	input: { id: string; learnedPace?: number | null; autoPage?: boolean },
+): Promise<ReadingItem> {
+	const row = await loadOwnReading(db, userId, input.id);
+	if (row.finishedAt) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "This book is already finished.",
+		});
+	}
+	const learned =
+		input.learnedPace === undefined ? row.learnedPace : input.learnedPace;
+	if (input.autoPage === true && learned == null) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Learn your pace first.",
+		});
+	}
+	const updated = await db.reading.update({
+		where: { id: row.id },
+		data: {
+			learnedPace: learned,
+			paceLearnedAt:
+				input.learnedPace === undefined
+					? row.paceLearnedAt
+					: input.learnedPace === null
+						? null
+						: new Date(),
+			// A new pace, or none, always starts with auto off: the member turns it on.
+			autoPage:
+				input.learnedPace !== undefined
+					? false
+					: (input.autoPage ?? row.autoPage),
+		},
+		select: readingSelect,
+	});
 	const sittings = await sittingsFor(db, userId, [row.book.id]);
 	return mapReading(updated, sittings.get(row.book.id), new Date());
 }
@@ -947,11 +1116,13 @@ export async function getMyReadingStats(
 			},
 		}),
 		db.readingLog.findMany({
-			where: { reading: { userId } },
+			// A moved page that was only estimated is not reading you did that day.
+			where: { reading: { userId }, estimated: false },
 			select: { createdAt: true },
 		}),
 		db.readingSession.findMany({
-			where: { userId },
+			// Sessions without a book never count towards reading stats.
+			where: { userId, readingId: { not: null } },
 			select: { activeSeconds: true },
 		}),
 	]);
