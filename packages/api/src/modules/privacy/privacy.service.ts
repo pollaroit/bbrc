@@ -32,6 +32,8 @@ export async function getPrivacySettings(
 				favoritesVisibility: true,
 				goalsVisibility: true,
 				readingVisibility: true,
+				defaultPostVisibility: true,
+				defaultShelfVisibility: true,
 				showReadingProgress: true,
 				profile: {
 					select: {
@@ -61,6 +63,10 @@ export async function getPrivacySettings(
 			wishlist: wishlist?.visibility ?? "private",
 		},
 		showReadingProgress: user.showReadingProgress,
+		defaults: {
+			post: user.defaultPostVisibility,
+			shelf: user.defaultShelfVisibility,
+		},
 		details: {
 			dateOfBirth: user.profile?.dateOfBirthVisibility ?? "private",
 			gender: user.profile?.genderVisibility ?? "private",
@@ -93,6 +99,7 @@ export async function updatePrivacySettings(
 
 	const sections = { ...current.sections, ...input.sections };
 	const details = { ...current.details, ...input.details };
+	const defaults = { ...current.defaults, ...input.defaults };
 
 	await db.$transaction(async (tx) => {
 		await tx.user.update({
@@ -105,6 +112,8 @@ export async function updatePrivacySettings(
 				favoritesVisibility: sections.favorites,
 				goalsVisibility: sections.goals,
 				readingVisibility: sections.reading,
+				defaultPostVisibility: defaults.post,
+				defaultShelfVisibility: defaults.shelf,
 				showReadingProgress:
 					input.showReadingProgress ?? current.showReadingProgress,
 			},

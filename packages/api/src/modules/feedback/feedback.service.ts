@@ -482,7 +482,7 @@ export async function createFeedback(
 	const prepared = await prepareContentMentions(db, {
 		content: normalizeFeedbackReview(input.review),
 		authorId: userId,
-		audience: { ownerId: userId, section: "reviews" },
+		audience: { ownerId: userId, section: "reviews", item: input.visibility },
 	});
 	const review = prepared.content;
 	// Outside links get their preview ready now (bounded; never fails the save).
@@ -500,6 +500,7 @@ export async function createFeedback(
 					rating: input.rating,
 					review,
 					isSpoiler: input.isSpoiler ?? false,
+					visibility: input.visibility ?? "public",
 				},
 				select: { id: true, slug: true },
 			});
@@ -534,6 +535,7 @@ export async function createFeedback(
 				input.bookSlug,
 				userId,
 				result.freshMentions,
+				input.visibility ?? "public",
 			);
 			return { slug: result.slug, xpAwarded: result.xpAwarded };
 		});
@@ -566,7 +568,7 @@ export async function updateFeedback(
 	const prepared = await prepareContentMentions(db, {
 		content: normalizeFeedbackReview(input.review),
 		authorId: userId,
-		audience: { ownerId: userId, section: "reviews" },
+		audience: { ownerId: userId, section: "reviews", item: input.visibility },
 		alreadyMentionedIds: await loadMentionedIds(db, {
 			kind: "review",
 			id: existing.id,
@@ -583,6 +585,9 @@ export async function updateFeedback(
 				rating: input.rating,
 				review,
 				isSpoiler: input.isSpoiler ?? false,
+				...(input.visibility !== undefined
+					? { visibility: input.visibility }
+					: {}),
 			},
 		});
 		await recalculateBookAverageRating(book.id, tx);

@@ -21,7 +21,11 @@ export const ShelfTypeSchema = zod.enum(["ordered", "unordered"]);
 /** What a shelf can be at (reads). Writing `friends` opens with per-item visibility; today only the wishlist can be set to it, from Privacy. */
 export const ShelfVisibilitySchema = zod.enum(["public", "friends", "private"]);
 /** What a shelf can be set to when created or edited. */
-export const ShelfVisibilityInputSchema = zod.enum(["public", "private"]);
+export const ShelfVisibilityInputSchema = zod.enum([
+	"public",
+	"friends",
+	"private",
+]);
 
 export const ShelfPermissionSchema = zod.enum(SHELF_PERMISSIONS);
 

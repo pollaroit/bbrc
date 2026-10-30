@@ -10,6 +10,9 @@ model Post {
 
   isSpoiler Boolean @default(false) @map("is_spoiler")
 
+  /// Who may see this post (capped by the author's profile level). Comments, likes, polls and tierlists follow it.
+  visibility Visibility @default(public)
+
   /// Members can like the post.
   allowLikes    Boolean @default(true) @map("allow_likes")
   /// Members can comment on the post.

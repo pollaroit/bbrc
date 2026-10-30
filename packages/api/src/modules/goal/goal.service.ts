@@ -389,6 +389,7 @@ export async function createGoal(
 				userId,
 				slug,
 				title: input.title.trim(),
+				visibility: input.visibility ?? "public",
 				description: input.description?.trim() || null,
 				year: input.year,
 				target: input.target,
@@ -447,6 +448,9 @@ export async function updateGoal(
 		where: { id: existing.id },
 		data: {
 			title: input.title.trim(),
+			...(input.visibility !== undefined
+				? { visibility: input.visibility }
+				: {}),
 			description: input.description?.trim() || null,
 			year: input.year,
 			target: input.target,
