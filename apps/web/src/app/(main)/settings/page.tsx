@@ -28,6 +28,11 @@ const settingsLinks = [
 		description: "Birthday, bio, favorite genres, links and reading speed.",
 	},
 	{
+		href: "/settings/privacy",
+		title: "Privacy",
+		description: "Who can see your profile, reads, reviews and more.",
+	},
+	{
 		href: "/settings/following",
 		title: "Following",
 		description: "Authors you follow and new-book alerts.",
