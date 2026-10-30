@@ -75,22 +75,39 @@ describe("learnPace", () => {
 });
 
 describe("collecting", () => {
-	test("each move forward is a stretch; a correction only moves the start", () => {
+	test("a stretch closes once enough time has passed and the member moved forward", () => {
 		let state = startCollecting(10, 0);
 		state = collectUpdate(state, 16, 300);
-		state = collectUpdate(state, 12, 400);
-		state = collectUpdate(state, 20, 700);
+		state = collectUpdate(state, 24, 600);
 		expect(state.samples).toEqual([
 			{ gain: 6, activeSeconds: 300 },
 			{ gain: 8, activeSeconds: 300 },
 		]);
-		expect(state.lastValue).toBe(20);
 	});
 
-	test("staying on the same page adds nothing", () => {
-		const state = collectUpdate(startCollecting(10, 0), 10, 120);
+	test("updating often, a page at a time, keeps one stretch open instead of many tiny ones", () => {
+		let state = startCollecting(10, 0);
+		for (let page = 11; page <= 16; page += 1) {
+			state = collectUpdate(state, page, (page - 10) * 3);
+		}
 		expect(state.samples).toEqual([]);
-		expect(state.lastActiveSeconds).toBe(120);
+		state = collectUpdate(state, 17, 60);
+		expect(state.samples).toEqual([{ gain: 7, activeSeconds: 60 }]);
+	});
+
+	test("a correction backwards only moves the start", () => {
+		let state = startCollecting(10, 0);
+		state = collectUpdate(state, 6, 100);
+		state = collectUpdate(state, 12, 400);
+		expect(state.samples).toEqual([{ gain: 6, activeSeconds: 300 }]);
+	});
+
+	test("staying on the same page for a long time keeps measuring from the start", () => {
+		let state = startCollecting(10, 0);
+		state = collectUpdate(state, 10, 120);
+		expect(state.samples).toEqual([]);
+		state = collectUpdate(state, 14, 240);
+		expect(state.samples).toEqual([{ gain: 4, activeSeconds: 240 }]);
 	});
 });
 

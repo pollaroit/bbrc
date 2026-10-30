@@ -89,9 +89,9 @@ export function learnPace(
 
 /** What the learning stage has gathered so far. */
 export type PaceCollector = {
-	/** Where the member was at the last update, and how much they had read by then. */
-	lastValue: number;
-	lastActiveSeconds: number;
+	/** The place and the active time at the start of the stretch being measured. */
+	anchorValue: number;
+	anchorSeconds: number;
 	samples: PaceSample[];
 };
 
@@ -99,26 +99,34 @@ export function startCollecting(
 	value: number,
 	activeSeconds: number,
 ): PaceCollector {
-	return { lastValue: value, lastActiveSeconds: activeSeconds, samples: [] };
+	return { anchorValue: value, anchorSeconds: activeSeconds, samples: [] };
 }
 
 /**
- * The member entered where they are. Moving forward adds a sample for the time
- * since the last update; going back or staying put only moves the starting
- * point (a correction says nothing about speed).
+ * The member entered where they are. A stretch is measured from its start until
+ * enough time has passed to say something about speed (`PACE_MIN_SAMPLE_SECONDS`)
+ * and the member has moved forward: updating often, a page at a time, just keeps
+ * the stretch open instead of making many stretches too short to use. Going back
+ * only moves the start (a correction says nothing about speed).
  */
 export function collectUpdate(
 	collector: PaceCollector,
 	value: number,
 	activeSeconds: number,
 ): PaceCollector {
-	const gain = value - collector.lastValue;
-	const seconds = activeSeconds - collector.lastActiveSeconds;
-	const samples =
-		gain > 0 && seconds > 0
-			? [...collector.samples, { gain, activeSeconds: seconds }]
-			: collector.samples;
-	return { lastValue: value, lastActiveSeconds: activeSeconds, samples };
+	if (value < collector.anchorValue) {
+		return { ...collector, anchorValue: value, anchorSeconds: activeSeconds };
+	}
+	const gain = value - collector.anchorValue;
+	const seconds = activeSeconds - collector.anchorSeconds;
+	if (gain >= PACE_MIN_SAMPLE_GAIN && seconds >= PACE_MIN_SAMPLE_SECONDS) {
+		return {
+			anchorValue: value,
+			anchorSeconds: activeSeconds,
+			samples: [...collector.samples, { gain, activeSeconds: seconds }],
+		};
+	}
+	return collector;
 }
 
 /**

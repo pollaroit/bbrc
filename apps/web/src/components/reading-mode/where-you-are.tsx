@@ -160,11 +160,17 @@ export function WhereYouAre({
 	estimateRef.current = auto.estimate;
 
 	/** The member says where they are: that is the truth, whatever was guessed. */
-	function manualSet(next: number) {
+	function manualSet(next: number, options?: { typing?: boolean }) {
 		const clamped = position.set(next);
 		estimateRef.current = null;
-		learn.note(clamped);
+		// Typing a number digit by digit passes through wrong numbers: it counts for
+		// learning once the member leaves the field (`finishTyping`).
+		if (!options?.typing) learn.note(clamped);
 		auto.confirm(clamped);
+	}
+	function finishTyping() {
+		learn.note(position.current());
+		void position.flush();
 	}
 	function manualNudge(by: number) {
 		manualSet((estimateRef.current ?? position.current()) + by);
@@ -264,10 +270,11 @@ export function WhereYouAre({
 													Number(event.target.value.replace(/\D/g, "") || 0),
 													time.minutes,
 												),
+												{ typing: true },
 											)
 										}
 										onFocus={(event) => event.target.select()}
-										onBlur={() => void position.flush()}
+										onBlur={finishTyping}
 										className="h-14 w-16 border-0 bg-transparent text-center font-heading font-semibold text-4xl text-foreground tabular-nums leading-none outline-none focus-visible:bg-muted/40"
 									/>
 									h
@@ -288,10 +295,11 @@ export function WhereYouAre({
 														Number(event.target.value.replace(/\D/g, "") || 0),
 													),
 												),
+												{ typing: true },
 											)
 										}
 										onFocus={(event) => event.target.select()}
-										onBlur={() => void position.flush()}
+										onBlur={finishTyping}
 										className="h-14 w-16 border-0 bg-transparent text-center font-heading font-semibold text-4xl text-foreground tabular-nums leading-none outline-none focus-visible:bg-muted/40"
 									/>
 									min
@@ -313,10 +321,12 @@ export function WhereYouAre({
 									value={shown}
 									onChange={(event) => {
 										const digits = event.target.value.replace(/\D/g, "");
-										manualSet(digits === "" ? 0 : Number.parseInt(digits, 10));
+										manualSet(digits === "" ? 0 : Number.parseInt(digits, 10), {
+											typing: true,
+										});
 									}}
 									onFocus={(event) => event.target.select()}
-									onBlur={() => void position.flush()}
+									onBlur={finishTyping}
 									className="h-14 w-full min-w-0 border-0 bg-transparent text-center font-heading font-semibold text-4xl tabular-nums leading-none outline-none focus-visible:bg-muted/40"
 								/>
 								<span className="text-muted-foreground text-xs">
@@ -368,12 +378,14 @@ export function WhereYouAre({
 					{learn.learning ? (
 						<>
 							<p className="text-sm">
-								Learning your pace. Keep reading and update your page now and
-								then.{" "}
+								Learning your pace. Keep reading and update your page about
+								every minute.{" "}
 								<span className="text-muted-foreground tabular-nums">
 									{learn.ready
-										? "You can finish now, or keep going for a better result."
-										: "Read for a minute or two and update your page at least twice."}
+										? `${learn.stretches} counted. You can finish now, or keep going for a better result.`
+										: learn.stretches === 0
+											? "Nothing counted yet. It needs two stretches of at least 20 seconds with your page moving forward."
+											: `${learn.stretches} counted. One more stretch of at least 20 seconds with your page moving forward.`}
 								</span>
 							</p>
 							<div className="flex gap-2">

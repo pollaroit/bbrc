@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReadingItem } from "@bbrc/api/modules/reading/reading.schema";
-import { formatDuration, isReadingNow } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Input } from "@bbrc/ui/components/input";
 import {
@@ -457,16 +456,7 @@ export function ReadingCard({
 									<Timer data-icon="inline-start" aria-hidden />
 									{reading.openSession ? "Resume Reading Mode" : "Reading Mode"}
 								</Button>
-								{reading.openSession ? (
-									<span className="text-muted-foreground text-xs tabular-nums">
-										{isReadingNow(
-											new Date(reading.openSession.lastBeatAt),
-											new Date(),
-										)
-											? "Session running"
-											: `Paused · ${formatDuration(reading.openSession.activeSeconds)} read`}
-									</span>
-								) : null}
+
 								<span className="hidden flex-1 sm:block" />
 								<Button
 									type="button"
