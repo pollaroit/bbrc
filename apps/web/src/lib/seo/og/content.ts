@@ -23,6 +23,10 @@ import { getShelfBySlug } from "@bbrc/api/modules/shelf/shelf.service";
 import { sittingStatusFilterLabels } from "@bbrc/api/modules/sitting/sitting.schema";
 import { getSittingBySlug } from "@bbrc/api/modules/sitting/sitting.service";
 import { getInviteLinkOgSummary } from "@bbrc/api/modules/sitting/sitting-join.service";
+import {
+	mayViewSection,
+	memberAccessSelect,
+} from "@bbrc/api/modules/user/member-access";
 import { getUserByUsername } from "@bbrc/api/modules/user/user.service";
 import { getCompareOgSnapshot } from "@bbrc/api/modules/user-compare/user-compare-og.service";
 import {
@@ -867,6 +871,31 @@ async function resolveMemberOg(
 ): Promise<OgImageContent> {
 	try {
 		const user = await getUserByUsername({ username }, db, ANONYMOUS_VIEWER);
+
+		// A private profile shows a stranger only the identity: name, username, avatar,
+		// bio and the friend count. No statistics, whatever the section.
+		if (!user.canViewProfile) {
+			return {
+				kind: "Member",
+				title: user.name,
+				subtitle: `@${user.username}`,
+				body: plain(user.profile.bio, 160) || undefined,
+				badge: "Private profile",
+				media: await avatarMedia(user),
+				facts: [fact("Friends", num(user.friendCount ?? 0))],
+			};
+		}
+
+		// A public profile still lets each member close a section: what an anonymous
+		// visitor may not see is shown as "Private", never as a number.
+		const access = await db.user.findUnique({
+			where: { username },
+			select: memberAccessSelect,
+		});
+		const mayReads =
+			access != null && mayViewSection(ANONYMOUS_VIEWER, access, "reads");
+		const mayReviews =
+			access != null && mayViewSection(ANONYMOUS_VIEWER, access, "reviews");
 		const byUser = { user: { username } };
 		const [
 			posts,
@@ -906,10 +935,14 @@ async function resolveMemberOg(
 
 		const bio = plain(user.profile.bio, 160);
 		const levels = `${user.xpLevel.label} · ${user.rpLevel.label}`;
-		const givenFact =
-			avgGiven != null
+		const givenFact = !mayReviews
+			? fact("Avg rating given", "Private")
+			: avgGiven != null
 				? fact("Avg rating given", outOfFive(avgGiven), rating(avgGiven))
 				: fact("Avg rating given", "No ratings");
+		const readsText = mayReads ? num(reads) : "Private";
+		const pagesText = mayReads ? num(pagesRead) : "Private";
+		const reviewsText = mayReviews ? num(reviews) : "Private";
 
 		const achievementsEarned = await countMemberAchievements(username);
 
@@ -917,7 +950,7 @@ async function resolveMemberOg(
 			overview: [
 				fact("XP", num(user.xp)),
 				fact("RP", num(user.rp)),
-				fact("Reads", num(reads)),
+				fact("Reads", readsText),
 				fact("Sittings", num(sittings)),
 			],
 			posts: [
@@ -926,13 +959,13 @@ async function resolveMemberOg(
 				fact("XP", num(user.xp)),
 			],
 			feedbacks: [
-				fact("Reviews", num(reviews)),
+				fact("Reviews", reviewsText),
 				givenFact,
-				fact("Reads", num(reads)),
+				fact("Reads", readsText),
 			],
 			stats: [
-				fact("Books read", num(reads)),
-				fact("Pages read", num(pagesRead)),
+				fact("Books read", readsText),
+				fact("Pages read", pagesText),
 				givenFact,
 				fact(
 					"Best streak",
@@ -951,10 +984,7 @@ async function resolveMemberOg(
 				fact("Level", user.rpLevel.label),
 				fact("Sittings", num(sittings)),
 			],
-			shelves: [
-				fact("Public shelves", num(shelves)),
-				fact("Reads", num(reads)),
-			],
+			shelves: [fact("Public shelves", num(shelves)), fact("Reads", readsText)],
 			goals: [
 				fact("Goals", num(goals)),
 				fact("Completed", num(goalsDone)),
@@ -962,12 +992,12 @@ async function resolveMemberOg(
 			],
 			achievements: [
 				fact("Achievements", num(achievementsEarned)),
-				fact("Reads", num(reads)),
+				fact("Reads", readsText),
 				fact("Sittings", num(sittings)),
 			],
 		};
 
-		const statsLine = `${num(reviews)} ${reviews === 1 ? "review" : "reviews"} · ${num(sittings)} ${sittings === 1 ? "sitting" : "sittings"} · ${num(shelves)} ${shelves === 1 ? "shelf" : "shelves"}`;
+		const statsLine = `${mayReviews ? `${num(reviews)} ${reviews === 1 ? "review" : "reviews"}` : "Reviews private"} · ${num(sittings)} ${sittings === 1 ? "sitting" : "sittings"} · ${num(shelves)} ${shelves === 1 ? "shelf" : "shelves"}`;
 
 		return {
 			kind: "Member",
