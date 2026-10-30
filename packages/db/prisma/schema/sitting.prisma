@@ -75,6 +75,9 @@ model Feedback {
   authorId String @map("author_id")
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
+  /// Who may see this review (on top of the author's reviews setting and profile level).
+  visibility Visibility @default(public)
+
   /// @zod.uuid("Invalid book id")
   bookId String @map("book_id")
   book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)

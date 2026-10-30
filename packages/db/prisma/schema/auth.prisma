@@ -47,6 +47,9 @@ model User {
   readingVisibility    Visibility        @default(public) @map("reading_visibility")
   /// Friend requests are accepted at once (only for a public profile; a private profile switches it off).
   autoAcceptFriends    Boolean           @default(false) @map("auto_accept_friends")
+  /// What a new post or a new shelf starts as (each can still be changed when it is written).
+  defaultPostVisibility  Visibility      @default(public) @map("default_post_visibility")
+  defaultShelfVisibility Visibility      @default(public) @map("default_shelf_visibility")
   /// Look and feel (palette, fonts, sizes) plus display preferences; validated by `normalizePreferences`.
   preferences           Json?
   /// @zod.email("Invalid email address")

@@ -25,6 +25,8 @@ export const PrivacySettingsSchema = zod.object({
 		gender: Level,
 		location: Level,
 	}),
+	/** What a new post and a new shelf start as. */
+	defaults: zod.object({ post: Level, shelf: Level }),
 	friendCount: zod.number().int().min(0),
 });
 
@@ -34,6 +36,7 @@ export const UpdatePrivacySettingsInputSchema = zod.object({
 	sections: PrivacySettingsSchema.shape.sections.partial().optional(),
 	showReadingProgress: zod.boolean().optional(),
 	details: PrivacySettingsSchema.shape.details.partial().optional(),
+	defaults: PrivacySettingsSchema.shape.defaults.partial().optional(),
 });
 
 export type PrivacySettings = z.infer<typeof PrivacySettingsSchema>;

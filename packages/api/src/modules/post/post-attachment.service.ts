@@ -133,6 +133,7 @@ function attachmentOwners(row: PostAttachmentRow): AttachmentOwner[] {
 							id: row.feedback.authorId,
 							profileVisibility: row.feedback.author.profileVisibility,
 							section: row.feedback.author.reviewsVisibility,
+							item: row.feedback.visibility,
 						},
 					]
 				: [];
@@ -142,6 +143,7 @@ function attachmentOwners(row: PostAttachmentRow): AttachmentOwner[] {
 						{
 							id: row.attachedPost.authorId,
 							profileVisibility: row.attachedPost.author.profileVisibility,
+							item: row.attachedPost.visibility,
 						},
 					]
 				: [];
@@ -156,6 +158,7 @@ function attachmentOwners(row: PostAttachmentRow): AttachmentOwner[] {
 				owners.push({
 					id: row.comment.post.authorId,
 					profileVisibility: row.comment.post.author.profileVisibility,
+					item: row.comment.post.visibility,
 				});
 			}
 			if (row.comment.feedback) {
@@ -163,6 +166,7 @@ function attachmentOwners(row: PostAttachmentRow): AttachmentOwner[] {
 					id: row.comment.feedback.authorId,
 					profileVisibility: row.comment.feedback.author.profileVisibility,
 					section: row.comment.feedback.author.reviewsVisibility,
+					item: row.comment.feedback.visibility,
 				});
 			}
 			return owners;

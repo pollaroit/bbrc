@@ -88,6 +88,8 @@ export const CreateFeedbackInputSchema = zod.object({
 	rating: FeedbackRatingStepSchema,
 	review: zod.string(),
 	isSpoiler: FeedbackSchema.shape.isSpoiler.optional(),
+	/** Who may see this review (on top of the reviews setting and profile level). */
+	visibility: FeedbackSchema.shape.visibility.optional(),
 });
 
 export const CreateFeedbackOutputSchema = zod.object({

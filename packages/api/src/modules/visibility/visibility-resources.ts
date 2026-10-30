@@ -11,11 +11,12 @@ import { type Clause, notBlockedWhere, visibleWhere } from "./visibility-where";
  *   where: { AND: [existing, postVisibleWhere(viewer) as Prisma.PostWhereInput] }
  */
 
-/** A post: its author's profile level (and, in 9B, the post's own level). */
+/** A post: the post's own level, capped by its author's profile level. */
 export function postVisibleWhere(viewer: Viewer): Clause {
 	return visibleWhere(viewer, {
 		ownerIdField: "authorId",
 		ownerRelation: "author",
+		itemField: "visibility",
 	});
 }
 
@@ -41,12 +42,13 @@ export function likeVisibleWhere(viewer: Viewer): Clause {
 	};
 }
 
-/** A review: the author's reviews setting and profile. */
+/** A review: the review's own level, the author's reviews setting and their profile. */
 export function reviewVisibleWhere(viewer: Viewer): Clause {
 	return visibleWhere(viewer, {
 		ownerIdField: "authorId",
 		ownerRelation: "author",
 		section: "reviews",
+		itemField: "visibility",
 	});
 }
 
@@ -79,6 +81,7 @@ export function goalVisibleWhere(viewer: Viewer): Clause {
 		ownerIdField: "userId",
 		ownerRelation: "user",
 		section: "goals",
+		itemField: "visibility",
 	});
 }
 
