@@ -1,6 +1,9 @@
-import type { Database } from "@bbrc/db";
+import { shelfVisibleWhere } from "@bbrc/api/modules/shelf/shelf-visibility";
+import { postVisibleWhere } from "@bbrc/api/modules/visibility/visibility-resources";
+import type { Database, Prisma } from "@bbrc/db";
 import {
 	ACHIEVEMENTS,
+	ANONYMOUS_VIEWER,
 	memberEditionKey,
 	openLibraryEditionKey,
 } from "@bbrc/shared";
@@ -48,7 +51,14 @@ export async function buildAppSitemap(
 			select: { slug: true, updatedAt: true },
 			orderBy: { updatedAt: "desc" },
 		}),
+		// Only what an anonymous visitor may open: public posts of public profiles.
 		db.post.findMany({
+			where: {
+				AND: [
+					postVisibleWhere(ANONYMOUS_VIEWER) as Prisma.PostWhereInput,
+					{ author: { status: { not: "banned" } } },
+				],
+			},
 			select: { slug: true, updatedAt: true },
 			orderBy: { updatedAt: "desc" },
 		}),
@@ -56,7 +66,9 @@ export async function buildAppSitemap(
 			select: { slug: true, updatedAt: true },
 			orderBy: { updatedAt: "desc" },
 		}),
+		// Private profiles and banned members are not listed.
 		db.user.findMany({
+			where: { profileVisibility: "public", status: { not: "banned" } },
 			select: { username: true, updatedAt: true },
 			orderBy: { updatedAt: "desc" },
 		}),
@@ -66,7 +78,12 @@ export async function buildAppSitemap(
 				updatedAt: true,
 				user: { select: { username: true } },
 			},
-			where: { status: "active", visibility: "public", isWishlist: false },
+			where: {
+				AND: [
+					shelfVisibleWhere(ANONYMOUS_VIEWER, { listing: true }),
+					{ user: { status: { not: "banned" } } },
+				],
+			},
 			orderBy: { updatedAt: "desc" },
 		}),
 		// Editions members added (one linked to an Open Library edition shares that page).
