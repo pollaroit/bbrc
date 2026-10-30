@@ -149,13 +149,11 @@ model BookAuthor {
 
 enum FollowTargetType {
   author
-  user
 
   @@map("follow_target_type")
 }
 
-/// A member following something. Built to hold more than authors: members will be able
-/// to follow members, so the target is an author OR a user (exactly one of the two ids).
+/// A member following an author. (Members befriend members: see `Friendship`.)
 model Follow {
   /// @zod.uuid("Invalid UUID")
   id        String   @id @default(uuid())
@@ -169,13 +167,8 @@ model Follow {
   authorId String? @map("author_id")
   author   Author? @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  targetUserId String? @map("target_user_id")
-  targetUser   User?   @relation("FollowedBy", fields: [targetUserId], references: [id], onDelete: Cascade)
-
   @@unique([followerId, authorId])
-  @@unique([followerId, targetUserId])
   @@index([authorId])
-  @@index([targetUserId])
   @@index([followerId, createdAt])
   @@map("follow")
 }

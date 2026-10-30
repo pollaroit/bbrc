@@ -43,7 +43,6 @@ export const SearchCompareMembersInputSchema = zod.object({
 export const SearchCompareMembersOutputSchema = zod.object({
 	items: zod.array(
 		CompareAdminMemberSchema.extend({
-			isHidden: zod.boolean(),
 			isBanned: zod.boolean(),
 			allowCompare: zod.boolean(),
 		}),

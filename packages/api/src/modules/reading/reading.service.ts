@@ -1109,7 +1109,6 @@ export async function setReadingPreferences(
 								readingVisibility: input.showCurrentlyReading
 									? ("public" as const)
 									: ("private" as const),
-								showCurrentlyReading: input.showCurrentlyReading,
 							}
 						: {}),
 					...(input.showReadingProgress !== undefined

@@ -105,8 +105,6 @@ export async function updatePrivacySettings(
 				favoritesVisibility: sections.favorites,
 				goalsVisibility: sections.goals,
 				readingVisibility: sections.reading,
-				// Kept in step until the old column is dropped.
-				showCurrentlyReading: sections.reading === "public",
 				showReadingProgress:
 					input.showReadingProgress ?? current.showReadingProgress,
 			},

@@ -68,7 +68,6 @@ export function CompareMemberPicker({
 				name: member.name,
 				image: member.image,
 				note: [
-					member.isHidden ? "hidden" : null,
 					member.isBanned ? "banned" : null,
 					member.allowCompare ? null : "comparisons off",
 				]

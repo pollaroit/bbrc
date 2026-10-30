@@ -55,7 +55,6 @@ export async function searchCompareMembers(
 			username: true,
 			name: true,
 			image: true,
-			isHidden: true,
 			status: true,
 			allowCompare: true,
 		},
@@ -65,7 +64,6 @@ export async function searchCompareMembers(
 	return {
 		items: rows.map((row) => ({
 			...memberRef(row),
-			isHidden: row.isHidden,
 			isBanned: row.status === "banned",
 			allowCompare: row.allowCompare,
 		})),

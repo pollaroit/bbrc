@@ -23,7 +23,6 @@ import {
 	isBlockedFrom,
 	viewerIdOf,
 } from "../read/section-access";
-import { loadActorSocialGate } from "../user/user-visibility";
 import { reviewVisibleWhere } from "../visibility/visibility-resources";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardFeedbackXp } from "../xp/xp.service";
@@ -453,8 +452,6 @@ export async function createFeedback(
 	userId: string,
 	db: Database,
 ): Promise<CreateFeedbackOutput> {
-	await loadActorSocialGate(userId, db);
-
 	const book = await loadBookBySlug(input.bookSlug, db);
 
 	const existing = await db.feedback.findUnique({
@@ -547,8 +544,6 @@ export async function updateFeedback(
 	userId: string,
 	db: Database,
 ): Promise<UpdateFeedbackOutput> {
-	await loadActorSocialGate(userId, db);
-
 	const book = await loadBookBySlug(input.bookSlug, db);
 
 	const existing = await db.feedback.findUnique({

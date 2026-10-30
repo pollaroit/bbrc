@@ -75,6 +75,5 @@ export const adminUserListFiltersSchema = z
 		minFactImpressions: z.number().int().min(0),
 		minReads: z.number().int().min(0),
 		maxReads: z.number().int().min(0),
-		isHidden: z.boolean(),
 	})
 	.partial();

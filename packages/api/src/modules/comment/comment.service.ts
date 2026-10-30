@@ -19,7 +19,6 @@ import {
 } from "../notification/notification-triggers";
 import { assertPostVisible, viewerUserId } from "../post/post-visibility";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
-import { loadActorSocialGate } from "../user/user-visibility";
 import { reviewVisibleWhere } from "../visibility/visibility-resources";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardCommentXp } from "../xp/xp.service";
@@ -298,8 +297,6 @@ export async function createComment(
 	db: Database,
 	viewer: Viewer,
 ): Promise<CreateCommentOutput> {
-	await loadActorSocialGate(userId, db);
-
 	const postId = input.postSlug
 		? await loadPostIdBySlug(input.postSlug, db)
 		: null;

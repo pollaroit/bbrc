@@ -340,7 +340,8 @@ async function resolveAuthorsListOg(): Promise<OgImageContent> {
 }
 
 async function resolveMembersListOg(): Promise<OgImageContent> {
-	const where = { isHidden: false, status: { not: "banned" as const } };
+	// Counts include every member, however private (only names are hidden).
+	const where = { status: { not: "banned" as const } };
 	const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 	const [people, active, reads, reviews] = await Promise.all([
 		db.user.count({ where }),
@@ -456,7 +457,7 @@ async function bookTabFact(
 		}
 		case "stats": {
 			const count = await db.read.count({
-				where: { ...where, user: { isHidden: false } },
+				where: { user: where },
 			});
 			return fact("Readers", num(count));
 		}
@@ -1355,7 +1356,6 @@ async function resolveAchievementOg(slug: string): Promise<OgImageContent> {
 			where: {
 				achievementKey: definition.key,
 				revokedAt: null,
-				user: { isHidden: false },
 			},
 			select: { userId: true },
 			distinct: ["userId"],

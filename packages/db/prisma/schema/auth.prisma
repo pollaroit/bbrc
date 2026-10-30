@@ -32,8 +32,6 @@ model User {
   allowMentions         Boolean    @default(true) @map("allow_mentions")
   /// Other members can compare their reading with this member (admins always can).
   allowCompare          Boolean    @default(true) @map("allow_compare")
-  /// Replaced by `readingVisibility`; kept until the code that reads it is ported, then dropped.
-  showCurrentlyReading  Boolean    @default(true) @map("show_currently_reading")
   /// Others can see how far along this member is (otherwise just "reading").
   showReadingProgress   Boolean    @default(true) @map("show_reading_progress")
   /// Organisers may send this member an invitation to a sitting.
@@ -56,7 +54,6 @@ model User {
   emailVerified         Boolean    @default(false) @map("email_verified")
   image                 String?
   isAdmin               Boolean    @default(false) @map("is_admin")
-  isHidden              Boolean    @default(false) @map("is_hidden")
   status                UserStatus @default(active)
 
   /// Club activity points; may go negative after moderation.
@@ -126,7 +123,6 @@ model User {
   nominatedPollOptions       PollOption[] @relation("PollOptionNominator")
   authorsCreated             Author[]                 @relation("AuthorCreator")
   followsMade                Follow[]                 @relation("FollowsMade")
-  followedBy                 Follow[]                 @relation("FollowedBy")
   mentionsReceived           ContentMention[]         @relation("MentionedUser")
   mentionsMade               ContentMention[]         @relation("MentionAuthor")
   bookEditionsCreated        BookEdition[]            @relation("BookEditionCreator")

@@ -7,7 +7,6 @@ import { mergeWhereFragments } from "../../utils/searching";
 import { threadCommentVisibleWhere } from "../comment/comment-visibility";
 import { notifyReactionOnYourPost } from "../notification/notification-triggers";
 import { assertPostVisible } from "../post/post-visibility";
-import { loadActorSocialGate } from "../user/user-visibility";
 import {
 	likeVisibleWhere,
 	reviewVisibleWhere,
@@ -319,8 +318,6 @@ async function applyLike(
 	intent: LikeIntent,
 	viewer: Viewer,
 ): Promise<ToggleLikeOutput> {
-	await loadActorSocialGate(userId, db);
-
 	const target = await resolveLikeTarget(input, db, viewer);
 
 	const result = await db.$transaction(async (tx) => {

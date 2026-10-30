@@ -32,7 +32,6 @@ import {
 	tierlistImageUrls,
 } from "../post-tierlist/post-tierlist.service";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
-import { loadActorSocialGate } from "../user/user-visibility";
 import {
 	commentVisibleWhere,
 	postVisibleWhere,
@@ -584,8 +583,6 @@ export async function createPost(
 	db: Database,
 	viewer: Viewer,
 ): Promise<CreatePostOutput> {
-	await loadActorSocialGate(userId, db);
-
 	const prepared = await prepareContentMentions(db, {
 		content: assertNormalizedSocialContent(input.content),
 		authorId: userId,

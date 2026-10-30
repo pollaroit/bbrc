@@ -41,7 +41,6 @@ import {
 } from "../reading/reading.service";
 import { calculateRpPointsDelta } from "../rp/rp.service";
 import { userMemberLevelsFromPoints } from "../user/member-levels";
-import { loadActorSocialGate } from "../user/user-visibility";
 import {
 	readVisibleWhere,
 	reviewVisibleWhere,
@@ -1369,8 +1368,6 @@ export async function submitPollVotes(
 	userId: string,
 	db: Database,
 ): Promise<SubmitPollVotesOutput> {
-	await loadActorSocialGate(userId, db);
-
 	const sitting = await db.sitting.findUnique({
 		where: { slug: input.sittingSlug },
 		select: {

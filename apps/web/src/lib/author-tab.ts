@@ -18,7 +18,6 @@ import {
 	getAuthorInsightShelves,
 	getAuthorInsightSittings,
 } from "@bbrc/api/modules/author-insights/author-insights.service";
-import { viewerFromSession } from "@bbrc/api/modules/user/user-visibility";
 import type { Metadata, Route } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";

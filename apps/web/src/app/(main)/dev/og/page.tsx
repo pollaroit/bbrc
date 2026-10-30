@@ -119,12 +119,12 @@ export default async function OgDevPage() {
 			select: { slug: true },
 		}),
 		db.user.findFirst({
-			where: { isHidden: false },
+			where: { profileVisibility: "public" },
 			orderBy: { createdAt: "asc" },
 			select: { username: true },
 		}),
 		db.user.findFirst({
-			where: { isHidden: false, image: { not: null } },
+			where: { profileVisibility: "public", image: { not: null } },
 			orderBy: { createdAt: "asc" },
 			select: { username: true },
 		}),
