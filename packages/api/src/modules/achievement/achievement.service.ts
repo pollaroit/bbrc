@@ -1,4 +1,3 @@
-import type { Session } from "@bbrc/auth";
 import type { Database } from "@bbrc/db";
 import {
 	ACHIEVEMENTS,
@@ -11,10 +10,17 @@ import {
 	type FactSection,
 	getAchievement,
 	tierName,
+	type Viewer,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { dispatchNotification } from "../notification/notification.service";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
+import {
+	assertMayViewMember,
+	mayViewProfile,
+	memberAccessSelect,
+	viewerIsAdmin,
+	viewerUserId,
+} from "../user/member-access";
 import type {
 	AchievementSummary,
 	GetAchievementOutput,
@@ -154,7 +160,7 @@ export async function sweepAchievements(
 async function earnedCountsByTier(db: Database) {
 	// A member who earned a yearly achievement in several years counts once per tier.
 	const distinct = await db.userAchievement.findMany({
-		where: { revokedAt: null, user: visibleOnSiteUserWhere },
+		where: { revokedAt: null },
 		select: { userId: true, achievementKey: true, tier: true },
 		distinct: ["userId", "achievementKey", "tier"],
 	});
@@ -240,19 +246,20 @@ function summarize(
 
 export async function listAchievements(
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<ListAchievementsOutput> {
-	const viewerId = session?.user.id;
-	const [counts, memberCount, viewer] = await Promise.all([
+	const viewerId = viewerUserId(viewer);
+	// Counts cover every member, however private.
+	const [counts, memberCount, mineState] = await Promise.all([
 		earnedCountsByTier(db),
-		db.user.count({ where: visibleOnSiteUserWhere }),
+		db.user.count(),
 		viewerId ? viewerState(db, viewerId) : Promise.resolve(null),
 	]);
 
 	let hiddenRemaining = 0;
 	const items: AchievementSummary[] = [];
 	for (const definition of ACHIEVEMENTS) {
-		const mine = viewer?.get(definition.key) ?? null;
+		const mine = mineState?.get(definition.key) ?? null;
 		if (definition.isHidden && (mine?.tier ?? 0) === 0) {
 			hiddenRemaining += 1;
 			continue;
@@ -267,8 +274,22 @@ type EarnerRow = {
 	tier: number;
 	periodKey: string;
 	earnedAt: Date;
-	user: { username: string; name: string; image: string | null };
+	user: {
+		id: string;
+		username: string;
+		name: string;
+		image: string | null;
+		profileVisibility: "public" | "private";
+	};
 };
+
+const earnerUserSelect = {
+	id: true,
+	username: true,
+	name: true,
+	image: true,
+	profileVisibility: true,
+} as const;
 
 /** One row per member: their highest tier, newest first. */
 function collapseEarners(rows: EarnerRow[]) {
@@ -284,6 +305,7 @@ function collapseEarners(rows: EarnerRow[]) {
 		}
 	}
 	return [...best.values()].map((row) => ({
+		user: row.user,
 		username: row.user.username,
 		name: row.user.name,
 		image: row.user.image,
@@ -296,15 +318,16 @@ function collapseEarners(rows: EarnerRow[]) {
 export async function listAchievementEarners(
 	db: Database,
 	input: { slug: string; tier?: number; offset: number; limit: number },
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<ListEarnersOutput> {
 	const definition = ACHIEVEMENTS.find((item) => item.slug === input.slug);
 	if (!definition) {
 		throw new ORPCError("NOT_FOUND", { message: "Achievement not found" });
 	}
-	if (definition.isHidden && !session?.user.isAdmin) {
-		const viewer = session ? await viewerState(db, session.user.id) : null;
-		if ((viewer?.get(definition.key)?.tier ?? 0) === 0) {
+	if (definition.isHidden && !viewerIsAdmin(viewer)) {
+		const viewerId = viewerUserId(viewer);
+		const mineState = viewerId ? await viewerState(db, viewerId) : null;
+		if ((mineState?.get(definition.key)?.tier ?? 0) === 0) {
 			throw new ORPCError("NOT_FOUND", { message: "Achievement not found" });
 		}
 	}
@@ -313,17 +336,17 @@ export async function listAchievementEarners(
 		where: {
 			achievementKey: definition.key,
 			revokedAt: null,
-			user: visibleOnSiteUserWhere,
 		},
 		orderBy: { earnedAt: "desc" },
 		select: {
 			tier: true,
 			periodKey: true,
 			earnedAt: true,
-			user: { select: { username: true, name: true, image: true } },
+			user: { select: earnerUserSelect },
 		},
 	});
 
+	// Totals cover every earner; only the names of private earners are left out.
 	const all = collapseEarners(rows);
 	const perTier: Record<string, number> = {};
 	for (const earner of all) {
@@ -332,56 +355,64 @@ export async function listAchievementEarners(
 	const filtered = input.tier
 		? all.filter((earner) => earner.tier === input.tier)
 		: all;
+	const named = filtered.filter((earner) =>
+		mayViewProfile(viewer, earner.user),
+	);
 
 	return {
 		total: filtered.length,
+		privateCount: filtered.length - named.length,
 		perTier,
-		items: filtered.slice(input.offset, input.offset + input.limit),
+		items: named
+			.slice(input.offset, input.offset + input.limit)
+			.map(({ user: _user, ...earner }) => earner),
 	};
 }
 
 export async function getAchievementBySlug(
 	db: Database,
 	slug: string,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetAchievementOutput> {
 	const definition = ACHIEVEMENTS.find((item) => item.slug === slug);
 	if (!definition) {
 		throw new ORPCError("NOT_FOUND", { message: "Achievement not found" });
 	}
 
-	const viewerId = session?.user.id;
-	const [counts, memberCount, viewer, earners] = await Promise.all([
+	const viewerId = viewerUserId(viewer);
+	const [counts, memberCount, mineState, earners] = await Promise.all([
 		earnedCountsByTier(db),
-		db.user.count({ where: visibleOnSiteUserWhere }),
+		db.user.count(),
 		viewerId ? viewerState(db, viewerId) : Promise.resolve(null),
 		db.userAchievement.findMany({
 			where: {
 				achievementKey: definition.key,
 				revokedAt: null,
-				user: visibleOnSiteUserWhere,
 			},
 			orderBy: { earnedAt: "desc" },
-			take: RECENT_EARNERS * 4,
+			take: RECENT_EARNERS * 8,
 			select: {
 				tier: true,
 				periodKey: true,
 				earnedAt: true,
-				user: { select: { username: true, name: true, image: true } },
+				user: { select: earnerUserSelect },
 			},
 		}),
 	]);
 
-	const mine = viewer?.get(definition.key) ?? null;
+	const mine = mineState?.get(definition.key) ?? null;
 	if (
 		definition.isHidden &&
 		(mine?.tier ?? 0) === 0 &&
-		!session?.user.isAdmin
+		!viewerIsAdmin(viewer)
 	) {
 		throw new ORPCError("NOT_FOUND", { message: "Achievement not found" });
 	}
 
-	const recentEarners = collapseEarners(earners).slice(0, RECENT_EARNERS);
+	const recentEarners = collapseEarners(earners)
+		.filter((earner) => mayViewProfile(viewer, earner.user))
+		.slice(0, RECENT_EARNERS)
+		.map(({ user: _user, ...earner }) => earner);
 
 	return {
 		...summarize(definition, counts, mine),
@@ -394,21 +425,23 @@ export async function getAchievementBySlug(
 export async function getUserAchievements(
 	db: Database,
 	username: string,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetUserAchievementsOutput> {
 	const user = await db.user.findUnique({
 		where: { username },
-		select: { id: true, isHidden: true },
+		select: memberAccessSelect,
 	});
-	const viewerId = session?.user.id;
-	const isOwner = Boolean(user && viewerId === user.id);
-	if (!user || (user.isHidden && !isOwner && !session?.user.isAdmin)) {
-		throw new ORPCError("NOT_FOUND", { message: "Member not found" });
-	}
+	// Achievements follow the profile level; blocked or missing reads as not found.
+	assertMayViewMember(user, viewer, { username });
+	const isOwner = viewerUserId(viewer) === user.id;
 
 	// A member who has never been checked (joined before achievements existed) is
-	// brought up to date the first time anyone looks at their profile.
-	if ((await db.userAchievement.count({ where: { userId: user.id } })) === 0) {
+	// brought up to date the first time THEY look at their own profile. Reading someone
+	// else's page never writes.
+	if (
+		isOwner &&
+		(await db.userAchievement.count({ where: { userId: user.id } })) === 0
+	) {
 		await evaluateAchievementsForUser(db, user.id);
 	}
 

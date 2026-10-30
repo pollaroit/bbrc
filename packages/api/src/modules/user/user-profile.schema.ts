@@ -13,6 +13,7 @@ import {
 	PROFILE_LOCATION_MAX_CHARS,
 	PROFILE_WEBSITE_MAX_CHARS,
 	socialSites,
+	VISIBILITY_LEVELS,
 } from "@bbrc/shared";
 import zod from "zod";
 
@@ -37,7 +38,13 @@ const WebsiteUrlSchema = zod
 		}
 	}, "Website must be a valid URL starting with https://");
 
+const VisibilityLevelSchema = zod.enum(VISIBILITY_LEVELS);
+
 export const UserProfileOutputSchema = zod.object({
+	/** Who may see each detail. Only sent to the member themselves and admins. */
+	dateOfBirthVisibility: VisibilityLevelSchema.optional(),
+	genderVisibility: VisibilityLevelSchema.optional(),
+	locationVisibility: VisibilityLevelSchema.optional(),
 	dateOfBirth: zod.coerce.date().nullable(),
 	gender: GenderSchema,
 	location: zod.string().nullable(),
@@ -95,6 +102,10 @@ export const UpdateMyProfileInputSchema = zod
 		websiteUrl: WebsiteUrlSchema.nullable(),
 		socialLinks: zod.array(SocialLinkSchema).max(socialSites.length),
 		wpm: zod.number().int().min(MIN_WPM).max(MAX_WPM).default(DEFAULT_WPM),
+		/** Left out = unchanged. */
+		dateOfBirthVisibility: VisibilityLevelSchema.optional(),
+		genderVisibility: VisibilityLevelSchema.optional(),
+		locationVisibility: VisibilityLevelSchema.optional(),
 	})
 	.superRefine((value, ctx) => {
 		const genres = new Set(value.favoriteGenres);

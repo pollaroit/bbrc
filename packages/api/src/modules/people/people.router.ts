@@ -1,4 +1,5 @@
 import { publicProcedure } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	GetPeopleListInputSchema,
 	GetPeopleListOutputSchema,
@@ -11,9 +12,18 @@ export const peopleRouter = {
 		.input(GetPeopleListInputSchema)
 		.output(GetPeopleListOutputSchema)
 		.handler(async ({ input, context }) =>
-			getPeopleList(input, context.db, context.session),
+			getPeopleList(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	overview: publicProcedure
 		.output(GetPeopleOverviewOutputSchema)
-		.handler(async ({ context }) => getPeopleOverview(context.db)),
+		.handler(async ({ context }) =>
+			getPeopleOverview(
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
+		),
 };

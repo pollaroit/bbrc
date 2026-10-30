@@ -32,11 +32,21 @@ model User {
   allowMentions         Boolean    @default(true) @map("allow_mentions")
   /// Other members can compare their reading with this member (admins always can).
   allowCompare          Boolean    @default(true) @map("allow_compare")
-  showCurrentlyReading  Boolean    @default(true) @map("show_currently_reading")
   /// Others can see how far along this member is (otherwise just "reading").
   showReadingProgress   Boolean    @default(true) @map("show_reading_progress")
   /// Organisers may send this member an invitation to a sitting.
   allowSittingInvites   Boolean    @default(true) @map("allow_sitting_invites")
+
+  /// A private profile shows only name, username, avatar, bio and the friend count to non-friends.
+  profileVisibility    ProfileVisibility @default(public) @map("profile_visibility")
+  /// Who may see each part of the profile (never wider than the profile itself). The wishlist's level is its shelf's.
+  readsVisibility      Visibility        @default(public) @map("reads_visibility")
+  reviewsVisibility    Visibility        @default(public) @map("reviews_visibility")
+  favoritesVisibility  Visibility        @default(public) @map("favorites_visibility")
+  goalsVisibility      Visibility        @default(public) @map("goals_visibility")
+  readingVisibility    Visibility        @default(public) @map("reading_visibility")
+  /// Friend requests are accepted at once (only for a public profile; a private profile switches it off).
+  autoAcceptFriends    Boolean           @default(false) @map("auto_accept_friends")
   /// Look and feel (palette, fonts, sizes) plus display preferences; validated by `normalizePreferences`.
   preferences           Json?
   /// @zod.email("Invalid email address")
@@ -44,7 +54,6 @@ model User {
   emailVerified         Boolean    @default(false) @map("email_verified")
   image                 String?
   isAdmin               Boolean    @default(false) @map("is_admin")
-  isHidden              Boolean    @default(false) @map("is_hidden")
   status                UserStatus @default(active)
 
   /// Club activity points; may go negative after moderation.
@@ -104,10 +113,16 @@ model User {
   readings                   Reading[]
   readingSessions            ReadingSession[]
   pushDevices                PushDevice[]
+  friendshipsAsLow           Friendship[]             @relation("FriendshipLow")
+  friendshipsAsHigh          Friendship[]             @relation("FriendshipHigh")
+  friendshipsRequested       Friendship[]             @relation("FriendshipRequester")
+  friendRequestsSent         FriendRequestLog[]       @relation("FriendRequestSender")
+  friendRequestsReceived     FriendRequestLog[]       @relation("FriendRequestTarget")
+  blocksMade                 UserBlock[]              @relation("BlockMade")
+  blocksReceived             UserBlock[]              @relation("BlockReceived")
   nominatedPollOptions       PollOption[] @relation("PollOptionNominator")
   authorsCreated             Author[]                 @relation("AuthorCreator")
   followsMade                Follow[]                 @relation("FollowsMade")
-  followedBy                 Follow[]                 @relation("FollowedBy")
   mentionsReceived           ContentMention[]         @relation("MentionedUser")
   mentionsMade               ContentMention[]         @relation("MentionAuthor")
   bookEditionsCreated        BookEdition[]            @relation("BookEditionCreator")
@@ -144,6 +159,10 @@ model UserProfile {
   dateOfBirth       DateTime? @map("date_of_birth")
   gender            Gender    @default(not_specified)
   location          String?
+  /// Who may see each of these (the rest of the details follow the profile).
+  dateOfBirthVisibility Visibility @default(private) @map("date_of_birth_visibility")
+  genderVisibility      Visibility @default(private) @map("gender_visibility")
+  locationVisibility    Visibility @default(public)  @map("location_visibility")
   bio               String?   @db.Text
   favoriteGenres    String[]
   favoriteSubgenres String[]

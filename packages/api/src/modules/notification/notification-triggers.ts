@@ -5,6 +5,7 @@ import {
 	dispatchNotification,
 	listActiveMemberUserIds,
 	listAdminUserIds,
+	listAudienceUserIds,
 	listSittingParticipantUserIds,
 } from "./notification.service";
 
@@ -28,7 +29,8 @@ export async function notifyMemberPosted(
 			where: { id: authorId },
 			select: { name: true, username: true },
 		}),
-		listActiveMemberUserIds(db),
+		// Only members who may see the post: a private profile notifies its friends.
+		listAudienceUserIds(db, authorId),
 	]);
 
 	if (!author) {
@@ -164,7 +166,8 @@ export async function notifyMemberFeedbackOnBook(
 			where: { slug: bookSlug },
 			select: { title: true },
 		}),
-		listActiveMemberUserIds(db),
+		// Only members who may see the review (profile and reviews setting, blocks).
+		listAudienceUserIds(db, authorId, { section: "reviews" }),
 	]);
 
 	if (!author || !book) {

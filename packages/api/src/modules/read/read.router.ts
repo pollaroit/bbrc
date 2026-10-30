@@ -1,5 +1,6 @@
 import { protectedProcedure, publicProcedure } from "../../procedures";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
+import { loadViewer } from "../visibility/viewer";
 import {
 	GetBookReadStateInputSchema,
 	GetBookReadStateOutputSchema,
@@ -35,20 +36,34 @@ export const readRouter = {
 	listForBook: publicProcedure
 		.input(ListBookReadsInputSchema)
 		.output(ListBookReadsOutputSchema)
-		.handler(({ context, input }) => listBookReads(input, context.db)),
+		.handler(async ({ context, input }) =>
+			listBookReads(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
+		),
 
 	listForUser: publicProcedure
 		.input(ListUserReadsInputSchema)
 		.output(ListUserReadsOutputSchema)
-		.handler(({ context, input }) =>
-			listUserReads(input, context.db, context.session),
+		.handler(async ({ context, input }) =>
+			listUserReads(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 
 	exportForUser: publicProcedure
 		.input(ExportUserReadsInputSchema)
 		.output(ExportUserReadsOutputSchema)
-		.handler(({ context, input }) =>
-			exportUserReads(input, context.db, context.session),
+		.handler(async ({ context, input }) =>
+			exportUserReads(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 
 	searchEditions: publicProcedure

@@ -40,6 +40,8 @@ export const ListGoalsByUsernameOutputSchema = zod.object({
 	expired: zod.array(GoalListItemSchema),
 	isOwner: zod.boolean(),
 	allowedYears: zod.tuple([zod.number().int(), zod.number().int()]),
+	/** True when the member keeps their goals from this viewer (the lists are empty). */
+	hidden: zod.boolean().optional(),
 });
 
 export type ListGoalsByUsernameOutput = z.infer<

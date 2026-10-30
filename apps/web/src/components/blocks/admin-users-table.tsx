@@ -137,12 +137,6 @@ export function AdminUsersTable() {
 														className="flex min-w-0 items-center gap-1.5 font-medium hover:underline"
 													>
 														<span className="truncate">{user.name}</span>
-														{user.isHidden ? (
-															<CircleAlert
-																className="size-3.5 shrink-0 text-destructive"
-																aria-label="Hidden member"
-															/>
-														) : null}
 														{user.isAdmin ? (
 															<Crown
 																className="size-3.5 shrink-0 text-warning"

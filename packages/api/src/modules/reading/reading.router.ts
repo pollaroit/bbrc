@@ -1,4 +1,5 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	BookReadingCountsOutputSchema,
 	BookSlugInputSchema,
@@ -98,10 +99,10 @@ export const readingRouter = {
 	readers: publicProcedure
 		.input(BookSlugInputSchema)
 		.output(ListBookReadersOutputSchema)
-		.handler(({ input, context }) =>
+		.handler(async ({ input, context }) =>
 			listBookReaders(
 				context.db,
-				context.session?.user.id ?? null,
+				await loadViewer(context.db, context.session),
 				input.bookSlug,
 			),
 		),
@@ -114,10 +115,10 @@ export const readingRouter = {
 	forUser: publicProcedure
 		.input(UserCurrentReadingInputSchema)
 		.output(UserCurrentReadingOutputSchema)
-		.handler(({ input, context }) =>
+		.handler(async ({ input, context }) =>
 			getUserCurrentReading(
 				context.db,
-				context.session?.user.id ?? null,
+				await loadViewer(context.db, context.session),
 				input.username,
 			),
 		),

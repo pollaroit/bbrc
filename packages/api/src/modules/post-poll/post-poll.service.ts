@@ -1,4 +1,3 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import {
 	ballotAccess,
@@ -18,17 +17,15 @@ import {
 	searchPollCountries,
 	tallyBallots,
 	textDedupeKey,
+	type Viewer,
 	validateBallot,
 	validatePollSetup,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { findAuthorBySlug } from "../../lib/authors";
 import { dispatchNotification } from "../notification/notification.service";
-import {
-	assertContentNotVisible,
-	viewerFromSession,
-	visibleOnSiteUserWhere,
-} from "../user/user-visibility";
+import { assertPostVisible } from "../post/post-visibility";
+import { memberListVisibleWhere } from "../visibility/visibility-resources";
 import type {
 	CreatePollInput,
 	PollOption,
@@ -38,7 +35,12 @@ import type {
 
 type Db = Database | DatabaseTransaction;
 
-type PollViewer = { userId: string | null; isAdmin: boolean };
+type PollViewer = {
+	userId: string | null;
+	isAdmin: boolean;
+	/** Members the viewer and they have blocked each other: left out of voter and turnout names. */
+	blockedIds?: ReadonlySet<string>;
+};
 
 const memberSelect = {
 	select: { username: true, name: true, image: true },
@@ -75,8 +77,9 @@ const pollSelect = {
 				select: { slug: true, title: true, authors: true, coverId: true },
 			},
 			series: { select: { slug: true, title: true } },
+			userId: true,
 			user: {
-				select: { username: true, name: true, image: true, isHidden: true },
+				select: { username: true, name: true, image: true },
 			},
 			refKey: true,
 		},
@@ -125,9 +128,15 @@ async function withAuthorPhotos<
 	return rows.map((row) => ({ ...row, authorPhotos: photos }));
 }
 
-export function pollViewer(session: Session | null): PollViewer {
-	const viewer = viewerFromSession(session);
-	return { userId: viewer?.userId ?? null, isAdmin: viewer?.isAdmin ?? false };
+export function pollViewer(viewer: Viewer): PollViewer {
+	if (viewer.kind === "anonymous") {
+		return { userId: null, isAdmin: false };
+	}
+	return {
+		userId: viewer.userId,
+		isAdmin: viewer.isAdmin,
+		blockedIds: viewer.blockedIds,
+	};
 }
 
 function toMember(user: {
@@ -143,21 +152,24 @@ function toMember(user: {
 function optionTarget(
 	option: PollRow["options"][number],
 	authorPhotos?: Record<string, string>,
+	blockedIds?: ReadonlySet<string>,
 ) {
+	// A member option shows name and avatar (public), unless the pair is blocked.
+	const member =
+		option.user && !(option.userId && blockedIds?.has(option.userId))
+			? option.user
+			: null;
 	return {
 		slug: option.book?.slug ?? option.series?.slug ?? null,
 		title: option.book?.title ?? option.series?.title ?? null,
 		authors: option.book?.authors ?? [],
 		coverId: option.book?.coverId ?? null,
-		username:
-			option.user && !option.user.isHidden ? option.user.username : null,
-		name: option.user && !option.user.isHidden ? option.user.name : null,
+		username: member?.username ?? null,
+		name: member?.name ?? null,
 		image:
 			option.kind === "author" && option.refKey
 				? (authorPhotos?.[option.refKey] ?? null)
-				: option.user && !option.user.isHidden
-					? option.user.image
-					: null,
+				: (member?.image ?? null),
 		code: option.kind === "country" ? option.refKey : null,
 	};
 }
@@ -236,6 +248,7 @@ export function buildPollView(
 	const votersByOption = new Map<string, PollOption["voters"]>();
 	if (access === "ballots") {
 		for (const vote of row.votes) {
+			if (viewer.blockedIds?.has(vote.userId)) continue;
 			const list = votersByOption.get(vote.optionId) ?? [];
 			if (list.length < POST_POLL_LIMITS.maxVotersListed) {
 				list.push({ ...toMember(vote.user), rank: vote.rank });
@@ -264,7 +277,7 @@ export function buildPollView(
 			position: option.position,
 			userAdded: option.userAdded,
 			addedBy: option.addedBy ? toMember(option.addedBy) : null,
-			target: optionTarget(option, row.authorPhotos),
+			target: optionTarget(option, row.authorPhotos, viewer.blockedIds),
 			canRemove,
 			result:
 				resultsVisible && optionTally
@@ -286,9 +299,9 @@ export function buildPollView(
 			? null
 			: [
 					...new Map(
-						row.votes.map(
-							(vote) => [vote.userId, toMember(vote.user)] as const,
-						),
+						row.votes
+							.filter((vote) => !viewer.blockedIds?.has(vote.userId))
+							.map((vote) => [vote.userId, toMember(vote.user)] as const),
 					).values(),
 				];
 
@@ -364,21 +377,13 @@ async function loadPollRow(db: Db, postSlug: string): Promise<PollRow> {
 export async function getPollView(
 	db: Database,
 	postSlug: string,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<PostPollView> {
 	const row = await loadPollRow(db, postSlug);
-	const author = await db.user.findUnique({
-		where: { id: row.post.authorId },
-		select: { id: true, isHidden: true },
-	});
-	assertContentNotVisible(
-		author ?? { id: row.post.authorId, isHidden: true },
-		viewerFromSession(session),
-		"Poll not found",
-	);
+	await assertPostVisible(db, { id: row.post.id }, viewer, "Poll not found");
 	const now = new Date();
 	void settleEndedPolls(db, [row], now);
-	return buildPollView(row, pollViewer(session), now);
+	return buildPollView(row, pollViewer(viewer), now);
 }
 
 // ── Ending ─────────────────────────────────────────────────────────────────
@@ -454,6 +459,21 @@ type ResolvedOption = {
 const empty = { bookId: null, seriesId: null, userId: null, refKey: null };
 
 /** Turns what the member picked into a stored option, checking it really exists. */
+/** Either of the two blocked the other. */
+async function isBlockedPair(db: Db, a: string, b: string): Promise<boolean> {
+	if (a === b) return false;
+	const block = await db.userBlock.findFirst({
+		where: {
+			OR: [
+				{ blockerId: a, blockedId: b },
+				{ blockerId: b, blockedId: a },
+			],
+		},
+		select: { blockerId: true },
+	});
+	return block != null;
+}
+
 async function resolveOption(
 	db: Db,
 	kind: PostPollOptionKind,
@@ -544,11 +564,10 @@ async function resolveOption(
 			id: true,
 			name: true,
 			username: true,
-			isHidden: true,
 			allowPollOptions: true,
 		},
 	});
-	if (!member || member.isHidden) {
+	if (!member || (await isBlockedPair(db, actorId, member.id))) {
 		throw new ORPCError("NOT_FOUND", { message: "Member not found." });
 	}
 	if (!member.allowPollOptions && member.id !== actorId) {
@@ -660,7 +679,7 @@ export async function addPollOption(
 	postSlug: string,
 	option: { text?: string; key?: string; label?: string },
 	actorId: string,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<PostPollView> {
 	const row = await loadPollRow(db, postSlug);
 	const now = new Date();
@@ -723,7 +742,7 @@ export async function addPollOption(
 		throw error;
 	}
 
-	return getPollView(db, postSlug, session);
+	return getPollView(db, postSlug, viewer);
 }
 
 export async function removePollOption(
@@ -731,7 +750,7 @@ export async function removePollOption(
 	postSlug: string,
 	optionId: string,
 	actor: PollViewer,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<PostPollView> {
 	const row = await loadPollRow(db, postSlug);
 	const view = buildPollView(row, actor);
@@ -765,7 +784,7 @@ export async function removePollOption(
 			userId: { notIn: stillVoting.map((vote) => vote.userId) },
 		},
 	});
-	return getPollView(db, postSlug, session);
+	return getPollView(db, postSlug, viewer);
 }
 
 // ── Voting ─────────────────────────────────────────────────────────────────
@@ -775,7 +794,7 @@ export async function votePoll(
 	postSlug: string,
 	optionIds: string[],
 	userId: string,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<PostPollView> {
 	const row = await loadPollRow(db, postSlug);
 	if (pollEnded(row, new Date())) {
@@ -840,14 +859,14 @@ export async function votePoll(
 		}
 	}
 
-	return getPollView(db, postSlug, session);
+	return getPollView(db, postSlug, viewer);
 }
 
 export async function retractVote(
 	db: Database,
 	postSlug: string,
 	userId: string,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<PostPollView> {
 	const row = await loadPollRow(db, postSlug);
 	if (pollEnded(row, new Date())) {
@@ -862,7 +881,7 @@ export async function retractVote(
 		db.postPollVote.deleteMany({ where: { pollId: row.id, userId } }),
 		db.postPollBallot.deleteMany({ where: { pollId: row.id, userId } }),
 	]);
-	return getPollView(db, postSlug, session);
+	return getPollView(db, postSlug, viewer);
 }
 
 // ── Owner controls ─────────────────────────────────────────────────────────
@@ -893,7 +912,7 @@ export async function updatePollSettings(
 		maxOptionsTotal?: number | null;
 	},
 	actor: PollViewer,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<PostPollView> {
 	const row = await loadOwnedPoll(db, input.postSlug, actor);
 	const now = new Date();
@@ -1003,14 +1022,14 @@ export async function updatePollSettings(
 	if (Object.keys(data).length > 0) {
 		await db.postPoll.update({ where: { id: row.id }, data });
 	}
-	return getPollView(db, input.postSlug, session);
+	return getPollView(db, input.postSlug, viewer);
 }
 
 export async function closePoll(
 	db: Database,
 	postSlug: string,
 	actor: PollViewer,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<PostPollView> {
 	const row = await loadOwnedPoll(db, postSlug, actor);
 	if (!pollEnded(row, new Date())) {
@@ -1019,7 +1038,7 @@ export async function closePoll(
 			data: { closedAt: new Date() },
 		});
 	}
-	return getPollView(db, postSlug, session);
+	return getPollView(db, postSlug, viewer);
 }
 
 // ── Finding things to add ──────────────────────────────────────────────────
@@ -1028,9 +1047,10 @@ export async function searchPollTargets(
 	db: Database,
 	kind: Exclude<PostPollOptionKind, "text">,
 	query: string,
-	actorId: string,
+	viewer: Viewer,
 	purpose: "poll" | "attachment" = "poll",
 ) {
+	const actorId = viewer.kind === "member" ? viewer.userId : "";
 	const limit = 8;
 	const none = {
 		sublabel: null,
@@ -1119,7 +1139,7 @@ export async function searchPollTargets(
 
 	const members = await db.user.findMany({
 		where: {
-			...visibleOnSiteUserWhere,
+			AND: [memberListVisibleWhere(viewer) as Prisma.UserWhereInput],
 			OR: [
 				{ username: { contains: query, mode: "insensitive" } },
 				{ name: { contains: query, mode: "insensitive" } },
@@ -1183,7 +1203,7 @@ export async function getPollStats(
 	db: Database,
 	postSlug: string,
 	actor: PollViewer,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<PollStats> {
 	const row = await loadOwnedPoll(db, postSlug, actor);
 	const poll = buildPollView(row, actor);
@@ -1199,10 +1219,10 @@ export async function getPollStats(
 	if (!post) {
 		throw new ORPCError("NOT_FOUND", { message: "Poll not found" });
 	}
-	void session;
+	void viewer;
 
 	const [eligibleMembers, ballotRows] = await Promise.all([
-		db.user.count({ where: visibleOnSiteUserWhere }),
+		db.user.count(),
 		db.postPollBallot.findMany({
 			where: { pollId: row.id },
 			select: { userId: true, createdAt: true, changes: true, changedAt: true },

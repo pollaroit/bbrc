@@ -1,5 +1,6 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
+import { loadViewer } from "../visibility/viewer";
 import {
 	BeatReadingSessionInputSchema,
 	CurrentReadingSessionInputSchema,
@@ -85,10 +86,10 @@ export const readingSessionRouter = {
 	presence: publicProcedure
 		.input(ReadingPresenceInputSchema)
 		.output(ReadingPresenceOutputSchema)
-		.handler(({ input, context }) =>
+		.handler(async ({ input, context }) =>
 			getReadingPresence(
 				context.db,
-				context.session?.user.id ?? null,
+				await loadViewer(context.db, context.session),
 				input.bookSlug,
 				input.liveClientIds,
 			),

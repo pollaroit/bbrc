@@ -2,64 +2,41 @@ import { getGoalBySlug } from "@bbrc/api/modules/goal/goal.service";
 import { getRpChart, getRpEventList } from "@bbrc/api/modules/rp/rp.service";
 import { getShelfBySlug } from "@bbrc/api/modules/shelf/shelf.service";
 import { getUserByUsername } from "@bbrc/api/modules/user/user.service";
-import { viewerFromSession } from "@bbrc/api/modules/user/user-visibility";
 import { getXpChart, getXpEventList } from "@bbrc/api/modules/xp/xp.service";
-import { headers } from "next/headers";
-import { auth, db } from "@/services";
+import { getRequestViewer } from "@/lib/request-viewer";
+import { db } from "@/services";
 
-/** Session-aware profile load (supports hidden members viewing themselves). */
+/** Per-viewer profile load: the profile layout is never cached, so it knows who is looking. */
 export async function loadUserByUsernameForPage(username: string) {
-	const session = await auth.api.getSession({
-		headers: await headers(),
-	});
-
-	return getUserByUsername({ username }, db, session);
+	return getUserByUsername({ username }, db, await getRequestViewer());
 }
 
 export async function loadGoalBySlugForPage(
 	username: string,
 	goalSlug: string,
 ) {
-	const session = await auth.api.getSession({
-		headers: await headers(),
-	});
-
-	return getGoalBySlug(username, goalSlug, viewerFromSession(session), db);
+	return getGoalBySlug(username, goalSlug, await getRequestViewer(), db);
 }
 
 export async function loadShelfBySlugForPage(
 	username: string,
 	shelfSlug: string,
 ) {
-	const session = await auth.api.getSession({
-		headers: await headers(),
-	});
-
-	return getShelfBySlug(username, shelfSlug, viewerFromSession(session), db);
-}
-
-async function loadSessionForPage() {
-	return auth.api.getSession({
-		headers: await headers(),
-	});
+	return getShelfBySlug(username, shelfSlug, await getRequestViewer(), db);
 }
 
 export async function loadXpChartForPage(username: string) {
-	const session = await loadSessionForPage();
-	return getXpChart({ username }, db, session);
+	return getXpChart({ username }, db, await getRequestViewer());
 }
 
 export async function loadXpEventListForPage(username: string) {
-	const session = await loadSessionForPage();
-	return getXpEventList({ username, limit: 20 }, db, session);
+	return getXpEventList({ username, limit: 20 }, db, await getRequestViewer());
 }
 
 export async function loadRpChartForPage(username: string) {
-	const session = await loadSessionForPage();
-	return getRpChart({ username }, db, session);
+	return getRpChart({ username }, db, await getRequestViewer());
 }
 
 export async function loadRpEventListForPage(username: string) {
-	const session = await loadSessionForPage();
-	return getRpEventList({ username, limit: 20 }, db, session);
+	return getRpEventList({ username, limit: 20 }, db, await getRequestViewer());
 }

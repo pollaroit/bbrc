@@ -173,6 +173,8 @@ export const ListBookReadersOutputSchema = z.object({
 	items: z.array(BookReaderSchema),
 	/** Everyone reading it, including those who keep it private. */
 	total: Count,
+	/** Readers in `total` whose name this viewer may not see. */
+	privateCount: Count.default(0),
 });
 
 export const BookReadingCountsOutputSchema = z.object({

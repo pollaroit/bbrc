@@ -1,4 +1,5 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	GetLikeListInputSchema,
 	GetLikeListOutputSchema,
@@ -19,7 +20,13 @@ export const likeRouter = {
 	getLikeList: publicProcedure
 		.input(GetLikeListInputSchema)
 		.output(GetLikeListOutputSchema)
-		.handler(async ({ input, context }) => getLikeList(input, context.db)),
+		.handler(async ({ input, context }) =>
+			getLikeList(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
+		),
 	getViewerLikes: publicProcedure
 		.input(GetViewerLikesInputSchema)
 		.output(GetViewerLikesOutputSchema)
@@ -30,12 +37,22 @@ export const likeRouter = {
 		.input(SetLikeInputSchema)
 		.output(ToggleLikeOutputSchema)
 		.handler(async ({ input, context }) =>
-			setLike(input, context.session.user.id, context.db),
+			setLike(
+				input,
+				context.session.user.id,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	toggle: notBannedProcedure
 		.input(ToggleLikeInputSchema)
 		.output(ToggleLikeOutputSchema)
 		.handler(async ({ input, context }) =>
-			toggleLike(input, context.session.user.id, context.db),
+			toggleLike(
+				input,
+				context.session.user.id,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 };

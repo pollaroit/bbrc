@@ -18,13 +18,12 @@ import {
 	getAuthorInsightShelves,
 	getAuthorInsightSittings,
 } from "@bbrc/api/modules/author-insights/author-insights.service";
-import { viewerFromSession } from "@bbrc/api/modules/user/user-visibility";
 import type { Metadata, Route } from "next";
-import { headers } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
+import { getRequestViewer } from "@/lib/request-viewer";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
-import { auth, db } from "@/services";
+import { db } from "@/services";
 
 /** The author tabs that show club activity (the folder name is the route key). */
 export type AuthorActivityTab =
@@ -66,7 +65,7 @@ type AuthorTabHead = {
 };
 
 async function tabIsEmpty(tab: AuthorActivityTab, slug: string) {
-	const session = await auth.api.getSession({ headers: await headers() });
+	const session = await getRequestViewer();
 	const input = { slug, limit: 1 };
 
 	switch (tab) {
@@ -131,14 +130,10 @@ export const loadAuthorTabHead = cache(
 		slug: string,
 		tab: AuthorActivityTab,
 	): Promise<(AuthorTabHead & { redirectTo: string | null }) | null> => {
-		const session = await auth.api.getSession({ headers: await headers() });
+		const viewer = await getRequestViewer();
 
 		try {
-			const resolved = await resolveAuthor(
-				db,
-				slug,
-				viewerFromSession(session),
-			);
+			const resolved = await resolveAuthor(db, slug, viewer);
 			const author = await db.author.findUnique({
 				where: { id: resolved.id },
 				select: { name: true },

@@ -4,6 +4,7 @@ import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { QuizPlayer } from "@/components/blocks/quiz-player";
+import { getRequestViewer } from "@/lib/request-viewer";
 import { NO_INDEX_ROBOTS } from "@/lib/seo";
 import { auth, db } from "@/services";
 
@@ -26,7 +27,7 @@ export default async function BookQuizPage({
 
 	let state: Awaited<ReturnType<typeof getQuizEntryState>>["state"];
 	try {
-		({ state } = await getQuizEntryState(slug, db, session));
+		({ state } = await getQuizEntryState(slug, db, await getRequestViewer()));
 	} catch (error) {
 		if (error instanceof ORPCError && error.code === "NOT_FOUND") {
 			notFound();

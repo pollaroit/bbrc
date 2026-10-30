@@ -1,4 +1,5 @@
 import { publicProcedure } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	GetLeaderboardHubInputSchema,
 	GetLeaderboardHubOutputSchema,
@@ -12,12 +13,20 @@ export const leaderboardRouter = {
 		.input(GetLeaderboardInputSchema)
 		.output(GetLeaderboardOutputSchema)
 		.handler(async ({ input, context }) =>
-			getLeaderboard(input, context.db, context.session?.user?.username),
+			getLeaderboard(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	getHub: publicProcedure
 		.input(GetLeaderboardHubInputSchema)
 		.output(GetLeaderboardHubOutputSchema)
 		.handler(async ({ input, context }) =>
-			getLeaderboardHub(input, context.db, context.session?.user?.username),
+			getLeaderboardHub(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 };

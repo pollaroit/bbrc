@@ -1,5 +1,6 @@
 import { protectedProcedure } from "../../procedures";
 import { revalidateUserShelvesIsr } from "../../revalidate-isr";
+import { loadViewer } from "../visibility/viewer";
 import {
 	CancelInvitationInputSchema,
 	GetInvitationInputSchema,
@@ -86,8 +87,12 @@ export const shelfCollabRouter = {
 	list: protectedProcedure
 		.input(ListCollaboratorsInputSchema)
 		.output(ListCollaboratorsOutputSchema)
-		.handler(({ input, context }) =>
-			listCollaborators(input, context.session.user.id, context.db),
+		.handler(async ({ input, context }) =>
+			listCollaborators(
+				input,
+				await loadViewer(context.db, context.session),
+				context.db,
+			),
 		),
 	updatePermissions: protectedProcedure
 		.input(UpdateCollaboratorInputSchema)

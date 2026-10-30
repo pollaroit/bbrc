@@ -31,6 +31,8 @@ enum NotificationKind {
   sitting_midterm_checkin
   sitting_deadline_24h
   sitting_reading_reminder
+  friend_request
+  friend_accepted
 }
 
 model Notification {

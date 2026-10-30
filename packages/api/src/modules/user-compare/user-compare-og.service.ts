@@ -1,5 +1,6 @@
 import type { Database } from "@bbrc/db";
-import { describeScoreBand, scoreComparison } from "@bbrc/shared";
+import { describeScoreBand, scoreComparison, type Viewer } from "@bbrc/shared";
+import { mayViewSection, memberAccessSelect } from "../user/member-access";
 import { loadMemberReads, toCompareReads } from "./user-compare.data";
 
 export type CompareOgMember = {
@@ -27,11 +28,12 @@ export type CompareOgSnapshot = {
 
 /**
  * What the share card of a comparison shows. Used by crawlers and link previews, so it
- * has no viewer: members who are hidden or banned give nothing, and the numbers are
- * left out unless BOTH members allow comparisons.
+ * takes the viewer (a crawler is the anonymous one): banned members give nothing, and the
+ * numbers are left out unless BOTH members allow comparisons and the viewer may see both members' reads.
  */
 export async function getCompareOgSnapshot(
 	db: Database,
+	viewer: Viewer,
 	usernameA: string,
 	usernameB: string,
 ): Promise<CompareOgSnapshot | null> {
@@ -43,15 +45,14 @@ export async function getCompareOgSnapshot(
 				{ username: { equals: usernameA, mode: "insensitive" } },
 				{ username: { equals: usernameB, mode: "insensitive" } },
 			],
-			isHidden: false,
 			status: { not: "banned" },
 		},
 		select: {
-			id: true,
 			name: true,
 			username: true,
 			image: true,
 			allowCompare: true,
+			...memberAccessSelect,
 		},
 	});
 	const find = (username: string) =>
@@ -64,7 +65,13 @@ export async function getCompareOgSnapshot(
 		a: { name: a.name, username: a.username, image: a.image ?? null },
 		b: { name: b.name, username: b.username, image: b.image ?? null },
 	};
-	if (!a.allowCompare || !b.allowCompare) {
+	// Numbers come from both members' reads: left out unless this viewer may see both.
+	if (
+		!a.allowCompare ||
+		!b.allowCompare ||
+		!mayViewSection(viewer, a, "reads") ||
+		!mayViewSection(viewer, b, "reads")
+	) {
 		return { ...people, numbers: null };
 	}
 

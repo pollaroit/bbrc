@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { SittingParticipantsView } from "@/components/blocks/sitting-participants-view";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { loadSittingBySlugForIsr } from "@/lib/isr-data";
+import { getRequestViewer } from "@/lib/request-viewer";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 import { auth, db } from "@/services";
 
@@ -44,7 +45,7 @@ export default async function SittingParticipantsPage({
 
 	let sitting: Awaited<ReturnType<typeof getSittingBySlug>>;
 	try {
-		sitting = await getSittingBySlug(slug, db, session);
+		sitting = await getSittingBySlug(slug, await getRequestViewer(), db);
 	} catch {
 		notFound();
 	}

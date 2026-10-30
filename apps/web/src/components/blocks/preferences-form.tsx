@@ -4,6 +4,8 @@ import { DEFAULT_PREFERENCES } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Switch } from "@bbrc/ui/components/switch";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import type { Route } from "next";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ClubDateTime } from "@/components/blocks/club-date-time";
@@ -201,84 +203,18 @@ function ReadingSection() {
 }
 
 function ReadingPrivacySection() {
-	const { data: session } = authClient.useSession();
-	const signedIn = Boolean(session?.user);
-
-	const preferencesQuery = useQuery({
-		...orpc.reading.preferences.queryOptions(),
-		enabled: signedIn,
-	});
-	const key = orpc.reading.preferences.queryKey();
-	const mutation = useMutation(
-		orpc.reading.setPreferences.mutationOptions({
-			onMutate: async (variables) => {
-				await queryClient.cancelQueries({ queryKey: key });
-				const previous = queryClient.getQueryData(key);
-				if (previous)
-					queryClient.setQueryData(key, { ...previous, ...variables });
-				return { previous };
-			},
-			onError: (_error, _variables, context) => {
-				queryClient.setQueryData(key, context?.previous);
-				toast.error("Could not save that setting.");
-			},
-			onSettled: () => {
-				void queryClient.invalidateQueries({ queryKey: key });
-				void queryClient.invalidateQueries({
-					queryKey: orpc.shelf.getBySlug.key(),
-				});
-			},
-		}),
-	);
-	const current = {
-		wishlistPrivate: preferencesQuery.data?.wishlistPrivate ?? true,
-		showCurrentlyReading: preferencesQuery.data?.showCurrentlyReading ?? true,
-		showReadingProgress: preferencesQuery.data?.showReadingProgress ?? true,
-	};
-	const hint = (text: string) =>
-		signedIn ? text : "Sign in to change this one.";
-	const disabled = !signedIn || preferencesQuery.isPending;
-
 	return (
 		<PreferencesSection
 			id="reading-privacy"
 			title="Wishlist and what I'm reading"
-			description="Who can see your wishlist and the books you are reading right now."
+			description="Who can see your wishlist and the books you are reading right now lives in Privacy."
 		>
-			<SwitchRow
-				id="pref-wishlist-private"
-				label="Keep my wishlist private"
-				hint={hint(
-					"On: only you can open your wishlist. Others only see how many members want a book, never who. Off: anyone can open it.",
-				)}
-				checked={current.wishlistPrivate}
-				disabled={disabled}
-				onChange={(wishlistPrivate) => mutation.mutate({ wishlistPrivate })}
-			/>
-			<SwitchRow
-				id="pref-show-reading"
-				label="Show what I'm reading"
-				hint={hint(
-					"Members can see your current books on your profile and on each book's Reading page. Off: you still count in the totals, without your name.",
-				)}
-				checked={current.showCurrentlyReading}
-				disabled={disabled}
-				onChange={(showCurrentlyReading) =>
-					mutation.mutate({ showCurrentlyReading })
-				}
-			/>
-			<SwitchRow
-				id="pref-show-progress"
-				label="Show my reading progress"
-				hint={hint(
-					"On: others see how far along you are. Off: they only see that you are reading the book.",
-				)}
-				checked={current.showReadingProgress}
-				disabled={disabled}
-				onChange={(showReadingProgress) =>
-					mutation.mutate({ showReadingProgress })
-				}
-			/>
+			<Link
+				href={"/settings/privacy" as Route}
+				className="font-medium text-sm underline underline-offset-4"
+			>
+				Open Privacy settings
+			</Link>
 		</PreferencesSection>
 	);
 }

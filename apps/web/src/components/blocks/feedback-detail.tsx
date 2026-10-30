@@ -13,6 +13,7 @@ import {
 	FeedbackRatingBadge,
 	FeedbackReviewBody,
 } from "@/components/blocks/feedback-live";
+import { FriendButton } from "@/components/blocks/friend-button";
 import { RemoveMyMentionMenu } from "@/components/blocks/mention/remove-my-mention";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { RelativeTime } from "@/components/blocks/relative-time";
@@ -62,6 +63,7 @@ export function FeedbackDetail({
 						<p className="text-muted-foreground text-xs">
 							<RelativeTime date={feedback.createdAt} />
 						</p>
+						<FriendButton username={feedback.author.username} />
 						{sittingHref ? (
 							<Link
 								href={sittingHref}

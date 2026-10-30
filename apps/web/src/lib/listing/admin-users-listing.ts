@@ -75,7 +75,6 @@ export const adminUserListingSearchParams = {
 		shallow: false,
 	}),
 	isAdmin: booleanFilterParser.withOptions({ shallow: false }),
-	isHidden: booleanFilterParser.withOptions({ shallow: false }),
 	...adminUserMinCountParams,
 };
 
@@ -95,7 +94,6 @@ function buildAdminUserFilterCallInput(params: AdminUsersListingSearchParams) {
 		rangeMax: params.rangeMax,
 		statuses: params.statuses,
 		isAdmin: params.isAdmin,
-		isHidden: params.isHidden,
 		minXp: params.minXp,
 		minRp: params.minRp,
 		minPosts: params.minPosts,

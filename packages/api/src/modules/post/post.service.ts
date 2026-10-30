@@ -1,4 +1,3 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import { LikeSourceSchema } from "@bbrc/schemas";
 import {
@@ -9,6 +8,7 @@ import {
 	type PostFeedSort,
 	postAttachmentConflict,
 	postFeedRangeMin,
+	type Viewer,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { assertNormalizedSocialContent } from "../../lib/rich-content";
@@ -33,11 +33,9 @@ import {
 } from "../post-tierlist/post-tierlist.service";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import {
-	assertContentNotVisible,
-	loadActorSocialGate,
-	viewerFromSession,
-	visibleOnSiteUserWhere,
-} from "../user/user-visibility";
+	commentVisibleWhere,
+	postVisibleWhere,
+} from "../visibility/visibility-resources";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardPostXp } from "../xp/xp.service";
 import {
@@ -61,12 +59,14 @@ import {
 	type UpdatePostOutput,
 } from "./post.schema";
 import {
+	assertAttachmentVisible,
 	fillAuthorAttachments,
 	mapPostAttachmentFromPostRow,
 	syncPostAttachment,
 } from "./post-attachment.service";
 import { queryRankedPostSlugs } from "./post-feed-query";
 import { generatePostSlug } from "./post-slug";
+import { assertPostVisible, viewerUserId } from "./post-visibility";
 
 const postListSelect = {
 	...getPostListFields,
@@ -118,10 +118,6 @@ const replyPreviewSelect = {
 type TopCommentRow = Prisma.CommentGetPayload<{
 	select: typeof topCommentSelect;
 }>;
-
-function viewerUserId(session: Session | null): string | null {
-	return session?.user.id ?? null;
-}
 
 function groupTopComments(
 	comments: TopCommentRow[],
@@ -194,16 +190,18 @@ async function loadLikedCommentIds(
 
 async function loadTopCommentsByPostId(
 	postIds: string[],
-	userId: string | null,
+	viewer: Viewer,
 	db: Database,
 	limit = 3,
 ): Promise<Map<string, PostListItem["topComments"]>> {
+	const userId = viewerUserId(viewer);
+	const visible = commentVisibleWhere(viewer) as Prisma.CommentWhereInput;
 	if (postIds.length === 0) {
 		return new Map();
 	}
 
 	const comments = await db.comment.findMany({
-		where: { postId: { in: postIds }, parentId: null },
+		where: { AND: [{ postId: { in: postIds }, parentId: null }, visible] },
 		select: topCommentSelect,
 	});
 
@@ -214,7 +212,12 @@ async function loadTopCommentsByPostId(
 	const replyRows =
 		previewComments.length > 0
 			? await db.comment.findMany({
-					where: { parentId: { in: previewComments.map((row) => row.id) } },
+					where: {
+						AND: [
+							{ parentId: { in: previewComments.map((row) => row.id) } },
+							visible,
+						],
+					},
 					orderBy: { createdAt: "desc" },
 					select: replyPreviewSelect,
 				})
@@ -278,6 +281,7 @@ function mapPostListRow(
 	topCommentsByPostId: Map<string, PostListItem["topComments"]>,
 	polls: Map<string, PostListItem["poll"]>,
 	tierlists: Map<string, PostListItem["tierlist"]>,
+	viewer: Viewer,
 ): PostListItem {
 	return {
 		slug: row.slug,
@@ -295,6 +299,7 @@ function mapPostListRow(
 		attachment: mapPostAttachmentFromPostRow({
 			attachment: row.attachment,
 			attachedBook: row.attachedBook,
+			viewer,
 		}),
 		likeCount: row._count.likes,
 		commentCount: row._count.comments,
@@ -305,19 +310,20 @@ function mapPostListRow(
 
 async function mapPostDetailRow(
 	row: PostDetailRow,
-	session: Session | null,
+	viewer: Viewer,
 	db: Database,
 ): Promise<GetPostBySlugOutput> {
-	const userId = viewerUserId(session);
+	const userId = viewerUserId(viewer);
 	const [likedPostIds, polls, tierlists] = await Promise.all([
 		loadLikedPostIds([row.id], userId, db),
-		loadPollViews(db, [row.id], pollViewer(session)),
+		loadPollViews(db, [row.id], pollViewer(viewer)),
 		loadTierlistViews(db, [row.id]),
 	]);
 
 	const attachment = mapPostAttachmentFromPostRow({
 		attachment: row.attachment,
 		attachedBook: row.attachedBook,
+		viewer,
 	});
 	await fillAuthorAttachments(db, [attachment]);
 
@@ -397,21 +403,28 @@ async function fetchPostsBySlugsInOrder(
 
 async function hydratePostListPage(
 	rows: PostListRow[],
-	session: Session | null,
+	viewer: Viewer,
 	db: Database,
 ): Promise<PostListItem[]> {
 	const postIds = rows.map((row) => row.id);
-	const userId = viewerUserId(session);
+	const userId = viewerUserId(viewer);
 	const [likedPostIds, topCommentsByPostId, polls, tierlists] =
 		await Promise.all([
 			loadLikedPostIds(postIds, userId, db),
-			loadTopCommentsByPostId(postIds, userId, db),
-			loadPollViews(db, postIds, pollViewer(session)),
+			loadTopCommentsByPostId(postIds, viewer, db),
+			loadPollViews(db, postIds, pollViewer(viewer)),
 			loadTierlistViews(db, postIds),
 		]);
 
 	const items = rows.map((row) =>
-		mapPostListRow(row, likedPostIds, topCommentsByPostId, polls, tierlists),
+		mapPostListRow(
+			row,
+			likedPostIds,
+			topCommentsByPostId,
+			polls,
+			tierlists,
+			viewer,
+		),
 	);
 	await fillAuthorAttachments(
 		db,
@@ -437,7 +450,7 @@ function listPageMetadata(input: {
 export async function getPostList(
 	input: GetPostListInput,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetPostListOutput> {
 	const searching = postListSearching.from(input);
 	const limit = input.limit ?? 10;
@@ -451,7 +464,7 @@ export async function getPostList(
 		input.hasAttachedBook != null
 			? postAttachedBookWhere(input.hasAttachedBook)
 			: {},
-		{ author: visibleOnSiteUserWhere },
+		postVisibleWhere(viewer) as Prisma.PostWhereInput,
 	);
 
 	if (feedSort === "hot" || feedSort === "top") {
@@ -461,6 +474,7 @@ export async function getPostList(
 			authorUsername: input.authorUsername,
 			limit: overfetch,
 			cursor: feedCursor,
+			viewer,
 		});
 		const pageRanked = ranked.slice(0, limit);
 		const rows = await fetchPostsBySlugsInOrder(
@@ -478,7 +492,7 @@ export async function getPostList(
 				: null;
 
 		return {
-			items: await hydratePostListPage(rows, session, db),
+			items: await hydratePostListPage(rows, viewer, db),
 			metadata: listPageMetadata({
 				limit,
 				hasNextPage: ranked.length > limit,
@@ -517,7 +531,7 @@ export async function getPostList(
 			: null;
 
 	return {
-		items: await hydratePostListPage(pageRows, session, db),
+		items: await hydratePostListPage(pageRows, viewer, db),
 		metadata: listPageMetadata({
 			limit,
 			hasNextPage,
@@ -530,7 +544,7 @@ export async function getPostList(
 export async function getPostBySlug(
 	slug: string,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetPostBySlugOutput> {
 	const post = await db.post.findUnique({
 		where: { slug },
@@ -544,19 +558,11 @@ export async function getPostBySlug(
 		});
 	}
 
-	const author = await db.user.findUnique({
-		where: { id: post.authorId },
-		select: { id: true, isHidden: true },
+	await assertPostVisible(db, { id: post.id }, viewer, "Post not found", {
+		slug,
 	});
 
-	assertContentNotVisible(
-		author ?? { id: post.authorId, isHidden: true },
-		viewerFromSession(session),
-		"Post not found",
-		{ slug },
-	);
-
-	return mapPostDetailRow(post, session, db);
+	return mapPostDetailRow(post, viewer, db);
 }
 
 function resolveCreateAttachment(
@@ -575,9 +581,8 @@ export async function createPost(
 	input: CreatePostInput,
 	userId: string,
 	db: Database,
+	viewer: Viewer,
 ): Promise<CreatePostOutput> {
-	await loadActorSocialGate(userId, db);
-
 	const prepared = await prepareContentMentions(db, {
 		content: assertNormalizedSocialContent(input.content),
 		authorId: userId,
@@ -586,6 +591,9 @@ export async function createPost(
 	// Outside links get their preview ready now (bounded; never fails the save).
 	await warmLinkPreviewsInContent(db, userId, content);
 	const attachmentInput = resolveCreateAttachment(input);
+	if (attachmentInput) {
+		await assertAttachmentVisible(attachmentInput, db, viewer);
+	}
 
 	const conflict = postAttachmentConflict({
 		poll: input.poll != null,
@@ -660,6 +668,7 @@ export async function updatePost(
 	input: UpdatePostInput,
 	userId: string,
 	db: Database,
+	viewer: Viewer,
 ): Promise<UpdatePostOutput> {
 	const post = await db.post.findUnique({
 		where: { slug: input.slug },
@@ -719,6 +728,10 @@ export async function updatePost(
 		attachmentPatch = input.attachedBookSlug
 			? { kind: "book", slug: input.attachedBookSlug }
 			: null;
+	}
+
+	if (attachmentPatch) {
+		await assertAttachmentVisible(attachmentPatch, db, viewer);
 	}
 
 	await db.$transaction(async (tx) => {
@@ -831,13 +844,12 @@ export async function setPostAttachmentPreference(
 
 /**
  * Posts matching a `where`, newest first, in the same shape as the feed (for pages
- * that show "posts about X", such as an author's posts tab). Members who are hidden
- * never show.
+ * that show "posts about X", such as an author's posts tab). Only posts the viewer may see.
  */
 export async function getPostListForWhere(
 	input: { where: Prisma.PostWhereInput; limit: number; cursor?: string },
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetPostListOutput> {
 	const feedCursor = input.cursor ? decodePostFeedCursor(input.cursor) : null;
 	const recentCursor = feedCursor?.kind === "recent" ? feedCursor : null;
@@ -846,7 +858,7 @@ export async function getPostListForWhere(
 		take: input.limit + 1,
 		where: mergeWhereFragments<Prisma.PostWhereInput>(
 			input.where,
-			{ author: visibleOnSiteUserWhere },
+			postVisibleWhere(viewer) as Prisma.PostWhereInput,
 			recentCursor ? buildRecentCursorWhere(recentCursor) : {},
 		),
 		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
@@ -858,7 +870,7 @@ export async function getPostListForWhere(
 	const lastRow = pageRows.at(-1);
 
 	return {
-		items: await hydratePostListPage(pageRows, session, db),
+		items: await hydratePostListPage(pageRows, viewer, db),
 		metadata: listPageMetadata({
 			limit: input.limit,
 			hasNextPage,

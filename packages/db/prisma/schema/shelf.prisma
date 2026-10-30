@@ -1,6 +1,8 @@
-/// Who can see a shelf (on top of its status): everyone, or only the owner and collaborators.
+/// Who can see a shelf (on top of its status): everyone, the owner's friends, or only the owner and collaborators.
+/// The order of the levels lives in `packages/shared/src/visibility`.
 enum ShelfVisibility {
   public
+  friends
   private
 
   @@map("shelf_visibility")

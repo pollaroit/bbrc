@@ -1,7 +1,7 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
 import { revalidateUserIsr } from "../../revalidate-isr";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
-import { viewerFromSession } from "../user/user-visibility";
+import { loadViewer } from "../visibility/viewer";
 import {
 	CreateGoalInputSchema,
 	CreateGoalOutputSchema,
@@ -26,7 +26,7 @@ export const goalRouter = {
 		.handler(async ({ input, context }) =>
 			listGoalsByUsername(
 				input.username,
-				viewerFromSession(context.session),
+				await loadViewer(context.db, context.session),
 				context.db,
 			),
 		),
@@ -37,7 +37,7 @@ export const goalRouter = {
 			getGoalBySlug(
 				input.username,
 				input.goalSlug,
-				viewerFromSession(context.session),
+				await loadViewer(context.db, context.session),
 				context.db,
 			),
 		),

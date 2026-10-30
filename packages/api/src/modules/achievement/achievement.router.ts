@@ -3,6 +3,7 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	GetAchievementInputSchema,
 	GetAchievementOutputSchema,
@@ -28,25 +29,40 @@ export const achievementRouter = {
 	list: publicProcedure
 		.output(ListAchievementsOutputSchema)
 		.handler(async ({ context }) =>
-			listAchievements(context.db, context.session),
+			listAchievements(
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	getBySlug: publicProcedure
 		.input(GetAchievementInputSchema)
 		.output(GetAchievementOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAchievementBySlug(context.db, input.slug, context.session),
+			getAchievementBySlug(
+				context.db,
+				input.slug,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	listEarners: publicProcedure
 		.input(ListEarnersInputSchema)
 		.output(ListEarnersOutputSchema)
 		.handler(async ({ input, context }) =>
-			listAchievementEarners(context.db, input, context.session),
+			listAchievementEarners(
+				context.db,
+				input,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	listByUsername: publicProcedure
 		.input(GetUserAchievementsInputSchema)
 		.output(GetUserAchievementsOutputSchema)
 		.handler(async ({ input, context }) =>
-			getUserAchievements(context.db, input.username, context.session),
+			getUserAchievements(
+				context.db,
+				input.username,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	setShowcase: protectedProcedure
 		.input(SetShowcaseInputSchema)

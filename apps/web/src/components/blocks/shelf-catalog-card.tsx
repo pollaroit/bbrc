@@ -22,7 +22,7 @@ export type ShelfCatalogCardShelf = {
 	type: "ordered" | "unordered";
 	status?: "draft" | "active" | "archived";
 	/** Private shelves get a lock badge (only people who can open one ever see it). */
-	visibility?: "public" | "private";
+	visibility?: "public" | "friends" | "private";
 	bookCount: number;
 	owner: Member;
 	collaborators: Member[];

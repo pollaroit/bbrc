@@ -35,6 +35,7 @@ export type ShelfOwner = {
 	name: string;
 	image: string | null;
 	status: "active" | "warned" | "banned";
+	profileVisibility: "public" | "private";
 };
 
 export type ShelfAccess = {
@@ -53,6 +54,7 @@ export const ownerSelect = {
 	name: true,
 	image: true,
 	status: true,
+	profileVisibility: true,
 } as const;
 
 /**
@@ -129,7 +131,7 @@ export function requireShelfPermission(
 	if (
 		!access.isOwner &&
 		access.collaborator == null &&
-		(access.shelf.status !== "active" || access.shelf.visibility === "private")
+		(access.shelf.status !== "active" || access.shelf.visibility !== "public")
 	) {
 		throw new ORPCError("NOT_FOUND", { message: "Shelf not found" });
 	}
@@ -146,50 +148,7 @@ export function requireOwner(access: ShelfAccess): void {
 	}
 }
 
-/**
- * Whether the viewer may open the shelf page. Active shelves are public; draft
- * and archived ones need ownership, the `view_non_public` permission, or a
- * pending invitation (so an invitee can look before answering).
- */
-export function canViewShelf(
-	shelf: {
-		status: string;
-		userId: string;
-		visibility?: "public" | "private";
-	},
-	viewer: {
-		userId: string | undefined;
-		permissions: ReadonlySet<ShelfPermission>;
-		hasPendingInvitation: boolean;
-		isCollaborator?: boolean;
-		isAdmin?: boolean;
-	},
-): boolean {
-	// A private shelf is for the owner, collaborators, admins and invitees only.
-	if (
-		shelf.visibility === "private" &&
-		!(
-			viewer.isAdmin ||
-			(viewer.userId != null &&
-				(viewer.userId === shelf.userId ||
-					viewer.isCollaborator ||
-					viewer.hasPendingInvitation))
-		)
-	) {
-		return false;
-	}
-	if (shelf.status === "active") {
-		return true;
-	}
-	if (viewer.userId == null) {
-		return false;
-	}
-	return (
-		viewer.userId === shelf.userId ||
-		viewer.permissions.has("view_non_public") ||
-		viewer.hasPendingInvitation
-	);
-}
+export { canViewShelf } from "./shelf-can-view";
 
 export type ShelfActivityInput = {
 	shelfId: string;

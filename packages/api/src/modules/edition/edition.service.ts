@@ -1,4 +1,4 @@
-import type { Database } from "@bbrc/db";
+import type { Database, Prisma } from "@bbrc/db";
 import {
 	editionExternalLinks,
 	formatEditionLanguage,
@@ -6,6 +6,7 @@ import {
 	openLibraryEditionKey,
 	parseEditionKey,
 	richContentPreview,
+	type Viewer,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import {
@@ -20,7 +21,12 @@ import {
 	bookAuthorRefsSelect,
 	mapBookAuthorRefs,
 } from "../book/book-author-refs";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
+import { viewerIdOf } from "../read/section-access";
+import {
+	readingVisibleWhere,
+	readVisibleWhere,
+	reviewVisibleWhere,
+} from "../visibility/visibility-resources";
 import type {
 	EditionCore,
 	EditionLookup,
@@ -414,6 +420,7 @@ async function resolveKey(
 
 export async function getEdition(
 	db: Database,
+	viewer: Viewer,
 	bookSlug: string,
 	rawKey: string,
 ): Promise<EditionLookup> {
@@ -456,7 +463,7 @@ export async function getEdition(
 					where: {
 						bookId: book.id,
 						authorId: { in: finishedIds },
-						author: { ...visibleOnSiteUserWhere },
+						AND: [reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput],
 					},
 					orderBy: { createdAt: "desc" },
 					take: REVIEW_LIMIT,
@@ -575,10 +582,11 @@ async function usageFilter(db: Database, book: BookRow, rawKey: string) {
 
 export async function getEditionReaders(
 	db: Database,
-	viewerId: string | null,
+	viewer: Viewer,
 	bookSlug: string,
 	rawKey: string,
 ): Promise<EditionReaders> {
+	const viewerId = viewerIdOf(viewer);
 	const book = await loadBook(db, bookSlug);
 	const { olid, memberIds } = await usageFilter(db, book, rawKey);
 	const readingMatch = [
@@ -589,20 +597,42 @@ export async function getEditionReaders(
 		...(olid ? [{ editionId: olid }] : []),
 		...(memberIds.length ? [{ bookEditionId: { in: memberIds } }] : []),
 	];
-	const empty = { total: 0, items: [] };
+	const empty = { total: 0, privateCount: 0, items: [] };
 	if (readingMatch.length === 0) {
 		return { signedIn: viewerId != null, readingNow: empty, finished: empty };
 	}
 
-	const [readingRows, readRows] = await Promise.all([
+	// Totals count everyone; only the named rows follow the viewer.
+	const readingAll: Prisma.ReadingWhereInput = {
+		bookId: book.id,
+		finishedAt: null,
+		OR: readingMatch,
+	};
+	const readingVisible: Prisma.ReadingWhereInput = {
+		AND: [readingAll, readingVisibleWhere(viewer) as Prisma.ReadingWhereInput],
+	};
+	const readAll: Prisma.ReadWhereInput = {
+		bookId: book.id,
+		OR: readMatch,
+	};
+	const readVisible: Prisma.ReadWhereInput = {
+		AND: [readAll, readVisibleWhere(viewer) as Prisma.ReadWhereInput],
+	};
+
+	const [
+		readingTotal,
+		readingVisibleTotal,
+		readingRows,
+		readTotal,
+		readVisibleTotal,
+		readRows,
+	] = await Promise.all([
+		db.reading.count({ where: readingAll }),
+		db.reading.count({ where: readingVisible }),
 		db.reading.findMany({
-			where: {
-				bookId: book.id,
-				finishedAt: null,
-				OR: readingMatch,
-				user: { ...visibleOnSiteUserWhere },
-			},
+			where: readingVisible,
 			orderBy: { startedAt: "desc" },
+			take: READERS_LIMIT,
 			select: {
 				startedAt: true,
 				percent: true,
@@ -614,24 +644,21 @@ export async function getEditionReaders(
 						username: true,
 						name: true,
 						image: true,
-						showCurrentlyReading: true,
 						showReadingProgress: true,
 					},
 				},
 			},
 		}),
+		db.read.count({ where: readAll }),
+		db.read.count({ where: readVisible }),
 		db.read.findMany({
-			where: {
-				bookId: book.id,
-				OR: readMatch,
-				user: { ...visibleOnSiteUserWhere },
-			},
+			where: readVisible,
 			orderBy: [
 				{ readEndYear: "desc" },
 				{ readEndMonth: "desc" },
 				{ updatedAt: "desc" },
 			],
-			take: 400,
+			take: READERS_LIMIT,
 			select: {
 				readEndYear: true,
 				readEndMonth: true,
@@ -640,46 +667,37 @@ export async function getEditionReaders(
 		}),
 	]);
 
-	const signedIn = viewerId != null;
 	return {
-		signedIn,
+		signedIn: viewerId != null,
 		readingNow: {
-			total: readingRows.length,
-			items: signedIn
-				? readingRows
-						.filter(
-							(row) =>
-								row.user.showCurrentlyReading || row.user.id === viewerId,
-						)
-						.slice(0, READERS_LIMIT)
-						.map((row) => {
-							const isViewer = row.user.id === viewerId;
-							const showProgress = isViewer || row.user.showReadingProgress;
-							return {
-								username: row.user.username,
-								name: row.user.name,
-								image: row.user.image ?? null,
-								isViewer,
-								startedAt: row.startedAt,
-								percent: showProgress ? row.percent : null,
-								currentPage: showProgress ? row.currentPage : null,
-								totalPages: showProgress ? row.totalPages : null,
-							};
-						})
-				: [],
+			total: readingTotal,
+			privateCount: Math.max(0, readingTotal - readingVisibleTotal),
+			items: readingRows.map((row) => {
+				const isViewer = row.user.id === viewerId;
+				const showProgress = isViewer || row.user.showReadingProgress;
+				return {
+					username: row.user.username,
+					name: row.user.name,
+					image: row.user.image ?? null,
+					isViewer,
+					startedAt: row.startedAt,
+					percent: showProgress ? row.percent : null,
+					currentPage: showProgress ? row.currentPage : null,
+					totalPages: showProgress ? row.totalPages : null,
+				};
+			}),
 		},
 		finished: {
-			total: readRows.length,
-			items: signedIn
-				? readRows.slice(0, READERS_LIMIT).map((row) => ({
-						username: row.user.username,
-						name: row.user.name,
-						image: row.user.image ?? null,
-						isViewer: row.user.id === viewerId,
-						readEndYear: row.readEndYear,
-						readEndMonth: row.readEndMonth,
-					}))
-				: [],
+			total: readTotal,
+			privateCount: Math.max(0, readTotal - readVisibleTotal),
+			items: readRows.map((row) => ({
+				username: row.user.username,
+				name: row.user.name,
+				image: row.user.image ?? null,
+				isViewer: row.user.id === viewerId,
+				readEndYear: row.readEndYear,
+				readEndMonth: row.readEndMonth,
+			})),
 		},
 	};
 }

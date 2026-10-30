@@ -81,7 +81,6 @@ export const AdminUserListItemSchema = UserSchema.pick({
 	id: true,
 	email: true,
 	isAdmin: true,
-	isHidden: true,
 	emailVerified: true,
 	createdAt: true,
 	updatedAt: true,
@@ -235,16 +234,6 @@ export const AdminUpdateUserStatusOutputSchema = UserSchema.pick({
 	status: true,
 });
 
-export const AdminUpdateUserHiddenInputSchema = zod.object({
-	username: UserSchema.shape.username,
-	isHidden: zod.boolean(),
-});
-
-export const AdminUpdateUserHiddenOutputSchema = UserSchema.pick({
-	username: true,
-	isHidden: true,
-});
-
 export const AdminDeleteUserInputSchema = zod.object({
 	username: UserSchema.shape.username,
 });
@@ -280,12 +269,6 @@ export type AdminUpdateUserStatusInput = z.infer<
 export type AdminUpdateUserStatusOutput = z.infer<
 	typeof AdminUpdateUserStatusOutputSchema
 >;
-export type AdminUpdateUserHiddenInput = z.infer<
-	typeof AdminUpdateUserHiddenInputSchema
->;
-export type AdminUpdateUserHiddenOutput = z.infer<
-	typeof AdminUpdateUserHiddenOutputSchema
->;
 export type AdminDeleteUserInput = z.infer<typeof AdminDeleteUserInputSchema>;
 export type AdminDeleteUserOutput = z.infer<typeof AdminDeleteUserOutputSchema>;
 export type AdminSetUserPasswordInput = z.infer<
@@ -302,7 +285,6 @@ export const adminUserListSelect = {
 	email: true,
 	image: true,
 	isAdmin: true,
-	isHidden: true,
 	status: true,
 	xp: true,
 	rp: true,

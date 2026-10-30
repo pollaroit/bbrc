@@ -1,4 +1,5 @@
 import { publicProcedure } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	GetRpChartInputSchema,
 	GetRpChartOutputSchema,
@@ -13,13 +14,21 @@ export const rpRouter = {
 		.output(GetRpEventListOutputSchema)
 		.handler(
 			async ({ input, context }) =>
-				await getRpEventList(input, context.db, context.session),
+				await getRpEventList(
+					input,
+					context.db,
+					await loadViewer(context.db, context.session),
+				),
 		),
 	getRpChart: publicProcedure
 		.input(GetRpChartInputSchema)
 		.output(GetRpChartOutputSchema)
 		.handler(
 			async ({ input, context }) =>
-				await getRpChart(input, context.db, context.session),
+				await getRpChart(
+					input,
+					context.db,
+					await loadViewer(context.db, context.session),
+				),
 		),
 };

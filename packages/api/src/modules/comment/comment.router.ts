@@ -1,6 +1,7 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
 import { revalidateCommentIsr, revalidatePostIsr } from "../../revalidate-isr";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
+import { loadViewer } from "../visibility/viewer";
 import {
 	CreateCommentInputSchema,
 	CreateCommentOutputSchema,
@@ -26,13 +27,21 @@ export const commentRouter = {
 		.input(GetCommentListInputSchema)
 		.output(GetCommentListOutputSchema)
 		.handler(async ({ input, context }) =>
-			getCommentList(input, context.db, context.session),
+			getCommentList(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	getCommentBySlug: publicProcedure
 		.input(GetCommentBySlugInputSchema)
 		.output(GetCommentBySlugOutputSchema)
 		.handler(async ({ input, context }) =>
-			getCommentBySlug(input, context.db, context.session),
+			getCommentBySlug(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	create: notBannedProcedure
 		.use(checkAchievementsAfter("comments"))
@@ -43,6 +52,7 @@ export const commentRouter = {
 				input,
 				context.session.user.id,
 				context.db,
+				await loadViewer(context.db, context.session),
 			);
 			if (input.postSlug) {
 				revalidatePostIsr(context, input.postSlug);

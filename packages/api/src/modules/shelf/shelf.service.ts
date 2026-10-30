@@ -3,6 +3,7 @@ import {
 	MAX_BOOKS_PER_SHELF,
 	reorderPermissionFor,
 	resolveShelfPermissions,
+	type Viewer,
 } from "@bbrc/shared";
 import type { z } from "zod";
 import type { ShelfStatusSchema } from "./shelf.schema";
@@ -12,11 +13,7 @@ type ShelfStatus = z.infer<typeof ShelfStatusSchema>;
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
-import {
-	assertMemberVisible,
-	type ViewerContext,
-	visibleOnSiteUserWhere,
-} from "../user/user-visibility";
+import { throwMemberNotFound } from "../user/user-visibility";
 import { awardShelfXp } from "../xp/xp.service";
 import { shelfListSorting } from "./shelf.listing";
 import type {
@@ -51,7 +48,8 @@ import { buildPublicShelfListWhere } from "./shelf-list-where";
 import { displayName, notifyShelfCollaboration } from "./shelf-notify";
 import { generateShelfSlug } from "./shelf-slug";
 import {
-	publicShelfWhere,
+	countableShelfWhere,
+	shelfVisibleWhere,
 	WISHLIST_PROTECTED_MESSAGE,
 } from "./shelf-visibility";
 
@@ -108,11 +106,7 @@ export async function loadCoverPreviewMap(
 	return map;
 }
 
-async function loadUserByUsername(
-	username: string,
-	viewer: ViewerContext,
-	db: Database,
-) {
+async function loadUserByUsername(username: string, db: Database) {
 	const user = await db.user.findUnique({
 		where: { username },
 		select: {
@@ -120,13 +114,19 @@ async function loadUserByUsername(
 			username: true,
 			name: true,
 			image: true,
-			isHidden: true,
+			profileVisibility: true,
 		},
 	});
 
-	assertMemberVisible(user, viewer);
+	if (!user) {
+		throwMemberNotFound(username);
+	}
 
 	return user;
+}
+
+function viewerUserIdOf(viewer: Viewer): string | undefined {
+	return viewer.kind === "member" ? viewer.userId : undefined;
 }
 
 async function loadBookBySlug(
@@ -161,17 +161,17 @@ const memberShelfSelect = {
 export async function listShelvesByUsername(
 	username: string,
 	status: ShelfStatus | undefined,
-	viewer: ViewerContext,
+	viewer: Viewer,
 	db: Database,
 ): Promise<ListShelvesByUsernameOutput> {
-	const user = await loadUserByUsername(username, viewer, db);
-	const viewerUserId = viewer?.userId;
+	const user = await loadUserByUsername(username, db);
+	const viewerUserId = viewerUserIdOf(viewer);
 	const isOwner = viewerIsOwner(viewerUserId, user.id);
 
 	const statusFilter: ShelfStatus | undefined = isOwner ? status : "active";
-	// Others only see public shelves; the Wishlist has its own tab, never in this list.
-	const visibilityFilter =
-		isOwner || viewer?.isAdmin ? {} : { visibility: "public" as const };
+	// What the viewer may see by level (profile, shelf, friends, blocks); the Wishlist has
+	// its own tab, never in this list.
+	const visibilityFilter = shelfVisibleWhere(viewer);
 
 	const [ownedRows, sharedRows] = await Promise.all([
 		db.shelf.findMany({
@@ -179,7 +179,7 @@ export async function listShelvesByUsername(
 				userId: user.id,
 				status: statusFilter,
 				isWishlist: false,
-				...visibilityFilter,
+				AND: [visibilityFilter],
 			},
 			orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
 			select: memberShelfSelect,
@@ -189,8 +189,7 @@ export async function listShelvesByUsername(
 				collaborators: { some: { userId: user.id } },
 				status: statusFilter,
 				isWishlist: false,
-				...visibilityFilter,
-				user: visibleOnSiteUserWhere,
+				AND: [visibilityFilter],
 			},
 			orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
 			select: {
@@ -242,11 +241,11 @@ export async function listShelvesByUsername(
 export async function getShelfBySlug(
 	username: string,
 	shelfSlug: string,
-	viewer: ViewerContext,
+	viewer: Viewer,
 	db: Database,
 ): Promise<GetShelfBySlugOutput> {
-	const user = await loadUserByUsername(username, viewer, db);
-	const viewerUserId = viewer?.userId;
+	const user = await loadUserByUsername(username, db);
+	const viewerUserId = viewerUserIdOf(viewer);
 
 	const shelf = await db.shelf.findFirst({
 		where: { userId: user.id, slug: shelfSlug },
@@ -292,13 +291,20 @@ export async function getShelfBySlug(
 	const pendingInvitationId = shelf.invitations[0]?.id ?? null;
 
 	if (
-		!canViewShelf(shelf, {
-			userId: viewerUserId,
-			permissions,
-			hasPendingInvitation: pendingInvitationId != null,
-			isCollaborator: mine != null,
-			isAdmin: viewer?.isAdmin === true,
-		})
+		!canViewShelf(
+			viewer,
+			{
+				status: shelf.status,
+				userId: shelf.userId,
+				visibility: shelf.visibility,
+				ownerProfileVisibility: user.profileVisibility,
+			},
+			{
+				permissions,
+				hasPendingInvitation: pendingInvitationId != null,
+				isCollaborator: mine != null,
+			},
+		)
 	) {
 		throw new ORPCError("NOT_FOUND", { message: "Shelf not found" });
 	}
@@ -329,11 +335,12 @@ export async function getShelfBySlug(
 
 export async function getShelfList(
 	input: GetShelfListInput,
+	viewer: Viewer,
 	db: Database,
 ): Promise<GetShelfListOutput> {
 	const pagination = definePagination.cursor(input, shelfListCursorCodec);
 	const sorting = shelfListSorting.from(input);
-	const where = await buildPublicShelfListWhere(input, db);
+	const where = await buildPublicShelfListWhere(input, viewer, db);
 
 	const rows = await db.shelf.findMany({
 		...pagination.use(),
@@ -845,17 +852,18 @@ export async function updateBookNotes(
 
 export async function listShelvesForBook(
 	bookSlug: string,
-	viewerUserId: string | undefined,
+	viewer: Viewer,
 	db: Database,
 ): Promise<ListShelvesForBookOutput> {
 	const book = await loadBookBySlug(bookSlug, db);
+	const viewerUserId = viewerUserIdOf(viewer);
 
 	const rows = await db.shelf.findMany({
 		where: {
 			books: { some: { bookId: book.id } },
 			isWishlist: false,
 			OR: [
-				publicShelfWhere,
+				shelfVisibleWhere(viewer, { listing: true }),
 				...(viewerUserId ? [{ userId: viewerUserId }] : []),
 			],
 		},
@@ -946,8 +954,15 @@ export async function listMyEditableShelves(
 	};
 }
 
-export async function getShelfOverview(db: Database): Promise<ShelfOverview> {
-	const where = publicShelfWhere;
+/**
+ * Counts cover every member's public shelves; only the "newest" teaser is held to what
+ * the viewer may see.
+ */
+export async function getShelfOverview(
+	viewer: Viewer,
+	db: Database,
+): Promise<ShelfOverview> {
+	const where = countableShelfWhere;
 	const [shelves, books, sharedShelves, collaborators, newest] =
 		await Promise.all([
 			db.shelf.count({ where }),
@@ -959,7 +974,7 @@ export async function getShelfOverview(db: Database): Promise<ShelfOverview> {
 				select: { userId: true },
 			}),
 			db.shelf.findFirst({
-				where,
+				where: { AND: [where, shelfVisibleWhere(viewer, { listing: true })] },
 				orderBy: { createdAt: "desc" },
 				select: {
 					title: true,

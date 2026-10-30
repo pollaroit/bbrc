@@ -1,6 +1,5 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
-import { contentPlainText } from "@bbrc/shared";
+import { contentPlainText, type Viewer } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { fetchEditionExportMetadataBatch } from "../../lib/open-library/work-editions";
 import {
@@ -16,6 +15,11 @@ import type {
 	ExportUserReadsInput,
 	ExportUserReadsOutput,
 } from "./read-export.schema";
+import {
+	canViewerSeeSection,
+	isBlockedFrom,
+	viewerIdOf,
+} from "./section-access";
 
 function buildExportUserReadSelect(memberUserId: string) {
 	return {
@@ -54,6 +58,7 @@ type ExportUserReadRow = Prisma.ReadGetPayload<{
 
 function mapExportRow(
 	row: ExportUserReadRow,
+	includeReview: boolean,
 	editionById: Map<
 		string,
 		{
@@ -64,7 +69,7 @@ function mapExportRow(
 		}
 	>,
 ): ExportUserReadsOutput["items"][number] {
-	const feedback = row.book.feedbacks[0];
+	const feedback = includeReview ? row.book.feedbacks[0] : undefined;
 	const editionMeta = row.editionId
 		? editionById.get(row.editionId)
 		: undefined;
@@ -98,7 +103,7 @@ function mapExportRow(
 export async function exportUserReads(
 	input: ExportUserReadsInput,
 	db: Database,
-	session: Session | null = null,
+	viewer: Viewer,
 ): Promise<ExportUserReadsOutput> {
 	const user = await db.user.findUnique({
 		where: { username: input.username },
@@ -112,6 +117,19 @@ export async function exportUserReads(
 		});
 	}
 
+	if (
+		isBlockedFrom(viewer, user.id) ||
+		!(await canViewerSeeSection(db, viewer, user.id, "reads"))
+	) {
+		return { count: 0, items: [] };
+	}
+	const reviewsVisible = await canViewerSeeSection(
+		db,
+		viewer,
+		user.id,
+		"reviews",
+	);
+
 	const bookWhere = await buildBookListWhereWithAuthors(
 		input as BookListQueryInput,
 		db,
@@ -121,7 +139,7 @@ export async function exportUserReads(
 		return { count: 0, items: [] };
 	}
 
-	const viewerId = session?.user?.id;
+	const viewerId = viewerIdOf(viewer);
 	const mutualOnly = Boolean(input.mutualOnly && viewerId);
 
 	if (input.mutualOnly && !viewerId) {
@@ -187,6 +205,6 @@ export async function exportUserReads(
 
 	return {
 		count: rows.length,
-		items: rows.map((row) => mapExportRow(row, editionById)),
+		items: rows.map((row) => mapExportRow(row, reviewsVisible, editionById)),
 	};
 }

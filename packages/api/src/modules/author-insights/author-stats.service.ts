@@ -1,5 +1,4 @@
-import type { Session } from "@bbrc/auth";
-import type { Database } from "@bbrc/db";
+import type { Database, Prisma } from "@bbrc/db";
 import {
 	bucketByDecade,
 	bucketPageCounts,
@@ -17,12 +16,10 @@ import {
 	ratingDistribution,
 	roundTo,
 	seasonality,
+	type Viewer,
 } from "@bbrc/shared";
 import { resolveAuthor } from "../author/author-resolve";
-import {
-	viewerFromSession,
-	visibleOnSiteUserWhere,
-} from "../user/user-visibility";
+import { readVisibleWhere } from "../visibility/visibility-resources";
 import type { AuthorInsightStatsOutput } from "./author-insights.schema";
 import { bookRef, byAuthor, memberRefSelect } from "./insights-common";
 
@@ -143,17 +140,17 @@ export async function getAuthorInsightStats(
 		rangeMax?: Date;
 	},
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorInsightStatsOutput> {
-	const author = await resolveAuthor(
-		db,
-		input.slug,
-		viewerFromSession(session),
-	);
+	const author = await resolveAuthor(db, input.slug, viewer);
 	const window: Window = { from: input.rangeMin, to: input.rangeMax };
 	const previous = previousRange(window);
 	const readerFilter = input.readerUsernames?.length
 		? { username: { in: input.readerUsernames } }
+		: {};
+	// Numbers count everyone; picking readers by name must not reveal a private member's reads.
+	const readerVisibility = input.readerUsernames?.length
+		? (readVisibleWhere(viewer) as Prisma.ReadWhereInput)
 		: {};
 
 	const bookRows: BookRow[] = await db.book.findMany({
@@ -184,7 +181,8 @@ export async function getAuthorInsightStats(
 			: db.read.findMany({
 					where: {
 						bookId: { in: bookIds },
-						user: { ...visibleOnSiteUserWhere, ...readerFilter },
+						user: readerFilter,
+						AND: [readerVisibility],
 					},
 					select: {
 						userId: true,
@@ -199,7 +197,7 @@ export async function getAuthorInsightStats(
 			: db.feedback.findMany({
 					where: {
 						bookId: { in: bookIds },
-						author: { ...visibleOnSiteUserWhere, ...readerFilter },
+						author: readerFilter,
 					},
 					select: { bookId: true, rating: true, createdAt: true },
 				}),
@@ -210,7 +208,7 @@ export async function getAuthorInsightStats(
 						where: {
 							bookId: { in: bookIds },
 							finishedAt: { not: null },
-							user: { ...visibleOnSiteUserWhere, ...readerFilter },
+							user: readerFilter,
 						},
 						select: { bookId: true, startedAt: true, finishedAt: true },
 					})
@@ -232,6 +230,23 @@ export async function getAuthorInsightStats(
 			select: { createdAt: true },
 		}),
 	]);
+
+	// Only the named leaderboard follows each member's privacy.
+	const visibleReadKeys = new Set(
+		bookIds.length === 0
+			? []
+			: (
+					await db.read.findMany({
+						where: {
+							AND: [
+								{ bookId: { in: bookIds } },
+								readVisibleWhere(viewer) as Prisma.ReadWhereInput,
+							],
+						},
+						select: { userId: true, bookId: true },
+					})
+				).map((row) => `${row.userId}|${row.bookId}`),
+	);
 
 	const followDates = follows.map((follow) => follow.createdAt);
 	const data = {
@@ -350,6 +365,7 @@ export async function getAuthorInsightStats(
 		{ member: ReadRow["user"]; count: number }
 	>();
 	for (const read of inWindowReads) {
+		if (!visibleReadKeys.has(`${read.userId}|${read.bookId}`)) continue;
 		const entry = perMember.get(read.userId) ?? { member: read.user, count: 0 };
 		entry.count += 1;
 		perMember.set(read.userId, entry);

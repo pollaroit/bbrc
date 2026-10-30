@@ -1,4 +1,5 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	MentionForContentBatchInputSchema,
 	MentionForContentBatchOutputSchema,
@@ -35,7 +36,7 @@ export const mentionRouter = {
 		.handler(async ({ input, context }) => ({
 			items: await searchMentionCandidates(
 				context.db,
-				{ id: context.session.user.id },
+				await loadViewer(context.db, context.session),
 				input,
 			),
 		})),
@@ -45,7 +46,7 @@ export const mentionRouter = {
 		.handler(async ({ input, context }) => ({
 			member: await findMentionTarget(
 				context.db,
-				{ id: context.session.user.id },
+				await loadViewer(context.db, context.session),
 				input.username,
 			),
 		})),
@@ -53,13 +54,21 @@ export const mentionRouter = {
 		.input(MentionResolveInputSchema)
 		.output(MentionResolveOutputSchema)
 		.handler(async ({ input, context }) => ({
-			profiles: await resolveMentionProfiles(context.db, input.ids),
+			profiles: await resolveMentionProfiles(
+				context.db,
+				input.ids,
+				await loadViewer(context.db, context.session),
+			),
 		})),
 	mine: notBannedProcedure
 		.input(MentionMineInputSchema)
 		.output(MentionMineOutputSchema)
-		.handler(({ input, context }) =>
-			listMyMentions(context.db, context.session.user.id, input),
+		.handler(async ({ input, context }) =>
+			listMyMentions(
+				context.db,
+				await loadViewer(context.db, context.session),
+				input,
+			),
 		),
 	forContent: notBannedProcedure
 		.input(MentionForContentInputSchema)

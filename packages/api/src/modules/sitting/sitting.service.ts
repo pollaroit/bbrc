@@ -1,4 +1,3 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import { LONG_INTERACTIVE_TRANSACTION } from "@bbrc/db";
 import {
@@ -15,6 +14,7 @@ import {
 	selfJoinWindow,
 	sittingReadingDeadlinePlaceholder,
 	snapPollDeadlineOnOrAfter,
+	type Viewer,
 	validatePollVoteSubmission,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
@@ -41,7 +41,10 @@ import {
 } from "../reading/reading.service";
 import { calculateRpPointsDelta } from "../rp/rp.service";
 import { userMemberLevelsFromPoints } from "../user/member-levels";
-import { loadActorSocialGate } from "../user/user-visibility";
+import {
+	readVisibleWhere,
+	reviewVisibleWhere,
+} from "../visibility/visibility-resources";
 import { XP_AWARD } from "../xp/xp.schema";
 import {
 	awardParticipationXp,
@@ -414,8 +417,9 @@ async function loadSittingReviews(
 	bookId: string,
 	participantUserIds: string[],
 	db: Database,
-	viewerUserId: string | null,
+	viewer: Viewer,
 ): Promise<GetSittingBySlugOutput["reviews"]> {
+	const viewerUserId = viewer.kind === "member" ? viewer.userId : null;
 	if (participantUserIds.length === 0) {
 		return [];
 	}
@@ -424,6 +428,8 @@ async function loadSittingReviews(
 		where: {
 			bookId,
 			authorId: { in: participantUserIds },
+			// Participants are always listed, but their reviews follow their own settings.
+			AND: [reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput],
 		},
 		orderBy: { createdAt: "desc" },
 		select: {
@@ -576,10 +582,10 @@ async function loadPollOptionAggregates(
 
 export async function getSittingList(
 	input: GetSittingListInput,
+	viewer: Viewer,
 	db: Database,
-	session: Session | null = null,
 ): Promise<GetSittingListOutput> {
-	const viewerId = session?.user?.id ?? null;
+	const viewerId = viewer.kind === "member" ? viewer.userId : null;
 	if (input.mineOnly && !viewerId) {
 		throw new ORPCError("UNAUTHORIZED", {
 			message: "Sign in to filter by your sittings.",
@@ -807,8 +813,8 @@ export async function getMySittingState(
 
 export async function getSittingBySlug(
 	slug: string,
+	viewer: Viewer,
 	db: Database,
-	session: Session | null,
 ): Promise<GetSittingBySlugOutput> {
 	const sitting = await db.sitting.findUnique({
 		where: { slug },
@@ -860,7 +866,8 @@ export async function getSittingBySlug(
 		);
 	}
 
-	const userId = session?.user.id;
+	const userId = viewer.kind === "member" ? viewer.userId : undefined;
+	const viewerIsAdmin = viewer.kind === "member" && viewer.isAdmin;
 	const myVotes =
 		userId && sitting.poll
 			? await loadMyPollVotes(sitting.poll.id, userId, db)
@@ -870,9 +877,8 @@ export async function getSittingBySlug(
 			? await loadMyPollChipGrants(sitting.poll.id, userId, db)
 			: emptyChipGrants;
 
-	const visibleParticipants = sitting.participants.filter(
-		(participant) => !participant.user.isHidden,
-	);
+	// A sitting is club activity: every participant is listed, whatever their profile says.
+	const visibleParticipants = sitting.participants;
 	const sittingForDetail = { ...sitting, participants: visibleParticipants };
 
 	const participantUserIds = visibleParticipants.map(
@@ -885,7 +891,7 @@ export async function getSittingBySlug(
 					sitting.selectedBookId,
 					participantUserIds,
 					db,
-					userId ?? null,
+					viewer,
 				)
 			: [];
 
@@ -904,8 +910,7 @@ export async function getSittingBySlug(
 				).length
 			: 0;
 
-	const hidePollAggregates =
-		sitting.status === "voting" && session?.user.isAdmin !== true;
+	const hidePollAggregates = sitting.status === "voting" && !viewerIsAdmin;
 
 	const pollChipRankByUserId =
 		sitting.poll != null
@@ -943,7 +948,7 @@ export async function getSittingBySlug(
 
 	let removedParticipants: GetSittingBySlugOutput["removedParticipants"] = [];
 
-	if (session?.user.isAdmin) {
+	if (viewerIsAdmin) {
 		const removedRows = await db.participation.findMany({
 			where: {
 				sittingId: sitting.id,
@@ -1363,8 +1368,6 @@ export async function submitPollVotes(
 	userId: string,
 	db: Database,
 ): Promise<SubmitPollVotesOutput> {
-	await loadActorSocialGate(userId, db);
-
 	const sitting = await db.sitting.findUnique({
 		where: { slug: input.sittingSlug },
 		select: {
@@ -2062,18 +2065,11 @@ export async function addSittingParticipant(
 			name: true,
 			username: true,
 			status: true,
-			isHidden: true,
 			allowSittingAutoAdd: true,
 		},
 	});
 
 	if (!user) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
-		});
-	}
-
-	if (user.isHidden) {
 		throw new ORPCError("NOT_FOUND", {
 			message: "User not found",
 		});
@@ -2342,6 +2338,7 @@ async function loadPollOptionReadersForParticipants(
 	participantUserIds: string[],
 	db: Database,
 	bookTitle: string,
+	viewer: Viewer,
 ): Promise<GetPollOptionReadersOutput> {
 	const uniqueParticipantIds = [...new Set(participantUserIds)];
 
@@ -2357,6 +2354,8 @@ async function loadPollOptionReadersForParticipants(
 		where: {
 			bookId,
 			userId: { in: uniqueParticipantIds },
+			// Who is a participant is open; who read what follows each member's settings.
+			AND: [readVisibleWhere(viewer) as Prisma.ReadWhereInput],
 		},
 		orderBy: { updatedAt: "desc" },
 		select: {
@@ -2367,18 +2366,15 @@ async function loadPollOptionReadersForParticipants(
 					name: true,
 					image: true,
 					status: true,
-					isHidden: true,
 				},
 			},
 		},
 	});
 
-	const visibleReads = reads.filter((read) => !read.user.isHidden);
-
 	return {
 		bookTitle,
 		participantCount: uniqueParticipantIds.length,
-		readers: visibleReads.map((read) => ({
+		readers: reads.map((read) => ({
 			user: read.user,
 			readRecordedAt: read.updatedAt,
 		})),
@@ -2387,6 +2383,7 @@ async function loadPollOptionReadersForParticipants(
 
 export async function getSittingPollPreviewReaders(
 	input: GetSittingPollPreviewReadersInput,
+	viewer: Viewer,
 	db: Database,
 ): Promise<GetPollOptionReadersOutput> {
 	const book = await db.book.findUnique({
@@ -2408,15 +2405,20 @@ export async function getSittingPollPreviewReaders(
 		input.participantUserIds,
 		db,
 		book.title,
+		viewer,
 	);
 }
 
 export async function getPollOptionReaders(
 	input: GetPollOptionReadersInput,
-	userId: string,
-	isAdmin: boolean,
+	viewer: Viewer,
 	db: Database,
 ): Promise<GetPollOptionReadersOutput> {
+	if (viewer.kind !== "member") {
+		throw new ORPCError("UNAUTHORIZED", { message: "Sign in to continue." });
+	}
+	const userId = viewer.userId;
+	const isAdmin = viewer.isAdmin;
 	const option = await db.pollOption.findUnique({
 		where: { id: input.pollOptionId },
 		select: {
@@ -2464,6 +2466,7 @@ export async function getPollOptionReaders(
 		participantUserIds,
 		db,
 		option.book.title,
+		viewer,
 	);
 }
 

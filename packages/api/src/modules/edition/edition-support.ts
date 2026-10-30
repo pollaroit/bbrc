@@ -4,7 +4,6 @@ import {
 	memberEditionKey,
 	openLibraryEditionKey,
 } from "@bbrc/shared";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type { EditionSummary } from "./edition.schema";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -140,7 +139,6 @@ export async function loadUsageContext(
 			where: {
 				bookId,
 				OR: [{ editionId: { not: null } }, { bookEditionId: { not: null } }],
-				user: { ...visibleOnSiteUserWhere },
 			},
 			select: { userId: true, editionId: true, bookEditionId: true },
 		}),
@@ -148,7 +146,6 @@ export async function loadUsageContext(
 			where: {
 				bookId,
 				OR: [{ editionOlid: { not: null } }, { bookEditionId: { not: null } }],
-				user: { ...visibleOnSiteUserWhere },
 			},
 			select: {
 				userId: true,

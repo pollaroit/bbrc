@@ -49,6 +49,7 @@ export const FACT_SECTIONS = [
 	"views",
 	"reading",
 	"club",
+	"friends",
 ] as const;
 export type FactSection = (typeof FACT_SECTIONS)[number];
 
@@ -153,6 +154,8 @@ export type AchievementFacts = {
 	documentTimes: Date[];
 	requestedBookTimes: Date[];
 	favoriteTimes: Date[];
+	/** When each accepted friendship was made. */
+	friendTimes: Date[];
 	quizzes: { at: Date; perfect: boolean }[];
 	series: SeriesFact[];
 	views: ViewFacts;
@@ -192,6 +195,7 @@ export type MetricKey =
 	| "posts"
 	| "postComments"
 	| "tierlists"
+	| "friends"
 	| "comments"
 	| "nightPosts"
 	| "leapDay"

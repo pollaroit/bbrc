@@ -1,4 +1,5 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	EditionCompareInputSchema,
 	EditionCompareOutputSchema,
@@ -18,16 +19,21 @@ export const editionRouter = {
 	get: publicProcedure
 		.input(EditionKeyInputSchema)
 		.output(EditionLookupSchema)
-		.handler(({ input, context }) =>
-			getEdition(context.db, input.bookSlug, input.key),
+		.handler(async ({ input, context }) =>
+			getEdition(
+				context.db,
+				await loadViewer(context.db, context.session),
+				input.bookSlug,
+				input.key,
+			),
 		),
 	readers: publicProcedure
 		.input(EditionKeyInputSchema)
 		.output(EditionReadersOutputSchema)
-		.handler(({ input, context }) =>
+		.handler(async ({ input, context }) =>
 			getEditionReaders(
 				context.db,
-				context.session?.user.id ?? null,
+				await loadViewer(context.db, context.session),
 				input.bookSlug,
 				input.key,
 			),

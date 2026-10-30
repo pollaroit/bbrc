@@ -176,7 +176,10 @@ export const BookReadListItemSchema = z.object({
 });
 
 export const ListBookReadsOutputSchema = z.object({
+	/** Everyone who read the book, however private. */
 	total: z.number().int().nonnegative(),
+	/** Readers in `total` whose name this viewer may not see. */
+	privateCount: z.number().int().nonnegative().default(0),
 	items: z.array(BookReadListItemSchema),
 });
 
@@ -289,6 +292,8 @@ export const ListUserReadsMetadataSchema =
 	});
 
 export const ListUserReadsOutputSchema = z.object({
+	/** True when the member keeps their reads from this viewer (the list is empty). */
+	hidden: z.boolean().optional(),
 	items: z.array(UserReadListItemSchema),
 	metadata: ListUserReadsMetadataSchema,
 });

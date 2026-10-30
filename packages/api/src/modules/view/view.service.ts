@@ -13,7 +13,6 @@ import {
 } from "@bbrc/shared";
 import { evaluateAchievementsForUser } from "../achievement/achievement.service";
 import { dispatchNotification } from "../notification/notification.service";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type { RecordViewItem } from "./view.schema";
 
 export type ViewActor = {
@@ -117,7 +116,6 @@ async function resolveTargets(
 				const rows = await db.user.findMany({
 					where: {
 						username: { in: refs },
-						...visibleOnSiteUserWhere,
 						status: { not: "banned" },
 					},
 					select: { id: true, username: true },

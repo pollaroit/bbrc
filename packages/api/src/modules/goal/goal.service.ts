@@ -12,12 +12,15 @@ import {
 	normalizeGoalAuthorSlugs,
 	normalizeGoalCountryCodes,
 	readCountsTowardGoal,
+	type Viewer,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import {
-	assertMemberVisible,
-	type ViewerContext,
-} from "../user/user-visibility";
+	canViewerSeeSection,
+	isBlockedFrom,
+	viewerIdOf,
+} from "../read/section-access";
+import { throwMemberNotFound } from "../user/user-visibility";
 import { awardGoalXp } from "../xp/xp.service";
 import type {
 	CreateGoalInput,
@@ -89,15 +92,17 @@ function withAuthorSlugs(row: RawReadProgressRow): ReadProgressRow {
 
 async function loadUserByUsername(
 	username: string,
-	viewer: ViewerContext,
+	viewer: Viewer,
 	db: Database,
 ) {
 	const user = await db.user.findUnique({
 		where: { username },
-		select: { id: true, username: true, isHidden: true },
+		select: { id: true, username: true },
 	});
 
-	assertMemberVisible(user, viewer);
+	if (!user || isBlockedFrom(viewer, user.id)) {
+		throwMemberNotFound(username);
+	}
 
 	return user;
 }
@@ -259,11 +264,22 @@ function resolveGoalScopeFromInput(input: CreateGoalInput | UpdateGoalInput): {
 
 export async function listGoalsByUsername(
 	username: string,
-	viewer: ViewerContext,
+	viewer: Viewer,
 	db: Database,
 ): Promise<ListGoalsByUsernameOutput> {
 	const user = await loadUserByUsername(username, viewer, db);
-	const isOwner = viewer?.userId === user.id;
+	const isOwner = viewerIdOf(viewer) === user.id;
+
+	if (!(await canViewerSeeSection(db, viewer, user.id, "goals"))) {
+		return {
+			items: [],
+			active: [],
+			expired: [],
+			isOwner,
+			allowedYears: allowedGoalYears(new Date()).options,
+			hidden: true,
+		};
+	}
 
 	const rows = await db.goal.findMany({
 		where: { userId: user.id },
@@ -291,11 +307,18 @@ export async function listGoalsByUsername(
 export async function getGoalBySlug(
 	username: string,
 	goalSlug: string,
-	viewer: ViewerContext,
+	viewer: Viewer,
 	db: Database,
 ): Promise<GetGoalBySlugOutput> {
 	const user = await loadUserByUsername(username, viewer, db);
-	const isOwner = viewer?.userId === user.id;
+	const isOwner = viewerIdOf(viewer) === user.id;
+
+	if (!(await canViewerSeeSection(db, viewer, user.id, "goals"))) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Goal not found",
+			data: { goalSlug },
+		});
+	}
 
 	const row = await db.goal.findUnique({
 		where: { userId_slug: { userId: user.id, slug: goalSlug } },

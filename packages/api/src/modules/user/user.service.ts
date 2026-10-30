@@ -1,12 +1,23 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
-import { formatSittingDisplayName } from "@bbrc/shared";
+import { formatSittingDisplayName, type Viewer } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
 import { favoriteItemSelect } from "../favorite/favorite.schema";
+import { countFriends } from "../friend/friend.service";
 import { userReadListSelect } from "../read/read.schema";
+import { memberListVisibleWhere } from "../visibility/visibility-resources";
+import {
+	assertMayViewMember,
+	assertMemberAvailable,
+	mayViewProfile,
+	mayViewSection,
+	memberAccessSelect,
+	viewerIsAdmin,
+	viewerUserId,
+} from "./member-access";
 import { userMemberLevelsFromPoints } from "./member-levels";
+import { gateProfileDetails } from "./profile-details";
 import { loadReadingStreakForUser } from "./reading-streak";
 import {
 	userListRanging,
@@ -34,11 +45,6 @@ import {
 	userParticipationListSorting,
 } from "./user-participation.listing";
 import { getProfileByUserId } from "./user-profile.service";
-import {
-	assertMemberVisible,
-	viewerFromSession,
-	visibleOnSiteUserWhere,
-} from "./user-visibility";
 
 type UserListRow = Prisma.UserGetPayload<{ select: typeof getUserListFields }>;
 
@@ -72,44 +78,62 @@ function withStableUsernameOrderBy(
 	return [orderBy, { username: sortDirection }];
 }
 
+const EMPTY_STREAK = {
+	current: 0,
+	best: 0,
+	asOfSittingSlug: null,
+	sittings: [],
+};
+
 export async function getUserByUsername(
 	input: GetUserByUsernameInput,
 	db: Database,
-	session: Session | null = null,
+	viewer: Viewer,
 ): Promise<GetUserByUsernameOutput> {
-	const viewer = viewerFromSession(session);
 	const user = await db.user.findUnique({
 		where: { username: input.username },
-		select: { ...getUserByUsernameFields, id: true, isHidden: true },
+		select: { ...getUserByUsernameFields, id: true },
 	});
 
-	assertMemberVisible(user, viewer);
+	// Missing or blocked either way reads as "not found".
+	assertMemberAvailable(user, viewer, input.username);
 
-	const [readingStreak, levels, profile] = await Promise.all([
-		loadReadingStreakForUser(user.id, db),
-		Promise.resolve(userMemberLevelsFromPoints(user.xp, user.rp)),
+	const mayView = mayViewProfile(viewer, user);
+	const [readingStreak, profile, friendCount] = await Promise.all([
+		mayView
+			? loadReadingStreakForUser(user.id, db)
+			: Promise.resolve(EMPTY_STREAK),
 		getProfileByUserId(user.id, db),
+		countFriends(db, user.id),
 	]);
+	const levels = userMemberLevelsFromPoints(
+		mayView ? user.xp : 0,
+		mayView ? user.rp : 0,
+	);
 
 	return {
 		username: user.username,
 		name: user.name,
 		image: user.image,
 		isAdmin: user.isAdmin,
-		rp: user.rp,
-		xp: user.xp,
+		rp: mayView ? user.rp : 0,
+		xp: mayView ? user.xp : 0,
 		status: user.status,
-		indexable: !user.isHidden,
+		indexable: user.profileVisibility === "public",
+		isPrivate: user.profileVisibility === "private",
+		canViewProfile: mayView,
+		friendCount,
 		xpLevel: levels.xpLevel,
 		rpLevel: levels.rpLevel,
 		readingStreak,
-		profile,
+		profile: gateProfileDetails(profile, user, viewer),
 	};
 }
 
 export async function getUserList(
 	input: GetUserListInput,
 	db: Database,
+	viewer: Viewer,
 ): Promise<GetUserListOutput> {
 	const pagination = definePagination.cursor(input, userListCursorCodec);
 	const sorting = userListSorting.from(input);
@@ -119,13 +143,15 @@ export async function getUserList(
 	const where = mergeWhereFragments<Prisma.UserWhereInput>(
 		ranging.use(),
 		searching.use(),
-		visibleOnSiteUserWhere,
+		memberListVisibleWhere(viewer) as Prisma.UserWhereInput,
 		{
 			status: input.statuses ? { in: input.statuses } : undefined,
 			isAdmin: input.isAdmin === undefined ? undefined : input.isAdmin,
 		},
 	);
 
+	// Sorting and paging include every member; only the numbers of a private member
+	// the viewer may not see into are blanked.
 	const rows = await db.user.findMany({
 		...pagination.use(),
 		where,
@@ -137,9 +163,21 @@ export async function getUserList(
 
 	return {
 		items: page.items.map((row) => {
-			const levels = userMemberLevelsFromPoints(row.xp, row.rp);
+			const mayView = mayViewProfile(viewer, row);
+			const levels = userMemberLevelsFromPoints(
+				mayView ? row.xp : 0,
+				mayView ? row.rp : 0,
+			);
 			return {
-				...row,
+				id: row.id,
+				username: row.username,
+				name: row.name,
+				image: row.image,
+				isAdmin: row.isAdmin,
+				status: row.status,
+				xp: mayView ? row.xp : 0,
+				rp: mayView ? row.rp : 0,
+				isPrivate: row.profileVisibility === "private",
 				xpLevel: levels.xpLevel,
 				rpLevel: levels.rpLevel,
 			};
@@ -153,17 +191,25 @@ const PROFILE_CARD_BOOK_LIMIT = 4;
 export async function getUserProfileCard(
 	input: GetUserProfileCardInput,
 	db: Database,
-	session: Session | null = null,
+	viewer: Viewer,
 ): Promise<GetUserProfileCardOutput> {
-	const viewer = viewerFromSession(session);
 	const user = await db.user.findUnique({
 		where: { username: input.username },
-		select: { ...getUserByUsernameFields, id: true, isHidden: true },
+		select: { ...getUserByUsernameFields, id: true },
 	});
 
-	assertMemberVisible(user, viewer);
+	assertMemberAvailable(user, viewer, input.username);
 
-	const levels = userMemberLevelsFromPoints(user.xp, user.rp);
+	const mayView = mayViewProfile(viewer, user);
+	const mayReads = mayViewSection(viewer, user, "reads");
+	const mayFavorites = mayViewSection(viewer, user, "favorites");
+	const mayReviews = mayViewSection(viewer, user, "reviews");
+	const levels = userMemberLevelsFromPoints(
+		mayView ? user.xp : 0,
+		mayView ? user.rp : 0,
+	);
+	const isOwnerOrAdmin =
+		viewerIsAdmin(viewer) || viewerUserId(viewer) === user.id;
 
 	const [
 		favorites,
@@ -173,40 +219,55 @@ export async function getUserProfileCard(
 		participationsCount,
 		shelvesCount,
 		readingStreak,
+		friendCount,
 	] = await Promise.all([
-		db.favorite.findMany({
-			where: { userId: user.id },
-			orderBy: { createdAt: "asc" },
-			take: PROFILE_CARD_BOOK_LIMIT,
-			select: favoriteItemSelect,
-		}),
-		db.read.findMany({
-			where: {
-				userId: user.id,
-				readEndYear: { not: null },
-				readEndMonth: { not: null },
-			},
-			orderBy: [
-				{ readEndYear: "desc" },
-				{ readEndMonth: "desc" },
-				{ createdAt: "desc" },
-			],
-			take: PROFILE_CARD_BOOK_LIMIT,
-			select: userReadListSelect,
-		}),
-		db.read.count({ where: { userId: user.id } }),
-		db.feedback.count({ where: { authorId: user.id } }),
-		db.participation.count({ where: { userId: user.id } }),
-		db.shelf.count({
-			where: {
-				userId: user.id,
-				isWishlist: false,
-				...(viewer?.userId === user.id || viewer?.isAdmin
-					? {}
-					: { visibility: "public" as const }),
-			},
-		}),
-		loadReadingStreakForUser(user.id, db),
+		mayFavorites
+			? db.favorite.findMany({
+					where: { userId: user.id },
+					orderBy: { createdAt: "asc" },
+					take: PROFILE_CARD_BOOK_LIMIT,
+					select: favoriteItemSelect,
+				})
+			: Promise.resolve([]),
+		mayReads
+			? db.read.findMany({
+					where: {
+						userId: user.id,
+						readEndYear: { not: null },
+						readEndMonth: { not: null },
+					},
+					orderBy: [
+						{ readEndYear: "desc" },
+						{ readEndMonth: "desc" },
+						{ createdAt: "desc" },
+					],
+					take: PROFILE_CARD_BOOK_LIMIT,
+					select: userReadListSelect,
+				})
+			: Promise.resolve([]),
+		mayReads ? db.read.count({ where: { userId: user.id } }) : 0,
+		mayReviews ? db.feedback.count({ where: { authorId: user.id } }) : 0,
+		mayView ? db.participation.count({ where: { userId: user.id } }) : 0,
+		mayView
+			? db.shelf.count({
+					where: {
+						userId: user.id,
+						isWishlist: false,
+						...(isOwnerOrAdmin
+							? {}
+							: {
+									visibility: {
+										in:
+											viewer.kind === "member" && viewer.friendIds.has(user.id)
+												? (["public", "friends"] as const)
+												: (["public"] as const),
+									},
+								}),
+					},
+				})
+			: 0,
+		mayView ? loadReadingStreakForUser(user.id, db) : EMPTY_STREAK,
+		countFriends(db, user.id),
 	]);
 
 	return {
@@ -214,9 +275,12 @@ export async function getUserProfileCard(
 		name: user.name,
 		image: user.image,
 		isAdmin: user.isAdmin,
-		rp: user.rp,
-		xp: user.xp,
+		rp: mayView ? user.rp : 0,
+		xp: mayView ? user.xp : 0,
 		status: user.status,
+		isPrivate: user.profileVisibility === "private",
+		canViewProfile: mayView,
+		friendCount,
 		xpLevel: levels.xpLevel,
 		rpLevel: levels.rpLevel,
 		readingStreak,
@@ -248,16 +312,17 @@ export async function getUserProfileCard(
 export async function getUserParticipationList(
 	input: GetUserParticipationListInput,
 	db: Database,
-	session: Session | null = null,
+	viewer: Viewer,
 ): Promise<GetUserParticipationListOutput> {
 	const profileUser = await db.user.findUnique({
 		where: { username: input.username },
-		select: { id: true, isHidden: true, username: true },
+		select: { ...memberAccessSelect, username: true },
 	});
 
-	assertMemberVisible(profileUser, viewerFromSession(session));
+	// Sitting history follows the profile level.
+	assertMayViewMember(profileUser, viewer, { username: input.username });
 
-	const viewerId = session?.user?.id ?? null;
+	const viewerId = viewerUserId(viewer);
 	if (input.mutualOnly && !viewerId) {
 		throw new ORPCError("UNAUTHORIZED", {
 			message: "Sign in to filter by mutual sittings.",

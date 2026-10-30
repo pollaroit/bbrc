@@ -142,7 +142,7 @@ export const shelfAccessOptions = [
 			"Only you and the people you share it with can open it. It stays out of lists and search.",
 		icon: <Lock className={iconClass} aria-hidden />,
 	},
-] as const satisfies ShelfOption<"public" | "private">[];
+] as const satisfies ShelfOption<"public" | "friends" | "private">[];
 
 export const shelfVisibilityEditOptions = [
 	...shelfVisibilityCreateOptions,

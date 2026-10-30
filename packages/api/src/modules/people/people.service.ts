@@ -1,4 +1,3 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import {
 	bookAuthorEntries,
@@ -7,14 +6,20 @@ import {
 	genres,
 	type LevelTier,
 	RP_LEVEL_TIERS,
+	type Viewer,
 	XP_LEVEL_TIERS,
 } from "@bbrc/shared";
 import { loadAchievementCounts } from "../achievement/achievement.service";
-import { userMemberLevelsFromPoints } from "../user/member-levels";
 import {
-	viewerFromSession,
-	visibleOnSiteUserWhere,
-} from "../user/user-visibility";
+	type MemberAccessFields,
+	mayViewDetail,
+	mayViewProfile,
+	mayViewSection,
+	memberVisibleWhere,
+	viewerIsAdmin,
+} from "../user/member-access";
+import { userMemberLevelsFromPoints } from "../user/member-levels";
+import { memberListVisibleWhere } from "../visibility/visibility-resources";
 import type {
 	GetPeopleListInput,
 	GetPeopleListOutput,
@@ -41,8 +46,19 @@ export const userListSelect = {
 	createdAt: true,
 	xp: true,
 	rp: true,
+	profileVisibility: true,
+	readsVisibility: true,
+	reviewsVisibility: true,
+	favoritesVisibility: true,
+	goalsVisibility: true,
+	readingVisibility: true,
 	profile: {
-		select: { bio: true, location: true, favoriteGenres: true },
+		select: {
+			bio: true,
+			location: true,
+			locationVisibility: true,
+			favoriteGenres: true,
+		},
 	},
 	_count: {
 		select: {
@@ -114,9 +130,21 @@ async function userIdsWithAtLeast(
 async function buildWhere(
 	input: GetPeopleListInput,
 	db: Database,
-	isAdmin: boolean,
+	viewer: Viewer,
 ): Promise<Prisma.UserWhereInput> {
-	const and: Prisma.UserWhereInput[] = [visibleOnSiteUserWhere];
+	const isAdmin = viewerIsAdmin(viewer);
+	// Blocked members (either way) never appear; everyone else does, however private.
+	const and: Prisma.UserWhereInput[] = [
+		memberListVisibleWhere(viewer) as Prisma.UserWhereInput,
+	];
+	// Filters on things a member may keep private only match members the viewer may see
+	// those things of, so a filter can never reveal a hidden fact.
+	const gated = (
+		filter: Prisma.UserWhereInput,
+		spec?: Parameters<typeof memberVisibleWhere>[1],
+	): Prisma.UserWhereInput => ({
+		AND: [filter, memberVisibleWhere(viewer, spec)],
+	});
 
 	// Banned members are only ever listed for administrators who ask for them.
 	and.push(
@@ -153,41 +181,68 @@ async function buildWhere(
 	if (rp) and.push(rp);
 
 	if (input.genres?.length) {
-		and.push({ profile: { favoriteGenres: { hasSome: input.genres } } });
+		and.push(gated({ profile: { favoriteGenres: { hasSome: input.genres } } }));
 	}
 	if (input.location) {
-		and.push({
-			profile: { location: { contains: input.location, mode: "insensitive" } },
-		});
+		and.push(
+			gated(
+				{
+					profile: {
+						location: { contains: input.location, mode: "insensitive" },
+					},
+				},
+				{ detail: "location" },
+			),
+		);
 	}
 	for (const slug of input.readBooks ?? []) {
-		and.push({ reads: { some: { book: { slug } } } });
+		and.push(
+			gated({ reads: { some: { book: { slug } } } }, { section: "reads" }),
+		);
 	}
 
 	if (input.readingNow) {
-		and.push({
-			participations: {
-				some: {
-					removedAt: null,
-					progress: { in: ["not_started", "in_progress"] },
-					sitting: { status: "reading" },
+		and.push(
+			gated(
+				{
+					participations: {
+						some: {
+							removedAt: null,
+							progress: { in: ["not_started", "in_progress"] },
+							sitting: { status: "reading" },
+						},
+					},
 				},
-			},
-		});
+				{ section: "reading" },
+			),
+		);
 	}
-	if (input.hasReviews) and.push({ feedbacks: { some: {} } });
-	if (input.hasPosts) and.push({ posts: { some: {} } });
-	if (input.hasShelves) and.push({ shelves: { some: { status: "active" } } });
-	if (input.hasFavorites) and.push({ favorites: { some: {} } });
+	if (input.hasReviews) {
+		and.push(gated({ feedbacks: { some: {} } }, { section: "reviews" }));
+	}
+	if (input.hasPosts) and.push(gated({ posts: { some: {} } }));
+	if (input.hasShelves) {
+		and.push(gated({ shelves: { some: { status: "active" } } }));
+	}
+	if (input.hasFavorites) {
+		and.push(gated({ favorites: { some: {} } }, { section: "favorites" }));
+	}
 	if (input.tookQuiz) {
-		and.push({ quizSubmissions: { some: { status: "submitted" } } });
+		and.push(gated({ quizSubmissions: { some: { status: "submitted" } } }));
 	}
 	if (input.hasGoal) {
-		and.push({ goals: { some: { year: new Date().getFullYear() } } });
+		and.push(
+			gated(
+				{ goals: { some: { year: new Date().getFullYear() } } },
+				{ section: "goals" },
+			),
+		);
 	}
 	if (input.contributedDocuments) {
-		and.push({ documents: { some: { status: "approved" } } });
+		and.push(gated({ documents: { some: { status: "approved" } } }));
 	}
+	// Streaks come from sitting history, which follows the profile.
+	if (input.hasStreak) and.push(memberVisibleWhere(viewer));
 	if (input.hasBio) and.push({ profile: { bio: { not: null } } });
 	if (input.hasAvatar) and.push({ image: { not: null } });
 
@@ -199,7 +254,16 @@ async function buildWhere(
 	] as const;
 	for (const [kind, count] of thresholds) {
 		if (count != null) {
-			and.push({ id: { in: await userIdsWithAtLeast(kind, count, db) } });
+			and.push(
+				gated(
+					{ id: { in: await userIdsWithAtLeast(kind, count, db) } },
+					kind === "reads"
+						? { section: "reads" }
+						: kind === "reviews"
+							? { section: "reviews" }
+							: undefined,
+				),
+			);
 		}
 	}
 
@@ -353,12 +417,56 @@ async function loadStreaks(
 	return result;
 }
 
+/** A private member the viewer may not see into: identity only, no numbers. */
+function privateItem(row: PeopleRow): PeopleListItem {
+	const levels = userMemberLevelsFromPoints(0, 0);
+	return {
+		id: row.id,
+		username: row.username,
+		name: row.name,
+		image: row.image,
+		status: row.status,
+		isAdmin: row.isAdmin,
+		createdAt: row.createdAt.toISOString(),
+		xp: 0,
+		rp: 0,
+		xpLevel: levels.xpLevel,
+		rpLevel: levels.rpLevel,
+		bio: row.profile?.bio
+			? contentPlainText(row.profile.bio).trim().slice(0, BIO_PREVIEW_CHARS) ||
+				null
+			: null,
+		location: null,
+		isPrivate: true,
+		restricted: true,
+		favoriteGenres: [],
+		reads: 0,
+		reviews: 0,
+		posts: 0,
+		sittingsFinished: 0,
+		sittingsJoined: 0,
+		shelves: 0,
+		favorites: 0,
+		quizzesTaken: 0,
+		documentsShared: 0,
+		authorsRead: 0,
+		achievements: 0,
+		streak: { current: 0, best: 0 },
+		averageRatingGiven: null,
+		readingNow: null,
+	};
+}
+
 /** Turns member rows into people-list cards (shared with the author followers list). */
 export async function buildItems(
 	rows: PeopleRow[],
 	db: Database,
+	viewer: Viewer,
 ): Promise<PeopleListItem[]> {
-	const ids = rows.map((row) => row.id);
+	// Private members the viewer may not see are listed by name, username and avatar only.
+	const ids = rows
+		.filter((row) => mayViewProfile(viewer, row))
+		.map((row) => row.id);
 	const [streaks, ratings, reading, authorCounts, achievementCounts] =
 		await Promise.all([
 			loadStreaks(ids, db),
@@ -389,6 +497,20 @@ export async function buildItems(
 	const readingByUser = new Map(reading.map((row) => [row.userId, row]));
 
 	return rows.map((row) => {
+		const isPrivate = row.profileVisibility === "private";
+		if (!mayViewProfile(viewer, row)) {
+			return privateItem(row);
+		}
+		const access: MemberAccessFields = row;
+		const mayReads = mayViewSection(viewer, access, "reads");
+		const mayReviews = mayViewSection(viewer, access, "reviews");
+		const mayFavorites = mayViewSection(viewer, access, "favorites");
+		const mayReading = mayViewSection(viewer, access, "reading");
+		const mayLocation = mayViewDetail(
+			viewer,
+			row,
+			row.profile?.locationVisibility ?? "public",
+		);
 		const levels = userMemberLevelsFromPoints(row.xp, row.rp);
 		const streak = streaks.get(row.id);
 		const average = ratingByUser.get(row.id);
@@ -410,28 +532,31 @@ export async function buildItems(
 			xpLevel: levels.xpLevel,
 			rpLevel: levels.rpLevel,
 			bio: bio || null,
-			location: row.profile?.location ?? null,
+			location: mayLocation ? (row.profile?.location ?? null) : null,
+			isPrivate,
+			restricted: false,
 			favoriteGenres: (row.profile?.favoriteGenres ?? [])
 				.map((slug) => genreNameBySlug.get(slug))
 				.filter((name): name is string => name != null)
 				.slice(0, MAX_CARD_GENRES),
-			reads: row._count.reads,
-			reviews: row._count.feedbacks,
+			reads: mayReads ? row._count.reads : 0,
+			reviews: mayReviews ? row._count.feedbacks : 0,
 			posts: row._count.posts,
 			sittingsFinished: streak?.finished ?? 0,
 			sittingsJoined: row._count.participations,
 			shelves: row._count.shelves,
-			favorites: row._count.favorites,
+			favorites: mayFavorites ? row._count.favorites : 0,
 			quizzesTaken: row._count.quizSubmissions,
 			documentsShared: row._count.documents,
-			authorsRead: authorCounts.get(row.id) ?? 0,
+			authorsRead: mayReads ? (authorCounts.get(row.id) ?? 0) : 0,
 			achievements: achievementCounts.get(row.id) ?? 0,
 			streak: { current: streak?.current ?? 0, best: streak?.best ?? 0 },
 			averageRatingGiven:
-				average != null ? Math.round(average * 100) / 100 : null,
-			readingNow: now
-				? { sittingSlug: now.sitting.slug, progress: now.progress }
-				: null,
+				mayReviews && average != null ? Math.round(average * 100) / 100 : null,
+			readingNow:
+				mayReading && now
+					? { sittingSlug: now.sitting.slug, progress: now.progress }
+					: null,
 		};
 	});
 }
@@ -439,10 +564,9 @@ export async function buildItems(
 export async function getPeopleList(
 	input: GetPeopleListInput,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetPeopleListOutput> {
-	const isAdmin = viewerFromSession(session)?.isAdmin === true;
-	const where = await buildWhere(input, db, isAdmin);
+	const where = await buildWhere(input, db, viewer);
 	const direction = input.sortDirection;
 	const total = await db.user.count({ where });
 
@@ -520,7 +644,7 @@ export async function getPeopleList(
 		const hasNextPage = offset + input.limit < ranked.length;
 
 		return {
-			items: await buildItems(rows, db),
+			items: await buildItems(rows, db, viewer),
 			metadata: {
 				limit: input.limit,
 				hasNextPage,
@@ -549,7 +673,7 @@ export async function getPeopleList(
 	const pageRows = hasNextPage ? rows.slice(0, input.limit) : rows;
 
 	return {
-		items: await buildItems(pageRows, db),
+		items: await buildItems(pageRows, db, viewer),
 		metadata: {
 			limit: input.limit,
 			hasNextPage,
@@ -562,11 +686,10 @@ export async function getPeopleList(
 
 export async function getPeopleOverview(
 	db: Database,
+	viewer: Viewer,
 ): Promise<GetPeopleOverviewOutput> {
-	const where: Prisma.UserWhereInput = {
-		...visibleOnSiteUserWhere,
-		status: { not: "banned" },
-	};
+	// Totals include every member, however private or blocked.
+	const where: Prisma.UserWhereInput = { status: { not: "banned" } };
 	const since = new Date(Date.now() - ACTIVE_WINDOW_MS);
 
 	const [total, activeLast30Days, newest] = await Promise.all([
@@ -575,7 +698,9 @@ export async function getPeopleOverview(
 			where: { ...where, xpEvents: { some: { createdAt: { gte: since } } } },
 		}),
 		db.user.findFirst({
-			where,
+			where: {
+				AND: [where, memberListVisibleWhere(viewer) as Prisma.UserWhereInput],
+			},
 			orderBy: { createdAt: "desc" },
 			select: { name: true, username: true, createdAt: true },
 		}),

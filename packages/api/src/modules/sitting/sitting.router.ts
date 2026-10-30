@@ -12,6 +12,7 @@ import {
 } from "../../revalidate-isr";
 import { evaluateSittingMembersAchievements } from "../achievement/achievement.service";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
+import { loadViewer } from "../visibility/viewer";
 import {
 	CreateSittingInputSchema,
 	CreateSittingOutputSchema,
@@ -89,14 +90,22 @@ export const sittingRouter = {
 		.output(GetSittingListOutputSchema)
 		.handler(
 			async ({ input, context }) =>
-				await getSittingList(input, context.db, context.session),
+				await getSittingList(
+					input,
+					await loadViewer(context.db, context.session),
+					context.db,
+				),
 		),
 	getSittingBySlug: publicProcedure
 		.input(SittingSchema.shape.slug)
 		.output(GetSittingBySlugOutputSchema)
 		.handler(
 			async ({ input, context }) =>
-				await getSittingBySlug(input, context.db, context.session),
+				await getSittingBySlug(
+					input,
+					await loadViewer(context.db, context.session),
+					context.db,
+				),
 		),
 	getMySittingState: protectedProcedure
 		.input(SittingSchema.shape.slug)
@@ -188,8 +197,7 @@ export const sittingRouter = {
 		.handler(async ({ input, context }) =>
 			getPollOptionReaders(
 				input,
-				context.session.user.id,
-				context.session.user.isAdmin === true,
+				await loadViewer(context.db, context.session),
 				context.db,
 			),
 		),
@@ -198,7 +206,11 @@ export const sittingRouter = {
 		.output(GetPollOptionReadersOutputSchema)
 		.handler(
 			async ({ input, context }) =>
-				await getSittingPollPreviewReaders(input, context.db),
+				await getSittingPollPreviewReaders(
+					input,
+					await loadViewer(context.db, context.session),
+					context.db,
+				),
 		),
 	getPollVotesByUser: adminProcedure
 		.input(GetPollVotesByUserInputSchema)

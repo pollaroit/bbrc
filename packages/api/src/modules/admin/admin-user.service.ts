@@ -13,8 +13,6 @@ import type {
 	AdminDeleteUserOutput,
 	AdminSetUserPasswordInput,
 	AdminSetUserPasswordOutput,
-	AdminUpdateUserHiddenInput,
-	AdminUpdateUserHiddenOutput,
 	AdminUpdateUserNameInput,
 	AdminUpdateUserNameOutput,
 	AdminUpdateUserRoleInput,
@@ -97,7 +95,6 @@ function mapAdminUserRow(row: AdminUserListRow) {
 		email: row.email,
 		image: row.image,
 		isAdmin: row.isAdmin,
-		isHidden: row.isHidden,
 		status: row.status,
 		xp: row.xp,
 		rp: row.rp,
@@ -371,7 +368,6 @@ export async function buildAdminUserListWhere(
 			id: minCountIds ? { in: minCountIds } : undefined,
 			status: input.statuses ? { in: input.statuses } : undefined,
 			isAdmin: input.isAdmin === undefined ? undefined : input.isAdmin,
-			isHidden: input.isHidden === undefined ? undefined : input.isHidden,
 			xp: input.minXp != null ? { gte: input.minXp } : undefined,
 			rp: input.minRp != null ? { gte: input.minRp } : undefined,
 		},
@@ -768,24 +764,6 @@ export async function adminUpdateUserStatus(
 			where: { username: input.username },
 			data: { status: input.status },
 			select: { username: true, status: true },
-		});
-	} catch {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
-			data: { username: input.username },
-		});
-	}
-}
-
-export async function adminUpdateUserHidden(
-	input: AdminUpdateUserHiddenInput,
-	db: Database,
-): Promise<AdminUpdateUserHiddenOutput> {
-	try {
-		return await db.user.update({
-			where: { username: input.username },
-			data: { isHidden: input.isHidden },
-			select: { username: true, isHidden: true },
 		});
 	} catch {
 		throw new ORPCError("NOT_FOUND", {

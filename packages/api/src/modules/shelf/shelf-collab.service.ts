@@ -7,9 +7,10 @@ import {
 	outranks,
 	SHELF_INVITATION_TTL_DAYS,
 	SHELF_PERMISSION_PRESETS,
+	type Viewer,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
+import { loadBlockedIds } from "../visibility/viewer";
 import { mapShelfListItem, shelfListItemSelect } from "./shelf.schema";
 import { loadCoverPreviewMap } from "./shelf.service";
 import {
@@ -93,6 +94,7 @@ export async function searchInvitableMembers(
 	actorId: string,
 	db: Database,
 ): Promise<SearchInvitableOutput> {
+	const blockedIds = await loadBlockedIds(db, actorId);
 	const access = await loadShelfAccess(db, { ...input, actorId });
 	requireShelfPermission(access, "add_collaborator");
 	assertNotWishlist(
@@ -102,8 +104,7 @@ export async function searchInvitableMembers(
 
 	const users = await db.user.findMany({
 		where: {
-			...visibleOnSiteUserWhere,
-			id: { not: actorId },
+			id: { not: actorId, notIn: blockedIds },
 			OR: [
 				{ username: { contains: input.query, mode: "insensitive" } },
 				{ name: { contains: input.query, mode: "insensitive" } },
@@ -188,11 +189,13 @@ export async function inviteCollaborator(
 			id: true,
 			username: true,
 			name: true,
-			isHidden: true,
 			allowShelfInvites: true,
 		},
 	});
-	if (!invitee || invitee.isHidden) {
+	if (!invitee) {
+		throw new ORPCError("NOT_FOUND", { message: "Member not found." });
+	}
+	if ((await loadBlockedIds(db, actorId)).includes(invitee.id)) {
 		throw new ORPCError("NOT_FOUND", { message: "Member not found." });
 	}
 	if (invitee.id === actorId) {
@@ -508,9 +511,13 @@ export async function cancelInvitation(
 
 export async function listCollaborators(
 	input: ShelfRef,
-	actorId: string,
+	viewer: Viewer,
 	db: Database,
 ): Promise<ListCollaboratorsOutput> {
+	if (viewer.kind !== "member") {
+		throw new ORPCError("UNAUTHORIZED", { message: "Sign in to continue." });
+	}
+	const actorId = viewer.userId;
 	const access = await loadShelfAccess(db, { ...input, actorId });
 	const now = new Date();
 
@@ -555,11 +562,20 @@ export async function listCollaborators(
 	]);
 
 	if (
-		!canViewShelf(access.shelf, {
-			userId: actorId,
-			permissions: access.permissions,
-			hasPendingInvitation: mine > 0,
-		})
+		!canViewShelf(
+			viewer,
+			{
+				status: access.shelf.status,
+				userId: access.shelf.userId,
+				visibility: access.shelf.visibility,
+				ownerProfileVisibility: access.owner.profileVisibility,
+			},
+			{
+				permissions: access.permissions,
+				hasPendingInvitation: mine > 0,
+				isCollaborator: access.collaborator != null,
+			},
+		)
 	) {
 		throw new ORPCError("NOT_FOUND", { message: "Shelf not found" });
 	}

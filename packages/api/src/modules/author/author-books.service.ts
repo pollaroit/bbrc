@@ -1,17 +1,15 @@
-import type { Session } from "@bbrc/auth";
 import type { Database } from "@bbrc/db";
-import { subjectNameToSlug } from "@bbrc/shared";
+import { subjectNameToSlug, type Viewer } from "@bbrc/shared";
 import { getBookList } from "../book/book.service";
 import { listCountryFacetsForBooks } from "../book/book-country-filter";
 import { buildBookListWhereWithAuthors } from "../book/book-list-where";
-import { viewerFromSession } from "../user/user-visibility";
 import type {
 	AuthorBookFacetsInput,
 	AuthorBookFacetsOutput,
 	AuthorBooksInput,
 	AuthorBooksOutput,
 } from "./author.schema";
-import { resolveAuthor } from "./author-resolve";
+import { actorOf, resolveAuthor } from "./author-resolve";
 
 const SUBJECT_FACET_LIMIT = 80;
 
@@ -19,23 +17,23 @@ const SUBJECT_FACET_LIMIT = 80;
 export async function getAuthorBooks(
 	input: AuthorBooksInput,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorBooksOutput> {
-	const viewer = viewerFromSession(session);
+	const actor = actorOf(viewer);
 	const author = await resolveAuthor(db, input.slug, viewer);
 	const { slug: _slug, ...listInput } = input;
 
 	const page = await getBookList(
 		{ ...listInput, authors: [author.slug] },
 		db,
-		viewer?.userId,
+		actor?.userId,
 	);
 
 	const readSlugs = new Set<string>();
-	if (viewer && page.items.length > 0) {
+	if (actor && page.items.length > 0) {
 		const reads = await db.read.findMany({
 			where: {
-				userId: viewer.userId,
+				userId: actor.userId,
 				book: { slug: { in: page.items.map((item) => item.slug) } },
 			},
 			select: { book: { select: { slug: true } } },
@@ -55,9 +53,9 @@ export async function getAuthorBooks(
 export async function getAuthorBookFacets(
 	input: AuthorBookFacetsInput,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorBookFacetsOutput> {
-	const viewer = viewerFromSession(session);
+	const actor = actorOf(viewer);
 	const author = await resolveAuthor(db, input.slug, viewer);
 	const { slug: _slug, pinnedCountryCodes, ...listInput } = input;
 
@@ -66,7 +64,7 @@ export async function getAuthorBookFacets(
 		buildBookListWhereWithAuthors(
 			{ ...listInput, countries: undefined, authors: [author.slug] },
 			db,
-			viewer?.userId,
+			actor?.userId,
 		),
 		buildBookListWhereWithAuthors(
 			{
@@ -76,7 +74,7 @@ export async function getAuthorBookFacets(
 				authors: [author.slug],
 			},
 			db,
-			viewer?.userId,
+			actor?.userId,
 		),
 		db.book.findMany({
 			where: { authorLinks: { some: { authorId: author.id } } },

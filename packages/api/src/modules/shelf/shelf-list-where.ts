@@ -1,4 +1,5 @@
 import type { Database, Prisma } from "@bbrc/db";
+import type { Viewer } from "@bbrc/shared";
 import type { z } from "zod";
 import { mergeWhereFragments } from "../../utils/searching";
 import {
@@ -6,7 +7,7 @@ import {
 	shelfListRanging,
 	shelfListSearching,
 } from "./shelf.listing";
-import { publicShelfWhere } from "./shelf-visibility";
+import { shelfVisibleWhere } from "./shelf-visibility";
 
 type ShelfListFilters = z.infer<typeof shelfListFiltersSchema>;
 
@@ -31,6 +32,7 @@ async function shelfIdsWithMinBooks(
 
 export async function buildPublicShelfListWhere(
 	input: ShelfListFilters,
+	viewer: Viewer,
 	db: Database,
 ): Promise<Prisma.ShelfWhereInput> {
 	const ranging = shelfListRanging.from(input);
@@ -42,7 +44,7 @@ export async function buildPublicShelfListWhere(
 	}
 
 	return mergeWhereFragments<Prisma.ShelfWhereInput>(
-		publicShelfWhere,
+		shelfVisibleWhere(viewer, { listing: true }),
 		ranging.use(),
 		searching.use(),
 		{

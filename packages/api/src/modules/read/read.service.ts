@@ -1,5 +1,5 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
+import type { Viewer } from "@bbrc/shared";
 import {
 	contentPlainText,
 	readFinishedMonthFromClubNow,
@@ -20,7 +20,7 @@ import { createFeedback } from "../feedback/feedback.service";
 import { finalizeReadingForRead } from "../reading/reading.service";
 import { checkReadingAchievements } from "../reading/reading-achievements";
 import { activeParticipationWhere } from "../sitting/participation-active";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
+import { readVisibleWhere } from "../visibility/visibility-resources";
 import {
 	compareUserReadRatings,
 	userReadListSorting,
@@ -45,6 +45,11 @@ import {
 	readEditionRef,
 	readEditionRefSelect,
 } from "./read-edition-ref";
+import {
+	canViewerSeeSection,
+	isBlockedFrom,
+	viewerIdOf,
+} from "./section-access";
 
 async function loadBookBySlug(slug: string, db: Database) {
 	const book = await db.book.findUnique({
@@ -404,16 +409,22 @@ export async function removeRead(
 export async function listBookReads(
 	input: ListBookReadsInput,
 	db: Database,
+	viewer: Viewer,
 ): Promise<ListBookReadsOutput> {
 	const book = await loadBookBySlug(input.bookSlug, db);
 	const limit = input.limit ?? 100;
 
-	const readWhere = { bookId: book.id, user: visibleOnSiteUserWhere };
+	// Totals count everyone; only the named rows follow the viewer.
+	const readWhere = { bookId: book.id };
+	const visibleReadWhere: Prisma.ReadWhereInput = {
+		AND: [readWhere, readVisibleWhere(viewer) as Prisma.ReadWhereInput],
+	};
 
-	const [total, rows] = await Promise.all([
+	const [total, visibleTotal, rows] = await Promise.all([
 		db.read.count({ where: readWhere }),
+		db.read.count({ where: visibleReadWhere }),
 		db.read.findMany({
-			where: readWhere,
+			where: visibleReadWhere,
 			orderBy: [
 				{ readEndYear: "desc" },
 				{ readEndMonth: "desc" },
@@ -444,6 +455,7 @@ export async function listBookReads(
 
 	return {
 		total,
+		privateCount: Math.max(0, total - visibleTotal),
 		items: rows.map((row) => ({
 			readEndYear: row.readEndYear,
 			readEndMonth: row.readEndMonth,
@@ -462,7 +474,7 @@ type UserReadListRow = Prisma.ReadGetPayload<{
 export async function listUserReads(
 	input: ListUserReadsInput,
 	db: Database,
-	session: Session | null = null,
+	viewer: Viewer,
 ): Promise<ListUserReadsOutput> {
 	const user = await db.user.findUnique({
 		where: { username: input.username },
@@ -476,13 +488,24 @@ export async function listUserReads(
 		});
 	}
 
+	if (isBlockedFrom(viewer, user.id)) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "User not found",
+			data: { username: input.username },
+		});
+	}
+	const readsVisible = await canViewerSeeSection(db, viewer, user.id, "reads");
+	const reviewsVisible =
+		readsVisible && (await canViewerSeeSection(db, viewer, user.id, "reviews"));
+
 	const bookWhere = await buildBookListWhereWithAuthors(
 		input as BookListQueryInput,
 		db,
 	);
 
-	if (bookWhere == null) {
+	if (bookWhere == null || !readsVisible) {
 		return {
+			hidden: !readsVisible,
 			items: [],
 			metadata: {
 				limit: input.limit ?? 12,
@@ -494,7 +517,7 @@ export async function listUserReads(
 		};
 	}
 
-	const viewerId = session?.user?.id;
+	const viewerId = viewerIdOf(viewer);
 	const mutualOnly = Boolean(input.mutualOnly && viewerId);
 
 	if (input.mutualOnly && !viewerId) {
@@ -619,7 +642,7 @@ export async function listUserReads(
 			editionId: row.editionId,
 			edition: readEditionRef(row, userSnapshotLabels),
 			recordedAt: row.createdAt,
-			rating: ratingByBookId.get(row.book.id) ?? null,
+			rating: reviewsVisible ? (ratingByBookId.get(row.book.id) ?? null) : null,
 			book: {
 				slug: row.book.slug,
 				title: row.book.title,

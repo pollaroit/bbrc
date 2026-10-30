@@ -3,6 +3,7 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	AdminOverviewInputSchema,
 	AdminOverviewOutputSchema,
@@ -30,13 +31,10 @@ export const viewRouter = {
 	insights: protectedProcedure
 		.input(InsightsInputSchema)
 		.output(InsightsOutputSchema)
-		.handler(({ input, context }) =>
+		.handler(async ({ input, context }) =>
 			getViewInsights(
 				context.db,
-				{
-					id: context.session.user.id,
-					isAdmin: Boolean(context.session.user.isAdmin),
-				},
+				await loadViewer(context.db, context.session),
 				input,
 			),
 		),
@@ -47,7 +45,13 @@ export const viewRouter = {
 	trending: publicProcedure
 		.input(TrendingInputSchema)
 		.output(TrendingOutputSchema)
-		.handler(({ input, context }) => getTrending(context.db, input)),
+		.handler(async ({ input, context }) =>
+			getTrending(
+				context.db,
+				input,
+				await loadViewer(context.db, context.session),
+			),
+		),
 	adminOverview: adminProcedure
 		.input(AdminOverviewInputSchema)
 		.output(AdminOverviewOutputSchema)

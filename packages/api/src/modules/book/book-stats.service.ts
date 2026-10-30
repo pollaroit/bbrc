@@ -1,4 +1,4 @@
-import type { Database } from "@bbrc/db";
+import type { Database, Prisma } from "@bbrc/db";
 import {
 	bookFinishDaysHistogram,
 	bookRatingHistogram,
@@ -10,6 +10,7 @@ import {
 	getZonedParts,
 	medianNumber,
 	resolveClubTimeZone,
+	type Viewer,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import {
@@ -17,8 +18,8 @@ import {
 	QUIZ_MIN_SCORE,
 	QUIZ_SCORING,
 } from "../quiz/quiz-scoring";
-import { publicShelfWhere } from "../shelf/shelf-visibility";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
+import { countableShelfWhere } from "../shelf/shelf-visibility";
+import { reviewVisibleWhere } from "../visibility/visibility-resources";
 import type { GetBookStatsOutput } from "./book-stats.schema";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -41,6 +42,7 @@ function round(value: number | null, digits = 2): number | null {
 export async function getBookStats(
 	bookSlug: string,
 	db: Database,
+	viewer: Viewer,
 ): Promise<GetBookStatsOutput> {
 	const book = await db.book.findUnique({
 		where: { slug: bookSlug },
@@ -80,7 +82,7 @@ export async function getBookStats(
 		libraryAverage,
 	] = await Promise.all([
 		db.read.findMany({
-			where: { bookId: book.id, user: visibleOnSiteUserWhere },
+			where: { bookId: book.id },
 			select: {
 				userId: true,
 				createdAt: true,
@@ -90,8 +92,9 @@ export async function getBookStats(
 			},
 		}),
 		db.feedback.findMany({
-			where: { bookId: book.id, author: visibleOnSiteUserWhere },
+			where: { bookId: book.id },
 			select: {
+				id: true,
 				slug: true,
 				rating: true,
 				review: true,
@@ -102,13 +105,13 @@ export async function getBookStats(
 			},
 		}),
 		db.favorite.findMany({
-			where: { bookId: book.id, user: visibleOnSiteUserWhere },
+			where: { bookId: book.id },
 			select: { createdAt: true },
 		}),
 		db.shelfBook.findMany({
 			where: {
 				bookId: book.id,
-				shelf: publicShelfWhere,
+				shelf: countableShelfWhere,
 			},
 			select: { createdAt: true },
 		}),
@@ -134,7 +137,7 @@ export async function getBookStats(
 				createdAt: true,
 				readingStartedAt: true,
 				participants: {
-					where: { removedAt: null, user: visibleOnSiteUserWhere },
+					where: { removedAt: null },
 					select: { userId: true, progress: true, updatedAt: true },
 				},
 			},
@@ -147,14 +150,29 @@ export async function getBookStats(
 					select: { position: true, choices: true },
 				},
 				submissions: {
-					where: { status: "submitted", user: visibleOnSiteUserWhere },
+					where: { status: "submitted" },
 					select: { answers: true, score: true },
 				},
 			},
 		}),
-		db.user.count({ where: visibleOnSiteUserWhere }),
+		db.user.count(),
 		db.book.aggregate({ _avg: { averageRating: true } }),
 	]);
+
+	// Aggregates above count everyone; only the named top review follows the viewer.
+	const visibleReviewIds = new Set(
+		(
+			await db.feedback.findMany({
+				where: {
+					AND: [
+						{ bookId: book.id },
+						reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput,
+					],
+				},
+				select: { id: true },
+			})
+		).map((row) => row.id),
+	);
 
 	// Reads ----------------------------------------------------------------
 	const readInputs = reads.map((read) => ({
@@ -184,10 +202,14 @@ export async function getBookStats(
 
 	// Ratings ----------------------------------------------------------------
 	const ratingValues = feedbacks.map((feedback) => feedback.rating);
-	const topReview = [...feedbacks].sort(
-		(a, b) =>
-			b._count.likes + b._count.comments - (a._count.likes + a._count.comments),
-	)[0];
+	const topReview = feedbacks
+		.filter((feedback) => visibleReviewIds.has(feedback.id))
+		.sort(
+			(a, b) =>
+				b._count.likes +
+				b._count.comments -
+				(a._count.likes + a._count.comments),
+		)[0];
 
 	// Audience ---------------------------------------------------------------
 	const readerIds = new Set(reads.map((read) => read.userId));

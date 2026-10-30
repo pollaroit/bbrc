@@ -32,6 +32,7 @@ import {
 } from "@bbrc/api/modules/sitting/sitting.service";
 import { getUserByUsername } from "@bbrc/api/modules/user/user.service";
 import { getXpChart, getXpEventList } from "@bbrc/api/modules/xp/xp.service";
+import { ANONYMOUS_VIEWER } from "@bbrc/shared";
 import { cache } from "react";
 import { db } from "@/services";
 
@@ -40,7 +41,8 @@ import { db } from "@/services";
  * Call API services directly — do not use the oRPC client here (it reads
  * `headers()` and breaks `revalidate` / `generateStaticParams` pages).
  */
-const anonymousSession = null;
+/** Cached pages are built for an anonymous visitor: friends-only extras load per viewer after the page opens. */
+const anonymousSession = ANONYMOUS_VIEWER;
 
 export const loadAuthorForIsr = cache((slug: string) =>
 	getAuthor(slug, db, anonymousSession),
@@ -89,7 +91,7 @@ export const loadApprovedDocumentsForIsr = cache((slug: string) =>
 );
 
 export const loadBookReadsForIsr = cache((slug: string) =>
-	listBookReads({ bookSlug: slug }, db),
+	listBookReads({ bookSlug: slug }, db, anonymousSession),
 );
 
 export const loadBookSittingsForIsr = cache((slug: string) =>
@@ -101,15 +103,15 @@ export const loadBookSittingCountForIsr = cache((slug: string) =>
 );
 
 export const loadBookStatsForIsr = cache((slug: string) =>
-	getBookStats(slug, db),
+	getBookStats(slug, db, anonymousSession),
 );
 
 export const loadBookFavoritesForIsr = cache((slug: string) =>
-	listBookFavorites({ bookSlug: slug }, db),
+	listBookFavorites({ bookSlug: slug }, db, anonymousSession),
 );
 
 export const loadBookShelvesForIsr = cache((slug: string) =>
-	listShelvesForBook(slug, undefined, db),
+	listShelvesForBook(slug, anonymousSession, db),
 );
 
 export const loadSeriesBySlugForIsr = cache((slug: string) =>
@@ -121,32 +123,32 @@ export const loadPostBySlugForIsr = cache((slug: string) =>
 );
 
 export const loadSittingBySlugForIsr = cache((slug: string) =>
-	getSittingBySlug(slug, db, anonymousSession),
+	getSittingBySlug(slug, anonymousSession, db),
 );
 
 export const loadUserByUsernameForIsr = cache((username: string) =>
-	getUserByUsername({ username }, db),
+	getUserByUsername({ username }, db, anonymousSession),
 );
 
 export const loadShelfBySlugForIsr = cache(
 	(username: string, shelfSlug: string) =>
-		getShelfBySlug(username, shelfSlug, null, db),
+		getShelfBySlug(username, shelfSlug, anonymousSession, db),
 );
 
 export const loadOngoingSittingForIsr = cache(() => getOngoingSitting(db));
 
 export const loadRpChartForIsr = cache((username: string) =>
-	getRpChart({ username }, db),
+	getRpChart({ username }, db, anonymousSession),
 );
 
 export const loadRpEventListForIsr = cache((username: string) =>
-	getRpEventList({ username, limit: 20 }, db),
+	getRpEventList({ username, limit: 20 }, db, anonymousSession),
 );
 
 export const loadXpChartForIsr = cache((username: string) =>
-	getXpChart({ username }, db),
+	getXpChart({ username }, db, anonymousSession),
 );
 
 export const loadXpEventListForIsr = cache((username: string) =>
-	getXpEventList({ username, limit: 20 }, db),
+	getXpEventList({ username, limit: 20 }, db, anonymousSession),
 );

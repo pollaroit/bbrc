@@ -34,6 +34,7 @@ function facts(overrides: Partial<AchievementFacts> = {}): AchievementFacts {
 		documentTimes: [],
 		requestedBookTimes: [],
 		favoriteTimes: [],
+		friendTimes: [],
 		quizzes: [],
 		series: [],
 		views: { mostOpenedPost: null, mostOpenedReview: null, profileOpens: null },

@@ -1,4 +1,12 @@
 import type { Database, Prisma } from "@bbrc/db";
+import type { Viewer } from "@bbrc/shared";
+import {
+	commentVisibleWhere,
+	goalVisibleWhere,
+	postVisibleWhere,
+	reviewVisibleWhere,
+} from "../visibility/visibility-resources";
+import { visibleWhere } from "../visibility/visibility-where";
 
 export type XpEntitySource = {
 	label: string;
@@ -29,6 +37,7 @@ export async function resolveXpEntitySources(
 		reason: Prisma.XPEventCreateInput["reason"];
 		entityId: string;
 	}[],
+	viewer: Viewer,
 ): Promise<Map<string, XpEntitySource>> {
 	const result = new Map<string, XpEntitySource>();
 
@@ -92,7 +101,10 @@ export async function resolveXpEntitySources(
 			: Promise.resolve([]),
 		feedbackIds.size > 0
 			? db.feedback.findMany({
-					where: { id: { in: [...feedbackIds] } },
+					where: {
+						id: { in: [...feedbackIds] },
+						AND: [reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput],
+					},
 					select: {
 						id: true,
 						slug: true,
@@ -102,13 +114,19 @@ export async function resolveXpEntitySources(
 			: Promise.resolve([]),
 		postIds.size > 0
 			? db.post.findMany({
-					where: { id: { in: [...postIds] } },
+					where: {
+						id: { in: [...postIds] },
+						AND: [postVisibleWhere(viewer) as Prisma.PostWhereInput],
+					},
 					select: { id: true, slug: true },
 				})
 			: Promise.resolve([]),
 		commentIds.size > 0
 			? db.comment.findMany({
-					where: { id: { in: [...commentIds] } },
+					where: {
+						id: { in: [...commentIds] },
+						AND: [commentVisibleWhere(viewer) as Prisma.CommentWhereInput],
+					},
 					select: {
 						id: true,
 						slug: true,
@@ -130,7 +148,16 @@ export async function resolveXpEntitySources(
 			: Promise.resolve([]),
 		shelfIds.size > 0
 			? db.shelf.findMany({
-					where: { id: { in: [...shelfIds] } },
+					where: {
+						id: { in: [...shelfIds] },
+						AND: [
+							visibleWhere(viewer, {
+								ownerIdField: "userId",
+								ownerRelation: "user",
+								itemField: "visibility",
+							}) as Prisma.ShelfWhereInput,
+						],
+					},
 					select: {
 						id: true,
 						slug: true,
@@ -141,7 +168,10 @@ export async function resolveXpEntitySources(
 			: Promise.resolve([]),
 		goalIds.size > 0
 			? db.goal.findMany({
-					where: { id: { in: [...goalIds] } },
+					where: {
+						id: { in: [...goalIds] },
+						AND: [goalVisibleWhere(viewer) as Prisma.GoalWhereInput],
+					},
 					select: {
 						id: true,
 						slug: true,
@@ -190,7 +220,7 @@ export async function resolveXpEntitySources(
 		if (event.reason === "feedback") {
 			const feedback = feedbackById.get(event.entityId);
 			result.set(key, {
-				label: feedback?.book.title ?? "Book feedback",
+				label: feedback?.book.title ?? "A review",
 				href:
 					feedback?.book.slug && feedback.slug
 						? `/books/${feedback.book.slug}/feedbacks/${feedback.slug}`
@@ -202,7 +232,7 @@ export async function resolveXpEntitySources(
 		if (event.reason === "post") {
 			const post = postById.get(event.entityId);
 			result.set(key, {
-				label: "Club post",
+				label: post ? "Club post" : "A post",
 				href: post ? `/posts/${post.slug}` : null,
 			});
 			continue;
@@ -220,7 +250,7 @@ export async function resolveXpEntitySources(
 					? `/posts/${postSlug}/comments/${comment.slug}`
 					: null;
 			result.set(key, {
-				label: "Comment",
+				label: comment ? "Comment" : "A comment",
 				href: postHref ?? feedbackHref,
 			});
 			continue;
@@ -243,7 +273,7 @@ export async function resolveXpEntitySources(
 			const shelf = shelfById.get(event.entityId);
 			const username = shelf?.user.username;
 			result.set(key, {
-				label: shelf?.title ?? "Shelf",
+				label: shelf?.title ?? "A shelf",
 				href:
 					shelf && username ? `/users/${username}/shelves/${shelf.slug}` : null,
 			});
@@ -254,7 +284,7 @@ export async function resolveXpEntitySources(
 			const goal = goalById.get(event.entityId);
 			const username = goal?.user.username;
 			result.set(key, {
-				label: goal?.title ?? "Reading goal",
+				label: goal?.title ?? "A goal",
 				href: goal && username ? `/users/${username}/goals/${goal.slug}` : null,
 			});
 			continue;

@@ -8,6 +8,7 @@ import {
 	type PostFeedCursor,
 	type PostFeedRange,
 	postFeedRangeMin,
+	type Viewer,
 } from "@bbrc/shared";
 
 type RankedRow = {
@@ -32,13 +33,47 @@ function rankedScoreSql(mode: "top" | "hot"): Prisma.Sql {
 	return mode === "top" ? engagementSql : hotScoreSql;
 }
 
+const idList = (ids: Iterable<string>): Prisma.Sql | null => {
+	const list = [...ids];
+	return list.length > 0 ? Prisma.join(list) : null;
+};
+
+/**
+ * Which posts the viewer may see, as SQL on `p` (post) and `u` (its author): the same
+ * rule as `postVisibleWhere` (profile level, blocks, admins see all). A private
+ * profile shows its posts only to the author, friends and admins; a blocked author
+ * never shows.
+ */
+export function postVisibilitySql(viewer: Viewer): Prisma.Sql {
+	if (viewer.kind === "anonymous") {
+		return Prisma.sql`u.profile_visibility = 'public'`;
+	}
+	if (viewer.isAdmin) return Prisma.sql`TRUE`;
+	const friends = idList(viewer.friendIds);
+	const blocked = idList(viewer.blockedIds);
+	const notBlocked = blocked
+		? Prisma.sql`p.author_id NOT IN (${blocked})`
+		: Prisma.sql`TRUE`;
+	const friendOfAuthor = friends
+		? Prisma.sql`p.author_id IN (${friends})`
+		: Prisma.sql`FALSE`;
+	return Prisma.sql`(
+    p.author_id = ${viewer.userId}
+    OR (
+      ${notBlocked}
+      AND (u.profile_visibility = 'public' OR ${friendOfAuthor})
+    )
+  )`;
+}
+
 function buildRankedWhere(
+	viewer: Viewer,
 	mode: "top" | "hot",
 	rangeMin: Date | undefined,
 	authorUsername: string | undefined,
 	cursor: Extract<PostFeedCursor, { kind: "top" | "hot" }> | null,
 ): Prisma.Sql {
-	const parts: Prisma.Sql[] = [Prisma.sql`u.is_hidden = false`];
+	const parts: Prisma.Sql[] = [postVisibilitySql(viewer)];
 
 	if (rangeMin) {
 		parts.push(Prisma.sql`p.created_at >= ${rangeMin}`);
@@ -92,6 +127,7 @@ export async function queryRankedPostSlugs(
 		authorUsername?: string;
 		limit: number;
 		cursor: PostFeedCursor | null;
+		viewer: Viewer;
 	},
 ): Promise<{ slug: string; score: number; createdAt: Date }[]> {
 	const rangeMin =
@@ -100,6 +136,7 @@ export async function queryRankedPostSlugs(
 	const cursor = input.cursor?.kind === input.mode ? input.cursor : null;
 
 	const where = buildRankedWhere(
+		input.viewer,
 		input.mode,
 		rangeMin,
 		input.authorUsername,

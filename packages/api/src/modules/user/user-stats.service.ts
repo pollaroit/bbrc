@@ -1,4 +1,3 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import {
 	averageNumber,
@@ -23,18 +22,19 @@ import {
 	topBucketLabel,
 	USER_STATS_PAGE_BUCKETS,
 	type UserStatsMonth,
+	type Viewer,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { aggregateCountryBookCounts } from "../book/book-country-filter";
+import {
+	assertMayViewMember,
+	mayViewSection,
+	memberAccessSelect,
+} from "./member-access";
 import type {
 	GetUserStatsInput,
 	GetUserStatsOutput,
 } from "./user-stats.schema";
-import {
-	assertMemberVisible,
-	viewerFromSession,
-	visibleOnSiteUserWhere,
-} from "./user-visibility";
 
 function resolveUserStatsPeriodInput(
 	input: GetUserStatsInput,
@@ -153,16 +153,20 @@ function createdAtRangeForBounds(bounds: {
 export async function getUserStats(
 	input: GetUserStatsInput,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetUserStatsOutput> {
 	const period = resolveUserStatsPeriodInput(input);
 
-	const viewer = viewerFromSession(session);
 	const user = await db.user.findUnique({
 		where: { username: input.username },
-		select: { id: true, username: true, name: true, isHidden: true },
+		select: {
+			...memberAccessSelect,
+			username: true,
+			name: true,
+		},
 	});
-	assertMemberVisible(user, viewer);
+	// Stats are made of the member's reads and activity: the profile and the reads level both apply.
+	assertMayViewMember(user, viewer, { section: "reads" });
 	const userId = user.id;
 
 	const allReads = await db.read.findMany({
@@ -440,7 +444,10 @@ export async function getUserStats(
 
 	const ratedCompare = buildRatingCompare(analyticsRows, feedbackByBookId);
 
-	const topReviews = [...userFeedbacksInPeriod]
+	// Links to the member's reviews are only listed when the viewer may read reviews.
+	const topReviews = (
+		mayViewSection(viewer, user, "reviews") ? [...userFeedbacksInPeriod] : []
+	)
 		.map((feedback) => ({
 			feedbackSlug: feedback.slug,
 			book: mapStatsBook(feedback.book),
@@ -566,7 +573,6 @@ function readWhereForStatsPeriod(
 	bounds: { start: UserStatsMonth; end: UserStatsMonth },
 ): Prisma.ReadWhereInput {
 	const base: Prisma.ReadWhereInput = {
-		user: visibleOnSiteUserWhere,
 		readEndYear: { not: null },
 		readEndMonth: { not: null },
 	};
@@ -594,9 +600,6 @@ async function loadClubReadCountsByBook(
 ): Promise<Map<string, number>> {
 	const groups = await db.read.groupBy({
 		by: ["bookId"],
-		where: {
-			user: visibleOnSiteUserWhere,
-		},
 		_count: { _all: true },
 	});
 	return new Map(groups.map((row) => [row.bookId, row._count._all]));

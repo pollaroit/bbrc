@@ -4,6 +4,7 @@ import {
 	publicProcedure,
 } from "../../procedures";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
+import { loadViewer } from "../visibility/viewer";
 import {
 	AdminQuizActionOutputSchema,
 	AdminQuizIdInputSchema,
@@ -42,8 +43,12 @@ export const quizRouter = {
 	getEntryState: publicProcedure
 		.input(GetQuizEntryStateInputSchema)
 		.output(GetQuizEntryStateOutputSchema)
-		.handler(({ input, context }) =>
-			getQuizEntryState(input.slug, context.db, context.session),
+		.handler(async ({ input, context }) =>
+			getQuizEntryState(
+				input.slug,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	start: protectedProcedure
 		.input(StartQuizInputSchema)
@@ -61,14 +66,22 @@ export const quizRouter = {
 	getResults: protectedProcedure
 		.input(GetQuizResultsInputSchema)
 		.output(GetQuizResultsOutputSchema)
-		.handler(({ input, context }) =>
-			getQuizResults(input.slug, context.db, context.session),
+		.handler(async ({ input, context }) =>
+			getQuizResults(
+				input.slug,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	getReview: protectedProcedure
 		.input(GetQuizReviewInputSchema)
 		.output(GetQuizReviewOutputSchema)
-		.handler(({ input, context }) =>
-			getQuizReview(input, context.db, context.session),
+		.handler(async ({ input, context }) =>
+			getQuizReview(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	reportQuestion: protectedProcedure
 		.input(ReportQuizQuestionInputSchema)
@@ -79,14 +92,22 @@ export const quizRouter = {
 	listForBook: publicProcedure
 		.input(ListBookQuizSubmissionsInputSchema)
 		.output(ListBookQuizSubmissionsOutputSchema)
-		.handler(({ input, context }) =>
-			listBookQuizSubmissions(input, context.db),
+		.handler(async ({ input, context }) =>
+			listBookQuizSubmissions(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	listForUser: publicProcedure
 		.input(ListUserQuizzesInputSchema)
 		.output(ListUserQuizzesOutputSchema)
-		.handler(({ input, context }) =>
-			listUserQuizzes(input, context.db, context.session),
+		.handler(async ({ input, context }) =>
+			listUserQuizzes(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	adminDelete: adminProcedure
 		.input(AdminQuizIdInputSchema)

@@ -1,4 +1,6 @@
-import type { Database } from "@bbrc/db";
+import { postVisibleWhere } from "@bbrc/api/modules/visibility/visibility-resources";
+import type { Database, Prisma } from "@bbrc/db";
+import { ANONYMOUS_VIEWER } from "@bbrc/shared";
 import { absoluteUrl, SITE_NAME } from "./site";
 
 const FEED_ITEM_LIMIT = 50;
@@ -36,7 +38,14 @@ function wrapRss(input: {
 }
 
 export async function buildPostsRssFeed(db: Database): Promise<string> {
+	// Only public posts of public profiles: the feed is read by anyone.
 	const items = await db.post.findMany({
+		where: {
+			AND: [
+				postVisibleWhere(ANONYMOUS_VIEWER) as Prisma.PostWhereInput,
+				{ author: { status: { not: "banned" } } },
+			],
+		},
 		take: FEED_ITEM_LIMIT,
 		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
 		select: {

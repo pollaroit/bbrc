@@ -11,6 +11,7 @@ import {
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import type { z } from "zod";
 import zod from "zod";
+import { memberAccessSelect } from "./member-access";
 import {
 	userListFiltersSchema,
 	userListRanging,
@@ -74,7 +75,6 @@ export const ReadingStreakSchema = zod.object({
 });
 
 export const getUserListFields = {
-	id: true,
 	username: true,
 	name: true,
 	image: true,
@@ -82,10 +82,13 @@ export const getUserListFields = {
 	rp: true,
 	xp: true,
 	status: true,
+	...memberAccessSelect,
 } as const;
 
 const UserListItemSchema = UserMemberSnapshotSchema.extend({
 	id: UserSchema.shape.id,
+	/** A private member the viewer may not see into: points and levels are blanked. */
+	isPrivate: zod.boolean(),
 	isAdmin: UserSchema.shape.isAdmin,
 	xpLevel: MemberLevelSchema,
 	rpLevel: MemberLevelSchema,
@@ -100,6 +103,7 @@ export type GetUserListOutput = z.infer<typeof GetUserListOutputSchema>;
 /** GET BY USERNAME */
 
 export const getUserByUsernameFields = {
+	...memberAccessSelect,
 	username: true,
 	name: true,
 	image: true,
@@ -115,6 +119,11 @@ export const GetUserByUsernameInputSchema = UserSchema.pick({
 
 export const GetUserByUsernameOutputSchema = UserMemberSnapshotSchema.extend({
 	isAdmin: UserSchema.shape.isAdmin,
+	/** Private profile: non-friends see only name, username, avatar, bio and the friend count. */
+	isPrivate: zod.boolean(),
+	/** Whether the viewer may see the rest (true for friends, the member and admins). */
+	canViewProfile: zod.boolean(),
+	friendCount: zod.number().int().min(0),
 	indexable: zod.boolean(),
 	xpLevel: MemberLevelSchema,
 	rpLevel: MemberLevelSchema,

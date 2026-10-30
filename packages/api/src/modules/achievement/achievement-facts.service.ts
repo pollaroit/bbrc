@@ -38,6 +38,7 @@ function emptyFacts(
 		documentTimes: [],
 		requestedBookTimes: [],
 		favoriteTimes: [],
+		friendTimes: [],
 		quizzes: [],
 		series: [],
 		views: { mostOpenedPost: null, mostOpenedReview: null, profileOpens: null },
@@ -218,6 +219,21 @@ export async function loadAchievementFacts(
 						.filter((comment) => comment.authorId !== userId)
 						.map((comment) => comment.createdAt),
 				}));
+			})(),
+		);
+	}
+
+	if (want("friends")) {
+		tasks.push(
+			(async () => {
+				const rows = await db.friendship.findMany({
+					where: {
+						status: "accepted",
+						OR: [{ userLowId: userId }, { userHighId: userId }],
+					},
+					select: { respondedAt: true, createdAt: true },
+				});
+				facts.friendTimes = rows.map((row) => row.respondedAt ?? row.createdAt);
 			})(),
 		);
 	}

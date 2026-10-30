@@ -5,6 +5,7 @@ import {
 } from "../../procedures";
 import { revalidateFeedsIsr, revalidatePostIsr } from "../../revalidate-isr";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
+import { loadViewer } from "../visibility/viewer";
 import {
 	CreatePostInputSchema,
 	CreatePostOutputSchema,
@@ -51,26 +52,43 @@ export const postRouter = {
 		.input(GetPostListInputSchema)
 		.output(GetPostListOutputSchema)
 		.handler(async ({ input, context }) =>
-			getPostList(input, context.db, context.session),
+			getPostList(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	getPostBySlug: publicProcedure
 		.input(GetPostBySlugInputSchema)
 		.output(GetPostBySlugOutputSchema)
 		.handler(async ({ input, context }) =>
-			getPostBySlug(input, context.db, context.session),
+			getPostBySlug(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	previewAttachment: publicProcedure
 		.input(PreviewPostAttachmentInputSchema)
 		.output(PreviewPostAttachmentOutputSchema)
 		.handler(async ({ input, context }) =>
-			getPostAttachmentPreview(input, context.db, context.session?.user.id),
+			getPostAttachmentPreview(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	create: notBannedProcedure
 		.use(checkAchievementsAfter("posts"))
 		.input(CreatePostInputSchema)
 		.output(CreatePostOutputSchema)
 		.handler(async ({ input, context }) => {
-			const post = await createPost(input, context.session.user.id, context.db);
+			const post = await createPost(
+				input,
+				context.session.user.id,
+				context.db,
+				await loadViewer(context.db, context.session),
+			);
 			revalidatePostIsr(context, post.slug);
 			revalidateFeedsIsr(context);
 			return post;
@@ -79,7 +97,12 @@ export const postRouter = {
 		.input(UpdatePostInputSchema)
 		.output(UpdatePostOutputSchema)
 		.handler(async ({ input, context }) => {
-			const post = await updatePost(input, context.session.user.id, context.db);
+			const post = await updatePost(
+				input,
+				context.session.user.id,
+				context.db,
+				await loadViewer(context.db, context.session),
+			);
 			revalidatePostIsr(context, post.slug);
 			revalidateFeedsIsr(context);
 			return post;

@@ -4,16 +4,21 @@ import {
 	addCalendarDays,
 	getZonedParts,
 	resolveClubTimeZone,
+	type Viewer,
 	zonedTimeToUtc,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import type { z } from "zod";
 import { definePagination } from "../../utils/pagination";
 import {
-	assertMemberVisible,
-	viewerFromSession,
-	visibleOnSiteUserWhere,
-} from "../user/user-visibility";
+	assertMayViewMember,
+	assertMemberAvailable,
+	mayViewProfile,
+	memberAccessSelect,
+	memberVisibleWhere,
+	viewerIsAdmin,
+	viewerUserId,
+} from "../user/member-access";
 import type {
 	GetQuizEntryStateOutput,
 	GetQuizResultsOutput,
@@ -83,6 +88,16 @@ async function loadBook(slug: string, db: Database) {
 	return book;
 }
 
+function requireViewerId(viewer: Viewer): string {
+	const userId = viewerUserId(viewer);
+	if (!userId) {
+		throw new ORPCError("UNAUTHORIZED", {
+			message: "Sign in to take a quiz.",
+		});
+	}
+	return userId;
+}
+
 function requireUserId(session: Session | null): string {
 	const userId = session?.user?.id;
 	if (!userId) {
@@ -138,11 +153,11 @@ async function countGenerationsToday(
 export async function getQuizEntryState(
 	slug: string,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetQuizEntryStateOutput> {
 	const book = await loadBook(slug, db);
 	const now = new Date();
-	const userId = session?.user?.id ?? null;
+	const userId = viewerUserId(viewer);
 
 	const [quiz, submissionCount] = await Promise.all([
 		db.quiz.findUnique({
@@ -153,7 +168,6 @@ export async function getQuizEntryState(
 			where: {
 				status: "submitted",
 				quiz: { bookId: book.id },
-				user: visibleOnSiteUserWhere,
 			},
 		}),
 	]);
@@ -585,9 +599,39 @@ type SubmittedRow = {
 		username: string;
 		name: string;
 		image: string | null;
-		isHidden: boolean;
+		profileVisibility: "public" | "private";
 	};
 };
+
+/** Rank and score are real for everyone; the identity of a private member the viewer may not see is blank. */
+function personFor(
+	viewer: Viewer,
+	userId: string,
+	user: {
+		username: string;
+		name: string;
+		image: string | null;
+		profileVisibility: "public" | "private";
+	},
+): {
+	person: { username: string; name: string; image: string | null };
+	anonymous: boolean;
+} {
+	const mayView = mayViewProfile(viewer, {
+		id: userId,
+		profileVisibility: user.profileVisibility,
+	});
+	return mayView
+		? {
+				person: {
+					username: user.username,
+					name: user.name,
+					image: user.image,
+				},
+				anonymous: false,
+			}
+		: { person: { username: "", name: "", image: null }, anonymous: true };
+}
 
 /** Competition ranking: equal scores share a rank, earlier submissions list first. */
 function rankRows(
@@ -623,7 +667,12 @@ async function loadSubmittedRows(
 			submittedAt: true,
 			answers: true,
 			user: {
-				select: { username: true, name: true, image: true, isHidden: true },
+				select: {
+					username: true,
+					name: true,
+					image: true,
+					profileVisibility: true,
+				},
 			},
 		},
 	});
@@ -703,9 +752,9 @@ const LEADERBOARD_SIZE = 10;
 export async function getQuizResults(
 	slug: string,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetQuizResultsOutput> {
-	const userId = requireUserId(session);
+	const userId = requireViewerId(viewer);
 	const { book, quiz } = await loadQuizByBookSlug(slug, db);
 
 	const mine = quiz
@@ -745,11 +794,10 @@ export async function getQuizResults(
 
 	const toLeaderRow = (row: SubmittedRow & { rank: number }) => ({
 		rank: row.rank,
-		user: {
-			username: row.user.username,
-			name: row.user.name,
-			image: row.user.image,
-		},
+		...(() => {
+			const { person, anonymous } = personFor(viewer, row.userId, row.user);
+			return { user: person, anonymous };
+		})(),
 		score: row.score,
 		correct: row.correct,
 		incorrect: row.incorrect,
@@ -758,10 +806,8 @@ export async function getQuizResults(
 		isMe: row.userId === userId,
 	});
 
-	const visible = ranked.filter(
-		(row) => !row.user.isHidden || row.userId === userId,
-	);
-	const leaderboard = visible.slice(0, LEADERBOARD_SIZE).map(toLeaderRow);
+	// Everyone keeps their rank; private members the viewer may not see are listed without a name.
+	const leaderboard = ranked.slice(0, LEADERBOARD_SIZE).map(toLeaderRow);
 	const myRow =
 		meRow && !leaderboard.some((row) => row.isMe) ? toLeaderRow(meRow) : null;
 
@@ -846,16 +892,15 @@ export async function getQuizResults(
 export async function getQuizReview(
 	input: { slug: string; username: string },
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetQuizReviewOutput> {
-	const viewer = viewerFromSession(session);
 	const target = await db.user.findUnique({
 		where: { username: input.username },
-		select: { id: true, isHidden: true, username: true },
+		select: { id: true, username: true },
 	});
-	assertMemberVisible(target, viewer);
+	assertMemberAvailable(target, viewer, input.username);
 
-	if (!viewer || (viewer.userId !== target.id && !viewer.isAdmin)) {
+	if (!(viewerUserId(viewer) === target.id || viewerIsAdmin(viewer))) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Only you can review your own answers.",
 		});
@@ -934,6 +979,7 @@ export async function reportQuizQuestion(
 export async function listBookQuizSubmissions(
 	input: z.infer<typeof ListBookQuizSubmissionsInputSchema>,
 	db: Database,
+	viewer: Viewer,
 ): Promise<ListBookQuizSubmissionsOutput> {
 	const { book, quiz } = await loadQuizByBookSlug(input.slug, db);
 	const pagination = definePagination.offset({
@@ -959,17 +1005,22 @@ export async function listBookQuizSubmissions(
 	const where: Prisma.QuizSubmissionWhereInput = {
 		quizId: quiz.id,
 		status: "submitted",
-		user: {
-			...visibleOnSiteUserWhere,
-			...(input.search
-				? {
-						OR: [
-							{ name: { contains: input.search, mode: "insensitive" } },
-							{ username: { contains: input.search, mode: "insensitive" } },
+		// Searching by name only finds members the viewer may see; the list itself covers everyone.
+		...(input.search
+			? {
+					user: {
+						AND: [
+							memberVisibleWhere(viewer),
+							{
+								OR: [
+									{ name: { contains: input.search, mode: "insensitive" } },
+									{ username: { contains: input.search, mode: "insensitive" } },
+								],
+							},
 						],
-					}
-				: {}),
-		},
+					},
+				}
+			: {}),
 	};
 
 	const [total, rows] = await Promise.all([
@@ -988,7 +1039,14 @@ export async function listBookQuizSubmissions(
 				incorrectAnswersCount: true,
 				skippedAnswersCount: true,
 				submittedAt: true,
-				user: { select: { username: true, name: true, image: true } },
+				user: {
+					select: {
+						username: true,
+						name: true,
+						image: true,
+						profileVisibility: true,
+					},
+				},
 			},
 		}),
 	]);
@@ -998,7 +1056,10 @@ export async function listBookQuizSubmissions(
 		...pagination.paginate(
 			rows.map((row) => ({
 				rank: rankByUser.get(row.userId) ?? 1,
-				user: row.user,
+				...(() => {
+					const { person, anonymous } = personFor(viewer, row.userId, row.user);
+					return { user: person, anonymous };
+				})(),
 				score: row.score ?? 0,
 				correct: row.correctAnswersCount,
 				incorrect: row.incorrectAnswersCount,
@@ -1013,21 +1074,20 @@ export async function listBookQuizSubmissions(
 export async function listUserQuizzes(
 	input: z.infer<typeof ListUserQuizzesInputSchema>,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<ListUserQuizzesOutput> {
-	const viewer = viewerFromSession(session);
 	const target = await db.user.findUnique({
 		where: { username: input.username },
-		select: { id: true, isHidden: true, username: true },
+		select: { ...memberAccessSelect, username: true },
 	});
-	assertMemberVisible(target, viewer);
+	// Quiz results follow the profile level.
+	assertMayViewMember(target, viewer, { username: input.username });
 
 	const pagination = definePagination.offset({
 		page: input.page,
 		limit: input.limit,
 	});
-	const canReview =
-		viewer != null && (viewer.userId === target.id || viewer.isAdmin);
+	const canReview = viewerUserId(viewer) === target.id || viewerIsAdmin(viewer);
 
 	const where: Prisma.QuizSubmissionWhereInput = {
 		userId: target.id,

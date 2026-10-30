@@ -50,7 +50,9 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 		"draft",
 	);
 	const [type, setType] = useState<"ordered" | "unordered">("unordered");
-	const [access, setAccess] = useState<"public" | "private">("public");
+	const [access, setAccess] = useState<"public" | "friends" | "private">(
+		"public",
+	);
 
 	useEffect(() => {
 		if (!shelfQuery.data) return;
@@ -161,7 +163,8 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 					description: description.trim() || null,
 					// The Wishlist's name, status and type are fixed, so they are not sent.
 					...(isWishlist ? {} : { title: trimmedTitle, status, type }),
-					...(canAccess ? { visibility: access } : {}),
+					// `friends` is set from Privacy (the wishlist) until shelves can choose it themselves.
+					...(canAccess && access !== "friends" ? { visibility: access } : {}),
 				});
 			}}
 			footer={

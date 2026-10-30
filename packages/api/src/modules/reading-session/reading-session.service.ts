@@ -1,15 +1,18 @@
 import type { Database } from "@bbrc/db";
 import {
+	canView,
 	clampSessionSeconds,
 	isReadingNow,
 	READING_PRESENCE_TTL_MS,
 	READING_SESSION_MAX_SECONDS,
 	READING_SESSION_STALE_MS,
+	relationTo,
+	type Viewer,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { realtimeClientId } from "../../lib/realtime/client-id";
+import { viewerIdOf } from "../read/section-access";
 import { getMyReadingStats } from "../reading/reading.service";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type {
 	EndReadingSessionOutput,
 	ReadingPresenceOutput,
@@ -312,10 +315,11 @@ export async function endReadingSession(
 /** Who is in Reading Mode on a book right now. Names only for members who show what they read. */
 export async function getReadingPresence(
 	db: Database,
-	viewerId: string | null,
+	viewer: Viewer,
 	bookSlug: string,
 	liveClientIds?: string[],
 ): Promise<ReadingPresenceOutput> {
+	const viewerId = viewerIdOf(viewer);
 	// Realtime says who is on the channel right now, as opaque ids. Only the
 	// server can match them to members, so nobody watching can tell who is who.
 	const live = liveClientIds ? new Set(liveClientIds) : null;
@@ -328,7 +332,6 @@ export async function getReadingPresence(
 			endedAt: null,
 			lastBeatAt: { gte: since },
 			reading: { book: { slug: bookSlug }, finishedAt: null },
-			user: { ...visibleOnSiteUserWhere },
 		},
 		orderBy: { startedAt: "asc" },
 		take: 200,
@@ -340,7 +343,8 @@ export async function getReadingPresence(
 					username: true,
 					name: true,
 					image: true,
-					showCurrentlyReading: true,
+					profileVisibility: true,
+					readingVisibility: true,
 				},
 			},
 		},
@@ -360,8 +364,14 @@ export async function getReadingPresence(
 		count: members.length,
 		viewerPresent: members.some((row) => row.user.id === viewerId),
 		readers: members
+			// The count above is everyone; names follow the member's reading setting.
 			.filter(
-				(row) => row.user.showCurrentlyReading && row.user.id !== viewerId,
+				(row) =>
+					row.user.id !== viewerId &&
+					canView(relationTo(viewer, row.user.id), {
+						profile: row.user.profileVisibility,
+						section: row.user.readingVisibility,
+					}),
 			)
 			.slice(0, 12)
 			.map((row) => ({

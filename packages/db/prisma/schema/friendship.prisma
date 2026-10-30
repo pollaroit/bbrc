@@ -1,0 +1,82 @@
+/// Who may see something, widest first. The order and what each level reaches live in `packages/shared/src/visibility`.
+enum Visibility {
+  public
+  friends
+  private
+
+  @@map("visibility")
+}
+
+enum ProfileVisibility {
+  public
+  private
+
+  @@map("profile_visibility")
+}
+
+enum FriendshipStatus {
+  pending
+  accepted
+
+  @@map("friendship_status")
+}
+
+/// One row per pair of members: the two ids are stored in a fixed order (low < high, checked in the migration),
+/// so the pair can only exist once. A decline, cancel or unfriend deletes the row.
+model Friendship {
+  /// @zod.uuid("Invalid UUID")
+  id          String    @id @default(uuid())
+  createdAt   DateTime  @default(now()) @map("created_at")
+  respondedAt DateTime? @map("responded_at")
+
+  userLowId  String @map("user_low_id")
+  userLow    User   @relation("FriendshipLow", fields: [userLowId], references: [id], onDelete: Cascade)
+  userHighId String @map("user_high_id")
+  userHigh   User   @relation("FriendshipHigh", fields: [userHighId], references: [id], onDelete: Cascade)
+
+  /// Who sent the request (always one of the two).
+  requesterId String @map("requester_id")
+  requester   User   @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  status FriendshipStatus @default(pending)
+
+  @@unique([userLowId, userHighId])
+  @@index([userLowId, status])
+  @@index([userHighId, status])
+  @@index([requesterId, status])
+  @@index([status, createdAt])
+  @@map("friendship")
+}
+
+/// Every request ever sent, kept for the daily limit and the cooldown after a decline.
+model FriendRequestLog {
+  /// @zod.uuid("Invalid UUID")
+  id         String    @id @default(uuid())
+  createdAt  DateTime  @default(now()) @map("created_at")
+  declinedAt DateTime? @map("declined_at")
+
+  requesterId String @map("requester_id")
+  requester   User   @relation("FriendRequestSender", fields: [requesterId], references: [id], onDelete: Cascade)
+  targetId    String @map("target_id")
+  target      User   @relation("FriendRequestTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@index([requesterId, createdAt])
+  @@index([requesterId, targetId, declinedAt])
+  @@map("friend_request_log")
+}
+
+/// A member blocked another. Neither sees the other in the app (see the visibility rules).
+model UserBlock {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  blockerId String @map("blocker_id")
+  blocker   User   @relation("BlockMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String @map("blocked_id")
+  blocked   User   @relation("BlockReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("user_block")
+}

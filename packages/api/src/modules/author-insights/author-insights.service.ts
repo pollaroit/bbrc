@@ -1,12 +1,8 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
-import { formatSittingDisplayName } from "@bbrc/shared";
+import { formatSittingDisplayName, type Viewer } from "@bbrc/shared";
 import { resolveAuthor } from "../author/author-resolve";
-import { publicShelfWhere } from "../shelf/shelf-visibility";
-import {
-	viewerFromSession,
-	visibleOnSiteUserWhere,
-} from "../user/user-visibility";
+import { shelfVisibleWhere } from "../shelf/shelf-visibility";
+import { favoriteVisibleWhere } from "../visibility/visibility-resources";
 import type {
 	AuthorInsightFavoritesOutput,
 	AuthorInsightShelvesOutput,
@@ -38,13 +34,9 @@ export async function getAuthorInsightSittings(
 		sort: "newest" | "oldest" | "participants" | "deadline";
 	},
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorInsightSittingsOutput> {
-	const author = await resolveAuthor(
-		db,
-		input.slug,
-		viewerFromSession(session),
-	);
+	const author = await resolveAuthor(db, input.slug, viewer);
 	const own = await db.bookAuthor.findMany({
 		where: { authorId: author.id },
 		select: { bookId: true },
@@ -70,7 +62,7 @@ export async function getAuthorInsightSittings(
 			selectedBook: { select: { id: true, ...bookRefSelect } },
 			createdBy: { select: { username: true, name: true, image: true } },
 			participants: {
-				where: { removedAt: null, user: visibleOnSiteUserWhere },
+				where: { removedAt: null },
 				select: { progress: true },
 			},
 			poll: {
@@ -221,17 +213,13 @@ export async function getAuthorInsightShelves(
 		sort: "newest" | "updated" | "authorBooks" | "books" | "views";
 	},
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorInsightShelvesOutput> {
-	const author = await resolveAuthor(
-		db,
-		input.slug,
-		viewerFromSession(session),
-	);
+	const author = await resolveAuthor(db, input.slug, viewer);
 
 	const shelves = await db.shelf.findMany({
 		where: {
-			...publicShelfWhere,
+			...shelfVisibleWhere(viewer, { listing: true }),
 			books: { some: { book: byAuthor(author.id) } },
 		},
 		select: {
@@ -396,25 +384,35 @@ export async function getAuthorInsightFavorites(
 		memberSort: "recent" | "name" | "most";
 	},
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorInsightFavoritesOutput> {
-	const author = await resolveAuthor(
-		db,
-		input.slug,
-		viewerFromSession(session),
-	);
+	const author = await resolveAuthor(db, input.slug, viewer);
 
 	const where: Prisma.FavoriteWhereInput = {
 		book: {
 			...byAuthor(author.id),
 			...(input.bookSlugs?.length ? { slug: { in: input.bookSlugs } } : {}),
 		},
-		user: visibleOnSiteUserWhere,
 	};
+	// Totals count everyone; only the named members follow each member's privacy.
+	const visibleFavoriteIds = new Set(
+		(
+			await db.favorite.findMany({
+				where: {
+					AND: [
+						where,
+						favoriteVisibleWhere(viewer) as Prisma.FavoriteWhereInput,
+					],
+				},
+				select: { id: true },
+			})
+		).map((row) => row.id),
+	);
 	const rows = await db.favorite.findMany({
 		where,
 		orderBy: { createdAt: "desc" },
 		select: {
+			id: true,
 			createdAt: true,
 			userId: true,
 			user: memberRefSelect,
@@ -443,6 +441,7 @@ export async function getAuthorInsightFavorites(
 			favoritedAt: string;
 		}
 	>();
+	const allMembers = new Set<string>();
 	for (const row of matched) {
 		const at = row.createdAt.toISOString();
 		const entry = perBook.get(row.book.slug) ?? {
@@ -454,6 +453,8 @@ export async function getAuthorInsightFavorites(
 		if (at > entry.latestAt) entry.latestAt = at;
 		perBook.set(row.book.slug, entry);
 
+		allMembers.add(row.userId);
+		if (!visibleFavoriteIds.has(row.id)) continue;
 		const member = perMember.get(row.userId) ?? {
 			member: row.user,
 			books: [],
@@ -494,7 +495,7 @@ export async function getAuthorInsightFavorites(
 	return {
 		redirectTo: author.redirectTo,
 		totalFavorites: matched.length,
-		memberCount: perMember.size,
+		memberCount: allMembers.size,
 		books,
 		members: pageInMemory(members, input.cursor, input.limit),
 	};

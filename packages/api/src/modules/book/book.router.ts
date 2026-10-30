@@ -12,6 +12,7 @@ import {
 } from "../../revalidate-isr";
 import { authorSlugsOfBook, revalidateAuthorSlugs } from "../author/author-isr";
 import { invalidateDiscoverLanes } from "../book-discover/book-discover.service";
+import { loadViewer } from "../visibility/viewer";
 import {
 	AddBookInputSchema,
 	AddBookOutputSchema,
@@ -157,7 +158,11 @@ export const bookRouter = {
 		.input(GetBookStatsInputSchema)
 		.output(GetBookStatsOutputSchema)
 		.handler(async ({ input, context }) =>
-			getBookStats(input.bookSlug, context.db),
+			getBookStats(
+				input.bookSlug,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	getCatalogDiscovery: publicProcedure
 		.input(GetBookCatalogDiscoveryInputSchema)

@@ -1,8 +1,8 @@
 import type { Database, DatabaseTransaction } from "@bbrc/db";
+import type { Visibility as ShelfVisibility } from "@bbrc/shared";
 import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { activeParticipationWhere } from "../sitting/participation-active";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import { recomputeBookReadingCounters } from "./book-reading-counters";
 import { checkReadingAchievements } from "./reading-achievements";
 
@@ -13,7 +13,7 @@ export const WISHLIST_SLUG = "wishlist";
 type WishlistShelf = {
 	id: string;
 	slug: string;
-	visibility: "public" | "private";
+	visibility: ShelfVisibility;
 };
 
 /** The member's Wishlist shelf; made on the spot if they somehow have none. */
@@ -169,7 +169,7 @@ export async function removeBookFromWishlist(
 
 /**
  * Books these members have on their wishlists, most wanted first. Counts only:
- * it never says whose wishlist. `onlyBookIds` limits it to books that could be
+ * it never says whose wishlist, and it counts every member whatever their privacy. `onlyBookIds` limits it to books that could be
  * chosen (for a poll, the books that pass its filters).
  */
 export async function wishlistPopularityForUsers(
@@ -186,7 +186,6 @@ export async function wishlistPopularityForUsers(
 			shelf: {
 				isWishlist: true,
 				userId: { in: userIds },
-				user: { ...visibleOnSiteUserWhere },
 			},
 			bookId: onlyBookIds ? { in: onlyBookIds } : undefined,
 			// Books they have already read are not candidates.

@@ -1,4 +1,5 @@
-import type { Database, DatabaseTransaction } from "@bbrc/db";
+import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
+import type { Viewer } from "@bbrc/shared";
 import {
 	canonicalEditionKey,
 	clampAudioPosition,
@@ -17,8 +18,13 @@ import {
 import { ORPCError } from "@orpc/server";
 import { snapshotOpenLibraryEdition } from "../edition/edition.service";
 import { editionLabelOf } from "../edition/edition-support";
+import {
+	canViewerSeeSection,
+	isBlockedFrom,
+	viewerIdOf,
+} from "../read/section-access";
 import { activeParticipationWhere } from "../sitting/participation-active";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
+import { readingVisibleWhere } from "../visibility/visibility-resources";
 import { recomputeBookReadingCounters } from "./book-reading-counters";
 import type {
 	ReadingBookState,
@@ -946,38 +952,44 @@ export async function finalizeReadingForRead(
 
 export async function listBookReaders(
 	db: Database,
-	viewerId: string | null,
+	viewer: Viewer,
 	bookSlug: string,
 ) {
 	const book = await loadBook(db, bookSlug);
-	const rows = await db.reading.findMany({
-		where: {
-			bookId: book.id,
-			finishedAt: null,
-			user: { ...visibleOnSiteUserWhere },
-		},
-		orderBy: { startedAt: "desc" },
-		take: 200,
-		select: {
-			...readingSelect,
-			user: {
-				select: {
-					id: true,
-					username: true,
-					name: true,
-					image: true,
-					showCurrentlyReading: true,
-					showReadingProgress: true,
+	const viewerId = viewerIdOf(viewer);
+	// The total counts everyone; only the named rows follow the viewer.
+	const everyone: Prisma.ReadingWhereInput = {
+		bookId: book.id,
+		finishedAt: null,
+	};
+	const visibleToViewer: Prisma.ReadingWhereInput = {
+		AND: [everyone, readingVisibleWhere(viewer) as Prisma.ReadingWhereInput],
+	};
+	const [total, visibleTotal, rows] = await Promise.all([
+		db.reading.count({ where: everyone }),
+		db.reading.count({ where: visibleToViewer }),
+		db.reading.findMany({
+			where: visibleToViewer,
+			orderBy: { startedAt: "desc" },
+			take: 200,
+			select: {
+				...readingSelect,
+				user: {
+					select: {
+						id: true,
+						username: true,
+						name: true,
+						image: true,
+						showReadingProgress: true,
+					},
 				},
 			},
-		},
-	});
-	const visible = rows.filter(
-		(row) => row.user.showCurrentlyReading || row.user.id === viewerId,
-	);
+		}),
+	]);
 	return {
-		total: rows.length,
-		items: visible.map((row) => {
+		total,
+		privateCount: Math.max(0, total - visibleTotal),
+		items: rows.map((row) => {
 			const isViewer = row.user.id === viewerId;
 			const showProgress = isViewer || row.user.showReadingProgress;
 			return {
@@ -1002,13 +1014,12 @@ export async function getBookReadingCounts(db: Database, bookSlug: string) {
 			where: {
 				bookId: book.id,
 				finishedAt: null,
-				user: { ...visibleOnSiteUserWhere },
 			},
 		}),
 		db.shelfBook.count({
 			where: {
 				bookId: book.id,
-				shelf: { isWishlist: true, user: { ...visibleOnSiteUserWhere } },
+				shelf: { isWishlist: true },
 			},
 		}),
 	]);
@@ -1017,23 +1028,21 @@ export async function getBookReadingCounts(db: Database, bookSlug: string) {
 
 export async function getUserCurrentReading(
 	db: Database,
-	viewerId: string | null,
+	viewer: Viewer,
 	username: string,
 ) {
 	const user = await db.user.findUnique({
 		where: { username },
 		select: {
 			id: true,
-			isHidden: true,
-			showCurrentlyReading: true,
 			showReadingProgress: true,
 		},
 	});
-	if (!user || (user.isHidden && user.id !== viewerId)) {
+	if (!user || isBlockedFrom(viewer, user.id)) {
 		throw new ORPCError("NOT_FOUND", { message: "Member not found" });
 	}
-	const isSelf = user.id === viewerId;
-	if (!isSelf && !user.showCurrentlyReading) {
+	const isSelf = viewerIdOf(viewer) === user.id;
+	if (!(await canViewerSeeSection(db, viewer, user.id, "reading"))) {
 		return { items: [], visible: false };
 	}
 	const rows = await db.reading.findMany({
@@ -1063,7 +1072,7 @@ export async function getReadingPreferences(db: Database, userId: string) {
 	const [user, wishlist] = await Promise.all([
 		db.user.findUnique({
 			where: { id: userId },
-			select: { showCurrentlyReading: true, showReadingProgress: true },
+			select: { readingVisibility: true, showReadingProgress: true },
 		}),
 		db.shelf.findFirst({
 			where: { userId, isWishlist: true },
@@ -1072,7 +1081,8 @@ export async function getReadingPreferences(db: Database, userId: string) {
 	]);
 	return {
 		wishlistPrivate: (wishlist?.visibility ?? "private") === "private",
-		showCurrentlyReading: user?.showCurrentlyReading ?? true,
+		// The old on/off switch is the "currently reading" level: on = everyone.
+		showCurrentlyReading: (user?.readingVisibility ?? "public") === "public",
 		showReadingProgress: user?.showReadingProgress ?? true,
 	};
 }
@@ -1095,7 +1105,11 @@ export async function setReadingPreferences(
 				where: { id: userId },
 				data: {
 					...(input.showCurrentlyReading !== undefined
-						? { showCurrentlyReading: input.showCurrentlyReading }
+						? {
+								readingVisibility: input.showCurrentlyReading
+									? ("public" as const)
+									: ("private" as const),
+							}
 						: {}),
 					...(input.showReadingProgress !== undefined
 						? { showReadingProgress: input.showReadingProgress }

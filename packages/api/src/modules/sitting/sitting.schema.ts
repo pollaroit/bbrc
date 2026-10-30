@@ -596,7 +596,6 @@ export const getSittingBySlugFields = {
 					name: true,
 					image: true,
 					status: true,
-					isHidden: true,
 					xp: true,
 					rp: true,
 				},

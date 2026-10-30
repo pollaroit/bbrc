@@ -11,13 +11,13 @@ import {
 	resolveClubTimeZone,
 	type SittingJoinConfig,
 	selfJoinWindow,
+	type Viewer,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import {
 	dispatchNotification,
 	listAdminUserIds,
 } from "../notification/notification.service";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import { awardParticipationXp } from "../xp/xp.service";
 import type {
 	InviteLinkList,
@@ -156,7 +156,7 @@ async function joinBlocker(
 	const [user, membership] = await Promise.all([
 		db.user.findUnique({
 			where: { id: userId },
-			select: { status: true, isHidden: true },
+			select: { status: true },
 		}),
 		membershipOf(db, sitting.id, userId),
 	]);
@@ -164,7 +164,7 @@ async function joinBlocker(
 		isParticipant: membership.isParticipant,
 		removed: membership.removedByOrganiser,
 	};
-	if (!user || user.isHidden) {
+	if (!user) {
 		return {
 			...base,
 			reason: "This action is not available for your account.",
@@ -217,10 +217,13 @@ function assertCanJoin(blocker: Awaited<ReturnType<typeof joinBlocker>>) {
 export async function getJoinState(
 	db: Database,
 	slug: string,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<SittingJoinState> {
 	const sitting = await loadSitting(db, slug);
-	const actor = session ? actorFromSession(session) : null;
+	const actor: Actor | null =
+		viewer.kind === "member"
+			? { id: viewer.userId, isAdmin: viewer.isAdmin }
+			: null;
 	const [blocker, invitation] = await Promise.all([
 		joinBlocker(db, sitting, actor?.id ?? null, "button"),
 		actor
@@ -839,7 +842,7 @@ export async function createSittingInvitation(
 	}
 
 	const invitee = await db.user.findFirst({
-		where: { username: input.username, ...visibleOnSiteUserWhere },
+		where: { username: input.username },
 		select: {
 			id: true,
 			name: true,
@@ -1077,7 +1080,6 @@ export async function searchSittingMembers(
 
 	const users = await db.user.findMany({
 		where: {
-			...visibleOnSiteUserWhere,
 			OR: [
 				{ username: { contains: input.query, mode: "insensitive" } },
 				{ name: { contains: input.query, mode: "insensitive" } },

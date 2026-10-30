@@ -1,7 +1,8 @@
-import type { Database, DatabaseTransaction } from "@bbrc/db";
+import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import {
 	MAX_MENTIONS_PER_CONTENT,
 	type MentionNode,
+	memberViewer,
 	mentionLabel,
 	parseStoredContent,
 	type RichBlock,
@@ -10,9 +11,17 @@ import {
 	replaceMentionsWithText,
 	richContentPreview,
 	serializeRichDocument,
+	type Viewer,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { dispatchNotification } from "../notification/notification.service";
+import { attachmentLocked } from "../post/post-attachment-access";
+import {
+	commentVisibleWhere,
+	memberListVisibleWhere,
+	postVisibleWhere,
+	reviewVisibleWhere,
+} from "../visibility/visibility-resources";
 import {
 	MENTION_PICKER_LIMIT,
 	type MentionCandidate,
@@ -28,9 +37,90 @@ const displayName = (user: { name: string | null; username: string }) =>
 
 /** Members who may show up in the picker and in rendered mentions. */
 const visibleMemberWhere = {
-	isHidden: false,
 	status: { not: "banned" as const },
 };
+
+/**
+ * Whose settings decide who may see the content a mention sits in: a post's or a
+ * review's owner (a comment uses the owner of the thing it is on). A mention of a
+ * member who may not see it stays plain text and sends no notification.
+ */
+export type MentionAudience = {
+	ownerId: string;
+	/** "reviews" when the content is a review (or a comment on one). */
+	section?: "reviews";
+};
+
+/**
+ * Of these members, who may see content owned by `audience.ownerId` and written by
+ * `authorId`: not blocked by the owner or the author, and allowed by the owner's
+ * profile (and reviews setting). Friends and admins pass a private profile.
+ */
+async function loadMentionAudience(
+	db: Db,
+	audience: MentionAudience,
+	authorId: string,
+	candidateIds: string[],
+): Promise<Set<string>> {
+	if (candidateIds.length === 0) return new Set();
+	const involved = [...new Set([audience.ownerId, authorId])];
+	const [owner, candidates, friendships, blocks] = await Promise.all([
+		db.user.findUnique({
+			where: { id: audience.ownerId },
+			select: { profileVisibility: true, reviewsVisibility: true },
+		}),
+		db.user.findMany({
+			where: { id: { in: candidateIds } },
+			select: { id: true, isAdmin: true },
+		}),
+		db.friendship.findMany({
+			where: {
+				status: "accepted",
+				OR: [
+					{ userLowId: { in: candidateIds }, userHighId: audience.ownerId },
+					{ userHighId: { in: candidateIds }, userLowId: audience.ownerId },
+				],
+			},
+			select: { userLowId: true, userHighId: true },
+		}),
+		db.userBlock.findMany({
+			where: {
+				OR: [
+					{ blockerId: { in: candidateIds }, blockedId: { in: involved } },
+					{ blockedId: { in: candidateIds }, blockerId: { in: involved } },
+				],
+			},
+			select: { blockerId: true, blockedId: true },
+		}),
+	]);
+	if (!owner) return new Set();
+	const friendIds = new Set(
+		friendships.flatMap((row) => [row.userLowId, row.userHighId]),
+	);
+	const blockedIds = new Set(
+		blocks.flatMap((row) => [row.blockerId, row.blockedId]),
+	);
+	const allowed = new Set<string>();
+	for (const candidate of candidates) {
+		const viewer = memberViewer({
+			userId: candidate.id,
+			isAdmin: candidate.isAdmin === true,
+			friendIds: friendIds.has(candidate.id) ? [audience.ownerId] : [],
+			blockedIds: blockedIds.has(candidate.id) ? involved : [],
+		});
+		const locked = attachmentLocked(viewer, [
+			{
+				id: audience.ownerId,
+				profileVisibility: owner.profileVisibility,
+				section:
+					audience.section === "reviews" ? owner.reviewsVisibility : null,
+			},
+			{ id: authorId, profileVisibility: "public" },
+		]);
+		if (!locked) allowed.add(candidate.id);
+	}
+	return allowed;
+}
 
 // ── Sanitising a document before it is saved ───────────────────────────────
 
@@ -40,7 +130,7 @@ type MentionedMember = { userId: string; username: string; name: string };
  * Checks the mentions in `content` (a normalised stored document) against the
  * database and returns the document to save plus who is really mentioned.
  * A mention that cannot stand becomes plain text ("@Jon Doe"): an unknown or
- * deleted member, yourself, a hidden or banned member, a member who switched
+ * deleted member, yourself, a banned member, a member who cannot see the content, a member who switched
  * mentions off (unless they were already mentioned in this content), and
  * anything past the limit of 10 members. Old username-only mentions get their
  * id and name filled in. Call it BEFORE persisting.
@@ -52,6 +142,11 @@ export async function prepareContentMentions(
 		authorId: string;
 		/** Members already mentioned in this content (an edit): kept even if they switched mentions off. */
 		alreadyMentionedIds?: ReadonlySet<string>;
+		/**
+		 * Who owns what the content hangs on (default: the author's own profile, right for
+		 * a post). Pass `section: "reviews"` for a review, the thread's owner for a comment.
+		 */
+		audience?: MentionAudience;
 	},
 ): Promise<{ content: string; mentioned: MentionedMember[] }> {
 	const doc = parseStoredContent(input.content);
@@ -83,11 +178,16 @@ export async function prepareContentMentions(
 			id: true,
 			username: true,
 			name: true,
-			isHidden: true,
 			status: true,
 			allowMentions: true,
 		},
 	});
+	const mayRead = await loadMentionAudience(
+		db,
+		input.audience ?? { ownerId: input.authorId },
+		input.authorId,
+		users.map((user) => user.id),
+	);
 	const byId = new Map(users.map((user) => [user.id, user]));
 	const byUsername = new Map(
 		users.map((user) => [user.username.toLowerCase(), user]),
@@ -100,7 +200,9 @@ export async function prepareContentMentions(
 			: byUsername.get(node.username.toLowerCase());
 		if (!user) return null;
 		if (user.id === input.authorId) return null;
-		if (user.isHidden || user.status === "banned") return null;
+		if (user.status === "banned") return null;
+		// Someone who cannot see the content is not mentioned (and not notified).
+		if (!mayRead.has(user.id)) return null;
 		const known = kept.get(user.id);
 		if (known) return known;
 		if (!user.allowMentions && !input.alreadyMentionedIds?.has(user.id)) {
@@ -240,8 +342,6 @@ export async function notifyMentions(
 
 // ── The picker ─────────────────────────────────────────────────────────────
 
-type Viewer = { id: string };
-
 async function threadMemberIds(
 	db: Db,
 	context: { postSlug?: string; feedbackSlug?: string } | undefined,
@@ -282,6 +382,11 @@ async function threadMemberIds(
 
 const unique = <T>(values: T[]) => [...new Set(values)];
 
+/** The signed-in member's id (the mention features are for members only). */
+function memberIdOf(viewer: Viewer): string {
+	return viewer.kind === "member" ? viewer.userId : "";
+}
+
 export async function searchMentionCandidates(
 	db: Database,
 	viewer: Viewer,
@@ -290,8 +395,11 @@ export async function searchMentionCandidates(
 		context?: { postSlug?: string; feedbackSlug?: string };
 	},
 ): Promise<MentionCandidate[]> {
+	const viewerId = memberIdOf(viewer);
+	// Blocked members (either direction) never appear. Names are public otherwise.
 	const base = {
-		id: { not: viewer.id },
+		AND: [memberListVisibleWhere(viewer) as Prisma.UserWhereInput],
+		id: { not: viewerId },
 		allowMentions: true,
 		...visibleMemberWhere,
 	};
@@ -310,7 +418,7 @@ export async function searchMentionCandidates(
 	const [thread, recentRows] = await Promise.all([
 		threadMemberIds(db, input.context),
 		db.contentMention.findMany({
-			where: { authorId: viewer.id },
+			where: { authorId: viewerId },
 			orderBy: { createdAt: "desc" },
 			take: 20,
 			select: { mentionedUserId: true },
@@ -378,7 +486,7 @@ export async function searchMentionCandidates(
 		[activeIds, "active"],
 	] as const) {
 		for (const id of ids) {
-			if (id === viewer.id || seen.has(id)) continue;
+			if (id === viewerId || seen.has(id)) continue;
 			seen.add(id);
 			ordered.push({ id, reason });
 		}
@@ -386,7 +494,7 @@ export async function searchMentionCandidates(
 	const candidates = await db.user.findMany({
 		where: {
 			...base,
-			id: { in: ordered.map((entry) => entry.id), not: viewer.id },
+			id: { in: ordered.map((entry) => entry.id), not: viewerId },
 		},
 		select,
 	});
@@ -400,7 +508,7 @@ export async function searchMentionCandidates(
 	if (picked.length < MENTION_PICKER_LIMIT) {
 		const have = new Set(picked.map((user) => user.id));
 		const filler = await db.user.findMany({
-			where: { ...base, id: { notIn: [...have, viewer.id] } },
+			where: { ...base, id: { notIn: [...have, viewerId] } },
 			orderBy: { createdAt: "desc" },
 			take: MENTION_PICKER_LIMIT - picked.length,
 			select,
@@ -418,8 +526,9 @@ export async function findMentionTarget(
 ) {
 	const user = await db.user.findFirst({
 		where: {
+			AND: [memberListVisibleWhere(viewer) as Prisma.UserWhereInput],
 			username: { equals: username, mode: "insensitive" },
-			id: { not: viewer.id },
+			id: { not: memberIdOf(viewer) },
 			allowMentions: true,
 			...visibleMemberWhere,
 		},
@@ -433,9 +542,14 @@ export async function findMentionTarget(
 export async function resolveMentionProfiles(
 	db: Database,
 	ids: string[],
+	viewer: Viewer,
 ): Promise<MentionProfile[]> {
 	const users = await db.user.findMany({
-		where: { id: { in: ids }, ...visibleMemberWhere },
+		where: {
+			AND: [memberListVisibleWhere(viewer) as Prisma.UserWhereInput],
+			id: { in: ids },
+			...visibleMemberWhere,
+		},
 		select: { id: true, username: true, name: true, image: true },
 	});
 	return users.map((user) => ({
@@ -468,13 +582,36 @@ const mentionRowSelect = {
 
 export async function listMyMentions(
 	db: Database,
-	viewerId: string,
+	viewer: Viewer,
 	input: { cursor?: string; limit: number },
 ): Promise<{ items: MentionItem[]; nextCursor: string | null }> {
+	const viewerId = memberIdOf(viewer);
+	// Only mentions in content the viewer may still see (an author who went private or
+	// blocked them drops out); names and avatars stay public.
+	const canSee: Prisma.ContentMentionWhereInput = {
+		OR: [
+			{ post: postVisibleWhere(viewer) as Prisma.PostWhereInput },
+			{
+				comment: {
+					OR: [
+						commentVisibleWhere(viewer) as Prisma.CommentWhereInput,
+						{
+							feedback: reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput,
+						},
+					],
+				},
+			},
+			{ feedback: reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput },
+		],
+	};
 	const rows = await db.contentMention.findMany({
 		where: {
 			mentionedUserId: viewerId,
 			author: { ...visibleMemberWhere },
+			AND: [
+				canSee,
+				{ author: memberListVisibleWhere(viewer) as Prisma.UserWhereInput },
+			],
 		},
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		take: input.limit + 1,

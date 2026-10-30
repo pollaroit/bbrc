@@ -3,6 +3,7 @@ import {
 	contentPlainText,
 	formatAuthorLifespan,
 	formatSittingDisplayName,
+	type Viewer,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { findAuthorBySlug } from "../../lib/authors";
@@ -13,6 +14,10 @@ import {
 	postAttachedBookCardFields,
 	postAttachmentSelect,
 } from "./post-attachment.schema";
+import {
+	type AttachmentOwner,
+	attachmentLocked,
+} from "./post-attachment-access";
 
 type PostAttachmentRow = Prisma.PostAttachmentGetPayload<{
 	select: typeof postAttachmentSelect;
@@ -33,36 +38,169 @@ export function truncateAttachmentText(
 	return `${trimmed.slice(0, max - 1).trimEnd()}…`;
 }
 
-function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
+const publicAuthor = (author: {
+	username: string;
+	name: string;
+	image: string | null;
+}) => ({ username: author.username, name: author.name, image: author.image });
+
+const blankAuthor = { username: "", name: "", image: null };
+
+/** The attachment as a locked marker: its kind only, no title, owner or cover. */
+function lockedAttachment(
+	kind: PostAttachmentRow["kind"],
+	row: PostAttachmentRow,
+): PostAttachmentOutput {
+	switch (kind) {
+		case "shelf":
+			return {
+				kind: "shelf",
+				locked: true,
+				shelf: {
+					slug: "",
+					title: "",
+					type: row.shelf?.type ?? "unordered",
+					coverImageUrl: null,
+					ownerUsername: "",
+					bookCount: 0,
+					coverPreviewCoverIds: [],
+					isPrivate: true,
+				},
+			};
+		case "user":
+			return { kind: "user", locked: true, user: blankAuthor };
+		case "feedback":
+			return {
+				kind: "feedback",
+				locked: true,
+				feedback: {
+					slug: "",
+					rating: 0,
+					review: "",
+					likeCount: 0,
+					commentCount: 0,
+					author: blankAuthor,
+					book: { slug: "", title: "", authors: [], coverId: null },
+				},
+			};
+		case "post":
+			return {
+				kind: "post",
+				locked: true,
+				post: { slug: "", contentPreview: "", author: blankAuthor },
+			};
+		case "comment":
+			return {
+				kind: "comment",
+				locked: true,
+				comment: {
+					slug: "",
+					contentPreview: "",
+					author: blankAuthor,
+					contextPost: null,
+					parentComment: null,
+					feedbackBookSlug: null,
+					feedbackSlug: null,
+				},
+			};
+		default:
+			throw new Error(`Attachment kind ${kind} is never locked`);
+	}
+}
+
+/** The owners whose settings decide whether the viewer sees this attachment. */
+function attachmentOwners(row: PostAttachmentRow): AttachmentOwner[] {
+	switch (row.kind) {
+		case "shelf":
+			return row.shelf
+				? [
+						{
+							id: row.shelf.userId,
+							profileVisibility: row.shelf.user.profileVisibility,
+							item: row.shelf.visibility,
+						},
+					]
+				: [];
+		case "user":
+			// Name, username and avatar are public: only a block locks a member.
+			return row.member
+				? [{ id: row.member.id, profileVisibility: "public" }]
+				: [];
+		case "feedback":
+			return row.feedback
+				? [
+						{
+							id: row.feedback.authorId,
+							profileVisibility: row.feedback.author.profileVisibility,
+							section: row.feedback.author.reviewsVisibility,
+						},
+					]
+				: [];
+		case "post":
+			return row.attachedPost
+				? [
+						{
+							id: row.attachedPost.authorId,
+							profileVisibility: row.attachedPost.author.profileVisibility,
+						},
+					]
+				: [];
+		case "comment": {
+			if (!row.comment) return [];
+			// A comment is public space: it follows its post (or its review), and
+			// a blocked author's comment is left out.
+			const owners: AttachmentOwner[] = [
+				{ id: row.comment.authorId, profileVisibility: "public" },
+			];
+			if (row.comment.post) {
+				owners.push({
+					id: row.comment.post.authorId,
+					profileVisibility: row.comment.post.author.profileVisibility,
+				});
+			}
+			if (row.comment.feedback) {
+				owners.push({
+					id: row.comment.feedback.authorId,
+					profileVisibility: row.comment.feedback.author.profileVisibility,
+					section: row.comment.feedback.author.reviewsVisibility,
+				});
+			}
+			return owners;
+		}
+		default:
+			return [];
+	}
+}
+
+/** Whether the viewer may not see this attachment (exported for the write checks). */
+export function isAttachmentLocked(
+	row: PostAttachmentRow,
+	viewer: Viewer,
+): boolean {
+	return attachmentLocked(viewer, attachmentOwners(row));
+}
+
+function mapAttachmentRow(
+	row: PostAttachmentRow,
+	viewer: Viewer,
+): PostAttachmentOutput {
+	if (isAttachmentLocked(row, viewer)) {
+		return lockedAttachment(row.kind, row);
+	}
 	switch (row.kind) {
 		case "book": {
 			if (!row.book) {
 				throw new Error("Book attachment missing book row");
 			}
-			return { kind: "book", book: row.book };
+			return { kind: "book", locked: false, book: row.book };
 		}
 		case "shelf": {
 			if (!row.shelf) {
 				throw new Error("Shelf attachment missing shelf row");
 			}
-			// A shelf that became private after it was shared shows nothing about itself.
-			if (row.shelf.visibility === "private") {
-				return {
-					kind: "shelf",
-					shelf: {
-						slug: row.shelf.slug,
-						title: "Private shelf",
-						type: row.shelf.type,
-						coverImageUrl: null,
-						ownerUsername: row.shelf.user.username,
-						bookCount: 0,
-						coverPreviewCoverIds: [],
-						isPrivate: true,
-					},
-				};
-			}
 			return {
 				kind: "shelf",
+				locked: false,
 				shelf: {
 					slug: row.shelf.slug,
 					title: row.shelf.title,
@@ -84,6 +222,7 @@ function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
 			const selectedBookTitle = row.sitting.selectedBook?.title ?? null;
 			return {
 				kind: "sitting",
+				locked: false,
 				sitting: {
 					slug: row.sitting.slug,
 					status: row.sitting.status,
@@ -105,7 +244,7 @@ function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
 			if (!row.member) {
 				throw new Error("User attachment missing member row");
 			}
-			return { kind: "user", user: row.member };
+			return { kind: "user", locked: false, user: publicAuthor(row.member) };
 		}
 		case "feedback": {
 			if (!row.feedback) {
@@ -113,13 +252,14 @@ function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
 			}
 			return {
 				kind: "feedback",
+				locked: false,
 				feedback: {
 					slug: row.feedback.slug,
 					rating: row.feedback.rating,
 					review: row.feedback.review,
 					likeCount: row.feedback._count.likes,
 					commentCount: row.feedback._count.comments,
-					author: row.feedback.author,
+					author: publicAuthor(row.feedback.author),
 					book: row.feedback.book,
 				},
 			};
@@ -130,10 +270,11 @@ function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
 			}
 			return {
 				kind: "post",
+				locked: false,
 				post: {
 					slug: row.attachedPost.slug,
 					contentPreview: truncateAttachmentText(row.attachedPost.content),
-					author: row.attachedPost.author,
+					author: publicAuthor(row.attachedPost.author),
 				},
 			};
 		}
@@ -146,7 +287,7 @@ function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
 					? {
 							slug: row.comment.post.slug,
 							contentPreview: truncateAttachmentText(row.comment.post.content),
-							author: row.comment.post.author,
+							author: publicAuthor(row.comment.post.author),
 						}
 					: null;
 			const parentComment =
@@ -155,16 +296,17 @@ function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
 							contentPreview: truncateAttachmentText(
 								row.comment.parent.content,
 							),
-							author: row.comment.parent.author,
+							author: publicAuthor(row.comment.parent.author),
 						}
 					: null;
 
 			return {
 				kind: "comment",
+				locked: false,
 				comment: {
 					slug: row.comment.slug,
 					contentPreview: truncateAttachmentText(row.comment.content),
-					author: row.comment.author,
+					author: publicAuthor(row.comment.author),
 					contextPost,
 					parentComment,
 					feedbackBookSlug: row.comment.feedback?.book.slug ?? null,
@@ -178,6 +320,7 @@ function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
 			}
 			return {
 				kind: "author",
+				locked: false,
 				author: {
 					slug: row.authorSlug,
 					name: row.authorName,
@@ -197,13 +340,14 @@ function mapAttachmentRow(row: PostAttachmentRow): PostAttachmentOutput {
 export function mapPostAttachmentFromPostRow(input: {
 	attachment: PostAttachmentRow | null;
 	attachedBook: LegacyBookRow;
+	viewer: Viewer;
 }): PostAttachmentOutput | null {
 	if (input.attachment) {
-		return mapAttachmentRow(input.attachment);
+		return mapAttachmentRow(input.attachment, input.viewer);
 	}
 
 	if (input.attachedBook) {
-		return { kind: "book", book: input.attachedBook };
+		return { kind: "book", locked: false, book: input.attachedBook };
 	}
 
 	return null;
@@ -432,6 +576,7 @@ async function loadAttachmentPreviewRow(
 				kind: "user",
 				...emptyAttachmentRelations,
 				member: {
+					id: member.id,
 					username: member.username,
 					name: member.name,
 					image: member.image,
@@ -502,10 +647,11 @@ async function loadAttachmentPreviewRow(
 export async function getPostAttachmentPreview(
 	input: PostAttachmentInput,
 	db: Database,
-	actorId?: string,
+	viewer: Viewer,
 ): Promise<PostAttachmentOutput> {
+	const actorId = viewer.kind === "member" ? viewer.userId : undefined;
 	const row = await loadAttachmentPreviewRow(input, db, actorId);
-	const attachment = mapAttachmentRow(row);
+	const attachment = mapAttachmentRow(row, viewer);
 	await fillAuthorAttachments(db, [attachment]);
 	return attachment;
 }
@@ -613,4 +759,25 @@ export async function syncPostAttachment(
 	}
 
 	return null;
+}
+
+/**
+ * Refuses attaching something the author may not see themselves (another member's
+ * private shelf, a post of a member who blocked them...). Call before saving.
+ */
+export async function assertAttachmentVisible(
+	input: PostAttachmentInput,
+	db: Database,
+	viewer: Viewer,
+): Promise<void> {
+	const row = await loadAttachmentPreviewRow(
+		input,
+		db,
+		viewer.kind === "member" ? viewer.userId : undefined,
+	);
+	if (isAttachmentLocked(row, viewer)) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "That cannot be attached: it is not available to you.",
+		});
+	}
 }

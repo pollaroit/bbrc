@@ -1,6 +1,6 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import { LikeSourceSchema } from "@bbrc/schemas";
+import type { Viewer } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { normalizeFeedbackReview } from "../../lib/feedback-review";
 import { definePagination } from "../../utils/pagination";
@@ -19,11 +19,11 @@ import {
 import { notifyMemberFeedbackOnBook } from "../notification/notification-triggers";
 import { loadReadEditionRefs } from "../read/read-edition-ref";
 import {
-	assertContentNotVisible,
-	loadActorSocialGate,
-	viewerFromSession,
-	visibleOnSiteUserWhere,
-} from "../user/user-visibility";
+	canViewerSeeSection,
+	isBlockedFrom,
+	viewerIdOf,
+} from "../read/section-access";
+import { reviewVisibleWhere } from "../visibility/visibility-resources";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardFeedbackXp } from "../xp/xp.service";
 import type {
@@ -91,8 +91,8 @@ function feedbackEligibilityHint(
 	});
 }
 
-function viewerUserId(session: Session | null): string | null {
-	return session?.user.id ?? null;
+function viewerUserId(viewer: Viewer): string | null {
+	return viewerIdOf(viewer);
 }
 
 function feedbackListOrderBy(
@@ -117,15 +117,15 @@ export async function getBookFeedbackList(
 		sortDirection?: "asc" | "desc";
 	},
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetBookFeedbackListOutput> {
 	const book = await loadBookBySlug(input.bookSlug, db);
-	const userId = viewerUserId(session);
+	const userId = viewerUserId(viewer);
 
 	const feedbacks = await db.feedback.findMany({
 		where: {
 			bookId: book.id,
-			author: visibleOnSiteUserWhere,
+			AND: [reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput],
 			...(input.minRating !== undefined
 				? { rating: { gte: input.minRating } }
 				: {}),
@@ -210,7 +210,7 @@ export async function loadLikedFeedbackIdsForViewer(
 export async function getFeedbackBySlug(
 	slug: string,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetFeedbackBySlugOutput> {
 	const feedback = await db.feedback.findUnique({
 		where: { slug },
@@ -224,19 +224,17 @@ export async function getFeedbackBySlug(
 		});
 	}
 
-	const author = await db.user.findUnique({
-		where: { id: feedback.authorId },
-		select: { id: true, isHidden: true },
-	});
+	const visible =
+		!isBlockedFrom(viewer, feedback.authorId) &&
+		(await canViewerSeeSection(db, viewer, feedback.authorId, "reviews"));
+	if (!visible) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Feedback not found",
+			data: { slug },
+		});
+	}
 
-	assertContentNotVisible(
-		author ?? { id: feedback.authorId, isHidden: true },
-		viewerFromSession(session),
-		"Feedback not found",
-		{ slug },
-	);
-
-	const userId = session?.user.id ?? null;
+	const userId = viewerUserId(viewer);
 	const likedFeedbackIds = await loadLikedFeedbackIdsForViewer(
 		[feedback.id],
 		userId,
@@ -288,7 +286,7 @@ const userFeedbackListCursorCodec = {
 export async function getUserFeedbackList(
 	input: GetUserFeedbackListInput,
 	db: Database,
-	session: Session | null = null,
+	viewer: Viewer,
 ): Promise<GetUserFeedbackListOutput> {
 	const user = await db.user.findUnique({
 		where: { username: input.username },
@@ -302,7 +300,14 @@ export async function getUserFeedbackList(
 		});
 	}
 
-	const viewerId = viewerUserId(session);
+	if (isBlockedFrom(viewer, user.id)) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "User not found",
+			data: { username: input.username },
+		});
+	}
+
+	const viewerId = viewerUserId(viewer);
 	if (input.mutualOnly && !viewerId) {
 		throw new ORPCError("UNAUTHORIZED", {
 			message: "Sign in to filter by mutual reviews.",
@@ -313,6 +318,14 @@ export async function getUserFeedbackList(
 		input,
 		userFeedbackListCursorCodec,
 	);
+	if (!(await canViewerSeeSection(db, viewer, user.id, "reviews"))) {
+		const empty = pagination.paginate([]);
+		return {
+			items: [],
+			metadata: { ...empty.metadata, total: 0 },
+			hidden: true,
+		};
+	}
 	const sorting = userFeedbackListSorting.from(input);
 	const ranging = userFeedbackListRanging.from(input);
 	const searching = userFeedbackListSearching.from(input);
@@ -439,8 +452,6 @@ export async function createFeedback(
 	userId: string,
 	db: Database,
 ): Promise<CreateFeedbackOutput> {
-	await loadActorSocialGate(userId, db);
-
 	const book = await loadBookBySlug(input.bookSlug, db);
 
 	const existing = await db.feedback.findUnique({
@@ -471,6 +482,7 @@ export async function createFeedback(
 	const prepared = await prepareContentMentions(db, {
 		content: normalizeFeedbackReview(input.review),
 		authorId: userId,
+		audience: { ownerId: userId, section: "reviews" },
 	});
 	const review = prepared.content;
 	// Outside links get their preview ready now (bounded; never fails the save).
@@ -532,8 +544,6 @@ export async function updateFeedback(
 	userId: string,
 	db: Database,
 ): Promise<UpdateFeedbackOutput> {
-	await loadActorSocialGate(userId, db);
-
 	const book = await loadBookBySlug(input.bookSlug, db);
 
 	const existing = await db.feedback.findUnique({
@@ -556,6 +566,7 @@ export async function updateFeedback(
 	const prepared = await prepareContentMentions(db, {
 		content: normalizeFeedbackReview(input.review),
 		authorId: userId,
+		audience: { ownerId: userId, section: "reviews" },
 		alreadyMentionedIds: await loadMentionedIds(db, {
 			kind: "review",
 			id: existing.id,
