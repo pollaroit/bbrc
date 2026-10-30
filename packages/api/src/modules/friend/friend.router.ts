@@ -3,6 +3,8 @@ import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import { loadViewer } from "../visibility/viewer";
 import {
 	FriendBadgeOutputSchema,
+	FriendsWhoReadInputSchema,
+	FriendsWhoReadOutputSchema,
 	FriendUsernameInputSchema,
 	GetFriendStateOutputSchema,
 	ListBlockedOutputSchema,
@@ -18,6 +20,7 @@ import {
 	cancelFriendRequest,
 	countIncomingRequests,
 	declineRequest,
+	friendsWhoReadBook,
 	getFriendState,
 	listBlocked,
 	listFriendRequests,
@@ -47,6 +50,17 @@ export const friendRouter = {
 				context.db,
 				await loadViewer(context.db, context.session),
 				input,
+			),
+		),
+	/** Friends who read a book or are reading it now (for the book page). */
+	whoRead: publicProcedure
+		.input(FriendsWhoReadInputSchema)
+		.output(FriendsWhoReadOutputSchema)
+		.handler(async ({ input, context }) =>
+			friendsWhoReadBook(
+				context.db,
+				await loadViewer(context.db, context.session),
+				input.bookSlug,
 			),
 		),
 	requests: notBannedProcedure

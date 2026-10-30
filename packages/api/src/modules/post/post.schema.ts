@@ -102,6 +102,10 @@ export const PostListItemSchema = PostSchema.pick({
 
 /** LIST — composed as a concrete ZodObject so oRPC clients get input autocomplete. */
 export const GetPostListInputSchema = postListFiltersSchema
+	.extend({
+		/** Only posts by the viewer's friends ("From friends"). */
+		friendsOnly: zod.boolean().optional(),
+	})
 	.extend(CursorPaginationInputSchema.shape)
 	.extend(postListSorting.inputSchema.shape)
 	.extend(postListRanging.inputSchema.shape)

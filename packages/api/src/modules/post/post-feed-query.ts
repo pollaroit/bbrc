@@ -73,6 +73,7 @@ function buildRankedWhere(
 	rangeMin: Date | undefined,
 	authorUsername: string | undefined,
 	cursor: Extract<PostFeedCursor, { kind: "top" | "hot" }> | null,
+	authorIds?: string[],
 ): Prisma.Sql {
 	const parts: Prisma.Sql[] = [postVisibilitySql(viewer)];
 
@@ -82,6 +83,15 @@ function buildRankedWhere(
 
 	if (authorUsername) {
 		parts.push(Prisma.sql`u.username = ${authorUsername}`);
+	}
+
+	// "From friends": only posts by these members (nobody when the list is empty).
+	if (authorIds) {
+		parts.push(
+			authorIds.length > 0
+				? Prisma.sql`p.author_id IN (${Prisma.join(authorIds)})`
+				: Prisma.sql`FALSE`,
+		);
 	}
 
 	if (cursor && cursor.kind === mode) {
@@ -126,6 +136,8 @@ export async function queryRankedPostSlugs(
 		mode: "top" | "hot";
 		feedRange: PostFeedRange;
 		authorUsername?: string;
+		/** Only posts by these members. */
+		authorIds?: string[];
 		limit: number;
 		cursor: PostFeedCursor | null;
 		viewer: Viewer;
@@ -142,6 +154,7 @@ export async function queryRankedPostSlugs(
 		rangeMin,
 		input.authorUsername,
 		cursor,
+		input.authorIds,
 	);
 
 	const orderBy =
