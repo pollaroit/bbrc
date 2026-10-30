@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReadingItem } from "@bbrc/api/modules/reading/reading.schema";
+import { formatDuration, isReadingNow } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Input } from "@bbrc/ui/components/input";
 import {
@@ -60,6 +61,8 @@ export type ReadingCardData = Pick<
 > & {
 	sitting?: ReadingItem["sitting"];
 	pace?: ReadingItem["pace"];
+	/** A Reading Mode session still open on this reading (your own cards only). */
+	openSession?: ReadingItem["openSession"];
 };
 
 export type ReadingCardProps = {
@@ -448,12 +451,22 @@ export function ReadingCard({
 									}
 									nativeButton={false}
 									size="sm"
-									variant="outline"
+									variant={reading.openSession ? "secondary" : "outline"}
 									className="flex-1 sm:flex-none"
 								>
 									<Timer data-icon="inline-start" aria-hidden />
-									Reading Mode
+									{reading.openSession ? "Resume Reading Mode" : "Reading Mode"}
 								</Button>
+								{reading.openSession ? (
+									<span className="text-muted-foreground text-xs tabular-nums">
+										{isReadingNow(
+											new Date(reading.openSession.lastBeatAt),
+											new Date(),
+										)
+											? "Session running"
+											: `Paused · ${formatDuration(reading.openSession.activeSeconds)} read`}
+									</span>
+								) : null}
 								<span className="hidden flex-1 sm:block" />
 								<Button
 									type="button"

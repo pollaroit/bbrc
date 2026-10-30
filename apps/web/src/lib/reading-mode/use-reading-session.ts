@@ -152,10 +152,14 @@ export function useReadingSession(
 	}, []);
 
 	const finishedWith = useCallback(
-		(summary: EndReadingSessionOutput | null, noticeText: string | null) => {
+		(
+			summary: EndReadingSessionOutput | null,
+			noticeText: string | null,
+			knownSeconds?: number,
+		) => {
 			const seconds = timerRef.current
 				? readSeconds(timerRef.current, Date.now())
-				: (summary?.activeSeconds ?? 0);
+				: (summary?.activeSeconds ?? knownSeconds ?? 0);
 			clearSavedSession(key);
 			sessionIdRef.current = null;
 			timerRef.current = null;
@@ -216,6 +220,19 @@ export function useReadingSession(
 				return;
 			}
 
+			if (saved && !current && saved.timer.status !== "running") {
+				// Paused and left for longer than the server waits (30 quiet minutes):
+				// it ended on its own at the pause, with the time saved. Say so, do not reopen it.
+				const savedSeconds = readSeconds(saved.timer, Date.now());
+				clearSavedSession(key);
+				finishedWith(
+					null,
+					`Your paused session ended after 30 minutes away. ${formatDuration(savedSeconds)} were saved.`,
+					savedSeconds,
+				);
+				return;
+			}
+
 			if (saved && !current) {
 				// The server closed it while the page was quiet: reopen it.
 				try {
@@ -243,7 +260,7 @@ export function useReadingSession(
 		return () => {
 			cancelled = true;
 		};
-	}, [key, free, readingId, restore]);
+	}, [key, free, readingId, restore, finishedWith]);
 
 	// ── Keep the display moving, and notice boundaries ───────────────────
 	const active = phase.kind === "active";
@@ -402,7 +419,26 @@ export function useReadingSession(
 			setNow(Date.now());
 		}
 		await beat();
+		// The reading card shows the open session.
+		invalidateReadingQueries();
 	}, [beat, commit]);
+
+	// Leaving this page without ending the session (back button, a link) while the
+	// timer runs pauses it: the page is gone, so nobody is reading in it.
+	useEffect(
+		() => () => {
+			const current = timerRef.current;
+			const id = sessionIdRef.current;
+			if (!current || !id || current.status !== "running") return;
+			const paused = pauseTimer(current, Date.now());
+			saveSession(key, { sessionId: id, timer: paused });
+			void orpc.readingSession.beat
+				.call({ sessionId: id, activeSeconds: readSeconds(paused, Date.now()) })
+				.catch(() => undefined)
+				.finally(() => invalidateReadingQueries());
+		},
+		[key],
+	);
 
 	const resume = useCallback(async () => {
 		const current = timerRef.current;

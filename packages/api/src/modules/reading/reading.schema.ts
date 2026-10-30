@@ -62,6 +62,13 @@ export const ReadingItemSchema = z.object({
 	learnedPace: z.number().nullable(),
 	/** The page moves by the learned pace while the timer runs. */
 	autoPage: z.boolean(),
+	/** A Reading Mode session still open on this reading (running or paused and not yet stale). */
+	openSession: z
+		.object({
+			activeSeconds: z.number().int().min(0),
+			lastBeatAt: z.coerce.date(),
+		})
+		.nullable(),
 	/** The sitting this reading counts towards (the book is its pick and you are in it). */
 	sitting: z
 		.object({

@@ -6,6 +6,7 @@ import {
 	clubDayKey,
 	type EditionFormat,
 	formatEditionLanguage,
+	isSessionStale,
 	type PaceResult,
 	percentFromSeconds,
 	readingPace,
@@ -74,6 +75,12 @@ const readingSelect = {
 			pages: true,
 		},
 	},
+	sessions: {
+		where: { endedAt: null },
+		orderBy: { startedAt: "desc" as const },
+		take: 1,
+		select: { activeSeconds: true, lastBeatAt: true },
+	},
 	logs: {
 		orderBy: { createdAt: "desc" as const },
 		take: 40,
@@ -121,6 +128,7 @@ type ReadingRow = {
 		coverId: number | null;
 		pages: number;
 	};
+	sessions: { activeSeconds: number; lastBeatAt: Date }[];
 	logs: { createdAt: Date; percent: number; page: number | null }[];
 };
 
@@ -236,6 +244,14 @@ async function sittingsFor(
 	);
 }
 
+/** A session left open and not yet stale (the server closes one after 30 quiet minutes). */
+function openSessionOf(row: ReadingRow, now: Date): ReadingItem["openSession"] {
+	const open = row.sessions[0];
+	return open && !isSessionStale(open.lastBeatAt, now)
+		? { activeSeconds: open.activeSeconds, lastBeatAt: open.lastBeatAt }
+		: null;
+}
+
 function mapReading(
 	row: ReadingRow,
 	sitting: SittingLink | undefined,
@@ -257,6 +273,7 @@ function mapReading(
 			pages: row.book.pages,
 		},
 		edition: mapEdition(row),
+		openSession: openSessionOf(row, now),
 		editionFormat: row.editionFormat,
 		trackByTime: row.trackByTime,
 		totalSeconds: row.totalSeconds,
