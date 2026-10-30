@@ -32,6 +32,7 @@ import {
 	tierlistImageUrls,
 } from "../post-tierlist/post-tierlist.service";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
+import { loadFriendIds } from "../visibility/viewer";
 import {
 	commentVisibleWhere,
 	postVisibleWhere,
@@ -460,9 +461,19 @@ export async function getPostList(
 	const { feedSort, feedRange } = resolveFeedMode(input);
 	const feedCursor = input.cursor ? decodePostFeedCursor(input.cursor) : null;
 
+	// "From friends": posts by the viewer's friends only (an admin has no friends loaded, so theirs are read).
+	const friendAuthorIds = input.friendsOnly
+		? viewer.kind === "member"
+			? viewer.isAdmin
+				? await loadFriendIds(db, viewer.userId)
+				: [...viewer.friendIds]
+			: []
+		: undefined;
+
 	const baseWhere = mergeWhereFragments<Prisma.PostWhereInput>(
 		searching.use(),
 		input.authorUsername ? postAuthorUsernameWhere(input.authorUsername) : {},
+		friendAuthorIds ? { authorId: { in: friendAuthorIds } } : {},
 		input.hasAttachedBook != null
 			? postAttachedBookWhere(input.hasAttachedBook)
 			: {},
@@ -474,6 +485,7 @@ export async function getPostList(
 			mode: feedSort,
 			feedRange,
 			authorUsername: input.authorUsername,
+			authorIds: friendAuthorIds,
 			limit: overfetch,
 			cursor: feedCursor,
 			viewer,
