@@ -2,9 +2,9 @@
 
 import type { ReadingItem } from "@bbrc/api/modules/reading/reading.schema";
 import {
+	autoEstimate,
 	collectUpdate,
 	describePace,
-	estimatePosition,
 	learnPace,
 	type PaceCollector,
 	type PaceUnit,
@@ -160,66 +160,76 @@ export function useAutoPage(input: {
 	/** Saves an estimated number (marked as estimated). */
 	commit: (value: number) => void;
 }) {
-	const { reading, unit, max, activeSeconds, running, commit } = input;
+	const { reading, unit, max, running } = input;
 	const enabled = reading.autoPage && reading.learnedPace != null;
-	const base = useRef({ value: input.confirmed, seconds: activeSeconds() });
-	const [estimate, setEstimate] = useState<number | null>(null);
-	const estimateRef = useRef<number | null>(null);
+	const perMinute = reading.learnedPace ?? 0;
+
+	// The clock and the save callback change identity on every render. Read them
+	// through refs: putting them in an effect's dependencies would restart that
+	// effect (and reset the baseline) about twice a second.
+	const secondsRef = useRef(input.activeSeconds);
+	secondsRef.current = input.activeSeconds;
+	const commitRef = useRef(input.commit);
+	commitRef.current = input.commit;
+
+	/** Where the estimate starts from: the last place the member confirmed, and the clock then. */
+	const base = useRef({
+		value: input.confirmed,
+		seconds: input.activeSeconds(),
+	});
+	/** What was last shown as an estimate and has not been saved yet. */
+	const pending = useRef<number | null>(null);
+	const [, setTick] = useState(0);
 
 	/** The member said where they are: estimate from here. */
-	const confirm = useCallback(
-		(value: number) => {
-			base.current = { value, seconds: activeSeconds() };
-			estimateRef.current = null;
-			setEstimate(null);
-		},
-		[activeSeconds],
-	);
+	const confirm = useCallback((value: number) => {
+		base.current = { value, seconds: secondsRef.current() };
+		pending.current = null;
+	}, []);
 
-	// A server answer that is not an estimate of ours moves the baseline too.
+	// The saved number changed (a server answer, a save of ours): start again from it.
+	// Only the number is a dependency, never the clock.
+	const confirmedValue = input.confirmed;
 	useEffect(() => {
-		if (estimateRef.current == null) {
-			base.current = { value: input.confirmed, seconds: activeSeconds() };
+		if (pending.current == null) {
+			base.current = { value: confirmedValue, seconds: secondsRef.current() };
 		}
-	}, [input.confirmed, activeSeconds]);
+	}, [confirmedValue]);
 
+	// Redraw every second while the estimate is moving.
 	useEffect(() => {
 		if (!enabled || !running) return;
-		const perMinute = reading.learnedPace ?? 0;
-		const tick = () => {
-			const next = estimatePosition({
-				baseline: base.current.value,
-				perMinute,
-				activeSecondsSinceBaseline: activeSeconds() - base.current.seconds,
-				max,
-			});
-			if (next > base.current.value) {
-				estimateRef.current = next;
-				setEstimate(next);
-			}
-		};
-		tick();
-		const id = window.setInterval(tick, 1000);
+		const id = window.setInterval(() => setTick((tick) => tick + 1), 1000);
 		return () => window.clearInterval(id);
-	}, [enabled, running, reading.learnedPace, max, activeSeconds]);
+	}, [enabled, running]);
+
+	// Worked out from the clock at every render, so it can never lag behind it.
+	const estimate =
+		enabled && running
+			? autoEstimate({
+					baseline: base.current.value,
+					baselineSeconds: base.current.seconds,
+					nowSeconds: secondsRef.current(),
+					perMinute,
+					max,
+				})
+			: null;
+	pending.current = estimate;
 
 	// The timer stopped (pause, break, end): save what we guessed, marked as estimated.
+	const wasRunning = useRef(running);
+	const lastEstimate = useRef<number | null>(null);
+	if (running) lastEstimate.current = estimate;
 	useEffect(() => {
-		if (running) return;
-		const pending = estimateRef.current;
-		if (pending != null) {
-			commit(pending);
-			base.current = { value: pending, seconds: activeSeconds() };
-			estimateRef.current = null;
-			setEstimate(null);
+		if (wasRunning.current && !running && lastEstimate.current != null) {
+			const value = lastEstimate.current;
+			lastEstimate.current = null;
+			commitRef.current(value);
+			base.current = { value, seconds: secondsRef.current() };
+			pending.current = null;
 		}
-	}, [running, commit, activeSeconds]);
+		wasRunning.current = running;
+	}, [running]);
 
-	return {
-		enabled,
-		confirm,
-		/** What to show instead of the saved number, or null; never shown past the maximum. */
-		estimate: enabled ? estimate : null,
-		unit,
-	};
+	return { enabled, confirm, estimate, unit };
 }

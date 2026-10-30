@@ -10,7 +10,7 @@
 export type PaceUnit = "pages" | "percent" | "seconds";
 
 /** A stretch needs at least this much active reading to say anything about speed. */
-export const PACE_MIN_SAMPLE_SECONDS = 20;
+export const PACE_MIN_SAMPLE_SECONDS = 15;
 /** ...and must have gained at least this much. */
 export const PACE_MIN_SAMPLE_GAIN = 1;
 /** Usable samples needed to learn a pace. */
@@ -124,7 +124,7 @@ export function startCollecting(
 
 /**
  * The member entered where they are. A stretch is measured from its start until
- * enough time has passed to say something about speed (`PACE_MIN_SAMPLE_SECONDS`)
+ * enough time has passed to say something about speed (`PACE_MIN_SAMPLE_SECONDS`, 15)
  * and the member has moved forward: updating often, a page at a time, just keeps
  * the stretch open instead of making many stretches too short to use. Going back
  * only moves the start (a correction says nothing about speed).
@@ -163,6 +163,28 @@ export function estimatePosition(input: {
 		(input.perMinute * Math.max(0, input.activeSecondsSinceBaseline)) / 60,
 	);
 	return Math.min(input.max, Math.max(input.baseline, input.baseline + moved));
+}
+
+/**
+ * The estimate to show while auto mode runs, or null while it has not got ahead of
+ * the confirmed place yet (nothing to show, the real number is the answer).
+ */
+export function autoEstimate(input: {
+	baseline: number;
+	/** Active seconds when the baseline was set. */
+	baselineSeconds: number;
+	/** Active seconds now. */
+	nowSeconds: number;
+	perMinute: number;
+	max: number;
+}): number | null {
+	const next = estimatePosition({
+		baseline: input.baseline,
+		perMinute: input.perMinute,
+		activeSecondsSinceBaseline: input.nowSeconds - input.baselineSeconds,
+		max: input.max,
+	});
+	return next > input.baseline ? next : null;
 }
 
 /** How the pace reads to a member: "about 1.4 pages a minute (84 an hour)". */

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+	autoEstimate,
 	collectUpdate,
 	describePace,
 	estimatePosition,
@@ -97,7 +98,7 @@ describe("collecting", () => {
 	test("updating often, a page at a time, keeps one stretch open instead of many tiny ones", () => {
 		let state = startCollecting(10, 0);
 		for (let page = 11; page <= 16; page += 1) {
-			state = collectUpdate(state, page, (page - 10) * 3);
+			state = collectUpdate(state, page, (page - 10) * 2);
 		}
 		expect(state.samples).toEqual([]);
 		state = collectUpdate(state, 17, 60);
@@ -158,5 +159,35 @@ describe("describePace", () => {
 			"about 1.4 pages a minute (84 an hour)",
 		);
 		expect(describePace(66, "seconds")).toBe("about 1.10x listening speed");
+	});
+});
+
+describe("autoEstimate", () => {
+	const base = {
+		baseline: 100,
+		baselineSeconds: 1000,
+		perMinute: 3.4,
+		max: 300,
+	};
+
+	test("nothing to show until the pace has moved the page by a whole page", () => {
+		expect(autoEstimate({ ...base, nowSeconds: 1000 })).toBeNull();
+		expect(autoEstimate({ ...base, nowSeconds: 1010 })).toBeNull();
+	});
+
+	test("it follows the clock from the baseline, not from the last render", () => {
+		// 3.4 pages a minute: a page every ~17.6 seconds.
+		expect(autoEstimate({ ...base, nowSeconds: 1018 })).toBe(101);
+		expect(autoEstimate({ ...base, nowSeconds: 1060 })).toBe(103);
+		expect(autoEstimate({ ...base, nowSeconds: 1600 })).toBe(134);
+	});
+
+	test("never past the last page", () => {
+		expect(autoEstimate({ ...base, baseline: 299, nowSeconds: 9999 })).toBe(
+			300,
+		);
+		expect(
+			autoEstimate({ ...base, baseline: 300, nowSeconds: 9999 }),
+		).toBeNull();
 	});
 });
