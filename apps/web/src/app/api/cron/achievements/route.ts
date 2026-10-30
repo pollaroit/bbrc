@@ -1,5 +1,6 @@
 import { sweepAuthorEnrichment } from "@bbrc/api/lib/author-enrichment/schedule";
 import { sweepAchievements } from "@bbrc/api/modules/achievement/achievement.service";
+import { expireStalePendingRequests } from "@bbrc/api/modules/friend/friend.service";
 import { sweepEndedPolls } from "@bbrc/api/modules/post-poll/post-poll.service";
 import { sweepReadingReminders } from "@bbrc/api/modules/reading/reading-reminders.service";
 import { sweepViews } from "@bbrc/api/modules/view/view-maintenance.service";
@@ -42,6 +43,13 @@ export async function POST(request: Request) {
 		} catch (error) {
 			console.error("author enrichment sweep failed", error);
 		}
+		// Friend requests nobody answered for 90 days; a failure must not stop the rest.
+		let expiredFriendRequests = 0;
+		try {
+			expiredFriendRequests = await expireStalePendingRequests(db);
+		} catch (error) {
+			console.error("friend request expiry failed", error);
+		}
 		const result = await sweepAchievements(db);
 		const endedPolls = await sweepEndedPolls(db);
 		return NextResponse.json({
@@ -51,6 +59,7 @@ export async function POST(request: Request) {
 			views,
 			readingReminders,
 			authorsEnriched,
+			expiredFriendRequests,
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "Sweep failed";

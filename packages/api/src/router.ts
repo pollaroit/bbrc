@@ -17,6 +17,7 @@ import { factRouter } from "./modules/fact/fact.router";
 import { favoriteRouter } from "./modules/favorite/favorite.router";
 import { feedbackRouter } from "./modules/feedback/feedback.router";
 import { followRouter } from "./modules/follow/follow.router";
+import { friendRouter } from "./modules/friend/friend.router";
 import { goalRouter } from "./modules/goal/goal.router";
 import { healthRouter } from "./modules/health/health.router";
 import { leaderboardRouter } from "./modules/leaderboard/leaderboard.router";
@@ -67,6 +68,7 @@ export const appRouter = {
 	ratingDefinition: ratingDefinitionRouter,
 	feedback: feedbackRouter,
 	follow: followRouter,
+	friend: friendRouter,
 	goal: goalRouter,
 	globalSearch: globalSearchRouter,
 	like: likeRouter,

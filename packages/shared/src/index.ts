@@ -19,6 +19,7 @@ export * from "./edition-language";
 export * from "./edition-links";
 export * from "./favorites";
 export * from "./feedback-rating";
+export * from "./friendship";
 export * from "./genres";
 export * from "./goals";
 export * from "./isbn";
