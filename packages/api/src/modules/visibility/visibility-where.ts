@@ -9,7 +9,7 @@ import {
 	type Visibility,
 } from "@bbrc/shared";
 
-/*
+/**
  * Prisma where-clauses for "what may this viewer see", derived from the same
  * levels and reach table the pure `canView` uses (packages/shared/src/visibility).
  * The test in this folder proves the two agree over the whole matrix, so a rule
@@ -17,7 +17,6 @@ import {
  *
  * A clause is a plain object; callers cast it to their model's `WhereInput`.
  */
-
 export type Clause = Record<string, unknown>;
 
 /** Which Prisma columns hold the profile level and each section's level on `User`. */
@@ -32,7 +31,7 @@ export const USER_SECTION_COLUMNS: Record<ProfileSection, string | null> = {
 	wishlist: null,
 };
 
-const NOTHING: Clause = { id: { in: [] } };
+const NOTHING: Clause = { OR: [] };
 const EVERYTHING: Clause = {};
 
 /**
@@ -48,14 +47,21 @@ function levelReachClause(
 	if (viewer.kind === "anonymous") {
 		return LEVEL_REACH[level].includes("anonymous") ? EVERYTHING : NOTHING;
 	}
+
 	if (viewer.isAdmin) return EVERYTHING;
+
 	const reach = LEVEL_REACH[level];
 	const friends = [...viewer.friendIds];
 	const clauses: Clause[] = [];
-	if (reach.includes("self")) clauses.push(owner({ equals: viewer.userId }));
+
+	if (reach.includes("self")) {
+		clauses.push(owner({ equals: viewer.userId }));
+	}
+
 	if (reach.includes("friend") && friends.length > 0) {
 		clauses.push(owner({ in: friends }));
 	}
+
 	if (reach.includes("member")) {
 		clauses.push(
 			owner({
@@ -63,6 +69,7 @@ function levelReachClause(
 			}),
 		);
 	}
+
 	return clauses.length === 0 ? NOTHING : { OR: clauses };
 }
 
@@ -93,9 +100,7 @@ export function visibleWhere(viewer: Viewer, spec: VisibleSpec): Clause {
 	const onModelOwner = (condition: Clause): Clause => ({
 		[spec.ownerIdField]: condition,
 	});
-	const onRelatedOwner = (condition: Clause): Clause => ({
-		[spec.ownerRelation]: { id: condition },
-	});
+
 	const parts: Clause[] = [];
 
 	if (spec.profile !== false) {
@@ -103,7 +108,7 @@ export function visibleWhere(viewer: Viewer, spec: VisibleSpec): Clause {
 			OR: PROFILE_VISIBILITIES.map((profile: ProfileVisibility) => ({
 				AND: [
 					{ [spec.ownerRelation]: { [USER_PROFILE_COLUMN]: profile } },
-					levelReachClause(viewer, profileCap(profile), onRelatedOwner),
+					levelReachClause(viewer, profileCap(profile), onModelOwner),
 				],
 			})),
 		});
@@ -112,12 +117,13 @@ export function visibleWhere(viewer: Viewer, spec: VisibleSpec): Clause {
 	const sectionColumn = spec.section
 		? USER_SECTION_COLUMNS[spec.section]
 		: null;
+
 	if (sectionColumn) {
 		parts.push({
 			OR: VISIBILITY_LEVELS.map((level) => ({
 				AND: [
 					{ [spec.ownerRelation]: { [sectionColumn]: level } },
-					levelReachClause(viewer, level, onRelatedOwner),
+					levelReachClause(viewer, level, onModelOwner),
 				],
 			})),
 		});
@@ -125,6 +131,7 @@ export function visibleWhere(viewer: Viewer, spec: VisibleSpec): Clause {
 
 	if (spec.itemField) {
 		const itemField = spec.itemField;
+
 		parts.push({
 			OR: VISIBILITY_LEVELS.map((level) => ({
 				AND: [
@@ -148,5 +155,6 @@ export function visibleWhere(viewer: Viewer, spec: VisibleSpec): Clause {
 export function notBlockedWhere(viewer: Viewer, idField = "id"): Clause {
 	if (viewer.kind !== "member" || viewer.isAdmin) return EVERYTHING;
 	if (viewer.blockedIds.size === 0) return EVERYTHING;
+
 	return { NOT: { [idField]: { in: [...viewer.blockedIds] } } };
 }

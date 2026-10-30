@@ -328,6 +328,7 @@ async function mapPostDetailRow(
 	await fillAuthorAttachments(db, [attachment]);
 
 	return {
+		visibility: "public",
 		slug: row.slug,
 		content: row.content,
 		imageUrl: row.imageUrl,
