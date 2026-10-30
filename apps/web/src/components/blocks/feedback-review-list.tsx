@@ -26,6 +26,7 @@ import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { TrackImpression } from "@/components/blocks/track-impression";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { VisibilityBadge } from "@/components/blocks/visibility-select";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
 import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
@@ -125,6 +126,7 @@ export function FeedbackReviewList({
 												<Badge variant="outline" className="tabular-nums">
 													{formatFeedbackRating(entry.rating)} / 5
 												</Badge>
+												<VisibilityBadge level={entry.visibility} />
 												<FriendButton username={entry.username} />
 												<p className="text-muted-foreground text-xs">
 													{formatDateTime(entry.createdAt)}
@@ -195,6 +197,7 @@ export function FeedbackReviewList({
 														rating={entry.rating}
 														review={entry.review}
 														isSpoiler={entry.isSpoiler}
+														visibility={entry.visibility}
 														imageUrl={entry.imageUrl}
 														feedbackSlug={entry.slug}
 													/>

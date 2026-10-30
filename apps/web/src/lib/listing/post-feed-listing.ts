@@ -19,6 +19,10 @@ export const postFeedRangeQueryValues = [
 ] as const;
 export type PostFeedRangeQuery = (typeof postFeedRangeQueryValues)[number];
 
+/** `for-you` is default (omit `feed`); `friends` shows only friends' posts. */
+export const postFeedTabValues = ["for-you", "friends"] as const;
+export type PostFeedTab = (typeof postFeedTabValues)[number];
+
 export type PostFeedSortUi = PostFeedSort;
 
 export const postFeedSortLabels = {
@@ -36,6 +40,9 @@ export const postFeedRangeLabels = {
 } as const satisfies Record<PostFeedRange, string>;
 
 export const postFeedSearchParams = {
+	feed: parseAsStringLiteral(postFeedTabValues)
+		.withDefault("for-you")
+		.withOptions({ shallow: false, clearOnDefault: true }),
 	sort: parseAsStringLiteral(postFeedSortQueryValues).withOptions({
 		shallow: false,
 		clearOnDefault: true,
@@ -111,6 +118,7 @@ export function toPostFeedListInput(
 	params: {
 		sort: PostFeedSortQuery | null;
 		range: PostFeedRangeQuery | null;
+		feed?: PostFeedTab | null;
 	},
 	cursor?: string,
 ): Partial<GetPostListInput> {
@@ -120,6 +128,7 @@ export function toPostFeedListInput(
 	return {
 		limit: 10,
 		feedSort,
+		...(params.feed === "friends" ? { friendsOnly: true } : {}),
 		...(feedSort === "hot" ? {} : { feedRange }),
 		...(cursor != null ? { cursor } : {}),
 	};

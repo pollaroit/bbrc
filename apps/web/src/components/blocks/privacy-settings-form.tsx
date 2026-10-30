@@ -143,6 +143,7 @@ export function PrivacySettingsForm() {
 							input.showReadingProgress ?? previous.showReadingProgress,
 						sections: { ...previous.sections, ...input.sections },
 						details: { ...previous.details, ...input.details },
+						defaults: { ...previous.defaults, ...input.defaults },
 					});
 				}
 				return { previous };
@@ -233,6 +234,31 @@ export function PrivacySettingsForm() {
 						mutation.mutate({ showReadingProgress })
 					}
 				/>
+			</PreferencesSection>
+
+			<PreferencesSection
+				id="defaults-privacy"
+				title="New things start as"
+				description="Who can see a new post or shelf until you choose otherwise. You can change it on each one."
+			>
+				<Row label="New posts">
+					<SegmentedControl<Visibility>
+						label="New posts"
+						value={settings.defaults.post}
+						options={LEVEL_OPTIONS}
+						onChange={(level) => mutation.mutate({ defaults: { post: level } })}
+					/>
+				</Row>
+				<Row label="New shelves">
+					<SegmentedControl<Visibility>
+						label="New shelves"
+						value={settings.defaults.shelf}
+						options={LEVEL_OPTIONS}
+						onChange={(level) =>
+							mutation.mutate({ defaults: { shelf: level } })
+						}
+					/>
+				</Row>
 			</PreferencesSection>
 
 			<PreferencesSection

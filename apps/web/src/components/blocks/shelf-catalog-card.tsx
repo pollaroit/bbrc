@@ -2,12 +2,12 @@
 
 import type { ViewSourceName } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
-import { Lock } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { useImpressionRef } from "@/components/blocks/track-impression";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { VisibilityBadge } from "@/components/blocks/visibility-select";
 import { bookCoverUrl } from "@/lib/book-cover";
 import { cn } from "@/lib/utils";
 
@@ -162,12 +162,7 @@ export function ShelfCatalogCard({
 						{shelf.type === "ordered" ? (
 							<Badge variant="secondary">Ranked</Badge>
 						) : null}
-						{shelf.visibility === "private" ? (
-							<Badge variant="outline" className="gap-1">
-								<Lock aria-hidden />
-								Private
-							</Badge>
-						) : null}
+						<VisibilityBadge level={shelf.visibility} />
 						{showStatus && shelf.status && shelf.status !== "active" ? (
 							<Badge variant="outline" className="capitalize">
 								{shelf.status}

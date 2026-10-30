@@ -1,12 +1,16 @@
 import { getFeedbackBySlug } from "@bbrc/api/modules/feedback/feedback.service";
+import { peekFeedback } from "@bbrc/api/modules/visibility/peek";
 import { ANONYMOUS_VIEWER } from "@bbrc/shared";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FeedbackDetail } from "@/components/blocks/feedback-detail";
+import { LockedItem } from "@/components/blocks/locked-item";
 import { TrackDetailView } from "@/components/blocks/track-detail-view";
+import { getRequestViewer } from "@/lib/request-viewer";
 import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
+	NO_INDEX_ROBOTS,
 	truncateDescription,
 } from "@/lib/seo";
 import { truncateOgTitle } from "@/lib/seo/og/helpers";
@@ -41,6 +45,17 @@ export async function generateMetadata({
 			openGraph: { type: "article" },
 		});
 	} catch {
+		const peek = await peekFeedback(db, ANONYMOUS_VIEWER, feedbackSlug).catch(
+			() => null,
+		);
+		if (peek?.state === "locked") {
+			return buildPageMetadata({
+				title: `Friends-only review by ${peek.author.name}`,
+				description: `Only ${peek.author.name}'s friends can open this review.`,
+				path: `/books/${slug}/feedbacks/${feedbackSlug}`,
+				robots: NO_INDEX_ROBOTS,
+			});
+		}
 		return buildNotFoundMetadata("Review");
 	}
 }
@@ -51,10 +66,11 @@ export default async function BookFeedbackPage({
 	const { slug, feedbackSlug } = await params;
 
 	try {
+		// The page is never cached, so it knows who is looking.
 		const feedback = await getFeedbackBySlug(
 			feedbackSlug,
 			db,
-			anonymousSession,
+			await getRequestViewer(),
 		);
 		if (feedback.bookSlug !== slug) {
 			notFound();
@@ -67,6 +83,14 @@ export default async function BookFeedbackPage({
 			</>
 		);
 	} catch {
+		const peek = await peekFeedback(
+			db,
+			await getRequestViewer(),
+			feedbackSlug,
+		).catch(() => null);
+		if (peek?.state === "locked") {
+			return <LockedItem kind="review" author={peek.author} />;
+		}
 		notFound();
 	}
 }

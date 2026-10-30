@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Check, Globe, Lock } from "lucide-react";
+import { Archive, Check, Globe, Lock, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -131,13 +131,20 @@ export const shelfVisibilityCreateOptions = [
 export const shelfAccessOptions = [
 	{
 		value: "public",
-		title: "Public",
+		title: "Everyone",
 		description: "Anyone can open it and find it in search.",
 		icon: <Globe className={iconClass} aria-hidden />,
 	},
 	{
+		value: "friends",
+		title: "Friends",
+		description:
+			"Only your friends and the people you share it with can open it.",
+		icon: <Users className={iconClass} aria-hidden />,
+	},
+	{
 		value: "private",
-		title: "Private",
+		title: "Only me",
 		description:
 			"Only you and the people you share it with can open it. It stays out of lists and search.",
 		icon: <Lock className={iconClass} aria-hidden />,
