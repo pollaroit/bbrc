@@ -176,6 +176,21 @@ export async function ensureReadForSittingCompletion(
 }
 
 /**
+ * Which sitting participations a member's "mark as read" completes: only those of
+ * a sitting that is going (reading) and not already completed or DNF. A reading
+ * and a sitting are separate things: finishing the book on your own after the
+ * sitting ended must never change a sitting's outcome, and a DNF stays a DNF.
+ */
+export function markReadParticipationWhere(userId: string, bookId: string) {
+	return {
+		userId,
+		...activeParticipationWhere,
+		progress: { notIn: ["completed", "dnf"] },
+		sitting: { selectedBookId: bookId, status: "reading" },
+	} satisfies Prisma.ParticipationWhereInput;
+}
+
+/**
  * When a sitting enters reading, participants who already marked the club pick
  * read should show completed (bidirectional sync with member_read).
  */
@@ -200,7 +215,7 @@ export async function syncParticipationWithExistingReadsForSelectedBook(
 			sittingId,
 			userId: { in: readerUserIds },
 			...activeParticipationWhere,
-			progress: { not: "completed" },
+			progress: { notIn: ["completed", "dnf"] },
 		},
 		data: { progress: "completed" },
 	});
@@ -334,15 +349,7 @@ export async function setRead(
 		});
 
 		await tx.participation.updateMany({
-			where: {
-				userId,
-				...activeParticipationWhere,
-				progress: { not: "completed" },
-				sitting: {
-					selectedBookId: book.id,
-					status: { in: ["reading", "finished"] },
-				},
-			},
+			where: markReadParticipationWhere(userId, book.id),
 			data: { progress: "completed" },
 		});
 

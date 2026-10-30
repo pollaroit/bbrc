@@ -73,6 +73,11 @@ import {
 } from "./sitting.service";
 import { sittingJoinRouter } from "./sitting-join.router";
 import {
+	SearchPollNomineesInputSchema,
+	SearchPollNomineesOutputSchema,
+} from "./sitting-poll-nominees.schema";
+import { searchPollNominees } from "./sitting-poll-nominees.service";
+import {
 	WishlistPollCandidatesInputSchema,
 	WishlistPollCandidatesOutputSchema,
 } from "./sitting-wishlist-candidates.schema";
@@ -119,6 +124,12 @@ export const sittingRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await wishlistPollCandidates(input, context.db),
+		),
+	searchPollNominees: adminProcedure
+		.input(SearchPollNomineesInputSchema)
+		.output(SearchPollNomineesOutputSchema)
+		.handler(
+			async ({ input, context }) => await searchPollNominees(input, context.db),
 		),
 	previewSittingPollOptions: adminProcedure
 		.input(PreviewSittingPollOptionsInputSchema)

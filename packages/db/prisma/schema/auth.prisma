@@ -104,6 +104,7 @@ model User {
   readings                   Reading[]
   readingSessions            ReadingSession[]
   pushDevices                PushDevice[]
+  nominatedPollOptions       PollOption[] @relation("PollOptionNominator")
   authorsCreated             Author[]                 @relation("AuthorCreator")
   followsMade                Follow[]                 @relation("FollowsMade")
   followedBy                 Follow[]                 @relation("FollowedBy")

@@ -73,7 +73,7 @@ function useAllUsers() {
 
 type ReviewState = Pick<
 	PreviewSittingPollOptionsOutput,
-	"options" | "eligiblePoolSize" | "usedUniformFallback"
+	"options" | "eligiblePoolSize" | "usedUniformFallback" | "keptBookIds"
 >;
 
 export function CreateSittingForm() {
@@ -83,6 +83,10 @@ export function CreateSittingForm() {
 	const [review, setReview] = useState<ReviewState | null>(null);
 	const [configureValues, setConfigureValues] =
 		useState<CreateSittingFormValues | null>(null);
+	/** Books the admin chose directly, carried over when going back to change the setup. */
+	const [carriedNominees, setCarriedNominees] = useState<
+		ReviewState["options"]
+	>([]);
 
 	const defaultParticipantIds = useMemo(
 		() =>
@@ -172,14 +176,20 @@ export function CreateSittingForm() {
 					initialOptions={review.options}
 					eligiblePoolSize={review.eligiblePoolSize}
 					initialUsedUniformFallback={review.usedUniformFallback}
+					initialNominatedBookIds={review.keptBookIds}
 					participantCount={configureValues.participantUserIds.length}
 					confirmLoading={createMutation.isPending}
-					onBack={() => {
+					onBack={(nominated) => {
+						setCarriedNominees(nominated);
 						setStep("configure");
 					}}
-					onConfirm={(optionBookIds) => {
+					onConfirm={(optionBookIds, nominatedBookIds) => {
 						createMutation.mutate(
-							toCreateSittingInput(configureValues, optionBookIds),
+							toCreateSittingInput(
+								configureValues,
+								optionBookIds,
+								nominatedBookIds,
+							),
 						);
 					}}
 				/>
@@ -198,16 +208,31 @@ export function CreateSittingForm() {
 			className="flex flex-col gap-6"
 			onSubmit={form.handleSubmit((values) => {
 				setConfigureValues(values);
-				previewMutation.mutate(toPreviewSittingPollOptionsInput(values), {
-					onSuccess: (result) => {
-						setReview({
-							options: result.options,
-							eligiblePoolSize: result.eligiblePoolSize,
-							usedUniformFallback: result.usedUniformFallback,
-						});
-						setStep("review");
+				previewMutation.mutate(
+					{
+						...toPreviewSittingPollOptionsInput(values),
+						keepBookIds: carriedNominees.map((option) => option.book.id),
 					},
-				});
+					{
+						onSuccess: (result) => {
+							for (const option of carriedNominees) {
+								if (!result.keptBookIds.includes(option.book.id)) {
+									toast.warning(
+										`“${option.book.title}” no longer fits the poll and was removed.`,
+									);
+								}
+							}
+							setCarriedNominees([]);
+							setReview({
+								options: result.options,
+								eligiblePoolSize: result.eligiblePoolSize,
+								usedUniformFallback: result.usedUniformFallback,
+								keptBookIds: result.keptBookIds,
+							});
+							setStep("review");
+						},
+					},
+				);
 			})}
 		>
 			<CreateSittingSteps step="configure" />

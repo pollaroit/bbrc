@@ -197,6 +197,8 @@ export const CreateSittingInputSchema = zod
 		poll: CreateSittingPollInputSchema.default({}),
 		/** Reviewed poll options from the admin create flow; omit to auto-draw. */
 		optionBookIds: zod.array(BookSchema.shape.id).optional(),
+		/** Books in `optionBookIds` the admin chose directly (stored, not shown to members yet). */
+		nominatedBookIds: zod.array(BookSchema.shape.id).optional(),
 	})
 	.superRefine((value, ctx) => {
 		refinePollConfig(value.poll, ctx, ["poll"]);
@@ -392,6 +394,11 @@ export const PreviewSittingPollOptionsInputSchema = zod
 	.object({
 		participantUserIds: CreateSittingInputSchema.shape.participantUserIds,
 		poll: CreateSittingPollInputSchema.default({}),
+		/**
+		 * Books the admin chose directly earlier. Those that still fit the poll are kept
+		 * (the earliest ones, up to the poll size); the rest are drawn as usual.
+		 */
+		keepBookIds: zod.array(BookSchema.shape.id).max(40).optional(),
 	})
 	.superRefine((value, ctx) => {
 		refinePollConfig(value.poll, ctx, ["poll"]);
@@ -421,6 +428,8 @@ export const PreviewSittingPollOptionsOutputSchema = zod.object({
 	options: zod.array(SittingPollPreviewOptionSchema),
 	eligiblePoolSize: zod.number().int().min(0),
 	usedUniformFallback: zod.boolean(),
+	/** Which of `keepBookIds` were kept; the others no longer fit and were dropped. */
+	keptBookIds: zod.array(BookSchema.shape.id),
 });
 
 export type PreviewSittingPollOptionsInput = z.infer<

@@ -50,6 +50,7 @@ export * from "./shelf-collab";
 export * from "./shelves";
 export * from "./sitting-display";
 export * from "./sitting-joins";
+export * from "./sitting-poll-eligibility";
 export * from "./slug";
 export * from "./social-sites";
 export * from "./spoiler-reveal";
