@@ -139,6 +139,11 @@ export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 		else goBack();
 	}
 
+	async function pauseAndLeave() {
+		await session.pauseForLeaving().catch(() => undefined);
+		goBack();
+	}
+
 	async function endAndLeave() {
 		await session.finish().catch(() => undefined);
 		goBack();
@@ -437,9 +442,11 @@ export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 			<ConfirmDialog
 				open={leaveOpen}
 				onOpenChange={setLeaveOpen}
-				title="End this session?"
-				description={`Leaving ends the session and saves ${formatDuration(session.secondsNow())} of reading.`}
+				title="Leave Reading Mode?"
+				description={`Pause and come back later to carry on, or end the session and save ${formatDuration(session.secondsNow())} of reading.`}
 				confirmLabel="End and leave"
+				secondaryLabel="Pause and leave"
+				onSecondary={() => void pauseAndLeave()}
 				onConfirm={() => void endAndLeave()}
 			/>
 			<ConfirmDialog

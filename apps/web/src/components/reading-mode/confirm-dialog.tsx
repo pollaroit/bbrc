@@ -21,6 +21,8 @@ export function ConfirmDialog({
 	confirmLabel,
 	cancelLabel = "Keep reading",
 	onConfirm,
+	secondaryLabel,
+	onSecondary,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -29,6 +31,9 @@ export function ConfirmDialog({
 	confirmLabel: string;
 	cancelLabel?: string;
 	onConfirm: () => void;
+	/** A third choice between cancelling and confirming (for example "Pause and leave"). */
+	secondaryLabel?: string;
+	onSecondary?: () => void;
 }) {
 	return (
 		<AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -39,6 +44,17 @@ export function ConfirmDialog({
 				</AlertDialogHeader>
 				<AlertDialogFooter>
 					<AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
+					{secondaryLabel && onSecondary ? (
+						<AlertDialogAction
+							variant="outline"
+							onClick={() => {
+								onOpenChange(false);
+								onSecondary();
+							}}
+						>
+							{secondaryLabel}
+						</AlertDialogAction>
+					) : null}
 					<AlertDialogAction
 						onClick={() => {
 							// The action button does not close the dialog by itself.

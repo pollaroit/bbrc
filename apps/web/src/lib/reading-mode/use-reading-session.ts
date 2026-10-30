@@ -389,6 +389,21 @@ export function useReadingSession(
 		void beat();
 	}, [beat, commit]);
 
+	/**
+	 * Stops the timer and saves the time so far, but keeps the session open: the
+	 * member can leave the page (to add a book, say) and come back to the same
+	 * session, paused where it was.
+	 */
+	const pauseForLeaving = useCallback(async () => {
+		const current = timerRef.current;
+		if (!current) return;
+		if (current.status === "running") {
+			commit(pauseTimer(current, Date.now()));
+			setNow(Date.now());
+		}
+		await beat();
+	}, [beat, commit]);
+
 	const resume = useCallback(async () => {
 		const current = timerRef.current;
 		if (!current) return;
@@ -449,6 +464,7 @@ export function useReadingSession(
 		begin,
 		adopt,
 		pause,
+		pauseForLeaving,
 		resume,
 		keepReading,
 		skip,
