@@ -123,9 +123,13 @@ export function usePaceLearning(input: {
 		return () => window.clearInterval(id);
 	}, [learningNow]);
 
+	const now = learningNow ? outcome() : null;
 	return {
 		/** True once finishing would give a pace. */
-		ready: learningNow ? (outcome()?.ok ?? false) : false,
+		ready: now?.ok ?? false,
+		/** Stretches that can count so far, and stretches thrown away for being too fast to be reading. */
+		usable: now ? (now.ok ? now.used : now.usable) : 0,
+		tooFast: now && !now.ok ? now.tooFast : 0,
 		learning: state.kind === "learning",
 		failed: state.kind === "failed",
 		stretches: state.kind === "learning" ? state.collector.samples.length : 0,

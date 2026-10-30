@@ -382,10 +382,10 @@ export function WhereYouAre({
 								every minute.{" "}
 								<span className="text-muted-foreground tabular-nums">
 									{learn.ready
-										? `${learn.stretches} counted. You can finish now, or keep going for a better result.`
-										: learn.stretches === 0
-											? "Nothing counted yet. It needs two stretches of at least 20 seconds with your page moving forward."
-											: `${learn.stretches} counted. One more stretch of at least 20 seconds with your page moving forward.`}
+										? `${learn.usable} stretches counted. You can finish now, or keep going for a better result.`
+										: learn.tooFast > 0
+											? `${learn.usable} of 2 counted. Some updates were too fast to be reading and were ignored: read at your normal speed and update your page about every minute.`
+											: `${learn.usable} of 2 counted. A stretch needs at least 20 seconds with your page moving forward.`}
 								</span>
 							</p>
 							<div className="flex gap-2">

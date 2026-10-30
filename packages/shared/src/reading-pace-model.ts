@@ -49,7 +49,14 @@ function median(values: number[]): number {
 
 export type LearnPaceResult =
 	| { ok: true; perMinute: number; used: number; dropped: number }
-	| { ok: false; reason: "not_enough" };
+	| {
+			ok: false;
+			reason: "not_enough";
+			/** Stretches that could count (long enough, moved forward, humanly possible). */
+			usable: number;
+			/** Stretches thrown away for being too fast to be reading. */
+			tooFast: number;
+	  };
 
 /**
  * The pace from what was collected: drop stretches that are too short, moved
@@ -60,14 +67,22 @@ export function learnPace(
 	samples: readonly PaceSample[],
 	unit: PaceUnit,
 ): LearnPaceResult {
-	const usable = samples.filter(
+	const long = samples.filter(
 		(sample) =>
 			sample.gain >= PACE_MIN_SAMPLE_GAIN &&
-			sample.activeSeconds >= PACE_MIN_SAMPLE_SECONDS &&
-			sampleRate(sample) <= PACE_MAX_PER_MINUTE[unit],
+			sample.activeSeconds >= PACE_MIN_SAMPLE_SECONDS,
 	);
+	const usable = long.filter(
+		(sample) => sampleRate(sample) <= PACE_MAX_PER_MINUTE[unit],
+	);
+	const tooFast = long.length - usable.length;
 	if (usable.length < PACE_MIN_USABLE_SAMPLES) {
-		return { ok: false, reason: "not_enough" };
+		return {
+			ok: false,
+			reason: "not_enough",
+			usable: usable.length,
+			tooFast,
+		};
 	}
 	const rates = usable.map(sampleRate);
 	const mid = median(rates);
@@ -76,7 +91,12 @@ export function learnPace(
 			rate >= mid / PACE_OUTLIER_FACTOR && rate <= mid * PACE_OUTLIER_FACTOR,
 	);
 	if (kept.length < PACE_MIN_USABLE_SAMPLES) {
-		return { ok: false, reason: "not_enough" };
+		return {
+			ok: false,
+			reason: "not_enough",
+			usable: kept.length,
+			tooFast,
+		};
 	}
 	const mean = kept.reduce((sum, rate) => sum + rate, 0) / kept.length;
 	return {

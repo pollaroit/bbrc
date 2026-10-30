@@ -30,7 +30,12 @@ describe("learnPace", () => {
 			],
 			"pages",
 		);
-		expect(result).toEqual({ ok: false, reason: "not_enough" });
+		expect(result).toEqual({
+			ok: false,
+			reason: "not_enough",
+			usable: 1,
+			tooFast: 1,
+		});
 	});
 
 	test("a stretch far from the median is thrown away", () => {
@@ -54,10 +59,14 @@ describe("learnPace", () => {
 		expect(learnPace([{ gain: 6, activeSeconds: 300 }], "pages")).toEqual({
 			ok: false,
 			reason: "not_enough",
+			usable: 1,
+			tooFast: 0,
 		});
 		expect(learnPace([], "percent")).toEqual({
 			ok: false,
 			reason: "not_enough",
+			usable: 0,
+			tooFast: 0,
 		});
 	});
 
