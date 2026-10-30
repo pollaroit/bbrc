@@ -74,16 +74,23 @@ export function usePaceLearning(input: {
 		[activeSeconds],
 	);
 
-	const finish = useCallback(() => {
+	/** What finishing now would give: where they are now is the last sample. */
+	const outcome = useCallback(() => {
 		const current = stateRef.current;
-		if (current.kind !== "learning") return;
-		// Where they are now is the last sample (it covers the stretch since their last update).
+		if (current.kind !== "learning") return null;
 		const collector = collectUpdate(
 			current.collector,
 			currentValue(),
 			activeSeconds(),
 		);
-		const result = learnPace(collector.samples, unit);
+		return learnPace(collector.samples, unit);
+	}, [activeSeconds, currentValue, unit]);
+
+	const finish = useCallback(() => {
+		const result = outcome();
+		if (!result) return;
+		// Not enough yet: keep what was collected and let them carry on (the button
+		// is disabled until there is enough; this is only the end of a session).
 		if (!result.ok) {
 			setState({ kind: "failed" });
 			return;
@@ -96,7 +103,7 @@ export function usePaceLearning(input: {
 					toast.success(`Learned: ${describePace(result.perMinute, unit)}`),
 			},
 		);
-	}, [activeSeconds, currentValue, reading.id, savePace, unit]);
+	}, [outcome, reading.id, savePace, unit]);
 
 	const cancel = useCallback(() => setState({ kind: "idle" }), []);
 
@@ -107,7 +114,18 @@ export function usePaceLearning(input: {
 		wasActive.current = sessionActive;
 	}, [finish, sessionActive]);
 
+	// The seconds move without a render of ours: look again every second while learning.
+	const [, setTick] = useState(0);
+	const learningNow = state.kind === "learning";
+	useEffect(() => {
+		if (!learningNow) return;
+		const id = window.setInterval(() => setTick((tick) => tick + 1), 1000);
+		return () => window.clearInterval(id);
+	}, [learningNow]);
+
 	return {
+		/** True once finishing would give a pace. */
+		ready: learningNow ? (outcome()?.ok ?? false) : false,
 		learning: state.kind === "learning",
 		failed: state.kind === "failed",
 		stretches: state.kind === "learning" ? state.collector.samples.length : 0,

@@ -371,13 +371,18 @@ export function WhereYouAre({
 								Learning your pace. Keep reading and update your page now and
 								then.{" "}
 								<span className="text-muted-foreground tabular-nums">
-									{learn.stretches === 0
-										? "No stretches yet."
-										: `${learn.stretches} so far.`}
+									{learn.ready
+										? "You can finish now, or keep going for a better result."
+										: "Read for a minute or two and update your page at least twice."}
 								</span>
 							</p>
 							<div className="flex gap-2">
-								<Button type="button" size="sm" onClick={learn.finish}>
+								<Button
+									type="button"
+									size="sm"
+									disabled={!learn.ready}
+									onClick={learn.finish}
+								>
 									Finish learning
 								</Button>
 								<Button
