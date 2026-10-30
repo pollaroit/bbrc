@@ -11,6 +11,7 @@ import {
 	Clock,
 	Lock,
 	RefreshCw,
+	Search,
 	Shuffle,
 	Star,
 } from "lucide-react";
@@ -19,6 +20,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { CreateSittingNomineeSheet } from "@/components/blocks/create-sitting-nominee-sheet";
 import { CreateSittingWishlistCandidates } from "@/components/blocks/create-sitting-wishlist-candidates";
 import { PollOptionReadersDialog } from "@/components/blocks/poll-option-readers-dialog";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
@@ -38,9 +40,12 @@ type CreateSittingPollReviewProps = {
 	initialOptions: PreviewOption[];
 	eligiblePoolSize: number;
 	initialUsedUniformFallback: boolean;
+	/** Books the admin chose directly earlier and that still fit: shown kept and marked. */
+	initialNominatedBookIds?: string[];
 	participantCount: number;
-	onBack: () => void;
-	onConfirm: (optionBookIds: string[]) => void;
+	/** Goes back to setup, handing over the books chosen directly so they can be carried over. */
+	onBack: (nominated: PreviewOption[]) => void;
+	onConfirm: (optionBookIds: string[], nominatedBookIds: string[]) => void;
 	confirmLoading: boolean;
 };
 
@@ -49,6 +54,7 @@ export function CreateSittingPollReview({
 	initialOptions,
 	eligiblePoolSize,
 	initialUsedUniformFallback,
+	initialNominatedBookIds = [],
 	participantCount,
 	onBack,
 	onConfirm,
@@ -58,7 +64,13 @@ export function CreateSittingPollReview({
 	const [usedUniformFallback, setUsedUniformFallback] = useState(
 		initialUsedUniformFallback,
 	);
-	const [lockedBookIds, setLockedBookIds] = useState<string[]>([]);
+	const [lockedBookIds, setLockedBookIds] = useState<string[]>(
+		initialNominatedBookIds,
+	);
+	const [nominatedBookIds, setNominatedBookIds] = useState<string[]>(
+		initialNominatedBookIds,
+	);
+	const [choosingBookId, setChoosingBookId] = useState<string | null>(null);
 	const [replacingBookId, setReplacingBookId] = useState<string | null>(null);
 	const [shuffling, setShuffling] = useState(false);
 	const [readersBookId, setReadersBookId] = useState<string | null>(null);
@@ -130,6 +142,30 @@ export function CreateSittingPollReview({
 		}
 	}
 
+	/** The admin picked a book for a slot: it replaces that slot, is kept, and is marked as chosen. */
+	function nominateBook(slotBookId: string, candidate: PreviewOption) {
+		if (options.some((option) => option.book.id === candidate.book.id)) return;
+		setOptions((current) =>
+			current.map((option) =>
+				option.book.id === slotBookId ? candidate : option,
+			),
+		);
+		setLockedBookIds((current) => [
+			...current.filter((id) => id !== slotBookId),
+			candidate.book.id,
+		]);
+		setNominatedBookIds((current) => [
+			...current.filter((id) => id !== slotBookId),
+			candidate.book.id,
+		]);
+		toast.success(`“${candidate.book.title}” is on the poll and kept.`);
+	}
+
+	/** Only books still on the poll count as chosen by the admin. */
+	const nominatedOnPoll = options.filter((option) =>
+		nominatedBookIds.includes(option.book.id),
+	);
+
 	function toggleLock(bookId: string) {
 		setLockedBookIds((current) =>
 			current.includes(bookId)
@@ -174,8 +210,8 @@ export function CreateSittingPollReview({
 				</h2>
 				<p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
 					These wishlist books were drawn for the poll. Keep the ones you like,
-					swap any slot for another random book, or shuffle everything you
-					haven't kept.
+					swap any slot for another random book, choose a book yourself, or
+					shuffle everything you haven't kept.
 				</p>
 				<dl className="mt-1 grid grid-cols-2 divide-x divide-y divide-border border border-border sm:grid-cols-4 sm:divide-y-0">
 					<ReviewFact label="On the poll">{options.length} books</ReviewFact>
@@ -329,6 +365,11 @@ export function CreateSittingPollReview({
 												{readCount} read
 											</span>
 										)}
+										{nominatedBookIds.includes(option.book.id) ? (
+											<span className="border border-foreground px-1.5 py-0.5 text-foreground">
+												Chosen by you
+											</span>
+										) : null}
 										{mostlyRead ? (
 											<span className="border border-warning/50 px-1.5 py-0.5 text-warning-ink">
 												Mostly read
@@ -351,6 +392,18 @@ export function CreateSittingPollReview({
 								>
 									<Lock data-icon="inline-start" aria-hidden />
 									{isLocked ? "Kept" : "Keep"}
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="xs"
+									disabled={previewBusy || confirmLoading}
+									onClick={() => {
+										setChoosingBookId(option.book.id);
+									}}
+								>
+									<Search data-icon="inline-start" aria-hidden />
+									Choose
 								</Button>
 								<Button
 									type="button"
@@ -382,6 +435,18 @@ export function CreateSittingPollReview({
 				onUse={useWishlistCandidate}
 			/>
 
+			<CreateSittingNomineeSheet
+				open={choosingBookId != null}
+				onOpenChange={(open) => {
+					if (!open) setChoosingBookId(null);
+				}}
+				previewInput={previewBase}
+				currentOptionBookIds={options.map((option) => option.book.id)}
+				onPick={(candidate) => {
+					if (choosingBookId) nominateBook(choosingBookId, candidate);
+				}}
+			/>
+
 			<PollOptionReadersDialog
 				source="preview"
 				bookId={readersBookId}
@@ -402,7 +467,9 @@ export function CreateSittingPollReview({
 						type="button"
 						variant="outline"
 						disabled={confirmLoading || previewBusy}
-						onClick={onBack}
+						onClick={() => {
+							onBack(nominatedOnPoll);
+						}}
 					>
 						Back to setup
 					</Button>
@@ -411,7 +478,10 @@ export function CreateSittingPollReview({
 						loading={confirmLoading}
 						disabled={previewBusy}
 						onClick={() => {
-							onConfirm(options.map((option) => option.book.id));
+							onConfirm(
+								options.map((option) => option.book.id),
+								nominatedOnPoll.map((option) => option.book.id),
+							);
 						}}
 					>
 						Start sitting

@@ -183,6 +183,7 @@ export function toPreviewSittingPollOptionsInput(
 export function toCreateSittingInput(
 	values: CreateSittingFormValues,
 	optionBookIds: string[],
+	nominatedBookIds: string[] = [],
 ): CreateSittingInput {
 	return {
 		pollDeadline: values.pollDeadline,
@@ -190,6 +191,7 @@ export function toCreateSittingInput(
 		join: values.join,
 		poll: pollFromFormValues(values),
 		optionBookIds,
+		nominatedBookIds,
 	};
 }
 

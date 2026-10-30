@@ -163,7 +163,7 @@ export async function loadPollDrawContext(
 	};
 }
 
-async function loadParticipantReadCountsByBookId(
+export async function loadParticipantReadCountsByBookId(
 	participantUserIds: string[],
 	bookIds: string[],
 	db: Database,

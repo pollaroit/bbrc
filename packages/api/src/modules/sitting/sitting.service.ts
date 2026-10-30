@@ -1122,9 +1122,24 @@ export async function previewSittingPollOptions(
 		db,
 	);
 
-	const { bookIds, usedUniformFallback } = drawInitialPollBookIds(context);
+	const eligible = new Set(context.eligibleBookIds);
+	const keptBookIds = [...new Set(input.keepBookIds ?? [])]
+		.filter((bookId) => eligible.has(bookId))
+		.slice(0, context.take);
+
+	const kept = new Set(keptBookIds);
+	const { bookIds: drawnBookIds, usedUniformFallback } =
+		keptBookIds.length >= context.take
+			? { bookIds: [], usedUniformFallback: false }
+			: drawInitialPollBookIds({
+					...context,
+					take: context.take - keptBookIds.length,
+					eligibleBookIds: context.eligibleBookIds.filter(
+						(bookId) => !kept.has(bookId),
+					),
+				});
 	const options = await loadPollPreviewBooks(
-		bookIds,
+		[...keptBookIds, ...drawnBookIds],
 		context.readCountByBookId,
 		db,
 	);
@@ -1133,6 +1148,7 @@ export async function previewSittingPollOptions(
 		options,
 		eligiblePoolSize: context.eligibleBookIds.length,
 		usedUniformFallback,
+		keptBookIds,
 	};
 }
 
@@ -1243,6 +1259,14 @@ export async function createSitting(
 	} else {
 		pollBookIds = drawInitialPollBookIds(context).bookIds;
 	}
+	const nominatedBookIds = new Set(input.nominatedBookIds ?? []);
+	for (const bookId of nominatedBookIds) {
+		if (!pollBookIds.includes(bookId)) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "A nominated book is not one of the poll options",
+			});
+		}
+	}
 	const clubTimeZone = resolveClubTimeZone();
 	const pollDeadline = input.pollDeadline
 		? snapPollDeadlineOnOrAfter(input.pollDeadline, clubTimeZone)
@@ -1289,7 +1313,12 @@ export async function createSitting(
 					minChoices,
 					maxChoices,
 					options: {
-						create: pollBookIds.map((bookId) => ({ bookId })),
+						create: pollBookIds.map((bookId) => ({
+							bookId,
+							nominatedById: nominatedBookIds.has(bookId)
+								? (createdById ?? null)
+								: null,
+						})),
 					},
 				},
 				select: { id: true },
