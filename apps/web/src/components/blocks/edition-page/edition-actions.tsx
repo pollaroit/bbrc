@@ -4,6 +4,7 @@ import type {
 	EditionCore,
 	EditionPage,
 } from "@bbrc/api/modules/edition/edition.schema";
+import { editionFormatFromText } from "@bbrc/shared";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -117,6 +118,7 @@ export function EditionActions({
 				editionLabel: choice.editionLabel,
 				bookEditionId: choice.bookEditionId,
 				totalPages: choice.totalPages,
+				editionFormat: editionFormatFromText(edition.format),
 			},
 			{
 				onSuccess: () => {
@@ -137,6 +139,7 @@ export function EditionActions({
 				editionLabel: choice.editionLabel,
 				bookEditionId: choice.bookEditionId,
 				totalPages: choice.totalPages,
+				editionFormat: editionFormatFromText(edition.format),
 			},
 			{
 				onSuccess: () => {

@@ -10,14 +10,19 @@ import {
 	ReadingPresenceOutputSchema,
 	ReadingSessionSchema,
 	ResumeReadingSessionInputSchema,
+	SetSessionPagesInputSchema,
+	StartFreeReadingSessionInputSchema,
 	StartReadingSessionInputSchema,
 } from "./reading-session.schema";
 import {
 	beatReadingSession,
 	endReadingSession,
+	getCurrentFreeReadingSession,
 	getCurrentReadingSession,
 	getReadingPresence,
 	resumeReadingSession,
+	setFreeSessionPages,
+	startFreeReadingSession,
 	startReadingSession,
 } from "./reading-session.service";
 
@@ -32,6 +37,26 @@ export const readingSessionRouter = {
 				input.readingId,
 			),
 		})),
+	currentFree: notBannedProcedure
+		.output(CurrentReadingSessionOutputSchema)
+		.handler(async ({ context }) => ({
+			session: await getCurrentFreeReadingSession(
+				context.db,
+				context.session.user.id,
+			),
+		})),
+	startFree: notBannedProcedure
+		.input(StartFreeReadingSessionInputSchema)
+		.output(ReadingSessionSchema)
+		.handler(({ input, context }) =>
+			startFreeReadingSession(context.db, context.session.user.id, input),
+		),
+	setPages: notBannedProcedure
+		.input(SetSessionPagesInputSchema)
+		.output(ReadingSessionSchema)
+		.handler(({ input, context }) =>
+			setFreeSessionPages(context.db, context.session.user.id, input),
+		),
 	start: notBannedProcedure
 		.input(StartReadingSessionInputSchema)
 		.output(ReadingSessionSchema)

@@ -487,7 +487,7 @@ export async function loadAchievementFacts(
 						select: { updatedAt: true, _count: { select: { books: true } } },
 					}),
 					db.readingSession.aggregate({
-						where: { userId },
+						where: { userId, readingId: { not: null } },
 						_sum: { activeSeconds: true },
 					}),
 				]);

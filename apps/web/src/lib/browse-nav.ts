@@ -5,6 +5,7 @@ import {
 	Layers,
 	LayoutList,
 	Sofa,
+	Timer,
 	Trophy,
 	UserPen,
 	Users,
@@ -68,6 +69,13 @@ export const browseNavItems: BrowseNavItem[] = [
 		href: "/leaderboard/overview" as Route,
 		icon: Trophy,
 		description: "XP, reads, and rankings",
+		section: "club",
+	},
+	{
+		label: "Reading Mode",
+		href: "/reading" as Route,
+		icon: Timer,
+		description: "A timer and sounds, with or without a book",
 		section: "club",
 	},
 	{

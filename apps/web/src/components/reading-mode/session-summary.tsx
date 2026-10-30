@@ -5,6 +5,7 @@ import { formatDuration } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { BookOpen, Clock, Flame, RotateCcw, Share2 } from "lucide-react";
 import type { ComponentType } from "react";
+import { cn } from "@/lib/utils";
 
 function Tile({
 	icon: Icon,
@@ -42,6 +43,7 @@ export function SessionSummary({
 	notice,
 	byPage,
 	bookTitle,
+	free = false,
 	onShare,
 	onAgain,
 	onDone,
@@ -50,8 +52,11 @@ export function SessionSummary({
 	seconds: number;
 	notice: string | null;
 	byPage: boolean;
-	bookTitle: string;
-	onShare: () => void;
+	/** The book, or what a session without a book was for. */
+	bookTitle: string | null;
+	/** A session without a book: time and the pages typed in, no progress, streak or sharing. */
+	free?: boolean;
+	onShare?: () => void;
 	onAgain: () => void;
 	onDone: () => void;
 }) {
@@ -69,13 +74,17 @@ export function SessionSummary({
 			aria-label="Session summary"
 		>
 			<div className="flex flex-col items-center gap-2 text-center">
-				<p className="text-muted-foreground text-sm">Nice reading. You read</p>
+				<p className="text-muted-foreground text-sm">
+					{free ? "Well done. You focused for" : "Nice reading. You read"}
+				</p>
 				<p className="font-heading font-semibold text-7xl tabular-nums leading-none tracking-tight">
 					{formatDuration(seconds)}
 				</p>
-				<p className="max-w-full truncate text-muted-foreground text-sm">
-					{bookTitle}
-				</p>
+				{bookTitle ? (
+					<p className="max-w-full truncate text-muted-foreground text-sm">
+						{bookTitle}
+					</p>
+				) : null}
 			</div>
 
 			{notice ? (
@@ -84,7 +93,20 @@ export function SessionSummary({
 				</p>
 			) : null}
 
-			{summary ? (
+			{summary && free ? (
+				<div className="grid grid-cols-2 gap-2">
+					<Tile icon={Clock} label="Time" value={formatDuration(seconds)} />
+					{summary.pageTo != null && summary.pageTo > 0 ? (
+						<Tile
+							icon={BookOpen}
+							label="Pages"
+							value={`+${summary.pageTo - (summary.pageFrom ?? 0)}`}
+						/>
+					) : null}
+				</div>
+			) : null}
+
+			{summary && !free ? (
 				<div className="grid grid-cols-2 gap-2">
 					<Tile icon={Clock} label="Time" value={formatDuration(seconds)} />
 					<Tile
@@ -126,16 +148,20 @@ export function SessionSummary({
 				<Button type="button" className="h-14 text-base" onClick={onDone}>
 					Done
 				</Button>
-				<div className="grid grid-cols-2 gap-2">
-					<Button
-						type="button"
-						variant="outline"
-						className="h-12"
-						onClick={onShare}
-					>
-						<Share2 data-icon="inline-start" aria-hidden />
-						Share
-					</Button>
+				<div
+					className={cn("grid gap-2", onShare ? "grid-cols-2" : "grid-cols-1")}
+				>
+					{onShare ? (
+						<Button
+							type="button"
+							variant="outline"
+							className="h-12"
+							onClick={onShare}
+						>
+							<Share2 data-icon="inline-start" aria-hidden />
+							Share
+						</Button>
+					) : null}
 					<Button
 						type="button"
 						variant="outline"
@@ -143,7 +169,7 @@ export function SessionSummary({
 						onClick={onAgain}
 					>
 						<RotateCcw data-icon="inline-start" aria-hidden />
-						Read again
+						{free ? "Start again" : "Read again"}
 					</Button>
 				</div>
 			</div>

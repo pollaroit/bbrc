@@ -14,7 +14,7 @@ async function openSessionBookSlug(
 		where: { userId, endedAt: null, reading: { finishedAt: null } },
 		select: { reading: { select: { book: { select: { slug: true } } } } },
 	});
-	return row?.reading.book.slug ?? null;
+	return row?.reading?.book.slug ?? null;
 }
 
 export type RealtimeAuthResult =
