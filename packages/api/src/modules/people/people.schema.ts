@@ -85,6 +85,8 @@ export const PeopleListItemSchema = zod.object({
 	location: zod.string().nullable(),
 	/** True for a private profile: non-friends get name, username and avatar only. */
 	isPrivate: zod.boolean(),
+	/** The viewer may only see the identity (a private profile they are not a friend of): the numbers are blank. */
+	restricted: zod.boolean().default(false),
 	favoriteGenres: zod.array(zod.string()),
 	reads: zod.number().int().min(0),
 	reviews: zod.number().int().min(0),

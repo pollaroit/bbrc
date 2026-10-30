@@ -438,6 +438,7 @@ function privateItem(row: PeopleRow): PeopleListItem {
 			: null,
 		location: null,
 		isPrivate: true,
+		restricted: true,
 		favoriteGenres: [],
 		reads: 0,
 		reviews: 0,
@@ -533,6 +534,7 @@ export async function buildItems(
 			bio: bio || null,
 			location: mayLocation ? (row.profile?.location ?? null) : null,
 			isPrivate,
+			restricted: false,
 			favoriteGenres: (row.profile?.favoriteGenres ?? [])
 				.map((slug) => genreNameBySlug.get(slug))
 				.filter((name): name is string => name != null)

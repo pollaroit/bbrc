@@ -17,9 +17,11 @@ import {
 	Shield,
 	Target,
 	User,
+	Users,
 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { FriendsBadge } from "@/components/blocks/friends-badge";
 import {
 	MobileChromeSheetSection,
 	MobileSheetRowBody,
@@ -50,6 +52,7 @@ function userMenuActivityEntries(user: UserMenuUser): MenuEntry[] {
 	const base = `/users/${user.username}` as Route;
 	return [
 		{ label: "Profile", href: base, icon: User },
+		{ label: "Friends", href: "/friends" as Route, icon: Users },
 		{ label: "My reads", href: `${base}/reads` as Route, icon: BookCheck },
 		{ label: "My posts", href: `${base}/posts` as Route, icon: MessageSquare },
 		{
@@ -118,6 +121,7 @@ export function UserMenuItems({
 						>
 							<entry.icon aria-hidden />
 							{entry.label}
+							{entry.href === "/friends" ? <FriendsBadge /> : null}
 						</DropdownMenuItem>
 					))}
 					<DropdownMenuItem
@@ -173,6 +177,7 @@ export function UserMenuItems({
 								>
 									<MobileSheetRowIcon icon={entry.icon} compact />
 									<MobileSheetRowBody label={entry.label} />
+									{entry.href === "/friends" ? <FriendsBadge /> : null}
 								</Link>
 							</li>
 						))}

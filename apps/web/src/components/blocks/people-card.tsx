@@ -6,6 +6,7 @@ import {
 	BookOpen,
 	Crown,
 	Flame,
+	Lock,
 	MapPin,
 	MessageSquareText,
 	PenLine,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { FriendButton } from "@/components/blocks/friend-button";
 import { useImpressionRef } from "@/components/blocks/track-impression";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import type { PeopleSortField } from "@/lib/listing/people-listing";
@@ -289,54 +291,71 @@ export function PeopleCard({
 				</div>
 			</div>
 
-			<div className="relative z-2 flex divide-x divide-border border-border border-t bg-muted/10 text-muted-foreground text-xs">
-				<LevelLink
-					href={`/users/${person.username}/xp` as Route}
-					level={person.xpLevel.label}
-					points={person.xp}
-					unit="XP"
-					title={`${person.xp} experience points`}
-				/>
-				<LevelLink
-					href={`/users/${person.username}/rp` as Route}
-					level={person.rpLevel.label}
-					points={person.rp}
-					unit="RP"
-					title={`${person.rp} reading points`}
-				/>
-			</div>
-			<div className="relative z-2 flex flex-nowrap items-center justify-between gap-1 border-border border-t bg-muted/10 px-3 py-1.5 text-muted-foreground text-xs tabular-nums">
-				<Stat
-					icon={BookOpen}
-					value={person.reads}
-					title="Books read"
-					href={`/users/${person.username}/reads` as Route}
-				/>
-				<Stat
-					icon={MessageSquareText}
-					value={person.reviews}
-					title="Reviews"
-					href={`/users/${person.username}/feedbacks` as Route}
-				/>
-				<Stat
-					icon={PenLine}
-					value={person.posts}
-					title="Posts"
-					href={`/users/${person.username}/posts` as Route}
-				/>
-				<Stat
-					icon={Sofa}
-					value={person.sittingsFinished}
-					title="Sittings finished"
-					href={`/users/${person.username}/sittings` as Route}
-				/>
-				<Stat
-					icon={Flame}
-					value={person.streak.current}
-					title="Current reading streak"
-					href={`/users/${person.username}/sittings` as Route}
-				/>
-			</div>
+			{person.restricted ? (
+				<div className="relative z-2 flex items-center justify-between gap-2 border-border border-t bg-muted/10 px-3 py-2">
+					<span className="inline-flex items-center gap-1.5 text-muted-foreground text-xs">
+						<Lock className="size-3.5" aria-hidden />
+						Private profile
+					</span>
+					{isViewer ? null : <FriendButton username={person.username} />}
+				</div>
+			) : (
+				<>
+					<div className="relative z-2 flex divide-x divide-border border-border border-t bg-muted/10 text-muted-foreground text-xs">
+						<LevelLink
+							href={`/users/${person.username}/xp` as Route}
+							level={person.xpLevel.label}
+							points={person.xp}
+							unit="XP"
+							title={`${person.xp} experience points`}
+						/>
+						<LevelLink
+							href={`/users/${person.username}/rp` as Route}
+							level={person.rpLevel.label}
+							points={person.rp}
+							unit="RP"
+							title={`${person.rp} reading points`}
+						/>
+					</div>
+					<div className="relative z-2 flex flex-nowrap items-center justify-between gap-1 border-border border-t bg-muted/10 px-3 py-1.5 text-muted-foreground text-xs tabular-nums">
+						<Stat
+							icon={BookOpen}
+							value={person.reads}
+							title="Books read"
+							href={`/users/${person.username}/reads` as Route}
+						/>
+						<Stat
+							icon={MessageSquareText}
+							value={person.reviews}
+							title="Reviews"
+							href={`/users/${person.username}/feedbacks` as Route}
+						/>
+						<Stat
+							icon={PenLine}
+							value={person.posts}
+							title="Posts"
+							href={`/users/${person.username}/posts` as Route}
+						/>
+						<Stat
+							icon={Sofa}
+							value={person.sittingsFinished}
+							title="Sittings finished"
+							href={`/users/${person.username}/sittings` as Route}
+						/>
+						<Stat
+							icon={Flame}
+							value={person.streak.current}
+							title="Current reading streak"
+							href={`/users/${person.username}/sittings` as Route}
+						/>
+					</div>
+					{isViewer ? null : (
+						<div className="relative z-2 flex justify-end border-border border-t px-3 py-2">
+							<FriendButton username={person.username} />
+						</div>
+					)}
+				</>
+			)}
 		</article>
 	);
 }
