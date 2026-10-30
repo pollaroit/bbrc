@@ -1,4 +1,5 @@
 import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import { loadViewer } from "../visibility/viewer";
 import {
 	FriendBadgeOutputSchema,
@@ -65,6 +66,7 @@ export const friendRouter = {
 		.output(ListBlockedOutputSchema)
 		.handler(({ context }) => listBlocked(context.db, context.session.user.id)),
 	send: notBannedProcedure
+		.use(checkAchievementsAfter("friends"))
 		.input(FriendUsernameInputSchema)
 		.output(SendFriendRequestOutputSchema)
 		.handler(({ input, context }) =>
@@ -77,6 +79,7 @@ export const friendRouter = {
 			cancelFriendRequest(context.db, context.session.user.id, input.username),
 		),
 	accept: notBannedProcedure
+		.use(checkAchievementsAfter("friends"))
 		.input(FriendUsernameInputSchema)
 		.output(OkSchema)
 		.handler(({ input, context }) =>

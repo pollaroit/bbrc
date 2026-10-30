@@ -368,6 +368,12 @@ export const METRICS: Record<MetricKey, Metric> = {
 			inWindow,
 		),
 
+	friends: (facts, inWindow) =>
+		countPoints(
+			facts.friendTimes.map((time) => ({ at: time, period: time })),
+			inWindow,
+		),
+
 	tierlists: (facts, inWindow) =>
 		countPoints(
 			facts.posts

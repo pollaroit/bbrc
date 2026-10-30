@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { EditionChip } from "@/components/blocks/edition-chip";
 import { FeedbackEditIconButton } from "@/components/blocks/feedback-edit-icon-button";
 import { FeedbackLikeEngagement } from "@/components/blocks/feedback-like-engagement";
+import { FriendButton } from "@/components/blocks/friend-button";
 import { RemoveMyMentionMenu } from "@/components/blocks/mention/remove-my-mention";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
@@ -124,6 +125,7 @@ export function FeedbackReviewList({
 												<Badge variant="outline" className="tabular-nums">
 													{formatFeedbackRating(entry.rating)} / 5
 												</Badge>
+												<FriendButton username={entry.username} />
 												<p className="text-muted-foreground text-xs">
 													{formatDateTime(entry.createdAt)}
 												</p>
