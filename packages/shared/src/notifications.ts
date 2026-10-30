@@ -10,6 +10,7 @@ export const NOTIFICATION_KINDS = [
 	"sitting_poll_closed",
 	"participant_finished_book",
 	"sitting_finished",
+	"friend_request",
 	"book_requested",
 	"document_submitted",
 	"document_approved",
@@ -32,6 +33,8 @@ export const NOTIFICATION_KINDS = [
 	"sitting_midterm_checkin",
 	"sitting_deadline_24h",
 	"sitting_reading_reminder",
+	"friend_request",
+	"friend_accepted",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -69,6 +72,8 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
 	sitting_midterm_checkin: "Midterm check-in",
 	sitting_deadline_24h: "24 hours left to finish",
 	sitting_reading_reminder: "Daily reading reminder",
+	friend_request: "Someone sent you a friend request",
+	friend_accepted: "Someone accepted your friend request",
 };
 
 export const NOTIFICATION_KIND_GROUPS = {
@@ -97,6 +102,8 @@ export const NOTIFICATION_KIND_GROUPS = {
 		"reading_behind",
 		"mention",
 		"author_new_book",
+		"friend_request",
+		"friend_accepted",
 	] as const satisfies readonly NotificationKind[],
 	sitting: [
 		"sitting_poll_started",

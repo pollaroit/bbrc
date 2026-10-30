@@ -18,7 +18,10 @@ import {
 export const ShelfStatusSchema = zod.enum(["draft", "active", "archived"]);
 export const ShelfTypeSchema = zod.enum(["ordered", "unordered"]);
 /** Public: anyone can open it. Private: only the owner, collaborators and admins. */
-export const ShelfVisibilitySchema = zod.enum(["public", "private"]);
+/** What a shelf can be at (reads). Writing `friends` opens with per-item visibility; today only the wishlist can be set to it, from Privacy. */
+export const ShelfVisibilitySchema = zod.enum(["public", "friends", "private"]);
+/** What a shelf can be set to when created or edited. */
+export const ShelfVisibilityInputSchema = zod.enum(["public", "private"]);
 
 export const ShelfPermissionSchema = zod.enum(SHELF_PERMISSIONS);
 
@@ -155,7 +158,7 @@ export const CreateShelfInputSchema = zod.object({
 	description: zod.string().max(2000).nullish(),
 	status: ShelfStatusSchema.optional(),
 	type: ShelfTypeSchema.optional(),
-	visibility: ShelfVisibilitySchema.optional(),
+	visibility: ShelfVisibilityInputSchema.optional(),
 	/** When set, add this catalog book after create (e.g. from book detail). */
 	addBookSlug: BookSchema.shape.slug.optional(),
 });
@@ -175,7 +178,7 @@ export const UpdateShelfInputSchema = zod.object({
 	status: ShelfStatusSchema.optional(),
 	type: ShelfTypeSchema.optional(),
 	/** Only the owner can change who can see the shelf. */
-	visibility: ShelfVisibilitySchema.optional(),
+	visibility: ShelfVisibilityInputSchema.optional(),
 });
 
 export const UpdateShelfOutputSchema = ShelfListItemSchema;

@@ -1,4 +1,5 @@
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
+import type { Visibility as ShelfVisibility } from "@bbrc/shared";
 import {
 	normalizeShelfPermissions,
 	resolveShelfPermissions,
@@ -155,7 +156,7 @@ export function canViewShelf(
 	shelf: {
 		status: string;
 		userId: string;
-		visibility?: "public" | "private";
+		visibility?: ShelfVisibility;
 	},
 	viewer: {
 		userId: string | undefined;

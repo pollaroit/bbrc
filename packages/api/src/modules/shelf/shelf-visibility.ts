@@ -1,4 +1,5 @@
 import type { Prisma } from "@bbrc/db";
+import type { Visibility as ShelfVisibility } from "@bbrc/shared";
 import { visibleOnSiteUserWhere } from "../user/user-visibility";
 
 /** Who is looking: a signed-in member (with admin flag) or nobody. */
@@ -42,7 +43,7 @@ export function visibleShelfWhere(viewer: ShelfViewer): Prisma.ShelfWhereInput {
 
 /** Whether the shelf's visibility lets this viewer in (status rules are separate). */
 export function visibilityAllows(
-	shelf: { visibility: "public" | "private"; userId: string },
+	shelf: { visibility: ShelfVisibility; userId: string },
 	viewer: { userId?: string; isAdmin?: boolean; isCollaborator?: boolean },
 ): boolean {
 	if (shelf.visibility === "public") return true;

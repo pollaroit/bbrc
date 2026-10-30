@@ -1,4 +1,5 @@
 import type { Database, DatabaseTransaction } from "@bbrc/db";
+import type { Visibility as ShelfVisibility } from "@bbrc/shared";
 import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { activeParticipationWhere } from "../sitting/participation-active";
@@ -13,7 +14,7 @@ export const WISHLIST_SLUG = "wishlist";
 type WishlistShelf = {
 	id: string;
 	slug: string;
-	visibility: "public" | "private";
+	visibility: ShelfVisibility;
 };
 
 /** The member's Wishlist shelf; made on the spot if they somehow have none. */
