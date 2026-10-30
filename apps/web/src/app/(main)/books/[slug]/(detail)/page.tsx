@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BookDiscoverySection } from "@/components/blocks/book-discovery-section";
 import { BookExcerptMarkdown } from "@/components/blocks/book-excerpt-markdown";
 import { FeedbackReviewList } from "@/components/blocks/feedback-review-list";
+import { FriendsWhoRead } from "@/components/blocks/friends-who-read";
 import { truncateBookExcerptMarkdown } from "@/lib/books/excerpt-markdown";
 import {
 	loadBookBySlugForIsr,
@@ -59,6 +60,8 @@ export default async function BookOverviewPage({
 		<>
 			<JsonLd data={bookJsonLd(book)} />
 			<div className="flex flex-col gap-10">
+				<FriendsWhoRead bookSlug={slug} />
+
 				{excerptPreview ? (
 					<section className="flex max-w-3xl flex-col gap-3">
 						<h2 className="font-semibold text-lg">From the catalog</h2>

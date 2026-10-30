@@ -21,6 +21,7 @@ import {
 	viewerIdOf,
 } from "../read/section-access";
 import { throwMemberNotFound } from "../user/user-visibility";
+import { goalVisibleWhere } from "../visibility/visibility-resources";
 import { awardGoalXp } from "../xp/xp.service";
 import type {
 	CreateGoalInput,
@@ -38,6 +39,7 @@ const goalSelect = {
 	year: true,
 	target: true,
 	scopeKind: true,
+	visibility: true,
 	scopeAuthors: true,
 	scopeCountries: true,
 	createdAt: true,
@@ -162,6 +164,7 @@ function mapGoalListItem(
 		current,
 		scope: mapScopeForOutput(scope),
 		isComplete: isGoalComplete(current, row.target),
+		visibility: row.visibility,
 		isExpired: isGoalExpired(row.year, now),
 		createdAt: row.createdAt,
 	};
@@ -282,7 +285,11 @@ export async function listGoalsByUsername(
 	}
 
 	const rows = await db.goal.findMany({
-		where: { userId: user.id },
+		// Each goal's own level, on top of the goals setting and profile checked above.
+		where: {
+			userId: user.id,
+			AND: [goalVisibleWhere(viewer) as Prisma.GoalWhereInput],
+		},
 		select: goalSelect,
 		orderBy: [{ year: "desc" }, { createdAt: "desc" }],
 	});
@@ -320,8 +327,12 @@ export async function getGoalBySlug(
 		});
 	}
 
-	const row = await db.goal.findUnique({
-		where: { userId_slug: { userId: user.id, slug: goalSlug } },
+	const row = await db.goal.findFirst({
+		where: {
+			userId: user.id,
+			slug: goalSlug,
+			AND: [goalVisibleWhere(viewer) as Prisma.GoalWhereInput],
+		},
 		select: goalSelect,
 	});
 

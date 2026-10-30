@@ -30,6 +30,12 @@ import {
 import { getUserByUsername } from "@bbrc/api/modules/user/user.service";
 import { getCompareOgSnapshot } from "@bbrc/api/modules/user-compare/user-compare-og.service";
 import {
+	type PeekResult,
+	peekFeedback,
+	peekPost,
+	peekShelf,
+} from "@bbrc/api/modules/visibility/peek";
+import {
 	ACHIEVEMENT_CATEGORY_LABELS,
 	ACHIEVEMENTS,
 	ANONYMOUS_VIEWER,
@@ -94,6 +100,29 @@ function plain(raw: string | null | undefined, max = 170): string {
 
 function notFound(kind: string, what: string): OgImageContent {
 	return { kind, title: `${what} not found`, body: DEFAULT_DESCRIPTION };
+}
+
+/**
+ * The card for something only the owner's friends can open: the kind of thing and
+ * its owner (name, username and avatar are public), nothing of what is inside.
+ * Something only its owner can open is not a locked page but "not found", so a card
+ * never hints that it exists.
+ */
+async function lockedCard(
+	kind: string,
+	noun: string,
+	peek: PeekResult,
+): Promise<OgImageContent | null> {
+	if (peek.state !== "locked") return null;
+	return {
+		kind,
+		title: peek.author.name,
+		subtitle: `@${peek.author.username}`,
+		body: `A friends-only ${noun}. Only ${peek.author.name}'s friends can open it.`,
+		badge: "Friends only",
+		media: await avatarMedia(peek.author),
+		facts: [],
+	};
 }
 
 async function coverMedia(coverId: number | null | undefined) {
@@ -732,7 +761,14 @@ async function resolvePostOg(slug: string): Promise<OgImageContent> {
 			],
 		};
 	} catch {
-		return notFound("Post", "Post");
+		const locked = await lockedCard(
+			"Post",
+			"post",
+			await peekPost(db, ANONYMOUS_VIEWER, slug).catch(() => ({
+				state: "unavailable" as const,
+			})),
+		);
+		return locked ?? notFound("Post", "Post");
 	}
 }
 
@@ -834,7 +870,14 @@ async function resolveReviewOg(
 			],
 		};
 	} catch {
-		return notFound("Review", "Review");
+		const locked = await lockedCard(
+			"Review",
+			"review",
+			await peekFeedback(db, ANONYMOUS_VIEWER, feedbackSlug).catch(() => ({
+				state: "unavailable" as const,
+			})),
+		);
+		return locked ?? notFound("Review", "Review");
 	}
 }
 
@@ -1108,7 +1151,14 @@ async function resolveShelfOg(
 			],
 		};
 	} catch {
-		return notFound("Shelf", "Shelf");
+		const locked = await lockedCard(
+			"Shelf",
+			"shelf",
+			await peekShelf(db, ANONYMOUS_VIEWER, username, shelfSlug).catch(() => ({
+				state: "unavailable" as const,
+			})),
+		);
+		return locked ?? notFound("Shelf", "Shelf");
 	}
 }
 

@@ -27,6 +27,7 @@ export const GoalListItemSchema = zod.object({
 	scope: GoalScopeSchema,
 	isComplete: zod.boolean(),
 	isExpired: zod.boolean(),
+	visibility: zod.enum(["public", "friends", "private"]),
 	createdAt: zod.coerce.date(),
 });
 

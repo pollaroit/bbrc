@@ -36,6 +36,7 @@ export function CreateGoalDialog({
 			scopeKind: "none",
 			authorSlugs: [],
 			countryCodes: [],
+			visibility: "public",
 		}),
 		[allowedYears],
 	);
@@ -75,6 +76,7 @@ export function CreateGoalDialog({
 					year: values.year,
 					target: values.target,
 					scopeKind: values.scopeKind,
+					...(values.visibility ? { visibility: values.visibility } : {}),
 					...(values.scopeKind === "authors"
 						? { scopeAuthorSlugs: values.authorSlugs }
 						: {}),

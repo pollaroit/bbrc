@@ -1,7 +1,12 @@
 import type { QueryKey } from "@tanstack/react-query";
 import { orpc, queryClient } from "@/utils/orpc";
 
-type Values = { rating: number; review: string; isSpoiler: boolean };
+type Values = {
+	rating: number;
+	review: string;
+	isSpoiler: boolean;
+	visibility?: "public" | "friends" | "private";
+};
 
 type Author = {
 	id: string;
@@ -92,6 +97,7 @@ export function applyFeedbackCreate(args: {
 			rating: values.rating,
 			review: values.review,
 			isSpoiler: values.isSpoiler,
+			visibility: values.visibility ?? "public",
 			createdAt: new Date(),
 			likeCount: 0,
 			likedByMe: false,
@@ -112,6 +118,7 @@ export function applyFeedbackCreate(args: {
 							rating: values.rating,
 							review: values.review,
 							isSpoiler: values.isSpoiler,
+							visibility: values.visibility ?? "public",
 							createdAt: new Date(),
 						},
 					}

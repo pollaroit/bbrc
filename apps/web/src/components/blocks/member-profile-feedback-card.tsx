@@ -136,6 +136,7 @@ export function MemberProfileFeedbackCard({
 								rating={item.rating}
 								review={item.review}
 								isSpoiler={item.isSpoiler}
+								visibility={item.visibility}
 								imageUrl={item.imageUrl}
 								feedbackSlug={item.slug}
 							/>

@@ -50,6 +50,7 @@ export function BookWriteFeedbackButton({
 			rating: myFeedback.rating,
 			review: myFeedback.review,
 			isSpoiler: myFeedback.isSpoiler,
+			visibility: myFeedback.visibility,
 			imageUrl: myFeedback.imageUrl ?? null,
 		};
 	}, [isEdit, stateQuery.data?.myFeedback]);

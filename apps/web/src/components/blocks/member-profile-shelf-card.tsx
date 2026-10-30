@@ -2,12 +2,13 @@
 
 import type { ListShelvesByUsernameOutput } from "@bbrc/api/modules/shelf/shelf.schema";
 import { Badge } from "@bbrc/ui/components/badge";
-import { Lock, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ShelfCover } from "@/components/blocks/shelf-cover";
 import { useImpressionRef } from "@/components/blocks/track-impression";
+import { VisibilityBadge } from "@/components/blocks/visibility-select";
 import { cn } from "@/lib/utils";
 
 type Shelf = ListShelvesByUsernameOutput["items"][number];
@@ -69,12 +70,7 @@ export function MemberProfileShelfCard({
 							Collaborating
 						</Badge>
 					) : null}
-					{shelf.visibility === "private" ? (
-						<Badge variant="outline" className="gap-1">
-							<Lock aria-hidden />
-							Private
-						</Badge>
-					) : null}
+					<VisibilityBadge level={shelf.visibility} />
 					{showStatus && shelf.status !== "active" ? (
 						<Badge variant="outline" className="capitalize">
 							{shelf.status}

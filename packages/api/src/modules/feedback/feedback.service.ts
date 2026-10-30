@@ -137,6 +137,7 @@ export async function getBookFeedbackList(
 			rating: true,
 			review: true,
 			isSpoiler: true,
+			visibility: true,
 			imageUrl: true,
 			createdAt: true,
 			authorId: true,
@@ -176,6 +177,7 @@ export async function getBookFeedbackList(
 		rating: feedback.rating,
 		review: feedback.review,
 		isSpoiler: feedback.isSpoiler,
+		visibility: feedback.visibility,
 		imageUrl: feedback.imageUrl,
 		createdAt: feedback.createdAt,
 		likeCount: feedback._count.likes,
@@ -224,9 +226,15 @@ export async function getFeedbackBySlug(
 		});
 	}
 
+	// The review's own level, the author's reviews setting and profile, and blocks: one rule.
 	const visible =
 		!isBlockedFrom(viewer, feedback.authorId) &&
-		(await canViewerSeeSection(db, viewer, feedback.authorId, "reviews"));
+		(await db.feedback.count({
+			where: {
+				id: feedback.id,
+				AND: [reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput],
+			},
+		})) > 0;
 	if (!visible) {
 		throw new ORPCError("NOT_FOUND", {
 			message: "Feedback not found",
@@ -257,6 +265,7 @@ export async function getFeedbackBySlug(
 		slug: feedback.slug,
 		review: feedback.review,
 		isSpoiler: feedback.isSpoiler,
+		visibility: feedback.visibility,
 		imageUrl: feedback.imageUrl,
 		rating: feedback.rating,
 		createdAt: feedback.createdAt,
@@ -345,6 +354,8 @@ export async function getUserFeedbackList(
 			: {},
 		input.spoilers === "only" ? { isSpoiler: true } : {},
 		input.spoilers === "hide" ? { isSpoiler: false } : {},
+		// Each review's own level (friends-only, only me) on top of the section check above.
+		reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput,
 		input.mutualOnly && viewerId
 			? { book: { feedbacks: { some: { authorId: viewerId } } } }
 			: {},
@@ -401,6 +412,7 @@ export async function getBookFeedbackState(
 			rating: true,
 			review: true,
 			isSpoiler: true,
+			visibility: true,
 			imageUrl: true,
 			createdAt: true,
 		},

@@ -121,7 +121,7 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 		(description.trim() || null) === (shelf.description ?? null) &&
 		status === shelf.status &&
 		type === shelf.type &&
-		access === shelf.visibility;
+		(isWishlist || access === shelf.visibility);
 	const backHref = `/users/${username}/shelves/${shelfSlug}` as Route;
 
 	return (
@@ -163,8 +163,8 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 					description: description.trim() || null,
 					// The Wishlist's name, status and type are fixed, so they are not sent.
 					...(isWishlist ? {} : { title: trimmedTitle, status, type }),
-					// `friends` is set from Privacy (the wishlist) until shelves can choose it themselves.
-					...(canAccess && access !== "friends" ? { visibility: access } : {}),
+					// The Wishlist's level is changed in Privacy, so it is not sent from here.
+					...(canAccess && !isWishlist ? { visibility: access } : {}),
 				});
 			}}
 			footer={
@@ -283,20 +283,33 @@ export function EditShelfForm({ username, shelfSlug }: EditShelfFormProps) {
 				</ShelfEditorSection>
 			) : null}
 
-			{canAccess ? (
+			{canAccess && isWishlist ? (
 				<ShelfEditorSection
 					title="Who can see it"
-					description={
-						isWishlist
-							? "Your Wishlist is private until you decide to show it."
-							: "Collaborators can always open a private shelf."
-					}
+					description="Your Wishlist's visibility is set in Privacy settings."
+				>
+					<Button
+						type="button"
+						variant="outline"
+						render={<Link href={"/settings/privacy" as Route} />}
+						nativeButton={false}
+					>
+						Open privacy settings
+					</Button>
+				</ShelfEditorSection>
+			) : null}
+
+			{canAccess && !isWishlist ? (
+				<ShelfEditorSection
+					title="Who can see it"
+					description="Collaborators can always open a shelf that is not for everyone."
 				>
 					<ShelfOptionPicker
 						name="edit-shelf-access"
 						label="Who can open this shelf?"
 						value={access}
 						options={[...shelfAccessOptions]}
+						columns={3}
 						onChange={setAccess}
 					/>
 				</ShelfEditorSection>
