@@ -7,9 +7,12 @@ import {
 	richContentPreview,
 	VIEW_RETENTION_DAYS,
 	VIEW_SOURCE_LABELS,
+	type Viewer,
 	type ViewResourceKind,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import { memberVisibleWhere } from "../user/member-access";
+import { postVisibleWhere } from "../visibility/visibility-resources";
 import type {
 	AdminViewList,
 	AdminViewsOverview,
@@ -294,14 +297,19 @@ async function rollupBreakdown(
 
 // ── Item insights ──────────────────────────────────────────────────────────
 
+/**
+ * Named viewers: only members the viewer may see by name (private profiles stay out
+ * unless the viewer is their friend or an admin). Counts elsewhere cover everyone.
+ */
 async function memberViewerList(
 	db: Database,
 	resource: ViewResourceKind,
 	resourceId: string,
 	order: "views" | "recent",
+	viewer: Viewer,
 ) {
 	const rows = await db.viewerSeen.findMany({
-		where: { resource, resourceId, user: { isHidden: false } },
+		where: { resource, resourceId, user: memberVisibleWhere(viewer) },
 		orderBy: order === "views" ? { views: "desc" } : { lastSeenAt: "desc" },
 		take: 10,
 		select: {
@@ -558,6 +566,7 @@ async function mentionsFor(
 	db: Database,
 	resource: ViewResourceKind,
 	id: string,
+	viewer: Viewer,
 ): Promise<ViewInsights["mentions"]> {
 	const where =
 		resource === "post"
@@ -569,9 +578,12 @@ async function mentionsFor(
 					: resource === "book"
 						? { bookId: id }
 						: { memberId: id };
-	const visible = { post: { author: { isHidden: false } } };
+	// The total counts every mention; the list shows only posts the viewer may see.
+	const visible = {
+		post: postVisibleWhere(viewer) as Prisma.PostWhereInput,
+	};
 	const [total, recent] = await Promise.all([
-		db.postAttachment.count({ where: { ...where, ...visible } }),
+		db.postAttachment.count({ where }),
 		db.postAttachment.findMany({
 			where: { ...where, ...visible },
 			orderBy: { createdAt: "desc" },
@@ -647,10 +659,16 @@ function canOpenInsights(
 
 export async function getViewInsights(
 	db: Database,
-	actor: Actor,
+	viewer: Viewer,
 	input: { resource: ViewResourceKind; ref: string; range: InsightRange },
 ): Promise<ViewInsights> {
 	const { resource, ref, range } = input;
+	if (viewer.kind !== "member") {
+		throw new ORPCError("UNAUTHORIZED", {
+			message: "Sign in to see insights.",
+		});
+	}
+	const actor: Actor = { id: viewer.userId, isAdmin: viewer.isAdmin };
 	const info = await describeViewTarget(db, resource, ref);
 	if (!info) {
 		throw new ORPCError("NOT_FOUND", { message: "That item was not found." });
@@ -715,10 +733,10 @@ export async function getViewInsights(
 		}),
 		range === "all" ? rollupTotals(db, resource, id) : Promise.resolve(null),
 		canSeeViewers
-			? memberViewerList(db, resource, id, "views")
+			? memberViewerList(db, resource, id, "views", viewer)
 			: Promise.resolve(null),
 		canSeeViewers
-			? memberViewerList(db, resource, id, "recent")
+			? memberViewerList(db, resource, id, "recent", viewer)
 			: Promise.resolve(null),
 		comparisonFor(
 			db,
@@ -802,8 +820,8 @@ export async function getViewInsights(
 		sourceFunnelBetween(db, scope, rawFrom, tomorrow),
 		loyaltyBetween(db, scope, rawFrom, tomorrow),
 		lifecycleFor(db, scope, info.createdAt),
-		mentionsFor(db, resource, id),
-		db.user.count({ where: { status: { not: "banned" }, isHidden: false } }),
+		mentionsFor(db, resource, id, viewer),
+		db.user.count({ where: { status: { not: "banned" } } }),
 		ownComparisonFor(db, resource, id, info.ownerId),
 	]);
 
@@ -878,6 +896,7 @@ export async function getViewCounts(
 export async function getTrending(
 	db: Database,
 	input: { resource: "post" | "book"; days: number; limit: number },
+	viewer: Viewer,
 ): Promise<Trending> {
 	const since = new Date(Date.now() - input.days * DAY_MS);
 	const rows = await db.$queryRaw<{ resource_id: string; views: number }[]>`
@@ -914,7 +933,10 @@ export async function getTrending(
 		};
 	}
 	const posts = await db.post.findMany({
-		where: { id: { in: ids }, author: { isHidden: false } },
+		where: {
+			id: { in: ids },
+			AND: [postVisibleWhere(viewer) as Prisma.PostWhereInput],
+		},
 		select: {
 			id: true,
 			slug: true,

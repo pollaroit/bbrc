@@ -168,6 +168,8 @@ export const GetUserFeedbackListOutputSchema = CursorPaginationOutputSchema(
 		/** Matching reviews across all pages; only sent with the first page. */
 		total: zod.number().int().min(0).optional(),
 	}),
+	/** True when the member keeps their reviews from this viewer (the list is empty). */
+	hidden: zod.boolean().optional(),
 });
 
 export type GetUserFeedbackListInput = z.infer<

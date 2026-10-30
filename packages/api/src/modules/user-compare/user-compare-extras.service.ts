@@ -1,7 +1,7 @@
-import type { Session } from "@bbrc/auth";
 import type { Database } from "@bbrc/db";
-import { getBookCountryName } from "@bbrc/shared";
-import { publicShelfWhere } from "../shelf/shelf-visibility";
+import { getBookCountryName, type Viewer } from "@bbrc/shared";
+import { shelfVisibleWhere } from "../shelf/shelf-visibility";
+import { mayViewSection } from "../user/member-access";
 import {
 	compareBookSelect,
 	loadMemberReads,
@@ -55,9 +55,9 @@ const progressLabel: Record<string, string> = {
 export async function getCompareExtras(
 	input: CompareInput,
 	db: Database,
-	session: Session,
+	viewer: Viewer,
 ): Promise<CompareExtrasOutput> {
-	const pair = await resolveComparePair(db, session, input);
+	const pair = await resolveComparePair(db, viewer, input);
 	const none: CompareExtrasOutput = {
 		blocked: pair.blocked,
 		subjects: null,
@@ -90,7 +90,10 @@ export async function getCompareExtras(
 				select: { userId: true, bookId: true },
 			}),
 			db.shelf.findMany({
-				where: { ...publicShelfWhere, userId: { in: [aId, bId] } },
+				where: {
+					...shelfVisibleWhere(pair.viewer, { listing: true }),
+					userId: { in: [aId, bId] },
+				},
 				select: {
 					slug: true,
 					title: true,
@@ -101,7 +104,7 @@ export async function getCompareExtras(
 			}),
 			db.shelf.findMany({
 				where: {
-					...publicShelfWhere,
+					...shelfVisibleWhere(pair.viewer, { listing: true }),
 					OR: [
 						{ userId: aId, collaborators: { some: { userId: bId } } },
 						{ userId: bId, collaborators: { some: { userId: aId } } },
@@ -306,9 +309,12 @@ export async function getCompareExtras(
 					collaborations,
 				};
 
-	// Currently reading (only when both show it) and reading at the same time
+	// Currently reading (only when the viewer may see both members' reading) and reading at the same time
 	let currentlyReading: CompareExtrasOutput["currentlyReading"] = null;
-	if (pair.a.showCurrentlyReading && pair.b.showCurrentlyReading) {
+	if (
+		mayViewSection(pair.viewer, pair.a, "reading") &&
+		mayViewSection(pair.viewer, pair.b, "reading")
+	) {
 		const readings = await db.reading.findMany({
 			where: { userId: { in: [aId, bId] } },
 			select: {

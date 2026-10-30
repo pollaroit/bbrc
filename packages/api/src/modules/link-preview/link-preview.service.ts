@@ -1,8 +1,20 @@
-import type { Database } from "@bbrc/db";
-import { hrefFromInternalLinkRef, richContentPreview } from "@bbrc/shared";
+import type { Database, Prisma } from "@bbrc/db";
+import {
+	canView,
+	hrefFromInternalLinkRef,
+	relationTo,
+	richContentPreview,
+	type Viewer,
+} from "@bbrc/shared";
 import { authorBookSummary, findAuthorBySlug } from "../../lib/authors";
-import { type ShelfViewer, visibleShelfWhere } from "../shelf/shelf-visibility";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
+import { threadCommentVisibleWhere } from "../comment/comment-visibility";
+import { shelfVisibleWhere } from "../shelf/shelf-visibility";
+import {
+	commentVisibleWhere,
+	memberListVisibleWhere,
+	postVisibleWhere,
+	reviewVisibleWhere,
+} from "../visibility/visibility-resources";
 import type { InternalLinkRefInput, LinkPreview } from "./link-preview.schema";
 
 const KIND_LABELS: Record<LinkPreview["kind"], string> = {
@@ -49,7 +61,7 @@ function safeExcerpt(content: string, isSpoiler: boolean, max = 200) {
 async function resolveOne(
 	db: Database,
 	ref: InternalLinkRefInput,
-	viewer: ShelfViewer,
+	viewer: Viewer,
 ): Promise<LinkPreview> {
 	const href = hrefFromInternalLinkRef(ref);
 	const base = { href, kind: ref.kind, kindLabel: KIND_LABELS[ref.kind] };
@@ -86,15 +98,31 @@ async function resolveOne(
 		}
 
 		case "user": {
+			// Name, username, avatar and bio are public; the rest follows the profile.
 			const user = await db.user.findFirst({
-				where: { username: ref.username, ...visibleOnSiteUserWhere },
+				where: {
+					AND: [memberListVisibleWhere(viewer) as Prisma.UserWhereInput],
+					username: ref.username,
+				},
 				select: {
 					...memberFields,
+					id: true,
 					createdAt: true,
-					profile: { select: { bio: true, location: true } },
+					profileVisibility: true,
+					profile: {
+						select: { bio: true, location: true, locationVisibility: true },
+					},
 				},
 			});
 			if (!user) return unavailable(ref);
+			const sees = (item?: "public" | "friends" | "private") =>
+				canView(relationTo(viewer, user.id), {
+					profile: user.profileVisibility,
+					item,
+				});
+			const showDetails = sees();
+			const showLocation =
+				user.profile?.location != null && sees(user.profile.locationVisibility);
 			return {
 				...base,
 				status: "ok",
@@ -102,29 +130,40 @@ async function resolveOne(
 				subtitle: `@${user.username}`,
 				excerpt: user.profile?.bio?.trim().slice(0, 160) || null,
 				meta: [
-					`Member since ${user.createdAt.toLocaleDateString("en", {
-						month: "short",
-						year: "numeric",
-						timeZone: "UTC",
-					})}`,
-					...(user.profile?.location ? [user.profile.location] : []),
+					...(showDetails
+						? [
+								`Member since ${user.createdAt.toLocaleDateString("en", {
+									month: "short",
+									year: "numeric",
+									timeZone: "UTC",
+								})}`,
+							]
+						: []),
+					...(showLocation && user.profile?.location
+						? [user.profile.location]
+						: []),
 				],
 				image: { type: "avatar", name: user.name, image: user.image },
 			};
 		}
 
 		case "post": {
-			const post = await db.post.findUnique({
-				where: { slug: ref.slug },
+			const post = await db.post.findFirst({
+				where: {
+					AND: [
+						{ slug: ref.slug },
+						postVisibleWhere(viewer) as Prisma.PostWhereInput,
+					],
+				},
 				select: {
 					content: true,
 					isSpoiler: true,
-					author: { select: { ...memberFields, isHidden: true } },
+					author: { select: memberFields },
 					poll: { select: { id: true } },
 					_count: { select: { likes: true, comments: true } },
 				},
 			});
-			if (!post || post.author.isHidden) return unavailable(ref);
+			if (!post) return unavailable(ref);
 			const { excerpt, spoiler } = safeExcerpt(post.content, post.isSpoiler);
 			return {
 				...base,
@@ -147,16 +186,21 @@ async function resolveOne(
 
 		case "comment_on_post": {
 			const comment = await db.comment.findFirst({
-				where: { slug: ref.slug, post: { slug: ref.postSlug } },
+				where: {
+					AND: [
+						{ slug: ref.slug, post: { slug: ref.postSlug } },
+						commentVisibleWhere(viewer) as Prisma.CommentWhereInput,
+					],
+				},
 				select: {
 					content: true,
 					isSpoiler: true,
-					author: { select: { ...memberFields, isHidden: true } },
+					author: { select: memberFields },
 					post: { select: { author: { select: { name: true } } } },
 					_count: { select: { likes: true } },
 				},
 			});
-			if (!comment || comment.author.isHidden) return unavailable(ref);
+			if (!comment) return unavailable(ref);
 			const { excerpt, spoiler } = safeExcerpt(
 				comment.content,
 				comment.isSpoiler,
@@ -184,18 +228,26 @@ async function resolveOne(
 		case "comment_on_feedback": {
 			const comment = await db.comment.findFirst({
 				where: {
-					slug: ref.slug,
-					feedback: { slug: ref.feedbackSlug, book: { slug: ref.bookSlug } },
+					AND: [
+						{
+							slug: ref.slug,
+							feedback: {
+								slug: ref.feedbackSlug,
+								book: { slug: ref.bookSlug },
+							},
+						},
+						threadCommentVisibleWhere(viewer),
+					],
 				},
 				select: {
 					content: true,
 					isSpoiler: true,
-					author: { select: { ...memberFields, isHidden: true } },
+					author: { select: memberFields },
 					feedback: { select: { book: { select: { title: true } } } },
 					_count: { select: { likes: true } },
 				},
 			});
-			if (!comment || comment.author.isHidden) return unavailable(ref);
+			if (!comment) return unavailable(ref);
 			const { excerpt, spoiler } = safeExcerpt(
 				comment.content,
 				comment.isSpoiler,
@@ -222,17 +274,22 @@ async function resolveOne(
 
 		case "feedback": {
 			const feedback = await db.feedback.findFirst({
-				where: { slug: ref.slug, book: { slug: ref.bookSlug } },
+				where: {
+					AND: [
+						{ slug: ref.slug, book: { slug: ref.bookSlug } },
+						reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput,
+					],
+				},
 				select: {
 					review: true,
 					isSpoiler: true,
 					rating: true,
-					author: { select: { ...memberFields, isHidden: true } },
+					author: { select: memberFields },
 					book: { select: { title: true, coverId: true } },
 					_count: { select: { likes: true, comments: true } },
 				},
 			});
-			if (!feedback || feedback.author.isHidden) return unavailable(ref);
+			if (!feedback) return unavailable(ref);
 			const { excerpt, spoiler } = safeExcerpt(
 				feedback.review,
 				feedback.isSpoiler,
@@ -256,9 +313,9 @@ async function resolveOne(
 			const shelf = await db.shelf.findFirst({
 				where: {
 					slug: ref.slug,
-					user: { username: ref.username, ...visibleOnSiteUserWhere },
-					// A private shelf shows nothing to people who cannot open it.
-					AND: [visibleShelfWhere(viewer)],
+					user: { username: ref.username },
+					// A shelf shows nothing to people who cannot open it.
+					AND: [shelfVisibleWhere(viewer, { wishlist: "include" })],
 				},
 				select: {
 					title: true,
@@ -353,7 +410,7 @@ async function resolveOne(
 export async function resolveLinkPreviews(
 	db: Database,
 	refs: InternalLinkRefInput[],
-	viewer: ShelfViewer = null,
+	viewer: Viewer,
 ): Promise<LinkPreview[]> {
 	return Promise.all(
 		refs.map(async (ref) => {

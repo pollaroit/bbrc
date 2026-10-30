@@ -1,5 +1,5 @@
 import type { Database } from "@bbrc/db";
-import { DEFAULT_WPM } from "@bbrc/shared";
+import { DEFAULT_WPM, type Visibility } from "@bbrc/shared";
 import type {
 	UpdateMyProfileParsed,
 	UserProfileOutput,
@@ -15,6 +15,9 @@ type StoredProfile = {
 	websiteUrl: string | null;
 	socialLinks: unknown;
 	wpm: number;
+	dateOfBirthVisibility: Visibility;
+	genderVisibility: Visibility;
+	locationVisibility: Visibility;
 };
 
 /** Stored as `{ [siteSlug]: url }`. */
@@ -36,6 +39,9 @@ function toOutput(profile: StoredProfile): UserProfileOutput {
 		websiteUrl: profile.websiteUrl,
 		socialLinks: socialLinksFromJson(profile.socialLinks),
 		wpm: profile.wpm,
+		dateOfBirthVisibility: profile.dateOfBirthVisibility,
+		genderVisibility: profile.genderVisibility,
+		locationVisibility: profile.locationVisibility,
 	};
 }
 
@@ -56,6 +62,9 @@ export async function getProfileByUserId(
 			websiteUrl: null,
 			socialLinks: null,
 			wpm: DEFAULT_WPM,
+			dateOfBirthVisibility: "private",
+			genderVisibility: "private",
+			locationVisibility: "public",
 		},
 	);
 }
@@ -77,6 +86,15 @@ export async function updateMyProfile(
 			input.socialLinks.map((link) => [link.site, link.url]),
 		),
 		wpm: input.wpm,
+		...(input.dateOfBirthVisibility
+			? { dateOfBirthVisibility: input.dateOfBirthVisibility }
+			: {}),
+		...(input.genderVisibility
+			? { genderVisibility: input.genderVisibility }
+			: {}),
+		...(input.locationVisibility
+			? { locationVisibility: input.locationVisibility }
+			: {}),
 	};
 
 	const profile = await db.userProfile.upsert({

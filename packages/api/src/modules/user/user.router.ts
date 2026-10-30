@@ -1,5 +1,6 @@
 import { protectedProcedure, publicProcedure } from "../../procedures";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
+import { loadViewer } from "../visibility/viewer";
 import {
 	GetUserByUsernameInputSchema,
 	GetUserByUsernameOutputSchema,
@@ -54,35 +55,56 @@ export const userRouter = {
 		.input(GetUserListInputSchema)
 		.output(GetUserListOutputSchema)
 		.handler(
-			async ({ input, context }) => await getUserList(input, context.db),
+			async ({ input, context }) =>
+				await getUserList(
+					input,
+					context.db,
+					await loadViewer(context.db, context.session),
+				),
 		),
 	getUserByUsername: publicProcedure
 		.input(GetUserByUsernameInputSchema)
 		.output(GetUserByUsernameOutputSchema)
 		.handler(
 			async ({ input, context }) =>
-				await getUserByUsername(input, context.db, context.session),
+				await getUserByUsername(
+					input,
+					context.db,
+					await loadViewer(context.db, context.session),
+				),
 		),
 	getUserProfileCard: publicProcedure
 		.input(GetUserProfileCardInputSchema)
 		.output(GetUserProfileCardOutputSchema)
 		.handler(
 			async ({ input, context }) =>
-				await getUserProfileCard(input, context.db, context.session),
+				await getUserProfileCard(
+					input,
+					context.db,
+					await loadViewer(context.db, context.session),
+				),
 		),
 	getUserParticipationList: publicProcedure
 		.input(GetUserParticipationListInputSchema)
 		.output(GetUserParticipationListOutputSchema)
 		.handler(
 			async ({ input, context }) =>
-				await getUserParticipationList(input, context.db, context.session),
+				await getUserParticipationList(
+					input,
+					context.db,
+					await loadViewer(context.db, context.session),
+				),
 		),
 	getUserStats: publicProcedure
 		.input(GetUserStatsInputSchema)
 		.output(GetUserStatsOutputSchema)
 		.handler(
 			async ({ input, context }) =>
-				await getUserStats(input, context.db, context.session),
+				await getUserStats(
+					input,
+					context.db,
+					await loadViewer(context.db, context.session),
+				),
 		),
 	getUsernameUpdateStatus: protectedProcedure
 		.output(GetUsernameUpdateStatusOutputSchema)

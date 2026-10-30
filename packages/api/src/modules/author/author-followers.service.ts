@@ -1,11 +1,12 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
+import type { Viewer } from "@bbrc/shared";
 import { mergeWhereFragments } from "../../utils/searching";
 import { buildItems, userListSelect } from "../people/people.service";
 import {
-	viewerFromSession,
-	visibleOnSiteUserWhere,
-} from "../user/user-visibility";
+	profileOwnedVisibleWhere,
+	readVisibleWhere,
+	reviewVisibleWhere,
+} from "../visibility/visibility-resources";
 import type {
 	AuthorFollowersInput,
 	AuthorFollowersOutput,
@@ -16,7 +17,7 @@ import {
 	offsetMetadata,
 	parseOffsetCursor,
 } from "./author-data";
-import { resolveAuthor } from "./author-resolve";
+import { actorOf, resolveAuthor } from "./author-resolve";
 
 type FollowerRow = {
 	userId: string;
@@ -71,15 +72,14 @@ export function sortFollowers(
 export async function getAuthorFollowers(
 	input: AuthorFollowersInput,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorFollowersOutput> {
-	const viewer = viewerFromSession(session);
+	const actor = actorOf(viewer);
 	const author = await resolveAuthor(db, input.slug, viewer);
-	const isAdmin = Boolean(viewer?.isAdmin);
+	const isAdmin = Boolean(actor?.isAdmin);
 
 	const followed = dayRangeWhere(input.followedFrom, input.followedTo);
 	const memberWhere = mergeWhereFragments<Prisma.UserWhereInput>(
-		visibleOnSiteUserWhere,
 		// Banned members are only ever listed for administrators.
 		isAdmin ? {} : { status: { not: "banned" } },
 		input.search?.trim() ? memberSearchWhere(input.search.trim()) : {},
@@ -92,19 +92,46 @@ export async function getAuthorFollowers(
 			: {},
 		input.hasBio ? { profile: { bio: { not: null } } } : {},
 		input.hasAvatar ? { image: { not: null } } : {},
-		input.readAuthor ? { reads: { some: { book: byAuthor(author.id) } } } : {},
+		input.readAuthor
+			? {
+					reads: {
+						some: {
+							book: byAuthor(author.id),
+							AND: [readVisibleWhere(viewer) as Prisma.ReadWhereInput],
+						},
+					},
+				}
+			: {},
 		input.reviewedAuthor
-			? { feedbacks: { some: { book: byAuthor(author.id) } } }
+			? {
+					feedbacks: {
+						some: {
+							book: byAuthor(author.id),
+							AND: [reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput],
+						},
+					},
+				}
 			: {},
 	);
 
-	const [follows, followInfo] = await Promise.all([
+	// Who follows is the member's own activity: named rows follow their profile
+	// privacy (and blocks); the follower count above stays over everyone.
+	const followWhere: Prisma.FollowWhereInput = {
+		targetType: "author",
+		authorId: author.id,
+		follower: memberWhere,
+		...(followed ? { createdAt: followed } : {}),
+	};
+	const [follows, hiddenFollows, followInfo] = await Promise.all([
 		db.follow.findMany({
 			where: {
-				targetType: "author",
-				authorId: author.id,
-				follower: memberWhere,
-				...(followed ? { createdAt: followed } : {}),
+				AND: [
+					followWhere,
+					profileOwnedVisibleWhere(viewer, {
+						ownerIdField: "followerId",
+						ownerRelation: "follower",
+					}) as Prisma.FollowWhereInput,
+				],
 			},
 			select: {
 				createdAt: true,
@@ -119,6 +146,7 @@ export async function getAuthorFollowers(
 				},
 			},
 		}),
+		db.follow.count({ where: followWhere }),
 		loadFollowInfo(db, [author.id], null),
 	]);
 	const followerCount = followInfo.counts.get(author.id) ?? 0;
@@ -130,12 +158,20 @@ export async function getAuthorFollowers(
 			: await Promise.all([
 					db.read.groupBy({
 						by: ["userId"],
-						where: { userId: { in: ids }, book: byAuthor(author.id) },
+						where: {
+							userId: { in: ids },
+							book: byAuthor(author.id),
+							AND: [readVisibleWhere(viewer) as Prisma.ReadWhereInput],
+						},
 						_count: { _all: true },
 					}),
 					db.feedback.groupBy({
 						by: ["authorId"],
-						where: { authorId: { in: ids }, book: byAuthor(author.id) },
+						where: {
+							authorId: { in: ids },
+							book: byAuthor(author.id),
+							AND: [reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput],
+						},
 						_count: { _all: true },
 					}),
 				]);
@@ -170,7 +206,7 @@ export async function getAuthorFollowers(
 	});
 	const order = new Map(pageRows.map((row, index) => [row.userId, index]));
 	people.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-	const cards = await buildItems(people, db);
+	const cards = await buildItems(people, db, viewer);
 
 	return {
 		followerCount,
@@ -180,12 +216,17 @@ export async function getAuthorFollowers(
 			authorReads: readsByUser.get(card.id) ?? 0,
 			authorReviews: reviewsByUser.get(card.id) ?? 0,
 		})),
-		metadata: offsetMetadata({
-			limit: input.limit,
-			skip,
-			shown: pageRows.length,
-			hasNextPage: skip + pageRows.length < sorted.length,
-			total: sorted.length,
-		}),
+		metadata: {
+			...offsetMetadata({
+				limit: input.limit,
+				skip,
+				shown: pageRows.length,
+				hasNextPage: skip + pageRows.length < sorted.length,
+				total: sorted.length,
+			}),
+			...(skip === 0
+				? { privateCount: Math.max(0, hiddenFollows - sorted.length) }
+				: {}),
+		},
 	};
 }

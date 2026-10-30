@@ -1,4 +1,5 @@
 import { publicProcedure } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	AuthorAboutOutputSchema,
 	AuthorBookFacetsInputSchema,
@@ -62,114 +63,190 @@ export const authorRouter = {
 		.input(AuthorListInputSchema)
 		.output(AuthorListOutputSchema)
 		.handler(async ({ input, context }) =>
-			listAuthors(input, context.db, context.session),
+			listAuthors(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	nationalityFacets: publicProcedure
 		.input(AuthorNationalityFacetsInputSchema)
 		.output(AuthorNationalityFacetsOutputSchema)
 		.handler(async ({ input, context }) =>
-			listAuthorNationalityFacets(input, context.db, context.session),
+			listAuthorNationalityFacets(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	get: publicProcedure
 		.input(AuthorSlugInputSchema)
 		.output(AuthorGetOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthor(input.slug, context.db, context.session),
+			getAuthor(
+				input.slug,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	about: publicProcedure
 		.input(AuthorSlugInputSchema)
 		.output(AuthorAboutOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthorAbout(input.slug, context.db, context.session),
+			getAuthorAbout(
+				input.slug,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	books: publicProcedure
 		.input(AuthorBooksInputSchema)
 		.output(AuthorBooksOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthorBooks(input, context.db, context.session),
+			getAuthorBooks(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	more: publicProcedure
 		.input(AuthorSlugInputSchema)
 		.output(AuthorMoreOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthorMore(input.slug, context.db, context.session),
+			getAuthorMore(
+				input.slug,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	bookFacets: publicProcedure
 		.input(AuthorBookFacetsInputSchema)
 		.output(AuthorBookFacetsOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthorBookFacets(input, context.db, context.session),
+			getAuthorBookFacets(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	reads: publicProcedure
 		.input(AuthorReadsInputSchema)
 		.output(AuthorReadsOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthorReads(input, context.db, context.session),
+			getAuthorReads(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	reviews: publicProcedure
 		.input(AuthorReviewsInputSchema)
 		.output(AuthorReviewsOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthorReviews(input, context.db, context.session),
+			getAuthorReviews(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	readerOptions: publicProcedure
 		.input(AuthorMemberOptionsInputSchema)
 		.output(AuthorMemberOptionsOutputSchema)
 		.handler(async ({ input, context }) =>
-			listAuthorMemberOptions(input, context.db, context.session),
+			listAuthorMemberOptions(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	bookOptions: publicProcedure
 		.input(AuthorOptionsInputSchema)
 		.output(AuthorBookOptionsOutputSchema)
 		.handler(async ({ input, context }) =>
-			listAuthorBookOptions(input, context.db, context.session),
+			listAuthorBookOptions(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	seriesOptions: publicProcedure
 		.input(AuthorOptionsInputSchema)
 		.output(AuthorSeriesOptionsOutputSchema)
 		.handler(async ({ input, context }) =>
-			listAuthorSeriesOptions(input, context.db, context.session),
+			listAuthorSeriesOptions(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	followers: publicProcedure
 		.input(AuthorFollowersInputSchema)
 		.output(AuthorFollowersOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthorFollowers(input, context.db, context.session),
+			getAuthorFollowers(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	posts: publicProcedure
 		.input(AuthorTabInputSchema)
 		.output(AuthorPostsOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthorPosts(input, context.db, context.session),
+			getAuthorPosts(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	sittings: publicProcedure
 		.input(AuthorTabInputSchema)
 		.output(AuthorSittingsOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthorSittings(input, context.db, context.session),
+			getAuthorSittings(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	favorites: publicProcedure
 		.input(AuthorTabInputSchema)
 		.output(AuthorFavoritesOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthorFavorites(input, context.db, context.session),
+			getAuthorFavorites(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	shelves: publicProcedure
 		.input(AuthorTabInputSchema)
 		.output(AuthorShelvesOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthorShelves(input, context.db, context.session),
+			getAuthorShelves(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	series: publicProcedure
 		.input(AuthorSlugInputSchema)
 		.output(AuthorSeriesOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthorSeries(input.slug, context.db, context.session),
+			getAuthorSeries(
+				input.slug,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	stats: publicProcedure
 		.input(AuthorSlugInputSchema)
 		.output(AuthorStatsOutputSchema)
 		.handler(async ({ input, context }) =>
-			getAuthorStats(input.slug, context.db, context.session),
+			getAuthorStats(
+				input.slug,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 };

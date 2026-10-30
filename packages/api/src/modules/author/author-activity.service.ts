@@ -1,6 +1,5 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
-import { richContentPreview } from "@bbrc/shared";
+import { richContentPreview, type Viewer } from "@bbrc/shared";
 import { mergeWhereFragments } from "../../utils/searching";
 import { userFeedbackReviewTypeWhere } from "../feedback/user-feedback.listing";
 import {
@@ -9,9 +8,9 @@ import {
 	readEditionRefSelect,
 } from "../read/read-edition-ref";
 import {
-	viewerFromSession,
-	visibleOnSiteUserWhere,
-} from "../user/user-visibility";
+	readVisibleWhere,
+	reviewVisibleWhere,
+} from "../visibility/visibility-resources";
 import type {
 	AuthorBookOptionsOutput,
 	AuthorMemberOptionsOutput,
@@ -32,7 +31,7 @@ import {
 	scopedMemberWhere,
 } from "./author-activity";
 import { bookRef, offsetMetadata, parseOffsetCursor } from "./author-data";
-import { resolveAuthor } from "./author-resolve";
+import { actorOf, resolveAuthor } from "./author-resolve";
 
 const OPTIONS_LIMIT = 20;
 
@@ -113,21 +112,21 @@ export function readOrderBy(
 export async function getAuthorReads(
 	input: AuthorReadsInput,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorReadsOutput> {
-	const viewer = viewerFromSession(session);
+	const actor = actorOf(viewer);
 	const author = await resolveAuthor(db, input.slug, viewer);
 
 	const bookWhere = await buildScopedBookWhere(
 		db,
 		author.id,
 		input,
-		viewer?.userId,
+		actor?.userId,
 	);
 	if (bookWhere == null) return emptyPage(input.limit);
 
 	const search = input.search?.trim();
-	const where = mergeWhereFragments<Prisma.ReadWhereInput>(
+	const whereAll = mergeWhereFragments<Prisma.ReadWhereInput>(
 		{ book: bookWhere },
 		{ user: scopedMemberWhere(input.members) },
 		readEndRangeWhere(input.finishedFrom, input.finishedTo) ?? {},
@@ -144,10 +143,17 @@ export async function getAuthorReads(
 				}
 			: {},
 	);
+	// Named rows follow each member's privacy; the everyone-count says how many are hidden.
+	const where: Prisma.ReadWhereInput = {
+		AND: [whereAll, readVisibleWhere(viewer) as Prisma.ReadWhereInput],
+	};
 	const skip = parseOffsetCursor(input.cursor);
 
-	const [total, rows] = await Promise.all([
+	const [total, totalAll, rows] = await Promise.all([
 		skip === 0 ? db.read.count({ where }) : Promise.resolve(undefined),
+		skip === 0
+			? db.read.count({ where: whereAll })
+			: Promise.resolve(undefined),
 		db.read.findMany({
 			where,
 			skip,
@@ -181,13 +187,18 @@ export async function getAuthorReads(
 			edition: readEditionRef(row, labels),
 			createdAt: row.createdAt,
 		})),
-		metadata: offsetMetadata({
-			limit: input.limit,
-			skip,
-			shown: page.length,
-			hasNextPage,
-			total,
-		}),
+		metadata: {
+			...offsetMetadata({
+				limit: input.limit,
+				skip,
+				shown: page.length,
+				hasNextPage,
+				total,
+			}),
+			...(total != null && totalAll != null
+				? { privateCount: Math.max(0, totalAll - total) }
+				: {}),
+		},
 	};
 }
 
@@ -218,22 +229,22 @@ export function reviewOrderBy(
 export async function getAuthorReviews(
 	input: AuthorReviewsInput,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorReviewsOutput> {
-	const viewer = viewerFromSession(session);
+	const actor = actorOf(viewer);
 	const author = await resolveAuthor(db, input.slug, viewer);
 
 	const bookWhere = await buildScopedBookWhere(
 		db,
 		author.id,
 		input,
-		viewer?.userId,
+		actor?.userId,
 	);
 	if (bookWhere == null) return emptyPage(input.limit);
 
 	const search = input.search?.trim();
 	const created = dayRangeWhere(input.createdFrom, input.createdTo);
-	const where = mergeWhereFragments<Prisma.FeedbackWhereInput>(
+	const whereAll = mergeWhereFragments<Prisma.FeedbackWhereInput>(
 		{ book: bookWhere },
 		{ author: scopedMemberWhere(input.members) },
 		input.minRating != null || input.maxRating != null
@@ -265,10 +276,16 @@ export async function getAuthorReviews(
 				}
 			: {},
 	);
+	const where: Prisma.FeedbackWhereInput = {
+		AND: [whereAll, reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput],
+	};
 	const skip = parseOffsetCursor(input.cursor);
 
-	const [total, rows] = await Promise.all([
+	const [total, totalAll, rows] = await Promise.all([
 		skip === 0 ? db.feedback.count({ where }) : Promise.resolve(undefined),
+		skip === 0
+			? db.feedback.count({ where: whereAll })
+			: Promise.resolve(undefined),
 		db.feedback.findMany({
 			where,
 			skip,
@@ -308,13 +325,18 @@ export async function getAuthorReviews(
 				createdAt: row.createdAt,
 			};
 		}),
-		metadata: offsetMetadata({
-			limit: input.limit,
-			skip,
-			shown: page.length,
-			hasNextPage,
-			total,
-		}),
+		metadata: {
+			...offsetMetadata({
+				limit: input.limit,
+				skip,
+				shown: page.length,
+				hasNextPage,
+				total,
+			}),
+			...(total != null && totalAll != null
+				? { privateCount: Math.max(0, totalAll - total) }
+				: {}),
+		},
 	};
 }
 
@@ -324,25 +346,24 @@ export async function getAuthorReviews(
 export async function listAuthorMemberOptions(
 	input: { slug: string; query: string; source: "reads" | "reviews" },
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorMemberOptionsOutput> {
-	const author = await resolveAuthor(
-		db,
-		input.slug,
-		viewerFromSession(session),
-	);
+	const author = await resolveAuthor(db, input.slug, viewer);
 	const query = input.query.trim();
-	const memberFilter = mergeWhereFragments<Prisma.UserWhereInput>(
-		visibleOnSiteUserWhere,
-		query ? memberSearchWhere(query) : {},
-	);
+	const memberFilter: Prisma.UserWhereInput = query
+		? memberSearchWhere(query)
+		: {};
 
 	const groups =
 		input.source === "reads"
 			? (
 					await db.read.groupBy({
 						by: ["userId"],
-						where: { book: byAuthor(author.id), user: memberFilter },
+						where: {
+							book: byAuthor(author.id),
+							user: memberFilter,
+							AND: [readVisibleWhere(viewer) as Prisma.ReadWhereInput],
+						},
 						_count: { _all: true },
 						orderBy: [{ _count: { userId: "desc" } }, { userId: "asc" }],
 						take: OPTIONS_LIMIT,
@@ -351,7 +372,11 @@ export async function listAuthorMemberOptions(
 			: (
 					await db.feedback.groupBy({
 						by: ["authorId"],
-						where: { book: byAuthor(author.id), author: memberFilter },
+						where: {
+							book: byAuthor(author.id),
+							author: memberFilter,
+							AND: [reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput],
+						},
 						_count: { _all: true },
 						orderBy: [{ _count: { authorId: "desc" } }, { authorId: "asc" }],
 						take: OPTIONS_LIMIT,
@@ -384,13 +409,9 @@ export async function listAuthorMemberOptions(
 export async function listAuthorBookOptions(
 	input: { slug: string; query: string },
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorBookOptionsOutput> {
-	const author = await resolveAuthor(
-		db,
-		input.slug,
-		viewerFromSession(session),
-	);
+	const author = await resolveAuthor(db, input.slug, viewer);
 	const query = input.query.trim();
 	const rows = await db.book.findMany({
 		where: mergeWhereFragments<Prisma.BookWhereInput>(
@@ -426,13 +447,9 @@ export async function listAuthorBookOptions(
 export async function listAuthorSeriesOptions(
 	input: { slug: string; query: string },
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorSeriesOptionsOutput> {
-	const author = await resolveAuthor(
-		db,
-		input.slug,
-		viewerFromSession(session),
-	);
+	const author = await resolveAuthor(db, input.slug, viewer);
 	const query = input.query.trim();
 	const rows = await db.series.findMany({
 		where: mergeWhereFragments<Prisma.SeriesWhereInput>(

@@ -1,14 +1,11 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
+import type { Viewer } from "@bbrc/shared";
 import { definePagination } from "../../utils/pagination";
 import {
 	buildPointsChartSeries,
 	buildRunningBalanceLookup,
 } from "../points/points-history";
-import {
-	assertMemberVisible,
-	viewerFromSession,
-} from "../user/user-visibility";
+import { assertMayViewMember, memberAccessSelect } from "../user/member-access";
 import {
 	type AwardCommentXpInput,
 	type AwardFeedbackXpInput,
@@ -254,17 +251,18 @@ export async function awardGoalXp(
 	);
 }
 
-async function loadXpUser(
-	username: string,
-	db: Database,
-	session: Session | null,
-) {
+async function loadXpUser(username: string, db: Database, viewer: Viewer) {
 	const user = await db.user.findUnique({
 		where: { username },
-		select: { id: true, xp: true, createdAt: true, isHidden: true },
+		select: {
+			...memberAccessSelect,
+			xp: true,
+			createdAt: true,
+		},
 	});
 
-	assertMemberVisible(user, viewerFromSession(session));
+	// XP events follow the profile level.
+	assertMayViewMember(user, viewer, { username });
 
 	return user;
 }
@@ -272,9 +270,9 @@ async function loadXpUser(
 export async function getXpChart(
 	input: GetXpChartInput,
 	db: Database,
-	session: Session | null = null,
+	viewer: Viewer,
 ): Promise<GetXpChartOutput> {
-	const user = await loadXpUser(input.username, db, session);
+	const user = await loadXpUser(input.username, db, viewer);
 
 	const eventsAsc = await db.xPEvent.findMany({
 		where: { userId: user.id },
@@ -291,9 +289,9 @@ export async function getXpChart(
 export async function getXpEventList(
 	input: GetXpEventListInput,
 	db: Database,
-	session: Session | null = null,
+	viewer: Viewer,
 ): Promise<GetXpEventListOutput> {
-	const user = await loadXpUser(input.username, db, session);
+	const user = await loadXpUser(input.username, db, viewer);
 
 	const balanceEvents = await db.xPEvent.findMany({
 		where: {
@@ -319,7 +317,7 @@ export async function getXpEventList(
 	});
 
 	const paginated = pagination.paginate(rows);
-	const sources = await resolveXpEntitySources(db, paginated.items);
+	const sources = await resolveXpEntitySources(db, paginated.items, viewer);
 
 	return {
 		items: paginated.items.map((row) => {

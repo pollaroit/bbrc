@@ -32,11 +32,18 @@ export const LeaderboardKindSchema = z.enum(leaderboardKinds);
 
 export const LeaderboardEntrySchema = z.object({
 	rank: z.number().int().positive(),
+	/** Empty for an anonymous row (a private member the viewer may not see). */
 	username: z.string(),
 	name: z.string(),
 	image: z.string().nullable(),
 	isAdmin: z.boolean(),
 	metric: z.number().int(),
+	/** True when the viewer may not see who this is: identity is blank, rank and points are real. */
+	anonymous: z.boolean(),
+	/** The member's profile is private (their name shows only to friends, themselves and admins). */
+	isPrivate: z.boolean(),
+	/** This row is the viewer's own. */
+	isViewer: z.boolean(),
 });
 
 export type LeaderboardEntry = z.infer<typeof LeaderboardEntrySchema>;

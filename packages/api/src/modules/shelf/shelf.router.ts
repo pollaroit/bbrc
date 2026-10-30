@@ -8,7 +8,7 @@ import {
 	revalidateUserShelvesIsr,
 } from "../../revalidate-isr";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
-import { viewerFromSession } from "../user/user-visibility";
+import { loadViewer } from "../visibility/viewer";
 import {
 	AddBookToShelfInputSchema,
 	AddBookToShelfOutputSchema,
@@ -56,10 +56,21 @@ export const shelfRouter = {
 	getList: publicProcedure
 		.input(GetShelfListInputSchema)
 		.output(GetShelfListOutputSchema)
-		.handler(async ({ input, context }) => getShelfList(input, context.db)),
+		.handler(async ({ input, context }) =>
+			getShelfList(
+				input,
+				await loadViewer(context.db, context.session),
+				context.db,
+			),
+		),
 	overview: publicProcedure
 		.output(ShelfOverviewSchema)
-		.handler(async ({ context }) => getShelfOverview(context.db)),
+		.handler(async ({ context }) =>
+			getShelfOverview(
+				await loadViewer(context.db, context.session),
+				context.db,
+			),
+		),
 	listByUsername: publicProcedure
 		.input(ListShelvesByUsernameInputSchema)
 		.output(ListShelvesByUsernameOutputSchema)
@@ -67,7 +78,7 @@ export const shelfRouter = {
 			listShelvesByUsername(
 				input.username,
 				input.status,
-				viewerFromSession(context.session),
+				await loadViewer(context.db, context.session),
 				context.db,
 			),
 		),
@@ -78,7 +89,7 @@ export const shelfRouter = {
 			getShelfBySlug(
 				input.username,
 				input.shelfSlug,
-				viewerFromSession(context.session),
+				await loadViewer(context.db, context.session),
 				context.db,
 			),
 		),
@@ -205,7 +216,11 @@ export const shelfRouter = {
 		.input(ListShelvesForBookInputSchema)
 		.output(ListShelvesForBookOutputSchema)
 		.handler(async ({ input, context }) =>
-			listShelvesForBook(input.bookSlug, context.session?.user?.id, context.db),
+			listShelvesForBook(
+				input.bookSlug,
+				await loadViewer(context.db, context.session),
+				context.db,
+			),
 		),
 	listMineEditable: protectedProcedure
 		.input(ListShelvesForBookInputSchema.partial())

@@ -6,7 +6,6 @@ import {
 	resolveClubTimeZone,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type {
 	BookSittingItem,
 	GetBookSittingsOutput,
@@ -68,7 +67,7 @@ export async function getBookSittings(
 			selectedBookId: true,
 			selectedBook: { select: { title: true } },
 			participants: {
-				where: { removedAt: null, user: visibleOnSiteUserWhere },
+				where: { removedAt: null },
 				orderBy: { createdAt: "asc" },
 				select: {
 					progress: true,

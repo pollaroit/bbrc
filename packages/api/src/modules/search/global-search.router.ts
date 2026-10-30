@@ -1,4 +1,5 @@
 import { publicProcedure } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	GlobalSearchInputSchema,
 	GlobalSearchOutputSchema,
@@ -10,12 +11,10 @@ export const globalSearchRouter = {
 		.input(GlobalSearchInputSchema)
 		.output(GlobalSearchOutputSchema)
 		.handler(async ({ input, context }) => {
-			const isAdmin = context.session?.user?.isAdmin === true;
 			return globalSearch(
 				input,
 				context.db,
-				isAdmin,
-				context.session?.user?.id,
+				await loadViewer(context.db, context.session),
 			);
 		}),
 };

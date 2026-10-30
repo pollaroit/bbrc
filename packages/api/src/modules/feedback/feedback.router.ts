@@ -5,6 +5,7 @@ import {
 } from "../../procedures";
 import { revalidateBookIsr } from "../../revalidate-isr";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
+import { loadViewer } from "../visibility/viewer";
 import {
 	CreateFeedbackInputSchema,
 	CreateFeedbackOutputSchema,
@@ -36,19 +37,31 @@ export const feedbackRouter = {
 		.input(GetFeedbackBySlugInputSchema)
 		.output(GetFeedbackBySlugOutputSchema)
 		.handler(async ({ input, context }) =>
-			getFeedbackBySlug(input, context.db, context.session),
+			getFeedbackBySlug(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	getBookFeedbackList: publicProcedure
 		.input(GetBookFeedbackListInputSchema)
 		.output(GetBookFeedbackListOutputSchema)
 		.handler(async ({ input, context }) =>
-			getBookFeedbackList(input, context.db, context.session),
+			getBookFeedbackList(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	getUserFeedbackList: publicProcedure
 		.input(GetUserFeedbackListInputSchema)
 		.output(GetUserFeedbackListOutputSchema)
 		.handler(async ({ input, context }) =>
-			getUserFeedbackList(input, context.db, context.session),
+			getUserFeedbackList(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	getBookFeedbackState: protectedProcedure
 		.input(GetBookFeedbackStateInputSchema)

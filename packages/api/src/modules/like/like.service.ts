@@ -1,10 +1,18 @@
 import type { Database, Prisma } from "@bbrc/db";
 import { LikeSourceSchema } from "@bbrc/schemas";
+import type { Viewer } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
+import { threadCommentVisibleWhere } from "../comment/comment-visibility";
 import { notifyReactionOnYourPost } from "../notification/notification-triggers";
+import { assertPostVisible } from "../post/post-visibility";
 import { loadActorSocialGate } from "../user/user-visibility";
+import {
+	likeVisibleWhere,
+	reviewVisibleWhere,
+} from "../visibility/visibility-resources";
+import { notBlockedWhere } from "../visibility/visibility-where";
 import {
 	likeListRanging,
 	likeListSearching,
@@ -70,9 +78,35 @@ function withStableIdOrderBy(
 	return [orderBy, { id: sortDirection }];
 }
 
+/**
+ * Likes the viewer may see by name. A like is public space: it follows what it is on (a
+ * post, a comment, a review) and never its author's profile; a blocked member's like is
+ * left out. Counts never use this.
+ */
+export function likeListVisibleWhere(viewer: Viewer): Prisma.LikeWhereInput {
+	return {
+		OR: [
+			likeVisibleWhere(viewer) as Prisma.LikeWhereInput,
+			{
+				AND: [
+					{ comment: threadCommentVisibleWhere(viewer) },
+					notBlockedWhere(viewer, "userId") as Prisma.LikeWhereInput,
+				],
+			},
+			{
+				AND: [
+					{ feedback: reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput },
+					notBlockedWhere(viewer, "userId") as Prisma.LikeWhereInput,
+				],
+			},
+		],
+	};
+}
+
 async function resolvePostTarget(
 	postSlug: string,
 	db: Database,
+	viewer: Viewer,
 ): Promise<LikeTarget> {
 	const post = await db.post.findUnique({
 		where: { slug: postSlug },
@@ -85,6 +119,10 @@ async function resolvePostTarget(
 			data: { slug: postSlug },
 		});
 	}
+
+	await assertPostVisible(db, { id: post.id }, viewer, "Post not found", {
+		slug: postSlug,
+	});
 
 	if (!post.allowLikes) {
 		throw new ORPCError("FORBIDDEN", {
@@ -104,9 +142,10 @@ async function resolvePostTarget(
 async function resolveCommentTarget(
 	commentSlug: string,
 	db: Database,
+	viewer: Viewer,
 ): Promise<LikeTarget> {
-	const comment = await db.comment.findUnique({
-		where: { slug: commentSlug },
+	const comment = await db.comment.findFirst({
+		where: { AND: [{ slug: commentSlug }, threadCommentVisibleWhere(viewer)] },
 		select: { id: true },
 	});
 
@@ -129,9 +168,15 @@ async function resolveCommentTarget(
 async function resolveFeedbackTarget(
 	feedbackSlug: string,
 	db: Database,
+	viewer: Viewer,
 ): Promise<LikeTarget> {
-	const feedback = await db.feedback.findUnique({
-		where: { slug: feedbackSlug },
+	const feedback = await db.feedback.findFirst({
+		where: {
+			AND: [
+				{ slug: feedbackSlug },
+				reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput,
+			],
+		},
 		select: { id: true, bookId: true },
 	});
 
@@ -154,17 +199,18 @@ async function resolveFeedbackTarget(
 async function resolveLikeTarget(
 	input: ToggleLikeInput,
 	db: Database,
+	viewer: Viewer,
 ): Promise<LikeTarget> {
 	if (input.postSlug) {
-		return resolvePostTarget(input.postSlug, db);
+		return resolvePostTarget(input.postSlug, db, viewer);
 	}
 
 	if (input.commentSlug) {
-		return resolveCommentTarget(input.commentSlug, db);
+		return resolveCommentTarget(input.commentSlug, db, viewer);
 	}
 
 	if (input.feedbackSlug) {
-		return resolveFeedbackTarget(input.feedbackSlug, db);
+		return resolveFeedbackTarget(input.feedbackSlug, db, viewer);
 	}
 
 	throw new ORPCError("BAD_REQUEST", {
@@ -232,6 +278,7 @@ function existingLikeWhere(
 export async function getLikeList(
 	input: GetLikeListInput,
 	db: Database,
+	viewer: Viewer,
 ): Promise<GetLikeListOutput> {
 	const pagination = definePagination.cursor(input, likeListCursorCodec);
 	const sorting = likeListSorting.from(input);
@@ -242,6 +289,7 @@ export async function getLikeList(
 		likeListTargetWhere(input),
 		ranging.use(),
 		searching.use(),
+		likeListVisibleWhere(viewer),
 	);
 
 	const rows = await db.like.findMany({
@@ -269,10 +317,11 @@ async function applyLike(
 	userId: string,
 	db: Database,
 	intent: LikeIntent,
+	viewer: Viewer,
 ): Promise<ToggleLikeOutput> {
 	await loadActorSocialGate(userId, db);
 
-	const target = await resolveLikeTarget(input, db);
+	const target = await resolveLikeTarget(input, db, viewer);
 
 	const result = await db.$transaction(async (tx) => {
 		const existing = await tx.like.findFirst({
@@ -333,8 +382,9 @@ export async function toggleLike(
 	input: ToggleLikeInput,
 	userId: string,
 	db: Database,
+	viewer: Viewer,
 ): Promise<ToggleLikeOutput> {
-	return applyLike(input, userId, db, "toggle");
+	return applyLike(input, userId, db, "toggle", viewer);
 }
 
 /** Idempotent: sets the viewer's like to exactly `liked`, however many times it is called. */
@@ -342,9 +392,10 @@ export async function setLike(
 	input: SetLikeInput,
 	userId: string,
 	db: Database,
+	viewer: Viewer,
 ): Promise<ToggleLikeOutput> {
 	const { liked, ...target } = input;
-	return applyLike(target, userId, db, liked);
+	return applyLike(target, userId, db, liked, viewer);
 }
 
 /** Which of the given posts, comments and reviews the viewer has liked. */

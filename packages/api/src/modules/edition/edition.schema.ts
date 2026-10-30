@@ -195,10 +195,12 @@ export const EditionReaderSchema = EditionPersonSchema.extend({
 });
 
 export const EditionReadersOutputSchema = z.object({
-	/** Counts are always there; names only when the viewer is a signed-in member. */
+	/** Counts are always there (everyone, however private); names follow each member's privacy for this viewer. */
 	signedIn: z.boolean(),
 	readingNow: z.object({
 		total: Count,
+		/** Members in `total` whose name this viewer may not see. */
+		privateCount: Count.default(0),
 		items: z.array(
 			EditionReaderSchema.extend({
 				startedAt: z.coerce.date(),
@@ -211,6 +213,7 @@ export const EditionReadersOutputSchema = z.object({
 	}),
 	finished: z.object({
 		total: Count,
+		privateCount: Count.default(0),
 		items: z.array(
 			EditionReaderSchema.extend({
 				readEndYear: z.number().int().nullable(),

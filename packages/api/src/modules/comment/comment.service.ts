@@ -1,7 +1,6 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import { LikeSourceSchema } from "@bbrc/schemas";
-import { MAX_COMMENT_DEPTH } from "@bbrc/shared";
+import { MAX_COMMENT_DEPTH, type Viewer } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { assertNormalizedSocialContent } from "../../lib/rich-content";
 import { definePagination } from "../../utils/pagination";
@@ -9,6 +8,7 @@ import { mergeWhereFragments } from "../../utils/searching";
 import { warmLinkPreviewsInContent } from "../link-unfurl/link-unfurl.service";
 import {
 	loadMentionedIds,
+	type MentionAudience,
 	notifyMentions,
 	prepareContentMentions,
 	syncContentMentions,
@@ -17,13 +17,10 @@ import {
 	notifyCommentOnYourPost,
 	notifyReplyToYourComment,
 } from "../notification/notification-triggers";
+import { assertPostVisible, viewerUserId } from "../post/post-visibility";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
-import {
-	assertContentNotVisible,
-	loadActorSocialGate,
-	viewerFromSession,
-	visibleOnSiteUserWhere,
-} from "../user/user-visibility";
+import { loadActorSocialGate } from "../user/user-visibility";
+import { reviewVisibleWhere } from "../visibility/visibility-resources";
 import { XP_AWARD } from "../xp/xp.schema";
 import { awardCommentXp } from "../xp/xp.service";
 import {
@@ -49,6 +46,7 @@ import {
 	type UpdateCommentOutput,
 } from "./comment.schema";
 import { generateCommentSlug } from "./comment-slug";
+import { threadCommentVisibleWhere } from "./comment-visibility";
 
 const commentListSelect = {
 	...getCommentListFields,
@@ -87,10 +85,6 @@ function withStableSlugOrderBy(
 	sortDirection: "asc" | "desc",
 ): Prisma.CommentOrderByWithRelationInput[] {
 	return [orderBy, { slug: sortDirection }];
-}
-
-function viewerUserId(session: Session | null): string | null {
-	return session?.user.id ?? null;
 }
 
 async function loadLikedCommentIds(
@@ -191,10 +185,16 @@ async function loadPostIdBySlug(
 
 async function loadFeedbackIdBySlug(
 	feedbackSlug: string,
+	viewer: Viewer,
 	db: Database,
 ): Promise<string> {
-	const feedback = await db.feedback.findUnique({
-		where: { slug: feedbackSlug },
+	const feedback = await db.feedback.findFirst({
+		where: {
+			AND: [
+				{ slug: feedbackSlug },
+				reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput,
+			],
+		},
 		select: { id: true },
 	});
 
@@ -211,13 +211,13 @@ async function loadFeedbackIdBySlug(
 export async function getCommentList(
 	input: GetCommentListInput,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetCommentListOutput> {
 	const pagination = definePagination.cursor(input, commentListCursorCodec);
 	const sorting = commentListSorting.from(input);
 	const ranging = commentListRanging.from(input);
 	const searching = commentListSearching.from(input);
-	const userId = viewerUserId(session);
+	const userId = viewerUserId(viewer);
 
 	const targetWhere = input.postSlug
 		? commentPostSlugWhere(input.postSlug)
@@ -230,7 +230,7 @@ export async function getCommentList(
 		input.authorUsername
 			? commentAuthorUsernameWhere(input.authorUsername)
 			: {},
-		{ author: visibleOnSiteUserWhere },
+		threadCommentVisibleWhere(viewer),
 	);
 
 	const rows = await db.comment.findMany({
@@ -256,7 +256,7 @@ export async function getCommentList(
 export async function getCommentBySlug(
 	slug: string,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<GetCommentBySlugOutput> {
 	const comment = await db.comment.findUnique({
 		where: { slug },
@@ -270,21 +270,22 @@ export async function getCommentBySlug(
 		});
 	}
 
-	const author = await db.user.findUnique({
-		where: { id: comment.authorId },
-		select: { id: true, isHidden: true },
+	const visible = await db.comment.findFirst({
+		where: {
+			AND: [{ id: comment.id }, threadCommentVisibleWhere(viewer)],
+		},
+		select: { id: true },
 	});
-
-	assertContentNotVisible(
-		author ?? { id: comment.authorId, isHidden: true },
-		viewerFromSession(session),
-		"Comment not found",
-		{ slug },
-	);
+	if (!visible) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Comment not found",
+			data: { slug },
+		});
+	}
 
 	const likedCommentIds = await loadLikedCommentIds(
 		[comment.id],
-		viewerUserId(session),
+		viewerUserId(viewer),
 		db,
 	);
 
@@ -295,6 +296,7 @@ export async function createComment(
 	input: CreateCommentInput,
 	userId: string,
 	db: Database,
+	viewer: Viewer,
 ): Promise<CreateCommentOutput> {
 	await loadActorSocialGate(userId, db);
 
@@ -312,8 +314,13 @@ export async function createComment(
 			});
 		}
 	}
+	if (postId) {
+		await assertPostVisible(db, { id: postId }, viewer, "Post not found", {
+			slug: input.postSlug,
+		});
+	}
 	const feedbackId = input.feedbackSlug
-		? await loadFeedbackIdBySlug(input.feedbackSlug, db)
+		? await loadFeedbackIdBySlug(input.feedbackSlug, viewer, db)
 		: null;
 
 	let parent: {
@@ -360,6 +367,7 @@ export async function createComment(
 	const prepared = await prepareContentMentions(db, {
 		content: assertNormalizedSocialContent(input.content),
 		authorId: userId,
+		audience: await threadAudience(db, { postId, feedbackId }),
 	});
 	const content = prepared.content;
 	// Outside links get their preview ready now (bounded; never fails the save).
@@ -438,6 +446,30 @@ export async function createComment(
 		});
 }
 
+/** Who has to be allowed to see a comment for a mention in it to stand: its post's or its review's owner. */
+async function threadAudience(
+	db: Database,
+	target: { postId: string | null; feedbackId: string | null },
+): Promise<MentionAudience | undefined> {
+	if (target.postId) {
+		const post = await db.post.findUnique({
+			where: { id: target.postId },
+			select: { authorId: true },
+		});
+		return post ? { ownerId: post.authorId } : undefined;
+	}
+	if (target.feedbackId) {
+		const feedback = await db.feedback.findUnique({
+			where: { id: target.feedbackId },
+			select: { authorId: true },
+		});
+		return feedback
+			? { ownerId: feedback.authorId, section: "reviews" }
+			: undefined;
+	}
+	return undefined;
+}
+
 /** The permalink of a comment, on its post or on its review. */
 async function commentPermalink(
 	db: Database,
@@ -466,7 +498,13 @@ export async function updateComment(
 ): Promise<UpdateCommentOutput> {
 	const comment = await db.comment.findUnique({
 		where: { slug: input.slug },
-		select: { id: true, authorId: true, content: true },
+		select: {
+			id: true,
+			authorId: true,
+			content: true,
+			postId: true,
+			feedbackId: true,
+		},
 	});
 
 	if (!comment) {
@@ -483,6 +521,7 @@ export async function updateComment(
 			? await prepareContentMentions(db, {
 					content: assertNormalizedSocialContent(input.content),
 					authorId: userId,
+					audience: await threadAudience(db, comment),
 					alreadyMentionedIds: await loadMentionedIds(db, {
 						kind: "comment",
 						id: comment.id,

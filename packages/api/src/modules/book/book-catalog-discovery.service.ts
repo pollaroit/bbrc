@@ -11,7 +11,7 @@ import {
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { mapBookSeriesSummary } from "../series/series.service";
-import { publicShelfWhere } from "../shelf/shelf-visibility";
+import { countableShelfWhere } from "../shelf/shelf-visibility";
 import type { GetBookListOutput } from "./book.schema";
 import { getBookListFields } from "./book.schema";
 import { bookAuthorRefsSelect, mapBookAuthorRefs } from "./book-author-refs";
@@ -50,7 +50,7 @@ const discoverySelect = {
 			documents: { where: { status: "approved" as const } },
 			reads: true,
 			feedbacks: true,
-			shelfBooks: { where: { shelf: publicShelfWhere } },
+			shelfBooks: { where: { shelf: countableShelfWhere } },
 			favorites: true,
 		},
 	},

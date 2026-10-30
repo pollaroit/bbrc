@@ -1,4 +1,5 @@
 import { notBannedProcedure } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	CompareBooksInputSchema,
 	CompareBooksOutputSchema,
@@ -24,29 +25,45 @@ export const userCompareRouter = {
 	compare: notBannedProcedure
 		.input(CompareInputSchema)
 		.output(CompareOutputSchema)
-		.handler(({ input, context }) =>
-			compareMembers(input, context.db, context.session),
+		.handler(async ({ input, context }) =>
+			compareMembers(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 
 	books: notBannedProcedure
 		.input(CompareBooksInputSchema)
 		.output(CompareBooksOutputSchema)
-		.handler(({ input, context }) =>
-			listCompareBooks(input, context.db, context.session),
+		.handler(async ({ input, context }) =>
+			listCompareBooks(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 
 	extras: notBannedProcedure
 		.input(CompareExtrasInputSchema)
 		.output(CompareExtrasOutputSchema)
-		.handler(({ input, context }) =>
-			getCompareExtras(input, context.db, context.session),
+		.handler(async ({ input, context }) =>
+			getCompareExtras(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 
 	searchMembers: notBannedProcedure
 		.input(CompareSearchMembersInputSchema)
 		.output(CompareSearchMembersOutputSchema)
-		.handler(({ input, context }) =>
-			searchCompareMembers(input, context.db, context.session),
+		.handler(async ({ input, context }) =>
+			searchCompareMembers(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 
 	getPreferences: notBannedProcedure

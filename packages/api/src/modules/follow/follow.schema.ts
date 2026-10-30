@@ -1,17 +1,13 @@
 import zod from "zod";
 
 /**
- * What a member can follow. Built as a union so members following members slots in as
- * `{ type: "user", username }` without changing any caller; only authors work today.
+ * What a member can follow. Only authors: members connect through friendships instead.
+ * Kept as a union so a new kind of target slots in without changing any caller.
  */
 export const FollowTargetSchema = zod.discriminatedUnion("type", [
 	zod.object({
 		type: zod.literal("author"),
 		slug: zod.string().min(1).max(80),
-	}),
-	zod.object({
-		type: zod.literal("user"),
-		username: zod.string().min(3).max(20),
 	}),
 ]);
 

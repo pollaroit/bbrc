@@ -153,7 +153,6 @@ async function loadUniverse(
 
 	const users = await db.user.findMany({
 		where: {
-			isHidden: false,
 			status: { not: "banned" },
 			...(filters.users?.length ? { username: { in: filters.users } } : {}),
 		},

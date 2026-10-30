@@ -16,7 +16,7 @@ import {
 	mapBookSeriesSummary,
 	placeBookInSeries,
 } from "../series/series.service";
-import { publicShelfWhere } from "../shelf/shelf-visibility";
+import { countableShelfWhere } from "../shelf/shelf-visibility";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import { bookListSorting } from "./book.listing";
 import {
@@ -73,7 +73,7 @@ const bookListSelect = {
 			reads: true,
 			feedbacks: true,
 			// Only shelves anyone can see count (not private ones or the Wishlist).
-			shelfBooks: { where: { shelf: publicShelfWhere } },
+			shelfBooks: { where: { shelf: countableShelfWhere } },
 			favorites: true,
 		},
 	},

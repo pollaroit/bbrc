@@ -120,6 +120,8 @@ export const AuthorTabMetadataSchema = zod.object({
 	nextCursor: zod.string().nullable(),
 	/** Total rows, on the first page only (when `cursor` was not sent). */
 	total: CountSchema.optional(),
+	/** First page only: rows in `total` hidden from this viewer by their owner's privacy. */
+	privateCount: CountSchema.optional(),
 });
 
 const authorSlugInput = zod.string().trim().min(1).max(200);

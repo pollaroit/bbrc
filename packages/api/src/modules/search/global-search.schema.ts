@@ -42,6 +42,8 @@ export const GlobalSearchHitSchema = z.object({
 	action: GlobalSearchHitActionSchema.optional(),
 	/** Thumbnail to show instead of the type icon, when the item has one. */
 	media: GlobalSearchMediaSchema.optional(),
+	/** User hits only: the member's profile is private (show a lock; name and avatar are still public). */
+	isPrivate: z.boolean().optional(),
 });
 
 export const GlobalSearchInputSchema = z.object({

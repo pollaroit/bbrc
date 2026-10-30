@@ -64,7 +64,10 @@ export const ListEarnersInputSchema = zod.object({
 });
 
 export const ListEarnersOutputSchema = zod.object({
+	/** Every earner, private ones included. */
 	total: CountSchema,
+	/** Earners whose names are not shown to this viewer (they are counted in `total`). */
+	privateCount: CountSchema,
 	/** Members per highest tier, regardless of the tier filter. */
 	perTier: zod.record(zod.string(), CountSchema),
 	items: zod.array(AchievementEarnerSchema),

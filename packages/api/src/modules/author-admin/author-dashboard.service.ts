@@ -11,7 +11,6 @@ import {
 } from "@bbrc/shared";
 import { definePagination } from "../../utils/pagination";
 import { matchesSearch } from "../author-insights/insights-common";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import {
 	type AdminAuthorSortField,
 	bookCountBuckets,
@@ -81,7 +80,6 @@ export async function loadDashboardAuthors(
 		}),
 		db.bookAuthor.findMany({ select: { authorId: true, bookId: true } }),
 		db.read.findMany({
-			where: { user: visibleOnSiteUserWhere },
 			select: { userId: true, bookId: true },
 		}),
 	]);

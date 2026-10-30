@@ -1,4 +1,5 @@
 import { publicProcedure } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	GetXpChartInputSchema,
 	GetXpChartOutputSchema,
@@ -13,13 +14,21 @@ export const xpRouter = {
 		.output(GetXpEventListOutputSchema)
 		.handler(
 			async ({ input, context }) =>
-				await getXpEventList(input, context.db, context.session),
+				await getXpEventList(
+					input,
+					context.db,
+					await loadViewer(context.db, context.session),
+				),
 		),
 	getXpChart: publicProcedure
 		.input(GetXpChartInputSchema)
 		.output(GetXpChartOutputSchema)
 		.handler(
 			async ({ input, context }) =>
-				await getXpChart(input, context.db, context.session),
+				await getXpChart(
+					input,
+					context.db,
+					await loadViewer(context.db, context.session),
+				),
 		),
 };

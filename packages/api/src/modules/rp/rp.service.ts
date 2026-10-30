@@ -1,5 +1,5 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
+import type { Viewer } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import {
@@ -8,10 +8,7 @@ import {
 } from "../points/points-history";
 import type { ParticipationProgress } from "../sitting/participation-progress";
 import { progressAffectsUserStatus } from "../sitting/participation-progress";
-import {
-	assertMemberVisible,
-	viewerFromSession,
-} from "../user/user-visibility";
+import { assertMayViewMember, memberAccessSelect } from "../user/member-access";
 import {
 	type ApplyRpForFinishedSittingInput,
 	type GetRpChartInput,
@@ -158,17 +155,14 @@ export async function revertRpForDeletedSitting(
 	}
 }
 
-async function loadRpUser(
-	username: string,
-	db: Database,
-	session: Session | null,
-) {
+async function loadRpUser(username: string, db: Database, viewer: Viewer) {
 	const user = await db.user.findUnique({
 		where: { username },
-		select: { id: true, rp: true, createdAt: true, isHidden: true },
+		select: { ...memberAccessSelect, rp: true, createdAt: true },
 	});
 
-	assertMemberVisible(user, viewerFromSession(session));
+	// RP events follow the profile level.
+	assertMayViewMember(user, viewer, { username });
 
 	return user;
 }
@@ -176,9 +170,9 @@ async function loadRpUser(
 export async function getRpChart(
 	input: GetRpChartInput,
 	db: Database,
-	session: Session | null = null,
+	viewer: Viewer,
 ): Promise<GetRpChartOutput> {
-	const user = await loadRpUser(input.username, db, session);
+	const user = await loadRpUser(input.username, db, viewer);
 
 	const eventsAsc = await db.rPEvent.findMany({
 		where: { userId: user.id },
@@ -195,9 +189,9 @@ export async function getRpChart(
 export async function getRpEventList(
 	input: GetRpEventListInput,
 	db: Database,
-	session: Session | null = null,
+	viewer: Viewer,
 ): Promise<GetRpEventListOutput> {
-	const user = await loadRpUser(input.username, db, session);
+	const user = await loadRpUser(input.username, db, viewer);
 
 	const balanceEvents = await db.rPEvent.findMany({
 		where: { userId: user.id },

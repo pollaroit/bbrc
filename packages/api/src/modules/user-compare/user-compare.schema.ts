@@ -116,7 +116,7 @@ export const CompareOutputSchema = zod.object({
 	/** True when the viewer is an admin (bypasses "Allow others to compare with me"). */
 	viewerIsAdmin: zod.boolean(),
 	/** "compare_off": the other member turned comparisons off; numbers are withheld. */
-	blocked: zod.enum(["compare_off"]).nullable(),
+	blocked: zod.enum(["compare_off", "reads_private"]).nullable(),
 	/** Who the viewer is in this comparison; null for an admin looking at two others. */
 	viewerSide: zod.enum(["a", "b"]).nullable(),
 	a: CompareMemberSchema,
@@ -163,7 +163,7 @@ export const CompareBookItemSchema = zod.object({
 
 export const CompareBooksOutputSchema = zod.object({
 	/** Null when comparison is blocked (items is empty then). */
-	blocked: zod.enum(["compare_off"]).nullable(),
+	blocked: zod.enum(["compare_off", "reads_private"]).nullable(),
 	items: zod.array(CompareBookItemSchema),
 	metadata: zod.object({
 		limit: zod.number().int(),
@@ -225,7 +225,7 @@ export const CompareSittingTogetherSchema = zod.object({
 });
 
 export const CompareExtrasOutputSchema = zod.object({
-	blocked: zod.enum(["compare_off"]).nullable(),
+	blocked: zod.enum(["compare_off", "reads_private"]).nullable(),
 	/** Top 8 subjects by combined share; null when neither member has books. */
 	subjects: zod.array(CompareRadarAxisSchema).nullable(),
 	/** Top 8 origin countries (names), same rule. */

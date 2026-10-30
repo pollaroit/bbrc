@@ -10,11 +10,18 @@ import {
 } from "@bbrc/schemas";
 import zod from "zod";
 
+/** Loose on purpose: a locked attachment blanks the author (see `locked` on every attachment). */
 const PostAuthorSchema = UserSchema.pick({
 	username: true,
 	name: true,
 	image: true,
-});
+}).extend({ username: zod.string(), name: zod.string() });
+
+/**
+ * Set when the viewer may not see the attached thing (a private profile, friends only, a
+ * blocked member): the kind stays, every detail is blank.
+ */
+const lockedField = zod.boolean().default(false);
 
 const postAuthorFields = {
 	username: true,
@@ -39,17 +46,19 @@ export const PostAttachedBookCardSchema = BookSchema.pick(
 
 export const PostAttachmentBookSchema = zod.object({
 	kind: zod.literal("book"),
+	locked: lockedField,
 	book: PostAttachedBookCardSchema,
 });
 
 export const PostAttachmentShelfSchema = zod.object({
 	kind: zod.literal("shelf"),
+	locked: lockedField,
 	shelf: zod.object({
 		slug: zod.string(),
 		title: zod.string(),
 		type: ShelfTypeSchema,
 		coverImageUrl: zod.string().max(2048).nullable(),
-		ownerUsername: UserSchema.shape.username,
+		ownerUsername: zod.string(),
 		bookCount: zod.number().int().min(0),
 		coverPreviewCoverIds: zod.array(zod.number().nullable()).max(4),
 		/** The shelf was made private after it was shared: its details are hidden. */
@@ -59,6 +68,7 @@ export const PostAttachmentShelfSchema = zod.object({
 
 export const PostAttachmentSittingSchema = zod.object({
 	kind: zod.literal("sitting"),
+	locked: lockedField,
 	sitting: zod.object({
 		slug: SittingSchema.shape.slug,
 		status: SittingStatusSchema,
@@ -74,13 +84,15 @@ export const PostAttachmentSittingSchema = zod.object({
 
 export const PostAttachmentUserSchema = zod.object({
 	kind: zod.literal("user"),
+	locked: lockedField,
 	user: PostAuthorSchema,
 });
 
 export const PostAttachmentFeedbackSchema = zod.object({
 	kind: zod.literal("feedback"),
+	locked: lockedField,
 	feedback: zod.object({
-		slug: FeedbackSchema.shape.slug,
+		slug: zod.string(),
 		rating: FeedbackSchema.shape.rating,
 		review: FeedbackSchema.shape.review,
 		likeCount: zod.number().int().min(0),
@@ -91,14 +103,15 @@ export const PostAttachmentFeedbackSchema = zod.object({
 			title: true,
 			authors: true,
 			coverId: true,
-		}),
+		}).extend({ slug: zod.string() }),
 	}),
 });
 
 export const PostAttachmentPostSchema = zod.object({
 	kind: zod.literal("post"),
+	locked: lockedField,
 	post: zod.object({
-		slug: PostSchema.shape.slug,
+		slug: zod.string(),
 		contentPreview: zod.string(),
 		author: PostAuthorSchema,
 	}),
@@ -106,13 +119,14 @@ export const PostAttachmentPostSchema = zod.object({
 
 export const PostAttachmentCommentSchema = zod.object({
 	kind: zod.literal("comment"),
+	locked: lockedField,
 	comment: zod.object({
-		slug: CommentSchema.shape.slug,
+		slug: zod.string(),
 		contentPreview: zod.string(),
 		author: PostAuthorSchema,
 		contextPost: zod
 			.object({
-				slug: PostSchema.shape.slug,
+				slug: zod.string(),
 				contentPreview: zod.string(),
 				author: PostAuthorSchema,
 			})
@@ -130,6 +144,7 @@ export const PostAttachmentCommentSchema = zod.object({
 
 export const PostAttachmentAuthorSchema = zod.object({
 	kind: zod.literal("author"),
+	locked: lockedField,
 	author: zod.object({
 		slug: zod.string(),
 		name: zod.string(),
@@ -208,8 +223,9 @@ export const postAttachmentSelect = {
 			type: true,
 			visibility: true,
 			coverImageUrl: true,
+			userId: true,
 			user: {
-				select: { username: true },
+				select: { username: true, profileVisibility: true },
 			},
 			books: {
 				orderBy: { position: "asc" },
@@ -244,15 +260,20 @@ export const postAttachmentSelect = {
 		},
 	},
 	member: {
-		select: postAuthorFields,
+		select: { ...postAuthorFields, id: true },
 	},
 	feedback: {
 		select: {
 			slug: true,
 			rating: true,
 			review: true,
+			authorId: true,
 			author: {
-				select: postAuthorFields,
+				select: {
+					...postAuthorFields,
+					profileVisibility: true,
+					reviewsVisibility: true,
+				},
 			},
 			book: {
 				select: {
@@ -274,8 +295,9 @@ export const postAttachmentSelect = {
 		select: {
 			slug: true,
 			content: true,
+			authorId: true,
 			author: {
-				select: postAuthorFields,
+				select: { ...postAuthorFields, profileVisibility: true },
 			},
 		},
 	},
@@ -286,6 +308,7 @@ export const postAttachmentSelect = {
 			depth: true,
 			postId: true,
 			feedbackId: true,
+			authorId: true,
 			author: {
 				select: postAuthorFields,
 			},
@@ -293,14 +316,19 @@ export const postAttachmentSelect = {
 				select: {
 					slug: true,
 					content: true,
+					authorId: true,
 					author: {
-						select: postAuthorFields,
+						select: { ...postAuthorFields, profileVisibility: true },
 					},
 				},
 			},
 			feedback: {
 				select: {
 					slug: true,
+					authorId: true,
+					author: {
+						select: { profileVisibility: true, reviewsVisibility: true },
+					},
 					book: {
 						select: { slug: true },
 					},

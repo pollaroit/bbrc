@@ -33,7 +33,7 @@ export async function assertParticipantsExist(
 	const uniqueParticipantIds = [...new Set(participantUserIds)];
 
 	const users = await db.user.findMany({
-		where: { id: { in: uniqueParticipantIds }, isHidden: false },
+		where: { id: { in: uniqueParticipantIds } },
 		select: { id: true },
 	});
 

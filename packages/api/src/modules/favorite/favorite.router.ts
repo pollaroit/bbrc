@@ -1,5 +1,6 @@
 import { protectedProcedure, publicProcedure } from "../../procedures";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
+import { loadViewer } from "../visibility/viewer";
 import {
 	AddFavoriteInputSchema,
 	AddFavoriteOutputSchema,
@@ -28,13 +29,23 @@ export const favoriteRouter = {
 	listForBook: publicProcedure
 		.input(ListBookFavoritesInputSchema)
 		.output(ListBookFavoritesOutputSchema)
-		.handler(({ context, input }) => listBookFavorites(input, context.db)),
+		.handler(async ({ context, input }) =>
+			listBookFavorites(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
+		),
 
 	getUserFavorites: publicProcedure
 		.input(GetUserFavoritesInputSchema)
 		.output(GetUserFavoritesOutputSchema)
 		.handler(async ({ input, context }) =>
-			getUserFavorites(input.username, context.db),
+			getUserFavorites(
+				input.username,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	listMine: protectedProcedure
 		.output(ListMyFavoritesOutputSchema)

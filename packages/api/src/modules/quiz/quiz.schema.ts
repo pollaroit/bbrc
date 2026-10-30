@@ -120,6 +120,8 @@ const QuizReviewQuestionSchema = z.object({
 const QuizLeaderboardRowSchema = z.object({
 	rank: z.number().int().min(1),
 	user: QuizPersonSchema,
+	/** True when the viewer may not see who this is: `user` is blank, rank and score are real. */
+	anonymous: z.boolean(),
 	score: z.number().int(),
 	correct: z.number().int(),
 	incorrect: z.number().int(),
@@ -206,6 +208,8 @@ export const ListBookQuizSubmissionsInputSchema =
 export const BookQuizSubmissionRowSchema = z.object({
 	rank: z.number().int().min(1),
 	user: QuizPersonSchema,
+	/** True when the viewer may not see who this is: `user` is blank, rank and score are real. */
+	anonymous: z.boolean(),
 	score: z.number().int(),
 	correct: z.number().int(),
 	incorrect: z.number().int(),

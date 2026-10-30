@@ -12,6 +12,7 @@ import {
 	listCompareBooks,
 } from "../user-compare/user-compare.service";
 import { getCompareExtras } from "../user-compare/user-compare-extras.service";
+import { loadViewer } from "../visibility/viewer";
 import {
 	CompareStatsInputSchema,
 	CompareStatsOutputSchema,
@@ -35,22 +36,34 @@ export const userCompareAdminRouter = {
 	compare: adminProcedure
 		.input(CompareInputSchema)
 		.output(CompareOutputSchema)
-		.handler(({ input, context }) =>
-			compareMembers(input, context.db, context.session),
+		.handler(async ({ input, context }) =>
+			compareMembers(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 
 	books: adminProcedure
 		.input(CompareBooksInputSchema)
 		.output(CompareBooksOutputSchema)
-		.handler(({ input, context }) =>
-			listCompareBooks(input, context.db, context.session),
+		.handler(async ({ input, context }) =>
+			listCompareBooks(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 
 	extras: adminProcedure
 		.input(CompareExtrasInputSchema)
 		.output(CompareExtrasOutputSchema)
-		.handler(({ input, context }) =>
-			getCompareExtras(input, context.db, context.session),
+		.handler(async ({ input, context }) =>
+			getCompareExtras(
+				input,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
 		),
 
 	searchMembers: adminProcedure

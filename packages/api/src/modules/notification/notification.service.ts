@@ -1,7 +1,8 @@
-import type { Database } from "@bbrc/db";
+import type { Database, Prisma } from "@bbrc/db";
 import {
 	buildPushPayload,
 	defaultPushEnabledForKind,
+	effectiveVisibility,
 	isOffByDefaultKind,
 	NOTIFICATION_KIND_GROUPS,
 	NOTIFICATION_KIND_LABELS,
@@ -11,6 +12,7 @@ import {
 import type { NotificationKind as DbNotificationKind } from "../../../../db/prisma/generated/enums";
 import { resolvePublicAppOrigin } from "../../lib/public-origin";
 import { publishLive, pushToMembers } from "../../lib/push/delivery";
+import { loadBlockedIds, loadFriendIds } from "../visibility/viewer";
 import type {
 	GetNotificationListInput,
 	GetNotificationListOutput,
@@ -329,6 +331,51 @@ export async function listActiveMemberUserIds(db: Database): Promise<string[]> {
 		select: { id: true },
 	});
 	return users.map((u) => u.id);
+}
+
+/**
+ * Active members who may see what `authorId` publishes: a post (their profile level) or
+ * a review (also their reviews setting). Public: everyone except blocked pairs. Friends
+ * only: their friends. Private: nobody but admins. Admins always count. The author is
+ * included when they are active; callers exclude them.
+ */
+export async function listAudienceUserIds(
+	db: Database,
+	authorId: string,
+	options: { section?: "reviews" } = {},
+): Promise<string[]> {
+	const author = await db.user.findUnique({
+		where: { id: authorId },
+		select: { profileVisibility: true, reviewsVisibility: true },
+	});
+	if (!author) return [];
+	const level = effectiveVisibility({
+		profile: author.profileVisibility,
+		section: options.section === "reviews" ? author.reviewsVisibility : null,
+	});
+	const active = {
+		status: { in: ["active", "warned"] },
+	} satisfies Prisma.UserWhereInput;
+	const admins = await db.user.findMany({
+		where: { ...active, isAdmin: true },
+		select: { id: true },
+	});
+	const adminIds = admins.map((user) => user.id);
+	if (level === "private") return adminIds;
+	if (level === "friends") {
+		const friendIds = await loadFriendIds(db, authorId);
+		const friends = await db.user.findMany({
+			where: { ...active, id: { in: friendIds } },
+			select: { id: true },
+		});
+		return [...new Set([...friends.map((user) => user.id), ...adminIds])];
+	}
+	const blockedIds = await loadBlockedIds(db, authorId);
+	const members = await db.user.findMany({
+		where: { ...active, id: { notIn: blockedIds } },
+		select: { id: true },
+	});
+	return [...new Set([...members.map((user) => user.id), ...adminIds])];
 }
 
 export async function listAdminUserIds(db: Database): Promise<string[]> {

@@ -1,5 +1,6 @@
 import { protectedProcedure, publicProcedure } from "../../procedures";
 import { revalidateSittingIsr } from "../../revalidate-isr";
+import { loadViewer } from "../visibility/viewer";
 import {
 	CancelSittingInvitationInputSchema,
 	CreateInviteLinkInputSchema,
@@ -55,8 +56,12 @@ export const sittingJoinRouter = {
 	state: publicProcedure
 		.input(SittingJoinStateInputSchema)
 		.output(SittingJoinStateOutputSchema)
-		.handler(({ input, context }) =>
-			getJoinState(context.db, input.sittingSlug, context.session),
+		.handler(async ({ input, context }) =>
+			getJoinState(
+				context.db,
+				input.sittingSlug,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	updateConfig: protectedProcedure
 		.input(UpdateJoinConfigInputSchema)

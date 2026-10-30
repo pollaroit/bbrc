@@ -3,6 +3,7 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "../../procedures";
+import { loadViewer } from "../visibility/viewer";
 import {
 	AddPollOptionInputSchema,
 	ClosePollInputSchema,
@@ -36,89 +37,90 @@ export const postPollRouter = {
 	get: publicProcedure
 		.input(GetPollInputSchema)
 		.output(PostPollViewSchema)
-		.handler(({ input, context }) =>
-			getPollView(context.db, input.postSlug, context.session),
+		.handler(async ({ input, context }) =>
+			getPollView(
+				context.db,
+				input.postSlug,
+				await loadViewer(context.db, context.session),
+			),
 		),
 	vote: notBannedProcedure
 		.input(VotePollInputSchema)
 		.output(PostPollViewSchema)
-		.handler(({ input, context }) =>
-			votePoll(
+		.handler(async ({ input, context }) => {
+			const viewer = await loadViewer(context.db, context.session);
+			return votePoll(
 				context.db,
 				input.postSlug,
 				input.optionIds,
 				context.session.user.id,
-				context.session,
-			),
-		),
+				viewer,
+			);
+		}),
 	retract: notBannedProcedure
 		.input(RetractVoteInputSchema)
 		.output(PostPollViewSchema)
-		.handler(({ input, context }) =>
-			retractVote(
+		.handler(async ({ input, context }) => {
+			const viewer = await loadViewer(context.db, context.session);
+			return retractVote(
 				context.db,
 				input.postSlug,
 				context.session.user.id,
-				context.session,
-			),
-		),
+				viewer,
+			);
+		}),
 	addOption: notBannedProcedure
 		.input(AddPollOptionInputSchema)
 		.output(PostPollViewSchema)
-		.handler(({ input, context }) =>
-			addPollOption(
+		.handler(async ({ input, context }) => {
+			const viewer = await loadViewer(context.db, context.session);
+			return addPollOption(
 				context.db,
 				input.postSlug,
 				input.option,
 				context.session.user.id,
-				context.session,
-			),
-		),
+				viewer,
+			);
+		}),
 	removeOption: notBannedProcedure
 		.input(RemovePollOptionInputSchema)
 		.output(PostPollViewSchema)
-		.handler(({ input, context }) =>
-			removePollOption(
+		.handler(async ({ input, context }) => {
+			const viewer = await loadViewer(context.db, context.session);
+			return removePollOption(
 				context.db,
 				input.postSlug,
 				input.optionId,
-				pollViewer(context.session),
-				context.session,
-			),
-		),
+				pollViewer(viewer),
+				viewer,
+			);
+		}),
 	updateSettings: notBannedProcedure
 		.input(UpdatePollSettingsInputSchema)
 		.output(PostPollViewSchema)
-		.handler(({ input, context }) =>
-			updatePollSettings(
-				context.db,
-				input,
-				pollViewer(context.session),
-				context.session,
-			),
-		),
+		.handler(async ({ input, context }) => {
+			const viewer = await loadViewer(context.db, context.session);
+			return updatePollSettings(context.db, input, pollViewer(viewer), viewer);
+		}),
 	close: notBannedProcedure
 		.input(ClosePollInputSchema)
 		.output(PostPollViewSchema)
-		.handler(({ input, context }) =>
-			closePoll(
-				context.db,
-				input.postSlug,
-				pollViewer(context.session),
-				context.session,
-			),
-		),
+		.handler(async ({ input, context }) => {
+			const viewer = await loadViewer(context.db, context.session);
+			return closePoll(context.db, input.postSlug, pollViewer(viewer), viewer);
+		}),
 	stats: protectedProcedure
 		.input(GetPollInputSchema)
 		.output(PollStatsSchema)
-		.handler(({ input, context }) =>
-			getPollStats(
+		.handler(async ({ input, context }) => {
+			const viewer = await loadViewer(context.db, context.session);
+			return getPollStats(
 				context.db,
 				input.postSlug,
-				pollViewer(context.session),
-				context.session,
-			),
-		),
+				pollViewer(viewer),
+				viewer,
+			);
+		}),
 	searchTargets: protectedProcedure
 		.input(SearchPollTargetsInputSchema)
 		.output(SearchPollTargetsOutputSchema)
@@ -127,7 +129,7 @@ export const postPollRouter = {
 				context.db,
 				input.kind,
 				input.query,
-				context.session.user.id,
+				await loadViewer(context.db, context.session),
 				input.purpose,
 			),
 		})),
@@ -139,7 +141,7 @@ export const postPollRouter = {
 	setPreference: protectedProcedure
 		.input(PollPreferenceSchema)
 		.output(PollPreferenceSchema)
-		.handler(({ input, context }) =>
+		.handler(async ({ input, context }) =>
 			setPollPreference(
 				context.db,
 				context.session.user.id,

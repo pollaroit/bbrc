@@ -1,11 +1,12 @@
-import type { Database } from "@bbrc/db";
-import { MAX_FAVORITES_PER_USER } from "@bbrc/shared";
+import type { Database, Prisma } from "@bbrc/db";
+import { MAX_FAVORITES_PER_USER, type Viewer } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import {
 	clubReadEligibilityHint,
 	userCompletedClubRead,
 } from "../book/book-read-eligibility";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
+import { canViewerSeeSection, isBlockedFrom } from "../read/section-access";
+import { favoriteVisibleWhere } from "../visibility/visibility-resources";
 import type {
 	AddFavoriteInput,
 	AddFavoriteOutput,
@@ -54,8 +55,18 @@ async function loadUserByUsername(username: string, db: Database) {
 export async function getUserFavorites(
 	username: string,
 	db: Database,
+	viewer: Viewer,
 ): Promise<GetUserFavoritesOutput> {
 	const user = await loadUserByUsername(username, db);
+	if (isBlockedFrom(viewer, user.id)) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "User not found",
+			data: { username },
+		});
+	}
+	if (!(await canViewerSeeSection(db, viewer, user.id, "favorites"))) {
+		return [];
+	}
 
 	return db.favorite.findMany({
 		where: { userId: user.id },
@@ -280,19 +291,25 @@ export async function removeFavorite(
 export async function listBookFavorites(
 	input: ListBookFavoritesInput,
 	db: Database,
+	viewer: Viewer,
 ): Promise<ListBookFavoritesOutput> {
 	const book = await loadBookBySlug(input.bookSlug, db);
 	const limit = input.limit ?? 100;
 
-	const favoriteWhere = {
-		bookId: book.id,
-		user: visibleOnSiteUserWhere,
+	// Totals count everyone; only the named rows follow the viewer.
+	const favoriteWhere = { bookId: book.id };
+	const visibleFavoriteWhere: Prisma.FavoriteWhereInput = {
+		AND: [
+			favoriteWhere,
+			favoriteVisibleWhere(viewer) as Prisma.FavoriteWhereInput,
+		],
 	};
 
-	const [total, rows] = await Promise.all([
+	const [total, visibleTotal, rows] = await Promise.all([
 		db.favorite.count({ where: favoriteWhere }),
+		db.favorite.count({ where: visibleFavoriteWhere }),
 		db.favorite.findMany({
-			where: favoriteWhere,
+			where: visibleFavoriteWhere,
 			orderBy: { createdAt: "desc" },
 			take: limit,
 			select: {
@@ -311,6 +328,7 @@ export async function listBookFavorites(
 
 	return {
 		total,
+		privateCount: Math.max(0, total - visibleTotal),
 		items: rows.map((row) => ({
 			favoritedAt: row.createdAt,
 			slotsUsed: row.user._count.favorites,

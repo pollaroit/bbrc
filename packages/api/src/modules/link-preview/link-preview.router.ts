@@ -1,5 +1,6 @@
 import { publicProcedure } from "../../procedures";
 import { resolveExternalPreviews } from "../link-unfurl/link-unfurl.service";
+import { loadViewer } from "../visibility/viewer";
 import {
 	ResolveExternalLinkPreviewsInputSchema,
 	ResolveExternalLinkPreviewsOutputSchema,
@@ -16,12 +17,7 @@ export const linkPreviewRouter = {
 			items: await resolveLinkPreviews(
 				context.db,
 				input.refs,
-				context.session
-					? {
-							userId: context.session.user.id,
-							isAdmin: context.session.user.isAdmin === true,
-						}
-					: null,
+				await loadViewer(context.db, context.session),
 			),
 		})),
 	/** Previews of outside links, read from the cache (see the `link-unfurl` module). */

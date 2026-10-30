@@ -77,6 +77,8 @@ export const BookFavoriteListItemSchema = zod.object({
 
 export const ListBookFavoritesOutputSchema = zod.object({
 	total: zod.number().int().nonnegative(),
+	/** Favouriters in `total` whose name this viewer may not see. */
+	privateCount: zod.number().int().nonnegative().default(0),
 	items: zod.array(BookFavoriteListItemSchema),
 });
 

@@ -1,12 +1,11 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import {
 	AUTHOR_FIELD_SOURCE_LABELS,
 	getBookCountryName,
 	readProgress,
+	type Viewer,
 } from "@bbrc/shared";
 import { mergeWhereFragments } from "../../utils/searching";
-import { viewerFromSession } from "../user/user-visibility";
 import type {
 	AuthorAboutOutput,
 	AuthorCard,
@@ -35,7 +34,7 @@ import {
 	authorDirectorySearching,
 	authorDirectorySorting,
 } from "./author-directory.listing";
-import { resolveAuthor } from "./author-resolve";
+import { actorOf, resolveAuthor } from "./author-resolve";
 import { loadAuthorSeries, seriesSummaryLine } from "./author-series";
 
 // ── Directory ──────────────────────────────────────────────────────────────
@@ -83,10 +82,10 @@ function inRange(value: number, min?: number, max?: number) {
 async function loadDirectory(
 	db: Database,
 	filters: DirectoryFilters,
-	viewer: { userId: string; isAdmin: boolean } | null,
+	actor: { userId: string; isAdmin: boolean } | null,
 	options: { applyCountries: boolean },
 ): Promise<DirectoryEntry[]> {
-	const isAdmin = Boolean(viewer?.isAdmin);
+	const isAdmin = Boolean(actor?.isAdmin);
 	const rows = await db.author.findMany({
 		where: dbWhere(filters, isAdmin),
 		select: authorCardSelect,
@@ -94,7 +93,7 @@ async function loadDirectory(
 	const ids = rows.map((row) => row.id);
 	const [aggregates, follow] = await Promise.all([
 		loadAuthorAggregates(db, ids),
-		loadFollowInfo(db, ids, viewer?.userId ?? null),
+		loadFollowInfo(db, ids, actor?.userId ?? null),
 	]);
 
 	return rows
@@ -194,13 +193,13 @@ export function sortDirectory(
 export async function listAuthors(
 	input: AuthorListInput,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorListOutput> {
-	const viewer = viewerFromSession(session);
+	const actor = actorOf(viewer);
 	const sorting = authorDirectorySorting.from(input);
 	const { cursor, limit, sortBy: _s, sortDirection: _d, ...filters } = input;
 
-	const entries = await loadDirectory(db, filters, viewer, {
+	const entries = await loadDirectory(db, filters, actor, {
 		applyCountries: true,
 	});
 	const sorted = sortDirectory(entries, sorting.sortBy, sorting.sortDirection);
@@ -214,7 +213,7 @@ export async function listAuthors(
 					entry.aggregate,
 					entry.followerCount,
 					entry.followedByMe,
-					Boolean(viewer?.isAdmin),
+					Boolean(actor?.isAdmin),
 				),
 		),
 		metadata: page.metadata,
@@ -224,9 +223,9 @@ export async function listAuthors(
 export async function listAuthorNationalityFacets(
 	input: AuthorNationalityFacetsInput,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorNationalityFacetsOutput> {
-	const viewer = viewerFromSession(session);
+	const actor = actorOf(viewer);
 	const {
 		pinnedCountryCodes,
 		countries: _countries,
@@ -234,7 +233,7 @@ export async function listAuthorNationalityFacets(
 		sortDirection: _d,
 		...filters
 	} = input;
-	const entries = await loadDirectory(db, filters, viewer, {
+	const entries = await loadDirectory(db, filters, actor, {
 		applyCountries: false,
 	});
 
@@ -264,9 +263,9 @@ export async function listAuthorNationalityFacets(
 export async function getAuthor(
 	slug: string,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorGetOutput> {
-	const viewer = viewerFromSession(session);
+	const actor = actorOf(viewer);
 	const resolved = await resolveAuthor(db, slug, viewer);
 
 	const row = await db.author.findUniqueOrThrow({
@@ -276,19 +275,19 @@ export async function getAuthor(
 
 	const [aggregates, follow] = await Promise.all([
 		loadAuthorAggregates(db, [resolved.id]),
-		loadFollowInfo(db, [resolved.id], viewer?.userId ?? null),
+		loadFollowInfo(db, [resolved.id], actor?.userId ?? null),
 	]);
 	const aggregate = aggregates.get(resolved.id) ?? EMPTY_AGGREGATE;
 
 	const [readBookIds, series] = await Promise.all([
-		loadViewerReadBookIds(db, viewer?.userId ?? null, aggregate.bookIds),
-		loadAuthorSeries(db, resolved.id, viewer?.userId ?? null),
+		loadViewerReadBookIds(db, actor?.userId ?? null, aggregate.bookIds),
+		loadAuthorSeries(db, resolved.id, actor?.userId ?? null),
 	]);
 	const progress = readProgress(readBookIds.size, aggregate.bookCount);
 
 	return {
 		redirectTo: resolved.redirectTo,
-		profile: buildAuthorProfile(row, Boolean(viewer?.isAdmin)),
+		profile: buildAuthorProfile(row, Boolean(actor?.isAdmin)),
 		numbers: {
 			bookCount: aggregate.bookCount,
 			readerCount: aggregate.readerCount,
@@ -299,8 +298,8 @@ export async function getAuthor(
 		},
 		seriesSummary: { count: series.length, line: seriesSummaryLine(series) },
 		viewer: {
-			isSignedIn: viewer != null,
-			isAdmin: Boolean(viewer?.isAdmin),
+			isSignedIn: actor != null,
+			isAdmin: Boolean(actor?.isAdmin),
 			followed: follow.followed.has(resolved.id),
 			readCount: progress.read,
 			totalBooks: progress.total,
@@ -330,15 +329,15 @@ const FIELD_LABELS: Record<string, string> = {
 export async function getAuthorAbout(
 	slug: string,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorAboutOutput> {
-	const viewer = viewerFromSession(session);
+	const actor = actorOf(viewer);
 	const resolved = await resolveAuthor(db, slug, viewer);
 	const row = await db.author.findUniqueOrThrow({
 		where: { id: resolved.id },
 		select: authorProfileSelect,
 	});
-	const profile = buildAuthorProfile(row, Boolean(viewer?.isAdmin));
+	const profile = buildAuthorProfile(row, Boolean(actor?.isAdmin));
 	const meta = parseFieldMeta(row.fieldMeta);
 
 	const filled: Record<string, boolean> = {
@@ -364,7 +363,7 @@ export async function getAuthorAbout(
 			label: FIELD_LABELS[field] ?? field,
 			source: entry.source,
 			sourceLabel: AUTHOR_FIELD_SOURCE_LABELS[entry.source],
-			locked: viewer?.isAdmin ? Boolean(entry.locked) : null,
+			locked: actor?.isAdmin ? Boolean(entry.locked) : null,
 		}));
 
 	const missing: AuthorAboutOutput["missing"] = [];

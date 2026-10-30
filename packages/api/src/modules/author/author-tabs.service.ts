@@ -1,4 +1,3 @@
-import type { Session } from "@bbrc/auth";
 import type { Database, Prisma } from "@bbrc/db";
 import {
 	bucketByDecade,
@@ -9,12 +8,13 @@ import {
 	median,
 	ratingDistribution,
 	scoreRelatedAuthor,
+	type Viewer,
 } from "@bbrc/shared";
-import { publicShelfWhere } from "../shelf/shelf-visibility";
+import { shelfVisibleWhere } from "../shelf/shelf-visibility";
 import {
-	viewerFromSession,
-	visibleOnSiteUserWhere,
-} from "../user/user-visibility";
+	favoriteVisibleWhere,
+	readVisibleWhere,
+} from "../visibility/visibility-resources";
 import type {
 	AuthorFavoritesOutput,
 	AuthorMoreOutput,
@@ -36,7 +36,7 @@ import {
 	pageInMemory,
 	parseOffsetCursor,
 } from "./author-data";
-import { resolveAuthor } from "./author-resolve";
+import { actorOf, resolveAuthor } from "./author-resolve";
 import { loadAuthorSeries } from "./author-series";
 
 const RELATED_AUTHORS_LIMIT = 12;
@@ -56,9 +56,8 @@ const userRef = {
 export async function getAuthorMore(
 	slug: string,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorMoreOutput> {
-	const viewer = viewerFromSession(session);
 	const resolved = await resolveAuthor(db, slug, viewer);
 	const source = await db.author.findUniqueOrThrow({
 		where: { id: resolved.id },
@@ -79,7 +78,7 @@ export async function getAuthorMore(
 			},
 		}),
 		db.read.findMany({
-			where: { book: byAuthor(resolved.id), user: visibleOnSiteUserWhere },
+			where: { book: byAuthor(resolved.id) },
 			select: { userId: true },
 		}),
 	]);
@@ -158,13 +157,9 @@ export async function getAuthorMore(
 export async function getAuthorSittings(
 	input: TabPaging & { slug: string },
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorSittingsOutput> {
-	const author = await resolveAuthor(
-		db,
-		input.slug,
-		viewerFromSession(session),
-	);
+	const author = await resolveAuthor(db, input.slug, viewer);
 	const own = await db.bookAuthor.findMany({
 		where: { authorId: author.id },
 		select: { bookId: true },
@@ -194,7 +189,7 @@ export async function getAuthorSittings(
 			selectedBookId: true,
 			selectedBook: { select: bookSelect },
 			participants: {
-				where: { removedAt: null, user: visibleOnSiteUserWhere },
+				where: { removedAt: null },
 				select: { progress: true },
 			},
 			poll: {
@@ -257,17 +252,31 @@ export async function getAuthorSittings(
 export async function getAuthorFavorites(
 	input: TabPaging & { slug: string },
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorFavoritesOutput> {
-	const author = await resolveAuthor(
-		db,
-		input.slug,
-		viewerFromSession(session),
+	const author = await resolveAuthor(db, input.slug, viewer);
+	// Totals count everyone; only the named members follow each member's privacy.
+	const favoritesOfAuthor: Prisma.FavoriteWhereInput = {
+		book: byAuthor(author.id),
+	};
+	const visibleFavoriteIds = new Set(
+		(
+			await db.favorite.findMany({
+				where: {
+					AND: [
+						favoritesOfAuthor,
+						favoriteVisibleWhere(viewer) as Prisma.FavoriteWhereInput,
+					],
+				},
+				select: { id: true },
+			})
+		).map((row) => row.id),
 	);
 	const rows = await db.favorite.findMany({
-		where: { book: byAuthor(author.id), user: visibleOnSiteUserWhere },
+		where: favoritesOfAuthor,
 		orderBy: { createdAt: "desc" },
 		select: {
+			id: true,
 			createdAt: true,
 			userId: true,
 			user: userRef,
@@ -289,6 +298,7 @@ export async function getAuthorFavorites(
 			favoritedAt: string;
 		}
 	>();
+	const allMembers = new Set<string>();
 	for (const row of rows) {
 		const entry = perBook.get(row.book.slug) ?? {
 			book: bookRef(row.book),
@@ -297,6 +307,8 @@ export async function getAuthorFavorites(
 		entry.count += 1;
 		perBook.set(row.book.slug, entry);
 
+		allMembers.add(row.userId);
+		if (!visibleFavoriteIds.has(row.id)) continue;
 		const member = perMember.get(row.userId) ?? {
 			member: row.user,
 			books: [],
@@ -308,12 +320,25 @@ export async function getAuthorFavorites(
 
 	return {
 		totalFavorites: rows.length,
-		memberCount: perMember.size,
+		memberCount: allMembers.size,
 		books: [...perBook.values()].toSorted(
 			(a, b) => b.count - a.count || a.book.title.localeCompare(b.book.title),
 		),
 		// Rows come newest first, so members are already ordered by their latest favorite.
-		members: pageInMemory([...perMember.values()], input.cursor, input.limit),
+		members: (() => {
+			const page = pageInMemory(
+				[...perMember.values()],
+				input.cursor,
+				input.limit,
+			);
+			return {
+				...page,
+				metadata: {
+					...page.metadata,
+					privateCount: Math.max(0, allMembers.size - perMember.size),
+				},
+			};
+		})(),
 	};
 }
 
@@ -322,15 +347,11 @@ export async function getAuthorFavorites(
 export async function getAuthorShelves(
 	input: TabPaging & { slug: string },
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorShelvesOutput> {
-	const author = await resolveAuthor(
-		db,
-		input.slug,
-		viewerFromSession(session),
-	);
+	const author = await resolveAuthor(db, input.slug, viewer);
 	const where: Prisma.ShelfWhereInput = {
-		...publicShelfWhere,
+		...shelfVisibleWhere(viewer, { listing: true }),
 		books: { some: { book: byAuthor(author.id) } },
 	};
 	const skip = parseOffsetCursor(input.cursor);
@@ -406,12 +427,15 @@ export async function getAuthorShelves(
 export async function getAuthorSeries(
 	slug: string,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorSeriesOutput> {
-	const viewer = viewerFromSession(session);
 	const author = await resolveAuthor(db, slug, viewer);
 	return {
-		items: await loadAuthorSeries(db, author.id, viewer?.userId ?? null),
+		items: await loadAuthorSeries(
+			db,
+			author.id,
+			actorOf(viewer)?.userId ?? null,
+		),
 	};
 }
 
@@ -422,9 +446,9 @@ const DAY_MS = 86_400_000;
 export async function getAuthorStats(
 	slug: string,
 	db: Database,
-	session: Session | null,
+	viewer: Viewer,
 ): Promise<AuthorStatsOutput> {
-	const author = await resolveAuthor(db, slug, viewerFromSession(session));
+	const author = await resolveAuthor(db, slug, viewer);
 	const books = await loadAuthorBookRows(db, author.id);
 	const bookIds = books.map((book) => book.id);
 	const refById = new Map(books.map((book) => [book.id, bookRef(book)]));
@@ -434,7 +458,7 @@ export async function getAuthorStats(
 			? [[], [], []]
 			: await Promise.all([
 					db.read.findMany({
-						where: { bookId: { in: bookIds }, user: visibleOnSiteUserWhere },
+						where: { bookId: { in: bookIds } },
 						select: {
 							bookId: true,
 							userId: true,
@@ -443,20 +467,36 @@ export async function getAuthorStats(
 						},
 					}),
 					db.feedback.findMany({
-						where: { bookId: { in: bookIds }, author: visibleOnSiteUserWhere },
+						where: { bookId: { in: bookIds } },
 						select: { bookId: true, rating: true },
 					}),
 					db.reading.findMany({
 						where: {
 							bookId: { in: bookIds },
 							finishedAt: { not: null },
-							user: visibleOnSiteUserWhere,
 						},
 						select: { bookId: true, startedAt: true, finishedAt: true },
 					}),
 				]);
 
 	const ref = (bookId: string) => refById.get(bookId);
+
+	// Numbers count everyone; only the named leaderboard follows each member's privacy.
+	const visibleReadKeys = new Set(
+		bookIds.length === 0
+			? []
+			: (
+					await db.read.findMany({
+						where: {
+							AND: [
+								{ bookId: { in: bookIds } },
+								readVisibleWhere(viewer) as Prisma.ReadWhereInput,
+							],
+						},
+						select: { userId: true, bookId: true },
+					})
+				).map((row) => `${row.userId}|${row.bookId}`),
+	);
 
 	const readsByBook = new Map<string, number>();
 	for (const read of reads) {
@@ -530,9 +570,14 @@ export async function getAuthorStats(
 	>();
 	const perYear = new Map<number, number>();
 	for (const read of reads) {
-		const entry = perMember.get(read.userId) ?? { member: read.user, count: 0 };
-		entry.count += 1;
-		perMember.set(read.userId, entry);
+		if (visibleReadKeys.has(`${read.userId}|${read.bookId}`)) {
+			const entry = perMember.get(read.userId) ?? {
+				member: read.user,
+				count: 0,
+			};
+			entry.count += 1;
+			perMember.set(read.userId, entry);
+		}
 		if (read.readEndYear != null) {
 			perYear.set(read.readEndYear, (perYear.get(read.readEndYear) ?? 0) + 1);
 		}

@@ -1,5 +1,4 @@
-import type { Session } from "@bbrc/auth";
-import type { Database } from "@bbrc/db";
+import type { Database, Prisma } from "@bbrc/db";
 import {
 	compareSummaryLine,
 	describeScoreBand,
@@ -7,8 +6,18 @@ import {
 	RATING_FULL_WEIGHT_AT,
 	RATING_WEIGHT,
 	scoreComparison,
+	type Viewer,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import {
+	viewerIsAdmin as isAdminViewer,
+	isBlockedFor,
+	type MemberAccessFields,
+	mayViewSection,
+	memberAccessSelect,
+	memberVisibleWhere,
+} from "../user/member-access";
+import { notBlockedWhere } from "../visibility/visibility-where";
 import {
 	compareBookSelect,
 	loadMemberReads,
@@ -30,33 +39,30 @@ export type CompareMemberRow = {
 	username: string;
 	name: string;
 	image: string | null;
-	isHidden: boolean;
 	status: "active" | "warned" | "banned" | string;
 	allowCompare: boolean;
-	showCurrentlyReading: boolean;
 	createdAt: Date;
-};
+} & MemberAccessFields;
 
 export type ComparePair = {
+	viewer: Viewer;
 	viewerId: string;
 	viewerIsAdmin: boolean;
 	viewerSide: "a" | "b" | null;
 	a: CompareMemberRow;
 	b: CompareMemberRow;
 	/** "compare_off" when the other member switched comparisons off and the viewer is not an admin. */
-	blocked: "compare_off" | null;
+	blocked: "compare_off" | "reads_private" | null;
 };
 
 const memberSelect = {
-	id: true,
 	username: true,
 	name: true,
 	image: true,
-	isHidden: true,
 	status: true,
 	allowCompare: true,
-	showCurrentlyReading: true,
 	createdAt: true,
+	...memberAccessSelect,
 } as const;
 
 const notFound = (username: string) =>
@@ -68,11 +74,16 @@ const notFound = (username: string) =>
 /** Applies the access rules in the schema header; every procedure starts here. */
 export async function resolveComparePair(
 	db: Database,
-	session: Session,
+	viewer: Viewer,
 	input: CompareInput,
 ): Promise<ComparePair> {
-	const viewerId = session.user.id;
-	const viewerIsAdmin = Boolean(session.user.isAdmin);
+	if (viewer.kind !== "member") {
+		throw new ORPCError("UNAUTHORIZED", {
+			message: "You must be logged in to compare.",
+		});
+	}
+	const viewerId = viewer.userId;
+	const viewerIsAdmin = isAdminViewer(viewer);
 
 	if (input.a.toLowerCase() === input.b.toLowerCase()) {
 		throw new ORPCError("BAD_REQUEST", {
@@ -99,10 +110,11 @@ export async function resolveComparePair(
 
 	for (const member of [a, b]) {
 		const own = member.id === viewerId;
+		// Banned members, and members blocked either way, read as not found.
 		if (
-			(member.isHidden || member.status === "banned") &&
 			!viewerIsAdmin &&
-			!own
+			!own &&
+			(member.status === "banned" || isBlockedFor(viewer, member.id))
 		) {
 			throw notFound(member.username);
 		}
@@ -124,12 +136,18 @@ export async function resolveComparePair(
 	}
 
 	const other = viewerSide === "a" ? b : viewerSide === "b" ? a : null;
-	const blocked =
+	// The other member must allow comparisons AND the viewer must be allowed to see their
+	// reads (a private profile or a private reads setting keeps a stranger out).
+	const blocked: ComparePair["blocked"] =
 		!viewerIsAdmin && other != null && !other.allowCompare
 			? "compare_off"
-			: null;
+			: !viewerIsAdmin &&
+					other != null &&
+					!mayViewSection(viewer, other, "reads")
+				? "reads_private"
+				: null;
 
-	return { viewerId, viewerIsAdmin, viewerSide, a, b, blocked };
+	return { viewer, viewerId, viewerIsAdmin, viewerSide, a, b, blocked };
 }
 
 const memberRef = (m: CompareMemberRow) => ({
@@ -222,9 +240,9 @@ export function buildScoreOutput(score: ReturnType<typeof scoreComparison>) {
 export async function compareMembers(
 	input: CompareInput,
 	db: Database,
-	session: Session,
+	viewer: Viewer,
 ): Promise<CompareOutput> {
-	const pair = await resolveComparePair(db, session, input);
+	const pair = await resolveComparePair(db, viewer, input);
 	const base = {
 		viewerIsAdmin: pair.viewerIsAdmin,
 		viewerSide: pair.viewerSide,
@@ -269,10 +287,10 @@ const finishKey = (
 export async function listCompareBooks(
 	input: CompareBooksInput,
 	db: Database,
-	session: Session,
+	viewer: Viewer,
 ): Promise<CompareBooksOutput> {
-	const pair = await resolveComparePair(db, session, input);
-	const empty = (blocked: "compare_off" | null): CompareBooksOutput => ({
+	const pair = await resolveComparePair(db, viewer, input);
+	const empty = (blocked: ComparePair["blocked"]): CompareBooksOutput => ({
 		blocked,
 		items: [],
 		metadata: { limit: input.limit, nextCursor: null, total: 0 },
@@ -396,15 +414,18 @@ export async function listCompareBooks(
 export async function searchCompareMembers(
 	input: CompareSearchMembersInput,
 	db: Database,
-	session: Session,
+	viewer: Viewer,
 ): Promise<CompareSearchMembersOutput> {
-	const isAdmin = Boolean(session.user.isAdmin);
+	const isAdmin = isAdminViewer(viewer);
 	const query = input.query.trim();
 	const users = await db.user.findMany({
 		where: {
-			...(isAdmin
-				? {}
-				: { isHidden: false, status: { not: "banned" }, allowCompare: true }),
+			// Only members the viewer could actually compare with: not blocked, and reads they may see.
+			AND: [
+				notBlockedWhere(viewer) as Prisma.UserWhereInput,
+				memberVisibleWhere(viewer, { section: "reads" }),
+			],
+			...(isAdmin ? {} : { status: { not: "banned" }, allowCompare: true }),
 			...(input.excludeUsername
 				? { username: { not: input.excludeUsername, mode: "insensitive" } }
 				: {}),
@@ -436,7 +457,7 @@ export async function searchCompareMembers(
 			image: user.image,
 			booksRead: user._count.reads,
 			compareOff: !user.allowCompare,
-			isMe: user.id === session.user.id,
+			isMe: viewer.kind === "member" && user.id === viewer.userId,
 		})),
 	};
 }

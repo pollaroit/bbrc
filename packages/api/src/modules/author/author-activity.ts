@@ -3,7 +3,6 @@ import type zod from "zod";
 import { mergeWhereFragments } from "../../utils/searching";
 import { BookListQueryInputSchema } from "../book/book.schema";
 import { buildBookListWhereWithAuthors } from "../book/book-list-where";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type { authorActivityFiltersSchema } from "./author.schema";
 
 type ActivityFilters = zod.infer<typeof authorActivityFiltersSchema>;
@@ -167,12 +166,9 @@ export async function buildScopedBookWhere(
 	);
 }
 
-/** Members shown on the author pages: never hidden ones; picked by username when asked. */
+/** Members picked by username when asked (what the viewer may see is decided by the reads/reviews where-helpers). */
 export function scopedMemberWhere(
 	members: readonly string[] | undefined,
 ): Prisma.UserWhereInput {
-	return mergeWhereFragments<Prisma.UserWhereInput>(
-		visibleOnSiteUserWhere,
-		members?.length ? { username: { in: [...members] } } : {},
-	);
+	return members?.length ? { username: { in: [...members] } } : {};
 }

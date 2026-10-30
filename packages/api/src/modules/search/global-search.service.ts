@@ -1,4 +1,4 @@
-import type { Database } from "@bbrc/db";
+import type { Database, Prisma } from "@bbrc/db";
 import {
 	authorNameToSlug,
 	countReadsForGoal,
@@ -7,9 +7,18 @@ import {
 	formatAuthorLifespan,
 	goalScopeFromStored,
 	richContentPreview,
+	type Viewer,
 } from "@bbrc/shared";
 import { findBookIdsByAuthorNameSearch } from "../book/book-list-search";
-import { visibleShelfWhere } from "../shelf/shelf-visibility";
+import { shelfVisibleWhere } from "../shelf/shelf-visibility";
+import { viewerIsAdmin } from "../user/member-access";
+import {
+	commentVisibleWhere,
+	goalVisibleWhere,
+	memberListVisibleWhere,
+	postVisibleWhere,
+	reviewVisibleWhere,
+} from "../visibility/visibility-resources";
 import type {
 	GlobalSearchHit,
 	GlobalSearchHitType,
@@ -30,8 +39,8 @@ type SearchContext = {
 	db: Database;
 	query: string;
 	isAdmin: boolean;
-	/** The signed-in member, so their own private shelves can be found. */
-	viewerId?: string;
+	/** Who is searching: decides which posts, reviews, shelves and goals can turn up. */
+	viewer: Viewer;
 	limit: number;
 };
 
@@ -198,7 +207,8 @@ async function searchUsers(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.user.findMany({
 		where: {
 			status: { in: ["active", "warned"] },
-			isHidden: false,
+			// Private members stay findable by name and username; blocked ones do not.
+			AND: [memberListVisibleWhere(ctx.viewer) as Prisma.UserWhereInput],
 			OR: [
 				{ name: containsQuery(ctx.query) },
 				{ username: containsQuery(ctx.query) },
@@ -210,11 +220,13 @@ async function searchUsers(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 			username: true,
 			name: true,
 			image: true,
+			profileVisibility: true,
 		},
 	});
 
 	return rows.map((row) => ({
 		type: "user" as const,
+		isPrivate: row.profileVisibility === "private",
 		title: row.name?.trim() || row.username,
 		description: `@${row.username}`,
 		href: `/users/${row.username}`,
@@ -225,7 +237,7 @@ async function searchUsers(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 async function searchPosts(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.post.findMany({
 		where: {
-			author: { isHidden: false },
+			AND: [postVisibleWhere(ctx.viewer) as Prisma.PostWhereInput],
 			OR: [
 				{ content: containsQuery(ctx.query) },
 				{ slug: containsQuery(ctx.query) },
@@ -254,7 +266,7 @@ async function searchPosts(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 async function searchFeedbacks(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.feedback.findMany({
 		where: {
-			author: { isHidden: false },
+			AND: [reviewVisibleWhere(ctx.viewer) as Prisma.FeedbackWhereInput],
 			review: containsQuery(ctx.query),
 		},
 		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
@@ -295,7 +307,7 @@ function commentHref(row: {
 async function searchComments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.comment.findMany({
 		where: {
-			author: { isHidden: false },
+			AND: [commentVisibleWhere(ctx.viewer) as Prisma.CommentWhereInput],
 			OR: [
 				{ content: containsQuery(ctx.query) },
 				{ slug: containsQuery(ctx.query) },
@@ -340,13 +352,11 @@ async function searchComments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 async function searchShelves(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.shelf.findMany({
 		where: {
-			// Private shelves only turn up for their owner and collaborators; the
-			// Wishlist has its own page and is never listed here.
+			// A shelf turns up only for those who may see it (owner and collaborators
+			// included); the Wishlist has its own page and is never listed here.
 			isWishlist: false,
 			AND: [
-				visibleShelfWhere(
-					ctx.viewerId ? { userId: ctx.viewerId, isAdmin: ctx.isAdmin } : null,
-				),
+				shelfVisibleWhere(ctx.viewer),
 				{
 					OR: [
 						{ title: containsQuery(ctx.query) },
@@ -435,7 +445,8 @@ async function searchDocuments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 async function searchGoals(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.goal.findMany({
 		where: {
-			user: { isHidden: false, status: { in: ["active", "warned"] } },
+			user: { status: { in: ["active", "warned"] } },
+			AND: [goalVisibleWhere(ctx.viewer) as Prisma.GoalWhereInput],
 			OR: [
 				{ title: containsQuery(ctx.query) },
 				{ slug: containsQuery(ctx.query) },
@@ -584,16 +595,15 @@ function rankHits(
 export async function globalSearch(
 	input: GlobalSearchInput,
 	db: Database,
-	isAdmin: boolean,
-	viewerId?: string,
+	viewer: Viewer,
 ): Promise<GlobalSearchOutput> {
 	const types = input.types ?? globalSearchHitTypes;
 	const narrowed = input.types != null && input.types.length === 1;
 	const ctx: SearchContext = {
 		db,
 		query: input.query,
-		isAdmin,
-		viewerId,
+		isAdmin: viewerIsAdmin(viewer),
+		viewer,
 		limit: narrowed ? GLOBAL_SEARCH_NARROW_LIMIT : GLOBAL_SEARCH_PER_TYPE_LIMIT,
 	};
 

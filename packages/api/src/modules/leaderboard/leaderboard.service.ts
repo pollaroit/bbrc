@@ -1,5 +1,6 @@
 import type { Database, Prisma } from "@bbrc/db";
-import { getZonedParts, resolveClubTimeZone } from "@bbrc/shared";
+import { getZonedParts, resolveClubTimeZone, type Viewer } from "@bbrc/shared";
+import { mayViewProfile } from "../user/member-access";
 import type {
 	GetLeaderboardHubInput,
 	GetLeaderboardHubOutput,
@@ -20,7 +21,6 @@ const HUB_WINDOW = 5;
 
 const memberWhere = {
 	status: { in: ["active", "warned", "banned"] as const },
-	isHidden: false,
 } satisfies Prisma.UserWhereInput;
 
 const memberProfileSelect = {
@@ -29,6 +29,7 @@ const memberProfileSelect = {
 	name: true,
 	image: true,
 	isAdmin: true,
+	profileVisibility: true,
 } as const;
 
 type MemberProfile = Prisma.UserGetPayload<{
@@ -36,6 +37,9 @@ type MemberProfile = Prisma.UserGetPayload<{
 }>;
 
 type MetricRow = MemberProfile & { metric: number };
+
+/** A ranked row before identity is decided: ranks and points always cover every member. */
+type RankedRow = LeaderboardEntry & { id: string; profileVisibility: string };
 
 function periodDescriptionSuffix(period: LeaderboardPeriod): string {
 	switch (period) {
@@ -81,7 +85,7 @@ function assignCompetitionRanks(
 	return ranks;
 }
 
-function toRankedEntries(rows: MetricRow[]): LeaderboardEntry[] {
+function toRankedEntries(rows: MetricRow[]): RankedRow[] {
 	const sorted = [...rows].sort((left, right) => {
 		const metricDelta = right.metric - left.metric;
 		if (metricDelta !== 0) {
@@ -98,25 +102,54 @@ function toRankedEntries(rows: MetricRow[]): LeaderboardEntry[] {
 	);
 
 	return sorted.map((row, index) => ({
+		id: row.id,
+		profileVisibility: row.profileVisibility,
 		rank: ranks[index] ?? index + 1,
 		username: row.username,
 		name: row.name,
 		image: row.image,
 		isAdmin: row.isAdmin,
 		metric: row.metric,
+		anonymous: false,
+		isPrivate: row.profileVisibility === "private",
+		isViewer: false,
 	}));
 }
 
-function sliceWindowAroundUsername(
-	entries: LeaderboardEntry[],
-	username: string,
+/** Blanks the identity of a private member the viewer may not see; flags the viewer's own row. */
+export function entryForViewer(
+	row: RankedRow,
+	viewer: Viewer,
+): LeaderboardEntry {
+	const isViewer = viewer.kind === "member" && viewer.userId === row.id;
+	const mayView = mayViewProfile(viewer, {
+		id: row.id,
+		profileVisibility:
+			row.profileVisibility === "private" ? "private" : "public",
+	});
+	return {
+		rank: row.rank,
+		username: mayView ? row.username : "",
+		name: mayView ? row.name : "",
+		image: mayView ? row.image : null,
+		isAdmin: mayView ? row.isAdmin : false,
+		metric: row.metric,
+		anonymous: !mayView,
+		isPrivate: row.isPrivate,
+		isViewer,
+	};
+}
+
+function sliceWindowAroundMember(
+	entries: RankedRow[],
+	memberId: string,
 	windowSize: number,
-): LeaderboardEntry[] {
+): RankedRow[] {
 	if (entries.length === 0) {
 		return [];
 	}
 
-	const index = entries.findIndex((entry) => entry.username === username);
+	const index = entries.findIndex((entry) => entry.id === memberId);
 	if (index === -1) {
 		return entries.slice(0, windowSize);
 	}
@@ -129,14 +162,14 @@ function sliceWindowAroundUsername(
 }
 
 function viewerFromEntries(
-	entries: LeaderboardEntry[],
-	username: string | undefined,
+	entries: RankedRow[],
+	viewer: Viewer,
 ): GetLeaderboardOutput["viewer"] {
-	if (!username) {
+	if (viewer.kind !== "member") {
 		return null;
 	}
 
-	const entry = entries.find((row) => row.username === username);
+	const entry = entries.find((row) => row.id === viewer.userId);
 	if (!entry) {
 		return null;
 	}
@@ -330,7 +363,7 @@ async function loadRankedEntriesForKind(
 	db: Database,
 	kind: LeaderboardKind,
 	period: LeaderboardPeriod,
-): Promise<LeaderboardEntry[]> {
+): Promise<RankedRow[]> {
 	const [profiles, metricsByUserId] = await Promise.all([
 		loadMemberProfiles(db),
 		loadMetricsByKind(db, kind, period),
@@ -342,14 +375,16 @@ async function loadRankedEntriesForKind(
 function buildLeaderboardOutput(
 	kind: LeaderboardKind,
 	period: LeaderboardPeriod,
-	entries: LeaderboardEntry[],
-	viewerUsername: string | undefined,
-	itemsOverride?: LeaderboardEntry[],
+	entries: RankedRow[],
+	viewer: Viewer,
+	itemsOverride?: RankedRow[],
 ): GetLeaderboardOutput {
 	const meta = LEADERBOARD_KIND_META[kind];
 	const periodLabel = LEADERBOARD_PERIOD_META[period].label;
 
-	const items = itemsOverride != null ? [...itemsOverride] : [...entries];
+	const items = (itemsOverride != null ? itemsOverride : entries).map((row) =>
+		entryForViewer(row, viewer),
+	);
 
 	return {
 		kind,
@@ -360,25 +395,25 @@ function buildLeaderboardOutput(
 		metricLabel: meta.metricLabel,
 		totalMembers: entries.length,
 		items,
-		viewer: viewerFromEntries(entries, viewerUsername),
+		viewer: viewerFromEntries(entries, viewer),
 	};
 }
 
 export async function getLeaderboard(
 	input: GetLeaderboardInput,
 	db: Database,
-	viewerUsername?: string,
+	viewer: Viewer,
 ): Promise<GetLeaderboardOutput> {
 	const period = normalizeLeaderboardPeriodForKind(input.kind, input.period);
 	const entries = await loadRankedEntriesForKind(db, input.kind, period);
 
-	return buildLeaderboardOutput(input.kind, period, entries, viewerUsername);
+	return buildLeaderboardOutput(input.kind, period, entries, viewer);
 }
 
 export async function getLeaderboardHub(
 	input: GetLeaderboardHubInput,
 	db: Database,
-	viewerUsername?: string,
+	viewer: Viewer,
 ): Promise<GetLeaderboardHubOutput> {
 	const periodLabel = LEADERBOARD_PERIOD_META[input.period].label;
 
@@ -387,9 +422,12 @@ export async function getLeaderboardHub(
 			const period = normalizeLeaderboardPeriodForKind(kind, input.period);
 			const entries = await loadRankedEntriesForKind(db, kind, period);
 			const meta = LEADERBOARD_KIND_META[kind];
-			const items = viewerUsername
-				? sliceWindowAroundUsername(entries, viewerUsername, HUB_WINDOW)
-				: [];
+			const items =
+				viewer.kind === "member"
+					? sliceWindowAroundMember(entries, viewer.userId, HUB_WINDOW).map(
+							(row) => entryForViewer(row, viewer),
+						)
+					: [];
 
 			return {
 				kind,
@@ -398,7 +436,7 @@ export async function getLeaderboardHub(
 				metricLabel: meta.metricLabel,
 				totalMembers: entries.length,
 				items,
-				viewer: viewerFromEntries(entries, viewerUsername),
+				viewer: viewerFromEntries(entries, viewer),
 			};
 		}),
 	);
@@ -414,13 +452,18 @@ export async function getLeaderboardHub(
 export async function getLeaderboardOgSnapshot(
 	kind: LeaderboardKind,
 	db: Database,
+	viewer: Viewer,
 	period: LeaderboardPeriod = "month",
 ): Promise<{ leaderName: string; leaderMetric: number; memberCount: number }> {
 	const entries = await loadRankedEntriesForKind(db, kind, period);
-	const leader = entries[0];
+	const leader = entries[0] ? entryForViewer(entries[0], viewer) : undefined;
 
 	return {
-		leaderName: leader?.name ?? "No members yet",
+		leaderName: leader
+			? leader.anonymous
+				? "A private member"
+				: leader.name
+			: "No members yet",
 		leaderMetric: leader?.metric ?? 0,
 		memberCount: entries.length,
 	};

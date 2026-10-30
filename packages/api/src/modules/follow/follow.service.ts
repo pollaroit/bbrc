@@ -7,15 +7,10 @@ export type FollowState = { following: boolean; followerCount: number };
 
 type ResolvedTarget = { type: "author"; id: string; slug: string };
 
-const NOT_YET = "Following members is not available yet.";
-
 async function resolveTarget(
 	db: Database,
 	target: FollowTarget,
 ): Promise<ResolvedTarget> {
-	if (target.type === "user") {
-		throw new ORPCError("BAD_REQUEST", { message: NOT_YET });
-	}
 	const author = await findAuthorBySlugOrRedirect(db, target.slug);
 	if (!author) {
 		throw new ORPCError("NOT_FOUND", { message: "Author not found." });
@@ -125,9 +120,6 @@ export async function getFollowStates(
 	const mineIds = new Set(mine.map((row) => row.authorId));
 
 	return targets.map((target) => {
-		if (target.type === "user") {
-			return { target, following: false, followerCount: 0 };
-		}
 		const id = idBySlug.get(target.slug);
 		return {
 			target,

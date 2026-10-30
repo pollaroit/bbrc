@@ -8,7 +8,6 @@ import {
 	formatAuthorLifespan,
 	getBookCountryName,
 } from "@bbrc/shared";
-import { visibleOnSiteUserWhere } from "../user/user-visibility";
 import type { AuthorCard, AuthorProfile } from "./author.schema";
 
 // ── Small mappers ──────────────────────────────────────────────────────────
@@ -105,12 +104,12 @@ export async function loadAuthorAggregates(
 			? [[], []]
 			: await Promise.all([
 					db.read.findMany({
-						where: { bookId: { in: bookIds }, user: visibleOnSiteUserWhere },
+						where: { bookId: { in: bookIds } },
 						select: { bookId: true, userId: true },
 					}),
 					db.feedback.groupBy({
 						by: ["bookId"],
-						where: { bookId: { in: bookIds }, author: visibleOnSiteUserWhere },
+						where: { bookId: { in: bookIds } },
 						_count: { _all: true },
 						_sum: { rating: true },
 					}),
@@ -165,7 +164,7 @@ export async function loadAuthorAggregates(
 	return result;
 }
 
-/** Followers per author (hidden members do not count) and the viewer's own follows. */
+/** Followers per author (everyone counts) and the viewer's own follows. */
 export async function loadFollowInfo(
 	db: Database,
 	authorIds: readonly string[],
@@ -181,7 +180,6 @@ export async function loadFollowInfo(
 			where: {
 				targetType: "author",
 				authorId: { in: [...authorIds] },
-				follower: visibleOnSiteUserWhere,
 			},
 			_count: { _all: true },
 		}),
@@ -433,8 +431,8 @@ export const authorBookSelect = {
 	createdAt: true,
 	_count: {
 		select: {
-			reads: { where: { user: visibleOnSiteUserWhere } },
-			feedbacks: { where: { author: visibleOnSiteUserWhere } },
+			reads: true,
+			feedbacks: true,
 		},
 	},
 	seriesMembership: {

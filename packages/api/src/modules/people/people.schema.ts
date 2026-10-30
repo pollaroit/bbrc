@@ -83,6 +83,8 @@ export const PeopleListItemSchema = zod.object({
 	rpLevel: MemberLevelSchema,
 	bio: zod.string().nullable(),
 	location: zod.string().nullable(),
+	/** True for a private profile: non-friends get name, username and avatar only. */
+	isPrivate: zod.boolean(),
 	favoriteGenres: zod.array(zod.string()),
 	reads: zod.number().int().min(0),
 	reviews: zod.number().int().min(0),
