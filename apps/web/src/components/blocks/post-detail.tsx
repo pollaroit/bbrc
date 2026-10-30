@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { FriendButton } from "@/components/blocks/friend-button";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
 import { PostCommentFocusSection } from "@/components/blocks/post-comment-focus-section";
@@ -51,6 +52,7 @@ export function PostDetail({
 						<UserPanel user={post.author} className="min-w-0 items-start" />
 					</Link>
 					<div className="flex shrink-0 items-center gap-2">
+						<FriendButton username={post.author.username} />
 						<div className="text-right text-muted-foreground text-xs">
 							<RelativeTime date={post.createdAt} />
 							{post.editedAt ? (
