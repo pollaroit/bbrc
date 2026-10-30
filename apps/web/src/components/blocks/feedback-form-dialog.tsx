@@ -4,6 +4,7 @@ import {
 	contentPlainText,
 	type FeedbackRatingStep,
 	isFeedbackRatingStep,
+	type Visibility,
 } from "@bbrc/shared";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
@@ -32,6 +33,7 @@ import {
 	uploadReviewImage,
 } from "@/components/blocks/review-image-field";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
+import { VisibilitySelect } from "@/components/blocks/visibility-select";
 import { authClient } from "@/lib/auth-client";
 import { invalidateFeedbackQueries } from "@/lib/feedback/invalidate-feedback-queries";
 import {
@@ -54,6 +56,8 @@ export type FeedbackFormInitialValues = {
 	isSpoiler: boolean;
 	/** The review's current image, when it has one. */
 	imageUrl?: string | null;
+	/** Who can see the review. Needed to show the level when editing; without it the selector is hidden and the level is left alone. */
+	visibility?: Visibility;
 };
 
 type FeedbackFormDialogProps = {
@@ -84,6 +88,13 @@ export function FeedbackFormDialog({
 	const [review, setReview] = useState("");
 	const [isSpoiler, setIsSpoiler] = useState(false);
 	const [imageFile, setImageFile] = useState<File | null>(null);
+	const [visibility, setVisibility] = useState<Visibility>("public");
+	const loadedVisibility = initialValues?.visibility;
+	const visibilityReady = !isEdit || loadedVisibility != null;
+
+	useEffect(() => {
+		if (isEdit && loadedVisibility) setVisibility(loadedVisibility);
+	}, [isEdit, loadedVisibility]);
 
 	useEffect(() => {
 		if (!open) {
@@ -92,6 +103,7 @@ export function FeedbackFormDialog({
 				setReview("");
 				setIsSpoiler(false);
 				setImageFile(null);
+				setVisibility("public");
 			}
 			return;
 		}
@@ -228,6 +240,8 @@ export function FeedbackFormDialog({
 			rating,
 			review,
 			isSpoiler,
+			// Edit: only send a level we have actually loaded, so it is never overwritten blindly.
+			...(visibilityReady ? { visibility } : {}),
 		};
 
 		if (isEdit) {
@@ -301,6 +315,21 @@ export function FeedbackFormDialog({
 							/>
 						)}
 					</Field>
+					{visibilityReady ? (
+						<Field>
+							<FieldLabel>Who can see it</FieldLabel>
+							<VisibilitySelect
+								value={visibility}
+								onChange={setVisibility}
+								disabled={pending || !visibilityReady}
+								label="Who can see this review"
+								className="w-fit"
+							/>
+							<FieldDescription>
+								Counts towards the book's rating either way.
+							</FieldDescription>
+						</Field>
+					) : null}
 					<Field>
 						<div className="flex items-center gap-2">
 							<Checkbox

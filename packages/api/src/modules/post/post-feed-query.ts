@@ -40,13 +40,13 @@ const idList = (ids: Iterable<string>): Prisma.Sql | null => {
 
 /**
  * Which posts the viewer may see, as SQL on `p` (post) and `u` (its author): the same
- * rule as `postVisibleWhere` (profile level, blocks, admins see all). A private
- * profile shows its posts only to the author, friends and admins; a blocked author
- * never shows.
+ * rule as `postVisibleWhere` (the post's own level, the author's profile level, blocks,
+ * admins see all). Friends-only posts and private profiles show only to the author,
+ * friends and admins; only-me posts only to the author; a blocked author never shows.
  */
 export function postVisibilitySql(viewer: Viewer): Prisma.Sql {
 	if (viewer.kind === "anonymous") {
-		return Prisma.sql`u.profile_visibility = 'public'`;
+		return Prisma.sql`(u.profile_visibility = 'public' AND p.visibility = 'public')`;
 	}
 	if (viewer.isAdmin) return Prisma.sql`TRUE`;
 	const friends = idList(viewer.friendIds);
@@ -62,6 +62,7 @@ export function postVisibilitySql(viewer: Viewer): Prisma.Sql {
     OR (
       ${notBlocked}
       AND (u.profile_visibility = 'public' OR ${friendOfAuthor})
+      AND (p.visibility = 'public' OR (p.visibility = 'friends' AND ${friendOfAuthor}))
     )
   )`;
 }
@@ -72,6 +73,7 @@ function buildRankedWhere(
 	rangeMin: Date | undefined,
 	authorUsername: string | undefined,
 	cursor: Extract<PostFeedCursor, { kind: "top" | "hot" }> | null,
+	authorIds?: string[],
 ): Prisma.Sql {
 	const parts: Prisma.Sql[] = [postVisibilitySql(viewer)];
 
@@ -81,6 +83,15 @@ function buildRankedWhere(
 
 	if (authorUsername) {
 		parts.push(Prisma.sql`u.username = ${authorUsername}`);
+	}
+
+	// "From friends": only posts by these members (nobody when the list is empty).
+	if (authorIds) {
+		parts.push(
+			authorIds.length > 0
+				? Prisma.sql`p.author_id IN (${Prisma.join(authorIds)})`
+				: Prisma.sql`FALSE`,
+		);
 	}
 
 	if (cursor && cursor.kind === mode) {
@@ -125,6 +136,8 @@ export async function queryRankedPostSlugs(
 		mode: "top" | "hot";
 		feedRange: PostFeedRange;
 		authorUsername?: string;
+		/** Only posts by these members. */
+		authorIds?: string[];
 		limit: number;
 		cursor: PostFeedCursor | null;
 		viewer: Viewer;
@@ -141,6 +154,7 @@ export async function queryRankedPostSlugs(
 		rangeMin,
 		input.authorUsername,
 		cursor,
+		input.authorIds,
 	);
 
 	const orderBy =

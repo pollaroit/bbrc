@@ -1,4 +1,5 @@
-import type { Database } from "@bbrc/db";
+import type { Database, Prisma } from "@bbrc/db";
+import type { Viewer } from "@bbrc/shared";
 import {
 	isBotUserAgent,
 	milestonesCrossed,
@@ -13,6 +14,11 @@ import {
 } from "@bbrc/shared";
 import { evaluateAchievementsForUser } from "../achievement/achievement.service";
 import { dispatchNotification } from "../notification/notification.service";
+import { shelfVisibleWhere } from "../shelf/shelf-visibility";
+import {
+	postVisibleWhere,
+	reviewVisibleWhere,
+} from "../visibility/visibility-resources";
 import type { RecordViewItem } from "./view.schema";
 
 export type ViewActor = {
@@ -77,6 +83,7 @@ export async function countBotRequest(db: Database) {
 async function resolveTargets(
 	db: Database,
 	items: RecordViewItem[],
+	viewer: Viewer,
 ): Promise<Map<string, Target>> {
 	const byResource = new Map<ViewResourceKind, Set<string>>();
 	for (const item of items) {
@@ -97,8 +104,12 @@ async function resolveTargets(
 					add({ resource, id: row.id, ref: row.slug, ownerId: null });
 				}
 			} else if (resource === "post") {
+				// A view of something the viewer cannot open is never recorded.
 				const rows = await db.post.findMany({
-					where: { slug: { in: refs } },
+					where: {
+						slug: { in: refs },
+						AND: [postVisibleWhere(viewer) as Prisma.PostWhereInput],
+					},
 					select: { id: true, slug: true, authorId: true },
 				});
 				for (const row of rows) {
@@ -106,7 +117,10 @@ async function resolveTargets(
 				}
 			} else if (resource === "review") {
 				const rows = await db.feedback.findMany({
-					where: { slug: { in: refs } },
+					where: {
+						slug: { in: refs },
+						AND: [reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput],
+					},
 					select: { id: true, slug: true, authorId: true },
 				});
 				for (const row of rows) {
@@ -131,9 +145,8 @@ async function resolveTargets(
 				if (pairs.length === 0) return;
 				const rows = await db.shelf.findMany({
 					where: {
-						status: "active",
-						// Private shelves are never tracked.
-						visibility: "public",
+						// Only shelves the viewer may open (active, at a level they reach).
+						...shelfVisibleWhere(viewer, { listing: true }),
 						OR: pairs.map(({ username, slug }) => ({
 							slug,
 							user: { username },
@@ -176,6 +189,7 @@ export async function recordViews(
 	db: Database,
 	actor: ViewActor,
 	rawItems: RecordViewItem[],
+	viewer: Viewer,
 ): Promise<RecordViewsResult> {
 	if (isBotUserAgent(actor.userAgent)) {
 		await countBotRequest(db);
@@ -212,7 +226,7 @@ export async function recordViews(
 			},
 			select: { resource: true, resourceId: true, kind: true },
 		}),
-		resolveTargets(db, items),
+		resolveTargets(db, items, viewer),
 	]);
 	if (sentLastHour >= VIEW_HOURLY_LIMIT) {
 		return { recorded: 0, skipped: "limit" };

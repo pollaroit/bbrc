@@ -1,4 +1,4 @@
-import type { Database } from "@bbrc/db";
+import type { Database, Prisma } from "@bbrc/db";
 import {
 	acceptsFriendsAutomatically,
 	checkFriendRequest,
@@ -13,6 +13,10 @@ import { ORPCError } from "@orpc/server";
 import { dispatchNotification } from "../notification/notification.service";
 import { buildItems, userListSelect } from "../people/people.service";
 import { loadFriendIds } from "../visibility/viewer";
+import {
+	readingVisibleWhere,
+	readVisibleWhere,
+} from "../visibility/visibility-resources";
 import type { FriendMember, FriendState } from "./friend.schema";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -487,6 +491,82 @@ export async function listFriends(
 			nextCursor: rows.length > input.limit ? (page.at(-1)?.id ?? null) : null,
 		},
 	};
+}
+
+/**
+ * Friends of the viewer who read a book or are reading it now, each respecting that
+ * friend's reads and currently-reading settings. Up to 5 are returned, the ones
+ * reading it first; the total counts everyone visible.
+ */
+export async function friendsWhoReadBook(
+	db: Database,
+	viewer: Viewer,
+	bookSlug: string,
+) {
+	const empty = {
+		total: 0,
+		items: [] as (FriendMember & { state: "reading" | "read" })[],
+	};
+	if (viewer.kind !== "member") return empty;
+	const book = await db.book.findUnique({
+		where: { slug: bookSlug },
+		select: { id: true },
+	});
+	if (!book) return empty;
+	const friendIds = (
+		viewer.isAdmin
+			? await loadFriendIds(db, viewer.userId)
+			: [...viewer.friendIds]
+	).filter((id) => !viewer.blockedIds.has(id));
+	if (friendIds.length === 0) return empty;
+
+	const memberFields = {
+		select: {
+			username: true,
+			name: true,
+			image: true,
+			profileVisibility: true,
+		},
+	} as const;
+	const [reading, reads] = await Promise.all([
+		db.reading.findMany({
+			where: {
+				bookId: book.id,
+				finishedAt: null,
+				userId: { in: friendIds },
+				AND: [readingVisibleWhere(viewer) as Prisma.ReadingWhereInput],
+			},
+			select: { userId: true, user: memberFields },
+		}),
+		db.read.findMany({
+			where: {
+				bookId: book.id,
+				userId: { in: friendIds },
+				AND: [readVisibleWhere(viewer) as Prisma.ReadWhereInput],
+			},
+			select: { userId: true, user: memberFields },
+		}),
+	]);
+
+	const seen = new Set<string>();
+	const all: (FriendMember & { state: "reading" | "read" })[] = [];
+	for (const [state, rows] of [
+		["reading", reading],
+		["read", reads],
+	] as const) {
+		for (const row of rows) {
+			if (seen.has(row.userId)) continue;
+			seen.add(row.userId);
+			all.push({
+				username: row.user.username,
+				name: row.user.name,
+				image: row.user.image ?? null,
+				isPrivate: row.user.profileVisibility === "private",
+				state,
+			});
+		}
+	}
+	return { total: all.length, items: all.slice(0, 5) };
 }
 
 /** The member's pending requests, both directions (banned members left out). */

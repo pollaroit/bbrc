@@ -32,6 +32,7 @@ import {
 	tierlistImageUrls,
 } from "../post-tierlist/post-tierlist.service";
 import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
+import { loadFriendIds } from "../visibility/viewer";
 import {
 	commentVisibleWhere,
 	postVisibleWhere,
@@ -288,6 +289,7 @@ function mapPostListRow(
 		content: row.content,
 		imageUrl: row.imageUrl,
 		isSpoiler: row.isSpoiler,
+		visibility: row.visibility,
 		allowLikes: row.allowLikes,
 		allowComments: row.allowComments,
 		allowShares: row.allowShares,
@@ -332,6 +334,7 @@ async function mapPostDetailRow(
 		content: row.content,
 		imageUrl: row.imageUrl,
 		isSpoiler: row.isSpoiler,
+		visibility: row.visibility,
 		allowLikes: row.allowLikes,
 		allowComments: row.allowComments,
 		allowShares: row.allowShares,
@@ -458,9 +461,19 @@ export async function getPostList(
 	const { feedSort, feedRange } = resolveFeedMode(input);
 	const feedCursor = input.cursor ? decodePostFeedCursor(input.cursor) : null;
 
+	// "From friends": posts by the viewer's friends only (an admin has no friends loaded, so theirs are read).
+	const friendAuthorIds = input.friendsOnly
+		? viewer.kind === "member"
+			? viewer.isAdmin
+				? await loadFriendIds(db, viewer.userId)
+				: [...viewer.friendIds]
+			: []
+		: undefined;
+
 	const baseWhere = mergeWhereFragments<Prisma.PostWhereInput>(
 		searching.use(),
 		input.authorUsername ? postAuthorUsernameWhere(input.authorUsername) : {},
+		friendAuthorIds ? { authorId: { in: friendAuthorIds } } : {},
 		input.hasAttachedBook != null
 			? postAttachedBookWhere(input.hasAttachedBook)
 			: {},
@@ -472,6 +485,7 @@ export async function getPostList(
 			mode: feedSort,
 			feedRange,
 			authorUsername: input.authorUsername,
+			authorIds: friendAuthorIds,
 			limit: overfetch,
 			cursor: feedCursor,
 			viewer,
@@ -583,9 +597,16 @@ export async function createPost(
 	db: Database,
 	viewer: Viewer,
 ): Promise<CreatePostOutput> {
+	const author = await db.user.findUnique({
+		where: { id: userId },
+		select: { defaultPostVisibility: true },
+	});
+	const visibility =
+		input.visibility ?? author?.defaultPostVisibility ?? "public";
 	const prepared = await prepareContentMentions(db, {
 		content: assertNormalizedSocialContent(input.content),
 		authorId: userId,
+		audience: { ownerId: userId, item: visibility },
 	});
 	const content = prepared.content;
 	// Outside links get their preview ready now (bounded; never fails the save).
@@ -610,6 +631,7 @@ export async function createPost(
 		const post = await tx.post.create({
 			data: {
 				content,
+				visibility,
 				isSpoiler: input.isSpoiler ?? false,
 				allowLikes: input.allowLikes ?? true,
 				allowComments: input.allowComments ?? true,
@@ -659,7 +681,13 @@ export async function createPost(
 		href: `/posts/${result.slug}`,
 	});
 	// A member who is mentioned gets the mention, not also the "new post" notice.
-	void notifyMemberPosted(db, userId, result.slug, result.freshMentions);
+	void notifyMemberPosted(
+		db,
+		userId,
+		result.slug,
+		result.freshMentions,
+		visibility,
+	);
 
 	return { slug: result.slug, xpAwarded: result.xpAwarded };
 }
@@ -677,6 +705,7 @@ export async function updatePost(
 			authorId: true,
 			content: true,
 			imageUrl: true,
+			visibility: true,
 			poll: { select: { id: true } },
 			tierlist: { select: { id: true } },
 		},
@@ -707,6 +736,10 @@ export async function updatePost(
 			? await prepareContentMentions(db, {
 					content: assertNormalizedSocialContent(input.content),
 					authorId: userId,
+					audience: {
+						ownerId: userId,
+						item: input.visibility ?? post.visibility,
+					},
 					alreadyMentionedIds: await loadMentionedIds(db, {
 						kind: "post",
 						id: post.id,
@@ -748,6 +781,9 @@ export async function updatePost(
 				...(normalizedContent != null ? { content: normalizedContent } : {}),
 				...(input.isSpoiler !== undefined
 					? { isSpoiler: input.isSpoiler }
+					: {}),
+				...(input.visibility !== undefined
+					? { visibility: input.visibility }
 					: {}),
 				...(input.allowLikes !== undefined
 					? { allowLikes: input.allowLikes }

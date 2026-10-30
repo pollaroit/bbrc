@@ -1,6 +1,7 @@
 "use client";
 
 import type { CreateGoalInput } from "@bbrc/api/modules/goal/goal.schema";
+import type { Visibility } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
@@ -17,6 +18,7 @@ import { BookOpen, Globe, Minus, PenLine, Plus } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { ShelfOptionPicker } from "@/components/blocks/shelf-form-options";
+import { VisibilitySelect } from "@/components/blocks/visibility-select";
 import { ListingAuthorMultiSelect } from "@/components/listing/listing-author-multi-select";
 import { ListingCountryMultiSelect } from "@/components/listing/listing-country-multi-select";
 import { cn } from "@/lib/utils";
@@ -29,6 +31,8 @@ export type GoalFormValues = {
 	scopeKind: CreateGoalInput["scopeKind"];
 	authorSlugs: string[];
 	countryCodes: string[];
+	/** Left out when the current level is not known: the selector is hidden and nothing is sent. */
+	visibility?: Visibility;
 };
 
 type GoalFormDialogProps = {
@@ -249,6 +253,19 @@ export function GoalFormDialog({
 							className="resize-y"
 						/>
 					</Field>
+
+					{values.visibility ? (
+						<Field>
+							<FieldLabel>Who can see it</FieldLabel>
+							<VisibilitySelect
+								value={values.visibility}
+								onChange={(visibility) => patch({ visibility })}
+								disabled={pending}
+								label="Who can see this goal"
+								className="w-fit"
+							/>
+						</Field>
+					) : null}
 
 					<ShelfOptionPicker
 						name="goal-scope"

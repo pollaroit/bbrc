@@ -2,9 +2,12 @@
 
 import { InfiniteScroll } from "@bbrc/ui/components/infinite-scroll";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { FeedTabs } from "@/components/blocks/feed-tabs";
 import { PostCard } from "@/components/blocks/post-card";
 import { PostFeedToolbar } from "@/components/blocks/post-feed-toolbar";
+import { authClient } from "@/lib/auth-client";
 import {
 	toPostFeedListInput,
 	usePostFeedSearchParams,
@@ -42,6 +45,16 @@ export function PostFeed({
 	endMessage = "You have reached the end of the feed.",
 }: PostFeedProps = {}) {
 	const [feedParams] = usePostFeedSearchParams();
+	const { data: session } = authClient.useSession();
+	const signedIn = Boolean(session?.user);
+	// Signed-out visitors only ever get the "For You" feed.
+	const friendsTab =
+		showFeedControls && signedIn && feedParams.feed === "friends";
+	const friendList = useQuery({
+		...orpc.friend.list.queryOptions({ input: { limit: 1 } }),
+		enabled: friendsTab,
+	});
+	const hasNoFriends = friendsTab && friendList.data?.count === 0;
 
 	const {
 		data,
@@ -58,7 +71,10 @@ export function PostFeed({
 			getNextPageParam: (lastPage) => lastPage.metadata.nextCursor ?? undefined,
 			input: (pageCursor) => ({
 				...(showFeedControls
-					? toPostFeedListInput(feedParams, pageCursor)
+					? toPostFeedListInput(
+							{ ...feedParams, feed: friendsTab ? "friends" : "for-you" },
+							pageCursor,
+						)
 					: {
 							limit: POST_FEED_LIMIT,
 							feedSort: "recent" as const,
@@ -78,6 +94,7 @@ export function PostFeed({
 
 	return (
 		<div className="flex flex-col gap-4">
+			{showFeedControls && signedIn ? <FeedTabs /> : null}
 			{showFeedControls ? <PostFeedToolbar /> : null}
 
 			<InfiniteScroll
@@ -96,6 +113,24 @@ export function PostFeed({
 				isEmpty={posts.length === 0}
 				emptyTitle={emptyTitle}
 				emptyDescription={emptyDescription}
+				emptyContent={
+					friendsTab ? (
+						<div className="border border-border border-dashed p-8 text-center">
+							<p className="font-medium text-sm">No posts from friends yet</p>
+							<p className="mt-1 text-muted-foreground text-sm">
+								{hasNoFriends
+									? "You have no friends here yet. Add some to see what they share."
+									: "When your friends post, it will show up here."}
+							</p>
+							<Link
+								href="/friends"
+								className="mt-3 inline-block text-primary text-sm underline-offset-4 hover:underline"
+							>
+								Find friends
+							</Link>
+						</div>
+					) : undefined
+				}
 				loadingContent={<PostFeedSkeleton />}
 				endMessage={endMessage}
 			>

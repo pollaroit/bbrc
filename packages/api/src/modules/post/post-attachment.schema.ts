@@ -267,6 +267,7 @@ export const postAttachmentSelect = {
 			slug: true,
 			rating: true,
 			review: true,
+			visibility: true,
 			authorId: true,
 			author: {
 				select: {
@@ -295,6 +296,7 @@ export const postAttachmentSelect = {
 		select: {
 			slug: true,
 			content: true,
+			visibility: true,
 			authorId: true,
 			author: {
 				select: { ...postAuthorFields, profileVisibility: true },
@@ -316,6 +318,7 @@ export const postAttachmentSelect = {
 				select: {
 					slug: true,
 					content: true,
+					visibility: true,
 					authorId: true,
 					author: {
 						select: { ...postAuthorFields, profileVisibility: true },
@@ -326,6 +329,7 @@ export const postAttachmentSelect = {
 				select: {
 					slug: true,
 					authorId: true,
+					visibility: true,
 					author: {
 						select: { profileVisibility: true, reviewsVisibility: true },
 					},

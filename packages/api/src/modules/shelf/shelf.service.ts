@@ -374,6 +374,10 @@ export async function createShelf(
 	const result = await db.$transaction(async (tx) => {
 		const slug = await generateShelfSlug(input.title, userId, tx);
 
+		const owner = await tx.user.findUnique({
+			where: { id: userId },
+			select: { defaultShelfVisibility: true },
+		});
 		const shelf = await tx.shelf.create({
 			data: {
 				userId,
@@ -382,7 +386,8 @@ export async function createShelf(
 				description: input.description?.trim() || null,
 				status: input.status ?? "draft",
 				type: input.type ?? "unordered",
-				visibility: input.visibility ?? "public",
+				visibility:
+					input.visibility ?? owner?.defaultShelfVisibility ?? "public",
 			},
 			select: { id: true, slug: true },
 		});

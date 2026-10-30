@@ -1,13 +1,13 @@
 "use client";
 
-import { MAX_BOOKS_PER_SHELF } from "@bbrc/shared";
+import { MAX_BOOKS_PER_SHELF, type Visibility } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Field } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { Label } from "@bbrc/ui/components/label";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { Textarea } from "@bbrc/ui/components/textarea";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -42,7 +42,10 @@ export function CreateShelfForm({ username }: CreateShelfFormProps) {
 	const [description, setDescription] = useState("");
 	const [status, setStatus] = useState<"draft" | "active">("draft");
 	const [type, setType] = useState<"ordered" | "unordered">("unordered");
-	const [access, setAccess] = useState<"public" | "private">("public");
+	const privacyQuery = useQuery(orpc.privacy.get.queryOptions());
+	const [chosenAccess, setAccess] = useState<Visibility | null>(null);
+	const access: Visibility =
+		chosenAccess ?? privacyQuery.data?.defaults.shelf ?? "public";
 
 	const createMutation = useMutation(
 		orpc.shelf.create.mutationOptions({
@@ -196,13 +199,14 @@ export function CreateShelfForm({ username }: CreateShelfFormProps) {
 
 			<ShelfEditorSection
 				title="Who can see it"
-				description="You can change this any time. Private shelves can still be shared with collaborators."
+				description="You can change this any time. Shelves that are not for everyone can still be shared with collaborators."
 			>
 				<ShelfOptionPicker
 					name="shelf-access"
 					label="Who can open this shelf?"
 					value={access}
 					options={[...shelfAccessOptions]}
+					columns={3}
 					onChange={setAccess}
 				/>
 			</ShelfEditorSection>

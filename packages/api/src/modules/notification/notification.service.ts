@@ -8,6 +8,7 @@ import {
 	NOTIFICATION_KIND_LABELS,
 	NOTIFICATION_KINDS,
 	type NotificationKind,
+	type Visibility,
 } from "@bbrc/shared";
 import type { NotificationKind as DbNotificationKind } from "../../../../db/prisma/generated/enums";
 import { resolvePublicAppOrigin } from "../../lib/public-origin";
@@ -342,7 +343,7 @@ export async function listActiveMemberUserIds(db: Database): Promise<string[]> {
 export async function listAudienceUserIds(
 	db: Database,
 	authorId: string,
-	options: { section?: "reviews" } = {},
+	options: { section?: "reviews"; item?: Visibility } = {},
 ): Promise<string[]> {
 	const author = await db.user.findUnique({
 		where: { id: authorId },
@@ -352,6 +353,7 @@ export async function listAudienceUserIds(
 	const level = effectiveVisibility({
 		profile: author.profileVisibility,
 		section: options.section === "reviews" ? author.reviewsVisibility : null,
+		item: options.item ?? null,
 	});
 	const active = {
 		status: { in: ["active", "warned"] },

@@ -19,6 +19,7 @@ import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { VisibilityBadge } from "@/components/blocks/visibility-select";
 import { shareSnippet } from "@/lib/share-snippet";
 
 type FeedbackDetailProps = {
@@ -63,6 +64,7 @@ export function FeedbackDetail({
 						<p className="text-muted-foreground text-xs">
 							<RelativeTime date={feedback.createdAt} />
 						</p>
+						<VisibilityBadge level={feedback.visibility} />
 						<FriendButton username={feedback.author.username} />
 						{sittingHref ? (
 							<Link

@@ -1,7 +1,7 @@
 "use client";
 
 import type { PostAttachmentInput } from "@bbrc/api/modules/post/post-attachment.schema";
-import { contentPlainText } from "@bbrc/shared";
+import { contentPlainText, type Visibility } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
@@ -12,7 +12,7 @@ import {
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
 	BarChart3,
 	ImagePlus,
@@ -53,6 +53,7 @@ import { SubmitShortcutHint } from "@/components/blocks/submit-shortcut-hint";
 import { TierlistBuilder } from "@/components/blocks/tierlist-builder";
 import { ToolButton } from "@/components/blocks/tool-button";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { VisibilitySelect } from "@/components/blocks/visibility-select";
 import { authClient } from "@/lib/auth-client";
 import {
 	createPendingSlug,
@@ -102,6 +103,15 @@ export function ComposePostDialog({
 	const [tierlistDraft, setTierlistDraft] =
 		useState<TierlistDraft>(emptyTierlistDraft);
 	const imageInput = usePendingImageInput(setImageFile, { variant: "post" });
+	const privacyQuery = useQuery({
+		...orpc.privacy.get.queryOptions(),
+		enabled: open && session?.user != null,
+	});
+	const [chosenVisibility, setChosenVisibility] = useState<Visibility | null>(
+		null,
+	);
+	const visibility: Visibility =
+		chosenVisibility ?? privacyQuery.data?.defaults.post ?? "public";
 
 	useEffect(() => {
 		if (open && initialAttachment) {
@@ -116,6 +126,7 @@ export function ComposePostDialog({
 		setContent("");
 		setSettings(DEFAULT_POST_SETTINGS);
 		setSettingsOpen(false);
+		setChosenVisibility(null);
 		setAttachment(null);
 		setAttachmentOpen(false);
 		setImageFile(null);
@@ -286,6 +297,7 @@ export function ComposePostDialog({
 			allowLikes: settings.allowLikes,
 			allowComments: settings.allowComments,
 			allowShares: settings.allowShares,
+			visibility,
 			...(pollOn
 				? { poll: pollDraftToInput(pollDraft) }
 				: tierlistOn
@@ -474,6 +486,16 @@ export function ComposePostDialog({
 								<span className="hidden text-muted-foreground text-xs tabular-nums sm:inline">
 									{plain.length > 0 ? `${plain.length}/5000` : ""}
 								</span>
+								<VisibilitySelect
+									value={visibility}
+									onChange={setChosenVisibility}
+									label="Who can see this post"
+									hint={
+										privacyQuery.data?.profileVisibility === "private"
+											? "Your profile is private, so Everyone means friends."
+											: undefined
+									}
+								/>
 								<SubmitShortcutHint />
 								<LoadingButton
 									type="submit"

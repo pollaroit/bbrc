@@ -27,6 +27,7 @@ export const GoalListItemSchema = zod.object({
 	scope: GoalScopeSchema,
 	isComplete: zod.boolean(),
 	isExpired: zod.boolean(),
+	visibility: zod.enum(["public", "friends", "private"]),
 	createdAt: zod.coerce.date(),
 });
 
@@ -84,6 +85,8 @@ const GoalBodyFieldsSchema = zod
 		description: zod.string().trim().max(2000).optional(),
 		year: zod.number().int().min(1000).max(2100),
 		target: zod.number().int().min(1).max(10_000),
+		/** Who may see this goal (on top of the goals setting and profile level). */
+		visibility: zod.enum(["public", "friends", "private"]).optional(),
 	})
 	.merge(CreateGoalScopeFieldsSchema);
 
