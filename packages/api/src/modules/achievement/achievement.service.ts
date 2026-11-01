@@ -141,7 +141,6 @@ export async function sweepAchievements(
 	db: Database,
 ): Promise<{ members: number; awarded: number }> {
 	const users = await db.user.findMany({
-		where: { status: { not: "banned" } },
 		select: { id: true },
 		orderBy: { createdAt: "asc" },
 	});

@@ -112,20 +112,11 @@ type Highlight = { label: string; className: string; href?: Route };
 
 /** The strip names the most notable thing about the member; the rest sit in the main part. */
 function highlightFor(person: PeopleListItem, isViewer: boolean): Highlight {
-	if (person.status === "banned") {
-		return { label: "Banned", className: "bg-destructive/10 text-destructive" };
-	}
 	if (person.readingNow) {
 		return {
 			label: "Reading in a sitting now",
 			className: "bg-info/10 text-info-ink",
 			href: `/sittings/${person.readingNow.sittingSlug}` as Route,
-		};
-	}
-	if (person.status === "warned") {
-		return {
-			label: "Warned",
-			className: "bg-warning/10 text-warning-ink",
 		};
 	}
 	if (isViewer) {

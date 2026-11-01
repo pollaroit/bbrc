@@ -19,9 +19,8 @@ import {
 
 const HUB_WINDOW = 5;
 
-const memberWhere = {
-	status: { in: ["active", "warned", "banned"] as const },
-} satisfies Prisma.UserWhereInput;
+/** Every member is ranked. */
+const memberWhere = {} satisfies Prisma.UserWhereInput;
 
 const memberProfileSelect = {
 	id: true,

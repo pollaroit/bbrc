@@ -1,4 +1,4 @@
-import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { protectedProcedure, publicProcedure } from "../../procedures";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import { loadViewer } from "../visibility/viewer";
 import {
@@ -63,12 +63,12 @@ export const friendRouter = {
 				input.bookSlug,
 			),
 		),
-	requests: notBannedProcedure
+	requests: protectedProcedure
 		.output(ListFriendRequestsOutputSchema)
 		.handler(({ context }) =>
 			listFriendRequests(context.db, context.session.user.id),
 		),
-	badge: notBannedProcedure
+	badge: protectedProcedure
 		.output(FriendBadgeOutputSchema)
 		.handler(async ({ context }) => ({
 			incoming: await countIncomingRequests(
@@ -76,48 +76,48 @@ export const friendRouter = {
 				context.session.user.id,
 			),
 		})),
-	blocked: notBannedProcedure
+	blocked: protectedProcedure
 		.output(ListBlockedOutputSchema)
 		.handler(({ context }) => listBlocked(context.db, context.session.user.id)),
-	send: notBannedProcedure
+	send: protectedProcedure
 		.use(checkAchievementsAfter("friends"))
 		.input(FriendUsernameInputSchema)
 		.output(SendFriendRequestOutputSchema)
 		.handler(({ input, context }) =>
 			sendFriendRequest(context.db, context.session.user.id, input.username),
 		),
-	cancel: notBannedProcedure
+	cancel: protectedProcedure
 		.input(FriendUsernameInputSchema)
 		.output(OkSchema)
 		.handler(({ input, context }) =>
 			cancelFriendRequest(context.db, context.session.user.id, input.username),
 		),
-	accept: notBannedProcedure
+	accept: protectedProcedure
 		.use(checkAchievementsAfter("friends"))
 		.input(FriendUsernameInputSchema)
 		.output(OkSchema)
 		.handler(({ input, context }) =>
 			acceptRequest(context.db, context.session.user.id, input.username),
 		),
-	decline: notBannedProcedure
+	decline: protectedProcedure
 		.input(FriendUsernameInputSchema)
 		.output(OkSchema)
 		.handler(({ input, context }) =>
 			declineRequest(context.db, context.session.user.id, input.username),
 		),
-	remove: notBannedProcedure
+	remove: protectedProcedure
 		.input(FriendUsernameInputSchema)
 		.output(OkSchema)
 		.handler(({ input, context }) =>
 			removeFriend(context.db, context.session.user.id, input.username),
 		),
-	block: notBannedProcedure
+	block: protectedProcedure
 		.input(FriendUsernameInputSchema)
 		.output(OkSchema)
 		.handler(({ input, context }) =>
 			blockMember(context.db, context.session.user.id, input.username),
 		),
-	unblock: notBannedProcedure
+	unblock: protectedProcedure
 		.input(FriendUsernameInputSchema)
 		.output(OkSchema)
 		.handler(({ input, context }) =>

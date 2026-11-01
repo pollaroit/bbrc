@@ -1,8 +1,4 @@
-import {
-	notBannedProcedure,
-	protectedProcedure,
-	publicProcedure,
-} from "../../procedures";
+import { protectedProcedure, publicProcedure } from "../../procedures";
 import { revalidateBookIsr } from "../../revalidate-isr";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import { loadViewer } from "../visibility/viewer";
@@ -69,7 +65,7 @@ export const feedbackRouter = {
 		.handler(async ({ input, context }) =>
 			getBookFeedbackState(input, context.session.user.id, context.db),
 		),
-	create: notBannedProcedure
+	create: protectedProcedure
 		.use(checkAchievementsAfter("reviews"))
 		.input(CreateFeedbackInputSchema)
 		.output(CreateFeedbackOutputSchema)
@@ -82,7 +78,7 @@ export const feedbackRouter = {
 			revalidateBookIsr(context, input.bookSlug);
 			return feedback;
 		}),
-	update: notBannedProcedure
+	update: protectedProcedure
 		.input(UpdateFeedbackInputSchema)
 		.output(UpdateFeedbackOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -94,7 +90,7 @@ export const feedbackRouter = {
 			revalidateBookIsr(context, input.bookSlug);
 			return result;
 		}),
-	delete: notBannedProcedure
+	delete: protectedProcedure
 		.input(DeleteFeedbackInputSchema)
 		.output(DeleteFeedbackOutputSchema)
 		.handler(async ({ input, context }) => {

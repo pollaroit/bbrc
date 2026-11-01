@@ -375,7 +375,7 @@ async function resolveAuthorsListOg(): Promise<OgImageContent> {
 
 async function resolveMembersListOg(): Promise<OgImageContent> {
 	// Counts include every member, however private (only names are hidden).
-	const where = { status: { not: "banned" as const } };
+	const where = {};
 	const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 	const [people, active, reads, reviews] = await Promise.all([
 		db.user.count({ where }),

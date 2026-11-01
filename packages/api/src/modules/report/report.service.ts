@@ -1,7 +1,6 @@
 import type { Database, Prisma } from "@bbrc/db";
 import {
 	canApplyReportAction,
-	isSuperAdmin,
 	REPORT_ACTION_LABELS,
 	type ReportActionKind,
 	type ReportReason,
@@ -250,7 +249,6 @@ export async function listReports(
 				username: true,
 				name: true,
 				image: true,
-				status: true,
 				role: true,
 			},
 		}),
@@ -321,7 +319,6 @@ export async function listReports(
 						username: owner.username,
 						name: owner.name,
 						image: owner.image,
-						status: owner.status,
 						role: owner.role,
 						reportsAgainst: againstByOwner.get(owner.id) ?? 0,
 					}
@@ -414,21 +411,12 @@ async function deleteReportedContent(
 	});
 }
 
-function noticeFor(
-	action: "delete_content" | "warn_owner" | "ban_owner",
-	targetLabel: string,
-	adminNote: string | undefined,
-) {
+/** What the owner is told when a moderator removes their content. */
+function removalNotice(targetLabel: string, adminNote: string | undefined) {
 	const reason = adminNote ? ` Moderator's note: ${adminNote}` : "";
-	if (action === "delete_content") {
-		return {
-			title: "A moderator removed your content",
-			body: `Your ${targetLabel.toLowerCase()} was reported and removed because it did not fit the club's rules.${reason}`,
-		};
-	}
 	return {
-		title: "A moderator warned you",
-		body: `Something you shared was reported and reviewed. Please keep to the club's rules; repeated problems can lead to a ban.${reason}`,
+		title: "A moderator removed your content",
+		body: `Your ${targetLabel.toLowerCase()} was reported and removed because it did not fit the club's rules.${reason}`,
 	};
 }
 
@@ -472,40 +460,9 @@ export async function actOnReport(
 	const ownerId = live?.ownerId ?? reports[0]?.ownerId ?? null;
 	const label = reportTargetLabel(target);
 
-	if (action === "warn_owner" || action === "ban_owner") {
-		if (!ownerId) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "The owner's account no longer exists.",
-			});
-		}
-		const owner = await db.user.findUnique({
-			where: { id: ownerId },
-			select: { role: true },
-		});
-		if (isSuperAdmin(owner) || ownerId === adminId) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Admins cannot be warned or banned from the queue.",
-			});
-		}
-	}
-
 	if (action === "delete_content") {
 		await deleteReportedContent(db, target, targetId);
 	}
-	if (action === "warn_owner" && ownerId) {
-		// Never lifts a ban: only an active member becomes "warned".
-		await db.user.updateMany({
-			where: { id: ownerId, status: "active" },
-			data: { status: "warned" },
-		});
-	}
-	if (action === "ban_owner" && ownerId) {
-		await db.user.update({
-			where: { id: ownerId },
-			data: { status: "banned" },
-		});
-	}
-
 	const next = statusAfterAction(action);
 	const now = new Date();
 	await db.$transaction(async (tx) => {
@@ -544,8 +501,8 @@ export async function actOnReport(
 	// Best effort from here on: a phone that cannot be reached must not undo a decision.
 	let notified = 0;
 	if (next === "resolved" || next === "dismissed") {
-		if (ownerId && (action === "delete_content" || action === "warn_owner")) {
-			const notice = noticeFor(action, label, note);
+		if (ownerId && action === "delete_content") {
+			const notice = removalNotice(label, note);
 			await dispatchNotification(db, {
 				kind: "moderation_notice",
 				recipientUserIds: [ownerId],

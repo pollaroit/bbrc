@@ -89,8 +89,7 @@ export function CreateSittingForm() {
 	>([]);
 
 	const defaultParticipantIds = useMemo(
-		() =>
-			users.filter((user) => user.status !== "banned").map((user) => user.id),
+		() => users.map((user) => user.id),
 		[users],
 	);
 

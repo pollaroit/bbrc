@@ -53,7 +53,6 @@ export const UserMemberSnapshotSchema = zod.object({
 	username: zod.string(),
 	name: zod.string(),
 	image: UserSchema.shape.image,
-	status: UserSchema.shape.status,
 	xp: UserPointsSchema,
 	rp: UserPointsSchema,
 });
@@ -81,7 +80,6 @@ export const getUserListFields = {
 	role: true,
 	rp: true,
 	xp: true,
-	status: true,
 	...memberAccessSelect,
 } as const;
 
@@ -110,7 +108,6 @@ export const getUserByUsernameFields = {
 	role: true,
 	rp: true,
 	xp: true,
-	status: true,
 } as const;
 
 export const GetUserByUsernameInputSchema = UserSchema.pick({
@@ -182,21 +179,6 @@ export type GetUserProfileCardInput = z.infer<
 >;
 export type GetUserProfileCardOutput = z.infer<
 	typeof GetUserProfileCardOutputSchema
->;
-
-export const UpdateUserStatusInputSchema = zod.object({
-	username: UserSchema.shape.username,
-	status: UserSchema.shape.status,
-});
-
-export const UpdateUserStatusOutputSchema = UserSchema.pick({
-	username: true,
-	status: true,
-});
-
-export type UpdateUserStatusInput = z.infer<typeof UpdateUserStatusInputSchema>;
-export type UpdateUserStatusOutput = z.infer<
-	typeof UpdateUserStatusOutputSchema
 >;
 
 /** Participations for a member profile (readings tab). */

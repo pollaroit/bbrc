@@ -3,7 +3,6 @@
 import {
 	PEOPLE_ACTIVITY_FILTERS,
 	PEOPLE_SORT_FIELDS,
-	PEOPLE_STATUSES,
 } from "@bbrc/api/modules/people/people.schema";
 import {
 	genres,
@@ -37,7 +36,6 @@ import {
 	type PeopleActivityFilter,
 	peopleActivityLabels,
 	peopleSortLabels,
-	peopleStatusLabels,
 	usePeopleListingSearchParams,
 } from "@/lib/listing/people-listing";
 import { orpc } from "@/utils/orpc";
@@ -363,22 +361,6 @@ export function PeopleListingToolbar() {
 							onChange: (roles) => void setParams({ roles }),
 						})}
 					/>
-
-					{superAdmin ? (
-						<ListingCheckboxList
-							legend="Status"
-							options={PEOPLE_STATUSES.map((status) => ({
-								id: `people-status-${status}`,
-								label: peopleStatusLabels[status],
-								checked: params.statuses?.includes(status) ?? false,
-								onCheckedChange: (checked) => {
-									void setParams({
-										statuses: toggle(params.statuses, status, checked),
-									});
-								},
-							}))}
-						/>
-					) : null}
 				</ListingFiltersSheet>
 			</div>
 		</div>

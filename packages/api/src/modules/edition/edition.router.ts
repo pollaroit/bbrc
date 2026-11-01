@@ -1,4 +1,4 @@
-import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { protectedProcedure, publicProcedure } from "../../procedures";
 import { loadViewer } from "../visibility/viewer";
 import {
 	EditionCompareInputSchema,
@@ -38,7 +38,7 @@ export const editionRouter = {
 				input.key,
 			),
 		),
-	viewer: notBannedProcedure
+	viewer: protectedProcedure
 		.input(EditionKeyInputSchema)
 		.output(EditionViewerOutputSchema)
 		.handler(({ input, context }) =>

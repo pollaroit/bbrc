@@ -158,7 +158,7 @@ Migration + Zod/API schemas + ISR paths as needed.
   - Same for comment, shelf cover
 - Authorization:
   - Avatar: self only
-  - Post/comment: author; not banned
+  - Post/comment: author
   - Shelf: shelf owner
 - On replace/remove: delete prior R2 object when key changes
 

@@ -1,8 +1,4 @@
-import {
-	notBannedProcedure,
-	protectedProcedure,
-	publicProcedure,
-} from "../../procedures";
+import { protectedProcedure, publicProcedure } from "../../procedures";
 import { loadViewer } from "../visibility/viewer";
 import {
 	AddPollOptionInputSchema,
@@ -44,7 +40,7 @@ export const postPollRouter = {
 				await loadViewer(context.db, context.session),
 			),
 		),
-	vote: notBannedProcedure
+	vote: protectedProcedure
 		.input(VotePollInputSchema)
 		.output(PostPollViewSchema)
 		.handler(async ({ input, context }) => {
@@ -57,7 +53,7 @@ export const postPollRouter = {
 				viewer,
 			);
 		}),
-	retract: notBannedProcedure
+	retract: protectedProcedure
 		.input(RetractVoteInputSchema)
 		.output(PostPollViewSchema)
 		.handler(async ({ input, context }) => {
@@ -69,7 +65,7 @@ export const postPollRouter = {
 				viewer,
 			);
 		}),
-	addOption: notBannedProcedure
+	addOption: protectedProcedure
 		.input(AddPollOptionInputSchema)
 		.output(PostPollViewSchema)
 		.handler(async ({ input, context }) => {
@@ -82,7 +78,7 @@ export const postPollRouter = {
 				viewer,
 			);
 		}),
-	removeOption: notBannedProcedure
+	removeOption: protectedProcedure
 		.input(RemovePollOptionInputSchema)
 		.output(PostPollViewSchema)
 		.handler(async ({ input, context }) => {
@@ -95,14 +91,14 @@ export const postPollRouter = {
 				viewer,
 			);
 		}),
-	updateSettings: notBannedProcedure
+	updateSettings: protectedProcedure
 		.input(UpdatePollSettingsInputSchema)
 		.output(PostPollViewSchema)
 		.handler(async ({ input, context }) => {
 			const viewer = await loadViewer(context.db, context.session);
 			return updatePollSettings(context.db, input, pollViewer(viewer), viewer);
 		}),
-	close: notBannedProcedure
+	close: protectedProcedure
 		.input(ClosePollInputSchema)
 		.output(PostPollViewSchema)
 		.handler(async ({ input, context }) => {

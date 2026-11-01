@@ -1,7 +1,6 @@
 "use client";
 
 import type { AdminUserListItemSchema } from "@bbrc/api/modules/admin/admin-user.schema";
-import { UserStatusSchema } from "@bbrc/schemas";
 import { assignableRoles, ROLE_META, type Role, roleOf } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
@@ -42,7 +41,7 @@ import { orpc, queryClient } from "@/utils/orpc";
 
 type AdminUserRow = z.infer<typeof AdminUserListItemSchema>;
 
-type DialogKind = "name" | "password" | "role" | "status" | "delete" | null;
+type DialogKind = "name" | "password" | "role" | "delete" | null;
 
 async function invalidateAdminUsers() {
 	await Promise.all([
@@ -72,7 +71,6 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 	// The roles the signed-in person may give this member: the same rules the server enforces.
 	const offeredRoles = session?.user ? assignableRoles(session.user, user) : [];
 	const [role, setRole] = useState<Role | null>(offeredRoles[0] ?? null);
-	const [status, setStatus] = useState(user.status);
 
 	const updateName = useMutation(
 		orpc.admin.updateUserName.mutationOptions({
@@ -89,17 +87,6 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 		orpc.role.set.mutationOptions({
 			onSuccess: async () => {
 				toast.success("Role updated.");
-				setDialog(null);
-				await invalidateAdminUsers();
-			},
-			onError: (error) => toast.error(error.message),
-		}),
-	);
-
-	const updateStatus = useMutation(
-		orpc.admin.updateUserStatus.mutationOptions({
-			onSuccess: async () => {
-				toast.success("Status updated.");
 				setDialog(null);
 				await invalidateAdminUsers();
 			},
@@ -132,7 +119,6 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 	const openDialog = (kind: DialogKind) => {
 		setName(user.name);
 		setRole(offeredRoles[0] ?? null);
-		setStatus(user.status);
 		setPassword("");
 		setDialog(kind);
 	};
@@ -171,9 +157,6 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 							Change role
 						</DropdownMenuItem>
 					) : null}
-					<DropdownMenuItem onClick={() => openDialog("status")}>
-						Update status
-					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
 						variant="destructive"
@@ -313,58 +296,6 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 							}}
 						>
 							Save role
-						</LoadingButton>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-
-			<Dialog
-				open={dialog === "status"}
-				onOpenChange={(open) => {
-					if (!open) setDialog(null);
-				}}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Update status</DialogTitle>
-						<DialogDescription>
-							Status controls club access. Banned members cannot post or join
-							sittings.
-						</DialogDescription>
-					</DialogHeader>
-					<Field>
-						<FieldLabel>Status</FieldLabel>
-						<Select
-							value={status}
-							onValueChange={(value) => {
-								if (value) {
-									setStatus(UserStatusSchema.parse(value));
-								}
-							}}
-						>
-							<SelectTrigger className="w-full">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{UserStatusSchema.options.map((option) => (
-									<SelectItem key={option} value={option}>
-										{option}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</Field>
-					<DialogFooter>
-						<LoadingButton
-							loading={updateStatus.isPending}
-							onClick={() => {
-								updateStatus.mutate({
-									username: user.username,
-									status,
-								});
-							}}
-						>
-							Save status
 						</LoadingButton>
 					</DialogFooter>
 				</DialogContent>

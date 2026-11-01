@@ -40,10 +40,6 @@ export default async function NewBookDocumentPage({
 		redirect("/sign-in" as Route);
 	}
 
-	if (session.user.status === "banned") {
-		redirect(`/books/${slug}` as Route);
-	}
-
 	let book: TGetBookBySlugOutputSchema;
 	try {
 		book = await loadBookBySlugForIsr(slug);

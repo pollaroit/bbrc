@@ -31,10 +31,6 @@ export async function POST(req: NextRequest) {
 		return Response.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	if (session.user.status === "banned") {
-		return Response.json({ error: "Forbidden" }, { status: 403 });
-	}
-
 	let formData: FormData;
 	try {
 		formData = await req.formData();

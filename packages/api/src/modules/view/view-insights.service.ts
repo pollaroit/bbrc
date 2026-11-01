@@ -827,7 +827,7 @@ export async function getViewInsights(
 		loyaltyBetween(db, scope, rawFrom, tomorrow),
 		lifecycleFor(db, scope, info.createdAt),
 		mentionsFor(db, resource, id, viewer),
-		db.user.count({ where: { status: { not: "banned" } } }),
+		db.user.count(),
 		ownComparisonFor(db, resource, id, info.ownerId),
 	]);
 

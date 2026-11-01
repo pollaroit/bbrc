@@ -16,7 +16,6 @@ import {
 	mayViewProfile,
 	mayViewSection,
 	memberVisibleWhere,
-	viewerIsSuperAdmin,
 } from "../user/member-access";
 import { userMemberLevelsFromPoints } from "../user/member-levels";
 import { memberListVisibleWhere } from "../visibility/visibility-resources";
@@ -41,7 +40,6 @@ export const userListSelect = {
 	username: true,
 	name: true,
 	image: true,
-	status: true,
 	role: true,
 	createdAt: true,
 	xp: true,
@@ -133,7 +131,6 @@ async function buildWhere(
 	db: Database,
 	viewer: Viewer,
 ): Promise<Prisma.UserWhereInput> {
-	const superAdmin = viewerIsSuperAdmin(viewer);
 	// Blocked members (either way) never appear; everyone else does, however private.
 	const and: Prisma.UserWhereInput[] = [
 		memberListVisibleWhere(viewer) as Prisma.UserWhereInput,
@@ -146,15 +143,6 @@ async function buildWhere(
 	): Prisma.UserWhereInput => ({
 		AND: [filter, memberVisibleWhere(viewer, spec)],
 	});
-
-	// Banned members are only ever listed for administrators who ask for them.
-	and.push(
-		superAdmin && input.statuses?.length
-			? { status: { in: input.statuses } }
-			: superAdmin
-				? {}
-				: { status: { not: "banned" } },
-	);
 
 	if (input.roles?.length) {
 		and.push({ role: { in: input.roles } });
@@ -426,7 +414,6 @@ function privateItem(row: PeopleRow): PeopleListItem {
 		username: row.username,
 		name: row.name,
 		image: row.image,
-		status: row.status,
 		role: row.role,
 		createdAt: row.createdAt.toISOString(),
 		xp: 0,
@@ -525,7 +512,6 @@ export async function buildItems(
 			username: row.username,
 			name: row.name,
 			image: row.image,
-			status: row.status,
 			role: row.role,
 			createdAt: row.createdAt.toISOString(),
 			xp: row.xp,
@@ -690,7 +676,7 @@ export async function getPeopleOverview(
 	viewer: Viewer,
 ): Promise<GetPeopleOverviewOutput> {
 	// Totals include every member, however private or blocked.
-	const where: Prisma.UserWhereInput = { status: { not: "banned" } };
+	const where: Prisma.UserWhereInput = {};
 	const since = new Date(Date.now() - ACTIVE_WINDOW_MS);
 
 	const [total, activeLast30Days, newest] = await Promise.all([

@@ -39,7 +39,6 @@ export type CompareMemberRow = {
 	username: string;
 	name: string;
 	image: string | null;
-	status: "active" | "warned" | "banned" | string;
 	allowCompare: boolean;
 	createdAt: Date;
 } & MemberAccessFields;
@@ -59,7 +58,6 @@ const memberSelect = {
 	username: true,
 	name: true,
 	image: true,
-	status: true,
 	allowCompare: true,
 	createdAt: true,
 	...memberAccessSelect,
@@ -110,12 +108,8 @@ export async function resolveComparePair(
 
 	for (const member of [a, b]) {
 		const own = member.id === viewerId;
-		// Banned members, and members blocked either way, read as not found.
-		if (
-			!viewerIsSuperAdmin &&
-			!own &&
-			(member.status === "banned" || isBlockedFor(viewer, member.id))
-		) {
+		// Members blocked either way read as not found.
+		if (!viewerIsSuperAdmin && !own && isBlockedFor(viewer, member.id)) {
 			throw notFound(member.username);
 		}
 	}
@@ -425,7 +419,7 @@ export async function searchCompareMembers(
 				notBlockedWhere(viewer) as Prisma.UserWhereInput,
 				memberVisibleWhere(viewer, { section: "reads" }),
 			],
-			...(superAdmin ? {} : { status: { not: "banned" }, allowCompare: true }),
+			...(superAdmin ? {} : { allowCompare: true }),
 			...(input.excludeUsername
 				? { username: { not: input.excludeUsername, mode: "insensitive" } }
 				: {}),

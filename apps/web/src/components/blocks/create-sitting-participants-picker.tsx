@@ -48,13 +48,7 @@ export function CreateSittingParticipantsPicker({
 		[users, query],
 	);
 
-	const activeIds = useMemo(
-		() => users.filter((user) => user.status !== "banned").map((u) => u.id),
-		[users],
-	);
-	const bannedSelected = users.filter(
-		(user) => user.status === "banned" && selected.has(user.id),
-	).length;
+	const activeIds = useMemo(() => users.map((u) => u.id), [users]);
 
 	function toggle(userId: string, checked: boolean) {
 		onChange(
@@ -93,7 +87,6 @@ export function CreateSittingParticipantsPicker({
 					<span className="text-muted-foreground">
 						{" "}
 						of {users.length} members selected
-						{bannedSelected > 0 ? ` (${bannedSelected} banned)` : ""}
 					</span>
 				</p>
 				<div className="flex flex-wrap gap-1.5">
@@ -139,7 +132,6 @@ export function CreateSittingParticipantsPicker({
 				) : (
 					visible.map((user) => {
 						const checked = selected.has(user.id);
-						const banned = user.status === "banned";
 						return (
 							<li key={user.id}>
 								<label
@@ -147,7 +139,6 @@ export function CreateSittingParticipantsPicker({
 									className={cn(
 										"flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/40",
 										checked && "bg-muted/20",
-										banned && "opacity-60",
 									)}
 								>
 									<Checkbox
@@ -166,11 +157,6 @@ export function CreateSittingParticipantsPicker({
 											@{user.username} · {user.rpLevel.label}
 										</span>
 									</span>
-									{banned ? (
-										<span className="shrink-0 border border-destructive/40 px-1.5 py-0.5 text-destructive text-xs">
-											Banned
-										</span>
-									) : null}
 								</label>
 							</li>
 						);

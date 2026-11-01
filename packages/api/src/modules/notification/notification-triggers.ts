@@ -4,9 +4,9 @@ import { fetchOpenLibraryWorkTitle } from "../../lib/open-library/work-titles";
 import { activeParticipationWhere } from "../sitting/participation-active";
 import {
 	dispatchNotification,
-	listActiveMemberUserIds,
 	listAdminUserIds,
 	listAudienceUserIds,
+	listMemberUserIds,
 	listSittingParticipantUserIds,
 } from "./notification.service";
 
@@ -298,7 +298,7 @@ export async function notifyBookAddedToLibrary(
 
 	const recipientUserIds = options
 		? options.onlyUserIds
-		: await listActiveMemberUserIds(db);
+		: await listMemberUserIds(db);
 
 	await dispatchNotification(db, {
 		kind: "book_added_to_library",
@@ -342,7 +342,7 @@ export async function notifyFollowersOfNewBook(
 		return;
 	}
 
-	const activeMemberIds = new Set(await listActiveMemberUserIds(db));
+	const activeMemberIds = new Set(await listMemberUserIds(db));
 	const excluded = new Set(options.excludeUserIds ?? []);
 	const authorNamesByFollower = new Map<string, string[]>();
 	for (const link of book.authorLinks) {
@@ -497,7 +497,7 @@ export async function notifySittingOpened(
 ): Promise<void> {
 	const sittingId = await sittingIdBySlug(db, sittingSlug);
 	const [everyone, participants] = await Promise.all([
-		listActiveMemberUserIds(db),
+		listMemberUserIds(db),
 		listSittingParticipantUserIds(sittingId, db),
 	]);
 

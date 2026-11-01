@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { notBannedProcedure, protectedProcedure } from "../../procedures";
+import { protectedProcedure } from "../../procedures";
 import {
 	CommitUploadInputSchema,
 	CommitUploadOutputSchema,
@@ -49,52 +49,52 @@ const StorageStatusOutputSchema = z.object({
 });
 
 export const storageRouter = {
-	status: notBannedProcedure
+	status: protectedProcedure
 		.output(StorageStatusOutputSchema)
 		.handler(async () => getStorageStatus()),
 
-	initUpload: notBannedProcedure
+	initUpload: protectedProcedure
 		.input(InitUploadInputSchema)
 		.output(InitUploadOutputSchema)
 		.handler(async ({ input, context }) => initUpload(input, context.session)),
-	commitUpload: notBannedProcedure
+	commitUpload: protectedProcedure
 		.input(CommitUploadInputSchema)
 		.output(CommitUploadOutputSchema)
 		.handler(async ({ input, context }) =>
 			commitUpload(input, context.session),
 		),
-	removeObject: notBannedProcedure
+	removeObject: protectedProcedure
 		.input(z.object({ key: z.string().min(1) }))
 		.output(z.object({ ok: z.literal(true) }))
 		.handler(async ({ input, context }) =>
 			removeObject(input.key, context.session),
 		),
 
-	initAvatarUpload: notBannedProcedure
+	initAvatarUpload: protectedProcedure
 		.input(ImageUploadBodySchema)
 		.output(ImageUploadInitOutputSchema)
 		.handler(async ({ input, context }) =>
 			initAvatarUpload(input, context.session),
 		),
-	commitAvatarUpload: notBannedProcedure
+	commitAvatarUpload: protectedProcedure
 		.input(ImageUploadBodySchema)
 		.output(ImageCommitOutputSchema)
 		.handler(async ({ input, context }) =>
 			commitAvatarUpload(input, context.session, context.db, context),
 		),
-	clearAvatarUpload: notBannedProcedure
+	clearAvatarUpload: protectedProcedure
 		.output(z.object({ cleared: z.literal(true) }))
 		.handler(async ({ context }) =>
 			clearAvatarUpload(context.session, context.db, context),
 		),
 
-	initPostImageUpload: notBannedProcedure
+	initPostImageUpload: protectedProcedure
 		.input(PostSlugImageInputSchema)
 		.output(ImageUploadInitOutputSchema)
 		.handler(async ({ input, context }) =>
 			initPostImageUpload(input.postSlug, input, context.session, context.db),
 		),
-	commitPostImageUpload: notBannedProcedure
+	commitPostImageUpload: protectedProcedure
 		.input(PostSlugImageInputSchema)
 		.output(ImageCommitOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -106,14 +106,14 @@ export const storageRouter = {
 				context,
 			),
 		),
-	removePostImage: notBannedProcedure
+	removePostImage: protectedProcedure
 		.input(PostSlugOnlySchema)
 		.output(z.object({ removed: z.literal(true) }))
 		.handler(async ({ input, context }) =>
 			removePostImage(input.postSlug, context.session, context.db, context),
 		),
 
-	initFeedbackImageUpload: notBannedProcedure
+	initFeedbackImageUpload: protectedProcedure
 		.input(FeedbackSlugImageInputSchema)
 		.output(ImageUploadInitOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -124,7 +124,7 @@ export const storageRouter = {
 				context.db,
 			),
 		),
-	commitFeedbackImageUpload: notBannedProcedure
+	commitFeedbackImageUpload: protectedProcedure
 		.input(FeedbackSlugImageInputSchema)
 		.output(ImageCommitOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -136,7 +136,7 @@ export const storageRouter = {
 				context,
 			),
 		),
-	removeFeedbackImage: notBannedProcedure
+	removeFeedbackImage: protectedProcedure
 		.input(FeedbackSlugOnlySchema)
 		.output(z.object({ removed: z.literal(true) }))
 		.handler(async ({ input, context }) =>
@@ -148,7 +148,7 @@ export const storageRouter = {
 			),
 		),
 
-	initCommentImageUpload: notBannedProcedure
+	initCommentImageUpload: protectedProcedure
 		.input(CommentSlugImageInputSchema)
 		.output(ImageUploadInitOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -159,7 +159,7 @@ export const storageRouter = {
 				context.db,
 			),
 		),
-	commitCommentImageUpload: notBannedProcedure
+	commitCommentImageUpload: protectedProcedure
 		.input(CommentSlugImageInputSchema)
 		.output(ImageCommitOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -171,7 +171,7 @@ export const storageRouter = {
 				context,
 			),
 		),
-	removeCommentImage: notBannedProcedure
+	removeCommentImage: protectedProcedure
 		.input(CommentSlugOnlySchema)
 		.output(z.object({ removed: z.literal(true) }))
 		.handler(async ({ input, context }) =>

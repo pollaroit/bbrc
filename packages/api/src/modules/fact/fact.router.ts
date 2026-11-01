@@ -1,4 +1,4 @@
-import { notBannedProcedure, protectedProcedure } from "../../procedures";
+import { protectedProcedure } from "../../procedures";
 import {
 	ListFactReelsInputSchema,
 	ListFactReelsOutputSchema,
@@ -53,7 +53,7 @@ export const factRouter = {
 		.handler(async ({ input, context }) =>
 			markFactReelSeen(input, context.session.user.id, context.db),
 		),
-	setVote: notBannedProcedure
+	setVote: protectedProcedure
 		.input(SetFactVoteInputSchema)
 		.output(SetFactVoteOutputSchema)
 		.handler(async ({ input, context }) =>

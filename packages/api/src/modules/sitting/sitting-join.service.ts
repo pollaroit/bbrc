@@ -155,26 +155,11 @@ async function joinBlocker(
 	if (!userId) {
 		return { reason: "Sign in to join.", isParticipant: false, removed: false };
 	}
-	const [user, membership] = await Promise.all([
-		db.user.findUnique({
-			where: { id: userId },
-			select: { status: true },
-		}),
-		membershipOf(db, sitting.id, userId),
-	]);
+	const membership = await membershipOf(db, sitting.id, userId);
 	const base = {
 		isParticipant: membership.isParticipant,
 		removed: membership.removedByOrganiser,
 	};
-	if (!user) {
-		return {
-			...base,
-			reason: "This action is not available for your account.",
-		};
-	}
-	if (user.status === "banned") {
-		return { ...base, reason: "Banned members cannot join a sitting." };
-	}
 	if (membership.isParticipant) {
 		return { ...base, reason: "You are already in this sitting." };
 	}
@@ -667,10 +652,7 @@ export async function previewInviteLink(
 	const state = inviteLinkState(link);
 	const window = windowOf(sitting);
 
-	const [user, blocker] = await Promise.all([
-		db.user.findUnique({ where: { id: actor.id }, select: { status: true } }),
-		joinBlocker(db, sitting, actor.id, "link"),
-	]);
+	const blocker = await joinBlocker(db, sitting, actor.id, "link");
 
 	let reason = blocker.reason;
 	if (!reason && state !== "active") {
@@ -700,7 +682,6 @@ export async function previewInviteLink(
 		viewer: {
 			isParticipant: blocker.isParticipant,
 			removedByOrganiser: blocker.removed,
-			banned: user?.status === "banned",
 		},
 		canJoin: reason == null,
 		joinBlockedReason: reason,
@@ -847,17 +828,11 @@ export async function createSittingInvitation(
 			id: true,
 			name: true,
 			username: true,
-			status: true,
 			allowSittingInvites: true,
 		},
 	});
 	if (!invitee) {
 		throw new ORPCError("NOT_FOUND", { message: "Member not found." });
-	}
-	if (invitee.status === "banned") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Banned members cannot join a sitting.",
-		});
 	}
 	if (!invitee.allowSittingInvites) {
 		throw new ORPCError("FORBIDDEN", {
@@ -1092,7 +1067,6 @@ export async function searchSittingMembers(
 			username: true,
 			name: true,
 			image: true,
-			status: true,
 			allowSittingAutoAdd: true,
 			allowSittingInvites: true,
 		},
@@ -1123,15 +1097,13 @@ export async function searchSittingMembers(
 					? ("participant" as const)
 					: row
 						? ("removed" as const)
-						: user.status === "banned"
-							? ("banned" as const)
-							: invited.has(user.id)
-								? ("invited" as const)
-								: user.allowSittingAutoAdd || user.id === actor.id
-									? ("can_add" as const)
-									: user.allowSittingInvites
-										? ("invite_only" as const)
-										: ("closed" as const);
+						: invited.has(user.id)
+							? ("invited" as const)
+							: user.allowSittingAutoAdd || user.id === actor.id
+								? ("can_add" as const)
+								: user.allowSittingInvites
+									? ("invite_only" as const)
+									: ("closed" as const);
 			return {
 				userId: user.id,
 				username: user.username,

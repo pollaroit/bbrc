@@ -9,12 +9,6 @@ enum Role {
   @@map("role")
 }
 
-enum UserStatus {
-  active
-  warned
-  banned
-}
-
 model User {
   /// @zod.uuid("Invalid UUID")
   id        String   @id @default(uuid())
@@ -70,7 +64,6 @@ model User {
   emailVerified         Boolean    @default(false) @map("email_verified")
   image                 String?
   role                  Role       @default(user)
-  status                UserStatus @default(active)
 
   /// Club activity points; may go negative after moderation.
   xp Int @default(0)

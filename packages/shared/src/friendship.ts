@@ -42,8 +42,6 @@ export type FriendRequestRefusal =
 
 export type FriendRequestFacts = {
 	isSelf: boolean;
-	/** The other member is banned, missing, or the sender is banned. */
-	unavailable: boolean;
 	/** Either of them blocked the other. */
 	blocked: boolean;
 	state: FriendRelationState;
@@ -69,7 +67,6 @@ export function checkFriendRequest(
 	facts: FriendRequestFacts,
 ): FriendRequestDecision {
 	if (facts.isSelf) return { ok: false, reason: "self" };
-	if (facts.unavailable) return { ok: false, reason: "unavailable" };
 	if (facts.blocked) return { ok: false, reason: "blocked" };
 	if (facts.state === "friends")
 		return { ok: false, reason: "already_friends" };

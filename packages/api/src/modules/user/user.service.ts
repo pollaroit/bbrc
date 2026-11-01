@@ -36,8 +36,6 @@ import {
 	getUserByUsernameFields,
 	getUserListFields,
 	getUserParticipationListFields,
-	type UpdateUserStatusInput,
-	type UpdateUserStatusOutput,
 } from "./user.schema";
 import {
 	userParticipationListRanging,
@@ -118,7 +116,6 @@ export async function getUserByUsername(
 		role: user.role,
 		rp: mayView ? user.rp : 0,
 		xp: mayView ? user.xp : 0,
-		status: user.status,
 		indexable: user.profileVisibility === "public",
 		isPrivate: user.profileVisibility === "private",
 		canViewProfile: mayView,
@@ -145,7 +142,6 @@ export async function getUserList(
 		searching.use(),
 		memberListVisibleWhere(viewer) as Prisma.UserWhereInput,
 		{
-			status: input.statuses ? { in: input.statuses } : undefined,
 			role: input.roles?.length ? { in: input.roles } : undefined,
 		},
 	);
@@ -174,7 +170,6 @@ export async function getUserList(
 				name: row.name,
 				image: row.image,
 				role: row.role,
-				status: row.status,
 				xp: mayView ? row.xp : 0,
 				rp: mayView ? row.rp : 0,
 				isPrivate: row.profileVisibility === "private",
@@ -277,7 +272,6 @@ export async function getUserProfileCard(
 		role: user.role,
 		rp: mayView ? user.rp : 0,
 		xp: mayView ? user.xp : 0,
-		status: user.status,
 		isPrivate: user.profileVisibility === "private",
 		canViewProfile: mayView,
 		friendCount,
@@ -435,25 +429,4 @@ export async function getUserParticipationList(
 			...(total != null ? { total } : {}),
 		},
 	};
-}
-
-export async function updateUserStatus(
-	input: UpdateUserStatusInput,
-	db: Database,
-): Promise<UpdateUserStatusOutput> {
-	try {
-		return await db.user.update({
-			where: { username: input.username },
-			data: { status: input.status },
-			select: {
-				username: true,
-				status: true,
-			},
-		});
-	} catch {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
-			data: { username: input.username },
-		});
-	}
 }

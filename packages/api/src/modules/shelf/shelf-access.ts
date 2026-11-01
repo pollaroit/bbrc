@@ -34,7 +34,6 @@ export type ShelfOwner = {
 	username: string;
 	name: string;
 	image: string | null;
-	status: "active" | "warned" | "banned";
 	profileVisibility: "public" | "private";
 };
 
@@ -53,7 +52,6 @@ export const ownerSelect = {
 	username: true,
 	name: true,
 	image: true,
-	status: true,
 	profileVisibility: true,
 } as const;
 
@@ -101,13 +99,6 @@ export async function loadShelfAccess(
 	const row = collaborators[0] ?? null;
 	const isOwner = owner.id === input.actorId;
 
-	// Banned members can still collaborate on other people's shelves, but
-	// cannot change their own.
-	if (isOwner && owner.status === "banned") {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Your account is restricted, so you cannot change your shelves.",
-		});
-	}
 	const granted = row ? normalizeShelfPermissions(row.permissions) : [];
 
 	return {

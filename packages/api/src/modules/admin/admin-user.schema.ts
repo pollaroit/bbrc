@@ -4,7 +4,6 @@ import {
 	passwordSchema,
 	RoleSchema,
 	UserSchema,
-	UserStatusSchema,
 } from "@bbrc/schemas";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import type { z } from "zod";
@@ -49,9 +48,6 @@ export const AdminUserOverviewOutputSchema = zod.object({
 		totalMembers: zod.number().int().min(0),
 		/** Members per role. */
 		roles: RoleCountsSchema,
-		active: zod.number().int().min(0),
-		warned: zod.number().int().min(0),
-		banned: zod.number().int().min(0),
 		averageXp: zod.number(),
 		averageRp: zod.number(),
 		totalXp: UserPointsSchema,
@@ -99,7 +95,6 @@ export const AdminUserListItemSchema = UserSchema.pick({
 		username: zod.string(),
 		name: zod.string(),
 		image: UserSchema.shape.image,
-		status: UserSchema.shape.status,
 		xp: UserPointsSchema,
 		rp: UserPointsSchema,
 	})
@@ -161,7 +156,6 @@ export type GetAdminUserOverviewInput = z.infer<
 
 export const GetAdminUserStatsInputSchema = zod
 	.object({
-		statuses: zod.array(UserStatusSchema).optional(),
 		roles: zod.array(RoleSchema).optional(),
 		rangeMin: zod.coerce.date().optional(),
 		rangeMax: zod.coerce.date().optional(),
@@ -175,12 +169,6 @@ export const AdminUserStatsPointSchema = zod.object({
 });
 
 export const AdminUserStatsOutputSchema = zod.object({
-	statusDistribution: zod.array(
-		zod.object({
-			status: UserStatusSchema,
-			count: zod.number().int().min(0),
-		}),
-	),
 	signupsByDay: zod.array(
 		zod.object({
 			date: zod.string(),
@@ -224,16 +212,6 @@ export const AdminUpdateUserNameOutputSchema = UserSchema.pick({
 	name: true,
 });
 
-export const AdminUpdateUserStatusInputSchema = zod.object({
-	username: UserSchema.shape.username,
-	status: UserSchema.shape.status,
-});
-
-export const AdminUpdateUserStatusOutputSchema = UserSchema.pick({
-	username: true,
-	status: true,
-});
-
 export const AdminDeleteUserInputSchema = zod.object({
 	username: UserSchema.shape.username,
 });
@@ -257,12 +235,6 @@ export type AdminUpdateUserNameInput = z.infer<
 export type AdminUpdateUserNameOutput = z.infer<
 	typeof AdminUpdateUserNameOutputSchema
 >;
-export type AdminUpdateUserStatusInput = z.infer<
-	typeof AdminUpdateUserStatusInputSchema
->;
-export type AdminUpdateUserStatusOutput = z.infer<
-	typeof AdminUpdateUserStatusOutputSchema
->;
 export type AdminDeleteUserInput = z.infer<typeof AdminDeleteUserInputSchema>;
 export type AdminDeleteUserOutput = z.infer<typeof AdminDeleteUserOutputSchema>;
 export type AdminSetUserPasswordInput = z.infer<
@@ -279,7 +251,6 @@ export const adminUserListSelect = {
 	email: true,
 	image: true,
 	role: true,
-	status: true,
 	xp: true,
 	rp: true,
 	emailVerified: true,

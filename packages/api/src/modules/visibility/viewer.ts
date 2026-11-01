@@ -20,17 +20,11 @@ export async function loadFriendIds(
 		select: {
 			userLowId: true,
 			userHighId: true,
-			userLow: { select: { status: true } },
-			userHigh: { select: { status: true } },
 		},
 	});
-	return rows.flatMap((row) => {
-		const mineIsLow = row.userLowId === userId;
-		const other = mineIsLow ? row.userHigh : row.userLow;
-		return other.status === "banned"
-			? []
-			: [mineIsLow ? row.userHighId : row.userLowId];
-	});
+	return rows.map((row) =>
+		row.userLowId === userId ? row.userHighId : row.userLowId,
+	);
 }
 
 /** Everyone who blocked this member, or whom this member blocked. */

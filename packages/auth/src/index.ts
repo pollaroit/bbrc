@@ -60,13 +60,6 @@ export function createAuth(env: AuthConfig, database: Database) {
 					required: true,
 					input: false,
 				},
-				status: {
-					type: "string",
-					returned: true,
-					defaultValue: "active",
-					required: true,
-					input: false,
-				},
 				username: {
 					type: "string",
 					returned: true,

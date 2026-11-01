@@ -12,7 +12,6 @@ import {
 const now = new Date("2026-11-12T12:00:00Z");
 const base: FriendRequestFacts = {
 	isSelf: false,
-	unavailable: false,
 	blocked: false,
 	state: "none",
 	lastDeclinedAt: null,
@@ -33,7 +32,7 @@ describe("checkFriendRequest", () => {
 		expect(checkFriendRequest(base)).toEqual({ ok: true, action: "send" });
 	});
 
-	test("you cannot add yourself, a blocked or unavailable member", () => {
+	test("you cannot add yourself, a blocked member", () => {
 		expect(checkFriendRequest({ ...base, isSelf: true })).toEqual({
 			ok: false,
 			reason: "self",
@@ -41,10 +40,6 @@ describe("checkFriendRequest", () => {
 		expect(checkFriendRequest({ ...base, blocked: true })).toEqual({
 			ok: false,
 			reason: "blocked",
-		});
-		expect(checkFriendRequest({ ...base, unavailable: true })).toEqual({
-			ok: false,
-			reason: "unavailable",
 		});
 	});
 

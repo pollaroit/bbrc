@@ -1,6 +1,5 @@
 import { SittingSchema } from "@bbrc/schemas";
 import {
-	notBannedProcedure,
 	protectedProcedure,
 	publicProcedure,
 	superAdminProcedure,
@@ -174,7 +173,7 @@ export const sittingRouter = {
 			revalidateSittingIsr(context, sitting.slug);
 			return sitting;
 		}),
-	submitPollVotes: notBannedProcedure
+	submitPollVotes: protectedProcedure
 		.use(checkAchievementsAfter("votes"))
 		.input(SubmitPollVotesInputSchema)
 		.output(SubmitPollVotesOutputSchema)
@@ -191,7 +190,7 @@ export const sittingRouter = {
 		.handler(
 			async ({ input, context }) => await getPollOptionVotes(input, context.db),
 		),
-	getPollOptionReaders: notBannedProcedure
+	getPollOptionReaders: protectedProcedure
 		.input(GetPollOptionReadersInputSchema)
 		.output(GetPollOptionReadersOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -241,7 +240,7 @@ export const sittingRouter = {
 			revalidateSittingIsr(context, input.slug);
 			return result;
 		}),
-	updateMyParticipationProgress: notBannedProcedure
+	updateMyParticipationProgress: protectedProcedure
 		.use(checkAchievementsAfter("sittings"))
 		.input(UpdateMyParticipationProgressInputSchema)
 		.output(UpdateMyParticipationProgressOutputSchema)

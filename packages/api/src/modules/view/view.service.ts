@@ -130,7 +130,6 @@ async function resolveTargets(
 				const rows = await db.user.findMany({
 					where: {
 						username: { in: refs },
-						status: { not: "banned" },
 					},
 					select: { id: true, username: true },
 				});

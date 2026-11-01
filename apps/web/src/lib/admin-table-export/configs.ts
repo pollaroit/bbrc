@@ -58,7 +58,6 @@ export const adminUsersExportFields: AdminTableExportField<UserItem>[] = [
 	{ key: "username", label: "Username", getValue: (r) => r.username },
 	{ key: "name", label: "Name", getValue: (r) => r.name },
 	{ key: "email", label: "Email", getValue: (r) => r.email },
-	{ key: "status", label: "Status", getValue: (r) => r.status },
 	{ key: "role", label: "Role", getValue: (r) => ROLE_META[roleOf(r)].label },
 	{
 		key: "emailVerified",

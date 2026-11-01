@@ -16,8 +16,6 @@ import type {
 	AdminSetUserPasswordOutput,
 	AdminUpdateUserNameInput,
 	AdminUpdateUserNameOutput,
-	AdminUpdateUserStatusInput,
-	AdminUpdateUserStatusOutput,
 	AdminUserOverviewOutput,
 	AdminUserStatsOutput,
 	GetAdminUserOverviewInput,
@@ -94,7 +92,6 @@ function mapAdminUserRow(row: AdminUserListRow) {
 		email: row.email,
 		image: row.image,
 		role: row.role,
-		status: row.status,
 		xp: row.xp,
 		rp: row.rp,
 		emailVerified: row.emailVerified,
@@ -365,7 +362,6 @@ export async function buildAdminUserListWhere(
 		searching.use(),
 		{
 			id: minCountIds ? { in: minCountIds } : undefined,
-			status: input.statuses ? { in: input.statuses } : undefined,
 			role: input.roles?.length ? { in: input.roles } : undefined,
 			xp: input.minXp != null ? { gte: input.minXp } : undefined,
 			rp: input.minRp != null ? { gte: input.minRp } : undefined,
@@ -396,9 +392,6 @@ function emptyAdminUserOverview(
 		kpis: {
 			totalMembers: 0,
 			roles: roleCountsOf([]),
-			active: 0,
-			warned: 0,
-			banned: 0,
 			averageXp: 0,
 			averageRp: 0,
 			totalXp: 0,
@@ -474,9 +467,6 @@ export async function getAdminUserOverview(
 	const [
 		totalMembers,
 		roleGroups,
-		activeCount,
-		warnedCount,
-		bannedCount,
 		xpAgg,
 		rpAgg,
 		joinedLast7Days,
@@ -488,15 +478,6 @@ export async function getAdminUserOverview(
 	] = await Promise.all([
 		db.user.count({ where }),
 		db.user.groupBy({ by: ["role"], where, _count: { _all: true } }),
-		db.user.count({
-			where: mergeWhereFragments(where, { status: "active" }),
-		}),
-		db.user.count({
-			where: mergeWhereFragments(where, { status: "warned" }),
-		}),
-		db.user.count({
-			where: mergeWhereFragments(where, { status: "banned" }),
-		}),
 		db.user.aggregate({ where, _avg: { xp: true }, _sum: { xp: true } }),
 		db.user.aggregate({ where, _avg: { rp: true }, _sum: { rp: true } }),
 		db.user.count({ where: joined7Where }),
@@ -517,9 +498,6 @@ export async function getAdminUserOverview(
 		kpis: {
 			totalMembers,
 			roles: roleCountsOf(roleGroups),
-			active: activeCount,
-			warned: warnedCount,
-			banned: bannedCount,
 			averageXp: Math.round((xpAgg._avg.xp ?? 0) * 10) / 10,
 			averageRp: Math.round((rpAgg._avg.rp ?? 0) * 10) / 10,
 			totalXp: xpAgg._sum.xp ?? 0,
@@ -539,9 +517,6 @@ function buildAdminUserStatsWhere(
 ): Prisma.UserWhereInput {
 	const where: Prisma.UserWhereInput = {};
 
-	if (input.statuses?.length) {
-		where.status = { in: input.statuses };
-	}
 	if (input.roles?.length) {
 		where.role = { in: input.roles };
 	}
@@ -557,11 +532,6 @@ function buildAdminUserStatsWhere(
 
 function emptyUserStats(): AdminUserStatsOutput {
 	return {
-		statusDistribution: [
-			{ status: "active", count: 0 },
-			{ status: "warned", count: 0 },
-			{ status: "banned", count: 0 },
-		],
 		signupsByDay: [],
 		xpHistogram: [],
 		rpHistogram: [],
@@ -598,7 +568,6 @@ export async function getAdminUserStats(
 	const users = await db.user.findMany({
 		where,
 		select: {
-			status: true,
 			role: true,
 			xp: true,
 			rp: true,
@@ -620,13 +589,6 @@ export async function getAdminUserStats(
 	if (users.length === 0) {
 		return emptyUserStats();
 	}
-
-	const statusDistribution = (["active", "warned", "banned"] as const).map(
-		(status) => ({
-			status,
-			count: users.filter((u) => u.status === status).length,
-		}),
-	);
 
 	const xpMap = new Map<string, number>();
 	const rpMap = new Map<string, number>();
@@ -668,7 +630,6 @@ export async function getAdminUserStats(
 	}
 
 	return {
-		statusDistribution,
 		signupsByDay: buildSignupsByDay(users, 30),
 		xpHistogram: XP_BUCKET_ORDER.filter((label) => xpMap.has(label)).map(
 			(label) => ({ label, value: xpMap.get(label) ?? 0 }),
@@ -725,24 +686,6 @@ export async function adminUpdateUserName(
 			where: { username: input.username },
 			data: { name: input.name },
 			select: { username: true, name: true },
-		});
-	} catch {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
-			data: { username: input.username },
-		});
-	}
-}
-
-export async function adminUpdateUserStatus(
-	input: AdminUpdateUserStatusInput,
-	db: Database,
-): Promise<AdminUpdateUserStatusOutput> {
-	try {
-		return await db.user.update({
-			where: { username: input.username },
-			data: { status: input.status },
-			select: { username: true, status: true },
 		});
 	} catch {
 		throw new ORPCError("NOT_FOUND", {

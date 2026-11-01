@@ -2,7 +2,6 @@ import type { GetPeopleListInput } from "@bbrc/api/modules/people/people.schema"
 import {
 	PEOPLE_ACTIVITY_FILTERS,
 	PEOPLE_SORT_FIELDS,
-	PEOPLE_STATUSES,
 } from "@bbrc/api/modules/people/people.schema";
 import { ROLES } from "@bbrc/shared";
 import {
@@ -57,12 +56,6 @@ export const peopleActivityLabels = {
 	hasAvatar: "Has a profile photo",
 } as const satisfies FieldLabels<PeopleActivityFilter>;
 
-export const peopleStatusLabels = {
-	active: "Active",
-	warned: "Warned",
-	banned: "Banned",
-} as const;
-
 export const PEOPLE_PAGE_SIZE = 12;
 
 export const peopleListingSearchParams = {
@@ -70,7 +63,6 @@ export const peopleListingSearchParams = {
 	sortBy: parseAsStringLiteral(PEOPLE_SORT_FIELDS).withDefault("xp"),
 	sortDirection: sortDirectionParser.withDefault("desc"),
 	roles: parseAsArrayOf(parseAsStringLiteral(ROLES)),
-	statuses: parseAsArrayOf(parseAsStringLiteral(PEOPLE_STATUSES)),
 	xpLevels: parseAsArrayOf(parseAsString),
 	rpLevels: parseAsArrayOf(parseAsString),
 	rangeMin: rangeMinParser,
@@ -107,7 +99,6 @@ export function toPeopleListCallInput(
 			sortBy: params.sortBy,
 			sortDirection: params.sortDirection,
 			roles: params.roles,
-			statuses: params.statuses,
 			xpLevels: params.xpLevels,
 			rpLevels: params.rpLevels,
 			rangeMin: params.rangeMin,
@@ -130,7 +121,6 @@ export function countPeopleSheetFilters(
 	return (
 		[
 			Boolean(params.roles?.length),
-			Boolean(params.statuses?.length),
 			Boolean(params.xpLevels?.length),
 			Boolean(params.rpLevels?.length),
 			params.rangeMin != null || params.rangeMax != null,
@@ -150,7 +140,6 @@ export function clearPeopleSheetFilters(
 ) {
 	void setParams({
 		roles: null,
-		statuses: null,
 		xpLevels: null,
 		rpLevels: null,
 		rangeMin: null,

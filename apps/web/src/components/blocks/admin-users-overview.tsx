@@ -113,31 +113,6 @@ export function AdminUsersOverview() {
 						<List data-icon="inline-start" />
 						Member directory
 					</Button>
-					{kpis.warned > 0 ? (
-						<Button
-							render={
-								<Link href={"/admin/users/list?statuses=warned" as Route} />
-							}
-							nativeButton={false}
-							variant="outline"
-							size="sm"
-						>
-							<AlertTriangle data-icon="inline-start" />
-							Warned ({kpis.warned})
-						</Button>
-					) : null}
-					{kpis.banned > 0 ? (
-						<Button
-							render={
-								<Link href={"/admin/users/list?statuses=banned" as Route} />
-							}
-							nativeButton={false}
-							variant="outline"
-							size="sm"
-						>
-							Banned ({kpis.banned})
-						</Button>
-					) : null}
 					{kpis.unverifiedEmail > 0 ? (
 						<Button
 							render={<Link href={"/admin/users/list" as Route} />}
@@ -168,7 +143,6 @@ export function AdminUsersOverview() {
 								.join(", ") || "No one has a role yet"
 						}
 					/>
-					<StatCard label="Active" value={kpis.active} />
 					<StatCard
 						label="Joined (7d / 30d)"
 						value={`${kpis.joinedLast7Days} / ${kpis.joinedLast30Days}`}
@@ -181,8 +155,6 @@ export function AdminUsersOverview() {
 						label="Total XP / RP"
 						value={`${kpis.totalXp} / ${kpis.totalRp}`}
 					/>
-					<StatCard label="Warned" value={kpis.warned} />
-					<StatCard label="Banned" value={kpis.banned} />
 				</div>
 
 				<Card size="sm">

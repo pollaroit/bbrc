@@ -325,22 +325,14 @@ export async function uploadBookCoverDirect(
 
 /**
  * Uploads a finished edition cover (cropped to 2:3 by the browser) and returns
- * its public URL. Any signed-in member who is not banned; the edition itself
+ * its public URL. Any signed-in member; the edition itself
  * is saved separately.
  */
-export async function uploadEditionCoverDirect(
-	file: {
-		buffer: Buffer;
-		contentType: AllowedImageMimeType;
-		contentLength: number;
-	},
-	session: Session,
-) {
-	if (session.user.status === "banned") {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Your account cannot upload covers.",
-		});
-	}
+export async function uploadEditionCoverDirect(file: {
+	buffer: Buffer;
+	contentType: AllowedImageMimeType;
+	contentLength: number;
+}) {
 	const key = buildObjectKey(getStorageEnv(), {
 		kind: "edition-cover",
 		coverUid: crypto.randomUUID(),
@@ -355,22 +347,14 @@ export async function uploadEditionCoverDirect(
 
 /**
  * Uploads a finished tierlist picture (cropped to 2:3 by the browser) and
- * returns its public URL. Any signed-in member who is not banned; the picture
+ * returns its public URL. Any signed-in member; the picture
  * is attached when the tierlist is published with its post.
  */
-export async function uploadTierlistImageDirect(
-	file: {
-		buffer: Buffer;
-		contentType: AllowedImageMimeType;
-		contentLength: number;
-	},
-	session: Session,
-) {
-	if (session.user.status === "banned") {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Your account cannot upload pictures.",
-		});
-	}
+export async function uploadTierlistImageDirect(file: {
+	buffer: Buffer;
+	contentType: AllowedImageMimeType;
+	contentLength: number;
+}) {
 	const key = buildObjectKey(getStorageEnv(), {
 		kind: "tierlist-image",
 		imageUid: crypto.randomUUID(),

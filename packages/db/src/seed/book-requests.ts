@@ -11,9 +11,7 @@ export async function seedBookRequests(
 	users: User[],
 	catalogOlids: ReadonlySet<string>,
 ): Promise<number> {
-	const requesters = users.filter(
-		(user) => !isSuperAdmin(user) && user.status === "active",
-	);
+	const requesters = users.filter((user) => !isSuperAdmin(user));
 
 	if (requesters.length === 0) {
 		return 0;

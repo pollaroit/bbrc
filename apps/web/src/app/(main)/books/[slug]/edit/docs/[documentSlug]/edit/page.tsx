@@ -38,10 +38,6 @@ export default async function EditBookDocumentPage({
 		redirect("/sign-in" as Route);
 	}
 
-	if (session.user.status === "banned") {
-		redirect(`/books/${slug}` as Route);
-	}
-
 	let document: GetDocumentForEditOutput;
 	try {
 		document = await getDocumentForEdit(slug, documentSlug, session, db);

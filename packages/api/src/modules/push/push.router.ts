@@ -1,4 +1,4 @@
-import { notBannedProcedure } from "../../procedures";
+import { protectedProcedure } from "../../procedures";
 import {
 	ListPushDevicesOutputSchema,
 	OkSchema,
@@ -14,24 +14,24 @@ import {
 } from "./push.service";
 
 export const pushRouter = {
-	registerDevice: notBannedProcedure
+	registerDevice: protectedProcedure
 		.input(RegisterPushDeviceInputSchema)
 		.output(OkSchema)
 		.handler(({ input, context }) =>
 			registerPushDevice(context.db, context.session.user.id, input),
 		),
-	listDevices: notBannedProcedure
+	listDevices: protectedProcedure
 		.output(ListPushDevicesOutputSchema)
 		.handler(({ context }) =>
 			listPushDevices(context.db, context.session.user.id),
 		),
-	removeDevice: notBannedProcedure
+	removeDevice: protectedProcedure
 		.input(RemovePushDeviceInputSchema)
 		.output(OkSchema)
 		.handler(({ input, context }) =>
 			removePushDevice(context.db, context.session.user.id, input.deviceId),
 		),
-	sendTest: notBannedProcedure
+	sendTest: protectedProcedure
 		.output(SendTestPushOutputSchema)
 		.handler(({ context }) =>
 			sendTestPush(context.db, context.session.user.id),

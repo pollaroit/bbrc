@@ -1,6 +1,5 @@
 import { BookSchema } from "@bbrc/schemas";
 import {
-	notBannedProcedure,
 	protectedProcedure,
 	publicProcedure,
 	superAdminProcedure,
@@ -227,7 +226,7 @@ export const bookRouter = {
 			return slug;
 		}),
 	// Public information (the catalog), and members need it to see what is already in the library.
-	listCatalogOlids: notBannedProcedure
+	listCatalogOlids: protectedProcedure
 		.output(ListCatalogOlidsOutputSchema)
 		.handler(async ({ context }) => ({
 			olids: await listCatalogOlids(context.db),

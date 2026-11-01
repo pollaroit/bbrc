@@ -17,7 +17,6 @@ import { ReportOnlyMenu } from "@/components/blocks/report/report-menu";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { RoleBadge } from "@/components/blocks/role-badge";
 import { CompareWithButton } from "@/components/blocks/user-compare/compare-with-button";
-import { UserStatusBadge } from "@/components/blocks/user-status-badge";
 
 type MemberProfileHeaderProps = {
 	user: GetUserByUsernameOutput;
@@ -74,9 +73,6 @@ export function MemberProfileHeader({
 										<Lock className="size-3" aria-hidden />
 										Private
 									</span>
-								) : null}
-								{user.status !== "active" ? (
-									<UserStatusBadge status={user.status} />
 								) : null}
 								<span className="tabular-nums">
 									{user.friendCount ?? 0}{" "}

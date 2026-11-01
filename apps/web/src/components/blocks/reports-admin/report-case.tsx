@@ -3,7 +3,6 @@
 import type { ReportGroup } from "@bbrc/api/modules/report/report.schema";
 import {
 	canApplyReportAction,
-	isSuperAdmin,
 	REPORT_ACTION_LABELS,
 	REPORT_ADMIN_NOTE_MAX,
 	REPORT_REASON_LABELS,
@@ -17,21 +16,13 @@ import { Field, FieldDescription, FieldLabel } from "@bbrc/ui/components/field";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation } from "@tanstack/react-query";
-import {
-	Ban,
-	Check,
-	ExternalLink,
-	RotateCcw,
-	ShieldAlert,
-	Trash2,
-} from "lucide-react";
+import { Check, ExternalLink, RotateCcw, Trash2 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { type ReactNode, useId, useState } from "react";
 import { toast } from "sonner";
 import { RelativeTime } from "@/components/blocks/relative-time";
 import { UserPanel } from "@/components/blocks/user-panel";
-import { UserStatusBadge } from "@/components/blocks/user-status-badge";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { cn } from "@/lib/utils";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -41,7 +32,7 @@ import { ReportKindIcon } from "./report-kind";
 const FLAG_MIN_CLOSED = 3;
 const FLAG_DISMISSED_SHARE = 0.7;
 
-type Confirmable = "delete_content" | "ban_owner";
+type Confirmable = "delete_content";
 
 function plural(count: number, one: string, many = `${one}s`) {
 	return `${count} ${count === 1 ? one : many}`;
@@ -100,12 +91,6 @@ export function ReportCase({ group }: { group: ReportGroup }) {
 	const available = reportActionsFor(group.target);
 	const can = (action: ReportActionKind) =>
 		available.includes(action) && canApplyReportAction(group.status, action);
-
-	const protectedReason = !owner
-		? "This account no longer exists."
-		: isSuperAdmin(owner)
-			? "Admins cannot be warned or banned from here."
-			: null;
 
 	function run(action: ReportActionKind) {
 		act.mutate({
@@ -188,7 +173,6 @@ export function ReportCase({ group }: { group: ReportGroup }) {
 					<div className="flex flex-wrap items-center justify-between gap-3">
 						<div className="flex min-w-0 items-center gap-3">
 							<UserPanel user={owner} className="min-w-0" />
-							<UserStatusBadge status={owner.status} />
 						</div>
 						<p className="text-muted-foreground text-sm">
 							{plural(owner.reportsAgainst, "report")} against them in total
@@ -263,8 +247,8 @@ export function ReportCase({ group }: { group: ReportGroup }) {
 							onChange={(event) => setNote(event.target.value)}
 						/>
 						<FieldDescription>
-							Saved in the history. {ownerName} sees it when you warn them or
-							delete their {what}.
+							Saved in the history. {ownerName} sees it when you delete their{" "}
+							{what}.
 						</FieldDescription>
 					</Field>
 
@@ -300,47 +284,6 @@ export function ReportCase({ group }: { group: ReportGroup }) {
 									>
 										<Trash2 data-icon="inline-start" aria-hidden />
 										Delete
-									</Button>
-								}
-							/>
-						) : null}
-						{can("warn_owner") ? (
-							<DecisionRow
-								title={`Warn ${ownerName}`}
-								consequence={
-									protectedReason ??
-									"They get a notice and their status becomes warned. A ban stays a ban."
-								}
-								action={
-									<LoadingButton
-										variant="outline"
-										size="sm"
-										loading={busy("warn_owner")}
-										disabled={act.isPending || Boolean(protectedReason)}
-										onClick={() => run("warn_owner")}
-									>
-										<ShieldAlert data-icon="inline-start" aria-hidden />
-										Warn
-									</LoadingButton>
-								}
-							/>
-						) : null}
-						{can("ban_owner") && owner?.status !== "banned" ? (
-							<DecisionRow
-								title={`Ban ${ownerName}`}
-								consequence={
-									protectedReason ??
-									"They lose access to the club until an admin lifts the ban. Their content stays."
-								}
-								action={
-									<Button
-										variant="destructive"
-										size="sm"
-										disabled={act.isPending || Boolean(protectedReason)}
-										onClick={() => setConfirming("ban_owner")}
-									>
-										<Ban data-icon="inline-start" aria-hidden />
-										Ban
 									</Button>
 								}
 							/>
@@ -423,17 +366,9 @@ export function ReportCase({ group }: { group: ReportGroup }) {
 				onOpenChange={(open) => {
 					if (!open) setConfirming(null);
 				}}
-				title={
-					confirming === "ban_owner"
-						? `Ban ${ownerName}?`
-						: `Delete this ${what}?`
-				}
-				description={
-					confirming === "ban_owner"
-						? "They lose access to the club until an admin sets their status back. Their content stays."
-						: "It is removed for good, with its comments and likes. The owner is told. This cannot be undone."
-				}
-				confirmLabel={confirming === "ban_owner" ? "Ban member" : "Delete"}
+				title={`Delete this ${what}?`}
+				description="It is removed for good, with its comments and likes. The owner is told. This cannot be undone."
+				confirmLabel="Delete"
 				loading={act.isPending}
 				onConfirm={() => confirming && run(confirming)}
 			/>

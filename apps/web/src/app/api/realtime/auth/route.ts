@@ -23,15 +23,10 @@ async function issue(req: NextRequest) {
 
 	const result = await createRealtimeTokenRequest(db, session);
 	if (!result.ok) {
-		return result.reason === "banned"
-			? Response.json(
-					{ error: "Live features are not available." },
-					{ status: 403, headers: NO_STORE },
-				)
-			: Response.json(
-					{ error: "Realtime is not set up." },
-					{ status: 503, headers: NO_STORE },
-				);
+		return Response.json(
+			{ error: "Realtime is not set up." },
+			{ status: 503, headers: NO_STORE },
+		);
 	}
 	return Response.json(result.tokenRequest, { headers: NO_STORE });
 }

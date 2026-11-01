@@ -208,11 +208,6 @@ function ParticipantRow({
 								You
 							</span>
 						) : null}
-						{participant.status !== "active" ? (
-							<Badge variant="outline" className="h-5 px-1.5 capitalize">
-								{participant.status}
-							</Badge>
-						) : null}
 					</p>
 					<p className="truncate text-muted-foreground text-xs tabular-nums">
 						@{participant.username}

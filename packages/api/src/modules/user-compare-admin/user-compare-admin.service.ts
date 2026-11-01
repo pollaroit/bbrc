@@ -55,7 +55,6 @@ export async function searchCompareMembers(
 			username: true,
 			name: true,
 			image: true,
-			status: true,
 			allowCompare: true,
 		},
 		orderBy: [{ name: "asc" }],
@@ -64,7 +63,6 @@ export async function searchCompareMembers(
 	return {
 		items: rows.map((row) => ({
 			...memberRef(row),
-			isBanned: row.status === "banned",
 			allowCompare: row.allowCompare,
 		})),
 	};
@@ -151,7 +149,6 @@ async function loadUniverse(
 
 	const users = await db.user.findMany({
 		where: {
-			status: { not: "banned" },
 			...(filters.users?.length ? { username: { in: filters.users } } : {}),
 		},
 		select: { id: true, username: true, name: true, image: true },

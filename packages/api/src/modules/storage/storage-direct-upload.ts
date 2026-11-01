@@ -143,13 +143,13 @@ export async function handleDirectImageUpload(
 				result = await uploadBookCoverDirect(payload, session);
 				break;
 			case "edition-cover":
-				result = await uploadEditionCoverDirect(payload, session);
+				result = await uploadEditionCoverDirect(payload);
 				break;
 			case "author-photo":
 				result = await uploadAuthorPhotoDirect(payload, session);
 				break;
 			case "tierlist-image":
-				result = await uploadTierlistImageDirect(payload, session);
+				result = await uploadTierlistImageDirect(payload);
 				break;
 			case "shelf-cover":
 				result = await uploadShelfCoverDirect(

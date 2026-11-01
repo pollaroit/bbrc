@@ -120,10 +120,7 @@ export function UserBookRequestsSheet({
 		authClient.useSession();
 	const [open, setOpen] = useState(false);
 
-	const isMember =
-		session != null &&
-		!isSuperAdmin(session.user) &&
-		session.user.status !== "banned";
+	const isMember = session != null && !isSuperAdmin(session.user);
 
 	const { data, isPending: isListPending } = useQuery({
 		...orpc.bookRequest.listMine.queryOptions(),

@@ -45,7 +45,6 @@ export async function getCompareOgSnapshot(
 				{ username: { equals: usernameA, mode: "insensitive" } },
 				{ username: { equals: usernameB, mode: "insensitive" } },
 			],
-			status: { not: "banned" },
 		},
 		select: {
 			name: true,

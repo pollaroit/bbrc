@@ -1,4 +1,4 @@
-import type { Database, Prisma } from "@bbrc/db";
+import type { Database } from "@bbrc/db";
 import {
 	buildPushPayload,
 	defaultPushEnabledForKind,
@@ -328,9 +328,8 @@ export async function dispatchNotification(
 	}
 }
 
-export async function listActiveMemberUserIds(db: Database): Promise<string[]> {
+export async function listMemberUserIds(db: Database): Promise<string[]> {
 	const users = await db.user.findMany({
-		where: { status: { in: ["active", "warned"] } },
 		select: { id: true },
 	});
 	return users.map((u) => u.id);
@@ -357,11 +356,8 @@ export async function listAudienceUserIds(
 		section: options.section === "reviews" ? author.reviewsVisibility : null,
 		item: options.item ?? null,
 	});
-	const active = {
-		status: { in: ["active", "warned"] },
-	} satisfies Prisma.UserWhereInput;
 	const admins = await db.user.findMany({
-		where: { ...active, role: "super_admin" },
+		where: { role: "super_admin" },
 		select: { id: true },
 	});
 	const adminIds = admins.map((user) => user.id);
@@ -369,14 +365,14 @@ export async function listAudienceUserIds(
 	if (level === "friends") {
 		const friendIds = await loadFriendIds(db, authorId);
 		const friends = await db.user.findMany({
-			where: { ...active, id: { in: friendIds } },
+			where: { id: { in: friendIds } },
 			select: { id: true },
 		});
 		return [...new Set([...friends.map((user) => user.id), ...adminIds])];
 	}
 	const blockedIds = await loadBlockedIds(db, authorId);
 	const members = await db.user.findMany({
-		where: { ...active, id: { notIn: blockedIds } },
+		where: { id: { notIn: blockedIds } },
 		select: { id: true },
 	});
 	return [...new Set([...members.map((user) => user.id), ...adminIds])];

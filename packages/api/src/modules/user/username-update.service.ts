@@ -93,18 +93,11 @@ export async function updateUsername(
 		select: {
 			username: true,
 			usernameLastUpdatedAt: true,
-			status: true,
 		},
 	});
 
 	if (!user) {
 		throw new ORPCError("NOT_FOUND", { message: "User not found" });
-	}
-
-	if (user.status !== "active") {
-		throw new ORPCError("FORBIDDEN", {
-			message: "Your account cannot change its username right now.",
-		});
 	}
 
 	if (nextUsername === user.username) {

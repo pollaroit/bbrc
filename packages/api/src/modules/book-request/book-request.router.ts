@@ -1,5 +1,5 @@
 import { isSuperAdmin } from "@bbrc/shared";
-import { notBannedProcedure, superAdminProcedure } from "../../procedures";
+import { protectedProcedure, superAdminProcedure } from "../../procedures";
 import {
 	CreateBookRequestInputSchema,
 	CreateBookRequestOutputSchema,
@@ -24,23 +24,23 @@ export const bookRequestRouter = {
 	listPending: superAdminProcedure
 		.output(ListPendingBookRequestsOutputSchema)
 		.handler(async ({ context }) => listPendingBookRequests(context.db)),
-	listOpen: notBannedProcedure
+	listOpen: protectedProcedure
 		.output(ListOpenBookRequestsOutputSchema)
 		.handler(async ({ context }) =>
 			listOpenBookRequests(context.session.user.id, context.db),
 		),
-	upvote: notBannedProcedure
+	upvote: protectedProcedure
 		.input(UpvoteBookRequestInputSchema)
 		.output(UpvoteBookRequestOutputSchema)
 		.handler(async ({ input, context }) =>
 			setBookRequestUpvote(input, context.session.user.id, context.db),
 		),
-	listMine: notBannedProcedure
+	listMine: protectedProcedure
 		.output(ListMyBookRequestsOutputSchema)
 		.handler(async ({ context }) =>
 			listMyBookRequests(context.session.user.id, context.db),
 		),
-	create: notBannedProcedure
+	create: protectedProcedure
 		.input(CreateBookRequestInputSchema)
 		.output(CreateBookRequestOutputSchema)
 		.handler(async ({ input, context }) =>

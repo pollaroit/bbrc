@@ -98,7 +98,6 @@ export const ReportGroupSchema = zod.object({
 			username: zod.string(),
 			name: zod.string(),
 			image: zod.string().nullable(),
-			status: zod.enum(["active", "warned", "banned"]),
 			role: RoleSchema,
 			/** Open reports and past reports against this member, across all their content. */
 			reportsAgainst: zod.number().int(),

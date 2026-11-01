@@ -149,8 +149,6 @@ import {
 	AdminSetUserPasswordOutputSchema,
 	AdminUpdateUserNameInputSchema,
 	AdminUpdateUserNameOutputSchema,
-	AdminUpdateUserStatusInputSchema,
-	AdminUpdateUserStatusOutputSchema,
 	AdminUserOverviewOutputSchema,
 	AdminUserStatsOutputSchema,
 	GetAdminUserOverviewInputSchema,
@@ -162,7 +160,6 @@ import {
 	adminDeleteUser,
 	adminSetUserPassword,
 	adminUpdateUserName,
-	adminUpdateUserStatus,
 	getAdminUserOverview,
 	getAdminUserStats,
 	listAdminUsers,
@@ -206,12 +203,6 @@ export const adminRouter = {
 		.output(AdminUpdateUserNameOutputSchema)
 		.handler(async ({ input, context }) =>
 			adminUpdateUserName(input, context.db),
-		),
-	updateUserStatus: superAdminProcedure
-		.input(AdminUpdateUserStatusInputSchema)
-		.output(AdminUpdateUserStatusOutputSchema)
-		.handler(async ({ input, context }) =>
-			adminUpdateUserStatus(input, context.db),
 		),
 	deleteUser: superAdminProcedure
 		.input(AdminDeleteUserInputSchema)

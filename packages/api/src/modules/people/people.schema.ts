@@ -39,15 +39,11 @@ export const PEOPLE_ACTIVITY_FILTERS = [
 	"hasAvatar",
 ] as const;
 
-export const PEOPLE_STATUSES = ["active", "warned", "banned"] as const;
-
 export const GetPeopleListInputSchema = CursorPaginationInputSchema.extend({
 	search: zod.string().trim().max(100).optional(),
 	sortBy: zod.enum(PEOPLE_SORT_FIELDS).default("xp"),
 	sortDirection: zod.enum(["asc", "desc"]).default("desc"),
 	roles: zod.array(RoleSchema).optional(),
-	/** Only honoured for administrators; everyone else never sees banned members. */
-	statuses: zod.array(zod.enum(PEOPLE_STATUSES)).optional(),
 	xpLevels: zod.array(zod.string().max(40)).optional(),
 	rpLevels: zod.array(zod.string().max(40)).optional(),
 	rangeMin: zod.coerce.date().optional(),
@@ -78,7 +74,6 @@ export const PeopleListItemSchema = zod.object({
 	username: zod.string(),
 	name: zod.string(),
 	image: zod.string().nullable(),
-	status: zod.enum(PEOPLE_STATUSES),
 	role: RoleSchema,
 	createdAt: zod.string(),
 	xp: zod.number().int(),

@@ -20,7 +20,6 @@ import {
 	searchParser,
 	sortDirectionParser,
 } from "@/lib/listing/parsers";
-import { userStatuses } from "@/lib/listing/users-listing";
 
 export const adminUserSortByLabels = {
 	createdAt: "Joined",
@@ -71,9 +70,6 @@ export const adminUserListingSearchParams = {
 	}),
 	rangeMin: rangeMinParser.withOptions({ shallow: false }),
 	rangeMax: rangeMaxParser.withOptions({ shallow: false }),
-	statuses: parseAsArrayOf(parseAsStringLiteral(userStatuses)).withOptions({
-		shallow: false,
-	}),
 	roles: parseAsArrayOf(parseAsStringLiteral(ROLES)).withOptions({
 		shallow: false,
 	}),
@@ -94,7 +90,6 @@ function buildAdminUserFilterCallInput(params: AdminUsersListingSearchParams) {
 		rangeBy: params.rangeBy,
 		rangeMin: params.rangeMin,
 		rangeMax: params.rangeMax,
-		statuses: params.statuses,
 		roles: params.roles,
 		minXp: params.minXp,
 		minRp: params.minRp,

@@ -1,5 +1,5 @@
 import {
-	notBannedProcedure,
+	protectedProcedure,
 	publicProcedure,
 	superAdminProcedure,
 } from "../../procedures";
@@ -43,19 +43,19 @@ export const bookEditionRouter = {
 				input.bookSlug,
 			),
 		),
-	create: notBannedProcedure
+	create: protectedProcedure
 		.input(CreateBookEditionInputSchema)
 		.output(BookEditionItemSchema)
 		.handler(({ input, context }) =>
 			createBookEdition(context.db, actorOf(context.session), input),
 		),
-	update: notBannedProcedure
+	update: protectedProcedure
 		.input(UpdateBookEditionInputSchema)
 		.output(BookEditionItemSchema)
 		.handler(({ input, context }) =>
 			updateBookEdition(context.db, actorOf(context.session), input),
 		),
-	delete: notBannedProcedure
+	delete: protectedProcedure
 		.input(BookEditionIdInputSchema)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {
@@ -100,7 +100,7 @@ export const bookEditionRouter = {
 			await linkBookEdition(context.db, input.id, input.openLibraryOlid);
 			return { ok: true as const };
 		}),
-	checkIsbn: notBannedProcedure
+	checkIsbn: protectedProcedure
 		.input(CheckEditionIsbnInputSchema)
 		.output(CheckEditionIsbnOutputSchema)
 		.handler(({ input, context }) =>

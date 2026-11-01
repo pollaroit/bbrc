@@ -1,4 +1,4 @@
-import { notBannedProcedure, superAdminProcedure } from "../../procedures";
+import { protectedProcedure, superAdminProcedure } from "../../procedures";
 import { loadViewer } from "../visibility/viewer";
 import {
 	ActOnReportInputSchema,
@@ -18,7 +18,7 @@ import {
 
 export const reportRouter = {
 	/** Any member who is not banned; they can only report what they may see. */
-	create: notBannedProcedure
+	create: protectedProcedure
 		.input(CreateReportInputSchema)
 		.output(CreateReportOutputSchema)
 		.handler(async ({ input, context }) =>

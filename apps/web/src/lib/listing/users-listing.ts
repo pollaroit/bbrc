@@ -16,10 +16,6 @@ import {
 	sortDirectionParser,
 } from "@/lib/listing/parsers";
 
-export const userStatuses = ["active", "warned", "banned"] as const;
-
-export type UserListingStatus = (typeof userStatuses)[number];
-
 export const userSortByLabels = {
 	createdAt: "Join date",
 	name: "Name",
@@ -34,12 +30,6 @@ export const userRangeByLabels = {
 	createdAt: "Join date",
 } as const satisfies FieldLabels<(typeof userRangeableFields)[number]>;
 
-export const userStatusFilterLabels = {
-	active: "Active",
-	warned: "Warned",
-	banned: "Banned",
-} as const satisfies FieldLabels<UserListingStatus>;
-
 export const userListingSearchParams = {
 	search: searchParser.withOptions({ shallow: false, throttleMs: 400 }),
 	sortBy: createSortByParser(userSortableFields).withOptions({
@@ -51,9 +41,6 @@ export const userListingSearchParams = {
 	}),
 	rangeMin: rangeMinParser.withOptions({ shallow: false }),
 	rangeMax: rangeMaxParser.withOptions({ shallow: false }),
-	statuses: parseAsArrayOf(parseAsStringLiteral(userStatuses)).withOptions({
-		shallow: false,
-	}),
 	roles: parseAsArrayOf(parseAsStringLiteral(ROLES)).withOptions({
 		shallow: false,
 	}),
@@ -77,17 +64,12 @@ export function toUserListCallInput(
 		rangeBy: params.rangeBy,
 		rangeMin: params.rangeMin,
 		rangeMax: params.rangeMax,
-		statuses: params.statuses,
 		roles: params.roles,
 	}) as Partial<GetUserListInput>;
 }
 
 export function countUserSheetFilters(params: UserListingSearchParams): number {
 	let count = 0;
-
-	if (params.statuses && params.statuses.length > 0) {
-		count += 1;
-	}
 
 	if (params.roles?.length) {
 		count += 1;
@@ -104,7 +86,6 @@ export function clearUserSheetFilters(
 	setParams: ReturnType<typeof useUserListingSearchParams>[1],
 ) {
 	void setParams({
-		statuses: null,
 		roles: null,
 		rangeBy: null,
 		rangeMin: null,

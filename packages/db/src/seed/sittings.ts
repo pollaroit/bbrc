@@ -20,7 +20,6 @@ import {
 	createBookFromWork,
 	type OpenLibraryWorkSeed,
 } from "./open-library.js";
-import { eligibleParticipants } from "./users.js";
 
 const SITTING_COUNT = 10;
 const FINISHED_SITTING_COUNT = 9;
@@ -44,7 +43,7 @@ function pollSlugForSitting(sittingSlugValue: string): string {
 }
 
 function pickParticipants(users: User[], count: number): User[] {
-	const pool = eligibleParticipants(users);
+	const pool = users;
 	const shuffled = faker.helpers.shuffle([...pool]);
 	return shuffled.slice(0, Math.min(count, shuffled.length));
 }

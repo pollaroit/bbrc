@@ -1,4 +1,4 @@
-import { notBannedProcedure } from "../../procedures";
+import { protectedProcedure } from "../../procedures";
 import {
 	DiscoverLaneSchema,
 	GetDiscoverLaneInputSchema,
@@ -14,10 +14,10 @@ const viewerOf = (context: {
 });
 
 export const bookDiscoverRouter = {
-	lanes: notBannedProcedure
+	lanes: protectedProcedure
 		.output(ListDiscoverLanesOutputSchema)
 		.handler(({ context }) => ({ lanes: listLanesFor(viewerOf(context)) })),
-	lane: notBannedProcedure
+	lane: protectedProcedure
 		.input(GetDiscoverLaneInputSchema)
 		.output(DiscoverLaneSchema)
 		.handler(({ input, context }) =>

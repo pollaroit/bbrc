@@ -206,7 +206,6 @@ async function searchAuthors(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 async function searchUsers(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.user.findMany({
 		where: {
-			status: { in: ["active", "warned"] },
 			// Private members stay findable by name and username; blocked ones do not.
 			AND: [memberListVisibleWhere(ctx.viewer) as Prisma.UserWhereInput],
 			OR: [
@@ -445,7 +444,6 @@ async function searchDocuments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 async function searchGoals(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.goal.findMany({
 		where: {
-			user: { status: { in: ["active", "warned"] } },
 			AND: [goalVisibleWhere(ctx.viewer) as Prisma.GoalWhereInput],
 			OR: [
 				{ title: containsQuery(ctx.query) },

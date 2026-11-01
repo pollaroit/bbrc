@@ -64,7 +64,7 @@ export async function loadAchievementFacts(
 ): Promise<AchievementFacts | null> {
 	const user = await db.user.findUnique({
 		where: { id: userId },
-		select: { createdAt: true, image: true, status: true },
+		select: { createdAt: true, image: true },
 	});
 	if (!user) {
 		return null;
