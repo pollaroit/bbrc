@@ -33,6 +33,8 @@ enum NotificationKind {
   sitting_reading_reminder
   friend_request
   friend_accepted
+  report_resolved
+  moderation_notice
 }
 
 model Notification {

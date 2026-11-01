@@ -1,0 +1,105 @@
+/// What a report points at. The id is stored as a plain string with no foreign key (like `View`), so one table
+/// serves every kind and a report outlives the content it is about.
+enum ReportTarget {
+  post
+  comment
+  review
+  shelf
+  user
+
+  @@map("report_target")
+}
+
+enum ReportReason {
+  spam
+  harassment
+  inappropriate
+  spoiler
+  other
+
+  @@map("report_reason")
+}
+
+enum ReportStatus {
+  open
+  resolved
+  dismissed
+
+  @@map("report_status")
+}
+
+/// What an admin did. `note` and `reopen` are logged but never close a report.
+enum ReportActionKind {
+  dismiss
+  delete_content
+  warn_owner
+  ban_owner
+  reopen
+  note
+
+  @@map("report_action_kind")
+}
+
+/// One member's report of one thing. Rules and limits live in `packages/shared/src/reports.ts`.
+model Report {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  targetType ReportTarget @map("target_type")
+  /// Internal id of the post, comment, review or shelf; the member id for a profile.
+  targetId   String       @map("target_id")
+
+  reporterId String @map("reporter_id")
+  reporter   User   @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  /// Who made the reported thing (the member themselves for a profile). Empty once that member is gone.
+  ownerId String? @map("owner_id")
+  owner   User?   @relation("ReportOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  reason ReportReason
+  /// @zod.max(300).nullish()
+  note   String?
+
+  /// A copy taken when the report was filed, so the queue still makes sense after the content is deleted.
+  snapshotTitle String? @map("snapshot_title")
+  snapshotText  String? @map("snapshot_text")
+  snapshotHref  String? @map("snapshot_href")
+
+  status         ReportStatus      @default(open)
+  resolvedAt     DateTime?         @map("resolved_at")
+  resolvedById   String?           @map("resolved_by_id")
+  resolvedBy     User?             @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolution     ReportActionKind?
+  /// Set the first time the reporter was told the outcome; a reopened report never tells them twice.
+  reporterNotifiedAt DateTime?     @map("reporter_notified_at")
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([status, createdAt])
+  @@index([targetType, targetId, status])
+  @@index([reporterId, createdAt])
+  @@index([ownerId])
+  @@map("report")
+}
+
+/// The audit trail: everything an admin did about one reported item. An action applies to every report of it.
+model ReportAction {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  targetType ReportTarget @map("target_type")
+  targetId   String       @map("target_id")
+
+  /// Empty once that admin's account is gone.
+  adminId String? @map("admin_id")
+  admin   User?   @relation("ReportActionAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+
+  action ReportActionKind
+  /// @zod.max(500).nullish()
+  note   String?
+
+  @@index([targetType, targetId, createdAt])
+  @@map("report_action")
+}

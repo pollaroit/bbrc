@@ -4,6 +4,7 @@ import {
 	Feather,
 	FileStack,
 	FileText,
+	Flag,
 	LayoutDashboard,
 	Library,
 	ListChecks,
@@ -340,6 +341,20 @@ export const adminNavSections: AdminNavSection[] = [
 				href: "/admin/quizzes/stats" as Route,
 				label: "Stats",
 				isActive: (pathname) => pathname.startsWith("/admin/quizzes/stats"),
+			},
+		],
+	},
+	{
+		id: "reports",
+		label: "Reports",
+		icon: Flag,
+		defaultHref: "/admin/reports" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/reports"),
+		children: [
+			{
+				href: "/admin/reports" as Route,
+				label: "Queue",
+				isActive: (pathname) => pathname === "/admin/reports",
 			},
 		],
 	},

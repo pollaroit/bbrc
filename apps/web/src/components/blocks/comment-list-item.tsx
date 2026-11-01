@@ -14,13 +14,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { CommentLikeEngagement } from "@/components/blocks/comment-like-engagement";
 import { FullWidthImagePreview } from "@/components/blocks/full-width-image-preview";
-import { RemoveMyMentionMenu } from "@/components/blocks/mention/remove-my-mention";
 import {
 	PendingImageAttachment,
 	usePendingImageInput,
 } from "@/components/blocks/pending-image-attachment";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import { ContentActionsMenu } from "@/components/blocks/report/report-menu";
 import {
 	commentSharePath,
 	ResourceShareMenu,
@@ -431,7 +431,11 @@ function CommentListItemViewInner({
 									shareInPost={{ kind: "comment", slug: comment.slug }}
 								/>
 							) : null}
-							<RemoveMyMentionMenu kind="comment" slug={comment.slug} />
+							<ContentActionsMenu
+								kind="comment"
+								slug={comment.slug}
+								ownerUsername={comment.author.username}
+							/>
 							{canReply && onReply && session?.user ? (
 								<Button
 									type="button"
@@ -503,7 +507,11 @@ function CommentListItemViewInner({
 							shareInPost={{ kind: "comment", slug: comment.slug }}
 						/>
 					) : null}
-					<RemoveMyMentionMenu kind="comment" slug={comment.slug} />
+					<ContentActionsMenu
+						kind="comment"
+						slug={comment.slug}
+						ownerUsername={comment.author.username}
+					/>
 					{canReply && onReply && session?.user ? (
 						<Button
 							type="button"

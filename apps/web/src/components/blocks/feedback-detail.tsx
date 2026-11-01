@@ -14,9 +14,9 @@ import {
 	FeedbackReviewBody,
 } from "@/components/blocks/feedback-live";
 import { FriendButton } from "@/components/blocks/friend-button";
-import { RemoveMyMentionMenu } from "@/components/blocks/mention/remove-my-mention";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import { ContentActionsMenu } from "@/components/blocks/report/report-menu";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { VisibilityBadge } from "@/components/blocks/visibility-select";
@@ -111,7 +111,11 @@ export function FeedbackDetail({
 							shareInPost={{ kind: "feedback", slug: feedback.slug }}
 							size="md"
 						/>
-						<RemoveMyMentionMenu kind="review" slug={feedback.slug} />
+						<ContentActionsMenu
+							kind="review"
+							slug={feedback.slug}
+							ownerUsername={feedback.author.username}
+						/>
 					</div>
 				</CardContent>
 			</Card>

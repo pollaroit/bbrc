@@ -13,6 +13,7 @@ import { MemberProfileAbout } from "@/components/blocks/member-profile-about";
 import { MemberProfileCardDialog } from "@/components/blocks/member-profile-card-dialog";
 import { MemberProfileNumbers } from "@/components/blocks/member-profile-numbers";
 import { PinnedAchievements } from "@/components/blocks/pinned-achievements";
+import { ReportOnlyMenu } from "@/components/blocks/report/report-menu";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { CompareWithButton } from "@/components/blocks/user-compare/compare-with-button";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
@@ -107,6 +108,12 @@ export function MemberProfileHeader({
 											className="w-fit"
 										/>
 									) : null}
+									<ReportOnlyMenu
+										target="user"
+										reference={user.username}
+										ownerUsername={user.username}
+										label="More options for this member"
+									/>
 								</div>
 							)}
 						</div>
