@@ -32,6 +32,7 @@ export async function getPrivacySettings(
 				favoritesVisibility: true,
 				goalsVisibility: true,
 				readingVisibility: true,
+				readingActivityVisibility: true,
 				defaultPostVisibility: true,
 				defaultShelfVisibility: true,
 				showReadingProgress: true,
@@ -60,6 +61,7 @@ export async function getPrivacySettings(
 			favorites: user.favoritesVisibility,
 			goals: user.goalsVisibility,
 			reading: user.readingVisibility,
+			readingActivity: user.readingActivityVisibility,
 			wishlist: wishlist?.visibility ?? "private",
 		},
 		showReadingProgress: user.showReadingProgress,
@@ -112,6 +114,7 @@ export async function updatePrivacySettings(
 				favoritesVisibility: sections.favorites,
 				goalsVisibility: sections.goals,
 				readingVisibility: sections.reading,
+				readingActivityVisibility: sections.readingActivity,
 				defaultPostVisibility: defaults.post,
 				defaultShelfVisibility: defaults.shelf,
 				showReadingProgress:

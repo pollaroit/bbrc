@@ -4,7 +4,10 @@ import type { EndReadingSessionOutput } from "@bbrc/api/modules/reading-session/
 import { formatDuration } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { BookOpen, Clock, Flame, RotateCcw, Share2 } from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
 import type { ComponentType } from "react";
+import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 function Tile({
@@ -60,6 +63,8 @@ export function SessionSummary({
 	onAgain: () => void;
 	onDone: () => void;
 }) {
+	const { data: session } = authClient.useSession();
+	const username = session?.user.username;
 	const pagesGained =
 		summary && byPage && summary.pageFrom != null && summary.pageTo != null
 			? Math.max(0, summary.pageTo - summary.pageFrom)
@@ -172,6 +177,16 @@ export function SessionSummary({
 						{free ? "Start again" : "Read again"}
 					</Button>
 				</div>
+				{/* Sessions without a book are not listed there. */}
+				{!free && username ? (
+					<Button
+						render={<Link href={`/users/${username}/reading` as Route} />}
+						variant="link"
+						className="text-muted-foreground"
+					>
+						All your sessions
+					</Button>
+				) : null}
 			</div>
 		</section>
 	);

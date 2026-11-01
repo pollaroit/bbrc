@@ -34,6 +34,7 @@ import { quizRouter } from "./modules/quiz/quiz.router";
 import { ratingDefinitionRouter } from "./modules/rating-definition/rating-definition.router";
 import { readRouter } from "./modules/read/read.router";
 import { readingRouter } from "./modules/reading/reading.router";
+import { readingActivityRouter } from "./modules/reading-activity/reading-activity.router";
 import { readingSessionRouter } from "./modules/reading-session/reading-session.router";
 import { reportRouter } from "./modules/report/report.router";
 import { rpRouter } from "./modules/rp/rp.router";
@@ -71,6 +72,7 @@ export const appRouter = {
 	feedback: feedbackRouter,
 	follow: followRouter,
 	friend: friendRouter,
+	readingActivity: readingActivityRouter,
 	report: reportRouter,
 	privacy: privacyRouter,
 	goal: goalRouter,

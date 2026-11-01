@@ -73,6 +73,7 @@ export const PROFILE_SECTIONS = [
 	"favorites",
 	"goals",
 	"reading",
+	"readingActivity",
 	"wishlist",
 ] as const;
 export type ProfileSection = (typeof PROFILE_SECTIONS)[number];

@@ -19,7 +19,8 @@ type SectionColumn =
 	| "reviewsVisibility"
 	| "favoritesVisibility"
 	| "goalsVisibility"
-	| "readingVisibility";
+	| "readingVisibility"
+	| "readingActivityVisibility";
 
 const SECTION_COLUMNS: Record<
 	Exclude<ProfileSection, "wishlist">,
@@ -30,6 +31,7 @@ const SECTION_COLUMNS: Record<
 	favorites: "favoritesVisibility",
 	goals: "goalsVisibility",
 	reading: "readingVisibility",
+	readingActivity: "readingActivityVisibility",
 };
 
 export type OwnerPrivacy = {
@@ -50,6 +52,7 @@ export async function loadOwnerPrivacy(
 			favoritesVisibility: true,
 			goalsVisibility: true,
 			readingVisibility: true,
+			readingActivityVisibility: true,
 		},
 	});
 	if (!user) return null;
@@ -61,6 +64,7 @@ export async function loadOwnerPrivacy(
 			favorites: user.favoritesVisibility,
 			goals: user.goalsVisibility,
 			reading: user.readingVisibility,
+			readingActivity: user.readingActivityVisibility,
 		},
 	};
 }

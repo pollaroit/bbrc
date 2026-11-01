@@ -50,6 +50,11 @@ const SECTION_ROWS: { key: SectionKey; label: string; hint: string }[] = [
 		hint: "On each book's readers list and your profile. Hidden, you still count in the totals.",
 	},
 	{
+		key: "readingActivity",
+		label: "My reading activity",
+		hint: "Your reading sessions, reading stats and rankings. Hidden, others only see a few totals (time read, sessions, books, average session, streak).",
+	},
+	{
 		key: "wishlist",
 		label: "My wishlist",
 		hint: "Book pages only ever show how many members want a book, never who.",
