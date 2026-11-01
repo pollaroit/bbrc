@@ -191,6 +191,7 @@ export function ComposePostDialog({
 							allowLikes: variables.allowLikes ?? true,
 							allowComments: variables.allowComments ?? true,
 							allowShares: variables.allowShares ?? true,
+							allowBookmarks: variables.allowBookmarks ?? true,
 							createdAt: new Date(),
 							editedAt: null,
 							author,
@@ -303,6 +304,7 @@ export function ComposePostDialog({
 			allowLikes: settings.allowLikes,
 			allowComments: settings.allowComments,
 			allowShares: settings.allowShares,
+			allowBookmarks: settings.allowBookmarks,
 			visibility,
 			...(pollOn
 				? { poll: pollDraftToInput(pollDraft) }
@@ -319,7 +321,8 @@ export function ComposePostDialog({
 		settings.isSpoiler ||
 		!settings.allowLikes ||
 		!settings.allowComments ||
-		!settings.allowShares;
+		!settings.allowShares ||
+		!settings.allowBookmarks;
 
 	return (
 		<Dialog

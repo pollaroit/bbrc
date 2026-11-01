@@ -10,6 +10,7 @@ import { useState } from "react";
 import { CommentListItemView } from "@/components/blocks/comment-list-item";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
+import { PostBookmarkEngagement } from "@/components/blocks/post-bookmark-engagement";
 import { PostCommentForm } from "@/components/blocks/post-comment-form";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
 import { PostOwnerMenu } from "@/components/blocks/post-owner-menu";
@@ -60,6 +61,7 @@ function PostCardComments({ post }: { post: PostCardPost }) {
 								variant="compact"
 								layout="thread"
 								postSlug={post.slug}
+								postAllowBookmarks={post.allowBookmarks}
 								canReply={post.allowComments && !isPendingSlug(comment.slug)}
 								onReply={() => setReplyingTo(comment.slug)}
 							/>
@@ -88,6 +90,7 @@ function PostCardComments({ post }: { post: PostCardPost }) {
 										variant="compact"
 										layout="thread"
 										postSlug={post.slug}
+										postAllowBookmarks={post.allowBookmarks}
 									/>
 								</div>
 							) : null}
@@ -275,6 +278,11 @@ function PostCardInner({
 					slug={post.slug}
 					authorUsername={post.author.username}
 					count={viewCount}
+				/>
+				<PostBookmarkEngagement
+					postSlug={post.slug}
+					authorUsername={post.author.username}
+					allowBookmarks={post.allowBookmarks}
 				/>
 				<ResourceShareMenu
 					path={`/posts/${post.slug}`}

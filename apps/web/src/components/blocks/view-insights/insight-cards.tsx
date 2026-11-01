@@ -1,5 +1,11 @@
 import type { ViewInsights } from "@bbrc/api/modules/view/view.schema";
-import { Heart, MessageSquare, Repeat2, TrendingUp } from "lucide-react";
+import {
+	Bookmark,
+	Heart,
+	MessageSquare,
+	Repeat2,
+	TrendingUp,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCount, RANGE_PHRASE, RESOURCE_NOUN } from "./insight-format";
 import { InsightPanel } from "./insight-panel";
@@ -127,13 +133,14 @@ export function InsightEngagement({
 		{ label: "Likes", value: engagement.likes, Icon: Heart },
 		{ label: "Comments", value: engagement.comments, Icon: MessageSquare },
 		{ label: "Shares", value: engagement.shares, Icon: Repeat2 },
+		{ label: "Bookmarks", value: engagement.bookmarks, Icon: Bookmark },
 	];
 	return (
 		<InsightPanel
 			title="What people did"
 			description="Reactions in this period, next to how often it was opened."
 		>
-			<ul className="grid grid-cols-3 divide-x divide-border border border-border">
+			<ul className="grid grid-cols-2 divide-x divide-border border border-border sm:grid-cols-4">
 				{items.map(({ label, value, Icon }) => (
 					<li key={label} className="flex flex-col gap-1 px-3 py-3">
 						<span className="flex items-center gap-1.5 text-muted-foreground text-xs">

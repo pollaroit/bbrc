@@ -51,6 +51,7 @@ export const userListSelect = {
 	goalsVisibility: true,
 	readingVisibility: true,
 	readingActivityVisibility: true,
+	bookmarksVisibility: true,
 	profile: {
 		select: {
 			bio: true,

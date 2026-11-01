@@ -29,6 +29,7 @@ export const USER_SECTION_COLUMNS: Record<ProfileSection, string | null> = {
 	goals: "goalsVisibility",
 	reading: "readingVisibility",
 	readingActivity: "readingActivityVisibility",
+	bookmarks: "bookmarksVisibility",
 	/** The wishlist's level is its shelf's own level. */
 	wishlist: null,
 };

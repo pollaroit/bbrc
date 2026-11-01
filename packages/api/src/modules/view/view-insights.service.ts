@@ -410,13 +410,20 @@ async function engagementFor(
 ): Promise<ViewInsights["engagement"]> {
 	if (resource !== "post" && resource !== "review") return null;
 	const since = { gte: from };
-	const [likes, comments, shares] =
+	const [likes, comments, shares, bookmarks] =
 		resource === "post"
 			? await Promise.all([
 					db.like.count({ where: { postId: resourceId, createdAt: since } }),
 					db.comment.count({ where: { postId: resourceId, createdAt: since } }),
 					db.postAttachment.count({
 						where: { attachedPostId: resourceId, createdAt: since },
+					}),
+					db.bookmark.count({
+						where: {
+							resourceType: "post",
+							resourceId,
+							createdAt: since,
+						},
 					}),
 				])
 			: await Promise.all([
@@ -429,11 +436,13 @@ async function engagementFor(
 					db.postAttachment.count({
 						where: { feedbackId: resourceId, createdAt: since },
 					}),
+					Promise.resolve(0),
 				]);
 	return {
 		likes,
 		comments,
 		shares,
+		bookmarks,
 		rate:
 			opens > 0
 				? Math.round(((likes + comments + shares) / opens) * 1000) / 10

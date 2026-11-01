@@ -11,6 +11,7 @@ export * from "./book-filter-dsl";
 export * from "./book-lookup";
 export * from "./book-pages";
 export * from "./book-stats";
+export * from "./bookmarks";
 export * from "./club-timezone";
 export * from "./comment-thread";
 export * from "./document-file-check";

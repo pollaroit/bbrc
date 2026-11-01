@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 type CommentThreadListProps = {
 	comments: CommentListItem[];
 	postSlug?: string;
+	postAllowBookmarks?: boolean;
 	bookSlug?: string;
 	feedbackContextSlug?: string;
 	replyingToSlug: string | null;
@@ -40,6 +41,7 @@ function defaultThreadExpanded(depth: number): boolean {
 function CommentThreadNode({
 	node,
 	postSlug,
+	postAllowBookmarks = true,
 	bookSlug,
 	feedbackContextSlug,
 	replyingToSlug,
@@ -52,6 +54,7 @@ function CommentThreadNode({
 }: {
 	node: CommentTreeNode;
 	postSlug?: string;
+	postAllowBookmarks?: boolean;
 	bookSlug?: string;
 	feedbackContextSlug?: string;
 	replyingToSlug: string | null;
@@ -106,6 +109,7 @@ function CommentThreadNode({
 					variant="full"
 					layout="thread"
 					postSlug={postSlug}
+					postAllowBookmarks={postAllowBookmarks}
 					bookSlug={bookSlug}
 					feedbackContextSlug={feedbackContextSlug}
 					canReply={allowReplies && canReplyAtDepth(node.depth)}
@@ -163,6 +167,7 @@ function CommentThreadNode({
 								key={child.slug}
 								node={child}
 								postSlug={postSlug}
+								postAllowBookmarks={postAllowBookmarks}
 								bookSlug={bookSlug}
 								feedbackContextSlug={feedbackContextSlug}
 								replyingToSlug={replyingToSlug}
@@ -184,6 +189,7 @@ function CommentThreadNode({
 export function CommentThreadList({
 	comments,
 	postSlug,
+	postAllowBookmarks = true,
 	bookSlug,
 	feedbackContextSlug,
 	replyingToSlug,
@@ -205,6 +211,7 @@ export function CommentThreadList({
 				<CommentThreadNode
 					node={focused}
 					postSlug={postSlug}
+					postAllowBookmarks={postAllowBookmarks}
 					bookSlug={bookSlug}
 					feedbackContextSlug={feedbackContextSlug}
 					replyingToSlug={replyingToSlug}
@@ -228,6 +235,7 @@ export function CommentThreadList({
 					key={node.slug}
 					node={node}
 					postSlug={postSlug}
+					postAllowBookmarks={postAllowBookmarks}
 					bookSlug={bookSlug}
 					feedbackContextSlug={feedbackContextSlug}
 					replyingToSlug={replyingToSlug}

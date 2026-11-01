@@ -59,6 +59,11 @@ const SECTION_ROWS: { key: SectionKey; label: string; hint: string }[] = [
 		label: "My wishlist",
 		hint: "Book pages only ever show how many members want a book, never who.",
 	},
+	{
+		key: "bookmarks",
+		label: "My bookmarks",
+		hint: "The posts and comments you saved. Others never see what you bookmarked, only that you have a list.",
+	},
 ];
 
 const DETAIL_ROWS: { key: DetailKey; label: string }[] = [

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { FriendButton } from "@/components/blocks/friend-button";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
+import { PostBookmarkEngagement } from "@/components/blocks/post-bookmark-engagement";
 import { PostCommentFocusSection } from "@/components/blocks/post-comment-focus-section";
 import { PostCommentsSection } from "@/components/blocks/post-comments-section";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
@@ -127,6 +128,11 @@ export function PostDetail({
 							slug={post.slug}
 							authorUsername={post.author.username}
 						/>
+						<PostBookmarkEngagement
+							postSlug={post.slug}
+							authorUsername={post.author.username}
+							allowBookmarks={post.allowBookmarks}
+						/>
 						<ResourceShareMenu
 							path={`/posts/${post.slug}`}
 							shareText={shareSnippet(contentPlainText(post.content))}
@@ -159,6 +165,7 @@ export function PostDetail({
 				<PostCommentsSection
 					postSlug={post.slug}
 					allowComments={post.allowComments}
+					postAllowBookmarks={post.allowBookmarks}
 				/>
 			) : null}
 		</div>

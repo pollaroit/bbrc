@@ -19,6 +19,8 @@ model Post {
   allowComments Boolean @default(true) @map("allow_comments")
   /// Members can share the post inside their own posts (links still work anywhere).
   allowShares   Boolean @default(true) @map("allow_shares")
+  /// Members can bookmark the post privately.
+  allowBookmarks Boolean @default(true) @map("allow_bookmarks")
 
   /// Public R2 URL for optional post image.
   /// @zod.max(2048).nullish()
@@ -155,6 +157,9 @@ model Comment {
   content String
 
   isSpoiler Boolean @default(false) @map("is_spoiler")
+
+  /// Members can bookmark this comment privately.
+  allowBookmarks Boolean @default(true) @map("allow_bookmarks")
 
   /// Public R2 URL for optional comment image.
   /// @zod.max(2048).nullish()

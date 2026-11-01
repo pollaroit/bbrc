@@ -11,6 +11,7 @@ import type { LucideIcon } from "lucide-react";
 import {
 	BarChart3,
 	BookCheck,
+	Bookmark,
 	BookOpen,
 	LayoutList,
 	MessageSquare,
@@ -54,6 +55,7 @@ function userMenuActivityEntries(user: UserMenuUser): MenuEntry[] {
 	return [
 		{ label: "Profile", href: base, icon: User },
 		{ label: "Friends", href: "/friends" as Route, icon: Users },
+		{ label: "Bookmarks", href: "/bookmarks" as Route, icon: Bookmark },
 		{ label: "My reads", href: `${base}/reads` as Route, icon: BookCheck },
 		{ label: "My posts", href: `${base}/posts` as Route, icon: MessageSquare },
 		{

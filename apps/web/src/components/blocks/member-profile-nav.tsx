@@ -25,6 +25,7 @@ type ProfileSegment =
 	| "wishlist"
 	| "reading"
 	| "mentions"
+	| "bookmarks"
 	| "goals"
 	| "achievements"
 	| "reels"
@@ -48,6 +49,7 @@ const tabs: {
 	{ segment: "wishlist", label: "Wishlist", ownOnly: true },
 	{ segment: "reading", label: "Reading" },
 	{ segment: "mentions", label: "Mentions", ownOnly: true },
+	{ segment: "bookmarks", label: "Bookmarks" },
 	{ segment: "goals", label: "Goals" },
 	{ segment: "achievements", label: "Achievements" },
 	{ segment: "reels", label: "Reels", ownOnly: true },
