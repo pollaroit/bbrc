@@ -85,6 +85,9 @@ export const PostListItemSchema = PostSchema.pick({
 	imageUrl: true,
 	isSpoiler: true,
 	visibility: true,
+	status: true,
+	scheduledAt: true,
+	publishedAt: true,
 	createdAt: true,
 	editedAt: true,
 	allowLikes: true,
@@ -125,6 +128,9 @@ export const getPostListFields = {
 	imageUrl: true,
 	isSpoiler: true,
 	visibility: true,
+	status: true,
+	scheduledAt: true,
+	publishedAt: true,
 	allowLikes: true,
 	allowComments: true,
 	allowShares: true,
@@ -175,6 +181,8 @@ export const CreatePostInputSchema = PostSchema.pick({
 		poll: CreatePollInputSchema.optional(),
 		/** A tierlist replaces every other attachment, the poll and the image. */
 		tierlist: CreateTierlistInputSchema.optional(),
+		/** Whole-hour club time; at least one hour ahead. Side effects run at publish. */
+		scheduledAt: zod.coerce.date().optional(),
 	});
 
 export const CreatePostOutputSchema = PostSchema.pick({
@@ -273,6 +281,9 @@ export const getPostBySlugFields = {
 	imageUrl: true,
 	isSpoiler: true,
 	visibility: true,
+	status: true,
+	scheduledAt: true,
+	publishedAt: true,
 	allowLikes: true,
 	allowComments: true,
 	allowShares: true,

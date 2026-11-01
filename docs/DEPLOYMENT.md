@@ -45,6 +45,8 @@ Existing `revalidateIsr.*` calls after mutations are unchanged.
 
 [Upstash QStash](https://upstash.com/docs/qstash) schedule: `0 10,13,16,19 * * *` (UTC) → `POST /api/cron/sittings` four times daily (**14:00, 17:00, 20:00, 23:00** club local when `CLUB_TIMEZONE=Asia/Baku`).
 
+Hourly schedule: `0 * * * *` (UTC) → `POST /api/cron/posts` publishes due scheduled posts (and will later send event reminders in PR 15).
+
 - Auth: `Upstash-Signature` (+ optional `Authorization: Bearer CRON_SECRET`)
 - Closes due polls (winner = most votes, random tie-break) and finishes due reading sittings
 

@@ -10,6 +10,7 @@ import {
 	postAttachmentConflict,
 	postFeedRangeMin,
 	type Viewer,
+	validatePostScheduleTime,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { assertNormalizedSocialContent } from "../../lib/rich-content";
@@ -36,6 +37,7 @@ import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import { loadFriendIds } from "../visibility/viewer";
 import {
 	commentVisibleWhere,
+	postFeedWhere,
 	postVisibleWhere,
 } from "../visibility/visibility-resources";
 import { XP_AWARD } from "../xp/xp.schema";
@@ -294,6 +296,9 @@ function mapPostListRow(
 		imageUrl: row.imageUrl,
 		isSpoiler: row.isSpoiler,
 		visibility: row.visibility,
+		status: row.status,
+		scheduledAt: row.scheduledAt,
+		publishedAt: row.publishedAt,
 		allowLikes: row.allowLikes,
 		allowComments: row.allowComments,
 		allowShares: row.allowShares,
@@ -340,6 +345,9 @@ async function mapPostDetailRow(
 		imageUrl: row.imageUrl,
 		isSpoiler: row.isSpoiler,
 		visibility: row.visibility,
+		status: row.status,
+		scheduledAt: row.scheduledAt,
+		publishedAt: row.publishedAt,
 		allowLikes: row.allowLikes,
 		allowComments: row.allowComments,
 		allowShares: row.allowShares,
@@ -512,7 +520,7 @@ export async function getPostList(
 		input.hasAttachedBook != null
 			? postAttachedBookWhere(input.hasAttachedBook)
 			: {},
-		postVisibleWhere(viewer) as Prisma.PostWhereInput,
+		postFeedWhere(viewer) as Prisma.PostWhereInput,
 	);
 
 	if (feedSort === "hot" || feedSort === "top") {
@@ -563,7 +571,7 @@ export async function getPostList(
 			rangeMin ? { createdAt: { gte: rangeMin } } : {},
 			recentCursor ? buildRecentCursorWhere(recentCursor) : {},
 		),
-		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
+		orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }, { slug: "desc" }],
 		select: postListSelect,
 	});
 
@@ -660,6 +668,21 @@ export async function createPost(
 		throw new ORPCError("BAD_REQUEST", { message: conflict });
 	}
 
+	const now = new Date();
+	const isScheduled = input.scheduledAt != null;
+	const scheduledAt = input.scheduledAt;
+	if (isScheduled && scheduledAt) {
+		const scheduleProblem = validatePostScheduleTime({
+			scheduledAt,
+			now,
+			firstScheduledAt: null,
+		});
+		if (scheduleProblem) {
+			throw new ORPCError("BAD_REQUEST", { message: scheduleProblem });
+		}
+	}
+	const pollValidationNow = isScheduled && scheduledAt ? scheduledAt : now;
+
 	const result = await db.$transaction(async (tx) => {
 		const slug = await generatePostSlug(content, tx);
 
@@ -675,12 +698,16 @@ export async function createPost(
 				slug,
 				authorId: userId,
 				attachedBookId: null,
+				status: isScheduled ? "scheduled" : "published",
+				scheduledAt: isScheduled ? scheduledAt : null,
+				firstScheduledAt: isScheduled ? scheduledAt : null,
+				publishedAt: isScheduled ? null : now,
 			},
 			select: { id: true, slug: true },
 		});
 
 		if (input.poll) {
-			await createPostPoll(tx, post.id, userId, input.poll);
+			await createPostPoll(tx, post.id, userId, input.poll, pollValidationNow);
 		}
 		if (input.tierlist) {
 			await createPostTierlist(tx, post.id, input.tierlist);
@@ -697,9 +724,12 @@ export async function createPost(
 			data: { attachedBookId: attachedBookId ?? null },
 		});
 
-		const xpAwarded = (await awardPostXp({ userId, postId: post.id }, tx))
-			? XP_AWARD.post
-			: 0;
+		let xpAwarded = 0;
+		if (!isScheduled) {
+			xpAwarded = (await awardPostXp({ userId, postId: post.id }, tx))
+				? XP_AWARD.post
+				: 0;
+		}
 
 		const freshMentions = await syncContentMentions(tx, {
 			ref: { kind: "post", id: post.id },
@@ -707,23 +737,25 @@ export async function createPost(
 			mentioned: prepared.mentioned,
 		});
 
-		return { slug: post.slug, xpAwarded, freshMentions };
+		return { slug: post.slug, xpAwarded, freshMentions, isScheduled };
 	});
 
-	void notifyMentions(db, {
-		authorId: userId,
-		recipientIds: result.freshMentions,
-		content,
-		href: `/posts/${result.slug}`,
-	});
-	// A member who is mentioned gets the mention, not also the "new post" notice.
-	void notifyMemberPosted(
-		db,
-		userId,
-		result.slug,
-		result.freshMentions,
-		visibility,
-	);
+	if (!result.isScheduled) {
+		void notifyMentions(db, {
+			authorId: userId,
+			recipientIds: result.freshMentions,
+			content,
+			href: `/posts/${result.slug}`,
+		});
+		// A member who is mentioned gets the mention, not also the "new post" notice.
+		void notifyMemberPosted(
+			db,
+			userId,
+			result.slug,
+			result.freshMentions,
+			visibility,
+		);
+	}
 
 	return { slug: result.slug, xpAwarded: result.xpAwarded };
 }
@@ -933,10 +965,10 @@ export async function getPostListForWhere(
 		take: input.limit + 1,
 		where: mergeWhereFragments<Prisma.PostWhereInput>(
 			input.where,
-			postVisibleWhere(viewer) as Prisma.PostWhereInput,
+			postFeedWhere(viewer) as Prisma.PostWhereInput,
 			recentCursor ? buildRecentCursorWhere(recentCursor) : {},
 		),
-		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
+		orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }, { slug: "desc" }],
 		select: postListSelect,
 	});
 

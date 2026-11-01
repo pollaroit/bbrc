@@ -205,7 +205,7 @@ export async function loadAchievementFacts(
 		tasks.push(
 			(async () => {
 				const rows = await db.post.findMany({
-					where: { authorId: userId },
+					where: { authorId: userId, status: "published" },
 					select: {
 						createdAt: true,
 						comments: { select: { createdAt: true, authorId: true } },

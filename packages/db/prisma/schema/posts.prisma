@@ -1,9 +1,27 @@
+enum PostStatus {
+  published
+  scheduled
+  /// Could not publish (for example the author was removed); kept for the owner and admins.
+  publish_skipped
+}
+
 model Post {
   /// @zod.uuid("Invalid UUID")
   id        String    @id @default(uuid())
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   editedAt  DateTime? @map("edited_at")
+
+  status PostStatus @default(published)
+
+  /// When a scheduled post should go live (whole hours, club time).
+  scheduledAt DateTime? @map("scheduled_at")
+
+  /// First time this post was scheduled; anchors the one-month reschedule cap.
+  firstScheduledAt DateTime? @map("first_scheduled_at")
+
+  /// When the post became visible in feeds; equals createdAt for posts that were never scheduled.
+  publishedAt DateTime? @map("published_at")
 
   /// @zod.min(1, "Content must be at least 1 character long").max(5000, "Content must be at most 5000 characters long")
   content String
@@ -49,6 +67,7 @@ model Post {
 
   @@index([authorId])
   @@index([slug])
+  @@index([status, scheduledAt])
   @@map("post")
 }
 

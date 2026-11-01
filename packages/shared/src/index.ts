@@ -33,6 +33,7 @@ export * from "./poll-chip-grants";
 export * from "./post-attachments";
 export * from "./post-feed-ranking";
 export * from "./post-polls";
+export * from "./post-scheduling";
 export * from "./post-tierlists";
 export * from "./preferences";
 export * from "./push";
