@@ -57,13 +57,16 @@ describe("post scheduling", () => {
 		const from = new Date("2026-11-01T10:15:00.000Z");
 		const slots = upcomingPostScheduleSlots(from, TZ, 3);
 		expect(slots).toHaveLength(3);
-		expect(slots[0]?.toISOString()).toBe("2026-11-01T12:00:00.000Z");
-		expect(slots[0]!.getTime() - from.getTime()).toBeGreaterThanOrEqual(
+		const first = slots[0];
+		const second = slots[1];
+		if (first == null || second == null) {
+			throw new Error("expected three slots");
+		}
+		expect(first.toISOString()).toBe("2026-11-01T12:00:00.000Z");
+		expect(first.getTime() - from.getTime()).toBeGreaterThanOrEqual(
 			POST_SCHEDULE_MIN_AHEAD_MS,
 		);
-		expect(slots[1]?.getTime() - slots[0]!.getTime()).toBe(
-			POST_SCHEDULE_MIN_AHEAD_MS,
-		);
+		expect(second.getTime() - first.getTime()).toBe(POST_SCHEDULE_MIN_AHEAD_MS);
 	});
 });
 
