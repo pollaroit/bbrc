@@ -1211,8 +1211,11 @@ function measureRoute(coordinates: [number, number][]): RouteMeasure {
 	let total = 0;
 
 	for (let i = 1; i < coordinates.length; i += 1) {
-		const [lng1, lat1] = coordinates[i - 1];
-		const [lng2, lat2] = coordinates[i];
+		const start = coordinates[i - 1];
+		const end = coordinates[i];
+		if (!start || !end) continue;
+		const [lng1, lat1] = start;
+		const [lng2, lat2] = end;
 		const midLat = ((lat1 + lat2) / 2) * (Math.PI / 180);
 		total += Math.hypot((lng2 - lng1) * Math.cos(midLat), lat2 - lat1);
 		cumulative.push(total);
@@ -1228,7 +1231,8 @@ function findSegmentIndex(cumulative: number[], distance: number) {
 
 	while (low < high) {
 		const mid = Math.floor((low + high) / 2);
-		if (cumulative[mid] < distance) low = mid + 1;
+		const atMid = cumulative[mid] ?? 0;
+		if (atMid < distance) low = mid + 1;
 		else high = mid;
 	}
 
@@ -1242,15 +1246,22 @@ function pointAtFraction(
 	fraction: number,
 ): [number, number] | null {
 	if (coordinates.length === 0) return null;
-	if (coordinates.length === 1 || measure.total === 0) return coordinates[0];
+	if (coordinates.length === 1 || measure.total === 0) {
+		return coordinates[0] ?? null;
+	}
 
 	const target = measure.total * clampFraction(fraction);
 	const index = findSegmentIndex(measure.cumulative, target);
-	const [lng1, lat1] = coordinates[index];
-	const [lng2, lat2] = coordinates[index + 1];
-	const segment = measure.cumulative[index + 1] - measure.cumulative[index];
-	const ratio =
-		segment === 0 ? 0 : (target - measure.cumulative[index]) / segment;
+	const start = coordinates[index];
+	const end = coordinates[index + 1];
+	if (!start || !end) return null;
+	const [lng1, lat1] = start;
+	const [lng2, lat2] = end;
+	const segmentEnd = measure.cumulative[index + 1];
+	const segmentStart = measure.cumulative[index];
+	if (segmentEnd == null || segmentStart == null) return null;
+	const segment = segmentEnd - segmentStart;
+	const ratio = segment === 0 ? 0 : (target - segmentStart) / segment;
 
 	return [lng1 + (lng2 - lng1) * ratio, lat1 + (lat2 - lat1) * ratio];
 }
@@ -1412,8 +1423,8 @@ function MapRoute({
 	const pointAt = useCallback(
 		(at: RouteAnchor) => {
 			if (coordinates.length === 0) return null;
-			if (at === "start") return coordinates[0];
-			if (at === "end") return coordinates[coordinates.length - 1];
+			if (at === "start") return coordinates[0] ?? null;
+			if (at === "end") return coordinates[coordinates.length - 1] ?? null;
 			if (at === "progress") {
 				if (progress === undefined) return null;
 				return pointAtFraction(coordinates, measure, progress);
@@ -2630,6 +2641,7 @@ function MapClusterLayer<
 			if (!features.length) return;
 
 			const feature = features[0];
+			if (!feature) return;
 			const clusterId = feature.properties?.cluster_id as number;
 			const pointCount = feature.properties?.point_count as number;
 			const coordinates = (feature.geometry as GeoJSON.Point).coordinates as [
@@ -2659,6 +2671,7 @@ function MapClusterLayer<
 			if (!onPointClick || !e.features?.length) return;
 
 			const feature = e.features[0];
+			if (!feature) return;
 			const coordinates = (
 				feature.geometry as GeoJSON.Point
 			).coordinates.slice() as [number, number];
