@@ -19,6 +19,7 @@ import {
 	presetRange,
 	previousActivityRange,
 	rankings,
+	sessionShareFacts,
 	sessionStreaks,
 	sortSessions,
 	speedOf,
@@ -479,5 +480,58 @@ describe("formatting", () => {
 		expect(formatActivityDuration(3900)).toBe("1 h 05 min");
 		expect(formatSessionClock(1504)).toBe("25:04");
 		expect(formatSessionClock(3725)).toBe("1:02:05");
+	});
+});
+
+describe("what a shared session says", () => {
+	test("a page-tracked countdown that reached its target", () => {
+		const facts = sessionShareFacts({
+			seconds: 25 * 60 + 4,
+			mode: "countdown",
+			targetMinutes: 25,
+			pageFrom: 10,
+			pageTo: 40,
+			percentFrom: 5,
+			percentTo: 40,
+		});
+		expect(facts.clock).toBe("25:04");
+		expect(facts.duration).toBe("25 min");
+		expect(facts.method).toBe("Countdown, 25 min");
+		expect(facts.targetMet).toBe(true);
+		expect(facts.pages).toBe(30);
+		expect(facts.percentGained).toBe(35);
+		expect(facts.finished).toBe(false);
+		expect(facts.speed).toBeCloseTo((30 / (25 * 60 + 4)) * 3600, 5);
+	});
+
+	test("an audiobook or percent-only book has no pages and no speed", () => {
+		const facts = sessionShareFacts({
+			seconds: 40 * 60,
+			mode: "free",
+			targetMinutes: null,
+			pageFrom: null,
+			pageTo: null,
+			percentFrom: 90,
+			percentTo: 100,
+		});
+		expect(facts.pages).toBeNull();
+		expect(facts.speed).toBeNull();
+		expect(facts.method).toBe("Stopwatch");
+		expect(facts.targetMet).toBeNull();
+		expect(facts.finished).toBe(true);
+	});
+
+	test("a missing end never goes backwards", () => {
+		const facts = sessionShareFacts({
+			seconds: 600,
+			mode: "pomodoro",
+			targetMinutes: null,
+			pageFrom: null,
+			pageTo: null,
+			percentFrom: 20,
+			percentTo: null,
+		});
+		expect(facts.percentTo).toBe(20);
+		expect(facts.percentGained).toBe(0);
 	});
 });

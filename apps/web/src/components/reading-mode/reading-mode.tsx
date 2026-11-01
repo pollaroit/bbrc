@@ -327,7 +327,7 @@ export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 									notice={phase.notice}
 									byPage={byPage}
 									bookTitle={reading.book.title}
-									onShare={() => {
+									onPost={(file) => {
 										const gained =
 											phase.summary &&
 											phase.summary.pageFrom != null &&
@@ -337,9 +337,11 @@ export function ReadingMode({ bookSlug }: { bookSlug: string }) {
 										const text = `Read ${reading.book.title} for ${formatDuration(phase.seconds)}${
 											gained > 0 ? ` (${gained} pages)` : ""
 										}.`;
+										// The picture already shows the book, so it goes in place of the book attachment.
 										openCompose(
-											{ kind: "book", slug: bookSlug },
+											null,
 											serializeRichDocument(plainTextToRichDocument(text)),
+											file,
 										);
 									}}
 									onAgain={() => session.backToSetup()}

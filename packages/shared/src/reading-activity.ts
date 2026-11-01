@@ -88,31 +88,39 @@ const MIN_SPEED_SECONDS = 60;
 /** A countdown that stopped within this of its target counts as met. */
 const TARGET_TOLERANCE_SECONDS = 5;
 
-export function pagesGained(s: ActivitySession): number | null {
+export function pagesGained(
+	s: Pick<ActivitySession, "pageFrom" | "pageTo">,
+): number | null {
 	if (s.pageFrom == null || s.pageTo == null) return null;
 	return Math.max(0, s.pageTo - s.pageFrom);
 }
 
-export function percentGained(s: ActivitySession): number | null {
+export function percentGained(
+	s: Pick<ActivitySession, "percentFrom" | "percentTo">,
+): number | null {
 	if (s.percentTo == null) return null;
 	return Math.max(0, s.percentTo - s.percentFrom);
 }
 
 /** Pages per hour; null without page data or with too little time to mean anything. */
-export function speedOf(s: ActivitySession): number | null {
+export function speedOf(
+	s: Pick<ActivitySession, "pageFrom" | "pageTo" | "seconds">,
+): number | null {
 	const pages = pagesGained(s);
 	if (pages == null || s.seconds < MIN_SPEED_SECONDS) return null;
 	return (pages / s.seconds) * 3600;
 }
 
 /** Only countdowns have a target. */
-export function targetMet(s: ActivitySession): boolean | null {
+export function targetMet(
+	s: Pick<ActivitySession, "mode" | "targetMinutes" | "seconds">,
+): boolean | null {
 	if (s.mode !== "countdown" || s.targetMinutes == null) return null;
 	return s.seconds >= s.targetMinutes * 60 - TARGET_TOLERANCE_SECONDS;
 }
 
 /** The session took the member to the end of the book. */
-export function finishedBook(s: ActivitySession): boolean {
+export function finishedBook(s: Pick<ActivitySession, "percentTo">): boolean {
 	return s.percentTo != null && s.percentTo >= 100;
 }
 
@@ -898,4 +906,59 @@ export function formatSessionClock(seconds: number): string {
 	const mm = String(m).padStart(h > 0 ? 2 : 1, "0");
 	const ss = String(rest).padStart(2, "0");
 	return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+/** One session, as the picture a member shares shows it. */
+export type SessionLike = Pick<
+	ActivitySession,
+	| "seconds"
+	| "mode"
+	| "targetMinutes"
+	| "pageFrom"
+	| "pageTo"
+	| "percentFrom"
+	| "percentTo"
+>;
+
+export type SessionShareFacts = {
+	/** "25:04" */
+	clock: string;
+	/** "25 min" */
+	duration: string;
+	/** "Countdown, 25 min" */
+	method: string;
+	targetMet: boolean | null;
+	/** Pages gained, when the book has pages. */
+	pages: number | null;
+	pageFrom: number | null;
+	pageTo: number | null;
+	percentFrom: number;
+	percentTo: number;
+	percentGained: number;
+	finished: boolean;
+	/** Pages per hour. */
+	speed: number | null;
+};
+
+/** Everything a shared session picture says, worked out the same way the Reading page does. */
+export function sessionShareFacts(s: SessionLike): SessionShareFacts {
+	const percentTo = Math.max(s.percentFrom, s.percentTo ?? s.percentFrom);
+	const base = ACTIVITY_MODE_LABELS[s.mode];
+	return {
+		clock: formatSessionClock(s.seconds),
+		duration: formatActivityDuration(s.seconds),
+		method:
+			s.mode === "countdown" && s.targetMinutes
+				? `${base}, ${s.targetMinutes} min`
+				: base,
+		targetMet: targetMet(s),
+		pages: pagesGained(s),
+		pageFrom: s.pageFrom,
+		pageTo: s.pageTo,
+		percentFrom: s.percentFrom,
+		percentTo,
+		percentGained: percentTo - s.percentFrom,
+		finished: percentTo >= 100,
+		speed: speedOf(s),
+	};
 }
