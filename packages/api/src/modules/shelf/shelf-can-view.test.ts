@@ -8,19 +8,19 @@ import { canViewShelf } from "./shelf-can-view";
 
 const OWNER = "owner";
 const base = { status: "active", userId: OWNER } as const;
-const stranger = memberViewer({ userId: "s", isAdmin: false });
+const stranger = memberViewer({ userId: "s", role: "user" });
 const friend = memberViewer({
 	userId: "f",
-	isAdmin: false,
+	role: "user",
 	friendIds: [OWNER],
 });
 const blocked = memberViewer({
 	userId: "b",
-	isAdmin: false,
+	role: "user",
 	blockedIds: [OWNER],
 });
-const admin = memberViewer({ userId: "a", isAdmin: true });
-const self = memberViewer({ userId: OWNER, isAdmin: false });
+const admin = memberViewer({ userId: "a", role: "super_admin" });
+const self = memberViewer({ userId: OWNER, role: "user" });
 
 describe("canViewShelf", () => {
 	test("public shelf of a public profile is open to everyone but blocked", () => {

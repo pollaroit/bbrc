@@ -3,6 +3,7 @@
 import type { ReportGroup } from "@bbrc/api/modules/report/report.schema";
 import {
 	canApplyReportAction,
+	isSuperAdmin,
 	REPORT_ACTION_LABELS,
 	REPORT_ADMIN_NOTE_MAX,
 	REPORT_REASON_LABELS,
@@ -102,7 +103,7 @@ export function ReportCase({ group }: { group: ReportGroup }) {
 
 	const protectedReason = !owner
 		? "This account no longer exists."
-		: owner.isAdmin
+		: isSuperAdmin(owner)
 			? "Admins cannot be warned or banned from here."
 			: null;
 

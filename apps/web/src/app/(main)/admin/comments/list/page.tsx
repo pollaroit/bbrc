@@ -1,3 +1,4 @@
+import { isSuperAdmin } from "@bbrc/shared";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
@@ -33,7 +34,7 @@ export default async function AdminCommentsListPage() {
 		headers: await headers(),
 	});
 
-	if (!session?.user.isAdmin) {
+	if (!isSuperAdmin(session?.user)) {
 		redirect("/" as Route);
 	}
 

@@ -2,6 +2,7 @@ import {
 	OffsetPaginationInputSchema,
 	OffsetPaginationOutputSchema,
 	passwordSchema,
+	RoleSchema,
 	UserSchema,
 	UserStatusSchema,
 } from "@bbrc/schemas";
@@ -35,10 +36,19 @@ export const AdminUserRankingItemSchema = zod.object({
 	secondaryMetric: zod.number().optional(),
 });
 
+/** How many members hold each role. */
+export const RoleCountsSchema = zod.object({
+	user: zod.number().int().min(0),
+	moderator: zod.number().int().min(0),
+	admin: zod.number().int().min(0),
+	super_admin: zod.number().int().min(0),
+});
+
 export const AdminUserOverviewOutputSchema = zod.object({
 	kpis: zod.object({
 		totalMembers: zod.number().int().min(0),
-		admins: zod.number().int().min(0),
+		/** Members per role. */
+		roles: RoleCountsSchema,
 		active: zod.number().int().min(0),
 		warned: zod.number().int().min(0),
 		banned: zod.number().int().min(0),
@@ -80,7 +90,7 @@ export type AdminUserOverviewOutput = z.infer<
 export const AdminUserListItemSchema = UserSchema.pick({
 	id: true,
 	email: true,
-	isAdmin: true,
+	role: true,
 	emailVerified: true,
 	createdAt: true,
 	updatedAt: true,
@@ -152,7 +162,7 @@ export type GetAdminUserOverviewInput = z.infer<
 export const GetAdminUserStatsInputSchema = zod
 	.object({
 		statuses: zod.array(UserStatusSchema).optional(),
-		isAdmin: zod.boolean().optional(),
+		roles: zod.array(RoleSchema).optional(),
 		rangeMin: zod.coerce.date().optional(),
 		rangeMax: zod.coerce.date().optional(),
 	})
@@ -214,16 +224,6 @@ export const AdminUpdateUserNameOutputSchema = UserSchema.pick({
 	name: true,
 });
 
-export const AdminUpdateUserRoleInputSchema = zod.object({
-	username: UserSchema.shape.username,
-	isAdmin: UserSchema.shape.isAdmin,
-});
-
-export const AdminUpdateUserRoleOutputSchema = UserSchema.pick({
-	username: true,
-	isAdmin: true,
-});
-
 export const AdminUpdateUserStatusInputSchema = zod.object({
 	username: UserSchema.shape.username,
 	status: UserSchema.shape.status,
@@ -257,12 +257,6 @@ export type AdminUpdateUserNameInput = z.infer<
 export type AdminUpdateUserNameOutput = z.infer<
 	typeof AdminUpdateUserNameOutputSchema
 >;
-export type AdminUpdateUserRoleInput = z.infer<
-	typeof AdminUpdateUserRoleInputSchema
->;
-export type AdminUpdateUserRoleOutput = z.infer<
-	typeof AdminUpdateUserRoleOutputSchema
->;
 export type AdminUpdateUserStatusInput = z.infer<
 	typeof AdminUpdateUserStatusInputSchema
 >;
@@ -284,7 +278,7 @@ export const adminUserListSelect = {
 	name: true,
 	email: true,
 	image: true,
-	isAdmin: true,
+	role: true,
 	status: true,
 	xp: true,
 	rp: true,

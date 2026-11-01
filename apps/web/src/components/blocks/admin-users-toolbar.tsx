@@ -3,6 +3,7 @@
 import { adminUserSortableFields } from "@bbrc/api/modules/admin/admin-user.listing";
 import { Field, FieldLabel } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
+import { roleFilterOptions } from "@/components/blocks/role-filter-options";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
 import { ListingRangeFields } from "@/components/listing/listing-range-fields";
@@ -35,7 +36,7 @@ function countAdminSheetFilters(
 ) {
 	let count = 0;
 	if (params.statuses?.length) count += 1;
-	if (params.isAdmin != null) count += 1;
+	if (params.roles?.length) count += 1;
 	if (params.rangeMin != null || params.rangeMax != null) count += 1;
 	if (
 		params.minXp != null ||
@@ -190,7 +191,7 @@ function MemberFiltersSheet({
 			onClear={() => {
 				void setParams({
 					statuses: null,
-					isAdmin: null,
+					roles: null,
 					rangeBy: null,
 					rangeMin: null,
 					rangeMax: null,
@@ -226,19 +227,11 @@ function MemberFiltersSheet({
 
 			<ListingCheckboxList
 				legend="Role"
-				options={[
-					{
-						id: "admin",
-						label: "Administrators only",
-						checked: params.isAdmin === true,
-						onCheckedChange: (checked) => {
-							void setParams({
-								isAdmin: checked ? true : null,
-								...resetPage,
-							});
-						},
-					},
-				]}
+				options={roleFilterOptions({
+					selected: params.roles,
+					idPrefix: "admin-user-role",
+					onChange: (roles) => void setParams({ roles, ...resetPage }),
+				})}
 			/>
 
 			<ListingRangeFields

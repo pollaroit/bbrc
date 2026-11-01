@@ -2,6 +2,7 @@ import { type Database, Prisma } from "@bbrc/db";
 import {
 	computePostEngagementScore,
 	computePostHotScore,
+	isSuperAdmin,
 	POST_FEED_COMMENT_WEIGHT,
 	POST_FEED_LIKE_WEIGHT,
 	POST_FEED_SHARE_WEIGHT,
@@ -48,7 +49,7 @@ export function postVisibilitySql(viewer: Viewer): Prisma.Sql {
 	if (viewer.kind === "anonymous") {
 		return Prisma.sql`(u.profile_visibility = 'public' AND p.visibility = 'public')`;
 	}
-	if (viewer.isAdmin) return Prisma.sql`TRUE`;
+	if (isSuperAdmin(viewer)) return Prisma.sql`TRUE`;
 	const friends = idList(viewer.friendIds);
 	const blocked = idList(viewer.blockedIds);
 	const notBlocked = blocked

@@ -70,8 +70,8 @@ function fakeDb(owner: Owner) {
 	} as unknown as Database;
 }
 
-const stranger = memberViewer({ userId: "stranger", isAdmin: false });
-const self = memberViewer({ userId: "owner", isAdmin: false });
+const stranger = memberViewer({ userId: "stranger", role: "user" });
+const self = memberViewer({ userId: "owner", role: "user" });
 const input = { username: "reader" } as never;
 
 async function overview(owner: Owner, viewer = stranger, extra = {}) {
@@ -188,7 +188,7 @@ describe("what a viewer receives", () => {
 	test("blocked reads as not found", async () => {
 		const blocked = memberViewer({
 			userId: "stranger",
-			isAdmin: false,
+			role: "user",
 			blockedIds: ["owner"],
 		});
 		await expect(overview(ownerRow(), blocked)).rejects.toThrow();

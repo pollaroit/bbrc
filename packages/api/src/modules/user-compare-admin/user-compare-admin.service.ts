@@ -71,7 +71,7 @@ export async function searchCompareMembers(
 }
 
 /** Admin viewer for `resolveAuthor` (admins may open authors without books). */
-const ADMIN_VIEWER = { userId: "", isAdmin: true } as const;
+const ADMIN_VIEWER = { userId: "", role: "super_admin" } as const;
 
 async function resolveAuthorIds(
 	db: Database,

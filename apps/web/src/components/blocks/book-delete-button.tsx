@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { useMutation } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
@@ -44,7 +45,7 @@ export function BookDeleteButton({
 		}),
 	);
 
-	if (isPending || !session?.user.isAdmin) {
+	if (isPending || !isSuperAdmin(session?.user)) {
 		return null;
 	}
 

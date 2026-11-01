@@ -1,9 +1,9 @@
 import { BookSchema } from "@bbrc/schemas";
 import {
-	adminProcedure,
 	notBannedProcedure,
 	protectedProcedure,
 	publicProcedure,
+	superAdminProcedure,
 } from "../../procedures";
 import {
 	revalidateBookIsr,
@@ -170,19 +170,19 @@ export const bookRouter = {
 		.handler(async ({ input, context }) =>
 			getBookCatalogDiscovery(input.bookSlug, context.db),
 		),
-	suggestOriginCountries: adminProcedure
+	suggestOriginCountries: superAdminProcedure
 		.input(SuggestBookOriginCountriesInputSchema)
 		.output(SuggestBookOriginCountriesOutputSchema)
 		.handler(async ({ input }) => suggestBookOriginCountries(input)),
-	findSimilar: adminProcedure
+	findSimilar: superAdminProcedure
 		.input(FindSimilarBooksInputSchema)
 		.output(FindSimilarBooksOutputSchema)
 		.handler(async ({ input, context }) => findSimilarBooks(context.db, input)),
-	suggestDetails: adminProcedure
+	suggestDetails: superAdminProcedure
 		.input(SuggestBookDetailsInputSchema)
 		.output(SuggestBookDetailsOutputSchema)
 		.handler(async ({ input }) => suggestBookDetails(input)),
-	addBook: adminProcedure
+	addBook: superAdminProcedure
 		.input(AddBookInputSchema)
 		.output(AddBookOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -198,7 +198,7 @@ export const bookRouter = {
 			}
 			return book;
 		}),
-	updateBook: adminProcedure
+	updateBook: superAdminProcedure
 		.input(UpdateBookInputSchema)
 		.output(UpdateBookOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -217,7 +217,7 @@ export const bookRouter = {
 			}
 			return book;
 		}),
-	removeBook: adminProcedure
+	removeBook: superAdminProcedure
 		.input(BookSchema.shape.slug)
 		.output(BookSchema.shape.slug)
 		.handler(async ({ input, context }) => {
@@ -232,10 +232,10 @@ export const bookRouter = {
 		.handler(async ({ context }) => ({
 			olids: await listCatalogOlids(context.db),
 		})),
-	listBlockedOpenLibraryWorks: adminProcedure
+	listBlockedOpenLibraryWorks: superAdminProcedure
 		.output(ListBlockedOpenLibraryWorksOutputSchema)
 		.handler(async ({ context }) => listBlockedOpenLibraryWorks(context.db)),
-	blockOpenLibraryWork: adminProcedure
+	blockOpenLibraryWork: superAdminProcedure
 		.input(BlockOpenLibraryWorkInputSchema)
 		.output(OpenLibraryOlidResultSchema)
 		.handler(async ({ input, context }) => {
@@ -247,7 +247,7 @@ export const bookRouter = {
 			await invalidateDiscoverLanes(context.db);
 			return result;
 		}),
-	unblockOpenLibraryWork: adminProcedure
+	unblockOpenLibraryWork: superAdminProcedure
 		.input(UnblockOpenLibraryWorkInputSchema)
 		.output(OpenLibraryOlidResultSchema)
 		.handler(async ({ input, context }) => {

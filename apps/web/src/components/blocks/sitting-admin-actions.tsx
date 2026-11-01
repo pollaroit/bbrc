@@ -1,6 +1,7 @@
 "use client";
 
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
+import { isSuperAdmin } from "@bbrc/shared";
 import {
 	AlertDialog,
 	AlertDialogCancel,
@@ -46,11 +47,11 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 	const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
 	const [showAllPollOptions, setShowAllPollOptions] = useState(false);
 
-	const isAdmin = session?.user.isAdmin === true;
+	const superAdmin = isSuperAdmin(session?.user);
 
 	const liveSittingQuery = useQuery({
 		...orpc.sitting.getSittingBySlug.queryOptions({ input: sitting.slug }),
-		enabled: isAdmin && sitting.status === "voting",
+		enabled: superAdmin && sitting.status === "voting",
 	});
 
 	const pollOptions = useMemo(() => {
@@ -154,7 +155,7 @@ export function SittingAdminActions({ sitting }: SittingAdminActionsProps) {
 		}),
 	);
 
-	if (isPending || !session?.user.isAdmin) {
+	if (isPending || !isSuperAdmin(session?.user)) {
 		return null;
 	}
 

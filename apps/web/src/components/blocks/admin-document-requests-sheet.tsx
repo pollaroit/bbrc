@@ -1,6 +1,6 @@
 "use client";
 
-import { documentLanguageLabel } from "@bbrc/shared";
+import { documentLanguageLabel, isSuperAdmin } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
@@ -262,15 +262,15 @@ export function AdminDocumentRequestsSheet({
 	const { data: session, isPending: isSessionPending } =
 		authClient.useSession();
 	const [open, setOpen] = useState(false);
-	const isAdmin = session?.user.isAdmin === true;
+	const superAdmin = isSuperAdmin(session?.user);
 
 	const { data, isPending: isListPending } = useQuery({
 		...orpc.document.listPending.queryOptions(),
-		enabled: isAdmin,
+		enabled: superAdmin,
 		staleTime: 30_000,
 	});
 
-	if (isSessionPending || !isAdmin) {
+	if (isSessionPending || !superAdmin) {
 		return null;
 	}
 

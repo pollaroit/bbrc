@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Pencil } from "lucide-react";
 import Link from "next/link";
@@ -17,7 +18,7 @@ type BookEditLinkProps = {
 export function BookEditLink({ slug, className, redirect }: BookEditLinkProps) {
 	const { data: session, isPending } = authClient.useSession();
 
-	if (isPending || !session?.user.isAdmin) {
+	if (isPending || !isSuperAdmin(session?.user)) {
 		return null;
 	}
 

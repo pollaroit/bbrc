@@ -1,5 +1,9 @@
 import type { Session } from "@bbrc/auth";
-import { DOCUMENT_FORMATS, documentFormatFromMime } from "@bbrc/shared";
+import {
+	DOCUMENT_FORMATS,
+	documentFormatFromMime,
+	isSuperAdmin,
+} from "@bbrc/shared";
 import {
 	buildObjectKey,
 	buildPublicObjectUrl,
@@ -88,7 +92,7 @@ function assertInitUploadAllowed(
 		case "comment-image":
 			return;
 		case "book-document":
-			if (!user.isAdmin) {
+			if (!isSuperAdmin(user)) {
 				throw new ORPCError("FORBIDDEN", {
 					message: "Document upload is not enabled yet",
 				});
@@ -124,7 +128,7 @@ function assertKeyAllowedForSession(key: string, session: Session): void {
 		return;
 	}
 
-	if (user.isAdmin) {
+	if (isSuperAdmin(user)) {
 		const adminAllowed =
 			new RegExp(`^${storageEnv}/posts/[a-z0-9_]+/image\\.png$`).test(key) ||
 			new RegExp(`^${storageEnv}/comments/[a-z0-9_]+/image\\.png$`).test(key) ||

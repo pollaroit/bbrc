@@ -12,7 +12,6 @@ import {
 	TableRow,
 } from "@bbrc/ui/components/table";
 import { useQuery } from "@tanstack/react-query";
-import { CircleAlert, Crown } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { AdminListTableFooter } from "@/components/blocks/admin-list-table-footer";
@@ -22,6 +21,7 @@ import {
 } from "@/components/blocks/admin-list-table-scroll";
 import { AdminUserRowActions } from "@/components/blocks/admin-user-row-actions";
 import { AdminUsersToolbar } from "@/components/blocks/admin-users-toolbar";
+import { RoleBadge } from "@/components/blocks/role-badge";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
 import { adminUsersExportConfig } from "@/lib/admin-table-export/configs";
@@ -137,12 +137,7 @@ export function AdminUsersTable() {
 														className="flex min-w-0 items-center gap-1.5 font-medium hover:underline"
 													>
 														<span className="truncate">{user.name}</span>
-														{user.isAdmin ? (
-															<Crown
-																className="size-3.5 shrink-0 text-warning"
-																aria-label="Administrator"
-															/>
-														) : null}
+														<RoleBadge role={user.role} size="sm" />
 													</Link>
 													<p className="truncate text-muted-foreground text-xs">
 														@{user.username}

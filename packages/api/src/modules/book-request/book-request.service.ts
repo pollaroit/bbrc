@@ -18,10 +18,10 @@ import type {
 export async function createBookRequest(
 	input: CreateBookRequestInput,
 	userId: string,
-	isAdmin: boolean,
+	superAdmin: boolean,
 	db: Database,
 ): Promise<CreateBookRequestOutput> {
-	if (isAdmin) {
+	if (superAdmin) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Admins add books directly; members can request titles instead.",
 		});

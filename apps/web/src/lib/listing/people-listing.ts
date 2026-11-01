@@ -4,6 +4,7 @@ import {
 	PEOPLE_SORT_FIELDS,
 	PEOPLE_STATUSES,
 } from "@bbrc/api/modules/people/people.schema";
+import { ROLES } from "@bbrc/shared";
 import {
 	parseAsArrayOf,
 	parseAsInteger,
@@ -14,7 +15,6 @@ import {
 import { buildListCallInput } from "@/lib/listing/build-list-call-input";
 import type { FieldLabels } from "@/lib/listing/labels";
 import {
-	booleanFilterParser,
 	rangeMaxParser,
 	rangeMinParser,
 	searchParser,
@@ -69,7 +69,7 @@ export const peopleListingSearchParams = {
 	search: searchParser.withOptions({ shallow: true, throttleMs: 400 }),
 	sortBy: parseAsStringLiteral(PEOPLE_SORT_FIELDS).withDefault("xp"),
 	sortDirection: sortDirectionParser.withDefault("desc"),
-	isAdmin: booleanFilterParser,
+	roles: parseAsArrayOf(parseAsStringLiteral(ROLES)),
 	statuses: parseAsArrayOf(parseAsStringLiteral(PEOPLE_STATUSES)),
 	xpLevels: parseAsArrayOf(parseAsString),
 	rpLevels: parseAsArrayOf(parseAsString),
@@ -106,7 +106,7 @@ export function toPeopleListCallInput(
 			search: params.search,
 			sortBy: params.sortBy,
 			sortDirection: params.sortDirection,
-			isAdmin: params.isAdmin,
+			roles: params.roles,
 			statuses: params.statuses,
 			xpLevels: params.xpLevels,
 			rpLevels: params.rpLevels,
@@ -129,7 +129,7 @@ export function countPeopleSheetFilters(
 ): number {
 	return (
 		[
-			params.isAdmin != null,
+			Boolean(params.roles?.length),
 			Boolean(params.statuses?.length),
 			Boolean(params.xpLevels?.length),
 			Boolean(params.rpLevels?.length),
@@ -149,7 +149,7 @@ export function clearPeopleSheetFilters(
 	setParams: ReturnType<typeof usePeopleListingSearchParams>[1],
 ) {
 	void setParams({
-		isAdmin: null,
+		roles: null,
 		statuses: null,
 		xpLevels: null,
 		rpLevels: null,

@@ -1,5 +1,6 @@
 "use client";
 
+import { ROLE_META } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Card,
@@ -152,7 +153,21 @@ export function AdminUsersOverview() {
 
 				<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 					<StatCard label="Members" value={kpis.totalMembers} />
-					<StatCard label="Admins" value={kpis.admins} />
+					<StatCard
+						label="Staff"
+						value={
+							kpis.roles.moderator + kpis.roles.admin + kpis.roles.super_admin
+						}
+						hint={
+							(["super_admin", "admin", "moderator"] as const)
+								.filter((role) => kpis.roles[role] > 0)
+								.map(
+									(role) =>
+										`${kpis.roles[role]} ${ROLE_META[role].label.toLowerCase()}`,
+								)
+								.join(", ") || "No one has a role yet"
+						}
+					/>
 					<StatCard label="Active" value={kpis.active} />
 					<StatCard
 						label="Joined (7d / 30d)"

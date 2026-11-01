@@ -16,7 +16,7 @@ import {
 	mayViewProfile,
 	mayViewSection,
 	memberVisibleWhere,
-	viewerIsAdmin,
+	viewerIsSuperAdmin,
 } from "../user/member-access";
 import { userMemberLevelsFromPoints } from "../user/member-levels";
 import { memberListVisibleWhere } from "../visibility/visibility-resources";
@@ -42,7 +42,7 @@ export const userListSelect = {
 	name: true,
 	image: true,
 	status: true,
-	isAdmin: true,
+	role: true,
 	createdAt: true,
 	xp: true,
 	rp: true,
@@ -133,7 +133,7 @@ async function buildWhere(
 	db: Database,
 	viewer: Viewer,
 ): Promise<Prisma.UserWhereInput> {
-	const isAdmin = viewerIsAdmin(viewer);
+	const superAdmin = viewerIsSuperAdmin(viewer);
 	// Blocked members (either way) never appear; everyone else does, however private.
 	const and: Prisma.UserWhereInput[] = [
 		memberListVisibleWhere(viewer) as Prisma.UserWhereInput,
@@ -149,15 +149,15 @@ async function buildWhere(
 
 	// Banned members are only ever listed for administrators who ask for them.
 	and.push(
-		isAdmin && input.statuses?.length
+		superAdmin && input.statuses?.length
 			? { status: { in: input.statuses } }
-			: isAdmin
+			: superAdmin
 				? {}
 				: { status: { not: "banned" } },
 	);
 
-	if (input.isAdmin !== undefined) {
-		and.push({ isAdmin: input.isAdmin });
+	if (input.roles?.length) {
+		and.push({ role: { in: input.roles } });
 	}
 	if (input.search) {
 		and.push({
@@ -427,7 +427,7 @@ function privateItem(row: PeopleRow): PeopleListItem {
 		name: row.name,
 		image: row.image,
 		status: row.status,
-		isAdmin: row.isAdmin,
+		role: row.role,
 		createdAt: row.createdAt.toISOString(),
 		xp: 0,
 		rp: 0,
@@ -526,7 +526,7 @@ export async function buildItems(
 			name: row.name,
 			image: row.image,
 			status: row.status,
-			isAdmin: row.isAdmin,
+			role: row.role,
 			createdAt: row.createdAt.toISOString(),
 			xp: row.xp,
 			rp: row.rp,

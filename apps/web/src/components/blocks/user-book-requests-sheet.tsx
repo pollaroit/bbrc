@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Sheet, SheetContent } from "@bbrc/ui/components/sheet";
 import {
@@ -121,7 +122,7 @@ export function UserBookRequestsSheet({
 
 	const isMember =
 		session != null &&
-		!session.user.isAdmin &&
+		!isSuperAdmin(session.user) &&
 		session.user.status !== "banned";
 
 	const { data, isPending: isListPending } = useQuery({

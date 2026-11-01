@@ -415,7 +415,7 @@ export function RequestFlow() {
 						}}
 						idleContent={
 							<DiscoverPanel
-								isAdmin={false}
+								superAdmin={false}
 								onPick={(item) => void openByOlid(item.olid)}
 								onRequest={(item) => void openByOlid(item.olid)}
 								pendingOlids={pendingOlids}

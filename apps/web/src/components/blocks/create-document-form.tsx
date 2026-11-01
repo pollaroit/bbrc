@@ -49,14 +49,14 @@ type CreateDocumentFormProps = {
 	bookSlug: string;
 	bookTitle: string;
 	approvedDocumentCount: number;
-	isAdmin: boolean;
+	superAdmin: boolean;
 };
 
 export function CreateDocumentForm({
 	bookSlug,
 	bookTitle,
 	approvedDocumentCount,
-	isAdmin,
+	superAdmin,
 }: CreateDocumentFormProps) {
 	const router = useRouter();
 	const nameId = useId();
@@ -158,7 +158,7 @@ export function CreateDocumentForm({
 				</p>
 			) : (
 				<p className="text-muted-foreground text-sm leading-relaxed">
-					{isAdmin
+					{superAdmin
 						? `As an admin, your document is published immediately (${slotsLeft} of ${MAX_DOCS_PER_BOOK} slots left on this book).`
 						: `Members can upload up to ${MAX_DOCS_PER_BOOK} approved documents per book. Admins review submissions (${slotsLeft} slot${slotsLeft === 1 ? "" : "s"} left).`}
 				</p>
@@ -265,7 +265,7 @@ export function CreateDocumentForm({
 					loading={submitting}
 					disabled={atCap || name.trim().length < 2 || !file}
 				>
-					{isAdmin ? "Publish document" : "Submit for review"}
+					{superAdmin ? "Publish document" : "Submit for review"}
 				</LoadingButton>
 				<Button
 					render={<Link href={`/books/${bookSlug}` as Route} />}

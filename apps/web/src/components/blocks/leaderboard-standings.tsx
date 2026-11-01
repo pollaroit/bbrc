@@ -94,7 +94,7 @@ export function LeaderboardStandings({
 													name: entry.name,
 													username: entry.username,
 													image: entry.image,
-													isAdmin: entry.isAdmin,
+													role: entry.role,
 												}}
 												renderDescription={`@${entry.username}`}
 												imageClassName="size-9"

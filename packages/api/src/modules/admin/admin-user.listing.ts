@@ -1,5 +1,5 @@
 import type { Prisma } from "@bbrc/db";
-import { UserStatusSchema } from "@bbrc/schemas";
+import { RoleSchema, UserStatusSchema } from "@bbrc/schemas";
 import z from "zod";
 import { defineRanging } from "../../utils/ranging";
 import { defineSearching } from "../../utils/searching";
@@ -60,7 +60,7 @@ export const adminUserListSearching = defineSearching<
 export const adminUserListFiltersSchema = z
 	.object({
 		statuses: z.array(UserStatusSchema),
-		isAdmin: z.boolean(),
+		roles: z.array(RoleSchema),
 		minXp: z.number().int().min(0),
 		minRp: z.number().int().min(0),
 		minPosts: z.number().int().min(0),

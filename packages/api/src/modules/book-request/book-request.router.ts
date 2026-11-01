@@ -1,4 +1,5 @@
-import { adminProcedure, notBannedProcedure } from "../../procedures";
+import { isSuperAdmin } from "@bbrc/shared";
+import { notBannedProcedure, superAdminProcedure } from "../../procedures";
 import {
 	CreateBookRequestInputSchema,
 	CreateBookRequestOutputSchema,
@@ -20,7 +21,7 @@ import {
 } from "./book-request.service";
 
 export const bookRequestRouter = {
-	listPending: adminProcedure
+	listPending: superAdminProcedure
 		.output(ListPendingBookRequestsOutputSchema)
 		.handler(async ({ context }) => listPendingBookRequests(context.db)),
 	listOpen: notBannedProcedure
@@ -46,11 +47,11 @@ export const bookRequestRouter = {
 			createBookRequest(
 				input,
 				context.session.user.id,
-				context.session.user.isAdmin,
+				isSuperAdmin(context.session.user),
 				context.db,
 			),
 		),
-	reject: adminProcedure
+	reject: superAdminProcedure
 		.input(RejectBookRequestInputSchema)
 		.output(RejectBookRequestOutputSchema)
 		.handler(async ({ input, context }) =>

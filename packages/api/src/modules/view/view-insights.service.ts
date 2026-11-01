@@ -3,6 +3,8 @@ import {
 	clubDayKey,
 	dayKeysBetween,
 	insightRangeDays,
+	isSuperAdmin,
+	type RoleActor,
 	resolveClubTimeZone,
 	richContentPreview,
 	VIEW_RETENTION_DAYS,
@@ -23,7 +25,7 @@ import type {
 import { describeViewTarget } from "./view.service";
 
 type InsightRange = ViewInsights["range"];
-type Actor = { id: string; isAdmin: boolean };
+type Actor = RoleActor;
 type Totals = ViewInsights["totals"];
 type Breakdown = ViewInsights["sources"];
 
@@ -651,7 +653,7 @@ function canOpenInsights(
 	actor: Actor,
 	info: { ownerId: string | null; collaboratorIds: string[] },
 ) {
-	if (actor.isAdmin) return true;
+	if (isSuperAdmin(actor)) return true;
 	if (resource === "book") return true;
 	if (info.ownerId === actor.id) return true;
 	return info.collaboratorIds.includes(actor.id);
@@ -668,7 +670,7 @@ export async function getViewInsights(
 			message: "Sign in to see insights.",
 		});
 	}
-	const actor: Actor = { id: viewer.userId, isAdmin: viewer.isAdmin };
+	const actor: Actor = { id: viewer.userId, role: viewer.role };
 	const info = await describeViewTarget(db, resource, ref);
 	if (!info) {
 		throw new ORPCError("NOT_FOUND", { message: "That item was not found." });
@@ -680,7 +682,11 @@ export async function getViewInsights(
 	}
 	// Members see who looked at their own things, but never at their own profile.
 	const canSeeViewers =
-		resource === "book" ? false : resource === "user" ? actor.isAdmin : true;
+		resource === "book"
+			? false
+			: resource === "user"
+				? isSuperAdmin(actor)
+				: true;
 
 	const id = info.id;
 	const scope = Prisma.sql`resource = ${sqlResource(resource)} AND resource_id = ${id}`;

@@ -25,20 +25,20 @@ function owner(over: Partial<ActivityOwner> = {}): ActivityOwner {
 	};
 }
 
-const stranger = memberViewer({ userId: "stranger", isAdmin: false });
+const stranger = memberViewer({ userId: "stranger", role: "user" });
 const friend = memberViewer({
 	userId: "friend",
-	isAdmin: false,
+	role: "user",
 	friendIds: ["owner"],
 });
-const admin = memberViewer({ userId: "admin", isAdmin: true });
-const self = memberViewer({ userId: "owner", isAdmin: false });
+const admin = memberViewer({ userId: "admin", role: "super_admin" });
+const self = memberViewer({ userId: "owner", role: "user" });
 
 describe("reading activity access", () => {
 	test("blocked reads as unavailable", () => {
 		const blocked = memberViewer({
 			userId: "stranger",
-			isAdmin: false,
+			role: "user",
 			blockedIds: ["owner"],
 		});
 		expect(decideActivityAccess(blocked, owner()).kind).toBe("unavailable");

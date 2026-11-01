@@ -353,7 +353,7 @@ export const AuthorGetOutputSchema = zod.object({
 	}),
 	viewer: zod.object({
 		isSignedIn: zod.boolean(),
-		isAdmin: zod.boolean(),
+		isSuperAdmin: zod.boolean(),
 		/** Following the author. */
 		followed: zod.boolean(),
 		/** How many of the author's books the viewer has read (0 when signed out). */

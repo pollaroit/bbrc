@@ -13,7 +13,7 @@ import {
 	mayViewProfile,
 	mayViewSection,
 	memberAccessSelect,
-	viewerIsAdmin,
+	viewerIsSuperAdmin,
 	viewerUserId,
 } from "./member-access";
 import { userMemberLevelsFromPoints } from "./member-levels";
@@ -115,7 +115,7 @@ export async function getUserByUsername(
 		username: user.username,
 		name: user.name,
 		image: user.image,
-		isAdmin: user.isAdmin,
+		role: user.role,
 		rp: mayView ? user.rp : 0,
 		xp: mayView ? user.xp : 0,
 		status: user.status,
@@ -146,7 +146,7 @@ export async function getUserList(
 		memberListVisibleWhere(viewer) as Prisma.UserWhereInput,
 		{
 			status: input.statuses ? { in: input.statuses } : undefined,
-			isAdmin: input.isAdmin === undefined ? undefined : input.isAdmin,
+			role: input.roles?.length ? { in: input.roles } : undefined,
 		},
 	);
 
@@ -173,7 +173,7 @@ export async function getUserList(
 				username: row.username,
 				name: row.name,
 				image: row.image,
-				isAdmin: row.isAdmin,
+				role: row.role,
 				status: row.status,
 				xp: mayView ? row.xp : 0,
 				rp: mayView ? row.rp : 0,
@@ -209,7 +209,7 @@ export async function getUserProfileCard(
 		mayView ? user.rp : 0,
 	);
 	const isOwnerOrAdmin =
-		viewerIsAdmin(viewer) || viewerUserId(viewer) === user.id;
+		viewerIsSuperAdmin(viewer) || viewerUserId(viewer) === user.id;
 
 	const [
 		favorites,
@@ -274,7 +274,7 @@ export async function getUserProfileCard(
 		username: user.username,
 		name: user.name,
 		image: user.image,
-		isAdmin: user.isAdmin,
+		role: user.role,
 		rp: mayView ? user.rp : 0,
 		xp: mayView ? user.xp : 0,
 		status: user.status,

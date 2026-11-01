@@ -1,6 +1,7 @@
 "use client";
 
 import type { GetFeedbackBySlugOutput } from "@bbrc/api/modules/feedback/feedback.schema";
+import { isSuperAdmin } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Tooltip,
@@ -29,7 +30,7 @@ export function FeedbackDetailOwnerActions({
 		return null;
 	}
 	const isAuthor = session.user.username === feedback.author.username;
-	if (!isAuthor && session.user.isAdmin !== true) {
+	if (!isAuthor && isSuperAdmin(session.user) !== true) {
 		return null;
 	}
 

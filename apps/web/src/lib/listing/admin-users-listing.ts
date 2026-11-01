@@ -3,6 +3,7 @@ import type {
 	GetAdminUserOverviewInput,
 	ListAdminUsersInput,
 } from "@bbrc/api/modules/admin/admin-user.schema";
+import { ROLES } from "@bbrc/shared";
 import {
 	parseAsArrayOf,
 	parseAsInteger,
@@ -12,7 +13,6 @@ import {
 import { buildListCallInput } from "@/lib/listing/build-list-call-input";
 import type { FieldLabels } from "@/lib/listing/labels";
 import {
-	booleanFilterParser,
 	createRangeByParser,
 	createSortByParser,
 	rangeMaxParser,
@@ -74,7 +74,9 @@ export const adminUserListingSearchParams = {
 	statuses: parseAsArrayOf(parseAsStringLiteral(userStatuses)).withOptions({
 		shallow: false,
 	}),
-	isAdmin: booleanFilterParser.withOptions({ shallow: false }),
+	roles: parseAsArrayOf(parseAsStringLiteral(ROLES)).withOptions({
+		shallow: false,
+	}),
 	...adminUserMinCountParams,
 };
 
@@ -93,7 +95,7 @@ function buildAdminUserFilterCallInput(params: AdminUsersListingSearchParams) {
 		rangeMin: params.rangeMin,
 		rangeMax: params.rangeMax,
 		statuses: params.statuses,
-		isAdmin: params.isAdmin,
+		roles: params.roles,
 		minXp: params.minXp,
 		minRp: params.minRp,
 		minPosts: params.minPosts,

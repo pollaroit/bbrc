@@ -1,4 +1,5 @@
 import { countries } from "country-data-list";
+import { isSuperAdmin } from "./roles";
 
 /** Mirrors the poll enums in `post-poll.prisma` — keep in sync. */
 export const POST_POLL_TYPES = ["single", "multiple", "ranking"] as const;
@@ -131,14 +132,14 @@ export function pollEnded(
 	);
 }
 
-type Viewer = { isOwner: boolean; isAdmin: boolean; hasVoted: boolean };
+type Viewer = { isOwner: boolean; role?: string | null; hasVoted: boolean };
 
 /** The owner and admins always see live results. */
 export function canSeeResults(
 	visibility: PostPollResultsVisibility,
 	viewer: Viewer & { ended: boolean },
 ): boolean {
-	if (viewer.isOwner || viewer.isAdmin) {
+	if (viewer.isOwner || isSuperAdmin(viewer)) {
 		return true;
 	}
 	switch (visibility) {
@@ -163,7 +164,7 @@ export function ballotAccess(
 	visibility: PostPollBallotVisibility,
 	viewer: Viewer & { resultsVisible: boolean },
 ): BallotAccess {
-	const staff = viewer.isOwner || viewer.isAdmin;
+	const staff = viewer.isOwner || isSuperAdmin(viewer);
 	switch (visibility) {
 		case "secret":
 			return "none";

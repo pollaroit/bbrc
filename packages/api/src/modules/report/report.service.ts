@@ -1,6 +1,7 @@
 import type { Database, Prisma } from "@bbrc/db";
 import {
 	canApplyReportAction,
+	isSuperAdmin,
 	REPORT_ACTION_LABELS,
 	type ReportActionKind,
 	type ReportReason,
@@ -250,7 +251,7 @@ export async function listReports(
 				name: true,
 				image: true,
 				status: true,
-				isAdmin: true,
+				role: true,
 			},
 		}),
 		db.report.groupBy({
@@ -321,7 +322,7 @@ export async function listReports(
 						name: owner.name,
 						image: owner.image,
 						status: owner.status,
-						isAdmin: owner.isAdmin,
+						role: owner.role,
 						reportsAgainst: againstByOwner.get(owner.id) ?? 0,
 					}
 				: null,
@@ -479,9 +480,9 @@ export async function actOnReport(
 		}
 		const owner = await db.user.findUnique({
 			where: { id: ownerId },
-			select: { isAdmin: true },
+			select: { role: true },
 		});
-		if (owner?.isAdmin || ownerId === adminId) {
+		if (isSuperAdmin(owner) || ownerId === adminId) {
 			throw new ORPCError("BAD_REQUEST", {
 				message: "Admins cannot be warned or banned from the queue.",
 			});

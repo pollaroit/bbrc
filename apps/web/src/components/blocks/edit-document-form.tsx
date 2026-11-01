@@ -7,6 +7,7 @@ import {
 	type DocumentLanguageCode,
 	documentFormatLabel,
 	isDocumentLanguageCode,
+	isSuperAdmin,
 	MAX_DOCUMENT_BYTES,
 	resolveDocumentFormat,
 } from "@bbrc/shared";
@@ -134,7 +135,7 @@ export function EditDocumentForm({ document }: EditDocumentFormProps) {
 	}
 
 	const metadataLocked =
-		document.status === "approved" && !session?.user.isAdmin;
+		document.status === "approved" && !isSuperAdmin(session?.user);
 
 	return (
 		<div className="flex max-w-lg flex-col gap-6">
@@ -223,7 +224,7 @@ export function EditDocumentForm({ document }: EditDocumentFormProps) {
 			<Field>
 				<FieldLabel>Replace file</FieldLabel>
 				<FieldDescription>
-					{session?.user.isAdmin
+					{isSuperAdmin(session?.user)
 						? "Upload a new PDF, DOCX or EPUB file for this document."
 						: "Replacing an approved document sends it back to pending for admins."}
 				</FieldDescription>

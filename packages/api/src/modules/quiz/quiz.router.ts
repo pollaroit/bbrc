@@ -1,7 +1,7 @@
 import {
-	adminProcedure,
 	protectedProcedure,
 	publicProcedure,
+	superAdminProcedure,
 } from "../../procedures";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import { loadViewer } from "../visibility/viewer";
@@ -109,17 +109,17 @@ export const quizRouter = {
 				await loadViewer(context.db, context.session),
 			),
 		),
-	adminDelete: adminProcedure
+	adminDelete: superAdminProcedure
 		.input(AdminQuizIdInputSchema)
 		.output(AdminQuizActionOutputSchema)
 		.handler(({ input, context }) => adminDeleteQuiz(input.quizId, context.db)),
-	adminClearUnavailable: adminProcedure
+	adminClearUnavailable: superAdminProcedure
 		.input(AdminQuizIdInputSchema)
 		.output(AdminQuizActionOutputSchema)
 		.handler(({ input, context }) =>
 			adminClearUnavailableQuiz(input.quizId, context.db),
 		),
-	adminRegenerate: adminProcedure
+	adminRegenerate: superAdminProcedure
 		.input(AdminQuizIdInputSchema)
 		.output(AdminQuizActionOutputSchema)
 		.handler(({ input, context }) =>

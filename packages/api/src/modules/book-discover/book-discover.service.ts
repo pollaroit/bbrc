@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Database } from "@bbrc/db";
-import { bookAuthorEntries } from "@bbrc/shared";
+import { bookAuthorEntries, isSuperAdmin, type RoleActor } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { getGeminiConfig } from "../../lib/gemini/config";
 import { geminiGenerateJson } from "../../lib/gemini/generate-json";
@@ -17,7 +17,7 @@ import {
 	type DiscoverLaneId,
 } from "./book-discover.schema";
 
-type Viewer = { id: string; isAdmin: boolean };
+type Viewer = RoleActor;
 
 const LANE_COPY: Record<
 	DiscoverLaneId,
@@ -51,7 +51,7 @@ const LANE_COPY: Record<
 };
 
 export function listLanesFor(viewer: Viewer) {
-	const ids: DiscoverLaneId[] = viewer.isAdmin
+	const ids: DiscoverLaneId[] = isSuperAdmin(viewer)
 		? ["member_wants", "series_next", "rated_authors", "gaps", "ai"]
 		: ["for_you", "ai"];
 	return ids.map((id) => ({
@@ -734,7 +734,7 @@ async function aiAsksLeft(
 	db: Database,
 	viewer: Viewer,
 ): Promise<number | null> {
-	if (viewer.isAdmin) return null;
+	if (isSuperAdmin(viewer)) return null;
 	const used = await db.bookDiscoverAsk.count({
 		where: {
 			userId: viewer.id,
@@ -749,13 +749,13 @@ async function laneAi(db: Database, viewer: Viewer, refresh: boolean) {
 	if (!config) {
 		return lane("ai", [], "AI suggestions are not set up on this server.");
 	}
-	const memberScope = viewer.isAdmin ? undefined : viewer.id;
+	const memberScope = isSuperAdmin(viewer) ? undefined : viewer.id;
 	const taste = await loadTaste(db, memberScope);
 	if (taste.length === 0) {
 		return lane(
 			"ai",
 			[],
-			viewer.isAdmin
+			isSuperAdmin(viewer)
 				? "The club has no reads or reviews to learn from yet."
 				: "Mark a few books as read first, then ask again.",
 			await aiAsksLeft(db, viewer),
@@ -764,7 +764,7 @@ async function laneAi(db: Database, viewer: Viewer, refresh: boolean) {
 
 	const summary = tasteSummary(
 		taste,
-		viewer.isAdmin ? "the whole club" : "one member",
+		isSuperAdmin(viewer) ? "the whole club" : "one member",
 	);
 	const cacheKey = `ai:${memberScope ?? "club"}:${createHash("sha256").update(summary).digest("hex").slice(0, 24)}`;
 
@@ -798,7 +798,7 @@ async function laneAi(db: Database, viewer: Viewer, refresh: boolean) {
 			message: error instanceof Error ? error.message : "AI suggestion failed",
 		});
 	}
-	if (!viewer.isAdmin) {
+	if (!isSuperAdmin(viewer)) {
 		await db.bookDiscoverAsk.create({ data: { userId: viewer.id } });
 	}
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "@bbrc/shared";
 import {
 	DropdownMenuGroup,
 	DropdownMenuItem,
@@ -70,7 +71,7 @@ function userMenuAccountEntries(user: UserMenuUser): MenuEntry[] {
 	const entries: MenuEntry[] = [
 		{ label: "Settings", href: "/settings" as Route, icon: Settings },
 	];
-	if (user.isAdmin) {
+	if (isSuperAdmin(user)) {
 		entries.push(
 			{
 				label: "Blocked works",

@@ -1,4 +1,4 @@
-import { adminProcedure, notBannedProcedure } from "../../procedures";
+import { notBannedProcedure, superAdminProcedure } from "../../procedures";
 import { loadViewer } from "../visibility/viewer";
 import {
 	ActOnReportInputSchema,
@@ -29,16 +29,16 @@ export const reportRouter = {
 				input,
 			),
 		),
-	list: adminProcedure
+	list: superAdminProcedure
 		.input(ListReportsInputSchema)
 		.output(ListReportsOutputSchema)
 		.handler(async ({ input, context }) => listReports(context.db, input)),
-	openCount: adminProcedure
+	openCount: superAdminProcedure
 		.output(OpenReportCountOutputSchema)
 		.handler(async ({ context }) => ({
 			count: await countOpenReportGroups(context.db),
 		})),
-	act: adminProcedure
+	act: superAdminProcedure
 		.input(ActOnReportInputSchema)
 		.output(ActOnReportOutputSchema)
 		.handler(async ({ input, context }) =>

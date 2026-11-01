@@ -415,7 +415,7 @@ export function AddBookFlow() {
 										</div>
 									) : null}
 									<DiscoverPanel
-										isAdmin
+										superAdmin
 										onPick={onDiscoverPick}
 										inCatalogOlids={inCatalogOlids}
 									/>

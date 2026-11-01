@@ -9,6 +9,7 @@ import {
 	formatSittingDisplayName,
 	generateSlug,
 	generateUniqueSlug,
+	isSuperAdmin,
 	pollChipRankFromGrants,
 	resolveClubTimeZone,
 	selfJoinWindow,
@@ -869,7 +870,7 @@ export async function getSittingBySlug(
 	}
 
 	const userId = viewer.kind === "member" ? viewer.userId : undefined;
-	const viewerIsAdmin = viewer.kind === "member" && viewer.isAdmin;
+	const viewerIsSuperAdmin = viewer.kind === "member" && isSuperAdmin(viewer);
 	const myVotes =
 		userId && sitting.poll
 			? await loadMyPollVotes(sitting.poll.id, userId, db)
@@ -912,7 +913,7 @@ export async function getSittingBySlug(
 				).length
 			: 0;
 
-	const hidePollAggregates = sitting.status === "voting" && !viewerIsAdmin;
+	const hidePollAggregates = sitting.status === "voting" && !viewerIsSuperAdmin;
 
 	const pollChipRankByUserId =
 		sitting.poll != null
@@ -950,7 +951,7 @@ export async function getSittingBySlug(
 
 	let removedParticipants: GetSittingBySlugOutput["removedParticipants"] = [];
 
-	if (viewerIsAdmin) {
+	if (viewerIsSuperAdmin) {
 		const removedRows = await db.participation.findMany({
 			where: {
 				sittingId: sitting.id,
@@ -2420,7 +2421,7 @@ export async function getPollOptionReaders(
 		throw new ORPCError("UNAUTHORIZED", { message: "Sign in to continue." });
 	}
 	const userId = viewer.userId;
-	const isAdmin = viewer.isAdmin;
+	const superAdmin = isSuperAdmin(viewer);
 	const option = await db.pollOption.findUnique({
 		where: { id: input.pollOptionId },
 		select: {
@@ -2455,7 +2456,7 @@ export async function getPollOptionReaders(
 	);
 
 	if (
-		!isAdmin &&
+		!superAdmin &&
 		!participantUserIds.some((participantId) => participantId === userId)
 	) {
 		throw new ORPCError("FORBIDDEN", {

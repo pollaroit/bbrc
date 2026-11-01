@@ -2,6 +2,7 @@
 "use client";
 
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
+import { isSuperAdmin } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import {
@@ -58,8 +59,11 @@ function voteDraftsFromPoll(poll: SittingPoll): VoteDraft[] {
 	}));
 }
 
-function optionScore(option: SittingPoll["options"][number], isAdmin: boolean) {
-	return isAdmin ? option.pointTotal : option.voteCount;
+function optionScore(
+	option: SittingPoll["options"][number],
+	superAdmin: boolean,
+) {
+	return superAdmin ? option.pointTotal : option.voteCount;
 }
 
 function PollTotals({ option }: { option: SittingPoll["options"][number] }) {
@@ -156,32 +160,37 @@ export function SittingPollSection({
 
 	const poll = sittingData?.poll ?? initialPoll;
 	const maxChoices = poll.maxChoices ?? poll.take;
-	const isAdmin = session?.user.isAdmin === true;
+	const superAdmin = isSuperAdmin(session?.user);
 
 	const sortedOptions = useMemo(() => {
 		const hideLiveRanking =
-			sittingStatus === "voting" && !isAdmin && !readonly && !showVoteShare;
+			sittingStatus === "voting" && !superAdmin && !readonly && !showVoteShare;
 
 		if (hideLiveRanking) {
 			return poll.options;
 		}
 
-		if (!readonly && !showVoteShare && sittingStatus === "voting" && !isAdmin) {
+		if (
+			!readonly &&
+			!showVoteShare &&
+			sittingStatus === "voting" &&
+			!superAdmin
+		) {
 			return poll.options;
 		}
 
 		return [...poll.options].sort(
-			(a, b) => optionScore(b, isAdmin) - optionScore(a, isAdmin),
+			(a, b) => optionScore(b, superAdmin) - optionScore(a, superAdmin),
 		);
-	}, [poll.options, readonly, showVoteShare, sittingStatus, isAdmin]);
+	}, [poll.options, readonly, showVoteShare, sittingStatus, superAdmin]);
 
 	const maxVoteCount = useMemo(
 		() =>
 			Math.max(
 				1,
-				...poll.options.map((option) => optionScore(option, isAdmin)),
+				...poll.options.map((option) => optionScore(option, superAdmin)),
 			),
-		[poll.options, isAdmin],
+		[poll.options, superAdmin],
 	);
 
 	const [voteDrafts, setVoteDrafts] = useState<VoteDraft[]>(() =>
@@ -223,7 +232,7 @@ export function SittingPollSection({
 
 	const participantCount = effectiveParticipantUserIds.length;
 	const canOpenReadersList =
-		sittingStatus === "voting" && (isParticipant || isAdmin);
+		sittingStatus === "voting" && (isParticipant || superAdmin);
 
 	const canVoteBase =
 		!readonly &&
@@ -356,7 +365,7 @@ export function SittingPollSection({
 	const showVoteBars =
 		showVoteShare ||
 		readonly ||
-		(isAdmin && sittingStatus === "voting") ||
+		(superAdmin && sittingStatus === "voting") ||
 		(sittingStatus !== "voting" && !canEditSelection);
 
 	const chipGrants = poll.myChipGrants;
@@ -454,7 +463,7 @@ export function SittingPollSection({
 						readonly &&
 						selectedBookSlug != null &&
 						option.book.slug === selectedBookSlug;
-					const optionPoints = optionScore(option, isAdmin);
+					const optionPoints = optionScore(option, superAdmin);
 					const voteShare =
 						showVoteBars && optionPoints > 0 ? optionPoints / maxVoteCount : 0;
 					const readCount = option.participantReadCount;
@@ -470,7 +479,7 @@ export function SittingPollSection({
 							? savedPoints
 							: null;
 					const showTotals =
-						showVoteBars && (isAdmin || sittingStatus !== "voting");
+						showVoteBars && (superAdmin || sittingStatus !== "voting");
 					const showChips = showChipControls && checked;
 					const hasBottom = showChips || shownVote != null || showTotals;
 
@@ -745,7 +754,7 @@ export function SittingPollSection({
 												</span>
 												{showTotals ? (
 													<span className="ml-auto inline-flex items-baseline gap-1.5 tabular-nums">
-														{isAdmin && option.pointTotal > 0 ? (
+														{superAdmin && option.pointTotal > 0 ? (
 															<button
 																type="button"
 																className="inline-flex items-baseline gap-1.5 underline-offset-2 hover:underline"
@@ -824,7 +833,7 @@ export function SittingPollSection({
 				</Button>
 			) : null}
 
-			{isAdmin ? (
+			{superAdmin ? (
 				<PollOptionVotersDialog
 					pollOptionId={adminVotersOptionId}
 					voteCount={adminVotersOptionCount}
@@ -845,7 +854,7 @@ export function SittingPollSection({
 				/>
 			) : null}
 
-			{isAdmin && layout === "page" ? (
+			{superAdmin && layout === "page" ? (
 				<PollVotesByVoterSection sittingSlug={sittingSlug} />
 			) : null}
 		</>

@@ -1,3 +1,4 @@
+import { isSuperAdmin } from "@bbrc/shared";
 import {
 	Card,
 	CardContent,
@@ -87,7 +88,7 @@ export default async function AdminHubPage() {
 		headers: await headers(),
 	});
 
-	if (!session?.user.isAdmin) {
+	if (!isSuperAdmin(session?.user)) {
 		redirect("/" as Route);
 	}
 

@@ -6,6 +6,7 @@ import {
 	formatAuthorLifespan,
 	getBookCountryName,
 	getZonedParts,
+	isSuperAdmin,
 	isTighterOrEqualBallotVisibility,
 	normalizeChoiceLimits,
 	POST_POLL_LIMITS,
@@ -37,7 +38,7 @@ type Db = Database | DatabaseTransaction;
 
 type PollViewer = {
 	userId: string | null;
-	isAdmin: boolean;
+	role?: string | null;
 	/** Members the viewer and they have blocked each other: left out of voter and turnout names. */
 	blockedIds?: ReadonlySet<string>;
 };
@@ -130,11 +131,11 @@ async function withAuthorPhotos<
 
 export function pollViewer(viewer: Viewer): PollViewer {
 	if (viewer.kind === "anonymous") {
-		return { userId: null, isAdmin: false };
+		return { userId: null, role: "user" };
 	}
 	return {
 		userId: viewer.userId,
-		isAdmin: viewer.isAdmin,
+		role: viewer.role,
 		blockedIds: viewer.blockedIds,
 	};
 }
@@ -188,13 +189,13 @@ export function buildPollView(
 
 	const resultsVisible = canSeeResults(row.resultsVisibility, {
 		isOwner,
-		isAdmin: viewer.isAdmin,
+		role: viewer.role,
 		hasVoted,
 		ended,
 	});
 	const access = ballotAccess(row.ballotVisibility, {
 		isOwner,
-		isAdmin: viewer.isAdmin,
+		role: viewer.role,
 		hasVoted,
 		resultsVisible,
 	});
@@ -268,7 +269,7 @@ export function buildPollView(
 			viewer.userId != null &&
 			((isOwner && (option.userAdded || !hasVotes)) ||
 				(adder && !othersVoted) ||
-				(viewer.isAdmin && option.userAdded));
+				(isSuperAdmin(viewer) && option.userAdded));
 
 		return {
 			id: option.id,
@@ -888,7 +889,7 @@ export async function retractVote(
 
 async function loadOwnedPoll(db: Db, postSlug: string, actor: PollViewer) {
 	const row = await loadPollRow(db, postSlug);
-	if (row.post.authorId !== actor.userId && !actor.isAdmin) {
+	if (row.post.authorId !== actor.userId && !isSuperAdmin(actor)) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Only the poll owner can change this poll.",
 		});

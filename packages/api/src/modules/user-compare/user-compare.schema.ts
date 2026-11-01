@@ -114,7 +114,7 @@ export const CompareInputSchema = zod.object({ a: username, b: username });
 
 export const CompareOutputSchema = zod.object({
 	/** True when the viewer is an admin (bypasses "Allow others to compare with me"). */
-	viewerIsAdmin: zod.boolean(),
+	viewerIsSuperAdmin: zod.boolean(),
 	/** "compare_off": the other member turned comparisons off; numbers are withheld. */
 	blocked: zod.enum(["compare_off", "reads_private"]).nullable(),
 	/** Who the viewer is in this comparison; null for an admin looking at two others. */

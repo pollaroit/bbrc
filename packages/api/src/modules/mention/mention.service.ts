@@ -74,7 +74,7 @@ async function loadMentionAudience(
 		}),
 		db.user.findMany({
 			where: { id: { in: candidateIds } },
-			select: { id: true, isAdmin: true },
+			select: { id: true, role: true },
 		}),
 		db.friendship.findMany({
 			where: {
@@ -107,7 +107,7 @@ async function loadMentionAudience(
 	for (const candidate of candidates) {
 		const viewer = memberViewer({
 			userId: candidate.id,
-			isAdmin: candidate.isAdmin === true,
+			role: candidate.role,
 			friendIds: friendIds.has(candidate.id) ? [audience.ownerId] : [],
 			blockedIds: blockedIds.has(candidate.id) ? involved : [],
 		});

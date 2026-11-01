@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * `RequestBoard({ isAdmin?, onAdd?(olid), className? })`
+ * `RequestBoard({ superAdmin?, onAdd?(olid), className? })`
  * Every open request, ranked by "me too". Members toggle "Me too" (optimistic);
  * your own requests show "Your request". Admins also get an "Add" button that
  * calls `onAdd(olid)`.
@@ -21,11 +21,11 @@ import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
 export function RequestBoard({
-	isAdmin = false,
+	superAdmin = false,
 	onAdd,
 	className,
 }: {
-	isAdmin?: boolean;
+	superAdmin?: boolean;
 	onAdd?: (olid: string) => void;
 	className?: string;
 }) {
@@ -117,7 +117,7 @@ export function RequestBoard({
 									count={item.upvoteCount}
 								/>
 							)}
-							{isAdmin && onAdd ? (
+							{superAdmin && onAdd ? (
 								<Button
 									type="button"
 									size="sm"

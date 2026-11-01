@@ -10,8 +10,8 @@ import {
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import {
-	viewerIsAdmin as isAdminViewer,
 	isBlockedFor,
+	viewerIsSuperAdmin as isSuperAdminViewer,
 	type MemberAccessFields,
 	mayViewSection,
 	memberAccessSelect,
@@ -47,7 +47,7 @@ export type CompareMemberRow = {
 export type ComparePair = {
 	viewer: Viewer;
 	viewerId: string;
-	viewerIsAdmin: boolean;
+	viewerIsSuperAdmin: boolean;
 	viewerSide: "a" | "b" | null;
 	a: CompareMemberRow;
 	b: CompareMemberRow;
@@ -83,7 +83,7 @@ export async function resolveComparePair(
 		});
 	}
 	const viewerId = viewer.userId;
-	const viewerIsAdmin = isAdminViewer(viewer);
+	const viewerIsSuperAdmin = isSuperAdminViewer(viewer);
 
 	if (input.a.toLowerCase() === input.b.toLowerCase()) {
 		throw new ORPCError("BAD_REQUEST", {
@@ -112,7 +112,7 @@ export async function resolveComparePair(
 		const own = member.id === viewerId;
 		// Banned members, and members blocked either way, read as not found.
 		if (
-			!viewerIsAdmin &&
+			!viewerIsSuperAdmin &&
 			!own &&
 			(member.status === "banned" || isBlockedFor(viewer, member.id))
 		) {
@@ -121,7 +121,7 @@ export async function resolveComparePair(
 	}
 
 	const viewerSide = a.id === viewerId ? "a" : b.id === viewerId ? "b" : null;
-	if (!viewerIsAdmin && viewerSide == null) {
+	if (!viewerIsSuperAdmin && viewerSide == null) {
 		const viewer = await db.user.findUnique({
 			where: { id: viewerId },
 			select: { username: true },
@@ -139,15 +139,15 @@ export async function resolveComparePair(
 	// The other member must allow comparisons AND the viewer must be allowed to see their
 	// reads (a private profile or a private reads setting keeps a stranger out).
 	const blocked: ComparePair["blocked"] =
-		!viewerIsAdmin && other != null && !other.allowCompare
+		!viewerIsSuperAdmin && other != null && !other.allowCompare
 			? "compare_off"
-			: !viewerIsAdmin &&
+			: !viewerIsSuperAdmin &&
 					other != null &&
 					!mayViewSection(viewer, other, "reads")
 				? "reads_private"
 				: null;
 
-	return { viewer, viewerId, viewerIsAdmin, viewerSide, a, b, blocked };
+	return { viewer, viewerId, viewerIsSuperAdmin, viewerSide, a, b, blocked };
 }
 
 const memberRef = (m: CompareMemberRow) => ({
@@ -244,7 +244,7 @@ export async function compareMembers(
 ): Promise<CompareOutput> {
 	const pair = await resolveComparePair(db, viewer, input);
 	const base = {
-		viewerIsAdmin: pair.viewerIsAdmin,
+		viewerIsSuperAdmin: pair.viewerIsSuperAdmin,
 		viewerSide: pair.viewerSide,
 	};
 
@@ -416,7 +416,7 @@ export async function searchCompareMembers(
 	db: Database,
 	viewer: Viewer,
 ): Promise<CompareSearchMembersOutput> {
-	const isAdmin = isAdminViewer(viewer);
+	const superAdmin = isSuperAdminViewer(viewer);
 	const query = input.query.trim();
 	const users = await db.user.findMany({
 		where: {
@@ -425,7 +425,7 @@ export async function searchCompareMembers(
 				notBlockedWhere(viewer) as Prisma.UserWhereInput,
 				memberVisibleWhere(viewer, { section: "reads" }),
 			],
-			...(isAdmin ? {} : { status: { not: "banned" }, allowCompare: true }),
+			...(superAdmin ? {} : { status: { not: "banned" }, allowCompare: true }),
 			...(input.excludeUsername
 				? { username: { not: input.excludeUsername, mode: "insensitive" } }
 				: {}),

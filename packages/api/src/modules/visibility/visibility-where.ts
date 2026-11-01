@@ -1,4 +1,5 @@
 import {
+	isSuperAdmin,
 	LEVEL_REACH,
 	PROFILE_VISIBILITIES,
 	type ProfileSection,
@@ -49,7 +50,7 @@ function levelReachClause(
 		return LEVEL_REACH[level].includes("anonymous") ? EVERYTHING : NOTHING;
 	}
 
-	if (viewer.isAdmin) return EVERYTHING;
+	if (isSuperAdmin(viewer)) return EVERYTHING;
 
 	const reach = LEVEL_REACH[level];
 	const friends = [...viewer.friendIds];
@@ -96,7 +97,7 @@ export type VisibleSpec = OwnerSpec & {
  * left out. An admin sees all.
  */
 export function visibleWhere(viewer: Viewer, spec: VisibleSpec): Clause {
-	if (viewer.kind === "member" && viewer.isAdmin) return EVERYTHING;
+	if (viewer.kind === "member" && isSuperAdmin(viewer)) return EVERYTHING;
 
 	const onModelOwner = (condition: Clause): Clause => ({
 		[spec.ownerIdField]: condition,
@@ -154,7 +155,7 @@ export function visibleWhere(viewer: Viewer, spec: VisibleSpec): Clause {
 
 /** Members the viewer may see at all in the app: not blocked either way. For lists of people and names. */
 export function notBlockedWhere(viewer: Viewer, idField = "id"): Clause {
-	if (viewer.kind !== "member" || viewer.isAdmin) return EVERYTHING;
+	if (viewer.kind !== "member" || isSuperAdmin(viewer)) return EVERYTHING;
 	if (viewer.blockedIds.size === 0) return EVERYTHING;
 
 	return { NOT: { [idField]: { in: [...viewer.blockedIds] } } };

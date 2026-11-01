@@ -5,7 +5,7 @@ import {
 	AvatarImage,
 } from "@bbrc/ui/components/avatar";
 import { Button } from "@bbrc/ui/components/button";
-import { Crown, Lock, Pencil } from "lucide-react";
+import { Lock, Pencil } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { FriendButton } from "@/components/blocks/friend-button";
@@ -15,6 +15,7 @@ import { MemberProfileNumbers } from "@/components/blocks/member-profile-numbers
 import { PinnedAchievements } from "@/components/blocks/pinned-achievements";
 import { ReportOnlyMenu } from "@/components/blocks/report/report-menu";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
+import { RoleBadge } from "@/components/blocks/role-badge";
 import { CompareWithButton } from "@/components/blocks/user-compare/compare-with-button";
 import { UserStatusBadge } from "@/components/blocks/user-status-badge";
 
@@ -47,12 +48,7 @@ export function MemberProfileHeader({
 							<div className="flex items-start justify-between gap-2">
 								<h1 className="flex min-w-0 items-center gap-2 font-semibold text-xl tracking-tight sm:text-2xl">
 									<span className="truncate">{user.name}</span>
-									{user.isAdmin ? (
-										<Crown
-											className="size-5 shrink-0 text-warning"
-											aria-label="Administrator"
-										/>
-									) : null}
+									<RoleBadge role={user.role} size="md" />
 								</h1>
 								<div className="flex shrink-0 divide-x divide-border border border-border">
 									<ResourceShareMenu

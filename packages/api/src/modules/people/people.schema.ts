@@ -1,4 +1,8 @@
-import { CursorPaginationInputSchema, ProgressSchema } from "@bbrc/schemas";
+import {
+	CursorPaginationInputSchema,
+	ProgressSchema,
+	RoleSchema,
+} from "@bbrc/schemas";
 import zod from "zod";
 import { MemberLevelSchema } from "../user/user.schema";
 
@@ -41,7 +45,7 @@ export const GetPeopleListInputSchema = CursorPaginationInputSchema.extend({
 	search: zod.string().trim().max(100).optional(),
 	sortBy: zod.enum(PEOPLE_SORT_FIELDS).default("xp"),
 	sortDirection: zod.enum(["asc", "desc"]).default("desc"),
-	isAdmin: zod.boolean().optional(),
+	roles: zod.array(RoleSchema).optional(),
 	/** Only honoured for administrators; everyone else never sees banned members. */
 	statuses: zod.array(zod.enum(PEOPLE_STATUSES)).optional(),
 	xpLevels: zod.array(zod.string().max(40)).optional(),
@@ -75,7 +79,7 @@ export const PeopleListItemSchema = zod.object({
 	name: zod.string(),
 	image: zod.string().nullable(),
 	status: zod.enum(PEOPLE_STATUSES),
-	isAdmin: zod.boolean(),
+	role: RoleSchema,
 	createdAt: zod.string(),
 	xp: zod.number().int(),
 	rp: zod.number().int(),

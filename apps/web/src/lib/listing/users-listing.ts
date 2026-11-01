@@ -3,11 +3,11 @@ import {
 	userSortableFields,
 } from "@bbrc/api/modules/user/user.listing";
 import type { GetUserListInput } from "@bbrc/api/modules/user/user.schema";
+import { ROLES } from "@bbrc/shared";
 import { parseAsArrayOf, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { buildListCallInput } from "@/lib/listing/build-list-call-input";
 import type { FieldLabels } from "@/lib/listing/labels";
 import {
-	booleanFilterParser,
 	createRangeByParser,
 	createSortByParser,
 	rangeMaxParser,
@@ -54,7 +54,9 @@ export const userListingSearchParams = {
 	statuses: parseAsArrayOf(parseAsStringLiteral(userStatuses)).withOptions({
 		shallow: false,
 	}),
-	isAdmin: booleanFilterParser.withOptions({ shallow: false }),
+	roles: parseAsArrayOf(parseAsStringLiteral(ROLES)).withOptions({
+		shallow: false,
+	}),
 };
 
 export function useUserListingSearchParams() {
@@ -76,7 +78,7 @@ export function toUserListCallInput(
 		rangeMin: params.rangeMin,
 		rangeMax: params.rangeMax,
 		statuses: params.statuses,
-		isAdmin: params.isAdmin,
+		roles: params.roles,
 	}) as Partial<GetUserListInput>;
 }
 
@@ -87,7 +89,7 @@ export function countUserSheetFilters(params: UserListingSearchParams): number {
 		count += 1;
 	}
 
-	if (params.isAdmin != null) {
+	if (params.roles?.length) {
 		count += 1;
 	}
 
@@ -103,7 +105,7 @@ export function clearUserSheetFilters(
 ) {
 	void setParams({
 		statuses: null,
-		isAdmin: null,
+		roles: null,
 		rangeBy: null,
 		rangeMin: null,
 		rangeMax: null,

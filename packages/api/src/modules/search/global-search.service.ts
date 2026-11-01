@@ -11,7 +11,7 @@ import {
 } from "@bbrc/shared";
 import { findBookIdsByAuthorNameSearch } from "../book/book-list-search";
 import { shelfVisibleWhere } from "../shelf/shelf-visibility";
-import { viewerIsAdmin } from "../user/member-access";
+import { viewerIsSuperAdmin } from "../user/member-access";
 import {
 	commentVisibleWhere,
 	goalVisibleWhere,
@@ -38,7 +38,7 @@ import {
 type SearchContext = {
 	db: Database;
 	query: string;
-	isAdmin: boolean;
+	superAdmin: boolean;
 	/** Who is searching: decides which posts, reviews, shelves and goals can turn up. */
 	viewer: Viewer;
 	limit: number;
@@ -400,7 +400,7 @@ async function searchShelves(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 async function searchDocuments(ctx: SearchContext): Promise<GlobalSearchHit[]> {
 	const rows = await ctx.db.document.findMany({
 		where: {
-			status: ctx.isAdmin ? { in: ["approved", "pending"] } : "approved",
+			status: ctx.superAdmin ? { in: ["approved", "pending"] } : "approved",
 			OR: [
 				{ name: containsQuery(ctx.query) },
 				{ book: { title: containsQuery(ctx.query) } },
@@ -602,7 +602,7 @@ export async function globalSearch(
 	const ctx: SearchContext = {
 		db,
 		query: input.query,
-		isAdmin: viewerIsAdmin(viewer),
+		superAdmin: viewerIsSuperAdmin(viewer),
 		viewer,
 		limit: narrowed ? GLOBAL_SEARCH_NARROW_LIMIT : GLOBAL_SEARCH_PER_TYPE_LIMIT,
 	};

@@ -1,7 +1,7 @@
 import {
-	adminProcedure,
 	protectedProcedure,
 	publicProcedure,
+	superAdminProcedure,
 } from "../../procedures";
 import { loadViewer } from "../visibility/viewer";
 import {
@@ -71,7 +71,7 @@ export const achievementRouter = {
 			await setShowcase(context.db, context.session.user.id, input.awardIds);
 			return { ok: true as const };
 		}),
-	revoke: adminProcedure
+	revoke: superAdminProcedure
 		.input(RevokeAchievementInputSchema)
 		.output(OkOutputSchema)
 		.handler(async ({ input, context }) => {

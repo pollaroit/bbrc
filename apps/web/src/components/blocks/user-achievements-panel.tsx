@@ -9,6 +9,7 @@ import {
 	type AchievementCategory,
 	type AchievementDefinition,
 	describeTier,
+	isSuperAdmin,
 	tierName,
 } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
@@ -130,7 +131,7 @@ function Ledger({
 
 export function UserAchievementsPanel({ username }: { username: string }) {
 	const { data: session } = authClient.useSession();
-	const isAdmin = session?.user.isAdmin === true;
+	const superAdmin = isSuperAdmin(session?.user);
 	const query = usePinnedAwards(username);
 	const [editing, setEditing] = useState(false);
 	const [draft, setDraft] = useState<string[]>([]);
@@ -396,7 +397,7 @@ export function UserAchievementsPanel({ username }: { username: string }) {
 													{body}
 												</Link>
 											)}
-											{isAdmin && !editing ? (
+											{superAdmin && !editing ? (
 												<div className="absolute end-1.5 top-1.5">
 													{confirmRevoke === award.id ? (
 														<Button

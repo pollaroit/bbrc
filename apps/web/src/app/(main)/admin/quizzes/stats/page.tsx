@@ -1,3 +1,4 @@
+import { isSuperAdmin } from "@bbrc/shared";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -19,7 +20,7 @@ export const metadata: Metadata = buildPageMetadata({
 export default async function AdminQuizzesStatsPage() {
 	const session = await auth.api.getSession({ headers: await headers() });
 
-	if (!session?.user.isAdmin) {
+	if (!isSuperAdmin(session?.user)) {
 		redirect("/" as Route);
 	}
 

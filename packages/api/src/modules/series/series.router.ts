@@ -1,4 +1,4 @@
-import { adminProcedure, publicProcedure } from "../../procedures";
+import { publicProcedure, superAdminProcedure } from "../../procedures";
 import {
 	revalidateBookIsr,
 	revalidateBooksCatalogIsr,
@@ -59,7 +59,7 @@ export const seriesRouter = {
 			getSeriesBySlug(input.slug, context.db),
 		),
 
-	create: adminProcedure
+	create: superAdminProcedure
 		.input(CreateSeriesInputSchema)
 		.output(CreateSeriesOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -68,7 +68,7 @@ export const seriesRouter = {
 			return result;
 		}),
 
-	update: adminProcedure
+	update: superAdminProcedure
 		.input(UpdateSeriesInputSchema)
 		.output(UpdateSeriesOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -82,7 +82,7 @@ export const seriesRouter = {
 			return result;
 		}),
 
-	delete: adminProcedure
+	delete: superAdminProcedure
 		.input(DeleteSeriesInputSchema)
 		.output(DeleteSeriesOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -93,7 +93,7 @@ export const seriesRouter = {
 			return result;
 		}),
 
-	addBook: adminProcedure
+	addBook: superAdminProcedure
 		.input(AddBookToSeriesInputSchema)
 		.output(AddBookToSeriesOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -106,7 +106,7 @@ export const seriesRouter = {
 			return result;
 		}),
 
-	removeBook: adminProcedure
+	removeBook: superAdminProcedure
 		.input(RemoveBookFromSeriesInputSchema)
 		.output(RemoveBookFromSeriesOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -122,7 +122,7 @@ export const seriesRouter = {
 			return result;
 		}),
 
-	reorderBooks: adminProcedure
+	reorderBooks: superAdminProcedure
 		.input(ReorderSeriesBooksInputSchema)
 		.output(ReorderSeriesBooksOutputSchema)
 		.handler(async ({ input, context }) => {

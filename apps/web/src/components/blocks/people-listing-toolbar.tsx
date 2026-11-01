@@ -5,7 +5,12 @@ import {
 	PEOPLE_SORT_FIELDS,
 	PEOPLE_STATUSES,
 } from "@bbrc/api/modules/people/people.schema";
-import { genres, RP_LEVEL_TIERS, XP_LEVEL_TIERS } from "@bbrc/shared";
+import {
+	genres,
+	isSuperAdmin,
+	RP_LEVEL_TIERS,
+	XP_LEVEL_TIERS,
+} from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Field,
@@ -18,6 +23,7 @@ import { Label } from "@bbrc/ui/components/label";
 import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useState } from "react";
+import { roleFilterOptions } from "@/components/blocks/role-filter-options";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
 import { ListingRangeFields } from "@/components/listing/listing-range-fields";
@@ -166,7 +172,7 @@ function ReadBooksFilter({
 export function PeopleListingToolbar() {
 	const [params, setParams] = usePeopleListingSearchParams();
 	const { data: session } = authClient.useSession();
-	const isAdmin = session?.user.isAdmin === true;
+	const superAdmin = isSuperAdmin(session?.user);
 	const sheetFilterCount = countPeopleSheetFilters(params);
 
 	const setJoinedWithin = (days: number | "year") => {
@@ -351,19 +357,14 @@ export function PeopleListingToolbar() {
 
 					<ListingCheckboxList
 						legend="Role"
-						options={[
-							{
-								id: "people-admins",
-								label: "Administrators only",
-								checked: params.isAdmin === true,
-								onCheckedChange: (checked) => {
-									void setParams({ isAdmin: checked ? true : null });
-								},
-							},
-						]}
+						options={roleFilterOptions({
+							selected: params.roles,
+							idPrefix: "people-role",
+							onChange: (roles) => void setParams({ roles }),
+						})}
 					/>
 
-					{isAdmin ? (
+					{superAdmin ? (
 						<ListingCheckboxList
 							legend="Status"
 							options={PEOPLE_STATUSES.map((status) => ({

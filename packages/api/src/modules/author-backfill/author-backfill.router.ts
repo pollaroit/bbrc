@@ -1,4 +1,4 @@
-import { adminProcedure } from "../../procedures";
+import { superAdminProcedure } from "../../procedures";
 import { revalidateBooksCatalogIsr } from "../../revalidate-isr";
 import {
 	BackfillPlanInputSchema,
@@ -15,12 +15,12 @@ import {
 
 export const authorBackfillRouter = {
 	/** A dry run: what a run would do. Writes nothing. */
-	plan: adminProcedure
+	plan: superAdminProcedure
 		.input(BackfillPlanInputSchema)
 		.handler(({ input, context }) => planBackfill(input, context.db)),
 
 	/** One resumable batch (safe to run again and again until `done`). */
-	run: adminProcedure
+	run: superAdminProcedure
 		.input(BackfillRunInputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await runBackfill(input, context.db);
@@ -28,11 +28,11 @@ export const authorBackfillRouter = {
 			return result;
 		}),
 
-	status: adminProcedure
+	status: superAdminProcedure
 		.input(BackfillStatusInputSchema)
 		.handler(({ input, context }) => getBackfillStatus(input, context.db)),
 
-	retryFailed: adminProcedure
+	retryFailed: superAdminProcedure
 		.input(BackfillRetryInputSchema)
 		.handler(({ input, context }) => retryFailedAuthors(input, context.db)),
 };

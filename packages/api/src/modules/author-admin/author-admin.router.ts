@@ -1,4 +1,4 @@
-import { adminProcedure } from "../../procedures";
+import { superAdminProcedure } from "../../procedures";
 import {
 	revalidateBookIsr,
 	revalidateBooksCatalogIsr,
@@ -57,7 +57,7 @@ import { fixAuthorNationalities } from "./author-nationalities.service";
 
 export const authorAdminRouter = {
 	/** Re-derives nationalities as modern countries for authors with none or an old code. Resumable. */
-	fixNationalities: adminProcedure
+	fixNationalities: superAdminProcedure
 		.input(FixNationalitiesInputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await fixAuthorNationalities(input, context.db);
@@ -71,32 +71,32 @@ export const authorAdminRouter = {
 		}),
 
 	/** Dashboard like /admin/books: counts, charts and rankings for the filtered authors. */
-	overview: adminProcedure
+	overview: superAdminProcedure
 		.input(AdminAuthorScopeInputSchema)
 		.output(AdminAuthorOverviewOutputSchema)
 		.handler(({ input, context }) => getAdminAuthorOverview(input, context.db)),
 
 	/** The full directory table with filters, sorting, search and paging (like /admin/books/list). */
-	list: adminProcedure
+	list: superAdminProcedure
 		.input(AdminAuthorListInputSchema)
 		.output(AdminAuthorListOutputSchema)
 		.handler(({ input, context }) => listAdminAuthors(input, context.db)),
 
 	/** Deeper breakdowns and time series (like /admin/books/stats). */
-	stats: adminProcedure
+	stats: superAdminProcedure
 		.input(AdminAuthorScopeInputSchema)
 		.output(AdminAuthorStatsOutputSchema)
 		.handler(({ input, context }) => getAdminAuthorStats(input, context.db)),
 
 	/** Chips in the add / edit book form: our authors first, then Open Library suggestions. */
-	search: adminProcedure
+	search: superAdminProcedure
 		.input(SearchAuthorsInputSchema)
 		.handler(({ input, context }) =>
 			searchAuthorsForChips(input.query, context.db),
 		),
 
 	/** By name (optionally an Open Library id). Returns the existing author when there is one. */
-	create: adminProcedure
+	create: superAdminProcedure
 		.input(CreateAuthorInputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await createAuthorByAdmin(
@@ -110,11 +110,11 @@ export const authorAdminRouter = {
 			return result;
 		}),
 
-	getForEdit: adminProcedure
+	getForEdit: superAdminProcedure
 		.input(GetAuthorForEditInputSchema)
 		.handler(({ input, context }) => getAuthorForEdit(input.slug, context.db)),
 
-	update: adminProcedure
+	update: superAdminProcedure
 		.input(UpdateAuthorInputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await updateAuthor(input, context.db);
@@ -126,19 +126,19 @@ export const authorAdminRouter = {
 			return result;
 		}),
 
-	setLock: adminProcedure
+	setLock: superAdminProcedure
 		.input(SetAuthorLockInputSchema)
 		.handler(({ input, context }) => setAuthorFieldLock(input, context.db)),
 
 	aliases: {
-		add: adminProcedure
+		add: superAdminProcedure
 			.input(AddAuthorAliasInputSchema)
 			.handler(async ({ input, context }) => {
 				const result = await addAuthorAlias(input, context.db);
 				await revalidateAuthorsByIds(context, [input.id]);
 				return result;
 			}),
-		remove: adminProcedure
+		remove: superAdminProcedure
 			.input(RemoveAuthorAliasInputSchema)
 			.handler(async ({ input, context }) => {
 				const result = await removeAuthorAlias(input, context.db);
@@ -147,7 +147,7 @@ export const authorAdminRouter = {
 			}),
 	},
 
-	confirm: adminProcedure
+	confirm: superAdminProcedure
 		.input(AuthorIdInputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await confirmAuthor(input.id, context.db);
@@ -155,7 +155,7 @@ export const authorAdminRouter = {
 			return result;
 		}),
 
-	refresh: adminProcedure
+	refresh: superAdminProcedure
 		.input(RefreshAuthorInputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await refreshAuthor(input, context.db);
@@ -163,7 +163,7 @@ export const authorAdminRouter = {
 			return result;
 		}),
 
-	merge: adminProcedure
+	merge: superAdminProcedure
 		.input(MergeAuthorsInputSchema)
 		.handler(async ({ input, context }) => {
 			const before = await authorSlugsByIds(context.db, [
@@ -178,7 +178,7 @@ export const authorAdminRouter = {
 			return rest;
 		}),
 
-	delete: adminProcedure
+	delete: superAdminProcedure
 		.input(AuthorIdInputSchema)
 		.handler(async ({ input, context }) => {
 			const slugs = await authorSlugsByIds(context.db, [input.id]);
@@ -187,11 +187,11 @@ export const authorAdminRouter = {
 			return result;
 		}),
 
-	suggestPhoto: adminProcedure
+	suggestPhoto: superAdminProcedure
 		.input(AuthorIdInputSchema)
 		.handler(({ input, context }) => suggestPhoto(input.id, context.db)),
 
-	applyPhoto: adminProcedure
+	applyPhoto: superAdminProcedure
 		.input(AuthorIdInputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await applySuggestedPhoto(input.id, context.db);
@@ -199,7 +199,7 @@ export const authorAdminRouter = {
 			return result;
 		}),
 
-	uploadPhoto: adminProcedure
+	uploadPhoto: superAdminProcedure
 		.input(UploadAuthorPhotoInputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await saveUploadedPhoto(input, context.db);
@@ -207,7 +207,7 @@ export const authorAdminRouter = {
 			return result;
 		}),
 
-	removePhoto: adminProcedure
+	removePhoto: superAdminProcedure
 		.input(AuthorIdInputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await removeAuthorPhoto(input.id, context.db);
@@ -215,7 +215,7 @@ export const authorAdminRouter = {
 			return result;
 		}),
 
-	reviewQueue: adminProcedure
+	reviewQueue: superAdminProcedure
 		.input(ReviewQueueInputSchema)
 		.handler(({ input, context }) => getReviewQueue(input.limit, context.db)),
 };

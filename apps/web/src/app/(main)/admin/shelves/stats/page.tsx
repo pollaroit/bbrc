@@ -1,3 +1,4 @@
+import { isSuperAdmin } from "@bbrc/shared";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -21,7 +22,7 @@ export default async function AdminShelvesStatsPage() {
 		headers: await headers(),
 	});
 
-	if (!session?.user.isAdmin) {
+	if (!isSuperAdmin(session?.user)) {
 		redirect("/" as Route);
 	}
 

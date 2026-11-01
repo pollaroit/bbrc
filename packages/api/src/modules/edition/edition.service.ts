@@ -2,9 +2,11 @@ import type { Database, Prisma } from "@bbrc/db";
 import {
 	editionExternalLinks,
 	formatEditionLanguage,
+	isSuperAdmin,
 	normalizeLanguageCode,
 	openLibraryEditionKey,
 	parseEditionKey,
+	type RoleActor,
 	richContentPreview,
 	type Viewer,
 } from "@bbrc/shared";
@@ -47,7 +49,7 @@ import {
 	type UsageContext,
 } from "./edition-support";
 
-type Actor = { id: string; isAdmin: boolean };
+type Actor = RoleActor;
 
 const REVIEW_LIMIT = 6;
 const OTHERS_LIMIT = 12;
@@ -764,11 +766,11 @@ export async function getEditionViewer(
 			read != null &&
 			matches({ olid: read.editionId, bookEditionId: read.bookEditionId }),
 		hasReadBook: read != null,
-		canEdit: member != null && (actor.isAdmin || isCreator),
+		canEdit: member != null && (isSuperAdmin(actor) || isCreator),
 		canDelete:
 			member != null &&
-			(actor.isAdmin || (isCreator && (usage?.readers.size ?? 0) === 0)),
-		isAdmin: actor.isAdmin,
+			(isSuperAdmin(actor) || (isCreator && (usage?.readers.size ?? 0) === 0)),
+		isSuperAdmin: isSuperAdmin(actor),
 	};
 }
 

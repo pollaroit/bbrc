@@ -72,7 +72,7 @@ export async function ensureNotificationPreferences(
 
 export async function getNotificationPreferences(
 	userId: string,
-	isAdmin: boolean,
+	superAdmin: boolean,
 	db: Database,
 ): Promise<GetNotificationPreferencesOutput> {
 	await ensureNotificationPreferences(userId, db);
@@ -83,7 +83,9 @@ export async function getNotificationPreferences(
 	});
 
 	const preferences = rows
-		.filter((row) => isAdmin || !isAdminOnlyKind(row.kind as NotificationKind))
+		.filter(
+			(row) => superAdmin || !isAdminOnlyKind(row.kind as NotificationKind),
+		)
 		.map((row) => {
 			const kind = row.kind as NotificationKind;
 			return {
@@ -104,14 +106,14 @@ function isAdminOnlyKind(kind: NotificationKind): boolean {
 
 export async function updateNotificationPreferences(
 	userId: string,
-	isAdmin: boolean,
+	superAdmin: boolean,
 	input: UpdateNotificationPreferencesInput,
 	db: Database,
 ): Promise<{ ok: true }> {
 	await ensureNotificationPreferences(userId, db);
 
 	for (const pref of input.preferences) {
-		if (!isAdmin && isAdminOnlyKind(pref.kind)) {
+		if (!superAdmin && isAdminOnlyKind(pref.kind)) {
 			continue;
 		}
 
@@ -359,7 +361,7 @@ export async function listAudienceUserIds(
 		status: { in: ["active", "warned"] },
 	} satisfies Prisma.UserWhereInput;
 	const admins = await db.user.findMany({
-		where: { ...active, isAdmin: true },
+		where: { ...active, role: "super_admin" },
 		select: { id: true },
 	});
 	const adminIds = admins.map((user) => user.id);
@@ -382,7 +384,7 @@ export async function listAudienceUserIds(
 
 export async function listAdminUserIds(db: Database): Promise<string[]> {
 	const users = await db.user.findMany({
-		where: { isAdmin: true },
+		where: { role: "super_admin" },
 		select: { id: true },
 	});
 	return users.map((u) => u.id);

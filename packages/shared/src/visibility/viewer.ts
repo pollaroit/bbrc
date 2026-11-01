@@ -1,3 +1,4 @@
+import { isSuperAdmin, type Role, roleOf } from "../roles";
 import type { ViewerRelation } from "./levels";
 
 /**
@@ -5,11 +6,12 @@ import type { ViewerRelation } from "./levels";
  * required argument, so a read that forgets to consider the viewer does not compile.
  */
 export type Viewer =
-	| { kind: "anonymous" }
+	/** Anonymous has no role; the field exists so any viewer can be handed to `isSuperAdmin`. */
+	| { kind: "anonymous"; role?: undefined }
 	| {
 			kind: "member";
 			userId: string;
-			isAdmin: boolean;
+			role: Role;
 			/** Accepted friends (banned members left out). */
 			friendIds: ReadonlySet<string>;
 			/** Everyone who blocked this member or was blocked by them. */
@@ -20,14 +22,14 @@ export const ANONYMOUS_VIEWER: Viewer = { kind: "anonymous" };
 
 export function memberViewer(input: {
 	userId: string;
-	isAdmin: boolean;
+	role?: string | null;
 	friendIds?: Iterable<string>;
 	blockedIds?: Iterable<string>;
 }): Viewer {
 	return {
 		kind: "member",
 		userId: input.userId,
-		isAdmin: input.isAdmin,
+		role: roleOf(input.role),
 		friendIds: new Set(input.friendIds ?? []),
 		blockedIds: new Set(input.blockedIds ?? []),
 	};
@@ -39,7 +41,7 @@ export function relationTo(
 	ownerId: string | null,
 ): ViewerRelation {
 	if (viewer.kind === "anonymous") return "anonymous";
-	if (viewer.isAdmin) return "admin";
+	if (isSuperAdmin(viewer)) return "super_admin";
 	if (ownerId != null && ownerId === viewer.userId) return "self";
 	if (ownerId != null && viewer.blockedIds.has(ownerId)) return "blocked";
 	if (ownerId != null && viewer.friendIds.has(ownerId)) return "friend";

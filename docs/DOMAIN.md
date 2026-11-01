@@ -4,7 +4,7 @@ High-level behavior of the reading club app. For implementation details, search 
 
 ## Core loop
 
-- Admins maintain the **book catalog** (`user.isAdmin`).
+- Admins maintain the **book catalog** (`user.role = super_admin`).
 - A **Sitting** is a reading period; members pick the next book via a **Poll**.
 - Participants read the book before the sitting deadline.
 - **Feedback** and social features (posts, comments, goals, etc.) sit on top of reads and sittings.

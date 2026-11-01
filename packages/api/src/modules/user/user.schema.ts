@@ -78,7 +78,7 @@ export const getUserListFields = {
 	username: true,
 	name: true,
 	image: true,
-	isAdmin: true,
+	role: true,
 	rp: true,
 	xp: true,
 	status: true,
@@ -89,7 +89,7 @@ const UserListItemSchema = UserMemberSnapshotSchema.extend({
 	id: UserSchema.shape.id,
 	/** A private member the viewer may not see into: points and levels are blanked. */
 	isPrivate: zod.boolean(),
-	isAdmin: UserSchema.shape.isAdmin,
+	role: UserSchema.shape.role,
 	xpLevel: MemberLevelSchema,
 	rpLevel: MemberLevelSchema,
 });
@@ -107,7 +107,7 @@ export const getUserByUsernameFields = {
 	username: true,
 	name: true,
 	image: true,
-	isAdmin: true,
+	role: true,
 	rp: true,
 	xp: true,
 	status: true,
@@ -118,7 +118,7 @@ export const GetUserByUsernameInputSchema = UserSchema.pick({
 });
 
 export const GetUserByUsernameOutputSchema = UserMemberSnapshotSchema.extend({
-	isAdmin: UserSchema.shape.isAdmin,
+	role: UserSchema.shape.role,
 	/** Private profile: non-friends see only name, username, avatar, bio and the friend count. */
 	isPrivate: zod.boolean(),
 	/** Whether the viewer may see the rest (true for friends, the member and admins). */

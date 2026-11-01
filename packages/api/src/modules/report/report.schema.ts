@@ -1,3 +1,4 @@
+import { RoleSchema } from "@bbrc/schemas";
 import {
 	REPORT_ACTIONS,
 	REPORT_ADMIN_NOTE_MAX,
@@ -98,7 +99,7 @@ export const ReportGroupSchema = zod.object({
 			name: zod.string(),
 			image: zod.string().nullable(),
 			status: zod.enum(["active", "warned", "banned"]),
-			isAdmin: zod.boolean(),
+			role: RoleSchema,
 			/** Open reports and past reports against this member, across all their content. */
 			reportsAgainst: zod.number().int(),
 		})

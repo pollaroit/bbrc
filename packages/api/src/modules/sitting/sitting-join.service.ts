@@ -5,9 +5,11 @@ import {
 	formatSittingDisplayName,
 	inviteLinkState,
 	inviteLinkStateMessage,
+	isSuperAdmin,
 	joinTypeAllows,
 	joinWindowMessage,
 	MAX_SITTING_INVITE_LINKS,
+	type RoleActor,
 	resolveClubTimeZone,
 	type SittingJoinConfig,
 	selfJoinWindow,
@@ -30,7 +32,7 @@ import type {
 } from "./sitting-join.schema";
 
 type Db = Database | DatabaseTransaction;
-type Actor = { id: string; isAdmin: boolean };
+type Actor = RoleActor;
 
 const memberSelect = {
 	select: { username: true, name: true, image: true },
@@ -68,11 +70,11 @@ async function loadSitting(db: Db, slug: string) {
 type SittingRow = Awaited<ReturnType<typeof loadSitting>>;
 
 export function actorFromSession(session: Session): Actor {
-	return { id: session.user.id, isAdmin: Boolean(session.user.isAdmin) };
+	return { id: session.user.id, role: session.user.role };
 }
 
 function canManage(sitting: Pick<SittingRow, "createdById">, actor: Actor) {
-	return actor.isAdmin || sitting.createdById === actor.id;
+	return isSuperAdmin(actor) || sitting.createdById === actor.id;
 }
 
 function assertCanManage(
@@ -221,9 +223,7 @@ export async function getJoinState(
 ): Promise<SittingJoinState> {
 	const sitting = await loadSitting(db, slug);
 	const actor: Actor | null =
-		viewer.kind === "member"
-			? { id: viewer.userId, isAdmin: viewer.isAdmin }
-			: null;
+		viewer.kind === "member" ? { id: viewer.userId, role: viewer.role } : null;
 	const [blocker, invitation] = await Promise.all([
 		joinBlocker(db, sitting, actor?.id ?? null, "button"),
 		actor

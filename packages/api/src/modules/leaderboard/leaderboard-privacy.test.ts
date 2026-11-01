@@ -9,7 +9,7 @@ const row = {
 	username: "secret",
 	name: "Secret Reader",
 	image: "x.png",
-	isAdmin: false,
+	role: "user",
 	metric: 42,
 	anonymous: false,
 	isPrivate: true,
@@ -20,7 +20,7 @@ describe("entryForViewer", () => {
 	test("strangers get rank and points but no identity", () => {
 		for (const viewer of [
 			ANONYMOUS_VIEWER,
-			memberViewer({ userId: "me", isAdmin: false }),
+			memberViewer({ userId: "me", role: "user" }),
 		]) {
 			const entry = entryForViewer(row, viewer);
 			expect(entry.rank).toBe(3);
@@ -35,18 +35,18 @@ describe("entryForViewer", () => {
 	test("friends, self and admins get the named row", () => {
 		const friend = memberViewer({
 			userId: "me",
-			isAdmin: false,
+			role: "user",
 			friendIds: ["p"],
 		});
 		expect(entryForViewer(row, friend).name).toBe("Secret Reader");
 		const self = entryForViewer(
 			row,
-			memberViewer({ userId: "p", isAdmin: false }),
+			memberViewer({ userId: "p", role: "user" }),
 		);
 		expect(self.name).toBe("Secret Reader");
 		expect(self.isViewer).toBe(true);
 		expect(
-			entryForViewer(row, memberViewer({ userId: "a", isAdmin: true }))
+			entryForViewer(row, memberViewer({ userId: "a", role: "super_admin" }))
 				.anonymous,
 		).toBe(false);
 	});

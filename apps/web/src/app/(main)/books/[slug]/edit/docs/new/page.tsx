@@ -1,5 +1,6 @@
 import type { TGetBookBySlugOutputSchema } from "@bbrc/api/modules/book/book.schema";
 import { listApprovedDocumentsByBook } from "@bbrc/api/modules/document/document.service";
+import { isSuperAdmin } from "@bbrc/shared";
 import { ArrowLeft } from "lucide-react";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
@@ -67,7 +68,7 @@ export default async function NewBookDocumentPage({
 				<p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
 					Share a PDF with the club for{" "}
 					<span className="text-foreground">{book.title}</span>.
-					{session.user.isAdmin
+					{isSuperAdmin(session.user)
 						? " Your upload goes live on the book page right away."
 						: " An admin will review it before it appears on the book page."}
 				</p>
@@ -77,7 +78,7 @@ export default async function NewBookDocumentPage({
 				bookSlug={slug}
 				bookTitle={book.title}
 				approvedDocumentCount={items.length}
-				isAdmin={session.user.isAdmin}
+				superAdmin={isSuperAdmin(session.user)}
 			/>
 		</div>
 	);

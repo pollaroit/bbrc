@@ -1,6 +1,7 @@
 "use client";
 
 import type { GlobalSearchHit } from "@bbrc/api/modules/search/global-search.schema";
+import { isSuperAdmin } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import {
@@ -128,7 +129,7 @@ export function GlobalSearchDialog({
 	const ctx: SearchCommandContext = useMemo(
 		() => ({
 			signedIn: Boolean(session?.user),
-			isAdmin: session?.user.isAdmin === true,
+			superAdmin: isSuperAdmin(session?.user),
 			username: session?.user.username ?? null,
 			ongoingLoaded: ongoingQuery.isSuccess,
 			ongoing: ongoingQuery.data

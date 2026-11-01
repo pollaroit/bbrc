@@ -42,6 +42,7 @@ import {
 	contentPlainText,
 	describeTier,
 	formatSittingSlugLabel,
+	isSuperAdmin,
 } from "@bbrc/shared";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { coverSrc, editionHeadline } from "@/lib/edition/format";
@@ -1056,7 +1057,8 @@ async function resolveMemberOg(
 						? statsLine
 						: undefined,
 			badge:
-				MEMBER_SECTION_BADGE[section] ?? (user.isAdmin ? "Admin" : undefined),
+				MEMBER_SECTION_BADGE[section] ??
+				(isSuperAdmin(user) ? "Admin" : undefined),
 			media: await avatarMedia(user),
 			facts: facts[section],
 		};

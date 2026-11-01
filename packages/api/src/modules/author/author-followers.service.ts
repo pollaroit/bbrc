@@ -1,5 +1,6 @@
 import type { Database, Prisma } from "@bbrc/db";
 import type { Viewer } from "@bbrc/shared";
+import { isSuperAdmin } from "@bbrc/shared";
 import { mergeWhereFragments } from "../../utils/searching";
 import { buildItems, userListSelect } from "../people/people.service";
 import {
@@ -76,12 +77,12 @@ export async function getAuthorFollowers(
 ): Promise<AuthorFollowersOutput> {
 	const actor = actorOf(viewer);
 	const author = await resolveAuthor(db, input.slug, viewer);
-	const isAdmin = Boolean(actor?.isAdmin);
+	const superAdmin = isSuperAdmin(actor);
 
 	const followed = dayRangeWhere(input.followedFrom, input.followedTo);
 	const memberWhere = mergeWhereFragments<Prisma.UserWhereInput>(
 		// Banned members are only ever listed for administrators.
-		isAdmin ? {} : { status: { not: "banned" } },
+		superAdmin ? {} : { status: { not: "banned" } },
 		input.search?.trim() ? memberSearchWhere(input.search.trim()) : {},
 		input.location
 			? {

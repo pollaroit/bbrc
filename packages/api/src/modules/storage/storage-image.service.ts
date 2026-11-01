@@ -1,6 +1,6 @@
 import type { Session } from "@bbrc/auth";
 import type { Database } from "@bbrc/db";
-import { postAttachmentConflict } from "@bbrc/shared";
+import { isSuperAdmin, postAttachmentConflict } from "@bbrc/shared";
 import {
 	type AllowedImageMimeType,
 	buildObjectKey,
@@ -306,7 +306,7 @@ export async function uploadBookCoverDirect(
 	},
 	session: Session,
 ) {
-	if (!session.user.isAdmin) {
+	if (!isSuperAdmin(session.user)) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Only admins can upload book covers.",
 		});
@@ -395,7 +395,7 @@ export async function uploadAuthorPhotoDirect(
 	},
 	session: Session,
 ) {
-	if (!session.user.isAdmin) {
+	if (!isSuperAdmin(session.user)) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Only admins can upload author photos.",
 		});

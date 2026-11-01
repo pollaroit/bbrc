@@ -10,14 +10,14 @@ describe("postVisibilitySql", () => {
 	});
 	test("admins see everything", () => {
 		expect(
-			postVisibilitySql(memberViewer({ userId: "a", isAdmin: true })).sql,
+			postVisibilitySql(memberViewer({ userId: "a", role: "super_admin" })).sql,
 		).toBe("TRUE");
 	});
 	test("members get their id, friends and blocked ids as parameters", () => {
 		const sql = postVisibilitySql(
 			memberViewer({
 				userId: "me",
-				isAdmin: false,
+				role: "user",
 				friendIds: ["f1", "f2"],
 				blockedIds: ["b1"],
 			}),
@@ -27,9 +27,7 @@ describe("postVisibilitySql", () => {
 		expect(sql.sql).toContain("NOT IN");
 	});
 	test("no friends and no blocks still produce valid SQL", () => {
-		const sql = postVisibilitySql(
-			memberViewer({ userId: "me", isAdmin: false }),
-		);
+		const sql = postVisibilitySql(memberViewer({ userId: "me", role: "user" }));
 		expect(sql.values).toEqual(["me"]);
 		expect(sql.sql).toContain("FALSE");
 	});

@@ -1,6 +1,11 @@
 import type { Session } from "@bbrc/auth";
 import type { Database } from "@bbrc/db";
-import { ANONYMOUS_VIEWER, memberViewer, type Viewer } from "@bbrc/shared";
+import {
+	ANONYMOUS_VIEWER,
+	isSuperAdmin,
+	memberViewer,
+	type Viewer,
+} from "@bbrc/shared";
 
 /** Accepted friends of a member (banned members left out: their friendships are dormant). */
 export async function loadFriendIds(
@@ -56,16 +61,16 @@ export async function loadViewer(
 ): Promise<Viewer> {
 	const user = session?.user;
 	if (!user) return ANONYMOUS_VIEWER;
-	const isAdmin = user.isAdmin === true;
+	const superAdmin = isSuperAdmin(user);
 	// An admin sees everything: no need to load who is a friend or blocked.
-	if (isAdmin) return memberViewer({ userId: user.id, isAdmin: true });
+	if (superAdmin) return memberViewer({ userId: user.id, role: user.role });
 	const [friendIds, blockedIds] = await Promise.all([
 		loadFriendIds(db, user.id),
 		loadBlockedIds(db, user.id),
 	]);
 	return memberViewer({
 		userId: user.id,
-		isAdmin: false,
+		role: user.role,
 		friendIds,
 		blockedIds,
 	});

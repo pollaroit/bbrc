@@ -37,6 +37,7 @@ import { readingRouter } from "./modules/reading/reading.router";
 import { readingActivityRouter } from "./modules/reading-activity/reading-activity.router";
 import { readingSessionRouter } from "./modules/reading-session/reading-session.router";
 import { reportRouter } from "./modules/report/report.router";
+import { roleRouter } from "./modules/role/role.router";
 import { rpRouter } from "./modules/rp/rp.router";
 import { globalSearchRouter } from "./modules/search/global-search.router";
 import { seriesRouter } from "./modules/series/series.router";
@@ -74,6 +75,7 @@ export const appRouter = {
 	friend: friendRouter,
 	readingActivity: readingActivityRouter,
 	report: reportRouter,
+	role: roleRouter,
 	privacy: privacyRouter,
 	goal: goalRouter,
 	globalSearch: globalSearchRouter,

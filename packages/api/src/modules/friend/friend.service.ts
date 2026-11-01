@@ -6,6 +6,7 @@ import {
 	FRIEND_REFUSAL_MESSAGES,
 	type FriendRelationState,
 	friendPair,
+	isSuperAdmin,
 	pendingExpiryCutoff,
 	type Viewer,
 } from "@bbrc/shared";
@@ -27,7 +28,7 @@ const memberSelect = {
 	name: true,
 	image: true,
 	status: true,
-	isAdmin: true,
+	role: true,
 	profileVisibility: true,
 	autoAcceptFriends: true,
 } as const;
@@ -38,7 +39,7 @@ type MemberRow = {
 	name: string;
 	image: string | null;
 	status: string;
-	isAdmin: boolean;
+	role: string;
 	profileVisibility: "public" | "private";
 	autoAcceptFriends: boolean;
 };
@@ -368,7 +369,7 @@ export async function blockMember(
 			message: "You cannot block yourself.",
 		});
 	}
-	if (other.isAdmin) {
+	if (isSuperAdmin(other)) {
 		throw new ORPCError("BAD_REQUEST", {
 			message: "Admins cannot be blocked.",
 		});
@@ -436,7 +437,7 @@ export async function listFriends(
 	const count = await countFriends(db, owner.id);
 	const mayList =
 		viewer.kind === "member" &&
-		(viewer.isAdmin ||
+		(isSuperAdmin(viewer) ||
 			viewer.userId === owner.id ||
 			viewer.friendIds.has(owner.id)) &&
 		!viewer.blockedIds.has(owner.id);
@@ -449,7 +450,7 @@ export async function listFriends(
 	ids = ids.filter((id) => !viewer.blockedIds.has(id));
 	if (input.mutualOnly && viewer.userId !== owner.id) {
 		const mine = new Set(
-			viewer.isAdmin
+			isSuperAdmin(viewer)
 				? await loadFriendIds(db, viewer.userId)
 				: viewer.friendIds,
 		);
@@ -514,7 +515,7 @@ export async function friendsWhoReadBook(
 	});
 	if (!book) return empty;
 	const friendIds = (
-		viewer.isAdmin
+		isSuperAdmin(viewer)
 			? await loadFriendIds(db, viewer.userId)
 			: [...viewer.friendIds]
 	).filter((id) => !viewer.blockedIds.has(id));

@@ -1,7 +1,7 @@
 import {
-	adminProcedure,
 	notBannedProcedure,
 	publicProcedure,
+	superAdminProcedure,
 } from "../../procedures";
 import {
 	BookEditionIdInputSchema,
@@ -27,11 +27,9 @@ import {
 	updateBookEdition,
 } from "./book-edition.service";
 
-const actorOf = (session: {
-	user: { id: string; isAdmin?: boolean | null };
-}) => ({
+const actorOf = (session: { user: { id: string; role?: string | null } }) => ({
 	id: session.user.id,
-	isAdmin: Boolean(session.user.isAdmin),
+	role: session.user.role,
 });
 
 export const bookEditionRouter = {
@@ -64,7 +62,7 @@ export const bookEditionRouter = {
 			await deleteBookEdition(context.db, actorOf(context.session), input.id);
 			return { ok: true as const };
 		}),
-	verify: adminProcedure
+	verify: superAdminProcedure
 		.input(BookEditionIdInputSchema)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {
@@ -76,7 +74,7 @@ export const bookEditionRouter = {
 			);
 			return { ok: true as const };
 		}),
-	unverify: adminProcedure
+	unverify: superAdminProcedure
 		.input(BookEditionIdInputSchema)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {
@@ -88,14 +86,14 @@ export const bookEditionRouter = {
 			);
 			return { ok: true as const };
 		}),
-	merge: adminProcedure
+	merge: superAdminProcedure
 		.input(MergeBookEditionsInputSchema)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {
 			await mergeBookEditions(context.db, input.fromId, input.intoId);
 			return { ok: true as const };
 		}),
-	link: adminProcedure
+	link: superAdminProcedure
 		.input(LinkBookEditionInputSchema)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {

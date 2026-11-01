@@ -20,13 +20,13 @@ const MISSING_LABEL: Record<AuthorAboutOutput["missing"][number], string> = {
 /** Admin-only notes under the sources: locked fields and what is still missing. */
 export function AuthorPageAboutAdminNotes({ slug }: { slug: string }) {
 	const viewer = useAuthorViewer(slug);
-	const isAdmin = viewer?.viewer.isAdmin === true;
+	const superAdmin = viewer?.viewer.isSuperAdmin === true;
 	const { data } = useQuery({
 		...orpc.author.about.queryOptions({ input: { slug } }),
-		enabled: isAdmin,
+		enabled: superAdmin,
 	});
 
-	if (!isAdmin || !data) {
+	if (!superAdmin || !data) {
 		return null;
 	}
 

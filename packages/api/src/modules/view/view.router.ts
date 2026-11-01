@@ -1,7 +1,7 @@
 import {
-	adminProcedure,
 	protectedProcedure,
 	publicProcedure,
+	superAdminProcedure,
 } from "../../procedures";
 import { loadViewer } from "../visibility/viewer";
 import {
@@ -52,13 +52,13 @@ export const viewRouter = {
 				await loadViewer(context.db, context.session),
 			),
 		),
-	adminOverview: adminProcedure
+	adminOverview: superAdminProcedure
 		.input(AdminOverviewInputSchema)
 		.output(AdminOverviewOutputSchema)
 		.handler(({ input, context }) =>
 			getAdminViewsOverview(context.db, input.range),
 		),
-	adminList: adminProcedure
+	adminList: superAdminProcedure
 		.input(AdminViewListInputSchema)
 		.output(AdminViewListOutputSchema)
 		.handler(({ input, context }) => listAdminViews(context.db, input)),

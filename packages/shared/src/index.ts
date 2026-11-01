@@ -49,6 +49,7 @@ export * from "./reading-timer";
 export * from "./realtime";
 export * from "./reports";
 export * from "./rich-content";
+export * from "./roles";
 export * from "./scheduled-deadlines";
 export * from "./series-placement";
 export * from "./shelf-collab";

@@ -69,15 +69,15 @@ const SECTIONS: readonly Section[] = [
 
 type SittingSettingsViewProps = {
 	sitting: GetSittingBySlugOutput;
-	isAdmin: boolean;
+	superAdmin: boolean;
 };
 
 /** The organiser's page: joining, links, invitations and (for admins) admin tools. */
 export function SittingSettingsView({
 	sitting,
-	isAdmin,
+	superAdmin,
 }: SittingSettingsViewProps) {
-	const sections = SECTIONS.filter((item) => item.id !== "admin" || isAdmin);
+	const sections = SECTIONS.filter((item) => item.id !== "admin" || superAdmin);
 	const [tabParam, setTab] = useQueryState(
 		"tab",
 		parseAsStringLiteral(TABS).withOptions({ history: "replace" }),
@@ -182,7 +182,7 @@ export function SittingSettingsView({
 				{tab === "invitations" ? (
 					<SittingJoinInvitationsPanel sittingSlug={sitting.slug} />
 				) : null}
-				{tab === "admin" && isAdmin ? (
+				{tab === "admin" && superAdmin ? (
 					<ul className="flex flex-col divide-y divide-border border border-border p-4">
 						<SittingDeadlinesRow sitting={sitting} />
 						<SittingAdminActions sitting={sitting} />

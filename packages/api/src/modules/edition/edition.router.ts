@@ -46,7 +46,7 @@ export const editionRouter = {
 				context.db,
 				{
 					id: context.session.user.id,
-					isAdmin: Boolean(context.session.user.isAdmin),
+					role: context.session.user.role,
 				},
 				input.bookSlug,
 				input.key,

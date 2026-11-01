@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "@bbrc/shared";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -79,7 +80,7 @@ export function MemberProfileNav({
 }: MemberProfileNavProps) {
 	const pathname = usePathname();
 	const { data: session } = authClient.useSession();
-	const isAdmin = session?.user.isAdmin === true;
+	const superAdmin = isSuperAdmin(session?.user);
 	const current = activeSegment(pathname, username);
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	const [fade, setFade] = useState({ left: false, right: false });
@@ -128,7 +129,7 @@ export function MemberProfileNav({
 					.filter(
 						(tab) =>
 							(!tab.ownOnly || isOwnProfile) &&
-							(!tab.ownOrAdmin || isOwnProfile || isAdmin),
+							(!tab.ownOrAdmin || isOwnProfile || superAdmin),
 					)
 					.map((tab) => {
 						const active = tab.segment === current;

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * `DiscoverPanel({ isAdmin, onPick, onRequest?, pendingOlids?, inCatalogOlids?, className? })`
+ * `DiscoverPanel({ superAdmin, onPick, onRequest?, pendingOlids?, inCatalogOlids?, className? })`
  *
  * Suggestions in lanes, each saying why a book is suggested. Admins see
  * "Members want this", "Next in a series", "Authors the club rates highly",
@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 
 type DiscoverPanelProps = {
-	isAdmin: boolean;
+	superAdmin: boolean;
 	onPick: (item: DiscoverItem) => void;
 	onRequest?: (item: DiscoverItem) => void;
 	pendingOlids?: ReadonlySet<string>;
@@ -58,7 +58,7 @@ function LaneSkeleton() {
 function ItemCard({
 	item,
 	laneId,
-	isAdmin,
+	superAdmin,
 	requested,
 	onPick,
 	onRequest,
@@ -66,7 +66,7 @@ function ItemCard({
 }: {
 	item: DiscoverItem;
 	laneId: DiscoverLaneId;
-	isAdmin: boolean;
+	superAdmin: boolean;
 	requested: boolean;
 	onPick: (item: DiscoverItem) => void;
 	onRequest?: (item: DiscoverItem) => void;
@@ -92,7 +92,7 @@ function ItemCard({
 							count={item.request.upvoteCount}
 						/>
 					) : null}
-					{isAdmin ? (
+					{superAdmin ? (
 						<Button type="button" size="sm" onClick={() => onPick(item)}>
 							<Plus data-icon="inline-start" aria-hidden />
 							Add
@@ -119,7 +119,7 @@ function ItemCard({
 
 function LaneItems({
 	lane,
-	isAdmin,
+	superAdmin,
 	onPick,
 	onRequest,
 	pendingOlids,
@@ -154,7 +154,7 @@ function LaneItems({
 						key={item.olid}
 						item={item}
 						laneId={lane.id}
-						isAdmin={isAdmin}
+						superAdmin={superAdmin}
 						requested={Boolean(pendingOlids?.has(item.olid))}
 						onPick={onPick}
 						onRequest={onRequest}
@@ -166,7 +166,10 @@ function LaneItems({
 	);
 }
 
-function AiLane({ isAdmin, ...rest }: Omit<DiscoverPanelProps, "className">) {
+function AiLane({
+	superAdmin,
+	...rest
+}: Omit<DiscoverPanelProps, "className">) {
 	const [lane, setLane] = useState<DiscoverLane | null>(null);
 
 	const ask = useMutation({
@@ -186,8 +189,8 @@ function AiLane({ isAdmin, ...rest }: Omit<DiscoverPanelProps, "className">) {
 					Ask AI for a short list
 				</p>
 				<p className="text-muted-foreground text-xs leading-relaxed">
-					We send a short summary of what {isAdmin ? "the club" : "you"} reads
-					and rates (top authors, subjects, countries and a few best-loved
+					We send a short summary of what {superAdmin ? "the club" : "you"}{" "}
+					reads and rates (top authors, subjects, countries and a few best-loved
 					titles), never the whole catalog. Every suggestion is checked against
 					Open Library before you see it.
 				</p>
@@ -225,14 +228,14 @@ function AiLane({ isAdmin, ...rest }: Omit<DiscoverPanelProps, "className">) {
 					{ask.error.message}
 				</p>
 			) : lane ? (
-				<LaneItems lane={lane} isAdmin={isAdmin} {...rest} />
+				<LaneItems lane={lane} superAdmin={superAdmin} {...rest} />
 			) : null}
 		</div>
 	);
 }
 
 export function DiscoverPanel({
-	isAdmin,
+	superAdmin,
 	onPick,
 	onRequest,
 	pendingOlids,
@@ -308,7 +311,7 @@ export function DiscoverPanel({
 
 			{activeId === "ai" ? (
 				<AiLane
-					isAdmin={isAdmin}
+					superAdmin={superAdmin}
 					onPick={onPick}
 					onRequest={onRequest}
 					pendingOlids={pendingOlids}
@@ -323,7 +326,7 @@ export function DiscoverPanel({
 			) : activeQuery?.data ? (
 				<LaneItems
 					lane={activeQuery.data}
-					isAdmin={isAdmin}
+					superAdmin={superAdmin}
 					onPick={onPick}
 					onRequest={onRequest}
 					pendingOlids={pendingOlids}

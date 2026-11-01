@@ -1,5 +1,6 @@
 import { describeViewTarget } from "@bbrc/api/modules/view/view.service";
 import type { ViewResourceKind } from "@bbrc/shared";
+import { isSuperAdmin } from "@bbrc/shared";
 import type { Route } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
@@ -33,7 +34,7 @@ export async function requireInsightsAccess(
 
 	const userId = session.user.id;
 	const allowed =
-		session.user.isAdmin === true ||
+		isSuperAdmin(session.user) ||
 		resource === "book" ||
 		target.ownerId === userId ||
 		target.collaboratorIds.includes(userId);

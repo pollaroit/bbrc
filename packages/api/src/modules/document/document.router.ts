@@ -1,7 +1,7 @@
 import {
-	adminProcedure,
 	notBannedProcedure,
 	publicProcedure,
+	superAdminProcedure,
 } from "../../procedures";
 import {
 	ApproveDocumentInputSchema,
@@ -60,7 +60,7 @@ export const documentRouter = {
 		.handler(async ({ input, context }) =>
 			deleteDocument(input, context.session, context.db, context),
 		),
-	listPending: adminProcedure
+	listPending: superAdminProcedure
 		.output(ListPendingDocumentsOutputSchema)
 		.handler(async ({ context }) => listPendingDocuments(context.db)),
 	listMine: notBannedProcedure
@@ -68,13 +68,13 @@ export const documentRouter = {
 		.handler(async ({ context }) =>
 			listMyDocuments(context.session.user.id, context.db),
 		),
-	approve: adminProcedure
+	approve: superAdminProcedure
 		.input(ApproveDocumentInputSchema)
 		.output(ApproveDocumentOutputSchema)
 		.handler(async ({ input, context }) =>
 			approveDocument(input, context.db, context),
 		),
-	reject: adminProcedure
+	reject: superAdminProcedure
 		.input(RejectDocumentInputSchema)
 		.output(RejectDocumentOutputSchema)
 		.handler(async ({ input, context }) =>

@@ -11,7 +11,12 @@ import type {
 	AdminAuthorListInput,
 	AdminAuthorListOutput,
 } from "@bbrc/api/modules/author-admin/author-dashboard.schema";
-import { contentPlainText, getBookCountryName } from "@bbrc/shared";
+import {
+	contentPlainText,
+	getBookCountryName,
+	ROLE_META,
+	roleOf,
+} from "@bbrc/shared";
 import { formatBookAuthors } from "@/lib/book-cover";
 import { client } from "@/utils/orpc";
 import type { AdminTableExportField, AdminTableExportResource } from "./types";
@@ -54,7 +59,7 @@ export const adminUsersExportFields: AdminTableExportField<UserItem>[] = [
 	{ key: "name", label: "Name", getValue: (r) => r.name },
 	{ key: "email", label: "Email", getValue: (r) => r.email },
 	{ key: "status", label: "Status", getValue: (r) => r.status },
-	{ key: "isAdmin", label: "Administrator", getValue: (r) => r.isAdmin },
+	{ key: "role", label: "Role", getValue: (r) => ROLE_META[roleOf(r)].label },
 	{
 		key: "emailVerified",
 		label: "Email verified",
