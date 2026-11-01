@@ -20,8 +20,8 @@ import { EditionChip } from "@/components/blocks/edition-chip";
 import { FeedbackEditIconButton } from "@/components/blocks/feedback-edit-icon-button";
 import { FeedbackLikeEngagement } from "@/components/blocks/feedback-like-engagement";
 import { FriendButton } from "@/components/blocks/friend-button";
-import { RemoveMyMentionMenu } from "@/components/blocks/mention/remove-my-mention";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
+import { ContentActionsMenu } from "@/components/blocks/report/report-menu";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { TrackImpression } from "@/components/blocks/track-impression";
@@ -189,7 +189,11 @@ export function FeedbackReviewList({
 												label="Share review"
 												shareInPost={{ kind: "feedback", slug: entry.slug }}
 											/>
-											<RemoveMyMentionMenu kind="review" slug={entry.slug} />
+											<ContentActionsMenu
+												kind="review"
+												slug={entry.slug}
+												ownerUsername={entry.username}
+											/>
 											{isOwner ? (
 												<>
 													<FeedbackEditIconButton

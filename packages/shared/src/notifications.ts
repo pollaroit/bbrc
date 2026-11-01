@@ -35,6 +35,8 @@ export const NOTIFICATION_KINDS = [
 	"sitting_reading_reminder",
 	"friend_request",
 	"friend_accepted",
+	"report_resolved",
+	"moderation_notice",
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -74,6 +76,8 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
 	sitting_reading_reminder: "Daily reading reminder",
 	friend_request: "Someone sent you a friend request",
 	friend_accepted: "Someone accepted your friend request",
+	report_resolved: "A report you filed was reviewed",
+	moderation_notice: "A moderator took action on your account or content",
 };
 
 export const NOTIFICATION_KIND_GROUPS = {
@@ -104,6 +108,8 @@ export const NOTIFICATION_KIND_GROUPS = {
 		"author_new_book",
 		"friend_request",
 		"friend_accepted",
+		"report_resolved",
+		"moderation_notice",
 	] as const satisfies readonly NotificationKind[],
 	sitting: [
 		"sitting_poll_started",
@@ -141,6 +147,7 @@ export const NOTIFICATION_KINDS_PUSH_ENABLED_BY_DEFAULT = [
 	"document_submitted",
 	"document_approved",
 	"document_rejected",
+	"moderation_notice",
 ] as const satisfies readonly NotificationKind[];
 
 /** Off for everyone until they switch it on (in Notification settings). */

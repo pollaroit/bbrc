@@ -433,7 +433,7 @@ export async function getBookFeedbackState(
 	return { canSubmit: false, myFeedback: null, hint };
 }
 
-async function recalculateBookAverageRating(
+export async function recalculateBookAverageRating(
 	bookId: string,
 	tx: DatabaseTransaction,
 ): Promise<void> {

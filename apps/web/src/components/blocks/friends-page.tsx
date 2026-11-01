@@ -210,8 +210,9 @@ export function FriendsPage() {
 		"tab",
 		parseAsStringLiteral(TABS).withDefault("friends"),
 	);
+	// Only the total is used (the tab badge); the list itself is `FriendsList`.
 	const friends = useQuery(
-		orpc.friend.list.queryOptions({ input: { limit: 100 } }),
+		orpc.friend.list.queryOptions({ input: { limit: 1 } }),
 	);
 	const requests = useQuery(orpc.friend.requests.queryOptions());
 

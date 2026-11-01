@@ -86,7 +86,17 @@ export function PostFeed({
 		}),
 	);
 
-	const posts = data?.pages.flatMap((page) => page.items) ?? [];
+	// Paging a hot or top feed can return the same post twice (the order moves
+	// between requests, and a post you just wrote may arrive in both the cache
+	// and the next page), so each slug is shown once.
+	const posts = [
+		...new Map(
+			(data?.pages.flatMap((page) => page.items) ?? []).map((post) => [
+				post.slug,
+				post,
+			]),
+		).values(),
+	];
 	const viewCounts = useViewCounts(
 		"post",
 		posts.map((post) => post.slug),

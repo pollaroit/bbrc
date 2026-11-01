@@ -37,6 +37,10 @@ import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { RelativeTime } from "@/components/blocks/relative-time";
+import {
+	ReportMenuItem,
+	useReportAction,
+} from "@/components/blocks/report/report-menu";
 import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { ShelfAddBookSearch } from "@/components/blocks/shelf-add-book-search";
 import {
@@ -73,6 +77,11 @@ export function MemberShelfDetail({
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const [leaveOpen, setLeaveOpen] = useState(false);
 	const [confirmTitle, setConfirmTitle] = useState("");
+	const report = useReportAction({
+		target: "shelf",
+		reference: `${username}/${shelfSlug}`,
+		ownerUsername: username,
+	});
 	// The open section lives in the address bar, so a reload brings it back.
 	const [dialogTab, setDialogTab] = useQueryState(
 		"collaborators",
@@ -405,6 +414,9 @@ export function MemberShelfDetail({
 												Activity
 											</DropdownMenuItem>
 										) : null}
+										{report.available && !isWishlist ? (
+											<ReportMenuItem onSelect={report.request} />
+										) : null}
 										{isCollaborator ? (
 											<>
 												<DropdownMenuSeparator />
@@ -569,6 +581,7 @@ export function MemberShelfDetail({
 				/>
 			) : null}
 
+			{report.dialog}
 			<DestructiveConfirmDialog
 				open={leaveOpen}
 				onOpenChange={setLeaveOpen}

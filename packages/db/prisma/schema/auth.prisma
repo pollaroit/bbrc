@@ -140,6 +140,10 @@ model User {
   sittingInvitationsSent     SittingInvitation[]      @relation("SittingInvitationInviter")
   pollOptionsAdded           PostPollOption[]         @relation("PostPollOptionAddedBy")
   pollOptionsAsOption        PostPollOption[]         @relation("PostPollOptionUser")
+  reportsMade                Report[]                 @relation("ReportReporter")
+  reportsAboutMe             Report[]                 @relation("ReportOwner")
+  reportsResolved            Report[]                 @relation("ReportResolver")
+  reportActionsTaken         ReportAction[]           @relation("ReportActionAdmin")
 
   @@map("user")
 }

@@ -10,8 +10,9 @@ type AdminTab = {
 type AdminResourceShellProps = {
 	title: string;
 	description: string;
-	tabs: readonly AdminTab[];
-	activeHref: string;
+	/** Left out when the page keeps its own tabs in the address (nuqs). */
+	tabs?: readonly AdminTab[];
+	activeHref?: string;
 	children: React.ReactNode;
 };
 
@@ -29,25 +30,27 @@ export function AdminResourceShell({
 				<p className="max-w-3xl text-muted-foreground text-sm">{description}</p>
 			</div>
 
-			<nav
-				className="flex flex-wrap gap-2 border-border border-b pb-3"
-				aria-label={`${title} views`}
-			>
-				{tabs.map((tab) => (
-					<Link
-						key={tab.href}
-						href={tab.href as Route}
-						className={cn(
-							"px-3 py-1.5 text-sm transition-colors",
-							tab.href === activeHref
-								? "bg-muted font-medium text-foreground"
-								: "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
-						)}
-					>
-						{tab.label}
-					</Link>
-				))}
-			</nav>
+			{tabs ? (
+				<nav
+					className="flex flex-wrap gap-2 border-border border-b pb-3"
+					aria-label={`${title} views`}
+				>
+					{tabs.map((tab) => (
+						<Link
+							key={tab.href}
+							href={tab.href as Route}
+							className={cn(
+								"px-3 py-1.5 text-sm transition-colors",
+								tab.href === activeHref
+									? "bg-muted font-medium text-foreground"
+									: "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+							)}
+						>
+							{tab.label}
+						</Link>
+					))}
+				</nav>
+			) : null}
 
 			{children}
 		</div>

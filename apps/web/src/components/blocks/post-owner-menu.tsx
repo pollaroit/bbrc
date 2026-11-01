@@ -22,10 +22,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
-	RemoveMyMentionMenu,
 	RemoveMyMentionMenuItem,
 	useRemoveMyMentionAction,
 } from "@/components/blocks/mention/remove-my-mention";
+import {
+	ContentActionsMenu,
+	ReportMenuItem,
+	useReportAction,
+} from "@/components/blocks/report/report-menu";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
 import { removeFromLists } from "@/lib/optimistic/infinite-lists";
@@ -98,10 +102,21 @@ export function PostOwnerMenu({
 		session?.user.username === authorUsername;
 	const isAdmin = Boolean(session?.user.isAdmin);
 	const mention = useRemoveMyMentionAction("post", slug);
+	const report = useReportAction({
+		target: "post",
+		reference: slug,
+		ownerUsername: authorUsername,
+	});
 
 	// Someone who was mentioned (and is neither the author nor an admin) only gets that one action.
 	if (!isAuthor && !isAdmin) {
-		return <RemoveMyMentionMenu kind="post" slug={slug} />;
+		return (
+			<ContentActionsMenu
+				kind="post"
+				slug={slug}
+				ownerUsername={authorUsername}
+			/>
+		);
 	}
 
 	return (
@@ -146,6 +161,9 @@ export function PostOwnerMenu({
 					{mention.available ? (
 						<RemoveMyMentionMenuItem onSelect={mention.request} />
 					) : null}
+					{report.available ? (
+						<ReportMenuItem onSelect={report.request} />
+					) : null}
 					{isAuthor ? (
 						<>
 							<DropdownMenuSeparator />
@@ -162,6 +180,7 @@ export function PostOwnerMenu({
 			</DropdownMenu>
 
 			{mention.dialog}
+			{report.dialog}
 			<DestructiveConfirmDialog
 				open={confirmOpen}
 				onOpenChange={setConfirmOpen}

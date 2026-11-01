@@ -35,6 +35,7 @@ import { ratingDefinitionRouter } from "./modules/rating-definition/rating-defin
 import { readRouter } from "./modules/read/read.router";
 import { readingRouter } from "./modules/reading/reading.router";
 import { readingSessionRouter } from "./modules/reading-session/reading-session.router";
+import { reportRouter } from "./modules/report/report.router";
 import { rpRouter } from "./modules/rp/rp.router";
 import { globalSearchRouter } from "./modules/search/global-search.router";
 import { seriesRouter } from "./modules/series/series.router";
@@ -70,6 +71,7 @@ export const appRouter = {
 	feedback: feedbackRouter,
 	follow: followRouter,
 	friend: friendRouter,
+	report: reportRouter,
 	privacy: privacyRouter,
 	goal: goalRouter,
 	globalSearch: globalSearchRouter,
