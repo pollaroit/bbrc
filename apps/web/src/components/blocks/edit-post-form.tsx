@@ -1,20 +1,33 @@
 "use client";
 
 import type { GetPostBySlugOutput } from "@bbrc/api/modules/post/post.schema";
-import { contentPlainText, type Visibility } from "@bbrc/shared";
+import {
+	type ContentMapSnapshot,
+	contentPlainText,
+	postAttachmentConflict,
+	type Visibility,
+	validateContentMap,
+} from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MapPin } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
+import { ContentMapPicker } from "@/components/blocks/content-map/content-map-picker";
+import { ContentMapView } from "@/components/blocks/content-map/content-map-view";
 import { PollSettingsEditor } from "@/components/blocks/poll-settings-editor";
 import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
 import { usePostDelete } from "@/components/blocks/post-owner-menu";
+import {
+	defaultPostScheduleSlot,
+	PostScheduleField,
+} from "@/components/blocks/post-schedule-field";
+import { PostScheduledBanner } from "@/components/blocks/post-scheduled-banner";
 import {
 	type PostSettings,
 	PostSettingsFields,
@@ -31,6 +44,34 @@ import { orpc, queryClient } from "@/utils/orpc";
 type EditPostFormProps = {
 	post: GetPostBySlugOutput;
 };
+
+function snapshotFromPostMap(
+	map: GetPostBySlugOutput["map"],
+): ContentMapSnapshot | null {
+	if (!map) return null;
+	return {
+		centerLng: map.centerLng,
+		centerLat: map.centerLat,
+		zoom: map.zoom,
+		markerLng: map.markerLng,
+		markerLat: map.markerLat,
+	};
+}
+
+function mapsEqual(
+	a: ContentMapSnapshot | null,
+	b: ContentMapSnapshot | null,
+): boolean {
+	if (a == null && b == null) return true;
+	if (a == null || b == null) return false;
+	return (
+		a.centerLng === b.centerLng &&
+		a.centerLat === b.centerLat &&
+		a.zoom === b.zoom &&
+		a.markerLng === b.markerLng &&
+		a.markerLat === b.markerLat
+	);
+}
 
 function Section({
 	title,
@@ -100,7 +141,11 @@ function patchPostCaches(
 
 export function EditPostForm({ post }: EditPostFormProps) {
 	const router = useRouter();
+	const isScheduled = post.status === "scheduled";
 	const postHref = `/posts/${post.slug}` as Route;
+	const backHref = isScheduled
+		? (`/users/${post.author.username}/posts/scheduled` as Route)
+		: postHref;
 	const [content, setContent] = useState(post.content);
 	const [settings, setSettings] = useState<PostSettings>({
 		isSpoiler: post.isSpoiler,
@@ -112,9 +157,23 @@ export function EditPostForm({ post }: EditPostFormProps) {
 	const [visibility, setVisibility] = useState<Visibility>(post.visibility);
 	const [detachAttachment, setDetachAttachment] = useState(false);
 	const [deleteOpen, setDeleteOpen] = useState(false);
+	const initialMap = snapshotFromPostMap(post.map);
+	const [mapDraft, setMapDraft] = useState<ContentMapSnapshot | null>(
+		initialMap,
+	);
+	const [mapPickerOpen, setMapPickerOpen] = useState(false);
+	const [scheduledAt, setScheduledAt] = useState(() =>
+		post.scheduledAt ? new Date(post.scheduledAt) : defaultPostScheduleSlot(),
+	);
 	const hasPoll = post.poll != null;
 	const hasTierlist = post.tierlist != null;
+	const hasPhoto = post.imageUrl != null;
 	const livePoll = useLivePoll(post.slug);
+	const mapChanged = !mapsEqual(mapDraft, initialMap);
+	const scheduleChanged =
+		isScheduled &&
+		post.scheduledAt != null &&
+		scheduledAt.getTime() !== new Date(post.scheduledAt).getTime();
 
 	const updateMutation = useMutation(
 		orpc.post.update.mutationOptions({
@@ -188,6 +247,26 @@ export function EditPostForm({ post }: EditPostFormProps) {
 			toast.error("Content must be at most 5000 characters");
 			return;
 		}
+
+		if (!hasPoll && !hasTierlist) {
+			const conflict = postAttachmentConflict({
+				attachment: post.attachment != null && !detachAttachment,
+				image: hasPhoto,
+				map: mapDraft != null,
+			});
+			if (conflict) {
+				toast.error(conflict);
+				return;
+			}
+			if (mapDraft) {
+				const mapProblem = validateContentMap(mapDraft);
+				if (mapProblem) {
+					toast.error(mapProblem);
+					return;
+				}
+			}
+		}
+
 		updateMutation.mutate({
 			slug: post.slug,
 			content,
@@ -198,6 +277,8 @@ export function EditPostForm({ post }: EditPostFormProps) {
 			allowBookmarks: settings.allowBookmarks,
 			visibility,
 			...(detachAttachment ? { attachment: null } : {}),
+			...(mapChanged ? { map: mapDraft } : {}),
+			...(scheduleChanged ? { scheduledAt } : {}),
 		});
 	}
 
@@ -205,20 +286,30 @@ export function EditPostForm({ post }: EditPostFormProps) {
 		<div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
 			<header className="flex flex-col gap-3">
 				<Link
-					href={postHref}
+					href={backHref}
 					className="inline-flex w-fit items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
 				>
 					<ArrowLeft className="size-4" aria-hidden />
-					Back to post
+					{isScheduled ? "Scheduled posts" : "Back to post"}
 				</Link>
+				{isScheduled ? (
+					<PostScheduledBanner
+						slug={post.slug}
+						authorUsername={post.author.username}
+						scheduledAt={post.scheduledAt ?? null}
+						compact
+					/>
+				) : null}
 				<div>
-					<h1 className="font-semibold text-2xl tracking-tight">Edit post</h1>
+					<h1 className="font-semibold text-2xl tracking-tight">
+						{isScheduled ? "Edit scheduled post" : "Edit post"}
+					</h1>
 					<p className="mt-1 text-muted-foreground text-sm">
 						{hasPoll
 							? "Change the question, how people can interact, and the poll rules."
 							: hasTierlist
 								? "Change the text and how people can interact. The tierlist itself is final."
-								: "Change the text, the photo or attachment, and how people can interact."}
+								: "Change the text, map, photo or attachment, and how people can interact."}
 					</p>
 				</div>
 			</header>
@@ -275,12 +366,17 @@ export function EditPostForm({ post }: EditPostFormProps) {
 					) : (
 						<Section
 							title="Photo and attachment"
-							description="One photo, or one attached book, shelf, member or post."
+							description="One photo, or one attached book, shelf, member or post. Not together with a map."
 						>
 							<SingleImageUploadField
 								label="Photo"
-								description="Optional. JPEG, PNG, or WebP up to 2 MB."
+								description={
+									mapDraft
+										? "Remove the map to add or change a photo."
+										: "Optional. JPEG, PNG, or WebP up to 2 MB."
+								}
 								currentUrl={post.imageUrl}
+								disabled={mapDraft != null}
 								uploadTarget={{
 									target: "post-image",
 									postSlug: post.slug,
@@ -331,9 +427,66 @@ export function EditPostForm({ post }: EditPostFormProps) {
 							) : null}
 						</Section>
 					)}
+
+					{!hasPoll && !hasTierlist ? (
+						<Section
+							title="Map"
+							description="Optional. Pan to the area you mean; tap to drop a pin, or save without one."
+						>
+							{mapDraft ? (
+								<ContentMapView map={mapDraft} height={240} />
+							) : (
+								<p className="text-muted-foreground text-sm">
+									No map on this post yet.
+								</p>
+							)}
+							<div className="flex flex-wrap gap-2">
+								<Button
+									type="button"
+									variant="outline"
+									className="gap-1.5"
+									disabled={
+										updateMutation.isPending || (hasPhoto && mapDraft == null)
+									}
+									onClick={() => setMapPickerOpen(true)}
+								>
+									<MapPin className="size-4" aria-hidden />
+									{mapDraft ? "Change map" : "Add a map"}
+								</Button>
+								{mapDraft ? (
+									<Button
+										type="button"
+										variant="ghost"
+										disabled={updateMutation.isPending}
+										onClick={() => setMapDraft(null)}
+									>
+										Remove map
+									</Button>
+								) : null}
+							</div>
+							{hasPhoto && mapDraft == null ? (
+								<p className="text-muted-foreground text-xs">
+									Remove the photo first if you want a map instead.
+								</p>
+							) : null}
+						</Section>
+					) : null}
 				</div>
 
 				<aside className="flex flex-col gap-5 lg:sticky lg:top-20">
+					{isScheduled ? (
+						<Section
+							title="Publish time"
+							description="Whole hours in club time. You can move it earlier or later within the first month."
+						>
+							<PostScheduleField
+								value={scheduledAt}
+								onChange={setScheduledAt}
+								firstScheduledAt={post.firstScheduledAt ?? null}
+							/>
+						</Section>
+					) : null}
+
 					<Section title="Who can see it">
 						<VisibilitySelect
 							value={visibility}
@@ -395,6 +548,15 @@ export function EditPostForm({ post }: EditPostFormProps) {
 				confirmLabel="Delete post"
 				onConfirm={() => deleteMutation.mutate({ slug: post.slug })}
 			/>
+
+			{!hasPoll && !hasTierlist ? (
+				<ContentMapPicker
+					open={mapPickerOpen}
+					onOpenChange={setMapPickerOpen}
+					value={mapDraft}
+					onChange={setMapDraft}
+				/>
+			) : null}
 		</div>
 	);
 }

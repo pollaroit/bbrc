@@ -41,16 +41,109 @@ export function snapPostScheduleToWholeHour(
 	return candidate;
 }
 
-/** Upcoming whole-hour slots in club time, strictly after `from`, for pickers. */
+/** Earliest allowed publish time: whole club hour at least one hour after `from`. */
+export function earliestPostScheduleAt(
+	from: Date,
+	timeZone = resolveClubTimeZone(),
+): Date {
+	const minAt = new Date(from.getTime() + POST_SCHEDULE_MIN_AHEAD_MS);
+	// Treat the minimum instant as still "inside" its hour so an exact whole hour counts.
+	return snapPostScheduleToWholeHour(
+		minAt,
+		new Date(minAt.getTime() - 1),
+		timeZone,
+	);
+}
+
+/** Upcoming whole-hour slots in club time, each at least one hour after `from`. */
 export function upcomingPostScheduleSlots(
 	from: Date,
 	timeZone = resolveClubTimeZone(),
 	hourCount = 24 * 31,
 ): Date[] {
-	const start = snapPostScheduleToWholeHour(from, from, timeZone);
+	const start = earliestPostScheduleAt(from, timeZone);
 	const slots: Date[] = [];
 	for (let index = 0; index < hourCount; index += 1) {
 		slots.push(new Date(start.getTime() + index * MS_PER_HOUR));
+	}
+	return slots;
+}
+
+export type PostSchedulePickerBounds = {
+	now: Date;
+	firstScheduledAt: Date | null;
+	timeZone?: string;
+};
+
+function dayKeyFromZonedParts(year: number, month: number, day: number) {
+	return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+export function postScheduleDayKey(
+	at: Date,
+	timeZone = resolveClubTimeZone(),
+): string {
+	const parts = getZonedParts(at, timeZone);
+	return dayKeyFromZonedParts(parts.year, parts.month, parts.day);
+}
+
+/** Club-local calendar days that have at least one valid hour (up to one month from first schedule). */
+export function postScheduleSelectableDays(
+	bounds: PostSchedulePickerBounds,
+	maxDays = 31,
+): string[] {
+	const timeZone = bounds.timeZone ?? resolveClubTimeZone();
+	const slots = upcomingPostScheduleSlots(bounds.now, timeZone, 24 * maxDays);
+	const days: string[] = [];
+	let lastKey: string | null = null;
+	for (const slot of slots) {
+		if (
+			validatePostScheduleTime(
+				{
+					scheduledAt: slot,
+					now: bounds.now,
+					firstScheduledAt: bounds.firstScheduledAt,
+				},
+				timeZone,
+			)
+		) {
+			continue;
+		}
+		const key = postScheduleDayKey(slot, timeZone);
+		if (key !== lastKey) {
+			days.push(key);
+			lastKey = key;
+		}
+	}
+	return days;
+}
+
+/** Whole-hour slots on a club-local day that pass validation. */
+export function postScheduleHoursForDay(
+	dayKey: string,
+	bounds: PostSchedulePickerBounds,
+): Date[] {
+	const timeZone = bounds.timeZone ?? resolveClubTimeZone();
+	const [year, month, day] = dayKey.split("-").map((part) => Number(part));
+	if (!year || !month || !day) {
+		return [];
+	}
+	const slots: Date[] = [];
+	for (let hour = 0; hour < 24; hour += 1) {
+		const slot = zonedTimeToUtc(year, month, day, hour, 0, timeZone);
+		if (
+			validatePostScheduleTime(
+				{
+					scheduledAt: slot,
+					now: bounds.now,
+					firstScheduledAt: bounds.firstScheduledAt,
+				},
+				timeZone,
+			)
+		) {
+			continue;
+		}
+		slots.push(slot);
 	}
 	return slots;
 }

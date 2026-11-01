@@ -14,7 +14,6 @@ import { RelativeTime } from "@/components/blocks/relative-time";
 import { orpc } from "@/utils/orpc";
 
 type ScheduledPostsViewProps = {
-	/** When set, only the profile owner may use actions. */
 	readOnly?: boolean;
 };
 
@@ -94,67 +93,93 @@ export function ScheduledPostsView({
 	return (
 		<ul className="flex flex-col gap-6">
 			{items.map((post) => (
-				<ScheduledPostRow
-					key={post.slug}
-					post={post}
-					readOnly={readOnly}
-					publishing={publishMutation.isPending}
-					deleting={deleteMutation.isPending}
-					onPublish={() => publishMutation.mutate({ slug: post.slug })}
-					onDelete={() => deleteMutation.mutate({ slug: post.slug })}
-				/>
+				<li key={post.slug}>
+					<PostCard
+						post={post}
+						scheduledPreview
+						impressionSource="profile"
+						scheduledActions={
+							readOnly ? (
+								<span className="px-2 text-muted-foreground text-xs">
+									Goes live{" "}
+									{post.scheduledAt ? (
+										<RelativeTime date={post.scheduledAt} />
+									) : (
+										"soon"
+									)}
+								</span>
+							) : (
+								<ScheduledPostActions
+									post={post}
+									publishing={publishMutation.isPending}
+									deleting={deleteMutation.isPending}
+									onPublish={() => publishMutation.mutate({ slug: post.slug })}
+									onDelete={() => deleteMutation.mutate({ slug: post.slug })}
+								/>
+							)
+						}
+					/>
+				</li>
 			))}
 		</ul>
 	);
 }
 
-function ScheduledPostRow({
+function ScheduledPostActions({
 	post,
-	readOnly,
 	publishing,
 	deleting,
 	onPublish,
 	onDelete,
 }: {
 	post: PostCardPost;
-	readOnly: boolean;
 	publishing: boolean;
 	deleting: boolean;
 	onPublish: () => void;
 	onDelete: () => void;
 }) {
 	return (
-		<li className="flex flex-col gap-3">
-			<div className="flex flex-wrap items-center justify-between gap-2 border border-border bg-muted/10 px-3 py-2 text-sm">
-				<span className="text-muted-foreground">
-					Goes live{" "}
-					{post.scheduledAt ? <RelativeTime date={post.scheduledAt} /> : "soon"}
-				</span>
-				{readOnly ? null : (
-					<div className="flex flex-wrap gap-2">
-						<Button
-							variant="outline"
-							size="sm"
-							render={<Link href={`/posts/${post.slug}` as Route} />}
-						>
-							Edit
-						</Button>
-						<LoadingButton size="sm" loading={publishing} onClick={onPublish}>
-							Publish now
-						</LoadingButton>
-						<LoadingButton
-							size="sm"
-							variant="destructive"
-							loading={deleting}
-							onClick={onDelete}
-						>
-							<Trash2 className="size-3.5" aria-hidden />
-							Delete
-						</LoadingButton>
-					</div>
-				)}
+		<>
+			<span className="px-2 text-muted-foreground text-xs">
+				Goes live{" "}
+				{post.scheduledAt ? <RelativeTime date={post.scheduledAt} /> : "soon"}
+			</span>
+			<div className="ms-auto flex flex-wrap items-center gap-1">
+				<Button
+					variant="ghost"
+					size="sm"
+					nativeButton={false}
+					render={<Link href={`/posts/${post.slug}/edit` as Route} />}
+				>
+					Edit
+				</Button>
+				<Button
+					variant="ghost"
+					size="sm"
+					nativeButton={false}
+					render={<Link href={`/posts/${post.slug}` as Route} />}
+				>
+					Preview
+				</Button>
+				<LoadingButton
+					size="sm"
+					variant="ghost"
+					loading={publishing}
+					onClick={onPublish}
+				>
+					Publish now
+				</LoadingButton>
+				<LoadingButton
+					size="sm"
+					variant="ghost"
+					className="text-destructive hover:text-destructive"
+					loading={deleting}
+					onClick={onDelete}
+				>
+					<Trash2 className="size-3.5" aria-hidden />
+					Delete
+				</LoadingButton>
 			</div>
-			<PostCard post={post} />
-		</li>
+		</>
 	);
 }

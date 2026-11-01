@@ -358,6 +358,7 @@ async function mapPostDetailRow(
 		visibility: row.visibility,
 		status: row.status,
 		scheduledAt: row.scheduledAt,
+		firstScheduledAt: row.firstScheduledAt,
 		publishedAt: row.publishedAt,
 		allowLikes: row.allowLikes,
 		allowComments: row.allowComments,

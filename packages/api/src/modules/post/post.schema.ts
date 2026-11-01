@@ -330,6 +330,7 @@ export const getPostBySlugFields = {
 	visibility: true,
 	status: true,
 	scheduledAt: true,
+	firstScheduledAt: true,
 	publishedAt: true,
 	allowLikes: true,
 	allowComments: true,

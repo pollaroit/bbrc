@@ -53,11 +53,14 @@ describe("post scheduling", () => {
 		).toMatch(/one month/);
 	});
 
-	it("lists hourly slots", () => {
+	it("lists hourly slots at least one hour ahead", () => {
 		const from = new Date("2026-11-01T10:15:00.000Z");
 		const slots = upcomingPostScheduleSlots(from, TZ, 3);
 		expect(slots).toHaveLength(3);
-		expect(slots[0]?.toISOString()).toBe("2026-11-01T11:00:00.000Z");
+		expect(slots[0]?.toISOString()).toBe("2026-11-01T12:00:00.000Z");
+		expect(slots[0]!.getTime() - from.getTime()).toBeGreaterThanOrEqual(
+			POST_SCHEDULE_MIN_AHEAD_MS,
+		);
 		expect(slots[1]?.getTime() - slots[0]!.getTime()).toBe(
 			POST_SCHEDULE_MIN_AHEAD_MS,
 		);

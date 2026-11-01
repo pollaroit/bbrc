@@ -41,8 +41,8 @@ export function validateContentMap(value: ContentMapSnapshot): string | null {
 		return "Set both marker coordinates or neither.";
 	}
 	if (hasMarkerLng && hasMarkerLat) {
-		const markerLng = value.markerLng;
-		const markerLat = value.markerLat;
+		const markerLng = value.markerLng as number;
+		const markerLat = value.markerLat as number;
 		if (!isFiniteCoord(markerLng, -180, 180)) {
 			return "Marker longitude must be between -180 and 180.";
 		}

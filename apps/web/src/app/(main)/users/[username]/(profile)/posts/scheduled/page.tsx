@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { MemberProfileScheduledPostsLink } from "@/components/blocks/member-profile-scheduled-posts-link";
 import { ScheduledPostsView } from "@/components/blocks/scheduled-posts-view";
 import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import { requireOwnProfile } from "@/lib/reading/require-own-profile";
@@ -33,13 +34,18 @@ export default async function UserScheduledPostsPage({
 	const { username } = await params;
 	await requireOwnProfile(username);
 
+	const user = await loadUserByUsernameForPage(username);
+
 	return (
 		<div className="flex flex-col gap-4">
-			<div>
-				<h1 className="font-semibold text-lg">Scheduled posts</h1>
-				<p className="text-muted-foreground text-sm">
-					Only you see these until they publish. Times are in club time.
-				</p>
+			<div className="flex flex-wrap items-center justify-between gap-2">
+				<div>
+					<h1 className="font-semibold text-lg">Scheduled posts</h1>
+					<p className="text-muted-foreground text-sm">
+						Only you see these until they publish. Times are in club time.
+					</p>
+				</div>
+				<MemberProfileScheduledPostsLink username={user.username} />
 			</div>
 			<ScheduledPostsView />
 		</div>

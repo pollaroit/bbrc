@@ -15,6 +15,7 @@ import { PostCommentsSection } from "@/components/blocks/post-comments-section";
 import { PostLikeEngagement } from "@/components/blocks/post-like-engagement";
 import { PostOwnerMenu } from "@/components/blocks/post-owner-menu";
 import { PostPoll } from "@/components/blocks/post-poll";
+import { PostScheduledBanner } from "@/components/blocks/post-scheduled-banner";
 import { PostTierlistSection } from "@/components/blocks/post-tierlist";
 import { LivePostViewsAction } from "@/components/blocks/post-views-action";
 import { RelativeTime } from "@/components/blocks/relative-time";
@@ -28,25 +29,42 @@ type PostDetailProps = {
 	/** When set, show this comment thread instead of the full comments section. */
 	commentFocusSlug?: string | null;
 	showCommentsSection?: boolean;
+	/** Owner preview of a post that is not live yet. */
+	scheduledPreview?: boolean;
 };
 
 export function PostDetail({
 	post,
 	commentFocusSlug = null,
 	showCommentsSection = true,
+	scheduledPreview = false,
 }: PostDetailProps) {
+	const isScheduled = scheduledPreview || post.status === "scheduled";
+	const showSocial = !isScheduled;
 	const profileHref = `/users/${post.author.username}` as Route;
 	const postHref = `/posts/${post.slug}` as Route;
 
 	return (
 		<div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
 			<Link
-				href={"/" as Route}
+				href={
+					isScheduled
+						? (`/users/${post.author.username}/posts/scheduled` as Route)
+						: ("/" as Route)
+				}
 				className="inline-flex w-fit items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
 			>
 				<ArrowLeft className="size-4" />
-				Feed
+				{isScheduled ? "Scheduled posts" : "Feed"}
 			</Link>
+
+			{isScheduled ? (
+				<PostScheduledBanner
+					slug={post.slug}
+					authorUsername={post.author.username}
+					scheduledAt={post.scheduledAt ?? null}
+				/>
+			) : null}
 
 			<Card size="sm" className="overflow-hidden">
 				<CardHeader className="flex flex-row items-center justify-between gap-3 border-b">
@@ -110,42 +128,46 @@ export function PostDetail({
 						/>
 					) : null}
 
-					<div className="flex flex-wrap items-center gap-4 border-t pt-4 text-muted-foreground text-sm">
-						{post.allowLikes ? (
-							<PostLikeEngagement
-								postSlug={post.slug}
-								initialLikeCount={post.likeCount}
-								initialLikedByMe={post.likedByMe}
+					{showSocial ? (
+						<div className="flex flex-wrap items-center gap-4 border-t pt-4 text-muted-foreground text-sm">
+							{post.allowLikes ? (
+								<PostLikeEngagement
+									postSlug={post.slug}
+									initialLikeCount={post.likeCount}
+									initialLikedByMe={post.likedByMe}
+								/>
+							) : (
+								<span className="text-xs">Likes off</span>
+							)}
+							<Link
+								href={`/posts/${post.slug}#comments` as Route}
+								className="inline-flex items-center gap-1.5 tabular-nums transition-colors hover:text-foreground"
+							>
+								<MessageCircle className="size-4" aria-hidden />
+								{post.commentCount}
+							</Link>
+							<LivePostViewsAction
+								slug={post.slug}
+								authorUsername={post.author.username}
 							/>
-						) : (
-							<span className="text-xs">Likes off</span>
-						)}
-						<Link
-							href={`/posts/${post.slug}#comments` as Route}
-							className="inline-flex items-center gap-1.5 tabular-nums transition-colors hover:text-foreground"
-						>
-							<MessageCircle className="size-4" aria-hidden />
-							{post.commentCount}
-						</Link>
-						<LivePostViewsAction
-							slug={post.slug}
-							authorUsername={post.author.username}
-						/>
-						<PostBookmarkEngagement
-							postSlug={post.slug}
-							authorUsername={post.author.username}
-							allowBookmarks={post.allowBookmarks}
-						/>
-						<ResourceShareMenu
-							path={`/posts/${post.slug}`}
-							shareText={shareSnippet(contentPlainText(post.content))}
-							label="Share post"
-							shareInPost={
-								post.allowShares ? { kind: "post", slug: post.slug } : undefined
-							}
-							size="md"
-						/>
-					</div>
+							<PostBookmarkEngagement
+								postSlug={post.slug}
+								authorUsername={post.author.username}
+								allowBookmarks={post.allowBookmarks}
+							/>
+							<ResourceShareMenu
+								path={`/posts/${post.slug}`}
+								shareText={shareSnippet(contentPlainText(post.content))}
+								label="Share post"
+								shareInPost={
+									post.allowShares
+										? { kind: "post", slug: post.slug }
+										: undefined
+								}
+								size="md"
+							/>
+						</div>
+					) : null}
 				</CardContent>
 			</Card>
 
@@ -164,7 +186,7 @@ export function PostDetail({
 						View all comments
 					</Button>
 				</>
-			) : showCommentsSection ? (
+			) : showCommentsSection && showSocial ? (
 				<PostCommentsSection
 					postSlug={post.slug}
 					allowComments={post.allowComments}
