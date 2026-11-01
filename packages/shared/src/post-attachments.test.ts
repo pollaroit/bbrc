@@ -8,9 +8,8 @@ describe("postAttachmentConflict", () => {
 		expect(postAttachmentConflict({ tierlist: true })).toBeNull();
 		expect(postAttachmentConflict({ attachment: true })).toBeNull();
 		expect(postAttachmentConflict({ image: true })).toBeNull();
-		expect(
-			postAttachmentConflict({ image: true, attachment: true }),
-		).toBeNull();
+		expect(postAttachmentConflict({ map: true })).toBeNull();
+		expect(postAttachmentConflict({ gif: true })).toBeNull();
 	});
 
 	test("a poll keeps its existing message", () => {
@@ -31,7 +30,18 @@ describe("postAttachmentConflict", () => {
 		}
 	});
 
-	test("a poll excludes images", () => {
-		expect(postAttachmentConflict({ poll: true, image: true })).not.toBeNull();
+	test("map cannot sit beside image or other primaries", () => {
+		expect(postAttachmentConflict({ map: true, image: true })).toBe(
+			"A post cannot have both a map and an image.",
+		);
+		expect(postAttachmentConflict({ map: true, attachment: true })).toBe(
+			"A map can go with text only, or with an event.",
+		);
+	});
+
+	test("event is the only primary on its post", () => {
+		expect(postAttachmentConflict({ event: true, image: true })).toBe(
+			"An event cannot share a post with another attachment.",
+		);
 	});
 });

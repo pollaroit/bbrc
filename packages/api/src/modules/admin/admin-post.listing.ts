@@ -1,5 +1,5 @@
 import type { Prisma } from "@bbrc/db";
-import { UserSchema } from "@bbrc/schemas";
+import { PostSchema, UserSchema } from "@bbrc/schemas";
 import z from "zod";
 import { defineSearching } from "../../utils/searching";
 import { defineSorting } from "../../utils/sorting";
@@ -67,6 +67,7 @@ export const adminPostListFiltersSchema = postListFiltersSchema
 		minComments: z.number().int().min(0),
 		wasEdited: z.boolean(),
 		minContentLength: z.number().int().min(1),
+		status: PostSchema.shape.status,
 	})
 	.partial();
 

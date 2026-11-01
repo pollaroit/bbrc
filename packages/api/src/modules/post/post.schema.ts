@@ -189,10 +189,40 @@ export const CreatePostOutputSchema = PostSchema.pick({
 	slug: true,
 }).extend({
 	xpAwarded: zod.number().int().min(0),
+	scheduledAt: PostSchema.shape.scheduledAt,
+});
+
+export const GetScheduledPostListInputSchema = zod.object({
+	page: zod.number().int().min(1).default(1),
+	limit: zod.number().int().min(1).max(50).default(20),
+});
+
+export const GetScheduledPostListOutputSchema = zod.object({
+	items: zod.array(PostListItemSchema),
+	metadata: zod.object({
+		page: zod.number().int().min(1),
+		limit: zod.number().int().min(1),
+		total: zod.number().int().min(0),
+		totalPages: zod.number().int().min(0),
+	}),
+});
+
+export const PublishPostNowInputSchema = PostSchema.pick({ slug: true });
+export const PublishPostNowOutputSchema = zod.object({
+	slug: PostSchema.shape.slug,
+	xpAwarded: zod.number().int().min(0),
 });
 
 export type CreatePostInput = z.infer<typeof CreatePostInputSchema>;
 export type CreatePostOutput = z.infer<typeof CreatePostOutputSchema>;
+export type GetScheduledPostListInput = z.infer<
+	typeof GetScheduledPostListInputSchema
+>;
+export type GetScheduledPostListOutput = z.infer<
+	typeof GetScheduledPostListOutputSchema
+>;
+export type PublishPostNowInput = z.infer<typeof PublishPostNowInputSchema>;
+export type PublishPostNowOutput = z.infer<typeof PublishPostNowOutputSchema>;
 
 /** GET BY SLUG */
 export const GetPostBySlugInputSchema = PostSchema.shape.slug;
@@ -239,6 +269,8 @@ export const UpdatePostInputSchema = PostSchema.pick({
 		/** Omit to leave unchanged; pass `null` to detach the book. */
 		attachedBookSlug: BookSchema.shape.slug.nullish(),
 		attachment: PostAttachmentInputSchema.nullish(),
+		/** Reschedule a post that is still `scheduled`. */
+		scheduledAt: zod.coerce.date().optional(),
 	})
 	.required({ slug: true });
 

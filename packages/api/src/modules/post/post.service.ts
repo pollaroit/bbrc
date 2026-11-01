@@ -55,9 +55,13 @@ import {
 	type GetPostBySlugOutput,
 	type GetPostListInput,
 	type GetPostListOutput,
+	type GetScheduledPostListInput,
+	type GetScheduledPostListOutput,
 	getPostBySlugFields,
 	getPostListFields,
 	type PostListItem,
+	type PublishPostNowInput,
+	type PublishPostNowOutput,
 	postAuthorFields,
 	type UpdatePostInput,
 	type UpdatePostOutput,
@@ -69,6 +73,7 @@ import {
 	syncPostAttachment,
 } from "./post-attachment.service";
 import { queryRankedPostSlugs } from "./post-feed-query";
+import { publishScheduledPostById } from "./post-publish.service";
 import { generatePostSlug } from "./post-slug";
 import { assertPostVisible, viewerUserId } from "./post-visibility";
 
@@ -757,7 +762,80 @@ export async function createPost(
 		);
 	}
 
-	return { slug: result.slug, xpAwarded: result.xpAwarded };
+	return {
+		slug: result.slug,
+		xpAwarded: result.xpAwarded,
+		scheduledAt: isScheduled ? (scheduledAt ?? null) : null,
+	};
+}
+
+export async function listScheduledPosts(
+	input: GetScheduledPostListInput,
+	userId: string,
+	db: Database,
+	viewer: Viewer,
+): Promise<GetScheduledPostListOutput> {
+	const page = input.page ?? 1;
+	const limit = input.limit ?? 20;
+	const where = { authorId: userId, status: "scheduled" as const };
+
+	const [total, rows] = await Promise.all([
+		db.post.count({ where }),
+		db.post.findMany({
+			where,
+			orderBy: [{ scheduledAt: "asc" }, { slug: "asc" }],
+			skip: (page - 1) * limit,
+			take: limit,
+			select: postListSelect,
+		}),
+	]);
+
+	const items = await hydratePostListPage(rows, viewer, db);
+
+	return {
+		items,
+		metadata: {
+			page,
+			limit,
+			total,
+			totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+		},
+	};
+}
+
+export async function publishPostNow(
+	input: PublishPostNowInput,
+	userId: string,
+	db: Database,
+): Promise<PublishPostNowOutput> {
+	const post = await db.post.findUnique({
+		where: { slug: input.slug },
+		select: { id: true, authorId: true, status: true },
+	});
+
+	if (!post) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Post not found",
+			data: { slug: input.slug },
+		});
+	}
+
+	assertPostAuthor(post, userId);
+
+	if (post.status !== "scheduled") {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Only a scheduled post can be published now.",
+		});
+	}
+
+	const outcome = await publishScheduledPostById(db, post.id);
+	if (outcome !== "published") {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "This post could not be published.",
+		});
+	}
+
+	return { slug: input.slug, xpAwarded: XP_AWARD.post };
 }
 
 export async function updatePost(
@@ -774,6 +852,9 @@ export async function updatePost(
 			content: true,
 			imageUrl: true,
 			visibility: true,
+			status: true,
+			firstScheduledAt: true,
+			scheduledAt: true,
 			poll: { select: { id: true } },
 			tierlist: { select: { id: true } },
 		},
@@ -835,6 +916,22 @@ export async function updatePost(
 		await assertAttachmentVisible(attachmentPatch, db, viewer);
 	}
 
+	if (input.scheduledAt != null) {
+		if (post.status !== "scheduled") {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "Only a scheduled post can be rescheduled.",
+			});
+		}
+		const scheduleProblem = validatePostScheduleTime({
+			scheduledAt: input.scheduledAt,
+			now: new Date(),
+			firstScheduledAt: post.firstScheduledAt,
+		});
+		if (scheduleProblem) {
+			throw new ORPCError("BAD_REQUEST", { message: scheduleProblem });
+		}
+	}
+
 	await db.$transaction(async (tx) => {
 		const attachedBookId = await syncPostAttachment(
 			post.id,
@@ -869,6 +966,9 @@ export async function updatePost(
 				...(attachedBookId !== undefined
 					? { attachedBookId: attachedBookId ?? null }
 					: {}),
+				...(input.scheduledAt != null
+					? { scheduledAt: input.scheduledAt }
+					: {}),
 			},
 			select: { id: true },
 		});
@@ -882,7 +982,7 @@ export async function updatePost(
 		}
 	});
 
-	if (normalizedContent != null) {
+	if (normalizedContent != null && post.status === "published") {
 		void notifyMentions(db, {
 			authorId: userId,
 			recipientIds: freshMentions,

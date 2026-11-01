@@ -11,9 +11,13 @@ import {
 	GetPostBySlugOutputSchema,
 	GetPostListInputSchema,
 	GetPostListOutputSchema,
+	GetScheduledPostListInputSchema,
+	GetScheduledPostListOutputSchema,
 	PostAttachmentPreferenceSchema,
 	PreviewPostAttachmentInputSchema,
 	PreviewPostAttachmentOutputSchema,
+	PublishPostNowInputSchema,
+	PublishPostNowOutputSchema,
 	UpdatePostInputSchema,
 	UpdatePostOutputSchema,
 } from "./post.schema";
@@ -23,6 +27,8 @@ import {
 	getPostAttachmentPreference,
 	getPostBySlug,
 	getPostList,
+	listScheduledPosts,
+	publishPostNow,
 	setPostAttachmentPreference,
 	updatePost,
 } from "./post.service";
@@ -85,9 +91,36 @@ export const postRouter = {
 				context.db,
 				await loadViewer(context.db, context.session),
 			);
-			revalidatePostIsr(context, post.slug);
-			revalidateFeedsIsr(context);
+			if (!post.scheduledAt) {
+				revalidatePostIsr(context, post.slug);
+				revalidateFeedsIsr(context);
+			}
 			return post;
+		}),
+	listScheduled: protectedProcedure
+		.input(GetScheduledPostListInputSchema)
+		.output(GetScheduledPostListOutputSchema)
+		.handler(async ({ input, context }) =>
+			listScheduledPosts(
+				input,
+				context.session.user.id,
+				context.db,
+				await loadViewer(context.db, context.session),
+			),
+		),
+	publishNow: protectedProcedure
+		.use(checkAchievementsAfter("posts"))
+		.input(PublishPostNowInputSchema)
+		.output(PublishPostNowOutputSchema)
+		.handler(async ({ input, context }) => {
+			const result = await publishPostNow(
+				input,
+				context.session.user.id,
+				context.db,
+			);
+			revalidatePostIsr(context, result.slug);
+			revalidateFeedsIsr(context);
+			return result;
 		}),
 	update: protectedProcedure
 		.input(UpdatePostInputSchema)

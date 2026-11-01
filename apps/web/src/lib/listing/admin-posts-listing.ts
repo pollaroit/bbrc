@@ -81,6 +81,11 @@ export const adminPostsListingSearchParams = {
 	minComments: parseAsInteger.withOptions({ shallow: false }),
 	wasEdited: booleanFilterParser.withOptions({ shallow: false }),
 	minContentLength: parseAsInteger.withOptions({ shallow: false }),
+	status: parseAsStringLiteral([
+		"published",
+		"scheduled",
+		"publish_skipped",
+	] as const).withOptions({ shallow: false }),
 };
 
 export function useAdminPostsListingSearchParams() {
@@ -106,6 +111,7 @@ function buildAdminPostFilterCallInput(params: AdminPostsListingSearchParams) {
 		minComments: params.minComments,
 		wasEdited: params.wasEdited,
 		minContentLength: params.minContentLength,
+		status: params.status ?? undefined,
 	});
 }
 

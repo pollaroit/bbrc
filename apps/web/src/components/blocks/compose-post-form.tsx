@@ -3,6 +3,7 @@
 import type { PostAttachmentInput } from "@bbrc/api/modules/post/post-attachment.schema";
 import { contentPlainText, type Visibility } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
+import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -11,10 +12,12 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@bbrc/ui/components/dialog";
+import { Label } from "@bbrc/ui/components/label";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
 	BarChart3,
+	CalendarClock,
 	ImagePlus,
 	Link2,
 	Plus,
@@ -42,6 +45,10 @@ import {
 	PostAttachmentComposePicker,
 	type PostAttachmentComposeValue,
 } from "@/components/blocks/post-attachment-compose-picker";
+import {
+	defaultPostScheduleSlot,
+	PostScheduleField,
+} from "@/components/blocks/post-schedule-field";
 import {
 	DEFAULT_POST_SETTINGS,
 	type PostSettings,
@@ -105,6 +112,10 @@ export function ComposePostDialog({
 	const [tierlistOn, setTierlistOn] = useState(false);
 	const [tierlistDraft, setTierlistDraft] =
 		useState<TierlistDraft>(emptyTierlistDraft);
+	const [scheduleLater, setScheduleLater] = useState(false);
+	const [scheduledAt, setScheduledAt] = useState(() =>
+		defaultPostScheduleSlot(),
+	);
 	const imageInput = usePendingImageInput(setImageFile, { variant: "post" });
 	const privacyQuery = useQuery({
 		...orpc.privacy.get.queryOptions(),
@@ -140,6 +151,8 @@ export function ComposePostDialog({
 		setPollDraft(emptyPollDraft());
 		setTierlistOn(false);
 		setTierlistDraft(emptyTierlistDraft());
+		setScheduleLater(false);
+		setScheduledAt(defaultPostScheduleSlot());
 		if (imageInput.inputRef.current) {
 			imageInput.inputRef.current.value = "";
 		}
@@ -175,7 +188,7 @@ export function ComposePostDialog({
 
 				await queryClient.cancelQueries({ queryKey: postListKey });
 
-				if (user) {
+				if (user && !variables.scheduledAt) {
 					const author = {
 						username: user.username as string,
 						name: user.name,
@@ -237,8 +250,14 @@ export function ComposePostDialog({
 				}
 				toast.error(error.message);
 			},
-			onSuccess: async ({ slug, xpAwarded }, _variables, context) => {
-				swapListItemSlug(postListKey, context.pendingSlug, slug);
+			onSuccess: async (
+				{ slug, xpAwarded, scheduledAt: publishedSchedule },
+				_variables,
+				context,
+			) => {
+				if (!publishedSchedule) {
+					swapListItemSlug(postListKey, context.pendingSlug, slug);
+				}
 				const file = context.draft.imageFile;
 
 				if (file) {
@@ -257,6 +276,21 @@ export function ComposePostDialog({
 				}
 
 				const postHref = `/posts/${slug}` as Route;
+				const scheduleHref =
+					user?.username != null
+						? (`/users/${user.username}/posts/scheduled` as Route)
+						: postHref;
+
+				if (publishedSchedule) {
+					toast.success("Post scheduled.", {
+						action: {
+							label: "Scheduled",
+							onClick: () => router.push(scheduleHref),
+						},
+					});
+					return;
+				}
+
 				const seenInFeed =
 					context.submittedFrom === "/" ||
 					context.submittedFrom?.startsWith("/feed") === true;
@@ -306,6 +340,7 @@ export function ComposePostDialog({
 			allowShares: settings.allowShares,
 			allowBookmarks: settings.allowBookmarks,
 			visibility,
+			...(scheduleLater ? { scheduledAt } : {}),
 			...(pollOn
 				? { poll: pollDraftToInput(pollDraft) }
 				: tierlistOn
@@ -421,6 +456,37 @@ export function ComposePostDialog({
 						{settingsOpen ? (
 							<PostSettingsFields value={settings} onChange={setSettings} />
 						) : null}
+
+						<div className="flex flex-col gap-3 border border-border bg-muted/10 px-3 py-3">
+							<div className="flex items-start gap-2">
+								<Checkbox
+									id="compose-schedule-later"
+									checked={scheduleLater}
+									onCheckedChange={(checked) =>
+										setScheduleLater(checked === true)
+									}
+								/>
+								<div className="flex min-w-0 flex-col gap-0.5">
+									<Label
+										htmlFor="compose-schedule-later"
+										className="flex cursor-pointer items-center gap-1.5 font-medium text-sm"
+									>
+										<CalendarClock className="size-4 text-muted-foreground" />
+										Schedule for later
+									</Label>
+									<p className="text-muted-foreground text-xs">
+										Nobody sees it until the chosen hour. Edit or publish early
+										from Scheduled posts on your profile.
+									</p>
+								</div>
+							</div>
+							{scheduleLater ? (
+								<PostScheduleField
+									value={scheduledAt}
+									onChange={setScheduledAt}
+								/>
+							) : null}
+						</div>
 					</div>
 
 					<DialogFooter className="flex-col gap-2 border-border border-t px-5 py-3 sm:flex-col sm:items-stretch">
@@ -508,10 +574,10 @@ export function ComposePostDialog({
 								<SubmitShortcutHint />
 								<LoadingButton
 									type="submit"
-									loading={false}
+									loading={createMutation.isPending}
 									disabled={plain.length < 1 || problem != null}
 								>
-									Post
+									{scheduleLater ? "Schedule" : "Post"}
 								</LoadingButton>
 							</div>
 						</div>
