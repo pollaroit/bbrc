@@ -36,6 +36,7 @@ export * from "./preferences";
 export * from "./push";
 export * from "./rating-definitions";
 export * from "./read-finished-month";
+export * from "./reading-activity";
 export * from "./reading-audio";
 export * from "./reading-deadline";
 export * from "./reading-pace";

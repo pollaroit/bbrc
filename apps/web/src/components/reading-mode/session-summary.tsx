@@ -3,8 +3,27 @@
 import type { EndReadingSessionOutput } from "@bbrc/api/modules/reading-session/reading-session.schema";
 import { formatDuration } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
-import { BookOpen, Clock, Flame, RotateCcw, Share2 } from "lucide-react";
-import type { ComponentType } from "react";
+import { LoadingButton } from "@bbrc/ui/components/loading-button";
+import { Skeleton } from "@bbrc/ui/components/skeleton";
+import {
+	BookOpen,
+	Clock,
+	Flame,
+	MessageSquarePlus,
+	RotateCcw,
+	Share2,
+} from "lucide-react";
+import type { Route } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { type ComponentType, useState } from "react";
+import { toast } from "sonner";
+import { authClient } from "@/lib/auth-client";
+import { sessionStoryPath } from "@/lib/story/constants";
+import {
+	fetchSessionImage,
+	shareSessionImage,
+} from "@/lib/story/share-session-image";
 import { cn } from "@/lib/utils";
 
 function Tile({
@@ -36,6 +55,109 @@ function Tile({
 	);
 }
 
+/**
+ * The picture of this session the member can share: a preview of it, then two
+ * ways to use it. The server draws it, so what you see is what goes out.
+ */
+function ShareCard({
+	sessionId,
+	bookTitle,
+	onPost,
+}: {
+	sessionId: string;
+	bookTitle: string | null;
+	onPost?: (file: File) => void;
+}) {
+	const [loaded, setLoaded] = useState(false);
+	const [failed, setFailed] = useState(false);
+	const [busy, setBusy] = useState<"share" | "post" | null>(null);
+
+	async function share() {
+		setBusy("share");
+		try {
+			const outcome = await shareSessionImage(
+				sessionId,
+				bookTitle ?? "My reading",
+			);
+			if (outcome === "saved") {
+				toast.success("Saved. Add the picture wherever you like.");
+			}
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Could not share the picture.",
+			);
+		} finally {
+			setBusy(null);
+		}
+	}
+
+	async function post() {
+		if (!onPost) return;
+		setBusy("post");
+		try {
+			onPost(await fetchSessionImage(sessionId, "post"));
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Could not make the picture.",
+			);
+		} finally {
+			setBusy(null);
+		}
+	}
+
+	return (
+		<div className="flex flex-col gap-3">
+			<div className="relative mx-auto aspect-4/5 w-full max-w-[17rem] overflow-hidden border border-border bg-muted">
+				{!loaded && !failed ? (
+					<Skeleton className="absolute inset-0 size-full" />
+				) : null}
+				{failed ? (
+					<p className="absolute inset-0 flex items-center justify-center p-4 text-center text-muted-foreground text-sm">
+						The picture could not be drawn right now.
+					</p>
+				) : (
+					// Not optimised: the browser has to ask the server itself, signed in.
+					<Image
+						src={sessionStoryPath(sessionId, "post")}
+						alt="A picture of this session: the book, how long you read and how far you got"
+						fill
+						unoptimized
+						sizes="272px"
+						className="object-cover"
+						onLoad={() => setLoaded(true)}
+						onError={() => setFailed(true)}
+					/>
+				)}
+			</div>
+			<div className={cn("grid gap-2", onPost ? "grid-cols-2" : "grid-cols-1")}>
+				<LoadingButton
+					type="button"
+					className="h-12"
+					loading={busy === "share"}
+					disabled={failed || busy !== null}
+					onClick={() => void share()}
+				>
+					<Share2 data-icon="inline-start" aria-hidden />
+					Share image
+				</LoadingButton>
+				{onPost ? (
+					<LoadingButton
+						type="button"
+						variant="outline"
+						className="h-12"
+						loading={busy === "post"}
+						disabled={failed || busy !== null}
+						onClick={() => void post()}
+					>
+						<MessageSquarePlus data-icon="inline-start" aria-hidden />
+						Post to the club
+					</LoadingButton>
+				) : null}
+			</div>
+		</div>
+	);
+}
+
 /** What the session added up to, and what to do next. */
 export function SessionSummary({
 	summary,
@@ -44,7 +166,7 @@ export function SessionSummary({
 	byPage,
 	bookTitle,
 	free = false,
-	onShare,
+	onPost,
 	onAgain,
 	onDone,
 }: {
@@ -56,10 +178,13 @@ export function SessionSummary({
 	bookTitle: string | null;
 	/** A session without a book: time and the pages typed in, no progress, streak or sharing. */
 	free?: boolean;
-	onShare?: () => void;
+	/** Opens a post with the session picture attached. */
+	onPost?: (file: File) => void;
 	onAgain: () => void;
 	onDone: () => void;
 }) {
+	const { data: session } = authClient.useSession();
+	const username = session?.user.username;
 	const pagesGained =
 		summary && byPage && summary.pageFrom != null && summary.pageTo != null
 			? Math.max(0, summary.pageTo - summary.pageFrom)
@@ -144,34 +269,38 @@ export function SessionSummary({
 				</div>
 			) : null}
 
+			{!free && summary?.id ? (
+				<ShareCard
+					sessionId={summary.id}
+					bookTitle={bookTitle}
+					onPost={onPost}
+				/>
+			) : null}
+
 			<div className="flex flex-col gap-2">
 				<Button type="button" className="h-14 text-base" onClick={onDone}>
 					Done
 				</Button>
-				<div
-					className={cn("grid gap-2", onShare ? "grid-cols-2" : "grid-cols-1")}
+				<Button
+					type="button"
+					variant="outline"
+					className="h-12"
+					onClick={onAgain}
 				>
-					{onShare ? (
-						<Button
-							type="button"
-							variant="outline"
-							className="h-12"
-							onClick={onShare}
-						>
-							<Share2 data-icon="inline-start" aria-hidden />
-							Share
-						</Button>
-					) : null}
+					<RotateCcw data-icon="inline-start" aria-hidden />
+					{free ? "Start again" : "Read again"}
+				</Button>
+				{/* Sessions without a book are not listed there. */}
+				{!free && username ? (
 					<Button
-						type="button"
-						variant="outline"
-						className="h-12"
-						onClick={onAgain}
+						render={<Link href={`/users/${username}/reading` as Route} />}
+						nativeButton={false}
+						variant="link"
+						className="text-muted-foreground"
 					>
-						<RotateCcw data-icon="inline-start" aria-hidden />
-						{free ? "Start again" : "Read again"}
+						All your sessions
 					</Button>
-				</div>
+				) : null}
 			</div>
 		</section>
 	);

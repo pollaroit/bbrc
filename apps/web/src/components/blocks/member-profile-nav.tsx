@@ -45,7 +45,7 @@ const tabs: {
 	{ segment: "shelves", label: "Shelves" },
 	{ segment: "friends", label: "Friends" },
 	{ segment: "wishlist", label: "Wishlist", ownOnly: true },
-	{ segment: "reading", label: "Reading", ownOnly: true },
+	{ segment: "reading", label: "Reading" },
 	{ segment: "mentions", label: "Mentions", ownOnly: true },
 	{ segment: "goals", label: "Goals" },
 	{ segment: "achievements", label: "Achievements" },

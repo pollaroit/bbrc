@@ -77,6 +77,8 @@ type ComposePostDialogProps = {
 	initialAttachment?: PostAttachmentInput | null;
 	/** Serialized rich text to start the post with. */
 	initialContent?: string | null;
+	/** A picture to start the post with. */
+	initialImage?: File | null;
 	onClosed?: () => void;
 };
 
@@ -85,6 +87,7 @@ export function ComposePostDialog({
 	onOpenChange,
 	initialAttachment = null,
 	initialContent = null,
+	initialImage = null,
 	onClosed,
 }: ComposePostDialogProps) {
 	const router = useRouter();
@@ -120,7 +123,10 @@ export function ComposePostDialog({
 		if (open && initialContent) {
 			setContent(initialContent);
 		}
-	}, [open, initialAttachment, initialContent]);
+		if (open && initialImage) {
+			setImageFile(initialImage);
+		}
+	}, [open, initialAttachment, initialContent, initialImage]);
 
 	function reset() {
 		setContent("");
