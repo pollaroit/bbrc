@@ -3,6 +3,8 @@ import {
 	revalidateBookIsr,
 	revalidateBooksCatalogIsr,
 } from "../../revalidate-isr";
+import { audited } from "../audit/audit-middleware";
+import { authorBefore, authorTarget } from "../audit/audit-targets";
 import {
 	authorSlugsByIds,
 	revalidateAuthorSlugs,
@@ -59,6 +61,12 @@ export const authorAdminRouter = {
 	/** Re-derives nationalities as modern countries for authors with none or an old code. Resumable. */
 	fixNationalities: superAdminProcedure
 		.input(FixNationalitiesInputSchema)
+		.use(
+			audited("author.nationalities_fixed", {
+				target: () => ({ type: "system", label: "Author nationalities" }),
+				metadata: ({ output }) => ({ changed: output.changed }),
+			}),
+		)
 		.handler(async ({ input, context }) => {
 			const result = await fixAuthorNationalities(input, context.db);
 			if (!result.dryRun && result.changed > 0) {
@@ -98,6 +106,15 @@ export const authorAdminRouter = {
 	/** By name (optionally an Open Library id). Returns the existing author when there is one. */
 	create: superAdminProcedure
 		.input(CreateAuthorInputSchema)
+		.use(
+			audited("author.created", {
+				target: ({ output }) => ({
+					type: "author",
+					id: output.author.id,
+					label: output.author.name,
+				}),
+			}),
+		)
 		.handler(async ({ input, context }) => {
 			const result = await createAuthorByAdmin(
 				input,
@@ -116,6 +133,17 @@ export const authorAdminRouter = {
 
 	update: superAdminProcedure
 		.input(UpdateAuthorInputSchema)
+		.use(
+			audited("author.updated", {
+				before: ({ input, db }) => authorBefore(db, input.id),
+				target: ({ before, input }) => authorTarget(before, input.id),
+				metadata: ({ input }) => ({
+					fields: Object.entries(input)
+						.filter(([key, value]) => key !== "id" && value !== undefined)
+						.map(([key]) => key),
+				}),
+			}),
+		)
 		.handler(async ({ input, context }) => {
 			const result = await updateAuthor(input, context.db);
 			revalidateAuthorSlugs(context, [result.slug]);
@@ -128,11 +156,25 @@ export const authorAdminRouter = {
 
 	setLock: superAdminProcedure
 		.input(SetAuthorLockInputSchema)
+		.use(
+			audited("author.lock_changed", {
+				before: ({ input, db }) => authorBefore(db, input.id),
+				target: ({ before, input }) => authorTarget(before, input.id),
+				metadata: ({ input }) => ({ field: input.field, locked: input.locked }),
+			}),
+		)
 		.handler(({ input, context }) => setAuthorFieldLock(input, context.db)),
 
 	aliases: {
 		add: superAdminProcedure
 			.input(AddAuthorAliasInputSchema)
+			.use(
+				audited("author.alias_added", {
+					before: ({ input, db }) => authorBefore(db, input.id),
+					target: ({ before, input }) => authorTarget(before, input.id),
+					metadata: ({ input }) => ({ alias: input.alias }),
+				}),
+			)
 			.handler(async ({ input, context }) => {
 				const result = await addAuthorAlias(input, context.db);
 				await revalidateAuthorsByIds(context, [input.id]);
@@ -140,6 +182,19 @@ export const authorAdminRouter = {
 			}),
 		remove: superAdminProcedure
 			.input(RemoveAuthorAliasInputSchema)
+			.use(
+				audited("author.alias_removed", {
+					before: async ({ input, db }) => ({
+						author: await authorBefore(db, input.id),
+						alias: await db.authorAlias.findUnique({
+							where: { id: input.aliasId },
+							select: { alias: true },
+						}),
+					}),
+					target: ({ before, input }) => authorTarget(before?.author, input.id),
+					metadata: ({ before }) => ({ alias: before?.alias?.alias }),
+				}),
+			)
 			.handler(async ({ input, context }) => {
 				const result = await removeAuthorAlias(input, context.db);
 				await revalidateAuthorsByIds(context, [input.id]);
@@ -149,6 +204,12 @@ export const authorAdminRouter = {
 
 	confirm: superAdminProcedure
 		.input(AuthorIdInputSchema)
+		.use(
+			audited("author.confirmed", {
+				before: ({ input, db }) => authorBefore(db, input.id),
+				target: ({ before, input }) => authorTarget(before, input.id),
+			}),
+		)
 		.handler(async ({ input, context }) => {
 			const result = await confirmAuthor(input.id, context.db);
 			await revalidateAuthorsByIds(context, [input.id]);
@@ -157,6 +218,12 @@ export const authorAdminRouter = {
 
 	refresh: superAdminProcedure
 		.input(RefreshAuthorInputSchema)
+		.use(
+			audited("author.refreshed", {
+				before: ({ input, db }) => authorBefore(db, input.id),
+				target: ({ before, input }) => authorTarget(before, input.id),
+			}),
+		)
 		.handler(async ({ input, context }) => {
 			const result = await refreshAuthor(input, context.db);
 			await revalidateAuthorsByIds(context, [input.id]);
@@ -165,6 +232,20 @@ export const authorAdminRouter = {
 
 	merge: superAdminProcedure
 		.input(MergeAuthorsInputSchema)
+		.use(
+			audited("author.merged", {
+				before: async ({ input, db }) => ({
+					from: await authorBefore(db, input.fromId),
+					into: await authorBefore(db, input.intoId),
+				}),
+				// The kept author is the target; the one folded in is named in the details.
+				target: ({ before, input }) => authorTarget(before?.into, input.intoId),
+				metadata: ({ before, input }) => ({
+					mergedName: before?.from?.name,
+					mergedId: input.fromId,
+				}),
+			}),
+		)
 		.handler(async ({ input, context }) => {
 			const before = await authorSlugsByIds(context.db, [
 				input.fromId,
@@ -180,6 +261,12 @@ export const authorAdminRouter = {
 
 	delete: superAdminProcedure
 		.input(AuthorIdInputSchema)
+		.use(
+			audited("author.deleted", {
+				before: ({ input, db }) => authorBefore(db, input.id),
+				target: ({ before, input }) => authorTarget(before, input.id),
+			}),
+		)
 		.handler(async ({ input, context }) => {
 			const slugs = await authorSlugsByIds(context.db, [input.id]);
 			const result = await deleteAuthorByAdmin(input.id, context.db);
@@ -193,6 +280,13 @@ export const authorAdminRouter = {
 
 	applyPhoto: superAdminProcedure
 		.input(AuthorIdInputSchema)
+		.use(
+			audited("author.photo_changed", {
+				before: ({ input, db }) => authorBefore(db, input.id),
+				target: ({ before, input }) => authorTarget(before, input.id),
+				metadata: () => ({ change: "applied" as const }),
+			}),
+		)
 		.handler(async ({ input, context }) => {
 			const result = await applySuggestedPhoto(input.id, context.db);
 			await revalidateAuthorsByIds(context, [input.id]);
@@ -201,6 +295,13 @@ export const authorAdminRouter = {
 
 	uploadPhoto: superAdminProcedure
 		.input(UploadAuthorPhotoInputSchema)
+		.use(
+			audited("author.photo_changed", {
+				before: ({ input, db }) => authorBefore(db, input.id),
+				target: ({ before, input }) => authorTarget(before, input.id),
+				metadata: () => ({ change: "uploaded" as const }),
+			}),
+		)
 		.handler(async ({ input, context }) => {
 			const result = await saveUploadedPhoto(input, context.db);
 			await revalidateAuthorsByIds(context, [input.id]);
@@ -209,6 +310,13 @@ export const authorAdminRouter = {
 
 	removePhoto: superAdminProcedure
 		.input(AuthorIdInputSchema)
+		.use(
+			audited("author.photo_changed", {
+				before: ({ input, db }) => authorBefore(db, input.id),
+				target: ({ before, input }) => authorTarget(before, input.id),
+				metadata: () => ({ change: "removed" as const }),
+			}),
+		)
 		.handler(async ({ input, context }) => {
 			const result = await removeAuthorPhoto(input.id, context.db);
 			await revalidateAuthorsByIds(context, [input.id]);

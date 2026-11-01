@@ -5,6 +5,9 @@ import { o } from "./o";
 
 export const publicProcedure = o;
 
+/** Marks a role guard so the audit coverage test can tell gated procedures from open ones. */
+export const ROLE_GATED = Symbol.for("bbrc.roleGated");
+
 /**
  * The context a signed-in procedure adds. A named type (not the session object spelled out)
  * keeps every procedure's declaration short: written out, the session alone repeats in each
@@ -36,8 +39,8 @@ const requireAuth = o.middleware(async ({ context, next }) => {
 const requireRole = (
 	allowed: (user: Session["user"]) => boolean,
 	message: string,
-) =>
-	o.middleware(async ({ context, next }) => {
+) => {
+	const guard = o.middleware(async ({ context, next }) => {
 		if (!context.session?.user) {
 			throw new ORPCError("UNAUTHORIZED", {
 				message: "You must be logged in to access this resource.",
@@ -50,6 +53,9 @@ const requireRole = (
 
 		return next({ context: signedIn(context.session) });
 	});
+	// Lets `audit-coverage.test.ts` find every procedure behind a role.
+	return Object.assign(guard, { [ROLE_GATED]: true });
+};
 
 export const protectedProcedure = publicProcedure.use(requireAuth);
 

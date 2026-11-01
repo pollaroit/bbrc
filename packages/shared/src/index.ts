@@ -1,4 +1,5 @@
 export * from "./achievements";
+export * from "./audit";
 export * from "./author-insights";
 export * from "./author-name";
 export * from "./author-slug";

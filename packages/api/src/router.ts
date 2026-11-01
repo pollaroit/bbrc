@@ -2,6 +2,7 @@ import type { RouterClient } from "@orpc/server";
 
 import { achievementRouter } from "./modules/achievement/achievement.router";
 import { adminRouter } from "./modules/admin/admin.router";
+import { auditRouter } from "./modules/audit/audit.router";
 import { authorRouter } from "./modules/author/author.router";
 import { authorAdminRouter } from "./modules/author-admin/author-admin.router";
 import { authorBackfillRouter } from "./modules/author-backfill/author-backfill.router";
@@ -76,6 +77,7 @@ export const appRouter = {
 	readingActivity: readingActivityRouter,
 	report: reportRouter,
 	role: roleRouter,
+	audit: auditRouter,
 	privacy: privacyRouter,
 	goal: goalRouter,
 	globalSearch: globalSearchRouter,

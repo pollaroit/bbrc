@@ -3,6 +3,7 @@ import {
 	publicProcedure,
 	superAdminProcedure,
 } from "../../procedures";
+import { noAudit } from "../audit/audit-middleware";
 import { loadViewer } from "../visibility/viewer";
 import {
 	AdminOverviewInputSchema,
@@ -54,12 +55,14 @@ export const viewRouter = {
 		),
 	adminOverview: superAdminProcedure
 		.input(AdminOverviewInputSchema)
+		.use(noAudit("read only"))
 		.output(AdminOverviewOutputSchema)
 		.handler(({ input, context }) =>
 			getAdminViewsOverview(context.db, input.range),
 		),
 	adminList: superAdminProcedure
 		.input(AdminViewListInputSchema)
+		.use(noAudit("read only"))
 		.output(AdminViewListOutputSchema)
 		.handler(({ input, context }) => listAdminViews(context.db, input)),
 };

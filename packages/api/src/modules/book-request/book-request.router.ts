@@ -1,5 +1,7 @@
 import { isSuperAdmin } from "@bbrc/shared";
 import { protectedProcedure, superAdminProcedure } from "../../procedures";
+import { audited } from "../audit/audit-middleware";
+import { bookRequestBefore, namedTarget } from "../audit/audit-targets";
 import {
 	CreateBookRequestInputSchema,
 	CreateBookRequestOutputSchema,
@@ -53,6 +55,13 @@ export const bookRequestRouter = {
 		),
 	reject: superAdminProcedure
 		.input(RejectBookRequestInputSchema)
+		.use(
+			audited("request.rejected", {
+				before: ({ input, db }) => bookRequestBefore(db, input.id),
+				target: ({ before, input }) => namedTarget("request", before, input.id),
+				metadata: ({ input }) => ({ reason: input.rejectionReason }),
+			}),
+		)
 		.output(RejectBookRequestOutputSchema)
 		.handler(async ({ input, context }) =>
 			rejectBookRequest(input, context.db),

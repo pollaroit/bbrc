@@ -150,6 +150,7 @@ model User {
   reportsAboutMe             Report[]                 @relation("ReportOwner")
   reportsResolved            Report[]                 @relation("ReportResolver")
   reportActionsTaken         ReportAction[]           @relation("ReportActionAdmin")
+  auditEntries               AuditLog[]               @relation("AuditActor")
 
   @@index([role])
   @@map("user")

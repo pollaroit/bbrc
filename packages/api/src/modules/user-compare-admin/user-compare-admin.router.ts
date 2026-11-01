@@ -1,4 +1,5 @@
 import { superAdminProcedure } from "../../procedures";
+import { noAudit } from "../audit/audit-middleware";
 import {
 	CompareBooksInputSchema,
 	CompareBooksOutputSchema,
@@ -35,6 +36,7 @@ import {
 export const userCompareAdminRouter = {
 	compare: superAdminProcedure
 		.input(CompareInputSchema)
+		.use(noAudit("read only"))
 		.output(CompareOutputSchema)
 		.handler(async ({ input, context }) =>
 			compareMembers(
@@ -46,6 +48,7 @@ export const userCompareAdminRouter = {
 
 	books: superAdminProcedure
 		.input(CompareBooksInputSchema)
+		.use(noAudit("read only"))
 		.output(CompareBooksOutputSchema)
 		.handler(async ({ input, context }) =>
 			listCompareBooks(
@@ -57,6 +60,7 @@ export const userCompareAdminRouter = {
 
 	extras: superAdminProcedure
 		.input(CompareExtrasInputSchema)
+		.use(noAudit("read only"))
 		.output(CompareExtrasOutputSchema)
 		.handler(async ({ input, context }) =>
 			getCompareExtras(

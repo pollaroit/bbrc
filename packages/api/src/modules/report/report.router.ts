@@ -1,4 +1,5 @@
 import { protectedProcedure, superAdminProcedure } from "../../procedures";
+import { audited } from "../audit/audit-middleware";
 import { loadViewer } from "../visibility/viewer";
 import {
 	ActOnReportInputSchema,
@@ -40,6 +41,20 @@ export const reportRouter = {
 		})),
 	act: superAdminProcedure
 		.input(ActOnReportInputSchema)
+		.use(
+			// The report's own action history stays; this puts the decision in the shared log too.
+			audited("report.decided", {
+				target: ({ input }) => ({
+					type: "report",
+					id: input.targetId,
+					label: `${input.target} report`,
+				}),
+				metadata: ({ input }) => ({
+					decision: input.action,
+					note: input.note ?? null,
+				}),
+			}),
+		)
 		.output(ActOnReportOutputSchema)
 		.handler(async ({ input, context }) =>
 			actOnReport(context.db, context.session.user.id, input),

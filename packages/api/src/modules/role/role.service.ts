@@ -7,6 +7,8 @@ import {
 	roleOf,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
+import { recordAudit } from "../audit/audit.service";
+import { actorOf } from "../audit/audit-middleware";
 import type { SetRoleInput, SetRoleOutput } from "./role.schema";
 
 /** Why a role change was refused, in words the person who tried can act on. */
@@ -28,12 +30,12 @@ function refusalFor(actor: RoleActor, target: RoleActor, next: string): string {
  */
 export async function setMemberRole(
 	db: Database,
-	actor: RoleActor,
+	actor: RoleActor & { name?: string | null; username?: string | null },
 	input: SetRoleInput,
 ): Promise<SetRoleOutput> {
 	const target = await db.user.findUnique({
 		where: { username: input.username },
-		select: { id: true, username: true, role: true },
+		select: { id: true, name: true, username: true, role: true },
 	});
 	if (!target) {
 		throw new ORPCError("NOT_FOUND", { message: "Member not found." });
@@ -44,15 +46,25 @@ export async function setMemberRole(
 		});
 	}
 
-	const changed = await db.user.updateMany({
-		where: { id: target.id, role: target.role },
-		data: { role: input.role },
-	});
-	if (changed.count !== 1) {
-		throw new ORPCError("CONFLICT", {
-			message: "Their role changed while you were doing this. Try again.",
+	const previousRole = target.role;
+	// The change and its audit entry stand or fall together.
+	await db.$transaction(async (tx) => {
+		const changed = await tx.user.updateMany({
+			where: { id: target.id, role: previousRole },
+			data: { role: input.role },
 		});
-	}
+		if (changed.count !== 1) {
+			throw new ORPCError("CONFLICT", {
+				message: "Their role changed while you were doing this. Try again.",
+			});
+		}
+		await recordAudit(tx, {
+			actor: actorOf(actor),
+			action: "member.role_changed",
+			target: { type: "member", id: target.id, label: target.name },
+			metadata: { from: previousRole, to: input.role },
+		});
+	});
 	return { username: target.username, role: input.role };
 }
 

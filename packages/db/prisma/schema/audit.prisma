@@ -1,0 +1,30 @@
+/// One privileged action, written after it succeeded. Append-only and kept forever. The action keys, their
+/// domains and the shape of `metadata` live in `packages/shared/src/audit.ts`.
+model AuditLog {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// Who did it. Empty once that member is deleted; `actorName` keeps who it was.
+  actorId   String? @map("actor_id")
+  actor     User?   @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorName String  @map("actor_name")
+
+  /// Registry key such as `member.role_changed`. A plain string so adding an action needs no migration.
+  action String
+
+  /// What it was done to, as a plain string with no foreign key (like `Report`), so the entry outlives it.
+  targetType  String  @map("target_type")
+  targetId    String? @map("target_id")
+  /// The target's name when it happened.
+  targetLabel String? @map("target_label")
+
+  /// Facts about the change (what it was before and after). Never secrets.
+  metadata Json @default("{}")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@index([targetType, targetId])
+  @@map("audit_log")
+}

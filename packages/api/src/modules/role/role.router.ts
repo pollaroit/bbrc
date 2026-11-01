@@ -1,4 +1,5 @@
 import { roleProcedure } from "../../procedures";
+import { noAudit } from "../audit/audit-middleware";
 import { SetRoleInputSchema, SetRoleOutputSchema } from "./role.schema";
 import { setMemberRole } from "./role.service";
 
@@ -9,6 +10,7 @@ export const roleRouter = {
 	 */
 	set: roleProcedure("admin", "super_admin")
 		.input(SetRoleInputSchema)
+		.use(noAudit("written inside the change's own transaction (setMemberRole)"))
 		.output(SetRoleOutputSchema)
 		.handler(async ({ input, context }) =>
 			setMemberRole(context.db, context.session.user, input),

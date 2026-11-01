@@ -1,5 +1,6 @@
 import { superAdminProcedure } from "../../procedures";
 import { revalidateBooksCatalogIsr } from "../../revalidate-isr";
+import { audited } from "../audit/audit-middleware";
 import {
 	BackfillPlanInputSchema,
 	BackfillRetryInputSchema,
@@ -22,6 +23,12 @@ export const authorBackfillRouter = {
 	/** One resumable batch (safe to run again and again until `done`). */
 	run: superAdminProcedure
 		.input(BackfillRunInputSchema)
+		.use(
+			audited("author.backfill_run", {
+				target: () => ({ type: "system", label: "Author backfill" }),
+				metadata: ({ output }) => ({ processed: output.processedAuthors }),
+			}),
+		)
 		.handler(async ({ input, context }) => {
 			const result = await runBackfill(input, context.db);
 			if (result.booksLinked > 0) revalidateBooksCatalogIsr(context);
@@ -34,5 +41,10 @@ export const authorBackfillRouter = {
 
 	retryFailed: superAdminProcedure
 		.input(BackfillRetryInputSchema)
+		.use(
+			audited("author.backfill_retried", {
+				target: () => ({ type: "system", label: "Author backfill" }),
+			}),
+		)
 		.handler(({ input, context }) => retryFailedAuthors(input, context.db)),
 };

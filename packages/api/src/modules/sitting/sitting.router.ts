@@ -11,6 +11,8 @@ import {
 } from "../../revalidate-isr";
 import { evaluateSittingMembersAchievements } from "../achievement/achievement.service";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
+import { audited } from "../audit/audit-middleware";
+import { memberNameById, sittingTarget } from "../audit/audit-targets";
 import { loadViewer } from "../visibility/viewer";
 import {
 	CreateSittingInputSchema,
@@ -163,6 +165,11 @@ export const sittingRouter = {
 	join: sittingJoinRouter,
 	createSitting: superAdminProcedure
 		.input(CreateSittingInputSchema)
+		.use(
+			audited("sitting.created", {
+				target: ({ output }) => sittingTarget(output.slug),
+			}),
+		)
 		.output(CreateSittingOutputSchema)
 		.handler(async ({ input, context }) => {
 			const sitting = await createSitting(
@@ -219,6 +226,12 @@ export const sittingRouter = {
 		),
 	transitionSitting: superAdminProcedure
 		.input(TransitionSittingInputSchema)
+		.use(
+			audited("sitting.phase_changed", {
+				target: ({ input }) => sittingTarget(input.slug),
+				metadata: ({ input }) => ({ to: input.transition }),
+			}),
+		)
 		.output(TransitionSittingOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await transitionSitting(input, context.db);
@@ -234,6 +247,11 @@ export const sittingRouter = {
 		}),
 	updateSittingDeadlines: superAdminProcedure
 		.input(UpdateSittingDeadlinesInputSchema)
+		.use(
+			audited("sitting.deadlines_changed", {
+				target: ({ input }) => sittingTarget(input.slug),
+			}),
+		)
 		.output(UpdateSittingDeadlinesOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await updateSittingDeadlines(input, context.db);
@@ -249,6 +267,12 @@ export const sittingRouter = {
 		),
 	updateParticipation: superAdminProcedure
 		.input(UpdateParticipationInputSchema)
+		.use(
+			audited("sitting.participation_changed", {
+				target: ({ input }) => sittingTarget(input.slug),
+				metadata: ({ input }) => ({ progress: input.progress }),
+			}),
+		)
 		.output(UpdateParticipationOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await updateParticipation(input, context.db);
@@ -257,6 +281,13 @@ export const sittingRouter = {
 		}),
 	addSittingParticipant: superAdminProcedure
 		.input(SittingParticipantMutationInputSchema)
+		.use(
+			audited("sitting.participant_added", {
+				before: ({ input, db }) => memberNameById(db, input.userId),
+				target: ({ input }) => sittingTarget(input.slug),
+				metadata: ({ before }) => ({ member: before ?? undefined }),
+			}),
+		)
 		.output(SittingParticipantMutationOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await addSittingParticipant(
@@ -269,6 +300,13 @@ export const sittingRouter = {
 		}),
 	removeSittingParticipant: superAdminProcedure
 		.input(RemoveSittingParticipantInputSchema)
+		.use(
+			audited("sitting.participant_removed", {
+				before: ({ input, db }) => memberNameById(db, input.userId),
+				target: ({ input }) => sittingTarget(input.slug),
+				metadata: ({ before }) => ({ member: before ?? undefined }),
+			}),
+		)
 		.output(SittingParticipantMutationOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await removeSittingParticipant(input, context.db);

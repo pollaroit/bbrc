@@ -3,6 +3,8 @@ import {
 	publicProcedure,
 	superAdminProcedure,
 } from "../../procedures";
+import { audited } from "../audit/audit-middleware";
+import { editionBefore, namedTarget } from "../audit/audit-targets";
 import {
 	BookEditionIdInputSchema,
 	BookEditionItemSchema,
@@ -64,6 +66,12 @@ export const bookEditionRouter = {
 		}),
 	verify: superAdminProcedure
 		.input(BookEditionIdInputSchema)
+		.use(
+			audited("book.edition_verified", {
+				before: ({ input, db }) => editionBefore(db, input.id),
+				target: ({ before, input }) => namedTarget("edition", before, input.id),
+			}),
+		)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {
 			await setBookEditionVerified(
@@ -76,6 +84,12 @@ export const bookEditionRouter = {
 		}),
 	unverify: superAdminProcedure
 		.input(BookEditionIdInputSchema)
+		.use(
+			audited("book.edition_unverified", {
+				before: ({ input, db }) => editionBefore(db, input.id),
+				target: ({ before, input }) => namedTarget("edition", before, input.id),
+			}),
+		)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {
 			await setBookEditionVerified(
@@ -88,6 +102,13 @@ export const bookEditionRouter = {
 		}),
 	merge: superAdminProcedure
 		.input(MergeBookEditionsInputSchema)
+		.use(
+			audited("book.edition_merged", {
+				before: ({ input, db }) => editionBefore(db, input.intoId),
+				target: ({ before, input }) =>
+					namedTarget("edition", before, input.intoId),
+			}),
+		)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {
 			await mergeBookEditions(context.db, input.fromId, input.intoId);
@@ -95,6 +116,12 @@ export const bookEditionRouter = {
 		}),
 	link: superAdminProcedure
 		.input(LinkBookEditionInputSchema)
+		.use(
+			audited("book.edition_linked", {
+				before: ({ input, db }) => editionBefore(db, input.id),
+				target: ({ before, input }) => namedTarget("edition", before, input.id),
+			}),
+		)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {
 			await linkBookEdition(context.db, input.id, input.openLibraryOlid);

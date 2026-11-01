@@ -1,4 +1,6 @@
 import { superAdminProcedure } from "../../procedures";
+import { audited } from "../audit/audit-middleware";
+import { excerpt, memberByUsername } from "../audit/audit-targets";
 import {
 	AdminBookOverviewOutputSchema,
 	GetAdminBookOverviewInputSchema,
@@ -200,18 +202,52 @@ export const adminRouter = {
 		.handler(async ({ input, context }) => listAdminUsers(input, context.db)),
 	updateUserName: superAdminProcedure
 		.input(AdminUpdateUserNameInputSchema)
+		.use(
+			audited("member.renamed", {
+				before: ({ input, db }) => memberByUsername(db, input.username),
+				target: ({ before, input }) => ({
+					type: "member",
+					id: before?.id,
+					label: input.name,
+				}),
+				metadata: ({ before, input }) => ({
+					name: { from: before?.name ?? null, to: input.name },
+				}),
+			}),
+		)
 		.output(AdminUpdateUserNameOutputSchema)
 		.handler(async ({ input, context }) =>
 			adminUpdateUserName(input, context.db),
 		),
 	deleteUser: superAdminProcedure
 		.input(AdminDeleteUserInputSchema)
+		.use(
+			audited("member.deleted", {
+				before: ({ input, db }) => memberByUsername(db, input.username),
+				target: ({ before, input }) => ({
+					type: "member",
+					id: before?.id,
+					label: before?.name ?? input.username,
+				}),
+			}),
+		)
 		.output(AdminDeleteUserOutputSchema)
 		.handler(async ({ input, context }) =>
 			adminDeleteUser(input, context.session.user.id, context.db),
 		),
 	setUserPassword: superAdminProcedure
 		.input(AdminSetUserPasswordInputSchema)
+		.use(
+			// Records that it happened, never the password.
+			audited("member.password_reset", {
+				before: ({ input, db }) => memberByUsername(db, input.username),
+				target: ({ before, input }) => ({
+					type: "member",
+					id: before?.id,
+					label: before?.name ?? input.username,
+				}),
+			}),
+		)
 		.output(AdminSetUserPasswordOutputSchema)
 		.handler(async ({ input, context }) =>
 			adminSetUserPassword(input, context.db),
@@ -222,12 +258,30 @@ export const adminRouter = {
 		.handler(async ({ input }) => generateAdminFactDraft(input)),
 	createFact: superAdminProcedure
 		.input(CreateAdminFactInputSchema)
+		.use(
+			audited("fact.created", {
+				target: ({ output }) => ({
+					type: "fact",
+					id: output.id,
+					label: excerpt(output.body),
+				}),
+			}),
+		)
 		.output(CreateAdminFactOutputSchema)
 		.handler(async ({ input, context }) =>
 			createAdminFact(input, context.session.user.id, context.db),
 		),
 	batchCreateFacts: superAdminProcedure
 		.input(BatchCreateAdminFactsInputSchema)
+		.use(
+			audited("fact.batch_created", {
+				target: ({ output }) => ({
+					type: "fact",
+					label: `${output.created.length} facts`,
+				}),
+				metadata: ({ output }) => ({ count: output.created.length }),
+			}),
+		)
 		.output(BatchCreateAdminFactsOutputSchema)
 		.handler(async ({ input, context }) =>
 			batchCreateAdminFacts(input, context.session.user.id, context.db),
@@ -250,10 +304,33 @@ export const adminRouter = {
 		),
 	publishFact: superAdminProcedure
 		.input(AdminFactIdInputSchema)
+		.use(
+			audited("fact.published", {
+				target: ({ output }) => ({
+					type: "fact",
+					id: output.id,
+					label: excerpt(output.body),
+				}),
+			}),
+		)
 		.output(PublishAdminFactOutputSchema)
 		.handler(async ({ input, context }) => publishAdminFact(input, context.db)),
 	deleteFact: superAdminProcedure
 		.input(AdminFactIdInputSchema)
+		.use(
+			audited("fact.deleted", {
+				before: ({ input, db }) =>
+					db.fact.findUnique({
+						where: { id: input.id },
+						select: { body: true },
+					}),
+				target: ({ before, input }) => ({
+					type: "fact",
+					id: input.id,
+					label: excerpt(before?.body),
+				}),
+			}),
+		)
 		.output(DeleteAdminFactOutputSchema)
 		.handler(async ({ input, context }) => deleteAdminFact(input, context.db)),
 	getSittingOverview: superAdminProcedure

@@ -4,6 +4,8 @@ import {
 	revalidateBooksCatalogIsr,
 	revalidateSeriesIsr,
 } from "../../revalidate-isr";
+import { audited } from "../audit/audit-middleware";
+import { namedTarget, seriesBefore } from "../audit/audit-targets";
 import {
 	AddBookToSeriesInputSchema,
 	AddBookToSeriesOutputSchema,
@@ -61,6 +63,16 @@ export const seriesRouter = {
 
 	create: superAdminProcedure
 		.input(CreateSeriesInputSchema)
+		.use(
+			audited("series.created", {
+				target: async ({ output, db }) =>
+					namedTarget(
+						"series",
+						await seriesBefore(db, output.slug),
+						output.slug,
+					),
+			}),
+		)
 		.output(CreateSeriesOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await createSeries(input, context.db);
@@ -70,6 +82,13 @@ export const seriesRouter = {
 
 	update: superAdminProcedure
 		.input(UpdateSeriesInputSchema)
+		.use(
+			audited("series.updated", {
+				before: ({ input, db }) => seriesBefore(db, input.slug),
+				target: ({ before, input }) =>
+					namedTarget("series", before, input.slug),
+			}),
+		)
 		.output(UpdateSeriesOutputSchema)
 		.handler(async ({ input, context }) => {
 			const bookSlugs = await listBookSlugsInSeries(input.slug, context.db);
@@ -84,6 +103,13 @@ export const seriesRouter = {
 
 	delete: superAdminProcedure
 		.input(DeleteSeriesInputSchema)
+		.use(
+			audited("series.deleted", {
+				before: ({ input, db }) => seriesBefore(db, input.slug),
+				target: ({ before, input }) =>
+					namedTarget("series", before, input.slug),
+			}),
+		)
 		.output(DeleteSeriesOutputSchema)
 		.handler(async ({ input, context }) => {
 			const bookSlugs = await listBookSlugsInSeries(input.slug, context.db);
@@ -95,6 +121,14 @@ export const seriesRouter = {
 
 	addBook: superAdminProcedure
 		.input(AddBookToSeriesInputSchema)
+		.use(
+			audited("series.book_added", {
+				before: ({ input, db }) => seriesBefore(db, input.seriesSlug),
+				target: ({ before, input }) =>
+					namedTarget("series", before, input.seriesSlug),
+				metadata: ({ input }) => ({ book: input.bookSlug }),
+			}),
+		)
 		.output(AddBookToSeriesOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await addBookToSeries(input, context.db);
@@ -108,6 +142,14 @@ export const seriesRouter = {
 
 	removeBook: superAdminProcedure
 		.input(RemoveBookFromSeriesInputSchema)
+		.use(
+			audited("series.book_removed", {
+				before: ({ input, db }) => seriesBefore(db, input.seriesSlug),
+				target: ({ before, input }) =>
+					namedTarget("series", before, input.seriesSlug),
+				metadata: ({ input }) => ({ book: input.bookSlug }),
+			}),
+		)
 		.output(RemoveBookFromSeriesOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await removeBookFromSeries(input, context.db);
@@ -124,6 +166,13 @@ export const seriesRouter = {
 
 	reorderBooks: superAdminProcedure
 		.input(ReorderSeriesBooksInputSchema)
+		.use(
+			audited("series.reordered", {
+				before: ({ input, db }) => seriesBefore(db, input.seriesSlug),
+				target: ({ before, input }) =>
+					namedTarget("series", before, input.seriesSlug),
+			}),
+		)
 		.output(ReorderSeriesBooksOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await reorderSeriesBooks(input, context.db);

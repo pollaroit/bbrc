@@ -3,12 +3,19 @@ import type { Database } from "@bbrc/db";
 import { ROLES, type Role } from "@bbrc/shared";
 import { setMemberRole } from "./role.service";
 
-type Row = { id: string; username: string; role: Role };
+type Row = { id: string; name?: string; username: string; role: Role };
 
 /** A database with the given members, recording role updates; `racing` makes the guarded update match nothing. */
 function fakeDb(members: Row[], options: { racing?: boolean } = {}) {
 	const updates: { id: string; from: Role; to: Role }[] = [];
+	const audits: Record<string, unknown>[] = [];
 	const db = {
+		$transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(db),
+		auditLog: {
+			create: async ({ data }: { data: Record<string, unknown> }) => {
+				audits.push(data);
+			},
+		},
 		user: {
 			findUnique: async ({ where }: { where: { username: string } }) =>
 				members.find((m) => m.username === where.username) ?? null,
@@ -30,7 +37,7 @@ function fakeDb(members: Row[], options: { racing?: boolean } = {}) {
 			},
 		},
 	} as unknown as Database;
-	return { db, updates };
+	return { db, updates, audits };
 }
 
 const people = (): Row[] => [
@@ -48,7 +55,7 @@ const actorOf = (rows: Row[], username: string) => {
 
 async function run(actorName: string, username: string, role: Role) {
 	const rows = people();
-	const { db, updates } = fakeDb(rows);
+	const { db, updates, audits } = fakeDb(rows);
 	const result = await setMemberRole(db, actorOf(rows, actorName), {
 		username,
 		role,
@@ -56,7 +63,7 @@ async function run(actorName: string, username: string, role: Role) {
 		(value) => ({ ok: true as const, value }),
 		(error: Error) => ({ ok: false as const, error }),
 	);
-	return { result, updates };
+	return { result, updates, audits };
 }
 
 describe("role.set", () => {
@@ -64,6 +71,14 @@ describe("role.set", () => {
 		const up = await run("boss", "user_one", "admin");
 		expect(up.result.ok).toBe(true);
 		expect(up.updates).toEqual([{ id: "u", from: "user", to: "admin" }]);
+		expect(up.audits).toHaveLength(1);
+		expect(up.audits[0]).toMatchObject({
+			actorId: "s",
+			action: "member.role_changed",
+			targetType: "member",
+			targetId: "u",
+			metadata: { from: "user", to: "admin" },
+		});
 		const down = await run("boss", "adam", "user");
 		expect(down.result.ok).toBe(true);
 	});
@@ -82,6 +97,7 @@ describe("role.set", () => {
 			const attempt = await run("adam", target, role);
 			expect(attempt.result.ok).toBe(false);
 			expect(attempt.updates).toEqual([]);
+			expect(attempt.audits).toEqual([]);
 		}
 	});
 

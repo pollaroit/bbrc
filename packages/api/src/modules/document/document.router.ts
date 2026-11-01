@@ -3,6 +3,8 @@ import {
 	publicProcedure,
 	superAdminProcedure,
 } from "../../procedures";
+import { audited } from "../audit/audit-middleware";
+import { documentBefore, namedTarget } from "../audit/audit-targets";
 import {
 	ApproveDocumentInputSchema,
 	ApproveDocumentOutputSchema,
@@ -70,12 +72,27 @@ export const documentRouter = {
 		),
 	approve: superAdminProcedure
 		.input(ApproveDocumentInputSchema)
+		.use(
+			audited("document.approved", {
+				before: ({ input, db }) => documentBefore(db, input.id),
+				target: ({ before, input }) =>
+					namedTarget("document", before, input.id),
+			}),
+		)
 		.output(ApproveDocumentOutputSchema)
 		.handler(async ({ input, context }) =>
 			approveDocument(input, context.db, context),
 		),
 	reject: superAdminProcedure
 		.input(RejectDocumentInputSchema)
+		.use(
+			audited("document.rejected", {
+				before: ({ input, db }) => documentBefore(db, input.id),
+				target: ({ before, input }) =>
+					namedTarget("document", before, input.id),
+				metadata: ({ input }) => ({ reason: input.rejectionReason }),
+			}),
+		)
 		.output(RejectDocumentOutputSchema)
 		.handler(async ({ input, context }) =>
 			rejectDocument(input, context.db, context),

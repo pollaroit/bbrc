@@ -4,6 +4,8 @@ import {
 	superAdminProcedure,
 } from "../../procedures";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
+import { audited } from "../audit/audit-middleware";
+import { namedTarget, quizBefore } from "../audit/audit-targets";
 import { loadViewer } from "../visibility/viewer";
 import {
 	AdminQuizActionOutputSchema,
@@ -111,16 +113,37 @@ export const quizRouter = {
 		),
 	adminDelete: superAdminProcedure
 		.input(AdminQuizIdInputSchema)
+		.use(
+			audited("quiz.deleted", {
+				before: ({ input, db }) => quizBefore(db, input.quizId),
+				target: ({ before, input }) =>
+					namedTarget("quiz", before, input.quizId),
+			}),
+		)
 		.output(AdminQuizActionOutputSchema)
 		.handler(({ input, context }) => adminDeleteQuiz(input.quizId, context.db)),
 	adminClearUnavailable: superAdminProcedure
 		.input(AdminQuizIdInputSchema)
+		.use(
+			audited("quiz.unavailable_cleared", {
+				before: ({ input, db }) => quizBefore(db, input.quizId),
+				target: ({ before, input }) =>
+					namedTarget("quiz", before, input.quizId),
+			}),
+		)
 		.output(AdminQuizActionOutputSchema)
 		.handler(({ input, context }) =>
 			adminClearUnavailableQuiz(input.quizId, context.db),
 		),
 	adminRegenerate: superAdminProcedure
 		.input(AdminQuizIdInputSchema)
+		.use(
+			audited("quiz.regenerated", {
+				before: ({ input, db }) => quizBefore(db, input.quizId),
+				target: ({ before, input }) =>
+					namedTarget("quiz", before, input.quizId),
+			}),
+		)
 		.output(AdminQuizActionOutputSchema)
 		.handler(({ input, context }) =>
 			adminRegenerateQuiz(input.quizId, context.db, context.session),
