@@ -66,6 +66,19 @@ export const ListFriendsOutputSchema = zod.object({
 	}),
 });
 
+export const FriendsWhoReadInputSchema = zod.object({
+	bookSlug: zod.string().min(1).max(160),
+});
+
+export const FriendsWhoReadOutputSchema = zod.object({
+	/** How many of the viewer's friends read it or are reading it (each counted once). */
+	total: zod.number().int().min(0),
+	/** Up to 5, those reading it right now first. */
+	items: zod.array(
+		FriendMemberSchema.extend({ state: zod.enum(["reading", "read"]) }),
+	),
+});
+
 export const FriendRequestItemSchema = FriendMemberSchema.extend({
 	sentAt: zod.coerce.date(),
 });

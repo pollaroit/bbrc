@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { z } from "zod";
 import { GoalProgressBar } from "@/components/blocks/goal-progress-bar";
 import { GoalScopeChips } from "@/components/blocks/goal-scope-chips";
+import { VisibilityBadge } from "@/components/blocks/visibility-select";
 import { cn } from "@/lib/utils";
 
 type GoalListItem = z.infer<typeof GoalListItemSchema>;
@@ -36,6 +37,7 @@ export function GoalCard({ username, goal }: GoalCardProps) {
 					{goal.isExpired && !goal.isComplete ? (
 						<Badge variant="secondary">Expired</Badge>
 					) : null}
+					<VisibilityBadge level={goal.visibility} />
 					<span className="text-muted-foreground text-sm tabular-nums">
 						{goal.year}
 					</span>

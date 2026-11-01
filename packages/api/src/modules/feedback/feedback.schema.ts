@@ -28,6 +28,7 @@ export const BookFeedbackReviewSchema = zod.object({
 	rating: FeedbackSchema.shape.rating,
 	review: FeedbackSchema.shape.review,
 	isSpoiler: FeedbackSchema.shape.isSpoiler,
+	visibility: FeedbackSchema.shape.visibility,
 	/** The review's image (one, like a post). */
 	imageUrl: FeedbackSchema.shape.imageUrl,
 	createdAt: zod.coerce.date(),
@@ -72,6 +73,7 @@ export const GetBookFeedbackStateOutputSchema = zod.object({
 			rating: FeedbackSchema.shape.rating,
 			review: FeedbackSchema.shape.review,
 			isSpoiler: FeedbackSchema.shape.isSpoiler,
+			visibility: FeedbackSchema.shape.visibility,
 			imageUrl: FeedbackSchema.shape.imageUrl,
 			createdAt: zod.coerce.date(),
 		})
@@ -88,6 +90,8 @@ export const CreateFeedbackInputSchema = zod.object({
 	rating: FeedbackRatingStepSchema,
 	review: zod.string(),
 	isSpoiler: FeedbackSchema.shape.isSpoiler.optional(),
+	/** Who may see this review (on top of the reviews setting and profile level). */
+	visibility: FeedbackSchema.shape.visibility.optional(),
 });
 
 export const CreateFeedbackOutputSchema = zod.object({
@@ -128,6 +132,7 @@ export const UserFeedbackListItemSchema = zod.object({
 	rating: FeedbackSchema.shape.rating,
 	review: FeedbackSchema.shape.review,
 	isSpoiler: FeedbackSchema.shape.isSpoiler,
+	visibility: FeedbackSchema.shape.visibility,
 	imageUrl: FeedbackSchema.shape.imageUrl,
 	createdAt: zod.coerce.date(),
 	likeCount: zod.number().int().min(0),
@@ -186,6 +191,7 @@ export const getUserFeedbackListFields = {
 	rating: true,
 	review: true,
 	isSpoiler: true,
+	visibility: true,
 	imageUrl: true,
 	createdAt: true,
 	_count: { select: { likes: true, comments: true } },
@@ -206,6 +212,7 @@ export const GetFeedbackBySlugOutputSchema = FeedbackSchema.pick({
 	slug: true,
 	review: true,
 	isSpoiler: true,
+	visibility: true,
 	imageUrl: true,
 	rating: true,
 	createdAt: true,
@@ -232,6 +239,7 @@ export const getFeedbackBySlugFields = {
 	slug: true,
 	review: true,
 	isSpoiler: true,
+	visibility: true,
 	imageUrl: true,
 	rating: true,
 	createdAt: true,

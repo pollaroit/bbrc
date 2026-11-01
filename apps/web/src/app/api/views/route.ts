@@ -4,6 +4,7 @@ import {
 	countBotRequest,
 	recordViews,
 } from "@bbrc/api/modules/view/view.service";
+import { loadViewer } from "@bbrc/api/modules/visibility/viewer";
 import { isBotUserAgent } from "@bbrc/shared";
 import { NextResponse } from "next/server";
 import { auth, db } from "@/services";
@@ -84,6 +85,7 @@ export async function POST(request: Request) {
 				referrerHost: parsed.data.referrerHost ?? null,
 			},
 			parsed.data.items,
+			await loadViewer(db, session),
 		);
 	} catch (error) {
 		console.error("recording views failed", error);

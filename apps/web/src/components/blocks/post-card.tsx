@@ -21,6 +21,7 @@ import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
 import { SocialContentBody } from "@/components/blocks/social-content-body";
 import { useImpressionRef } from "@/components/blocks/track-impression";
 import { UserPanel } from "@/components/blocks/user-panel";
+import { VisibilityBadge } from "@/components/blocks/visibility-select";
 import { isPendingSlug } from "@/lib/optimistic/infinite-lists";
 import { shareSnippet } from "@/lib/share-snippet";
 import { cn } from "@/lib/utils";
@@ -173,7 +174,8 @@ function PostCardInner({
 				>
 					<UserPanel user={post.author} className="min-w-0 items-start" />
 				</Link>
-				<div className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
+				<div className="flex shrink-0 items-center gap-1.5 text-muted-foreground text-xs">
+					<VisibilityBadge level={post.visibility} />
 					<Link
 						href={postHref}
 						className="transition-colors hover:text-foreground"

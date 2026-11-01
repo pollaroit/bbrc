@@ -1,4 +1,5 @@
 import type { Database } from "@bbrc/db";
+import type { Visibility } from "@bbrc/shared";
 import { fetchOpenLibraryWorkTitle } from "../../lib/open-library/work-titles";
 import { activeParticipationWhere } from "../sitting/participation-active";
 import {
@@ -23,6 +24,8 @@ export async function notifyMemberPosted(
 	postSlug: string,
 	/** Members who already get a "mentioned you" notice for this post. */
 	alsoExclude: string[] = [],
+	/** The post's own level: a friends-only post notifies friends only, an only-me post nobody. */
+	visibility: Visibility = "public",
 ): Promise<void> {
 	const [author, recipientUserIds] = await Promise.all([
 		db.user.findUnique({
@@ -30,7 +33,7 @@ export async function notifyMemberPosted(
 			select: { name: true, username: true },
 		}),
 		// Only members who may see the post: a private profile notifies its friends.
-		listAudienceUserIds(db, authorId),
+		listAudienceUserIds(db, authorId, { item: visibility }),
 	]);
 
 	if (!author) {
@@ -156,6 +159,8 @@ export async function notifyMemberFeedbackOnBook(
 	authorId: string,
 	/** Members who already get a "mentioned you" notice for this review. */
 	alsoExclude: string[] = [],
+	/** The review's own level. */
+	visibility: Visibility = "public",
 ): Promise<void> {
 	const [author, book, recipientUserIds] = await Promise.all([
 		db.user.findUnique({
@@ -167,7 +172,7 @@ export async function notifyMemberFeedbackOnBook(
 			select: { title: true },
 		}),
 		// Only members who may see the review (profile and reviews setting, blocks).
-		listAudienceUserIds(db, authorId, { section: "reviews" }),
+		listAudienceUserIds(db, authorId, { section: "reviews", item: visibility }),
 	]);
 
 	if (!author || !book) {

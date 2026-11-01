@@ -47,6 +47,7 @@ export function EditGoalDialog({
 			scopeKind: goal.scope.kind,
 			authorSlugs: goal.scope.authorSlugs,
 			countryCodes: goal.scope.countryCodes,
+			visibility: goal.visibility,
 		}),
 		[goal],
 	);
@@ -96,6 +97,7 @@ export function EditGoalDialog({
 					year: values.year,
 					target: values.target,
 					scopeKind: values.scopeKind,
+					...(values.visibility ? { visibility: values.visibility } : {}),
 					...(values.scopeKind === "authors"
 						? { scopeAuthorSlugs: values.authorSlugs }
 						: {}),

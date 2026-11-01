@@ -1,4 +1,6 @@
+import { peekShelf } from "@bbrc/api/modules/visibility/peek";
 import type { Metadata } from "next";
+import { LockedItem } from "@/components/blocks/locked-item";
 import { MemberShelfDetail } from "@/components/blocks/member-shelf-detail";
 import { TrackDetailView } from "@/components/blocks/track-detail-view";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
@@ -6,13 +8,14 @@ import {
 	loadShelfBySlugForPage,
 	loadUserByUsernameForPage,
 } from "@/lib/member-profile-data";
+import { getRequestViewer } from "@/lib/request-viewer";
 import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
 	NO_INDEX_ROBOTS,
 	truncateDescription,
 } from "@/lib/seo";
-import { auth } from "@/services";
+import { db } from "@/services";
 
 export async function generateMetadata({
 	params,
@@ -37,6 +40,20 @@ export async function generateMetadata({
 			robots: shelf.status === "active" ? undefined : NO_INDEX_ROBOTS,
 		});
 	} catch {
+		const peek = await peekShelf(
+			db,
+			await getRequestViewer(),
+			username,
+			shelfSlug,
+		).catch(() => null);
+		if (peek?.state === "locked") {
+			return buildPageMetadata({
+				title: `Friends-only shelf by ${peek.author.name}`,
+				description: `Only ${peek.author.name}'s friends can open this shelf.`,
+				path: `/users/${username}/shelves/${shelfSlug}`,
+				robots: NO_INDEX_ROBOTS,
+			});
+		}
 		return buildNotFoundMetadata("Shelf");
 	}
 }
@@ -45,6 +62,17 @@ export default async function ShelfDetailPage({
 	params,
 }: PageProps<"/users/[username]/shelves/[slug]">) {
 	const { username, slug } = await params;
+
+	// A friends-only shelf shows a stranger who owns it and nothing else.
+	const peek = await peekShelf(
+		db,
+		await getRequestViewer(),
+		username,
+		slug,
+	).catch(() => null);
+	if (peek?.state === "locked") {
+		return <LockedItem kind="shelf" author={peek.author} />;
+	}
 
 	return (
 		<ListingSearchParamsBoundary>

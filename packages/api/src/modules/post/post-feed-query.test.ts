@@ -22,7 +22,8 @@ describe("postVisibilitySql", () => {
 				blockedIds: ["b1"],
 			}),
 		);
-		expect(sql.values).toEqual(["me", "b1", "f1", "f2"]);
+		// The friend list appears twice (the profile level and the post level both need it).
+		expect(sql.values).toEqual(["me", "b1", "f1", "f2", "f1", "f2"]);
 		expect(sql.sql).toContain("NOT IN");
 	});
 	test("no friends and no blocks still produce valid SQL", () => {

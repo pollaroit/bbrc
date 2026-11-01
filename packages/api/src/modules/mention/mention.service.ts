@@ -12,6 +12,7 @@ import {
 	richContentPreview,
 	serializeRichDocument,
 	type Viewer,
+	type Visibility,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { dispatchNotification } from "../notification/notification.service";
@@ -49,6 +50,8 @@ export type MentionAudience = {
 	ownerId: string;
 	/** "reviews" when the content is a review (or a comment on one). */
 	section?: "reviews";
+	/** The content's own level (a friends-only post is not visible to a mentioned stranger). */
+	item?: Visibility;
 };
 
 /**
@@ -114,6 +117,7 @@ async function loadMentionAudience(
 				profileVisibility: owner.profileVisibility,
 				section:
 					audience.section === "reviews" ? owner.reviewsVisibility : null,
+				item: audience.item ?? null,
 			},
 			{ id: authorId, profileVisibility: "public" },
 		]);

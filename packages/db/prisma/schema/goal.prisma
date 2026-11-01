@@ -10,6 +10,9 @@ model Goal {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  /// Who may see this goal (on top of the author's goals setting and profile level).
+  visibility Visibility @default(public)
+
   /// Calendar year this goal tracks (finished reads with `readEndYear` equal to this value).
   /// @zod.min(1000).max(2100)
   year Int

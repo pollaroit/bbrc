@@ -1,6 +1,8 @@
-import { contentPlainText } from "@bbrc/shared";
+import { peekPost } from "@bbrc/api/modules/visibility/peek";
+import { ANONYMOUS_VIEWER, contentPlainText } from "@bbrc/shared";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { LockedPostGate } from "@/components/blocks/locked-post-gate";
 import { PostDetail } from "@/components/blocks/post-detail";
 import { TrackDetailView } from "@/components/blocks/track-detail-view";
 import { loadPostBySlugForIsr } from "@/lib/isr-data";
@@ -9,6 +11,7 @@ import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
 	JsonLd,
+	NO_INDEX_ROBOTS,
 	postSlugStaticParams,
 } from "@/lib/seo";
 import { db } from "@/services";
@@ -37,6 +40,16 @@ export async function generateMetadata({
 			openGraph: { type: "article" },
 		});
 	} catch {
+		// Friends-only: a card for the owner and nothing of the post; only-me: not found.
+		const peek = await peekPost(db, ANONYMOUS_VIEWER, slug).catch(() => null);
+		if (peek?.state === "locked") {
+			return buildPageMetadata({
+				title: `Friends-only post by ${peek.author.name}`,
+				description: `Only ${peek.author.name}'s friends can open this post.`,
+				path: `/posts/${slug}`,
+				robots: NO_INDEX_ROBOTS,
+			});
+		}
 		return buildNotFoundMetadata("Post");
 	}
 }
@@ -62,6 +75,10 @@ export default async function PostPage({ params }: PageProps<"/posts/[slug]">) {
 			</>
 		);
 	} catch {
+		const peek = await peekPost(db, ANONYMOUS_VIEWER, slug).catch(() => null);
+		if (peek?.state === "locked") {
+			return <LockedPostGate slug={slug} author={peek.author} />;
+		}
 		notFound();
 	}
 }

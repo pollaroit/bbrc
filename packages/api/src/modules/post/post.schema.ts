@@ -83,6 +83,7 @@ export const PostListItemSchema = PostSchema.pick({
 	content: true,
 	imageUrl: true,
 	isSpoiler: true,
+	visibility: true,
 	createdAt: true,
 	editedAt: true,
 	allowLikes: true,
@@ -101,6 +102,10 @@ export const PostListItemSchema = PostSchema.pick({
 
 /** LIST — composed as a concrete ZodObject so oRPC clients get input autocomplete. */
 export const GetPostListInputSchema = postListFiltersSchema
+	.extend({
+		/** Only posts by the viewer's friends ("From friends"). */
+		friendsOnly: zod.boolean().optional(),
+	})
 	.extend(CursorPaginationInputSchema.shape)
 	.extend(postListSorting.inputSchema.shape)
 	.extend(postListRanging.inputSchema.shape)
@@ -117,6 +122,7 @@ export const getPostListFields = {
 	content: true,
 	imageUrl: true,
 	isSpoiler: true,
+	visibility: true,
 	allowLikes: true,
 	allowComments: true,
 	allowShares: true,
@@ -152,6 +158,8 @@ export const CreatePostInputSchema = PostSchema.pick({
 })
 	.extend({
 		isSpoiler: PostSchema.shape.isSpoiler.optional(),
+		/** Who may see the post; leave out for the member's default. */
+		visibility: PostSchema.shape.visibility.optional(),
 		allowLikes: PostSchema.shape.allowLikes.optional(),
 		allowComments: PostSchema.shape.allowComments.optional(),
 		allowShares: PostSchema.shape.allowShares.optional(),
@@ -200,6 +208,7 @@ export const UpdatePostInputSchema = PostSchema.pick({
 	slug: true,
 	content: true,
 	isSpoiler: true,
+	visibility: true,
 	allowLikes: true,
 	allowComments: true,
 	allowShares: true,
@@ -207,6 +216,7 @@ export const UpdatePostInputSchema = PostSchema.pick({
 	.partial({
 		content: true,
 		isSpoiler: true,
+		visibility: true,
 		allowLikes: true,
 		allowComments: true,
 		allowShares: true,
@@ -256,6 +266,7 @@ export const getPostBySlugFields = {
 	content: true,
 	imageUrl: true,
 	isSpoiler: true,
+	visibility: true,
 	allowLikes: true,
 	allowComments: true,
 	allowShares: true,

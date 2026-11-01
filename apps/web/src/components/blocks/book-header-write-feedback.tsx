@@ -43,6 +43,7 @@ export function BookHeaderWriteFeedback({
 					rating: myFeedback.rating,
 					review: myFeedback.review,
 					isSpoiler: myFeedback.isSpoiler,
+					visibility: myFeedback.visibility,
 					imageUrl: myFeedback.imageUrl ?? null,
 				}
 			: undefined;

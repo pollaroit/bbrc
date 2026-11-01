@@ -1,7 +1,7 @@
 "use client";
 
 import type { GetPostBySlugOutput } from "@bbrc/api/modules/post/post.schema";
-import { contentPlainText } from "@bbrc/shared";
+import { contentPlainText, type Visibility } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
@@ -22,6 +22,7 @@ import {
 import { PostTierlist } from "@/components/blocks/post-tierlist";
 import { RichTextEditor } from "@/components/blocks/rich-text-editor";
 import { SingleImageUploadField } from "@/components/blocks/single-image-upload-field";
+import { VisibilitySelect } from "@/components/blocks/visibility-select";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { useLivePoll } from "@/lib/poll/use-poll";
 import { postAttachmentLabel } from "@/lib/post-attachment-label";
@@ -64,6 +65,7 @@ function patchPostCaches(
 			| "allowLikes"
 			| "allowComments"
 			| "allowShares"
+			| "visibility"
 			| "editedAt"
 		>
 	>,
@@ -105,6 +107,7 @@ export function EditPostForm({ post }: EditPostFormProps) {
 		allowComments: post.allowComments,
 		allowShares: post.allowShares,
 	});
+	const [visibility, setVisibility] = useState<Visibility>(post.visibility);
 	const [detachAttachment, setDetachAttachment] = useState(false);
 	const [deleteOpen, setDeleteOpen] = useState(false);
 	const hasPoll = post.poll != null;
@@ -130,6 +133,9 @@ export function EditPostForm({ post }: EditPostFormProps) {
 						: {}),
 					...(variables.allowShares != null
 						? { allowShares: variables.allowShares }
+						: {}),
+					...(variables.visibility != null
+						? { visibility: variables.visibility }
 						: {}),
 					...(variables.content != null && variables.content !== post.content
 						? { editedAt: new Date() }
@@ -184,6 +190,7 @@ export function EditPostForm({ post }: EditPostFormProps) {
 			allowLikes: settings.allowLikes,
 			allowComments: settings.allowComments,
 			allowShares: settings.allowShares,
+			visibility,
 			...(detachAttachment ? { attachment: null } : {}),
 		});
 	}
@@ -321,6 +328,16 @@ export function EditPostForm({ post }: EditPostFormProps) {
 				</div>
 
 				<aside className="flex flex-col gap-5 lg:sticky lg:top-20">
+					<Section title="Who can see it">
+						<VisibilitySelect
+							value={visibility}
+							onChange={setVisibility}
+							disabled={updateMutation.isPending}
+							label="Who can see this post"
+							className="w-fit"
+						/>
+					</Section>
+
 					<Section title="Post settings">
 						<PostSettingsFields
 							value={settings}
