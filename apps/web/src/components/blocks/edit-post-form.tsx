@@ -65,6 +65,7 @@ function patchPostCaches(
 			| "allowLikes"
 			| "allowComments"
 			| "allowShares"
+			| "allowBookmarks"
 			| "visibility"
 			| "editedAt"
 		>
@@ -106,6 +107,7 @@ export function EditPostForm({ post }: EditPostFormProps) {
 		allowLikes: post.allowLikes,
 		allowComments: post.allowComments,
 		allowShares: post.allowShares,
+		allowBookmarks: post.allowBookmarks,
 	});
 	const [visibility, setVisibility] = useState<Visibility>(post.visibility);
 	const [detachAttachment, setDetachAttachment] = useState(false);
@@ -133,6 +135,9 @@ export function EditPostForm({ post }: EditPostFormProps) {
 						: {}),
 					...(variables.allowShares != null
 						? { allowShares: variables.allowShares }
+						: {}),
+					...(variables.allowBookmarks != null
+						? { allowBookmarks: variables.allowBookmarks }
 						: {}),
 					...(variables.visibility != null
 						? { visibility: variables.visibility }
@@ -190,6 +195,7 @@ export function EditPostForm({ post }: EditPostFormProps) {
 			allowLikes: settings.allowLikes,
 			allowComments: settings.allowComments,
 			allowShares: settings.allowShares,
+			allowBookmarks: settings.allowBookmarks,
 			visibility,
 			...(detachAttachment ? { attachment: null } : {}),
 		});

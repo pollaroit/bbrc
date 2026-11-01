@@ -8,6 +8,7 @@ export type PostSettings = {
 	allowLikes: boolean;
 	allowComments: boolean;
 	allowShares: boolean;
+	allowBookmarks: boolean;
 };
 
 export const DEFAULT_POST_SETTINGS: PostSettings = {
@@ -15,6 +16,7 @@ export const DEFAULT_POST_SETTINGS: PostSettings = {
 	allowLikes: true,
 	allowComments: true,
 	allowShares: true,
+	allowBookmarks: true,
 };
 
 const rows: {
@@ -41,6 +43,11 @@ const rows: {
 		key: "allowShares",
 		label: "Allow sharing in posts",
 		hint: "Members can share it inside their own posts. Links still work anywhere.",
+	},
+	{
+		key: "allowBookmarks",
+		label: "Allow bookmarks",
+		hint: "Members can save this post privately. You can see how many saved it.",
 	},
 ];
 

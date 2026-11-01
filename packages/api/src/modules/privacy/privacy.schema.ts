@@ -16,6 +16,7 @@ export const PrivacySettingsSchema = zod.object({
 		goals: Level,
 		reading: Level,
 		readingActivity: Level,
+		bookmarks: Level,
 		/** The wishlist is a shelf: this is its level. */
 		wishlist: Level,
 	}),

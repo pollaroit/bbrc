@@ -36,6 +36,7 @@ export type MemberAccessFields = {
 	goalsVisibility: Visibility;
 	readingVisibility: Visibility;
 	readingActivityVisibility: Visibility;
+	bookmarksVisibility: Visibility;
 };
 
 export const memberAccessSelect = {
@@ -47,6 +48,7 @@ export const memberAccessSelect = {
 	goalsVisibility: true,
 	readingVisibility: true,
 	readingActivityVisibility: true,
+	bookmarksVisibility: true,
 } as const satisfies Prisma.UserSelect;
 
 const SECTION_FIELD: Record<
@@ -59,6 +61,7 @@ const SECTION_FIELD: Record<
 	goals: "goalsVisibility",
 	reading: "readingVisibility",
 	readingActivity: "readingActivityVisibility",
+	bookmarks: "bookmarksVisibility",
 };
 
 /** Blocked either way: the member reads as "unavailable" (NOT_FOUND). */

@@ -11,6 +11,7 @@ import { bookRouter } from "./modules/book/book.router";
 import { bookDiscoverRouter } from "./modules/book-discover/book-discover.router";
 import { bookEditionRouter } from "./modules/book-edition/book-edition.router";
 import { bookRequestRouter } from "./modules/book-request/book-request.router";
+import { bookmarkRouter } from "./modules/bookmark/bookmark.router";
 import { commentRouter } from "./modules/comment/comment.router";
 import { documentRouter } from "./modules/document/document.router";
 import { editionRouter } from "./modules/edition/edition.router";
@@ -65,6 +66,7 @@ export const appRouter = {
 	bookDiscover: bookDiscoverRouter,
 	bookEdition: bookEditionRouter,
 	bookRequest: bookRequestRouter,
+	bookmark: bookmarkRouter,
 	comment: commentRouter,
 	document: documentRouter,
 	fact: factRouter,

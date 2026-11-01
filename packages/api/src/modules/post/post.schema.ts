@@ -65,6 +65,7 @@ const PostCommentPreviewBaseSchema = zod.object({
 	content: CommentSchema.shape.content,
 	imageUrl: CommentSchema.shape.imageUrl,
 	isSpoiler: CommentSchema.shape.isSpoiler,
+	allowBookmarks: CommentSchema.shape.allowBookmarks,
 	createdAt: zod.coerce.date(),
 	author: PostAuthorSchema,
 	likeCount: zod.number().int().min(0),
@@ -89,6 +90,7 @@ export const PostListItemSchema = PostSchema.pick({
 	allowLikes: true,
 	allowComments: true,
 	allowShares: true,
+	allowBookmarks: true,
 }).extend({
 	author: PostAuthorSchema,
 	attachment: PostAttachmentOutputSchema.nullable(),
@@ -126,6 +128,7 @@ export const getPostListFields = {
 	allowLikes: true,
 	allowComments: true,
 	allowShares: true,
+	allowBookmarks: true,
 	createdAt: true,
 	editedAt: true,
 	author: {
@@ -163,6 +166,7 @@ export const CreatePostInputSchema = PostSchema.pick({
 		allowLikes: PostSchema.shape.allowLikes.optional(),
 		allowComments: PostSchema.shape.allowComments.optional(),
 		allowShares: PostSchema.shape.allowShares.optional(),
+		allowBookmarks: PostSchema.shape.allowBookmarks.optional(),
 		attachedBookSlug: BookSchema.shape.slug.optional(),
 	})
 	.extend({
@@ -212,6 +216,7 @@ export const UpdatePostInputSchema = PostSchema.pick({
 	allowLikes: true,
 	allowComments: true,
 	allowShares: true,
+	allowBookmarks: true,
 })
 	.partial({
 		content: true,
@@ -220,6 +225,7 @@ export const UpdatePostInputSchema = PostSchema.pick({
 		allowLikes: true,
 		allowComments: true,
 		allowShares: true,
+		allowBookmarks: true,
 	})
 	.extend({
 		/** Omit to leave unchanged; pass `null` to detach the book. */
@@ -270,6 +276,7 @@ export const getPostBySlugFields = {
 	allowLikes: true,
 	allowComments: true,
 	allowShares: true,
+	allowBookmarks: true,
 	createdAt: true,
 	updatedAt: true,
 	editedAt: true,

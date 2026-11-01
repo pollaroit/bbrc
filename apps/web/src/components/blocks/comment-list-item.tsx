@@ -6,12 +6,14 @@ import { contentPlainText } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Card, CardContent } from "@bbrc/ui/components/card";
 import { LoadingButton } from "@bbrc/ui/components/loading-button";
+import { Switch } from "@bbrc/ui/components/switch";
 import { useMutation } from "@tanstack/react-query";
 import { ImagePlus, Pencil, Trash2 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import { CommentBookmarkEngagement } from "@/components/blocks/comment-bookmark-engagement";
 import { CommentLikeEngagement } from "@/components/blocks/comment-like-engagement";
 import { FullWidthImagePreview } from "@/components/blocks/full-width-image-preview";
 import {
@@ -53,6 +55,8 @@ type CommentListItemProps = {
 	showThreadLink?: boolean;
 	/** Required on post detail for author edit/delete. */
 	postSlug?: string;
+	/** When the thread is on a post, pass whether that post allows bookmarks. */
+	postAllowBookmarks?: boolean;
 	bookSlug?: string;
 	feedbackContextSlug?: string;
 	canReply?: boolean;
@@ -151,6 +155,7 @@ function CommentEditForm({
 	feedbackSlug?: string;
 }) {
 	const [draft, setDraft] = useState(comment.content);
+	const [allowBookmarks, setAllowBookmarks] = useState(comment.allowBookmarks);
 	// Picture changes wait for Save; Cancel throws them away.
 	const [imageFile, setImageFile] = useState<File | null>(null);
 	const [removeImage, setRemoveImage] = useState(false);
@@ -164,6 +169,7 @@ function CommentEditForm({
 	);
 
 	const textChanged = draft !== comment.content;
+	const bookmarksChanged = allowBookmarks !== comment.allowBookmarks;
 	const keptImageUrl = removeImage ? null : comment.imageUrl;
 
 	const updateMutation = useMutation(
@@ -186,10 +192,11 @@ function CommentEditForm({
 		}
 
 		try {
-			if (textChanged) {
+			if (textChanged || bookmarksChanged) {
 				await updateMutation.mutateAsync({
 					slug: comment.slug,
-					content: draft,
+					...(textChanged ? { content: draft } : {}),
+					...(bookmarksChanged ? { allowBookmarks } : {}),
 				});
 			}
 		} catch {
@@ -261,6 +268,20 @@ function CommentEditForm({
 					onRemove={() => setRemoveImage(true)}
 				/>
 			) : null}
+			<div className="flex items-center justify-between gap-3 border border-border px-3 py-2">
+				<div className="min-w-0">
+					<p className="font-medium text-sm">Allow bookmarks</p>
+					<p className="text-muted-foreground text-xs">
+						Members can save this comment privately.
+					</p>
+				</div>
+				<Switch
+					checked={allowBookmarks}
+					disabled={busy}
+					onCheckedChange={setAllowBookmarks}
+					aria-label="Allow bookmarks on this comment"
+				/>
+			</div>
 			<div className="flex flex-wrap items-center gap-2">
 				<ToolButton
 					className="-ms-2"
@@ -300,6 +321,7 @@ function CommentListItemViewInner({
 	threadHref,
 	showThreadLink = false,
 	postSlug,
+	postAllowBookmarks = true,
 	bookSlug,
 	feedbackContextSlug,
 	canReply = false,
@@ -423,6 +445,13 @@ function CommentListItemViewInner({
 								initialLikedByMe={comment.likedByMe}
 								size="sm"
 							/>
+							<CommentBookmarkEngagement
+								commentSlug={comment.slug}
+								authorUsername={comment.author.username}
+								allowBookmarks={comment.allowBookmarks ?? true}
+								postAllowBookmarks={postAllowBookmarks}
+								size="sm"
+							/>
 							{commentShare ? (
 								<ResourceShareMenu
 									path={commentShare}
@@ -497,6 +526,13 @@ function CommentListItemViewInner({
 						commentSlug={comment.slug}
 						initialLikeCount={comment.likeCount}
 						initialLikedByMe={comment.likedByMe}
+						size={isCompact ? "sm" : "md"}
+					/>
+					<CommentBookmarkEngagement
+						commentSlug={comment.slug}
+						authorUsername={comment.author.username}
+						allowBookmarks={comment.allowBookmarks ?? true}
+						postAllowBookmarks={postAllowBookmarks}
 						size={isCompact ? "sm" : "md"}
 					/>
 					{commentShare ? (

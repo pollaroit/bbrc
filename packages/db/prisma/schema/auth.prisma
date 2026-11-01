@@ -52,6 +52,8 @@ model User {
   readingVisibility    Visibility        @default(public) @map("reading_visibility")
   /// Reading sessions, stats and rankings (`/users/[username]/reading`). Only me until the member opens it.
   readingActivityVisibility Visibility   @default(private) @map("reading_activity_visibility")
+  /// Saved posts and comments (`/users/[username]/bookmarks`). Only me until the member opens it.
+  bookmarksVisibility       Visibility   @default(private) @map("bookmarks_visibility")
   /// Friend requests are accepted at once (only for a public profile; a private profile switches it off).
   autoAcceptFriends    Boolean           @default(false) @map("auto_accept_friends")
   /// What a new post or a new shelf starts as (each can still be changed when it is written).
@@ -81,6 +83,7 @@ model User {
   xpEvents                XPEvent[]
   rpEvents                RPEvent[]
   likes                   Like[]
+  bookmarks               Bookmark[]
   comments                Comment[]
   posts                   Post[]
   bookRequests            BookRequest[]

@@ -99,6 +99,7 @@ const topCommentSelect = {
 	content: true,
 	imageUrl: true,
 	isSpoiler: true,
+	allowBookmarks: true,
 	createdAt: true,
 	postId: true,
 	author: {
@@ -252,6 +253,7 @@ async function loadTopCommentsByPostId(
 					content: row.content,
 					imageUrl: row.imageUrl,
 					isSpoiler: row.isSpoiler,
+					allowBookmarks: row.allowBookmarks,
 					createdAt: row.createdAt,
 					author: row.author,
 					likeCount: row._count.likes,
@@ -263,6 +265,7 @@ async function loadTopCommentsByPostId(
 								content: reply.content,
 								imageUrl: reply.imageUrl,
 								isSpoiler: reply.isSpoiler,
+								allowBookmarks: reply.allowBookmarks,
 								createdAt: reply.createdAt,
 								author: reply.author,
 								likeCount: reply._count.likes,
@@ -294,6 +297,7 @@ function mapPostListRow(
 		allowLikes: row.allowLikes,
 		allowComments: row.allowComments,
 		allowShares: row.allowShares,
+		allowBookmarks: row.allowBookmarks,
 		poll: polls.get(row.id) ?? null,
 		tierlist: tierlists.get(row.id) ?? null,
 		createdAt: row.createdAt,
@@ -339,6 +343,7 @@ async function mapPostDetailRow(
 		allowLikes: row.allowLikes,
 		allowComments: row.allowComments,
 		allowShares: row.allowShares,
+		allowBookmarks: row.allowBookmarks,
 		poll: polls.get(row.id) ?? null,
 		tierlist: tierlists.get(row.id) ?? null,
 		createdAt: row.createdAt,
@@ -435,6 +440,35 @@ async function hydratePostListPage(
 		items.map((item) => item.attachment),
 	);
 	return items;
+}
+
+export async function buildPostListItemsByIds(
+	postIds: string[],
+	viewer: Viewer,
+	db: Database,
+): Promise<Map<string, PostListItem>> {
+	if (postIds.length === 0) {
+		return new Map();
+	}
+
+	const rows = await db.post.findMany({
+		where: mergeWhereFragments<Prisma.PostWhereInput>(
+			{ id: { in: postIds } },
+			postVisibleWhere(viewer),
+		),
+		select: postListSelect,
+	});
+
+	const items = await hydratePostListPage(rows, viewer, db);
+	const map = new Map<string, PostListItem>();
+	for (let index = 0; index < rows.length; index++) {
+		const row = rows[index];
+		const item = items[index];
+		if (row && item) {
+			map.set(row.id, item);
+		}
+	}
+	return map;
 }
 
 function listPageMetadata(input: {
@@ -637,6 +671,7 @@ export async function createPost(
 				allowLikes: input.allowLikes ?? true,
 				allowComments: input.allowComments ?? true,
 				allowShares: input.allowShares ?? true,
+				allowBookmarks: input.allowBookmarks ?? true,
 				slug,
 				authorId: userId,
 				attachedBookId: null,
@@ -794,6 +829,9 @@ export async function updatePost(
 					: {}),
 				...(input.allowShares !== undefined
 					? { allowShares: input.allowShares }
+					: {}),
+				...(input.allowBookmarks !== undefined
+					? { allowBookmarks: input.allowBookmarks }
 					: {}),
 				...(contentChanged ? { editedAt: new Date() } : {}),
 				...(attachedBookId !== undefined

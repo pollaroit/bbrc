@@ -36,6 +36,7 @@ export const CommentListItemSchema = CommentSchema.pick({
 	content: true,
 	imageUrl: true,
 	isSpoiler: true,
+	allowBookmarks: true,
 	createdAt: true,
 	editedAt: true,
 	depth: true,
@@ -66,6 +67,7 @@ export const getCommentListFields = {
 	content: true,
 	imageUrl: true,
 	isSpoiler: true,
+	allowBookmarks: true,
 	createdAt: true,
 	editedAt: true,
 	depth: true,
@@ -168,8 +170,9 @@ export const UpdateCommentInputSchema = CommentSchema.pick({
 	slug: true,
 	content: true,
 	isSpoiler: true,
+	allowBookmarks: true,
 })
-	.partial({ content: true, isSpoiler: true })
+	.partial({ content: true, isSpoiler: true, allowBookmarks: true })
 	.required({ slug: true });
 
 export const UpdateCommentOutputSchema = CommentSchema.pick({
@@ -199,6 +202,7 @@ export const getCommentBySlugFields = {
 	content: true,
 	imageUrl: true,
 	isSpoiler: true,
+	allowBookmarks: true,
 	createdAt: true,
 	updatedAt: true,
 	editedAt: true,

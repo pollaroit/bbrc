@@ -1,0 +1,34 @@
+enum BookmarkResourceType {
+  post
+  comment
+
+  @@map("bookmark_resource_type")
+}
+
+model Bookmark {
+  /// @zod.uuid("Invalid UUID")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  resourceType BookmarkResourceType @map("resource_type")
+  /// Post or comment id (plain target; no FK so rows survive deletion).
+  /// @zod.uuid("Invalid resource id")
+  resourceId String @map("resource_id")
+
+  /// Snapshot of the target's `createdAt` when saved (for sorting the saved list).
+  resourceCreatedAt DateTime @map("resource_created_at")
+
+  /// Reserved for collections (PR later); no table or FK in v1.
+  /// @zod.uuid("Invalid collection id").nullish()
+  collectionId String? @map("collection_id")
+
+  /// @zod.uuid("Invalid user id")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, resourceType, resourceId])
+  @@index([userId, createdAt])
+  @@index([userId, resourceCreatedAt])
+  @@index([resourceType, resourceId])
+  @@map("bookmark")
+}

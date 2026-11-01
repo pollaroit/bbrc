@@ -12,6 +12,7 @@ type PostCommentsSectionProps = {
 	postSlug: string;
 	/** False when the author turned comments off: the thread stays readable, the form goes. */
 	allowComments?: boolean;
+	postAllowBookmarks?: boolean;
 };
 
 const SORTS = [
@@ -36,6 +37,7 @@ function CommentsListSkeleton() {
 export function PostCommentsSection({
 	postSlug,
 	allowComments = true,
+	postAllowBookmarks = true,
 }: PostCommentsSectionProps) {
 	const [replyingToSlug, setReplyingToSlug] = useState<string | null>(null);
 	const [sort, setSort] = useState<CommentSort>("createdAt");
@@ -134,6 +136,7 @@ export function PostCommentsSection({
 					<CommentThreadList
 						comments={comments}
 						postSlug={postSlug}
+						postAllowBookmarks={postAllowBookmarks}
 						replyingToSlug={replyingToSlug}
 						onReply={setReplyingToSlug}
 						onCancelReply={() => setReplyingToSlug(null)}

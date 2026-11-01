@@ -118,6 +118,7 @@ function mapCommentListRow(
 		content: row.content,
 		imageUrl: row.imageUrl,
 		isSpoiler: row.isSpoiler,
+		allowBookmarks: row.allowBookmarks,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		depth: row.depth,
@@ -138,6 +139,7 @@ function mapCommentDetailRow(
 		content: row.content,
 		imageUrl: row.imageUrl,
 		isSpoiler: row.isSpoiler,
+		allowBookmarks: row.allowBookmarks,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		depth: row.depth,
@@ -250,6 +252,75 @@ export async function getCommentList(
 		items: page.items.map((row) => mapCommentListRow(row, likedCommentIds)),
 		metadata: page.metadata,
 	};
+}
+
+export type CommentBookmarkContext = {
+	postSlug: string | null;
+	bookSlug: string | null;
+	feedbackSlug: string | null;
+	postAllowBookmarks: boolean;
+};
+
+export async function buildCommentListItemsByIds(
+	commentIds: string[],
+	viewer: Viewer,
+	db: Database,
+): Promise<Map<string, CommentListItem>> {
+	if (commentIds.length === 0) {
+		return new Map();
+	}
+
+	const rows = await db.comment.findMany({
+		where: mergeWhereFragments<Prisma.CommentWhereInput>(
+			{ id: { in: commentIds } },
+			threadCommentVisibleWhere(viewer),
+		),
+		select: commentListSelect,
+	});
+
+	const likedCommentIds = await loadLikedCommentIds(
+		rows.map((row) => row.id),
+		viewerUserId(viewer),
+		db,
+	);
+
+	const map = new Map<string, CommentListItem>();
+	for (const row of rows) {
+		map.set(row.id, mapCommentListRow(row, likedCommentIds));
+	}
+	return map;
+}
+
+export async function loadCommentBookmarkContexts(
+	commentIds: string[],
+	db: Database,
+): Promise<Map<string, CommentBookmarkContext>> {
+	if (commentIds.length === 0) {
+		return new Map();
+	}
+
+	const rows = await db.comment.findMany({
+		where: { id: { in: commentIds } },
+		select: {
+			id: true,
+			post: { select: { slug: true, allowBookmarks: true } },
+			feedback: {
+				select: { slug: true, book: { select: { slug: true } } },
+			},
+		},
+	});
+
+	return new Map(
+		rows.map((row) => [
+			row.id,
+			{
+				postSlug: row.post?.slug ?? null,
+				bookSlug: row.feedback?.book.slug ?? null,
+				feedbackSlug: row.feedback?.slug ?? null,
+				postAllowBookmarks: row.post?.allowBookmarks ?? true,
+			},
+		]),
+	);
 }
 
 export async function getCommentBySlug(
@@ -539,6 +610,9 @@ export async function updateComment(
 				...(normalizedContent != null ? { content: normalizedContent } : {}),
 				...(input.isSpoiler !== undefined
 					? { isSpoiler: input.isSpoiler }
+					: {}),
+				...(input.allowBookmarks !== undefined
+					? { allowBookmarks: input.allowBookmarks }
 					: {}),
 				...(contentChanged ? { editedAt: new Date() } : {}),
 			},

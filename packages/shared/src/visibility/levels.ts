@@ -75,6 +75,7 @@ export const PROFILE_SECTIONS = [
 	"goals",
 	"reading",
 	"readingActivity",
+	"bookmarks",
 	"wishlist",
 ] as const;
 export type ProfileSection = (typeof PROFILE_SECTIONS)[number];

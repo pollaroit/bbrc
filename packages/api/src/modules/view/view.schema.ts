@@ -136,6 +136,7 @@ export const InsightsOutputSchema = zod.object({
 			likes: Count,
 			comments: Count,
 			shares: Count,
+			bookmarks: Count,
 			/** Likes, comments and shares per 100 opens; null with no opens. */
 			rate: zod.number().nullable(),
 		})
