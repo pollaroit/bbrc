@@ -1,6 +1,7 @@
 import type { Prisma } from "@bbrc/db";
 import {
 	canView,
+	isSuperAdmin,
 	LEVEL_REACH,
 	PROFILE_VISIBILITIES,
 	type ProfileDetailField,
@@ -122,8 +123,8 @@ export function viewerUserId(viewer: Viewer): string | null {
 	return viewer.kind === "member" ? viewer.userId : null;
 }
 
-export function viewerIsAdmin(viewer: Viewer): boolean {
-	return viewer.kind === "member" && viewer.isAdmin;
+export function viewerIsSuperAdmin(viewer: Viewer): boolean {
+	return viewer.kind === "member" && isSuperAdmin(viewer);
 }
 
 /* ---------------------------------------------------------------- where */
@@ -163,7 +164,7 @@ export function memberVisibleWhere(
 	viewer: Viewer,
 	spec: MemberWhereSpec = {},
 ): Clause {
-	if (viewer.kind === "member" && viewer.isAdmin) return {};
+	if (viewer.kind === "member" && isSuperAdmin(viewer)) return {};
 
 	const part = (relation: ViewerRelation, ids: Clause): Clause => {
 		const levels = levelsFor(relation);

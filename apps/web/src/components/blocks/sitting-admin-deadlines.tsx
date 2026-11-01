@@ -4,6 +4,7 @@ import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.s
 import {
 	calculateSittingReadingDeadline,
 	clampSittingDeadlineToClubEnd,
+	isSuperAdmin,
 } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Input } from "@bbrc/ui/components/input";
@@ -137,7 +138,7 @@ export function SittingDeadlinesRow({ sitting }: SittingAdminDeadlinesProps) {
 		savePagesMutation.mutate({ slug: bookSlug, pages });
 	}
 
-	if (isPending || !session?.user.isAdmin) {
+	if (isPending || !isSuperAdmin(session?.user)) {
 		return null;
 	}
 

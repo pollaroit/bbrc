@@ -51,17 +51,12 @@ export function createAuth(env: AuthConfig, database: Database) {
 		},
 		user: {
 			additionalFields: {
-				isAdmin: {
-					type: "boolean",
-					returned: true,
-					defaultValue: false,
-					required: true,
-					input: false,
-				},
-				status: {
+				// A plain string here: the auth library does not know our enum. `roleOf` in
+				// `@bbrc/shared` turns anything unexpected into "user".
+				role: {
 					type: "string",
 					returned: true,
-					defaultValue: "active",
+					defaultValue: "user",
 					required: true,
 					input: false,
 				},

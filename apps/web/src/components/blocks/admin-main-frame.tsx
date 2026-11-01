@@ -5,7 +5,7 @@ import { isAdminAuthorScreen } from "@/lib/admin-author-screens";
 
 export function AdminMainFrame({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
-	const isAdmin =
+	const inAdminArea =
 		pathname.startsWith("/admin") || isAdminAuthorScreen(pathname);
 	const isReels = pathname.startsWith("/reels");
 
@@ -13,7 +13,7 @@ export function AdminMainFrame({ children }: { children: React.ReactNode }) {
 		return <>{children}</>;
 	}
 
-	if (isAdmin) {
+	if (inAdminArea) {
 		return <div className="w-full">{children}</div>;
 	}
 

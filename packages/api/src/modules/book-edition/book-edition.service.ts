@@ -1,10 +1,12 @@
 import type { Database } from "@bbrc/db";
 import {
 	isbnPair,
+	isSuperAdmin,
 	isValidIsbn,
 	newMemberEditionPublicId,
 	normalizeIsbn,
 	openLibraryEditionKey,
+	type RoleActor,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import {
@@ -22,7 +24,7 @@ import {
 } from "./book-edition.schema";
 import { assertOwnEditionCoverUrl } from "./book-edition-cover";
 
-type Actor = { id: string; isAdmin: boolean };
+type Actor = RoleActor;
 
 const editionSelect = {
 	id: true,
@@ -103,8 +105,9 @@ function mapEdition(row: EditionRow, actor: Actor | null): BookEditionItem {
 			? { ...row.createdBy, image: row.createdBy.image ?? null }
 			: null,
 		readers,
-		canEdit: actor != null && (actor.isAdmin || isCreator),
-		canDelete: actor != null && (actor.isAdmin || (isCreator && readers === 0)),
+		canEdit: actor != null && (isSuperAdmin(actor) || isCreator),
+		canDelete:
+			actor != null && (isSuperAdmin(actor) || (isCreator && readers === 0)),
 	};
 }
 
@@ -188,7 +191,7 @@ export async function createBookEdition(
 	input: Fields & { bookSlug: string; language: string; pages: number },
 ) {
 	const book = await loadBook(db, input.bookSlug);
-	if ((await addsLeftToday(db, actor.id)) <= 0 && !actor.isAdmin) {
+	if ((await addsLeftToday(db, actor.id)) <= 0 && !isSuperAdmin(actor)) {
 		throw new ORPCError("TOO_MANY_REQUESTS", {
 			message: `You can add ${MAX_EDITIONS_PER_MEMBER_PER_DAY} editions a day. Try again tomorrow.`,
 		});
@@ -251,7 +254,7 @@ export async function updateBookEdition(
 	input: Fields & { id: string },
 ) {
 	const existing = await loadEdition(db, input.id);
-	if (!actor.isAdmin && existing.createdById !== actor.id) {
+	if (!isSuperAdmin(actor) && existing.createdById !== actor.id) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Only the member who added it or an admin can edit it.",
 		});
@@ -283,7 +286,7 @@ export async function updateBookEdition(
 		data.coverUrl = input.coverUrl;
 	}
 	// A member's change to a checked edition needs checking again.
-	if (existing.status === "verified" && !actor.isAdmin) {
+	if (existing.status === "verified" && !isSuperAdmin(actor)) {
 		data.status = "member";
 		data.verifiedAt = null;
 		data.verifiedById = null;
@@ -305,13 +308,13 @@ export async function deleteBookEdition(
 ) {
 	const existing = await loadEdition(db, id);
 	const isCreator = existing.createdById === actor.id;
-	if (!actor.isAdmin && !isCreator) {
+	if (!isSuperAdmin(actor) && !isCreator) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Only the member who added it or an admin can delete it.",
 		});
 	}
 	const readers = existing._count.reads + existing._count.readings;
-	if (!actor.isAdmin && readers > 0) {
+	if (!isSuperAdmin(actor) && readers > 0) {
 		throw new ORPCError("FORBIDDEN", {
 			message:
 				"Members are using this edition, so only an admin can delete it.",

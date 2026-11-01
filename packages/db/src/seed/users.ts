@@ -1,104 +1,53 @@
 import { faker } from "@faker-js/faker";
-import type { UserStatus } from "../../prisma/generated/client.js";
+import type { Role } from "../../prisma/generated/client.js";
 import type { Database } from "../index.js";
 
 export type SeedUserSpec = {
 	username: string;
 	email: string;
-	status: UserStatus;
-	isAdmin: boolean;
+	role: Role;
 };
 
 export const SEED_USER_SPECS: SeedUserSpec[] = [
 	{
 		username: "admin_1",
 		email: "admin_1@bbrc.test",
-		status: "active",
-		isAdmin: true,
+		role: "super_admin",
 	},
 	{
 		username: "admin_2",
 		email: "admin_2@bbrc.test",
-		status: "active",
-		isAdmin: true,
+		role: "admin",
 	},
 	{
-		username: "admin_warned",
-		email: "admin_warned@bbrc.test",
-		status: "warned",
-		isAdmin: true,
+		username: "moderator_1",
+		email: "moderator_1@bbrc.test",
+		role: "moderator",
 	},
 	{
-		username: "active_1",
-		email: "active_1@bbrc.test",
-		status: "active",
-		isAdmin: false,
+		username: "member_1",
+		email: "member_1@bbrc.test",
+		role: "user",
 	},
 	{
-		username: "active_2",
-		email: "active_2@bbrc.test",
-		status: "active",
-		isAdmin: false,
+		username: "member_2",
+		email: "member_2@bbrc.test",
+		role: "user",
 	},
 	{
-		username: "active_3",
-		email: "active_3@bbrc.test",
-		status: "active",
-		isAdmin: false,
+		username: "member_3",
+		email: "member_3@bbrc.test",
+		role: "user",
 	},
 	{
-		username: "active_4",
-		email: "active_4@bbrc.test",
-		status: "active",
-		isAdmin: false,
+		username: "member_4",
+		email: "member_4@bbrc.test",
+		role: "user",
 	},
 	{
-		username: "active_5",
-		email: "active_5@bbrc.test",
-		status: "active",
-		isAdmin: false,
-	},
-	{
-		username: "warned_1",
-		email: "warned_1@bbrc.test",
-		status: "warned",
-		isAdmin: false,
-	},
-	{
-		username: "warned_2",
-		email: "warned_2@bbrc.test",
-		status: "warned",
-		isAdmin: false,
-	},
-	{
-		username: "warned_3",
-		email: "warned_3@bbrc.test",
-		status: "warned",
-		isAdmin: false,
-	},
-	{
-		username: "banned_1",
-		email: "banned_1@bbrc.test",
-		status: "banned",
-		isAdmin: false,
-	},
-	{
-		username: "banned_2",
-		email: "banned_2@bbrc.test",
-		status: "banned",
-		isAdmin: false,
-	},
-	{
-		username: "banned_3",
-		email: "banned_3@bbrc.test",
-		status: "banned",
-		isAdmin: false,
-	},
-	{
-		username: "banned_4",
-		email: "banned_4@bbrc.test",
-		status: "banned",
-		isAdmin: false,
+		username: "member_5",
+		email: "member_5@bbrc.test",
+		role: "user",
 	},
 ];
 
@@ -116,8 +65,7 @@ export async function seedUsers(
 				username: spec.username,
 				email: spec.email,
 				emailVerified: true,
-				isAdmin: spec.isAdmin,
-				status: spec.status,
+				role: spec.role,
 				xp: 0,
 				rp: 0,
 				createdAt,
@@ -140,10 +88,4 @@ export async function seedUsers(
 	}
 
 	return users;
-}
-
-export function eligibleParticipants(
-	users: Awaited<ReturnType<typeof seedUsers>>,
-): typeof users {
-	return users.filter((user) => user.status !== "banned");
 }

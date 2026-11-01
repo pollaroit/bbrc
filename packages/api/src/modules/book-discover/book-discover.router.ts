@@ -1,4 +1,4 @@
-import { notBannedProcedure } from "../../procedures";
+import { protectedProcedure } from "../../procedures";
 import {
 	DiscoverLaneSchema,
 	GetDiscoverLaneInputSchema,
@@ -7,17 +7,17 @@ import {
 import { getDiscoverLane, listLanesFor } from "./book-discover.service";
 
 const viewerOf = (context: {
-	session: { user: { id: string; isAdmin?: boolean | null } };
+	session: { user: { id: string; role?: string | null } };
 }) => ({
 	id: context.session.user.id,
-	isAdmin: Boolean(context.session.user.isAdmin),
+	role: context.session.user.role,
 });
 
 export const bookDiscoverRouter = {
-	lanes: notBannedProcedure
+	lanes: protectedProcedure
 		.output(ListDiscoverLanesOutputSchema)
 		.handler(({ context }) => ({ lanes: listLanesFor(viewerOf(context)) })),
-	lane: notBannedProcedure
+	lane: protectedProcedure
 		.input(GetDiscoverLaneInputSchema)
 		.output(DiscoverLaneSchema)
 		.handler(({ input, context }) =>

@@ -37,9 +37,7 @@ const displayName = (user: { name: string | null; username: string }) =>
 	user.name?.trim() || user.username;
 
 /** Members who may show up in the picker and in rendered mentions. */
-const visibleMemberWhere = {
-	status: { not: "banned" as const },
-};
+const visibleMemberWhere = {};
 
 /**
  * Whose settings decide who may see the content a mention sits in: a post's or a
@@ -74,7 +72,7 @@ async function loadMentionAudience(
 		}),
 		db.user.findMany({
 			where: { id: { in: candidateIds } },
-			select: { id: true, isAdmin: true },
+			select: { id: true, role: true },
 		}),
 		db.friendship.findMany({
 			where: {
@@ -107,7 +105,7 @@ async function loadMentionAudience(
 	for (const candidate of candidates) {
 		const viewer = memberViewer({
 			userId: candidate.id,
-			isAdmin: candidate.isAdmin === true,
+			role: candidate.role,
 			friendIds: friendIds.has(candidate.id) ? [audience.ownerId] : [],
 			blockedIds: blockedIds.has(candidate.id) ? involved : [],
 		});
@@ -182,7 +180,6 @@ export async function prepareContentMentions(
 			id: true,
 			username: true,
 			name: true,
-			status: true,
 			allowMentions: true,
 		},
 	});
@@ -204,7 +201,6 @@ export async function prepareContentMentions(
 			: byUsername.get(node.username.toLowerCase());
 		if (!user) return null;
 		if (user.id === input.authorId) return null;
-		if (user.status === "banned") return null;
 		// Someone who cannot see the content is not mentioned (and not notified).
 		if (!mayRead.has(user.id)) return null;
 		const known = kept.get(user.id);

@@ -17,7 +17,7 @@ import {
 	offsetMetadata,
 	parseOffsetCursor,
 } from "./author-data";
-import { actorOf, resolveAuthor } from "./author-resolve";
+import { resolveAuthor } from "./author-resolve";
 
 type FollowerRow = {
 	userId: string;
@@ -74,14 +74,10 @@ export async function getAuthorFollowers(
 	db: Database,
 	viewer: Viewer,
 ): Promise<AuthorFollowersOutput> {
-	const actor = actorOf(viewer);
 	const author = await resolveAuthor(db, input.slug, viewer);
-	const isAdmin = Boolean(actor?.isAdmin);
 
 	const followed = dayRangeWhere(input.followedFrom, input.followedTo);
 	const memberWhere = mergeWhereFragments<Prisma.UserWhereInput>(
-		// Banned members are only ever listed for administrators.
-		isAdmin ? {} : { status: { not: "banned" } },
 		input.search?.trim() ? memberSearchWhere(input.search.trim()) : {},
 		input.location
 			? {

@@ -25,7 +25,6 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { UserPanel } from "@/components/blocks/user-panel";
-import { UserStatusBadge } from "@/components/blocks/user-status-badge";
 import { formatDateTime } from "@/lib/format-datetime";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -49,10 +48,7 @@ function useEligibleUsersToAdd(activeUserIds: Set<string>) {
 	);
 
 	const addable = useMemo(
-		() =>
-			users.filter(
-				(user) => user.status !== "banned" && !activeUserIds.has(user.id),
-			),
+		() => users.filter((user) => !activeUserIds.has(user.id)),
 		[users, activeUserIds],
 	);
 
@@ -245,7 +241,6 @@ function AddParticipantSheet({
 									/>
 									<span className="flex min-w-0 flex-1 flex-col gap-1">
 										<UserPanel user={user} className="min-w-0" />
-										<UserStatusBadge status={user.status} />
 									</span>
 								</label>
 							))}

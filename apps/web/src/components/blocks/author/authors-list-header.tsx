@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { ShieldCheck, UserPlus } from "lucide-react";
 import type { Route } from "next";
@@ -9,7 +10,7 @@ import { authClient } from "@/lib/auth-client";
 
 export function AuthorsListHeader() {
 	const { data: session } = authClient.useSession();
-	const isAdmin = session?.user.isAdmin === true;
+	const superAdmin = isSuperAdmin(session?.user);
 
 	return (
 		<section className="flex flex-col border border-border bg-card">
@@ -23,7 +24,7 @@ export function AuthorsListHeader() {
 						new book of theirs is added.
 					</p>
 				</div>
-				{isAdmin ? (
+				{superAdmin ? (
 					<div className="flex flex-wrap gap-2 lg:shrink-0">
 						<Button
 							render={<Link href={"/authors/new" as Route} />}

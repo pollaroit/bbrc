@@ -1,4 +1,4 @@
-import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { protectedProcedure, publicProcedure } from "../../procedures";
 import { loadViewer } from "../visibility/viewer";
 import {
 	EditionCompareInputSchema,
@@ -38,7 +38,7 @@ export const editionRouter = {
 				input.key,
 			),
 		),
-	viewer: notBannedProcedure
+	viewer: protectedProcedure
 		.input(EditionKeyInputSchema)
 		.output(EditionViewerOutputSchema)
 		.handler(({ input, context }) =>
@@ -46,7 +46,7 @@ export const editionRouter = {
 				context.db,
 				{
 					id: context.session.user.id,
-					isAdmin: Boolean(context.session.user.isAdmin),
+					role: context.session.user.role,
 				},
 				input.bookSlug,
 				input.key,

@@ -3,6 +3,7 @@
 import { adminUserSortableFields } from "@bbrc/api/modules/admin/admin-user.listing";
 import { Field, FieldLabel } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
+import { roleFilterOptions } from "@/components/blocks/role-filter-options";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
 import { ListingRangeFields } from "@/components/listing/listing-range-fields";
@@ -13,12 +14,7 @@ import {
 	adminUserSortByLabels,
 	useAdminUsersListingSearchParams,
 } from "@/lib/listing/admin-users-listing";
-import {
-	type UserListingStatus,
-	userRangeByLabels,
-	userStatuses,
-	userStatusFilterLabels,
-} from "@/lib/listing/users-listing";
+import { userRangeByLabels } from "@/lib/listing/users-listing";
 import { cn } from "@/lib/utils";
 
 function parseOptionalInt(value: string): number | null {
@@ -34,8 +30,7 @@ function countAdminSheetFilters(
 	params: ReturnType<typeof useAdminUsersListingSearchParams>[0],
 ) {
 	let count = 0;
-	if (params.statuses?.length) count += 1;
-	if (params.isAdmin != null) count += 1;
+	if (params.roles?.length) count += 1;
 	if (params.rangeMin != null || params.rangeMax != null) count += 1;
 	if (
 		params.minXp != null ||
@@ -95,18 +90,6 @@ export function AdminUsersToolbar({
 	const sheetFilterCount = countAdminSheetFilters(params);
 	const resetPage = variant === "list" ? { page: 1 as const } : {};
 
-	const toggleStatus = (status: UserListingStatus, checked: boolean) => {
-		const current = params.statuses ?? [];
-		const next = checked
-			? [...new Set([...current, status])]
-			: current.filter((value) => value !== status);
-
-		void setParams({
-			statuses: next.length > 0 ? next : null,
-			...resetPage,
-		});
-	};
-
 	return (
 		<div
 			className={cn(
@@ -152,7 +135,6 @@ export function AdminUsersToolbar({
 							setParams={setParams}
 							resetPage={resetPage}
 							sheetFilterCount={sheetFilterCount}
-							toggleStatus={toggleStatus}
 						/>
 					</OverviewFiltersPin>
 				) : (
@@ -161,7 +143,6 @@ export function AdminUsersToolbar({
 						setParams={setParams}
 						resetPage={resetPage}
 						sheetFilterCount={sheetFilterCount}
-						toggleStatus={toggleStatus}
 					/>
 				)}
 			</div>
@@ -174,23 +155,20 @@ function MemberFiltersSheet({
 	setParams,
 	resetPage,
 	sheetFilterCount,
-	toggleStatus,
 }: {
 	params: ReturnType<typeof useAdminUsersListingSearchParams>[0];
 	setParams: ReturnType<typeof useAdminUsersListingSearchParams>[1];
 	resetPage: { page?: 1 };
 	sheetFilterCount: number;
-	toggleStatus: (status: UserListingStatus, checked: boolean) => void;
 }) {
 	return (
 		<ListingFiltersSheet
 			title="Member filters"
-			description="Filter by role, status, join date, read count, or minimum activity."
+			description="Filter by role, join date, read count, or minimum activity."
 			activeFilterCount={sheetFilterCount}
 			onClear={() => {
 				void setParams({
-					statuses: null,
-					isAdmin: null,
+					roles: null,
 					rangeBy: null,
 					rangeMin: null,
 					rangeMax: null,
@@ -213,32 +191,12 @@ function MemberFiltersSheet({
 			}}
 		>
 			<ListingCheckboxList
-				legend="Status"
-				options={userStatuses.map((status) => ({
-					id: status,
-					label: userStatusFilterLabels[status],
-					checked: params.statuses?.includes(status) ?? false,
-					onCheckedChange: (checked) => {
-						toggleStatus(status, checked);
-					},
-				}))}
-			/>
-
-			<ListingCheckboxList
 				legend="Role"
-				options={[
-					{
-						id: "admin",
-						label: "Administrators only",
-						checked: params.isAdmin === true,
-						onCheckedChange: (checked) => {
-							void setParams({
-								isAdmin: checked ? true : null,
-								...resetPage,
-							});
-						},
-					},
-				]}
+				options={roleFilterOptions({
+					selected: params.roles,
+					idPrefix: "admin-user-role",
+					onChange: (roles) => void setParams({ roles, ...resetPage }),
+				})}
 			/>
 
 			<ListingRangeFields

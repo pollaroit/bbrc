@@ -27,7 +27,12 @@ import {
 	BOOK_EDITION_LANGUAGES,
 	MAX_EDITIONS_PER_MEMBER_PER_DAY,
 } from "@bbrc/api/modules/book-edition/book-edition.schema";
-import { isbnPair, isValidIsbn, normalizeIsbn } from "@bbrc/shared";
+import {
+	isbnPair,
+	isSuperAdmin,
+	isValidIsbn,
+	normalizeIsbn,
+} from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
@@ -206,7 +211,7 @@ export function AddEditionDialog({
 	const isMac = useIsMac();
 	const hasKeyboard = useHasKeyboard();
 	const { data: session } = authClient.useSession();
-	const isAdmin = session?.user.isAdmin === true;
+	const superAdmin = isSuperAdmin(session?.user);
 
 	const initial = useMemo(
 		() => (edition ? fromEdition(edition) : EMPTY),
@@ -274,7 +279,7 @@ export function AddEditionDialog({
 		enabled: open,
 		staleTime: 30_000,
 	});
-	const addsLeft = isAdmin ? null : (listQuery.data?.addsLeftToday ?? null);
+	const addsLeft = superAdmin ? null : (listQuery.data?.addsLeftToday ?? null);
 	const outOfAdds = !editing && addsLeft === 0;
 
 	// The same ISBN may already be on the list: say so before saving.
@@ -470,7 +475,7 @@ export function AddEditionDialog({
 		coverUrl: form.coverUrl,
 		uploading,
 		status:
-			editing && edition?.status === "verified" && isAdmin
+			editing && edition?.status === "verified" && superAdmin
 				? "verified"
 				: "member",
 		addedBy: editing
@@ -498,7 +503,7 @@ export function AddEditionDialog({
 					: "neutral";
 
 	const warnsVerifiedReset =
-		editing && edition?.status === "verified" && !isAdmin;
+		editing && edition?.status === "verified" && !superAdmin;
 
 	return (
 		<>

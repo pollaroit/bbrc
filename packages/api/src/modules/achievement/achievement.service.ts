@@ -18,7 +18,7 @@ import {
 	assertMayViewMember,
 	mayViewProfile,
 	memberAccessSelect,
-	viewerIsAdmin,
+	viewerIsSuperAdmin,
 	viewerUserId,
 } from "../user/member-access";
 import type {
@@ -141,7 +141,6 @@ export async function sweepAchievements(
 	db: Database,
 ): Promise<{ members: number; awarded: number }> {
 	const users = await db.user.findMany({
-		where: { status: { not: "banned" } },
 		select: { id: true },
 		orderBy: { createdAt: "asc" },
 	});
@@ -324,7 +323,7 @@ export async function listAchievementEarners(
 	if (!definition) {
 		throw new ORPCError("NOT_FOUND", { message: "Achievement not found" });
 	}
-	if (definition.isHidden && !viewerIsAdmin(viewer)) {
+	if (definition.isHidden && !viewerIsSuperAdmin(viewer)) {
 		const viewerId = viewerUserId(viewer);
 		const mineState = viewerId ? await viewerState(db, viewerId) : null;
 		if ((mineState?.get(definition.key)?.tier ?? 0) === 0) {
@@ -404,7 +403,7 @@ export async function getAchievementBySlug(
 	if (
 		definition.isHidden &&
 		(mine?.tier ?? 0) === 0 &&
-		!viewerIsAdmin(viewer)
+		!viewerIsSuperAdmin(viewer)
 	) {
 		throw new ORPCError("NOT_FOUND", { message: "Achievement not found" });
 	}

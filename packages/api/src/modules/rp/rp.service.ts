@@ -7,7 +7,7 @@ import {
 	buildRunningBalanceLookup,
 } from "../points/points-history";
 import type { ParticipationProgress } from "../sitting/participation-progress";
-import { progressAffectsUserStatus } from "../sitting/participation-progress";
+import { progressEarnsPoints } from "../sitting/participation-progress";
 import { assertMayViewMember, memberAccessSelect } from "../user/member-access";
 import {
 	type ApplyRpForFinishedSittingInput,
@@ -80,7 +80,7 @@ export async function applyRpForFinishedSitting(
 	const rpDeltaByUserId = new Map<string, number>();
 
 	for (const participant of rows) {
-		if (!progressAffectsUserStatus(participant.progress)) {
+		if (!progressEarnsPoints(participant.progress)) {
 			continue;
 		}
 

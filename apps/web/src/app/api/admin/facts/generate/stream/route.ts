@@ -1,5 +1,6 @@
 import { FactCategorySchema } from "@bbrc/api/modules/admin/admin-fact.schema";
 import { streamAdminFactDrafts } from "@bbrc/api/modules/admin/admin-fact.service";
+import { isSuperAdmin } from "@bbrc/shared";
 import type { NextRequest } from "next/server";
 import { auth } from "@/services";
 
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
 		headers: request.headers,
 	});
 
-	if (!session?.user.isAdmin) {
+	if (!isSuperAdmin(session?.user)) {
 		return new Response("Unauthorized", { status: 401 });
 	}
 

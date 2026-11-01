@@ -1,4 +1,4 @@
-import { notBannedProcedure } from "../../procedures";
+import { protectedProcedure } from "../../procedures";
 import { loadViewer } from "../visibility/viewer";
 import {
 	CompareBooksInputSchema,
@@ -22,7 +22,7 @@ import { getCompareExtras } from "./user-compare-extras.service";
 
 /** Compare the reading of two members. See the schema file for the access rules and outputs. */
 export const userCompareRouter = {
-	compare: notBannedProcedure
+	compare: protectedProcedure
 		.input(CompareInputSchema)
 		.output(CompareOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -33,7 +33,7 @@ export const userCompareRouter = {
 			),
 		),
 
-	books: notBannedProcedure
+	books: protectedProcedure
 		.input(CompareBooksInputSchema)
 		.output(CompareBooksOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -44,7 +44,7 @@ export const userCompareRouter = {
 			),
 		),
 
-	extras: notBannedProcedure
+	extras: protectedProcedure
 		.input(CompareExtrasInputSchema)
 		.output(CompareExtrasOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -55,7 +55,7 @@ export const userCompareRouter = {
 			),
 		),
 
-	searchMembers: notBannedProcedure
+	searchMembers: protectedProcedure
 		.input(CompareSearchMembersInputSchema)
 		.output(CompareSearchMembersOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -66,13 +66,13 @@ export const userCompareRouter = {
 			),
 		),
 
-	getPreferences: notBannedProcedure
+	getPreferences: protectedProcedure
 		.output(ComparePreferencesSchema)
 		.handler(({ context }) =>
 			getComparePreferences(context.db, context.session.user.id),
 		),
 
-	setPreferences: notBannedProcedure
+	setPreferences: protectedProcedure
 		.input(ComparePreferencesSchema)
 		.output(ComparePreferencesSchema)
 		.handler(({ input, context }) =>

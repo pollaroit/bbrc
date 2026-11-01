@@ -73,22 +73,25 @@ function row(f: Fixture): Row {
 
 const viewers: { name: string; viewer: Viewer }[] = [
 	{ name: "anonymous", viewer: ANONYMOUS_VIEWER },
-	{ name: "stranger", viewer: memberViewer({ userId: "v", isAdmin: false }) },
+	{ name: "stranger", viewer: memberViewer({ userId: "v", role: "user" }) },
 	{
 		name: "friend",
-		viewer: memberViewer({ userId: "v", isAdmin: false, friendIds: [OWNER] }),
+		viewer: memberViewer({ userId: "v", role: "user", friendIds: [OWNER] }),
 	},
 	{
 		name: "blocked",
 		viewer: memberViewer({
 			userId: "v",
-			isAdmin: false,
+			role: "user",
 			friendIds: [OWNER],
 			blockedIds: [OWNER],
 		}),
 	},
-	{ name: "owner", viewer: memberViewer({ userId: OWNER, isAdmin: false }) },
-	{ name: "admin", viewer: memberViewer({ userId: "a", isAdmin: true }) },
+	{ name: "owner", viewer: memberViewer({ userId: OWNER, role: "user" }) },
+	{
+		name: "super admin",
+		viewer: memberViewer({ userId: "a", role: "super_admin" }),
+	},
 ];
 
 describe("visibleWhere agrees with canView over the whole matrix", () => {
@@ -117,7 +120,7 @@ describe("visibleWhere agrees with canView over the whole matrix", () => {
 	}
 
 	test("public space ignores the owner's profile level", () => {
-		const stranger = memberViewer({ userId: "v", isAdmin: false });
+		const stranger = memberViewer({ userId: "v", role: "user" });
 		const where = visibleWhere(stranger, {
 			ownerIdField: "authorId",
 			ownerRelation: "author",
@@ -134,7 +137,7 @@ describe("visibleWhere agrees with canView over the whole matrix", () => {
 	test("public space still hides a blocked author", () => {
 		const blocked = memberViewer({
 			userId: "v",
-			isAdmin: false,
+			role: "user",
 			blockedIds: [OWNER],
 		});
 		const where = visibleWhere(blocked, {
@@ -151,7 +154,7 @@ describe("visibleWhere agrees with canView over the whole matrix", () => {
 	});
 
 	test("an item-level-only resource (no profile, no section) follows its own level", () => {
-		const stranger = memberViewer({ userId: "v", isAdmin: false });
+		const stranger = memberViewer({ userId: "v", role: "user" });
 		const where = visibleWhere(stranger, {
 			ownerIdField: "authorId",
 			ownerRelation: "author",

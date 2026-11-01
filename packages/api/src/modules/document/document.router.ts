@@ -1,8 +1,10 @@
 import {
-	adminProcedure,
-	notBannedProcedure,
+	protectedProcedure,
 	publicProcedure,
+	superAdminProcedure,
 } from "../../procedures";
+import { audited } from "../audit/audit-middleware";
+import { documentBefore, namedTarget } from "../audit/audit-targets";
 import {
 	ApproveDocumentInputSchema,
 	ApproveDocumentOutputSchema,
@@ -37,7 +39,7 @@ export const documentRouter = {
 		.handler(async ({ input, context }) =>
 			listApprovedDocumentsByBook(input.bookSlug, context.db),
 		),
-	getForEdit: notBannedProcedure
+	getForEdit: protectedProcedure
 		.input(GetDocumentForEditInputSchema)
 		.output(GetDocumentForEditOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -48,34 +50,49 @@ export const documentRouter = {
 				context.db,
 			),
 		),
-	update: notBannedProcedure
+	update: protectedProcedure
 		.input(UpdateDocumentInputSchema)
 		.output(UpdateDocumentOutputSchema)
 		.handler(async ({ input, context }) =>
 			updateDocumentMetadata(input, context.session, context.db, context),
 		),
-	delete: notBannedProcedure
+	delete: protectedProcedure
 		.input(DeleteDocumentInputSchema)
 		.output(DeleteDocumentOutputSchema)
 		.handler(async ({ input, context }) =>
 			deleteDocument(input, context.session, context.db, context),
 		),
-	listPending: adminProcedure
+	listPending: superAdminProcedure
 		.output(ListPendingDocumentsOutputSchema)
 		.handler(async ({ context }) => listPendingDocuments(context.db)),
-	listMine: notBannedProcedure
+	listMine: protectedProcedure
 		.output(ListMyDocumentsOutputSchema)
 		.handler(async ({ context }) =>
 			listMyDocuments(context.session.user.id, context.db),
 		),
-	approve: adminProcedure
+	approve: superAdminProcedure
 		.input(ApproveDocumentInputSchema)
+		.use(
+			audited("document.approved", {
+				before: ({ input, db }) => documentBefore(db, input.id),
+				target: ({ before, input }) =>
+					namedTarget("document", before, input.id),
+			}),
+		)
 		.output(ApproveDocumentOutputSchema)
 		.handler(async ({ input, context }) =>
 			approveDocument(input, context.db, context),
 		),
-	reject: adminProcedure
+	reject: superAdminProcedure
 		.input(RejectDocumentInputSchema)
+		.use(
+			audited("document.rejected", {
+				before: ({ input, db }) => documentBefore(db, input.id),
+				target: ({ before, input }) =>
+					namedTarget("document", before, input.id),
+				metadata: ({ input }) => ({ reason: input.rejectionReason }),
+			}),
+		)
 		.output(RejectDocumentOutputSchema)
 		.handler(async ({ input, context }) =>
 			rejectDocument(input, context.db, context),

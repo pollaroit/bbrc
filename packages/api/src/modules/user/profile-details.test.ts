@@ -19,10 +19,10 @@ const full: UserProfileOutput = {
 };
 const owner = { id: "owner", profileVisibility: "public" as const };
 const privateOwner = { id: "owner", profileVisibility: "private" as const };
-const stranger = memberViewer({ userId: "me", isAdmin: false });
+const stranger = memberViewer({ userId: "me", role: "user" });
 const friend = memberViewer({
 	userId: "me",
-	isAdmin: false,
+	role: "user",
 	friendIds: ["owner"],
 });
 
@@ -58,8 +58,8 @@ describe("gateProfileDetails", () => {
 
 	test("owner and admin see everything", () => {
 		for (const viewer of [
-			memberViewer({ userId: "owner", isAdmin: false }),
-			memberViewer({ userId: "x", isAdmin: true }),
+			memberViewer({ userId: "owner", role: "user" }),
+			memberViewer({ userId: "x", role: "super_admin" }),
 		]) {
 			const out = gateProfileDetails(full, privateOwner, viewer);
 			expect(out.gender).toBe("female");

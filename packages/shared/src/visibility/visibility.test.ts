@@ -81,7 +81,7 @@ describe("canView: viewer relation by profile by section by item", () => {
 	const levels = [undefined, ...VISIBILITY_LEVELS] as const;
 
 	test("admins and the owner see everything", () => {
-		for (const relation of ["admin", "self"] as const) {
+		for (const relation of ["super_admin", "self"] as const) {
 			for (const profile of profiles) {
 				for (const section of levels) {
 					for (const item of levels) {
@@ -147,7 +147,7 @@ describe("canView: viewer relation by profile by section by item", () => {
 describe("relationTo", () => {
 	const viewer = memberViewer({
 		userId: "me",
-		isAdmin: false,
+		role: "user",
 		friendIds: ["pal"],
 		blockedIds: ["foe"],
 	});
@@ -164,17 +164,17 @@ describe("relationTo", () => {
 	test("an admin is an admin to everyone, even someone who blocked them", () => {
 		const admin = memberViewer({
 			userId: "boss",
-			isAdmin: true,
+			role: "super_admin",
 			blockedIds: ["foe"],
 		});
-		expect(relationTo(admin, "foe")).toBe("admin");
-		expect(relationTo(admin, "boss")).toBe("admin");
+		expect(relationTo(admin, "foe")).toBe("super_admin");
+		expect(relationTo(admin, "boss")).toBe("super_admin");
 	});
 
 	test("being blocked beats being a friend", () => {
 		const both = memberViewer({
 			userId: "me",
-			isAdmin: false,
+			role: "user",
 			friendIds: ["x"],
 			blockedIds: ["x"],
 		});

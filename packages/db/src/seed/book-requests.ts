@@ -1,3 +1,4 @@
+import { isSuperAdmin } from "@bbrc/shared";
 import type { User } from "../../prisma/generated/client.js";
 import type { Database } from "../index.js";
 import {
@@ -10,9 +11,7 @@ export async function seedBookRequests(
 	users: User[],
 	catalogOlids: ReadonlySet<string>,
 ): Promise<number> {
-	const requesters = users.filter(
-		(user) => !user.isAdmin && user.status === "active",
-	);
+	const requesters = users.filter((user) => !isSuperAdmin(user));
 
 	if (requesters.length === 0) {
 		return 0;

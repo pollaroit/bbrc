@@ -1,4 +1,4 @@
-import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { protectedProcedure, publicProcedure } from "../../procedures";
 import { loadViewer } from "../visibility/viewer";
 import {
 	BookReadingCountsOutputSchema,
@@ -48,48 +48,48 @@ import {
 } from "./wishlist.service";
 
 export const readingRouter = {
-	mine: notBannedProcedure
+	mine: protectedProcedure
 		.output(ListMyReadingsOutputSchema)
 		.handler(async ({ context }) => ({
 			items: await listMyReadings(context.db, context.session.user.id),
 		})),
-	state: notBannedProcedure
+	state: protectedProcedure
 		.input(BookSlugInputSchema)
 		.output(ReadingBookStateOutputSchema)
 		.handler(({ input, context }) =>
 			getReadingBookState(context.db, context.session.user.id, input.bookSlug),
 		),
-	start: notBannedProcedure
+	start: protectedProcedure
 		.input(StartReadingInputSchema)
 		.output(ReadingItemSchema)
 		.handler(({ input, context }) =>
 			startReading(context.db, context.session.user.id, input),
 		),
-	update: notBannedProcedure
+	update: protectedProcedure
 		.input(UpdateReadingProgressInputSchema)
 		.output(ReadingItemSchema)
 		.handler(({ input, context }) =>
 			updateReadingProgress(context.db, context.session.user.id, input),
 		),
-	setEdition: notBannedProcedure
+	setEdition: protectedProcedure
 		.input(SetReadingEditionInputSchema)
 		.output(ReadingItemSchema)
 		.handler(({ input, context }) =>
 			setReadingEdition(context.db, context.session.user.id, input),
 		),
-	setTracking: notBannedProcedure
+	setTracking: protectedProcedure
 		.input(SetReadingTrackingInputSchema)
 		.output(ReadingItemSchema)
 		.handler(({ input, context }) =>
 			setReadingTracking(context.db, context.session.user.id, input),
 		),
-	setPace: notBannedProcedure
+	setPace: protectedProcedure
 		.input(SetReadingPaceInputSchema)
 		.output(ReadingItemSchema)
 		.handler(({ input, context }) =>
 			setReadingPace(context.db, context.session.user.id, input),
 		),
-	abandon: notBannedProcedure
+	abandon: protectedProcedure
 		.input(ReadingIdInputSchema)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {
@@ -122,41 +122,41 @@ export const readingRouter = {
 				input.username,
 			),
 		),
-	preferences: notBannedProcedure
+	preferences: protectedProcedure
 		.output(ReadingPreferencesSchema)
 		.handler(({ context }) =>
 			getReadingPreferences(context.db, context.session.user.id),
 		),
-	setPreferences: notBannedProcedure
+	setPreferences: protectedProcedure
 		.input(SetReadingPreferencesInputSchema)
 		.output(ReadingPreferencesSchema)
 		.handler(({ input, context }) =>
 			setReadingPreferences(context.db, context.session.user.id, input),
 		),
-	stats: notBannedProcedure
+	stats: protectedProcedure
 		.output(ReadingStatsOutputSchema)
 		.handler(({ context }) =>
 			getMyReadingStats(context.db, context.session.user.id),
 		),
 	wishlist: {
-		get: notBannedProcedure
+		get: protectedProcedure
 			.output(WishlistStateOutputSchema)
 			.handler(({ context }) =>
 				getWishlist(context.db, context.session.user.id),
 			),
-		add: notBannedProcedure
+		add: protectedProcedure
 			.input(BookSlugInputSchema)
 			.output(WishlistChangeOutputSchema)
 			.handler(({ input, context }) =>
 				addToWishlist(context.db, context.session.user.id, input.bookSlug),
 			),
-		remove: notBannedProcedure
+		remove: protectedProcedure
 			.input(BookSlugInputSchema)
 			.output(WishlistChangeOutputSchema)
 			.handler(({ input, context }) =>
 				removeFromWishlist(context.db, context.session.user.id, input.bookSlug),
 			),
-		popularForSitting: notBannedProcedure
+		popularForSitting: protectedProcedure
 			.input(WishlistPopularityInputSchema)
 			.output(WishlistPopularityOutputSchema)
 			.handler(({ input, context }) =>

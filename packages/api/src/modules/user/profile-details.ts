@@ -1,4 +1,4 @@
-import { DEFAULT_WPM, type Viewer } from "@bbrc/shared";
+import { DEFAULT_WPM, isSuperAdmin, type Viewer } from "@bbrc/shared";
 import { mayViewDetail, mayViewProfile } from "./member-access";
 import type { UserProfileOutput } from "./user-profile.schema";
 
@@ -22,7 +22,8 @@ export function gateProfileDetails(
 	) => mayViewDetail(viewer, owner, level ?? fallbackLevel);
 
 	const owns =
-		viewer.kind === "member" && (viewer.isAdmin || viewer.userId === owner.id);
+		viewer.kind === "member" &&
+		(isSuperAdmin(viewer) || viewer.userId === owner.id);
 
 	return {
 		bio: profile.bio,

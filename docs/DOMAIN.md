@@ -4,7 +4,7 @@ High-level behavior of the reading club app. For implementation details, search 
 
 ## Core loop
 
-- Admins maintain the **book catalog** (`user.isAdmin`).
+- Admins maintain the **book catalog** (`user.role = super_admin`).
 - A **Sitting** is a reading period; members pick the next book via a **Poll**.
 - Participants read the book before the sitting deadline.
 - **Feedback** and social features (posts, comments, goals, etc.) sit on top of reads and sittings.
@@ -12,9 +12,9 @@ High-level behavior of the reading club app. For implementation details, search 
 ## Participation outcomes
 
 - **Finished** on time: earn XP and Reading Points (RP); can submit feedback.
-- **Did not finish** by deadline: a **warn**; if already warned, **ban** — banned members cannot participate in the next sitting or vote in polls.
+- **Did not finish** by deadline: costs reading points (RP). There is no warning or ban for now; a fuller system will come later.
 
-Exact formulas and edge cases live in API modules (e.g. participation, warnings, XP/RP services).
+Exact formulas and edge cases live in API modules (e.g. participation, XP/RP services).
 
 ## XP (Experience Points)
 
@@ -44,4 +44,4 @@ Reading-focused; can **decrease** unlike XP.
 Development seed (`bun run db:seed`, `NODE_ENV=development` only) loads fixtures: users, books, sittings, polls, participations, XP/RP events, feedback, and feed posts.
 
 - Password: **`bbrcpwd1`** (`SEED_PASSWORD` in `packages/db/src/seed/constants.ts`)
-- Emails: patterns like `admin_1@bbrc.test`, `warned_1@bbrc.test`, `banned_1@bbrc.test` — full list in `packages/db/src/seed/users.ts`
+- Emails: patterns like `admin_1@bbrc.test` (super admin), `admin_2@bbrc.test` (admin), `moderator_1@bbrc.test`, `member_1@bbrc.test` — full list in `packages/db/src/seed/users.ts`

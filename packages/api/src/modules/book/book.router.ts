@@ -1,15 +1,16 @@
 import { BookSchema } from "@bbrc/schemas";
 import {
-	adminProcedure,
-	notBannedProcedure,
 	protectedProcedure,
 	publicProcedure,
+	superAdminProcedure,
 } from "../../procedures";
 import {
 	revalidateBookIsr,
 	revalidateFeedsIsr,
 	revalidateSeriesIsr,
 } from "../../revalidate-isr";
+import { audited } from "../audit/audit-middleware";
+import { bookBeforeBySlug, namedTarget } from "../audit/audit-targets";
 import { authorSlugsOfBook, revalidateAuthorSlugs } from "../author/author-isr";
 import { invalidateDiscoverLanes } from "../book-discover/book-discover.service";
 import { loadViewer } from "../visibility/viewer";
@@ -170,20 +171,30 @@ export const bookRouter = {
 		.handler(async ({ input, context }) =>
 			getBookCatalogDiscovery(input.bookSlug, context.db),
 		),
-	suggestOriginCountries: adminProcedure
+	suggestOriginCountries: superAdminProcedure
 		.input(SuggestBookOriginCountriesInputSchema)
 		.output(SuggestBookOriginCountriesOutputSchema)
 		.handler(async ({ input }) => suggestBookOriginCountries(input)),
-	findSimilar: adminProcedure
+	findSimilar: superAdminProcedure
 		.input(FindSimilarBooksInputSchema)
 		.output(FindSimilarBooksOutputSchema)
 		.handler(async ({ input, context }) => findSimilarBooks(context.db, input)),
-	suggestDetails: adminProcedure
+	suggestDetails: superAdminProcedure
 		.input(SuggestBookDetailsInputSchema)
 		.output(SuggestBookDetailsOutputSchema)
 		.handler(async ({ input }) => suggestBookDetails(input)),
-	addBook: adminProcedure
+	addBook: superAdminProcedure
 		.input(AddBookInputSchema)
+		.use(
+			audited("book.created", {
+				target: async ({ output, db }) =>
+					namedTarget(
+						"book",
+						await bookBeforeBySlug(db, output.slug),
+						output.slug,
+					),
+			}),
+		)
 		.output(AddBookOutputSchema)
 		.handler(async ({ input, context }) => {
 			const book = await addBook(input, context.db, context.session.user.id);
@@ -198,8 +209,18 @@ export const bookRouter = {
 			}
 			return book;
 		}),
-	updateBook: adminProcedure
+	updateBook: superAdminProcedure
 		.input(UpdateBookInputSchema)
+		.use(
+			audited("book.updated", {
+				target: async ({ output, db }) =>
+					namedTarget(
+						"book",
+						await bookBeforeBySlug(db, output.slug),
+						output.slug,
+					),
+			}),
+		)
 		.output(UpdateBookOutputSchema)
 		.handler(async ({ input, context }) => {
 			const authorsChanged =
@@ -217,8 +238,14 @@ export const bookRouter = {
 			}
 			return book;
 		}),
-	removeBook: adminProcedure
+	removeBook: superAdminProcedure
 		.input(BookSchema.shape.slug)
+		.use(
+			audited("book.removed", {
+				before: ({ input, db }) => bookBeforeBySlug(db, input),
+				target: ({ before, input }) => namedTarget("book", before, input),
+			}),
+		)
 		.output(BookSchema.shape.slug)
 		.handler(async ({ input, context }) => {
 			const slug = await removeBook(input, context.db);
@@ -227,16 +254,25 @@ export const bookRouter = {
 			return slug;
 		}),
 	// Public information (the catalog), and members need it to see what is already in the library.
-	listCatalogOlids: notBannedProcedure
+	listCatalogOlids: protectedProcedure
 		.output(ListCatalogOlidsOutputSchema)
 		.handler(async ({ context }) => ({
 			olids: await listCatalogOlids(context.db),
 		})),
-	listBlockedOpenLibraryWorks: adminProcedure
+	listBlockedOpenLibraryWorks: superAdminProcedure
 		.output(ListBlockedOpenLibraryWorksOutputSchema)
 		.handler(async ({ context }) => listBlockedOpenLibraryWorks(context.db)),
-	blockOpenLibraryWork: adminProcedure
+	blockOpenLibraryWork: superAdminProcedure
 		.input(BlockOpenLibraryWorkInputSchema)
+		.use(
+			audited("book.work_blocked", {
+				target: ({ input }) => ({
+					type: "open_library_work",
+					id: input.olid,
+					label: input.title ?? input.olid,
+				}),
+			}),
+		)
 		.output(OpenLibraryOlidResultSchema)
 		.handler(async ({ input, context }) => {
 			const result = await blockOpenLibraryWork(
@@ -247,8 +283,17 @@ export const bookRouter = {
 			await invalidateDiscoverLanes(context.db);
 			return result;
 		}),
-	unblockOpenLibraryWork: adminProcedure
+	unblockOpenLibraryWork: superAdminProcedure
 		.input(UnblockOpenLibraryWorkInputSchema)
+		.use(
+			audited("book.work_unblocked", {
+				target: ({ input }) => ({
+					type: "open_library_work",
+					id: input.olid,
+					label: input.olid,
+				}),
+			}),
+		)
 		.output(OpenLibraryOlidResultSchema)
 		.handler(async ({ input, context }) => {
 			const result = await unblockOpenLibraryWork(input.olid, context.db);

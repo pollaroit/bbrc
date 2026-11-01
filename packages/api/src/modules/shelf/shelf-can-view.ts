@@ -40,7 +40,7 @@ export function canViewShelf(
 	flags: ShelfViewerFlags = {},
 ): boolean {
 	const relation = relationTo(viewer, shelf.userId);
-	if (relation === "admin") return true;
+	if (relation === "super_admin") return true;
 	const isMember = viewer.kind === "member";
 	const isOwner = relation === "self";
 	const isParty =

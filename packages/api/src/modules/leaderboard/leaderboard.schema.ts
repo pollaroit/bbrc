@@ -1,3 +1,4 @@
+import { RoleSchema } from "@bbrc/schemas";
 import { z } from "zod";
 import { leaderboardPeriods } from "./leaderboard-period";
 
@@ -36,7 +37,7 @@ export const LeaderboardEntrySchema = z.object({
 	username: z.string(),
 	name: z.string(),
 	image: z.string().nullable(),
-	isAdmin: z.boolean(),
+	role: RoleSchema,
 	metric: z.number().int(),
 	/** True when the viewer may not see who this is: identity is blank, rank and points are real. */
 	anonymous: z.boolean(),

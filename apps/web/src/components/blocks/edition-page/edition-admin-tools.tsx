@@ -5,6 +5,7 @@ import type {
 	EditionCore,
 	EditionPage,
 } from "@bbrc/api/modules/edition/edition.schema";
+import { isSuperAdmin } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
@@ -88,7 +89,7 @@ export function EditionAdminTools({
 
 	const items = list.data?.items ?? [];
 	const member = findMemberEdition(items, edition);
-	const isAdmin = session?.user.isAdmin === true;
+	const superAdmin = isSuperAdmin(session?.user);
 
 	const remove = useMutation(
 		orpc.bookEdition.delete.mutationOptions({
@@ -160,7 +161,7 @@ export function EditionAdminTools({
 	if (list.isPending || !member) return null;
 	const canEdit = member.canEdit;
 	const canDelete = member.canDelete;
-	if (!canEdit && !canDelete && !isAdmin) return null;
+	if (!canEdit && !canDelete && !superAdmin) return null;
 
 	const others: BookEditionItem[] = items.filter(
 		(item) => item.id !== member.id,
@@ -173,7 +174,7 @@ export function EditionAdminTools({
 			id="edition-tools"
 			title="Manage this edition"
 			description={
-				isAdmin
+				superAdmin
 					? "You can edit, verify, merge or link it."
 					: "You added this edition, so you can change it."
 			}
@@ -190,7 +191,7 @@ export function EditionAdminTools({
 						Edit
 					</Button>
 				) : null}
-				{isAdmin ? (
+				{superAdmin ? (
 					member.status === "verified" ? (
 						<Button
 							type="button"
@@ -215,7 +216,7 @@ export function EditionAdminTools({
 						</Button>
 					)
 				) : null}
-				{isAdmin && others.length > 0 ? (
+				{superAdmin && others.length > 0 ? (
 					<Button
 						type="button"
 						size="sm"
@@ -226,7 +227,7 @@ export function EditionAdminTools({
 						Merge into…
 					</Button>
 				) : null}
-				{isAdmin ? (
+				{superAdmin ? (
 					linked ? (
 						<Button
 							type="button"

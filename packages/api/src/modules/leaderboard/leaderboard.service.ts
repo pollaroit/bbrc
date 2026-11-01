@@ -19,16 +19,15 @@ import {
 
 const HUB_WINDOW = 5;
 
-const memberWhere = {
-	status: { in: ["active", "warned", "banned"] as const },
-} satisfies Prisma.UserWhereInput;
+/** Every member is ranked. */
+const memberWhere = {} satisfies Prisma.UserWhereInput;
 
 const memberProfileSelect = {
 	id: true,
 	username: true,
 	name: true,
 	image: true,
-	isAdmin: true,
+	role: true,
 	profileVisibility: true,
 } as const;
 
@@ -108,7 +107,7 @@ function toRankedEntries(rows: MetricRow[]): RankedRow[] {
 		username: row.username,
 		name: row.name,
 		image: row.image,
-		isAdmin: row.isAdmin,
+		role: row.role,
 		metric: row.metric,
 		anonymous: false,
 		isPrivate: row.profileVisibility === "private",
@@ -132,7 +131,7 @@ export function entryForViewer(
 		username: mayView ? row.username : "",
 		name: mayView ? row.name : "",
 		image: mayView ? row.image : null,
-		isAdmin: mayView ? row.isAdmin : false,
+		role: mayView ? row.role : "user",
 		metric: row.metric,
 		anonymous: !mayView,
 		isPrivate: row.isPrivate,

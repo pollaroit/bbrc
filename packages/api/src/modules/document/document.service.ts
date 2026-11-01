@@ -3,6 +3,7 @@ import type { Database } from "@bbrc/db";
 import {
 	documentFormatFromMime,
 	fileMatchesDocumentFormat,
+	isSuperAdmin,
 	MAX_DOCS_PER_BOOK,
 	MAX_DOCUMENT_BYTES,
 } from "@bbrc/shared";
@@ -100,7 +101,7 @@ async function loadDocumentForBook(
 }
 
 function assertAuthorOrAdmin(document: { userId: string }, session: Session) {
-	if (session.user.id !== document.userId && !session.user.isAdmin) {
+	if (session.user.id !== document.userId && !isSuperAdmin(session.user)) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "You cannot edit this document",
 		});
@@ -143,7 +144,7 @@ export async function createDocumentWithUpload(
 	const book = await loadBookBySlugOrThrow(input.bookSlug, db);
 	await assertCanAddDocument(book.id, db);
 
-	const autoApprove = session.user.isAdmin;
+	const autoApprove = isSuperAdmin(session.user);
 	const initialStatus = autoApprove ? "approved" : "pending";
 
 	const created = await db.$transaction(async (tx) => {
@@ -221,7 +222,7 @@ export async function replaceDocumentFile(
 	);
 	assertAuthorOrAdmin(document, session);
 
-	if (document.status === "approved" && !session.user.isAdmin) {
+	if (document.status === "approved" && !isSuperAdmin(session.user)) {
 		await assertCanAddDocument(book.id, db);
 	}
 
@@ -233,7 +234,7 @@ export async function replaceDocumentFile(
 	});
 
 	const nextStatus =
-		document.status === "approved" && !session.user.isAdmin
+		document.status === "approved" && !isSuperAdmin(session.user)
 			? "pending"
 			: document.status === "approved"
 				? "approved"
@@ -340,7 +341,7 @@ export async function updateDocumentMetadata(
 	);
 	assertAuthorOrAdmin(document, session);
 
-	if (document.status === "approved" && !session.user.isAdmin) {
+	if (document.status === "approved" && !isSuperAdmin(session.user)) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Approved documents cannot change metadata without admin access",
 		});
@@ -373,16 +374,16 @@ export async function deleteDocument(
 	);
 
 	const isOwner = session.user.id === document.userId;
-	const isAdmin = session.user.isAdmin;
+	const superAdmin = isSuperAdmin(session.user);
 
-	if (!isAdmin && !isOwner) {
+	if (!superAdmin && !isOwner) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "You cannot delete this document",
 		});
 	}
 
 	if (
-		!isAdmin &&
+		!superAdmin &&
 		document.status !== "pending" &&
 		document.status !== "rejected"
 	) {

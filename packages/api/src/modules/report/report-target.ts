@@ -1,5 +1,6 @@
 import type { Database } from "@bbrc/db";
 import {
+	isSuperAdmin,
 	REPORT_TARGET_LABELS,
 	type ReportTargetKind,
 	richContentPreview,
@@ -28,16 +29,16 @@ export type ReportTargetInfo = {
 const TEXT_LENGTH = 280;
 
 const ownerSelect = {
-	select: { id: true, username: true, isAdmin: true },
+	select: { id: true, username: true, role: true },
 } as const;
 
-type Owner = { id: string; username: string; isAdmin: boolean };
+type Owner = { id: string; username: string; role: string };
 
 function owned(owner: Owner | null) {
 	return {
 		ownerId: owner?.id ?? null,
 		ownerUsername: owner?.username ?? null,
-		ownerIsAdmin: owner?.isAdmin ?? false,
+		ownerIsAdmin: isSuperAdmin(owner) ?? false,
 	};
 }
 
@@ -200,7 +201,7 @@ async function loadTarget(
 			...(lookup.by === "id" ? { id: lookup.id } : { username: lookup.ref }),
 			...(viewer ? { AND: [memberListVisibleWhere(viewer)] } : {}),
 		},
-		select: { id: true, username: true, name: true, isAdmin: true },
+		select: { id: true, username: true, name: true, role: true },
 	});
 	if (!row) return null;
 	return {

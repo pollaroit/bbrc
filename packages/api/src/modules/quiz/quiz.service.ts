@@ -3,6 +3,7 @@ import type { Database, Prisma } from "@bbrc/db";
 import {
 	addCalendarDays,
 	getZonedParts,
+	isSuperAdmin,
 	resolveClubTimeZone,
 	type Viewer,
 	zonedTimeToUtc,
@@ -16,7 +17,7 @@ import {
 	mayViewProfile,
 	memberAccessSelect,
 	memberVisibleWhere,
-	viewerIsAdmin,
+	viewerIsSuperAdmin,
 	viewerUserId,
 } from "../user/member-access";
 import type {
@@ -439,8 +440,8 @@ export async function startQuiz(
 		});
 	}
 
-	const isAdmin = session?.user?.isAdmin === true;
-	if (!isAdmin) {
+	const superAdmin = isSuperAdmin(session?.user);
+	if (!superAdmin) {
 		const counts = await countGenerationsToday(userId, now, db);
 		if (counts.ready >= QUIZ_FIRST_TIME_PER_DAY) {
 			return {
@@ -900,7 +901,7 @@ export async function getQuizReview(
 	});
 	assertMemberAvailable(target, viewer, input.username);
 
-	if (!(viewerUserId(viewer) === target.id || viewerIsAdmin(viewer))) {
+	if (!(viewerUserId(viewer) === target.id || viewerIsSuperAdmin(viewer))) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Only you can review your own answers.",
 		});
@@ -1087,7 +1088,8 @@ export async function listUserQuizzes(
 		page: input.page,
 		limit: input.limit,
 	});
-	const canReview = viewerUserId(viewer) === target.id || viewerIsAdmin(viewer);
+	const canReview =
+		viewerUserId(viewer) === target.id || viewerIsSuperAdmin(viewer);
 
 	const where: Prisma.QuizSubmissionWhereInput = {
 		userId: target.id,

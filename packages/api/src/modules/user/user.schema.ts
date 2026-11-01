@@ -53,7 +53,6 @@ export const UserMemberSnapshotSchema = zod.object({
 	username: zod.string(),
 	name: zod.string(),
 	image: UserSchema.shape.image,
-	status: UserSchema.shape.status,
 	xp: UserPointsSchema,
 	rp: UserPointsSchema,
 });
@@ -78,10 +77,9 @@ export const getUserListFields = {
 	username: true,
 	name: true,
 	image: true,
-	isAdmin: true,
+	role: true,
 	rp: true,
 	xp: true,
-	status: true,
 	...memberAccessSelect,
 } as const;
 
@@ -89,7 +87,7 @@ const UserListItemSchema = UserMemberSnapshotSchema.extend({
 	id: UserSchema.shape.id,
 	/** A private member the viewer may not see into: points and levels are blanked. */
 	isPrivate: zod.boolean(),
-	isAdmin: UserSchema.shape.isAdmin,
+	role: UserSchema.shape.role,
 	xpLevel: MemberLevelSchema,
 	rpLevel: MemberLevelSchema,
 });
@@ -107,10 +105,9 @@ export const getUserByUsernameFields = {
 	username: true,
 	name: true,
 	image: true,
-	isAdmin: true,
+	role: true,
 	rp: true,
 	xp: true,
-	status: true,
 } as const;
 
 export const GetUserByUsernameInputSchema = UserSchema.pick({
@@ -118,7 +115,7 @@ export const GetUserByUsernameInputSchema = UserSchema.pick({
 });
 
 export const GetUserByUsernameOutputSchema = UserMemberSnapshotSchema.extend({
-	isAdmin: UserSchema.shape.isAdmin,
+	role: UserSchema.shape.role,
 	/** Private profile: non-friends see only name, username, avatar, bio and the friend count. */
 	isPrivate: zod.boolean(),
 	/** Whether the viewer may see the rest (true for friends, the member and admins). */
@@ -182,21 +179,6 @@ export type GetUserProfileCardInput = z.infer<
 >;
 export type GetUserProfileCardOutput = z.infer<
 	typeof GetUserProfileCardOutputSchema
->;
-
-export const UpdateUserStatusInputSchema = zod.object({
-	username: UserSchema.shape.username,
-	status: UserSchema.shape.status,
-});
-
-export const UpdateUserStatusOutputSchema = UserSchema.pick({
-	username: true,
-	status: true,
-});
-
-export type UpdateUserStatusInput = z.infer<typeof UpdateUserStatusInputSchema>;
-export type UpdateUserStatusOutput = z.infer<
-	typeof UpdateUserStatusOutputSchema
 >;
 
 /** Participations for a member profile (readings tab). */

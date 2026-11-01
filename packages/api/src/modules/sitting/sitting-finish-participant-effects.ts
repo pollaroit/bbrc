@@ -2,9 +2,8 @@ import type { DatabaseTransaction } from "@bbrc/db";
 import { calculateRpPointsDelta } from "../rp/rp.service";
 import {
 	type ParticipationProgress,
-	progressAffectsUserStatus,
+	progressEarnsPoints,
 } from "./participation-progress";
-import { nextUserStatusAfterParticipationProgress } from "./sitting-user-status";
 
 type FinishedSittingParticipant = {
 	userId: string;
@@ -12,8 +11,9 @@ type FinishedSittingParticipant = {
 };
 
 /**
- * Applies RP events and user status/RP balance updates when a sitting finishes.
- * One user load and one user update per affected member (combined status + RP).
+ * Applies RP events and the RP balance when a sitting finishes: members who
+ * completed the book or did not finish it are scored. One update per affected
+ * member. Nothing here touches who a member is or what they may do.
  */
 export async function applyFinishedSittingParticipantEffects(
 	input: { sittingId: string; bookPages: number },
@@ -29,51 +29,12 @@ export async function applyFinishedSittingParticipantEffects(
 		return;
 	}
 
-	const affecting = participants.flatMap((participant) =>
-		progressAffectsUserStatus(participant.progress)
-			? [
-					{
-						userId: participant.userId,
-						progress: participant.progress,
-					},
-				]
-			: [],
-	);
-
-	if (affecting.length === 0) {
-		return;
-	}
-
-	const userIds = [...new Set(affecting.map((row) => row.userId))];
-
-	const users = await db.user.findMany({
-		where: { id: { in: userIds } },
-		select: { id: true, status: true },
-	});
-
-	const statusByUserId = new Map(users.map((user) => [user.id, user.status]));
-
 	const eventRows: { userId: string; sittingId: string; points: number }[] = [];
-	const userPatches = new Map<
-		string,
-		{ status?: (typeof users)[number]["status"]; rpIncrement: number }
-	>();
+	const rpByUserId = new Map<string, number>();
 
-	for (const participant of affecting) {
-		const currentStatus = statusByUserId.get(participant.userId);
-
-		if (currentStatus) {
-			const nextStatus = nextUserStatusAfterParticipationProgress(
-				currentStatus,
-				participant.progress,
-			);
-
-			if (nextStatus !== currentStatus) {
-				statusByUserId.set(participant.userId, nextStatus);
-				const patch = userPatches.get(participant.userId) ?? { rpIncrement: 0 };
-				patch.status = nextStatus;
-				userPatches.set(participant.userId, patch);
-			}
+	for (const participant of participants) {
+		if (!progressEarnsPoints(participant.progress)) {
+			continue;
 		}
 
 		const points = calculateRpPointsDelta(
@@ -90,37 +51,20 @@ export async function applyFinishedSittingParticipantEffects(
 			sittingId: input.sittingId,
 			points,
 		});
-
-		const patch = userPatches.get(participant.userId) ?? { rpIncrement: 0 };
-		patch.rpIncrement += points;
-		userPatches.set(participant.userId, patch);
+		rpByUserId.set(
+			participant.userId,
+			(rpByUserId.get(participant.userId) ?? 0) + points,
+		);
 	}
 
 	if (eventRows.length > 0) {
 		await db.rPEvent.createMany({ data: eventRows });
 	}
 
-	for (const [userId, patch] of userPatches) {
-		const data: {
-			status?: (typeof users)[number]["status"];
-			rp?: { increment: number };
-		} = {};
-
-		if (patch.status !== undefined) {
-			data.status = patch.status;
-		}
-
-		if (patch.rpIncrement !== 0) {
-			data.rp = { increment: patch.rpIncrement };
-		}
-
-		if (Object.keys(data).length === 0) {
-			continue;
-		}
-
+	for (const [userId, increment] of rpByUserId) {
 		await db.user.update({
 			where: { id: userId },
-			data,
+			data: { rp: { increment } },
 		});
 	}
 }

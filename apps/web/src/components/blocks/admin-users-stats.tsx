@@ -19,20 +19,12 @@ import {
 	Bar,
 	BarChart,
 	CartesianGrid,
-	Cell,
 	Line,
 	LineChart,
-	Pie,
-	PieChart,
 	XAxis,
 	YAxis,
 } from "recharts";
-import { userStatusFilterLabels } from "@/lib/listing/users-listing";
 import { orpc } from "@/utils/orpc";
-
-const statusChartConfig = {
-	count: { label: "Members", color: "var(--chart-1)" },
-};
 
 const signupsChartConfig = {
 	count: { label: "Signups", color: "var(--chart-2)" },
@@ -54,20 +46,10 @@ const funnelChartConfig = {
 	count: { label: "Members", color: "var(--chart-1)" },
 };
 
-const STATUS_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)"];
-
 export function AdminUsersStats() {
 	const { data, isPending, isError, error } = useQuery(
 		orpc.admin.getUserStats.queryOptions({ input: {} }),
 	);
-
-	const statusPie = useMemo(() => {
-		if (!data) return [];
-		return data.statusDistribution.map((row) => ({
-			name: userStatusFilterLabels[row.status],
-			value: row.count,
-		}));
-	}, [data]);
 
 	const signupsLine = useMemo(() => {
 		if (!data) return [];
@@ -97,40 +79,8 @@ export function AdminUsersStats() {
 			<div className="grid gap-4 lg:grid-cols-2">
 				<Card size="sm">
 					<CardHeader>
-						<CardTitle>Status mix</CardTitle>
-						<CardDescription>Active, warned, and banned</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<ChartContainer
-							config={statusChartConfig}
-							className="mx-auto h-56 w-full max-w-sm"
-						>
-							<PieChart>
-								<ChartTooltip content={<ChartTooltipContent hideLabel />} />
-								<Pie
-									data={statusPie}
-									dataKey="value"
-									nameKey="name"
-									cx="50%"
-									cy="50%"
-									outerRadius={80}
-								>
-									{statusPie.map((entry, index) => (
-										<Cell
-											key={entry.name}
-											fill={STATUS_COLORS[index % STATUS_COLORS.length]}
-										/>
-									))}
-								</Pie>
-							</PieChart>
-						</ChartContainer>
-					</CardContent>
-				</Card>
-
-				<Card size="sm">
-					<CardHeader>
 						<CardTitle>Role split</CardTitle>
-						<CardDescription>Admins vs regular members</CardDescription>
+						<CardDescription>Members by role</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<ChartContainer

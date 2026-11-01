@@ -1,4 +1,4 @@
-import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { protectedProcedure, publicProcedure } from "../../procedures";
 import { loadViewer } from "../visibility/viewer";
 import {
 	MentionForContentBatchInputSchema,
@@ -30,7 +30,7 @@ import {
 } from "./mention.service";
 
 export const mentionRouter = {
-	search: notBannedProcedure
+	search: protectedProcedure
 		.input(MentionSearchInputSchema)
 		.output(MentionSearchOutputSchema)
 		.handler(async ({ input, context }) => ({
@@ -40,7 +40,7 @@ export const mentionRouter = {
 				input,
 			),
 		})),
-	target: notBannedProcedure
+	target: protectedProcedure
 		.input(MentionTargetInputSchema)
 		.output(MentionTargetOutputSchema)
 		.handler(async ({ input, context }) => ({
@@ -60,7 +60,7 @@ export const mentionRouter = {
 				await loadViewer(context.db, context.session),
 			),
 		})),
-	mine: notBannedProcedure
+	mine: protectedProcedure
 		.input(MentionMineInputSchema)
 		.output(MentionMineOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -70,7 +70,7 @@ export const mentionRouter = {
 				input,
 			),
 		),
-	forContent: notBannedProcedure
+	forContent: protectedProcedure
 		.input(MentionForContentInputSchema)
 		.output(MentionForContentOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -85,7 +85,7 @@ export const mentionRouter = {
 			);
 			return { mentionId: found[0]?.mentionId ?? null };
 		}),
-	forContentBatch: notBannedProcedure
+	forContentBatch: protectedProcedure
 		.input(MentionForContentBatchInputSchema)
 		.output(MentionForContentBatchOutputSchema)
 		.handler(async ({ input, context }) => ({
@@ -95,7 +95,7 @@ export const mentionRouter = {
 				input,
 			),
 		})),
-	remove: notBannedProcedure
+	remove: protectedProcedure
 		.input(MentionRemoveInputSchema)
 		.output(OkSchema)
 		.handler(async ({ input, context }) => {
@@ -106,12 +106,12 @@ export const mentionRouter = {
 			);
 			return { ok: true as const };
 		}),
-	preferences: notBannedProcedure
+	preferences: protectedProcedure
 		.output(MentionPreferencesSchema)
 		.handler(({ context }) =>
 			getMentionPreferences(context.db, context.session.user.id),
 		),
-	setPreferences: notBannedProcedure
+	setPreferences: protectedProcedure
 		.input(SetMentionPreferencesInputSchema)
 		.output(MentionPreferencesSchema)
 		.handler(({ input, context }) =>

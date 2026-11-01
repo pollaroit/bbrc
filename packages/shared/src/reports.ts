@@ -49,8 +49,6 @@ export type ReportStatus = (typeof REPORT_STATUSES)[number];
 export const REPORT_ACTIONS = [
 	"dismiss",
 	"delete_content",
-	"warn_owner",
-	"ban_owner",
 	"reopen",
 	"note",
 ] as const;
@@ -59,8 +57,6 @@ export type ReportActionKind = (typeof REPORT_ACTIONS)[number];
 export const REPORT_ACTION_LABELS: Record<ReportActionKind, string> = {
 	dismiss: "Dismissed",
 	delete_content: "Content deleted",
-	warn_owner: "Owner warned",
-	ban_owner: "Owner banned",
 	reopen: "Reopened",
 	note: "Note added",
 };
@@ -69,8 +65,6 @@ export const REPORT_ACTION_LABELS: Record<ReportActionKind, string> = {
 export const CLOSING_REPORT_ACTIONS = [
 	"dismiss",
 	"delete_content",
-	"warn_owner",
-	"ban_owner",
 ] as const satisfies readonly ReportActionKind[];
 
 /** What the admin queue can be sorted by. Items are grouped by what was reported. */

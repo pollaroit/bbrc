@@ -17,13 +17,13 @@ const privateProfile: OwnerPrivacy = { ...open, profile: "private" };
 describe("viewerMaySeeSection", () => {
 	const friend = memberViewer({
 		userId: "f",
-		isAdmin: false,
+		role: "user",
 		friendIds: ["o"],
 	});
-	const stranger = memberViewer({ userId: "s", isAdmin: false });
+	const stranger = memberViewer({ userId: "s", role: "user" });
 	const blocked = memberViewer({
 		userId: "b",
-		isAdmin: false,
+		role: "user",
 		blockedIds: ["o"],
 	});
 	test("public section is open to anonymous", () => {
@@ -45,7 +45,7 @@ describe("viewerMaySeeSection", () => {
 	});
 	test("blocked never sees, owner always does", () => {
 		expect(viewerMaySeeSection(blocked, "o", open, "reads")).toBe(false);
-		const owner = memberViewer({ userId: "o", isAdmin: false });
+		const owner = memberViewer({ userId: "o", role: "user" });
 		expect(viewerMaySeeSection(owner, "o", open, "favorites")).toBe(true);
 	});
 });

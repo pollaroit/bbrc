@@ -18,7 +18,7 @@ export async function sittingSlugStaticParams(db: Database) {
 export async function usernameStaticParams(db: Database) {
 	const rows = await db.user.findMany({
 		// Private profiles are built on first request, never at build time.
-		where: { profileVisibility: "public", status: { not: "banned" } },
+		where: { profileVisibility: "public" },
 		select: { username: true },
 	});
 	return rows.map(({ username }) => ({ username }));

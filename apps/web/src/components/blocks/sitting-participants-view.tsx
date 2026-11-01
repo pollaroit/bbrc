@@ -141,7 +141,7 @@ type RowProps = {
 	sitting: Sitting;
 	participant: Participant;
 	viewerUserId: string;
-	isAdmin: boolean;
+	superAdmin: boolean;
 	canRemove: boolean;
 	onRemove: () => void;
 	removeDisabledReason?: string;
@@ -161,7 +161,7 @@ function ParticipantRow({
 	sitting,
 	participant,
 	viewerUserId,
-	isAdmin,
+	superAdmin,
 	canRemove,
 	onRemove,
 	removeDisabledReason,
@@ -169,7 +169,7 @@ function ParticipantRow({
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const isSelf = participant.userId === viewerUserId;
 	const showProgress = sitting.status !== "voting";
-	const canEditProgress = isAdmin
+	const canEditProgress = superAdmin
 		? sitting.status !== "voting"
 		: isSelf && sitting.status === "reading";
 	const chipLabel =
@@ -177,7 +177,7 @@ function ParticipantRow({
 			? formatPollChipRankLabel(participant.pollChipRank)
 			: null;
 
-	const showRemove = isAdmin && canRemove;
+	const showRemove = superAdmin && canRemove;
 	const profileHref = `/users/${participant.username}` as Route;
 
 	return (
@@ -207,11 +207,6 @@ function ParticipantRow({
 							<span className="border border-border px-1 font-normal text-2xs text-muted-foreground">
 								You
 							</span>
-						) : null}
-						{participant.status !== "active" ? (
-							<Badge variant="outline" className="h-5 px-1.5 capitalize">
-								{participant.status}
-							</Badge>
 						) : null}
 					</p>
 					<p className="truncate text-muted-foreground text-xs tabular-nums">
@@ -310,7 +305,7 @@ function ParticipantRow({
 						name: participant.name,
 						progress: participant.progress,
 					}}
-					mode={isAdmin ? "admin" : "self"}
+					mode={superAdmin ? "admin" : "self"}
 				/>
 			) : null}
 		</li>
@@ -319,13 +314,13 @@ function ParticipantRow({
 
 type SittingParticipantsViewProps = {
 	sitting: Sitting;
-	isAdmin: boolean;
+	superAdmin: boolean;
 	viewerUserId: string;
 };
 
 export function SittingParticipantsView({
 	sitting,
-	isAdmin,
+	superAdmin,
 	viewerUserId,
 }: SittingParticipantsViewProps) {
 	const [params, setParams] = useQueryStates(paramParsers);
@@ -335,7 +330,7 @@ export function SittingParticipantsView({
 		...orpc.sitting.join.participantJoinInfo.queryOptions({
 			input: { sittingSlug: sitting.slug },
 		}),
-		enabled: isAdmin,
+		enabled: superAdmin,
 	});
 	// Who is reading the picked book right now, with progress and edition (members who keep
 	// their reading private are left out by the API, exactly as on the book's reading page).
@@ -478,7 +473,7 @@ export function SittingParticipantsView({
 				</p>
 			)}
 
-			{isAdmin ? (
+			{superAdmin ? (
 				<div className="flex flex-wrap items-center gap-2">
 					<SittingParticipantsAdminToolbar sitting={sitting} />
 				</div>
@@ -492,7 +487,7 @@ export function SittingParticipantsView({
 						sitting={sitting}
 						participant={me}
 						viewerUserId={viewerUserId}
-						isAdmin={isAdmin}
+						superAdmin={superAdmin}
 						canRemove={canRemove}
 						onRemove={() => requestRemove(me)}
 						removeDisabledReason={
@@ -535,7 +530,7 @@ export function SittingParticipantsView({
 							sitting={sitting}
 							participant={participant}
 							viewerUserId={viewerUserId}
-							isAdmin={isAdmin}
+							superAdmin={superAdmin}
 							canRemove={canRemove}
 							onRemove={() => requestRemove(participant)}
 							removeDisabledReason={
@@ -550,7 +545,9 @@ export function SittingParticipantsView({
 				</ul>
 			)}
 
-			{isAdmin ? <SittingRemovedParticipantsSection sitting={sitting} /> : null}
+			{superAdmin ? (
+				<SittingRemovedParticipantsSection sitting={sitting} />
+			) : null}
 
 			{removeDialog}
 		</div>

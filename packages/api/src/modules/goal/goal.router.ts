@@ -1,4 +1,4 @@
-import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { protectedProcedure, publicProcedure } from "../../procedures";
 import { revalidateUserIsr } from "../../revalidate-isr";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import { loadViewer } from "../visibility/viewer";
@@ -41,7 +41,7 @@ export const goalRouter = {
 				context.db,
 			),
 		),
-	create: notBannedProcedure
+	create: protectedProcedure
 		.use(checkAchievementsAfter("goals"))
 		.input(CreateGoalInputSchema)
 		.output(CreateGoalOutputSchema)
@@ -54,7 +54,7 @@ export const goalRouter = {
 			revalidateUserIsr(context, context.session.user.username);
 			return result;
 		}),
-	update: notBannedProcedure
+	update: protectedProcedure
 		.input(UpdateGoalInputSchema)
 		.output(UpdateGoalOutputSchema)
 		.handler(async ({ input, context }) => {

@@ -208,7 +208,7 @@ export function pollDraftToPreview(
 	const input = pollDraftToInput(draft);
 	const access = ballotAccess(draft.ballotVisibility, {
 		isOwner: true,
-		isAdmin: false,
+		role: "user",
 		hasVoted: false,
 		resultsVisible: true,
 	});

@@ -42,6 +42,7 @@ import {
 	contentPlainText,
 	describeTier,
 	formatSittingSlugLabel,
+	isSuperAdmin,
 } from "@bbrc/shared";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
 import { coverSrc, editionHeadline } from "@/lib/edition/format";
@@ -374,7 +375,7 @@ async function resolveAuthorsListOg(): Promise<OgImageContent> {
 
 async function resolveMembersListOg(): Promise<OgImageContent> {
 	// Counts include every member, however private (only names are hidden).
-	const where = { status: { not: "banned" as const } };
+	const where = {};
 	const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 	const [people, active, reads, reviews] = await Promise.all([
 		db.user.count({ where }),
@@ -1056,7 +1057,8 @@ async function resolveMemberOg(
 						? statsLine
 						: undefined,
 			badge:
-				MEMBER_SECTION_BADGE[section] ?? (user.isAdmin ? "Admin" : undefined),
+				MEMBER_SECTION_BADGE[section] ??
+				(isSuperAdmin(user) ? "Admin" : undefined),
 			media: await avatarMedia(user),
 			facts: facts[section],
 		};

@@ -17,7 +17,6 @@ const STATE_NOTES = {
 	participant: "Already in",
 	removed: "Was removed from this sitting",
 	invited: "Already invited",
-	banned: "Cannot be invited",
 } as const;
 
 export function SittingJoinInvitationsPanel({

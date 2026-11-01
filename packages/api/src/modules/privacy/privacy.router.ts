@@ -1,4 +1,4 @@
-import { notBannedProcedure } from "../../procedures";
+import { protectedProcedure } from "../../procedures";
 import {
 	PrivacySettingsSchema,
 	UpdatePrivacySettingsInputSchema,
@@ -6,12 +6,12 @@ import {
 import { getPrivacySettings, updatePrivacySettings } from "./privacy.service";
 
 export const privacyRouter = {
-	get: notBannedProcedure
+	get: protectedProcedure
 		.output(PrivacySettingsSchema)
 		.handler(({ context }) =>
 			getPrivacySettings(context.db, context.session.user.id),
 		),
-	update: notBannedProcedure
+	update: protectedProcedure
 		.input(UpdatePrivacySettingsInputSchema)
 		.output(PrivacySettingsSchema)
 		.handler(({ input, context }) =>

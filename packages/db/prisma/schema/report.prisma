@@ -32,8 +32,6 @@ enum ReportStatus {
 enum ReportActionKind {
   dismiss
   delete_content
-  warn_owner
-  ban_owner
   reopen
   note
 

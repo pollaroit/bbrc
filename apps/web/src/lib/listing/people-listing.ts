@@ -2,8 +2,8 @@ import type { GetPeopleListInput } from "@bbrc/api/modules/people/people.schema"
 import {
 	PEOPLE_ACTIVITY_FILTERS,
 	PEOPLE_SORT_FIELDS,
-	PEOPLE_STATUSES,
 } from "@bbrc/api/modules/people/people.schema";
+import { ROLES } from "@bbrc/shared";
 import {
 	parseAsArrayOf,
 	parseAsInteger,
@@ -14,7 +14,6 @@ import {
 import { buildListCallInput } from "@/lib/listing/build-list-call-input";
 import type { FieldLabels } from "@/lib/listing/labels";
 import {
-	booleanFilterParser,
 	rangeMaxParser,
 	rangeMinParser,
 	searchParser,
@@ -57,20 +56,13 @@ export const peopleActivityLabels = {
 	hasAvatar: "Has a profile photo",
 } as const satisfies FieldLabels<PeopleActivityFilter>;
 
-export const peopleStatusLabels = {
-	active: "Active",
-	warned: "Warned",
-	banned: "Banned",
-} as const;
-
 export const PEOPLE_PAGE_SIZE = 12;
 
 export const peopleListingSearchParams = {
 	search: searchParser.withOptions({ shallow: true, throttleMs: 400 }),
 	sortBy: parseAsStringLiteral(PEOPLE_SORT_FIELDS).withDefault("xp"),
 	sortDirection: sortDirectionParser.withDefault("desc"),
-	isAdmin: booleanFilterParser,
-	statuses: parseAsArrayOf(parseAsStringLiteral(PEOPLE_STATUSES)),
+	roles: parseAsArrayOf(parseAsStringLiteral(ROLES)),
 	xpLevels: parseAsArrayOf(parseAsString),
 	rpLevels: parseAsArrayOf(parseAsString),
 	rangeMin: rangeMinParser,
@@ -106,8 +98,7 @@ export function toPeopleListCallInput(
 			search: params.search,
 			sortBy: params.sortBy,
 			sortDirection: params.sortDirection,
-			isAdmin: params.isAdmin,
-			statuses: params.statuses,
+			roles: params.roles,
 			xpLevels: params.xpLevels,
 			rpLevels: params.rpLevels,
 			rangeMin: params.rangeMin,
@@ -129,8 +120,7 @@ export function countPeopleSheetFilters(
 ): number {
 	return (
 		[
-			params.isAdmin != null,
-			Boolean(params.statuses?.length),
+			Boolean(params.roles?.length),
 			Boolean(params.xpLevels?.length),
 			Boolean(params.rpLevels?.length),
 			params.rangeMin != null || params.rangeMax != null,
@@ -149,8 +139,7 @@ export function clearPeopleSheetFilters(
 	setParams: ReturnType<typeof usePeopleListingSearchParams>[1],
 ) {
 	void setParams({
-		isAdmin: null,
-		statuses: null,
+		roles: null,
 		xpLevels: null,
 		rpLevels: null,
 		rangeMin: null,

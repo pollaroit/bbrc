@@ -1,4 +1,5 @@
 import type { Database, Prisma } from "@bbrc/db";
+import { ROLE_META, ROLES, type Role, roleOf } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { hashPassword } from "better-auth/crypto";
 import { definePagination } from "../../utils/pagination";
@@ -15,10 +16,6 @@ import type {
 	AdminSetUserPasswordOutput,
 	AdminUpdateUserNameInput,
 	AdminUpdateUserNameOutput,
-	AdminUpdateUserRoleInput,
-	AdminUpdateUserRoleOutput,
-	AdminUpdateUserStatusInput,
-	AdminUpdateUserStatusOutput,
 	AdminUserOverviewOutput,
 	AdminUserStatsOutput,
 	GetAdminUserOverviewInput,
@@ -94,8 +91,7 @@ function mapAdminUserRow(row: AdminUserListRow) {
 		name: row.name,
 		email: row.email,
 		image: row.image,
-		isAdmin: row.isAdmin,
-		status: row.status,
+		role: row.role,
 		xp: row.xp,
 		rp: row.rp,
 		emailVerified: row.emailVerified,
@@ -366,8 +362,7 @@ export async function buildAdminUserListWhere(
 		searching.use(),
 		{
 			id: minCountIds ? { in: minCountIds } : undefined,
-			status: input.statuses ? { in: input.statuses } : undefined,
-			isAdmin: input.isAdmin === undefined ? undefined : input.isAdmin,
+			role: input.roles?.length ? { in: input.roles } : undefined,
 			xp: input.minXp != null ? { gte: input.minXp } : undefined,
 			rp: input.minRp != null ? { gte: input.minRp } : undefined,
 		},
@@ -376,16 +371,27 @@ export async function buildAdminUserListWhere(
 	return { where, empty: false };
 }
 
+/** Counts per role from a `groupBy`, with a zero for every role nobody holds. */
+function roleCountsOf(
+	groups: { role: Role; _count: { _all: number } }[],
+): Record<Role, number> {
+	const counts: Record<Role, number> = {
+		user: 0,
+		moderator: 0,
+		admin: 0,
+		super_admin: 0,
+	};
+	for (const group of groups) counts[group.role] = group._count._all;
+	return counts;
+}
+
 function emptyAdminUserOverview(
 	pendingBookRequests: number,
 ): AdminUserOverviewOutput {
 	return {
 		kpis: {
 			totalMembers: 0,
-			admins: 0,
-			active: 0,
-			warned: 0,
-			banned: 0,
+			roles: roleCountsOf([]),
 			averageXp: 0,
 			averageRp: 0,
 			totalXp: 0,
@@ -460,10 +466,7 @@ export async function getAdminUserOverview(
 
 	const [
 		totalMembers,
-		adminCount,
-		activeCount,
-		warnedCount,
-		bannedCount,
+		roleGroups,
 		xpAgg,
 		rpAgg,
 		joinedLast7Days,
@@ -474,18 +477,7 @@ export async function getAdminUserOverview(
 		rankings,
 	] = await Promise.all([
 		db.user.count({ where }),
-		db.user.count({
-			where: mergeWhereFragments(where, { isAdmin: true }),
-		}),
-		db.user.count({
-			where: mergeWhereFragments(where, { status: "active" }),
-		}),
-		db.user.count({
-			where: mergeWhereFragments(where, { status: "warned" }),
-		}),
-		db.user.count({
-			where: mergeWhereFragments(where, { status: "banned" }),
-		}),
+		db.user.groupBy({ by: ["role"], where, _count: { _all: true } }),
 		db.user.aggregate({ where, _avg: { xp: true }, _sum: { xp: true } }),
 		db.user.aggregate({ where, _avg: { rp: true }, _sum: { rp: true } }),
 		db.user.count({ where: joined7Where }),
@@ -505,10 +497,7 @@ export async function getAdminUserOverview(
 	return {
 		kpis: {
 			totalMembers,
-			admins: adminCount,
-			active: activeCount,
-			warned: warnedCount,
-			banned: bannedCount,
+			roles: roleCountsOf(roleGroups),
 			averageXp: Math.round((xpAgg._avg.xp ?? 0) * 10) / 10,
 			averageRp: Math.round((rpAgg._avg.rp ?? 0) * 10) / 10,
 			totalXp: xpAgg._sum.xp ?? 0,
@@ -528,11 +517,8 @@ function buildAdminUserStatsWhere(
 ): Prisma.UserWhereInput {
 	const where: Prisma.UserWhereInput = {};
 
-	if (input.statuses?.length) {
-		where.status = { in: input.statuses };
-	}
-	if (input.isAdmin != null) {
-		where.isAdmin = input.isAdmin;
+	if (input.roles?.length) {
+		where.role = { in: input.roles };
 	}
 	if (input.rangeMin != null || input.rangeMax != null) {
 		where.createdAt = {
@@ -546,11 +532,6 @@ function buildAdminUserStatsWhere(
 
 function emptyUserStats(): AdminUserStatsOutput {
 	return {
-		statusDistribution: [
-			{ status: "active", count: 0 },
-			{ status: "warned", count: 0 },
-			{ status: "banned", count: 0 },
-		],
 		signupsByDay: [],
 		xpHistogram: [],
 		rpHistogram: [],
@@ -587,8 +568,7 @@ export async function getAdminUserStats(
 	const users = await db.user.findMany({
 		where,
 		select: {
-			status: true,
-			isAdmin: true,
+			role: true,
 			xp: true,
 			rp: true,
 			createdAt: true,
@@ -610,16 +590,9 @@ export async function getAdminUserStats(
 		return emptyUserStats();
 	}
 
-	const statusDistribution = (["active", "warned", "banned"] as const).map(
-		(status) => ({
-			status,
-			count: users.filter((u) => u.status === status).length,
-		}),
-	);
-
 	const xpMap = new Map<string, number>();
 	const rpMap = new Map<string, number>();
-	let adminCount = 0;
+	const roleCounts = roleCountsOf([]);
 	let postsTotal = 0;
 	let commentsTotal = 0;
 	let likesTotal = 0;
@@ -639,9 +612,7 @@ export async function getAdminUserStats(
 		const rpLabel = rpBucket(user.rp);
 		rpMap.set(rpLabel, (rpMap.get(rpLabel) ?? 0) + 1);
 
-		if (user.isAdmin) {
-			adminCount += 1;
-		}
+		roleCounts[roleOf(user)] += 1;
 
 		postsTotal += user._count.posts;
 		commentsTotal += user._count.comments;
@@ -659,7 +630,6 @@ export async function getAdminUserStats(
 	}
 
 	return {
-		statusDistribution,
 		signupsByDay: buildSignupsByDay(users, 30),
 		xpHistogram: XP_BUCKET_ORDER.filter((label) => xpMap.has(label)).map(
 			(label) => ({ label, value: xpMap.get(label) ?? 0 }),
@@ -684,10 +654,10 @@ export async function getAdminUserStats(
 			{ kind: "Favorites", count: favoritesTotal },
 			{ kind: "Shelves", count: shelvesTotal },
 		],
-		roleSplit: [
-			{ kind: "Members", count: users.length - adminCount },
-			{ kind: "Admins", count: adminCount },
-		],
+		roleSplit: ROLES.map((role) => ({
+			kind: ROLE_META[role].label,
+			count: roleCounts[role],
+		})),
 	};
 }
 
@@ -716,54 +686,6 @@ export async function adminUpdateUserName(
 			where: { username: input.username },
 			data: { name: input.name },
 			select: { username: true, name: true },
-		});
-	} catch {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
-			data: { username: input.username },
-		});
-	}
-}
-
-export async function adminUpdateUserRole(
-	input: AdminUpdateUserRoleInput,
-	actorUserId: string,
-	db: Database,
-): Promise<AdminUpdateUserRoleOutput> {
-	const target = await db.user.findUnique({
-		where: { username: input.username },
-		select: { id: true, isAdmin: true },
-	});
-
-	if (!target) {
-		throw new ORPCError("NOT_FOUND", {
-			message: "User not found",
-			data: { username: input.username },
-		});
-	}
-
-	if (target.id === actorUserId && !input.isAdmin) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "You cannot remove your own admin role.",
-		});
-	}
-
-	return db.user.update({
-		where: { username: input.username },
-		data: { isAdmin: input.isAdmin },
-		select: { username: true, isAdmin: true },
-	});
-}
-
-export async function adminUpdateUserStatus(
-	input: AdminUpdateUserStatusInput,
-	db: Database,
-): Promise<AdminUpdateUserStatusOutput> {
-	try {
-		return await db.user.update({
-			where: { username: input.username },
-			data: { status: input.status },
-			select: { username: true, status: true },
 		});
 	} catch {
 		throw new ORPCError("NOT_FOUND", {

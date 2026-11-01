@@ -19,7 +19,7 @@ async function openSessionBookSlug(
 
 export type RealtimeAuthResult =
 	| { ok: true; tokenRequest: Ably.TokenRequest }
-	| { ok: false; reason: "not_configured" | "banned" };
+	| { ok: false; reason: "not_configured" };
 
 /**
  * A signed Ably token request for the browser. The server decides the member's
@@ -34,7 +34,6 @@ export async function createRealtimeTokenRequest(
 	const rest = getAblyRest();
 	const clientId = realtimeClientId(session.user.id);
 	if (!rest || !clientId) return { ok: false, reason: "not_configured" };
-	if (session.user.status === "banned") return { ok: false, reason: "banned" };
 
 	const capability = buildMemberCapability({
 		presenceBookSlug: await openSessionBookSlug(db, session.user.id),

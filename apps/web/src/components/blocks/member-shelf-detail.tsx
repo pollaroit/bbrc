@@ -2,6 +2,7 @@
 
 import {
 	canManageCollaborators,
+	isSuperAdmin,
 	reorderPermissionFor,
 	resolveShelfPermissions,
 } from "@bbrc/shared";
@@ -191,7 +192,7 @@ export function MemberShelfDetail({
 	const isPrivate = shelf.visibility === "private";
 	const signedIn = Boolean(session?.user);
 	const canSeeInsights =
-		isOwner || isCollaborator || session?.user.isAdmin === true;
+		isOwner || isCollaborator || isSuperAdmin(session?.user);
 
 	const canEditDetails =
 		can("edit_title") ||

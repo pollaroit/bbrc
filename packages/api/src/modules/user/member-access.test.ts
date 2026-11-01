@@ -45,19 +45,19 @@ function matches(row: Row, where: Clause): boolean {
 
 const viewers: Array<[string, Viewer, string]> = [
 	["anonymous", ANONYMOUS_VIEWER, "owner"],
-	["self", memberViewer({ userId: "owner", isAdmin: false }), "owner"],
+	["self", memberViewer({ userId: "owner", role: "user" }), "owner"],
 	[
 		"friend",
-		memberViewer({ userId: "me", isAdmin: false, friendIds: ["owner"] }),
+		memberViewer({ userId: "me", role: "user", friendIds: ["owner"] }),
 		"owner",
 	],
-	["member", memberViewer({ userId: "me", isAdmin: false }), "owner"],
+	["member", memberViewer({ userId: "me", role: "user" }), "owner"],
 	[
 		"blocked",
-		memberViewer({ userId: "me", isAdmin: false, blockedIds: ["owner"] }),
+		memberViewer({ userId: "me", role: "user", blockedIds: ["owner"] }),
 		"owner",
 	],
-	["admin", memberViewer({ userId: "me", isAdmin: true }), "owner"],
+	["super admin", memberViewer({ userId: "me", role: "super_admin" }), "owner"],
 ];
 
 describe("memberVisibleWhere agrees with canView", () => {

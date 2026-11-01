@@ -1,4 +1,4 @@
-import { notBannedProcedure, publicProcedure } from "../../procedures";
+import { protectedProcedure, publicProcedure } from "../../procedures";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import { loadViewer } from "../visibility/viewer";
 import {
@@ -28,7 +28,7 @@ import {
 } from "./reading-session.service";
 
 export const readingSessionRouter = {
-	current: notBannedProcedure
+	current: protectedProcedure
 		.input(CurrentReadingSessionInputSchema)
 		.output(CurrentReadingSessionOutputSchema)
 		.handler(async ({ input, context }) => ({
@@ -38,7 +38,7 @@ export const readingSessionRouter = {
 				input.readingId,
 			),
 		})),
-	currentFree: notBannedProcedure
+	currentFree: protectedProcedure
 		.output(CurrentReadingSessionOutputSchema)
 		.handler(async ({ context }) => ({
 			session: await getCurrentFreeReadingSession(
@@ -46,37 +46,37 @@ export const readingSessionRouter = {
 				context.session.user.id,
 			),
 		})),
-	startFree: notBannedProcedure
+	startFree: protectedProcedure
 		.input(StartFreeReadingSessionInputSchema)
 		.output(ReadingSessionSchema)
 		.handler(({ input, context }) =>
 			startFreeReadingSession(context.db, context.session.user.id, input),
 		),
-	setPages: notBannedProcedure
+	setPages: protectedProcedure
 		.input(SetSessionPagesInputSchema)
 		.output(ReadingSessionSchema)
 		.handler(({ input, context }) =>
 			setFreeSessionPages(context.db, context.session.user.id, input),
 		),
-	start: notBannedProcedure
+	start: protectedProcedure
 		.input(StartReadingSessionInputSchema)
 		.output(ReadingSessionSchema)
 		.handler(({ input, context }) =>
 			startReadingSession(context.db, context.session.user.id, input),
 		),
-	resume: notBannedProcedure
+	resume: protectedProcedure
 		.input(ResumeReadingSessionInputSchema)
 		.output(ReadingSessionSchema)
 		.handler(({ input, context }) =>
 			resumeReadingSession(context.db, context.session.user.id, input),
 		),
-	beat: notBannedProcedure
+	beat: protectedProcedure
 		.input(BeatReadingSessionInputSchema)
 		.output(ReadingSessionSchema)
 		.handler(({ input, context }) =>
 			beatReadingSession(context.db, context.session.user.id, input),
 		),
-	end: notBannedProcedure
+	end: protectedProcedure
 		.use(checkAchievementsAfter("reading"))
 		.input(EndReadingSessionInputSchema)
 		.output(EndReadingSessionOutputSchema)

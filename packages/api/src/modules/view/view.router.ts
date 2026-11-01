@@ -1,8 +1,9 @@
 import {
-	adminProcedure,
 	protectedProcedure,
 	publicProcedure,
+	superAdminProcedure,
 } from "../../procedures";
+import { noAudit } from "../audit/audit-middleware";
 import { loadViewer } from "../visibility/viewer";
 import {
 	AdminOverviewInputSchema,
@@ -52,14 +53,16 @@ export const viewRouter = {
 				await loadViewer(context.db, context.session),
 			),
 		),
-	adminOverview: adminProcedure
+	adminOverview: superAdminProcedure
 		.input(AdminOverviewInputSchema)
+		.use(noAudit("read only"))
 		.output(AdminOverviewOutputSchema)
 		.handler(({ input, context }) =>
 			getAdminViewsOverview(context.db, input.range),
 		),
-	adminList: adminProcedure
+	adminList: superAdminProcedure
 		.input(AdminViewListInputSchema)
+		.use(noAudit("read only"))
 		.output(AdminViewListOutputSchema)
 		.handler(({ input, context }) => listAdminViews(context.db, input)),
 };

@@ -14,31 +14,31 @@ describe("attachmentLocked", () => {
 	});
 	test("a private profile locks strangers but not friends or the owner", () => {
 		const o = owner({ profileVisibility: "private" });
-		const stranger = memberViewer({ userId: "s", isAdmin: false });
+		const stranger = memberViewer({ userId: "s", role: "user" });
 		const friend = memberViewer({
 			userId: "f",
-			isAdmin: false,
+			role: "user",
 			friendIds: ["owner"],
 		});
 		expect(attachmentLocked(stranger, [o])).toBe(true);
 		expect(attachmentLocked(friend, [o])).toBe(false);
 		expect(
-			attachmentLocked(memberViewer({ userId: "owner", isAdmin: false }), [o]),
+			attachmentLocked(memberViewer({ userId: "owner", role: "user" }), [o]),
 		).toBe(false);
 		expect(
-			attachmentLocked(memberViewer({ userId: "a", isAdmin: true }), [o]),
+			attachmentLocked(memberViewer({ userId: "a", role: "super_admin" }), [o]),
 		).toBe(false);
 	});
 	test("a blocked pair is locked even for public things", () => {
 		const blocked = memberViewer({
 			userId: "b",
-			isAdmin: false,
+			role: "user",
 			blockedIds: ["owner"],
 		});
 		expect(attachmentLocked(blocked, [owner()])).toBe(true);
 	});
 	test("every owner has to allow it", () => {
-		const viewer = memberViewer({ userId: "s", isAdmin: false });
+		const viewer = memberViewer({ userId: "s", role: "user" });
 		expect(
 			attachmentLocked(viewer, [owner(), owner({ id: "x", item: "friends" })]),
 		).toBe(true);

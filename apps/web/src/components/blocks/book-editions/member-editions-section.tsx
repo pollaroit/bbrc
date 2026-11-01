@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "@bbrc/shared";
 /**
  * Editions members added themselves (the second edition source, next to Open
  * Library). Anyone signed in can add one; the member who added it can edit or
@@ -114,7 +115,7 @@ export function MemberEditionsSection({
 	selection,
 }: Props) {
 	const { data: session } = authClient.useSession();
-	const isAdmin = session?.user.isAdmin === true;
+	const superAdmin = isSuperAdmin(session?.user);
 	const signedIn = Boolean(session?.user);
 	const key = orpc.bookEdition.list.queryKey({ input: { bookSlug } });
 	const query = useQuery(
@@ -261,12 +262,12 @@ export function MemberEditionsSection({
 							type="button"
 							size="sm"
 							onClick={() => setAddOpen(true)}
-							disabled={addsLeft === 0 && !isAdmin}
+							disabled={addsLeft === 0 && !superAdmin}
 						>
 							<Plus data-icon="inline-start" aria-hidden />
 							Add an edition
 						</Button>
-						{addsLeft != null && addsLeft <= 2 && !isAdmin ? (
+						{addsLeft != null && addsLeft <= 2 && !superAdmin ? (
 							<span className="text-muted-foreground text-xs">
 								{addsLeft === 0
 									? "You have used today's additions."
@@ -429,7 +430,7 @@ export function MemberEditionsSection({
 										) : null}
 									</div>
 								) : null}
-								{edition.canEdit || edition.canDelete || isAdmin ? (
+								{edition.canEdit || edition.canDelete || superAdmin ? (
 									<div className="mt-auto flex flex-wrap gap-1.5 border-border border-t p-3">
 										{edition.canEdit ? (
 											<Button
@@ -442,7 +443,7 @@ export function MemberEditionsSection({
 												Edit
 											</Button>
 										) : null}
-										{isAdmin ? (
+										{superAdmin ? (
 											<>
 												{edition.status === "verified" ? (
 													<Button

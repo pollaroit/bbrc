@@ -15,7 +15,7 @@ describe("decidePeek", () => {
 	});
 
 	test("a friends-only item is locked for a stranger, with only the owner named", () => {
-		const stranger = memberViewer({ userId: "v", isAdmin: false });
+		const stranger = memberViewer({ userId: "v", role: "user" });
 		expect(decidePeek({ ...base, viewer: stranger, item: "friends" })).toEqual({
 			state: "locked",
 			author,
@@ -28,7 +28,7 @@ describe("decidePeek", () => {
 	test("a friend sees a friends-only item", () => {
 		const friend = memberViewer({
 			userId: "v",
-			isAdmin: false,
+			role: "user",
 			friendIds: ["ann-id"],
 		});
 		expect(decidePeek({ ...base, viewer: friend, item: "friends" })).toEqual({
@@ -39,7 +39,7 @@ describe("decidePeek", () => {
 	test("an only-me item is unavailable, never locked", () => {
 		const friend = memberViewer({
 			userId: "v",
-			isAdmin: false,
+			role: "user",
 			friendIds: ["ann-id"],
 		});
 		expect(decidePeek({ ...base, viewer: friend, item: "private" })).toEqual({
@@ -51,7 +51,7 @@ describe("decidePeek", () => {
 	});
 
 	test("a private profile locks a public item, because friends can open it", () => {
-		const stranger = memberViewer({ userId: "v", isAdmin: false });
+		const stranger = memberViewer({ userId: "v", role: "user" });
 		expect(
 			decidePeek({
 				...base,
@@ -65,7 +65,7 @@ describe("decidePeek", () => {
 	test("a blocked viewer gets nothing at all", () => {
 		const blocked = memberViewer({
 			userId: "v",
-			isAdmin: false,
+			role: "user",
 			blockedIds: ["ann-id"],
 		});
 		expect(decidePeek({ ...base, viewer: blocked, item: "friends" })).toEqual({
@@ -77,14 +77,14 @@ describe("decidePeek", () => {
 		expect(
 			decidePeek({
 				...base,
-				viewer: memberViewer({ userId: "ann-id", isAdmin: false }),
+				viewer: memberViewer({ userId: "ann-id", role: "user" }),
 				item: "private",
 			}),
 		).toEqual({ state: "visible" });
 		expect(
 			decidePeek({
 				...base,
-				viewer: memberViewer({ userId: "boss", isAdmin: true }),
+				viewer: memberViewer({ userId: "boss", role: "super_admin" }),
 				item: "private",
 			}),
 		).toEqual({ state: "visible" });

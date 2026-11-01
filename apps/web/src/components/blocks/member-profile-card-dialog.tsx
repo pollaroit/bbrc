@@ -13,12 +13,13 @@ import {
 	TooltipTrigger,
 } from "@bbrc/ui/components/tooltip";
 import { useQuery } from "@tanstack/react-query";
-import { Crown, IdCard } from "lucide-react";
+import { IdCard } from "lucide-react";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { MemberLevelsInfoDialog } from "@/components/blocks/member-levels-info-dialog";
+import { RoleBadge } from "@/components/blocks/role-badge";
 import { UserPanel } from "@/components/blocks/user-panel";
 import { bookCoverUrl } from "@/lib/book-cover";
 import { formatDateTime } from "@/lib/format-datetime";
@@ -232,12 +233,7 @@ export function MemberProfileCardDialog({
 								renderTitle={(member) => (
 									<span className="flex min-w-0 items-center gap-2 font-medium">
 										<span className="truncate">{member.name}</span>
-										{card.isAdmin ? (
-											<Crown
-												className="size-4 shrink-0 text-warning"
-												aria-label="Administrator"
-											/>
-										) : null}
+										<RoleBadge role={card.role} size="sm" />
 									</span>
 								)}
 							/>

@@ -1,3 +1,4 @@
+import { isSuperAdmin } from "@bbrc/shared";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
@@ -69,7 +70,7 @@ export default async function UserComparePage({
 	}
 
 	// A member always compares themselves with someone: put them on the left.
-	if (!session.user.isAdmin) {
+	if (!isSuperAdmin(session.user)) {
 		const me = session.user.username;
 		if (me !== a) {
 			const other = me === b ? a : b;

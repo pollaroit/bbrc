@@ -1,4 +1,5 @@
-import { adminProcedure } from "../../procedures";
+import { superAdminProcedure } from "../../procedures";
+import { noAudit } from "../audit/audit-middleware";
 import {
 	CompareBooksInputSchema,
 	CompareBooksOutputSchema,
@@ -33,8 +34,9 @@ import {
  * compared. They exist here so the admin pages call one namespace.
  */
 export const userCompareAdminRouter = {
-	compare: adminProcedure
+	compare: superAdminProcedure
 		.input(CompareInputSchema)
+		.use(noAudit("read only"))
 		.output(CompareOutputSchema)
 		.handler(async ({ input, context }) =>
 			compareMembers(
@@ -44,8 +46,9 @@ export const userCompareAdminRouter = {
 			),
 		),
 
-	books: adminProcedure
+	books: superAdminProcedure
 		.input(CompareBooksInputSchema)
+		.use(noAudit("read only"))
 		.output(CompareBooksOutputSchema)
 		.handler(async ({ input, context }) =>
 			listCompareBooks(
@@ -55,8 +58,9 @@ export const userCompareAdminRouter = {
 			),
 		),
 
-	extras: adminProcedure
+	extras: superAdminProcedure
 		.input(CompareExtrasInputSchema)
+		.use(noAudit("read only"))
 		.output(CompareExtrasOutputSchema)
 		.handler(async ({ input, context }) =>
 			getCompareExtras(
@@ -66,12 +70,12 @@ export const userCompareAdminRouter = {
 			),
 		),
 
-	searchMembers: adminProcedure
+	searchMembers: superAdminProcedure
 		.input(SearchCompareMembersInputSchema)
 		.output(SearchCompareMembersOutputSchema)
 		.handler(({ input, context }) => searchCompareMembers(input, context.db)),
 
-	stats: adminProcedure
+	stats: superAdminProcedure
 		.input(CompareStatsInputSchema)
 		.output(CompareStatsOutputSchema)
 		.handler(({ input, context }) => getCompareStats(input, context.db)),

@@ -32,7 +32,7 @@ import { adminNavSections } from "@/lib/admin-nav";
 
 export type SearchCommandContext = {
 	signedIn: boolean;
-	isAdmin: boolean;
+	superAdmin: boolean;
 	username: string | null;
 	/** Whether the ongoing-sitting lookup has finished. */
 	ongoingLoaded: boolean;
@@ -477,8 +477,8 @@ export function isCommandAvailable(
 	const { requires } = command;
 	if (requires.guest && ctx.signedIn) return false;
 	if (requires.auth && !ctx.signedIn) return false;
-	if (requires.admin && !ctx.isAdmin) return false;
-	if (requires.nonAdmin && ctx.isAdmin) return false;
+	if (requires.admin && !ctx.superAdmin) return false;
+	if (requires.nonAdmin && ctx.superAdmin) return false;
 	if (requires.participant && !ctx.ongoing?.viewerIsParticipant) return false;
 	if (requires.noOngoing && (!ctx.ongoingLoaded || ctx.ongoing != null)) {
 		return false;

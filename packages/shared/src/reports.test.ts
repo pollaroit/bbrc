@@ -14,8 +14,6 @@ describe("statusAfterAction", () => {
 	test("closing actions close, notes leave it alone, reopen opens", () => {
 		expect(statusAfterAction("dismiss")).toBe("dismissed");
 		expect(statusAfterAction("delete_content")).toBe("resolved");
-		expect(statusAfterAction("warn_owner")).toBe("resolved");
-		expect(statusAfterAction("ban_owner")).toBe("resolved");
 		expect(statusAfterAction("note")).toBeNull();
 		expect(statusAfterAction("reopen")).toBe("open");
 	});

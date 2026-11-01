@@ -11,7 +11,7 @@ import { useAuthorViewer } from "./author-page-viewer";
 export function AuthorPageAdminBar({ slug }: { slug: string }) {
 	const data = useAuthorViewer(slug);
 
-	if (!data?.viewer.isAdmin) {
+	if (!data?.viewer.isSuperAdmin) {
 		return null;
 	}
 

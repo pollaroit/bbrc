@@ -9,6 +9,7 @@ import {
 	formatSittingDisplayName,
 	generateSlug,
 	generateUniqueSlug,
+	isSuperAdmin,
 	pollChipRankFromGrants,
 	resolveClubTimeZone,
 	selfJoinWindow,
@@ -57,7 +58,7 @@ import {
 } from "./participation-active";
 import {
 	assertMemberCanSetProgress,
-	progressAffectsUserStatus,
+	progressEarnsPoints,
 } from "./participation-progress";
 import {
 	sittingListRanging,
@@ -122,7 +123,6 @@ import {
 } from "./sitting-poll-pool";
 import { createPollInputToStoredFilters } from "./sitting-poll-stored-filters";
 import { syncSittingReadingSchedule } from "./sitting-reading-schedule.service";
-import { applyUserStatusForParticipationProgress } from "./sitting-user-status";
 
 type SittingListRow = Prisma.SittingGetPayload<{
 	select: typeof getSittingListFields;
@@ -384,7 +384,7 @@ function mapSittingDetail(
 			if (
 				row.status === "finished" &&
 				bookPages != null &&
-				progressAffectsUserStatus(participation.progress)
+				progressEarnsPoints(participation.progress)
 			) {
 				rpChange = calculateRpPointsDelta(participation.progress, bookPages);
 			}
@@ -399,7 +399,6 @@ function mapSittingDetail(
 				username: participation.user.username,
 				name: participation.user.name,
 				image: participation.user.image,
-				status: participation.user.status,
 				xp: participation.user.xp,
 				rp: participation.user.rp,
 				xpLevel: levels.xpLevel,
@@ -869,7 +868,7 @@ export async function getSittingBySlug(
 	}
 
 	const userId = viewer.kind === "member" ? viewer.userId : undefined;
-	const viewerIsAdmin = viewer.kind === "member" && viewer.isAdmin;
+	const viewerIsSuperAdmin = viewer.kind === "member" && isSuperAdmin(viewer);
 	const myVotes =
 		userId && sitting.poll
 			? await loadMyPollVotes(sitting.poll.id, userId, db)
@@ -912,7 +911,7 @@ export async function getSittingBySlug(
 				).length
 			: 0;
 
-	const hidePollAggregates = sitting.status === "voting" && !viewerIsAdmin;
+	const hidePollAggregates = sitting.status === "voting" && !viewerIsSuperAdmin;
 
 	const pollChipRankByUserId =
 		sitting.poll != null
@@ -950,7 +949,7 @@ export async function getSittingBySlug(
 
 	let removedParticipants: GetSittingBySlugOutput["removedParticipants"] = [];
 
-	if (viewerIsAdmin) {
+	if (viewerIsSuperAdmin) {
 		const removedRows = await db.participation.findMany({
 			where: {
 				sittingId: sitting.id,
@@ -973,7 +972,6 @@ export async function getSittingBySlug(
 					username: row.user.username,
 					name: row.user.name,
 					image: row.user.image,
-					status: row.user.status,
 					xp: row.user.xp,
 					rp: row.user.rp,
 					xpLevel: levels.xpLevel,
@@ -1934,40 +1932,12 @@ export async function updateParticipation(
 						username: true,
 						name: true,
 						image: true,
-						status: true,
 						xp: true,
 						rp: true,
 					},
 				},
 			},
 		});
-
-		if (
-			sitting.status === "finished" &&
-			progressAffectsUserStatus(input.progress)
-		) {
-			await applyUserStatusForParticipationProgress(
-				input.userId,
-				input.progress,
-				tx,
-			);
-
-			const refreshedUser = await tx.user.findUnique({
-				where: { id: input.userId },
-				select: {
-					username: true,
-					name: true,
-					image: true,
-					status: true,
-					xp: true,
-					rp: true,
-				},
-			});
-
-			if (refreshedUser) {
-				row.user = refreshedUser;
-			}
-		}
 
 		return row;
 	});
@@ -1996,7 +1966,6 @@ export async function updateParticipation(
 		username: updated.user.username,
 		name: updated.user.name,
 		image: updated.user.image,
-		status: updated.user.status,
 		xp: updated.user.xp,
 		rp: updated.user.rp,
 		xpLevel: levels.xpLevel,
@@ -2096,12 +2065,6 @@ export async function addSittingParticipant(
 	if (existing && existing.removedAt == null) {
 		throw new ORPCError("CONFLICT", {
 			message: "Member is already on this sitting",
-		});
-	}
-	// Recovering a removed member is an admin call; only new joins are blocked.
-	if (!existing && user.status === "banned") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Banned members cannot join a sitting",
 		});
 	}
 
@@ -2420,7 +2383,7 @@ export async function getPollOptionReaders(
 		throw new ORPCError("UNAUTHORIZED", { message: "Sign in to continue." });
 	}
 	const userId = viewer.userId;
-	const isAdmin = viewer.isAdmin;
+	const superAdmin = isSuperAdmin(viewer);
 	const option = await db.pollOption.findUnique({
 		where: { id: input.pollOptionId },
 		select: {
@@ -2455,7 +2418,7 @@ export async function getPollOptionReaders(
 	);
 
 	if (
-		!isAdmin &&
+		!superAdmin &&
 		!participantUserIds.some((participantId) => participantId === userId)
 	) {
 		throw new ORPCError("FORBIDDEN", {

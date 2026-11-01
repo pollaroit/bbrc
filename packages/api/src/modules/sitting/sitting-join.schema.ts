@@ -158,7 +158,6 @@ export const InviteLinkPreviewOutputSchema = zod.object({
 	viewer: zod.object({
 		isParticipant: zod.boolean(),
 		removedByOrganiser: zod.boolean(),
-		banned: zod.boolean(),
 	}),
 	canJoin: zod.boolean(),
 	joinBlockedReason: zod.string().nullable(),
@@ -229,7 +228,6 @@ export const SittingMemberCandidateStateSchema = zod.enum([
 	"participant",
 	"removed",
 	"invited",
-	"banned",
 ]);
 
 export const SearchSittingMembersOutputSchema = zod.object({

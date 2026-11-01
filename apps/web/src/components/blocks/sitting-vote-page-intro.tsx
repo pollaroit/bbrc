@@ -1,6 +1,7 @@
 "use client";
 
 import type { GetSittingBySlugOutput } from "@bbrc/api/modules/sitting/sitting.schema";
+import { isSuperAdmin } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Circle, Trophy } from "lucide-react";
@@ -66,7 +67,7 @@ export function SittingVotePageIntro({
 	const participantTotal = sitting?.participants.length ?? participantCount;
 	const maxChoices = poll.maxChoices ?? poll.take;
 	const isOpen = status === "voting";
-	const isAdmin = session?.user.isAdmin === true;
+	const superAdmin = isSuperAdmin(session?.user);
 	const isParticipant =
 		Boolean(session?.user) &&
 		participants.some((person) => person.userId === session?.user.id);
@@ -186,7 +187,7 @@ export function SittingVotePageIntro({
 				<div className="flex flex-wrap items-center justify-between gap-2 border-border border-t pt-3">
 					<p className="text-muted-foreground text-xs">
 						{isOpen
-							? `${poll.voterCount} of ${participantTotal} readers have voted.${isAdmin ? "" : " Totals stay hidden until voting ends."}`
+							? `${poll.voterCount} of ${participantTotal} readers have voted.${superAdmin ? "" : " Totals stay hidden until voting ends."}`
 							: `${participantTotal} readers took part.`}
 					</p>
 					<Button

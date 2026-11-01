@@ -6,6 +6,7 @@ import {
 	FRIEND_REFUSAL_MESSAGES,
 	type FriendRelationState,
 	friendPair,
+	isSuperAdmin,
 	pendingExpiryCutoff,
 	type Viewer,
 } from "@bbrc/shared";
@@ -26,8 +27,7 @@ const memberSelect = {
 	username: true,
 	name: true,
 	image: true,
-	status: true,
-	isAdmin: true,
+	role: true,
 	profileVisibility: true,
 	autoAcceptFriends: true,
 } as const;
@@ -37,8 +37,7 @@ type MemberRow = {
 	username: string;
 	name: string;
 	image: string | null;
-	status: string;
-	isAdmin: boolean;
+	role: string;
 	profileVisibility: "public" | "private";
 	autoAcceptFriends: boolean;
 };
@@ -112,15 +111,12 @@ export async function countFriends(
 	return db.friendship.count({
 		where: {
 			status: "accepted",
-			OR: [
-				{ userLowId: userId, userHigh: { status: { not: "banned" } } },
-				{ userHighId: userId, userLow: { status: { not: "banned" } } },
-			],
+			OR: [{ userLowId: userId }, { userHighId: userId }],
 		},
 	});
 }
 
-/** For the friend button. Signed-out visitors and banned or blocked members just see "none" or "unavailable". */
+/** For the friend button. Signed-out visitors and blocked members just see "none" or "unavailable". */
 export async function getFriendState(
 	db: Database,
 	viewer: Viewer,
@@ -138,7 +134,7 @@ export async function getFriendState(
 
 	const block = await blockBetween(db, viewer.userId, member.id);
 	if (block.iBlocked) return { state: "blocked" as const, ...base };
-	if (block.blockedMe || member.status === "banned") {
+	if (block.blockedMe) {
 		return { state: "unavailable" as const, ...base };
 	}
 	const state: FriendState = await relationState(db, viewer.userId, member.id);
@@ -184,7 +180,6 @@ export async function sendFriendRequest(
 
 	const decision = checkFriendRequest({
 		isSelf: me.id === target.id,
-		unavailable: me.status === "banned" || target.status === "banned",
 		blocked: block.iBlocked || block.blockedMe,
 		state,
 		lastDeclinedAt: lastDeclined?.declinedAt ?? null,
@@ -280,11 +275,6 @@ export async function acceptRequest(
 		requireMember(db, username),
 	]);
 	if (!me) throw new ORPCError("NOT_FOUND", { message: "Member not found." });
-	if (me.status === "banned" || other.status === "banned") {
-		throw new ORPCError("BAD_REQUEST", {
-			message: FRIEND_REFUSAL_MESSAGES.unavailable,
-		});
-	}
 	const block = await blockBetween(db, me.id, other.id);
 	if (block.iBlocked || block.blockedMe) {
 		throw new ORPCError("BAD_REQUEST", {
@@ -368,7 +358,7 @@ export async function blockMember(
 			message: "You cannot block yourself.",
 		});
 	}
-	if (other.isAdmin) {
+	if (isSuperAdmin(other)) {
 		throw new ORPCError("BAD_REQUEST", {
 			message: "Admins cannot be blocked.",
 		});
@@ -436,7 +426,7 @@ export async function listFriends(
 	const count = await countFriends(db, owner.id);
 	const mayList =
 		viewer.kind === "member" &&
-		(viewer.isAdmin ||
+		(isSuperAdmin(viewer) ||
 			viewer.userId === owner.id ||
 			viewer.friendIds.has(owner.id)) &&
 		!viewer.blockedIds.has(owner.id);
@@ -449,7 +439,7 @@ export async function listFriends(
 	ids = ids.filter((id) => !viewer.blockedIds.has(id));
 	if (input.mutualOnly && viewer.userId !== owner.id) {
 		const mine = new Set(
-			viewer.isAdmin
+			isSuperAdmin(viewer)
 				? await loadFriendIds(db, viewer.userId)
 				: viewer.friendIds,
 		);
@@ -514,7 +504,7 @@ export async function friendsWhoReadBook(
 	});
 	if (!book) return empty;
 	const friendIds = (
-		viewer.isAdmin
+		isSuperAdmin(viewer)
 			? await loadFriendIds(db, viewer.userId)
 			: [...viewer.friendIds]
 	).filter((id) => !viewer.blockedIds.has(id));
@@ -569,7 +559,7 @@ export async function friendsWhoReadBook(
 	return { total: all.length, items: all.slice(0, 5) };
 }
 
-/** The member's pending requests, both directions (banned members left out). */
+/** The member's pending requests, both directions. */
 export async function listFriendRequests(db: Database, meId: string) {
 	const rows = await db.friendship.findMany({
 		where: {
@@ -589,7 +579,6 @@ export async function listFriendRequests(db: Database, meId: string) {
 	const outgoing: (FriendMember & { sentAt: Date })[] = [];
 	for (const row of rows) {
 		const other = row.userLowId === meId ? row.userHigh : row.userLow;
-		if (other.status === "banned") continue;
 		const item = { ...toMember(other), sentAt: row.createdAt };
 		(row.requesterId === meId ? outgoing : incoming).push(item);
 	}
@@ -619,10 +608,7 @@ export async function countIncomingRequests(
 		where: {
 			status: "pending",
 			requesterId: { not: meId },
-			OR: [
-				{ userLowId: meId, userHigh: { status: { not: "banned" } } },
-				{ userHighId: meId, userLow: { status: { not: "banned" } } },
-			],
+			OR: [{ userLowId: meId }, { userHighId: meId }],
 		},
 	});
 }

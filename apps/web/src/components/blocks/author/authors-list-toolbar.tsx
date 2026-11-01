@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "@bbrc/shared";
 import {
 	Field,
 	FieldGroup,
@@ -51,7 +52,7 @@ function toggled<T extends string>(
 export function AuthorsListToolbar() {
 	const [params, setParams] = useAuthorsListingSearchParams();
 	const { data: session } = authClient.useSession();
-	const isAdmin = session?.user.isAdmin === true;
+	const superAdmin = isSuperAdmin(session?.user);
 	const facetsInput = useMemo(
 		() => toAuthorNationalityFacetsInput(params),
 		[params],
@@ -183,7 +184,7 @@ export function AuthorsListToolbar() {
 						/>
 					</FieldSet>
 
-					{isAdmin ? (
+					{superAdmin ? (
 						<ListingCheckboxList
 							legend="Review status (admins)"
 							options={AUTHOR_STATUS_FILTERS.map((key) => ({

@@ -1,3 +1,4 @@
+import { isSuperAdmin } from "@bbrc/shared";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic";
 export default async function NewAuthorPage() {
 	const session = await auth.api.getSession({ headers: await headers() });
 
-	if (!session?.user.isAdmin) {
+	if (!isSuperAdmin(session?.user)) {
 		redirect("/authors" as Route);
 	}
 

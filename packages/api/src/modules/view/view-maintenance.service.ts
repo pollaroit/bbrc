@@ -158,7 +158,7 @@ export async function sendWeeklyViewsDigest(
 			FROM recent r JOIN "user" u ON r.resource = 'user' AND u.id = r.resource_id
 		)
 		SELECT i.owner_id, i.title, i.kind, i.href, i.views
-		FROM items i JOIN "user" u ON u.id = i.owner_id AND u.status <> 'banned'`;
+		FROM items i JOIN "user" u ON u.id = i.owner_id`;
 
 	const byOwner = new Map<
 		string,

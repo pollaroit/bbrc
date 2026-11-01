@@ -1,5 +1,5 @@
 import type { Database } from "@bbrc/db";
-import { authorNameKey, type Viewer } from "@bbrc/shared";
+import { authorNameKey, isSuperAdmin, type Viewer } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 
 export type ResolvedAuthor = {
@@ -26,7 +26,7 @@ function notFound(slug: string): never {
 export async function resolveAuthor(
 	db: Database,
 	slug: string,
-	viewer: Viewer | { isAdmin: boolean } | null,
+	viewer: Viewer | { role?: string | null } | null,
 ): Promise<ResolvedAuthor> {
 	const asked = slug.trim();
 	if (!asked) notFound(slug);
@@ -63,12 +63,7 @@ export async function resolveAuthor(
 
 	if (!found) notFound(slug);
 
-	const isAdmin =
-		viewer != null &&
-		("kind" in viewer
-			? viewer.kind === "member" && viewer.isAdmin
-			: viewer.isAdmin);
-	if (!isAdmin) {
+	if (!isSuperAdmin(viewer)) {
 		const hasBooks = await db.bookAuthor.findFirst({
 			where: { authorId: found.id },
 			select: { bookId: true },
@@ -98,8 +93,8 @@ export async function authorSlugSet(
 /** The signed-in viewer as a plain actor (id and admin flag), or null when anonymous. */
 export function actorOf(
 	viewer: Viewer,
-): { userId: string; isAdmin: boolean } | null {
+): { userId: string; role?: string | null } | null {
 	return viewer.kind === "member"
-		? { userId: viewer.userId, isAdmin: viewer.isAdmin }
+		? { userId: viewer.userId, role: viewer.role }
 		: null;
 }

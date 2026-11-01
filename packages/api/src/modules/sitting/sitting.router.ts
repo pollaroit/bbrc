@@ -1,9 +1,8 @@
 import { SittingSchema } from "@bbrc/schemas";
 import {
-	adminProcedure,
-	notBannedProcedure,
 	protectedProcedure,
 	publicProcedure,
+	superAdminProcedure,
 } from "../../procedures";
 import {
 	revalidateBookIsr,
@@ -12,6 +11,8 @@ import {
 } from "../../revalidate-isr";
 import { evaluateSittingMembersAchievements } from "../achievement/achievement.service";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
+import { audited } from "../audit/audit-middleware";
+import { memberNameById, sittingTarget } from "../audit/audit-targets";
 import { loadViewer } from "../visibility/viewer";
 import {
 	CreateSittingInputSchema,
@@ -120,41 +121,41 @@ export const sittingRouter = {
 			async ({ context }) =>
 				await getOngoingSitting(context.db, context.session?.user.id),
 		),
-	getSittingPollPoolSize: adminProcedure
+	getSittingPollPoolSize: superAdminProcedure
 		.input(GetSittingPollPoolSizeInputSchema)
 		.output(GetSittingPollPoolSizeOutputSchema)
 		.handler(
 			async ({ input, context }) =>
 				await getSittingPollPoolSize(input, context.db),
 		),
-	wishlistPollCandidates: adminProcedure
+	wishlistPollCandidates: superAdminProcedure
 		.input(WishlistPollCandidatesInputSchema)
 		.output(WishlistPollCandidatesOutputSchema)
 		.handler(
 			async ({ input, context }) =>
 				await wishlistPollCandidates(input, context.db),
 		),
-	searchPollNominees: adminProcedure
+	searchPollNominees: superAdminProcedure
 		.input(SearchPollNomineesInputSchema)
 		.output(SearchPollNomineesOutputSchema)
 		.handler(
 			async ({ input, context }) => await searchPollNominees(input, context.db),
 		),
-	previewSittingPollOptions: adminProcedure
+	previewSittingPollOptions: superAdminProcedure
 		.input(PreviewSittingPollOptionsInputSchema)
 		.output(PreviewSittingPollOptionsOutputSchema)
 		.handler(
 			async ({ input, context }) =>
 				await previewSittingPollOptions(input, context.db),
 		),
-	replaceSittingPollPreviewOption: adminProcedure
+	replaceSittingPollPreviewOption: superAdminProcedure
 		.input(ReplaceSittingPollPreviewOptionInputSchema)
 		.output(ReplaceSittingPollPreviewOptionOutputSchema)
 		.handler(
 			async ({ input, context }) =>
 				await replaceSittingPollPreviewOption(input, context.db),
 		),
-	shuffleSittingPollPreviewOptions: adminProcedure
+	shuffleSittingPollPreviewOptions: superAdminProcedure
 		.input(ShuffleSittingPollPreviewOptionsInputSchema)
 		.output(ShuffleSittingPollPreviewOptionsOutputSchema)
 		.handler(
@@ -162,8 +163,13 @@ export const sittingRouter = {
 				await shuffleSittingPollPreviewOptions(input, context.db),
 		),
 	join: sittingJoinRouter,
-	createSitting: adminProcedure
+	createSitting: superAdminProcedure
 		.input(CreateSittingInputSchema)
+		.use(
+			audited("sitting.created", {
+				target: ({ output }) => sittingTarget(output.slug),
+			}),
+		)
 		.output(CreateSittingOutputSchema)
 		.handler(async ({ input, context }) => {
 			const sitting = await createSitting(
@@ -174,7 +180,7 @@ export const sittingRouter = {
 			revalidateSittingIsr(context, sitting.slug);
 			return sitting;
 		}),
-	submitPollVotes: notBannedProcedure
+	submitPollVotes: protectedProcedure
 		.use(checkAchievementsAfter("votes"))
 		.input(SubmitPollVotesInputSchema)
 		.output(SubmitPollVotesOutputSchema)
@@ -185,13 +191,13 @@ export const sittingRouter = {
 			revalidateSittingIsr(context, input.sittingSlug);
 			return result;
 		}),
-	getPollOptionVotes: adminProcedure
+	getPollOptionVotes: superAdminProcedure
 		.input(GetPollOptionVotesInputSchema)
 		.output(GetPollOptionVotesOutputSchema)
 		.handler(
 			async ({ input, context }) => await getPollOptionVotes(input, context.db),
 		),
-	getPollOptionReaders: notBannedProcedure
+	getPollOptionReaders: protectedProcedure
 		.input(GetPollOptionReadersInputSchema)
 		.output(GetPollOptionReadersOutputSchema)
 		.handler(async ({ input, context }) =>
@@ -201,7 +207,7 @@ export const sittingRouter = {
 				context.db,
 			),
 		),
-	getSittingPollPreviewReaders: adminProcedure
+	getSittingPollPreviewReaders: superAdminProcedure
 		.input(GetSittingPollPreviewReadersInputSchema)
 		.output(GetPollOptionReadersOutputSchema)
 		.handler(
@@ -212,14 +218,20 @@ export const sittingRouter = {
 					context.db,
 				),
 		),
-	getPollVotesByUser: adminProcedure
+	getPollVotesByUser: superAdminProcedure
 		.input(GetPollVotesByUserInputSchema)
 		.output(GetPollVotesByUserOutputSchema)
 		.handler(
 			async ({ input, context }) => await getPollVotesByUser(input, context.db),
 		),
-	transitionSitting: adminProcedure
+	transitionSitting: superAdminProcedure
 		.input(TransitionSittingInputSchema)
+		.use(
+			audited("sitting.phase_changed", {
+				target: ({ input }) => sittingTarget(input.slug),
+				metadata: ({ input }) => ({ to: input.transition }),
+			}),
+		)
 		.output(TransitionSittingOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await transitionSitting(input, context.db);
@@ -233,31 +245,49 @@ export const sittingRouter = {
 			revalidateBooksCatalogIsr(context);
 			return result;
 		}),
-	updateSittingDeadlines: adminProcedure
+	updateSittingDeadlines: superAdminProcedure
 		.input(UpdateSittingDeadlinesInputSchema)
+		.use(
+			audited("sitting.deadlines_changed", {
+				target: ({ input }) => sittingTarget(input.slug),
+			}),
+		)
 		.output(UpdateSittingDeadlinesOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await updateSittingDeadlines(input, context.db);
 			revalidateSittingIsr(context, input.slug);
 			return result;
 		}),
-	updateMyParticipationProgress: notBannedProcedure
+	updateMyParticipationProgress: protectedProcedure
 		.use(checkAchievementsAfter("sittings"))
 		.input(UpdateMyParticipationProgressInputSchema)
 		.output(UpdateMyParticipationProgressOutputSchema)
 		.handler(async ({ input, context }) =>
 			updateMyParticipationProgress(input, context.session.user.id, context.db),
 		),
-	updateParticipation: adminProcedure
+	updateParticipation: superAdminProcedure
 		.input(UpdateParticipationInputSchema)
+		.use(
+			audited("sitting.participation_changed", {
+				target: ({ input }) => sittingTarget(input.slug),
+				metadata: ({ input }) => ({ progress: input.progress }),
+			}),
+		)
 		.output(UpdateParticipationOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await updateParticipation(input, context.db);
 			revalidateSittingIsr(context, input.slug);
 			return result;
 		}),
-	addSittingParticipant: adminProcedure
+	addSittingParticipant: superAdminProcedure
 		.input(SittingParticipantMutationInputSchema)
+		.use(
+			audited("sitting.participant_added", {
+				before: ({ input, db }) => memberNameById(db, input.userId),
+				target: ({ input }) => sittingTarget(input.slug),
+				metadata: ({ before }) => ({ member: before ?? undefined }),
+			}),
+		)
 		.output(SittingParticipantMutationOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await addSittingParticipant(
@@ -268,8 +298,15 @@ export const sittingRouter = {
 			revalidateSittingIsr(context, input.slug);
 			return result;
 		}),
-	removeSittingParticipant: adminProcedure
+	removeSittingParticipant: superAdminProcedure
 		.input(RemoveSittingParticipantInputSchema)
+		.use(
+			audited("sitting.participant_removed", {
+				before: ({ input, db }) => memberNameById(db, input.userId),
+				target: ({ input }) => sittingTarget(input.slug),
+				metadata: ({ before }) => ({ member: before ?? undefined }),
+			}),
+		)
 		.output(SittingParticipantMutationOutputSchema)
 		.handler(async ({ input, context }) => {
 			const result = await removeSittingParticipant(input, context.db);

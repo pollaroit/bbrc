@@ -1,7 +1,7 @@
 "use client";
 
 import type { AdminUserListItemSchema } from "@bbrc/api/modules/admin/admin-user.schema";
-import { UserStatusSchema } from "@bbrc/schemas";
+import { assignableRoles, ROLE_META, type Role, roleOf } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
@@ -36,11 +36,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { z } from "zod";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
+import { authClient } from "@/lib/auth-client";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type AdminUserRow = z.infer<typeof AdminUserListItemSchema>;
 
-type DialogKind = "name" | "password" | "role" | "status" | "delete" | null;
+type DialogKind = "name" | "password" | "role" | "delete" | null;
 
 async function invalidateAdminUsers() {
 	await Promise.all([
@@ -66,8 +67,10 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 	const [dialog, setDialog] = useState<DialogKind>(null);
 	const [name, setName] = useState(user.name);
 	const [password, setPassword] = useState("");
-	const [isAdmin, setIsAdmin] = useState(user.isAdmin);
-	const [status, setStatus] = useState(user.status);
+	const { data: session } = authClient.useSession();
+	// The roles the signed-in person may give this member: the same rules the server enforces.
+	const offeredRoles = session?.user ? assignableRoles(session.user, user) : [];
+	const [role, setRole] = useState<Role | null>(offeredRoles[0] ?? null);
 
 	const updateName = useMutation(
 		orpc.admin.updateUserName.mutationOptions({
@@ -81,20 +84,9 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 	);
 
 	const updateRole = useMutation(
-		orpc.admin.updateUserRole.mutationOptions({
+		orpc.role.set.mutationOptions({
 			onSuccess: async () => {
 				toast.success("Role updated.");
-				setDialog(null);
-				await invalidateAdminUsers();
-			},
-			onError: (error) => toast.error(error.message),
-		}),
-	);
-
-	const updateStatus = useMutation(
-		orpc.admin.updateUserStatus.mutationOptions({
-			onSuccess: async () => {
-				toast.success("Status updated.");
 				setDialog(null);
 				await invalidateAdminUsers();
 			},
@@ -126,8 +118,7 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 
 	const openDialog = (kind: DialogKind) => {
 		setName(user.name);
-		setIsAdmin(user.isAdmin);
-		setStatus(user.status);
+		setRole(offeredRoles[0] ?? null);
 		setPassword("");
 		setDialog(kind);
 	};
@@ -161,12 +152,11 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 					<DropdownMenuItem onClick={() => openDialog("password")}>
 						Set password
 					</DropdownMenuItem>
-					<DropdownMenuItem onClick={() => openDialog("role")}>
-						Update role
-					</DropdownMenuItem>
-					<DropdownMenuItem onClick={() => openDialog("status")}>
-						Update status
-					</DropdownMenuItem>
+					{offeredRoles.length > 0 ? (
+						<DropdownMenuItem onClick={() => openDialog("role")}>
+							Change role
+						</DropdownMenuItem>
+					) : null}
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
 						variant="destructive"
@@ -267,89 +257,45 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 			>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Update role</DialogTitle>
-						<DialogDescription>@{user.username}</DialogDescription>
-					</DialogHeader>
-					<Field>
-						<FieldLabel>Role</FieldLabel>
-						<Select
-							value={isAdmin ? "admin" : "member"}
-							onValueChange={(value) => {
-								setIsAdmin(value === "admin");
-							}}
-						>
-							<SelectTrigger className="w-full">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="member">Member</SelectItem>
-								<SelectItem value="admin">Administrator</SelectItem>
-							</SelectContent>
-						</Select>
-					</Field>
-					<DialogFooter>
-						<LoadingButton
-							loading={updateRole.isPending}
-							onClick={() => {
-								updateRole.mutate({
-									username: user.username,
-									isAdmin,
-								});
-							}}
-						>
-							Save role
-						</LoadingButton>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-
-			<Dialog
-				open={dialog === "status"}
-				onOpenChange={(open) => {
-					if (!open) setDialog(null);
-				}}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Update status</DialogTitle>
+						<DialogTitle>Change role</DialogTitle>
 						<DialogDescription>
-							Status controls club access. Banned members cannot post or join
-							sittings.
+							@{user.username} is now{" "}
+							{ROLE_META[roleOf(user)].label.toLowerCase()}.
 						</DialogDescription>
 					</DialogHeader>
 					<Field>
-						<FieldLabel>Status</FieldLabel>
+						<FieldLabel>New role</FieldLabel>
 						<Select
-							value={status}
-							onValueChange={(value) => {
-								if (value) {
-									setStatus(UserStatusSchema.parse(value));
-								}
-							}}
+							value={role ?? ""}
+							onValueChange={(value) => setRole(value as Role)}
 						>
 							<SelectTrigger className="w-full">
-								<SelectValue />
+								<SelectValue placeholder="Choose a role" />
 							</SelectTrigger>
 							<SelectContent>
-								{UserStatusSchema.options.map((option) => (
-									<SelectItem key={option} value={option}>
-										{option}
+								{offeredRoles.map((offered) => (
+									<SelectItem key={offered} value={offered}>
+										{ROLE_META[offered].label}
 									</SelectItem>
 								))}
 							</SelectContent>
 						</Select>
+						{role ? (
+							<p className="text-muted-foreground text-xs">
+								{ROLE_META[role].description}
+							</p>
+						) : null}
 					</Field>
 					<DialogFooter>
 						<LoadingButton
-							loading={updateStatus.isPending}
+							loading={updateRole.isPending}
+							disabled={role == null}
 							onClick={() => {
-								updateStatus.mutate({
-									username: user.username,
-									status,
-								});
+								if (!role) return;
+								updateRole.mutate({ username: user.username, role });
 							}}
 						>
-							Save status
+							Save role
 						</LoadingButton>
 					</DialogFooter>
 				</DialogContent>

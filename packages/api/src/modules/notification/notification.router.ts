@@ -1,3 +1,4 @@
+import { isSuperAdmin } from "@bbrc/shared";
 import { protectedProcedure } from "../../procedures";
 import {
 	GetNotificationListInputSchema,
@@ -47,7 +48,7 @@ export const notificationRouter = {
 		.handler(async ({ context }) =>
 			getNotificationPreferences(
 				context.session.user.id,
-				context.session.user.isAdmin,
+				isSuperAdmin(context.session.user),
 				context.db,
 			),
 		),
@@ -57,7 +58,7 @@ export const notificationRouter = {
 		.handler(async ({ input, context }) =>
 			updateNotificationPreferences(
 				context.session.user.id,
-				context.session.user.isAdmin,
+				isSuperAdmin(context.session.user),
 				input,
 				context.db,
 			),

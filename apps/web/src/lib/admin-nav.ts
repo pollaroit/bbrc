@@ -11,6 +11,7 @@ import {
 	ListOrdered,
 	MessageCircle,
 	MessageSquareQuote,
+	ScrollText,
 	Sparkles,
 	Users,
 	UsersRound,
@@ -355,6 +356,20 @@ export const adminNavSections: AdminNavSection[] = [
 				href: "/admin/reports" as Route,
 				label: "Queue",
 				isActive: (pathname) => pathname === "/admin/reports",
+			},
+		],
+	},
+	{
+		id: "audit",
+		label: "Audit log",
+		icon: ScrollText,
+		defaultHref: "/admin/audit" as Route,
+		sectionActive: (pathname) => pathname.startsWith("/admin/audit"),
+		children: [
+			{
+				href: "/admin/audit" as Route,
+				label: "Log",
+				isActive: (pathname) => pathname === "/admin/audit",
 			},
 		],
 	},

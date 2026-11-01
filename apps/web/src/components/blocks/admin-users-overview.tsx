@@ -1,5 +1,6 @@
 "use client";
 
+import { ROLE_META } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Card,
@@ -112,31 +113,6 @@ export function AdminUsersOverview() {
 						<List data-icon="inline-start" />
 						Member directory
 					</Button>
-					{kpis.warned > 0 ? (
-						<Button
-							render={
-								<Link href={"/admin/users/list?statuses=warned" as Route} />
-							}
-							nativeButton={false}
-							variant="outline"
-							size="sm"
-						>
-							<AlertTriangle data-icon="inline-start" />
-							Warned ({kpis.warned})
-						</Button>
-					) : null}
-					{kpis.banned > 0 ? (
-						<Button
-							render={
-								<Link href={"/admin/users/list?statuses=banned" as Route} />
-							}
-							nativeButton={false}
-							variant="outline"
-							size="sm"
-						>
-							Banned ({kpis.banned})
-						</Button>
-					) : null}
 					{kpis.unverifiedEmail > 0 ? (
 						<Button
 							render={<Link href={"/admin/users/list" as Route} />}
@@ -152,8 +128,21 @@ export function AdminUsersOverview() {
 
 				<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 					<StatCard label="Members" value={kpis.totalMembers} />
-					<StatCard label="Admins" value={kpis.admins} />
-					<StatCard label="Active" value={kpis.active} />
+					<StatCard
+						label="Staff"
+						value={
+							kpis.roles.moderator + kpis.roles.admin + kpis.roles.super_admin
+						}
+						hint={
+							(["super_admin", "admin", "moderator"] as const)
+								.filter((role) => kpis.roles[role] > 0)
+								.map(
+									(role) =>
+										`${kpis.roles[role]} ${ROLE_META[role].label.toLowerCase()}`,
+								)
+								.join(", ") || "No one has a role yet"
+						}
+					/>
 					<StatCard
 						label="Joined (7d / 30d)"
 						value={`${kpis.joinedLast7Days} / ${kpis.joinedLast30Days}`}
@@ -166,8 +155,6 @@ export function AdminUsersOverview() {
 						label="Total XP / RP"
 						value={`${kpis.totalXp} / ${kpis.totalRp}`}
 					/>
-					<StatCard label="Warned" value={kpis.warned} />
-					<StatCard label="Banned" value={kpis.banned} />
 				</div>
 
 				<Card size="sm">

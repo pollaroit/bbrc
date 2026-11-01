@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	DropdownMenu,
@@ -100,7 +101,7 @@ export function PostOwnerMenu({
 	const isAuthor =
 		Boolean(session?.user.username) &&
 		session?.user.username === authorUsername;
-	const isAdmin = Boolean(session?.user.isAdmin);
+	const superAdmin = Boolean(isSuperAdmin(session?.user));
 	const mention = useRemoveMyMentionAction("post", slug);
 	const report = useReportAction({
 		target: "post",
@@ -109,7 +110,7 @@ export function PostOwnerMenu({
 	});
 
 	// Someone who was mentioned (and is neither the author nor an admin) only gets that one action.
-	if (!isAuthor && !isAdmin) {
+	if (!isAuthor && !superAdmin) {
 		return (
 			<ContentActionsMenu
 				kind="post"

@@ -227,7 +227,7 @@ export function toAuthorCard(
 	aggregate: AuthorAggregate,
 	followerCount: number,
 	followedByMe: boolean,
-	isAdmin: boolean,
+	superAdmin: boolean,
 ): AuthorCard {
 	return {
 		slug: row.slug,
@@ -249,7 +249,7 @@ export function toAuthorCard(
 		averageRating: averageRatingOf(aggregate),
 		followerCount,
 		followedByMe,
-		status: isAdmin ? row.status : null,
+		status: superAdmin ? row.status : null,
 		coverIds: aggregate.coverIds,
 	};
 }
@@ -306,7 +306,7 @@ const BIO_SOURCES = new Set([
 
 export function buildAuthorProfile(
 	row: AuthorProfileRow,
-	isAdmin: boolean,
+	superAdmin: boolean,
 	now = new Date(),
 ): AuthorProfile {
 	const birth = {
@@ -398,7 +398,7 @@ export function buildAuthorProfile(
 			: null,
 		verified: row.status === "verified",
 		autoFilled: row.status !== "verified",
-		admin: isAdmin
+		admin: superAdmin
 			? {
 					status: row.status,
 					enrichmentStatus: row.enrichmentStatus,

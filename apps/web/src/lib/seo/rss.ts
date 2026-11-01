@@ -41,10 +41,7 @@ export async function buildPostsRssFeed(db: Database): Promise<string> {
 	// Only public posts of public profiles: the feed is read by anyone.
 	const items = await db.post.findMany({
 		where: {
-			AND: [
-				postVisibleWhere(ANONYMOUS_VIEWER) as Prisma.PostWhereInput,
-				{ author: { status: { not: "banned" } } },
-			],
+			AND: [postVisibleWhere(ANONYMOUS_VIEWER) as Prisma.PostWhereInput],
 		},
 		take: FEED_ITEM_LIMIT,
 		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],

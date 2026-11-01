@@ -54,10 +54,7 @@ export async function buildAppSitemap(
 		// Only what an anonymous visitor may open: public posts of public profiles.
 		db.post.findMany({
 			where: {
-				AND: [
-					postVisibleWhere(ANONYMOUS_VIEWER) as Prisma.PostWhereInput,
-					{ author: { status: { not: "banned" } } },
-				],
+				AND: [postVisibleWhere(ANONYMOUS_VIEWER) as Prisma.PostWhereInput],
 			},
 			select: { slug: true, updatedAt: true },
 			orderBy: { updatedAt: "desc" },
@@ -66,9 +63,9 @@ export async function buildAppSitemap(
 			select: { slug: true, updatedAt: true },
 			orderBy: { updatedAt: "desc" },
 		}),
-		// Private profiles and banned members are not listed.
+		// Private profiles are not listed.
 		db.user.findMany({
-			where: { profileVisibility: "public", status: { not: "banned" } },
+			where: { profileVisibility: "public" },
 			select: { username: true, updatedAt: true },
 			orderBy: { updatedAt: "desc" },
 		}),
@@ -79,10 +76,7 @@ export async function buildAppSitemap(
 				user: { select: { username: true } },
 			},
 			where: {
-				AND: [
-					shelfVisibleWhere(ANONYMOUS_VIEWER, { listing: true }),
-					{ user: { status: { not: "banned" } } },
-				],
+				AND: [shelfVisibleWhere(ANONYMOUS_VIEWER, { listing: true })],
 			},
 			orderBy: { updatedAt: "desc" },
 		}),

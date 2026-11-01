@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Eye } from "lucide-react";
 import type { Route } from "next";
@@ -36,8 +37,7 @@ export function PostViewsAction({
 	const canSeeInsights =
 		!isPendingSlug(slug) &&
 		Boolean(session?.user) &&
-		(session?.user.isAdmin === true ||
-			session?.user.username === authorUsername);
+		(isSuperAdmin(session?.user) || session?.user.username === authorUsername);
 
 	if (!canSeeInsights) {
 		return <ViewCountLabel count={count} className={className ?? "px-2"} />;

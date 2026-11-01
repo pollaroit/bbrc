@@ -3,6 +3,7 @@ import { LikeSourceSchema } from "@bbrc/schemas";
 import {
 	decodePostFeedCursor,
 	encodePostFeedCursor,
+	isSuperAdmin,
 	type PostFeedCursor,
 	type PostFeedRange,
 	type PostFeedSort,
@@ -464,7 +465,7 @@ export async function getPostList(
 	// "From friends": posts by the viewer's friends only (an admin has no friends loaded, so theirs are read).
 	const friendAuthorIds = input.friendsOnly
 		? viewer.kind === "member"
-			? viewer.isAdmin
+			? isSuperAdmin(viewer)
 				? await loadFriendIds(db, viewer.userId)
 				: [...viewer.friendIds]
 			: []

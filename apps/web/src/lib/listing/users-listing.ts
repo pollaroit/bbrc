@@ -3,11 +3,11 @@ import {
 	userSortableFields,
 } from "@bbrc/api/modules/user/user.listing";
 import type { GetUserListInput } from "@bbrc/api/modules/user/user.schema";
+import { ROLES } from "@bbrc/shared";
 import { parseAsArrayOf, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { buildListCallInput } from "@/lib/listing/build-list-call-input";
 import type { FieldLabels } from "@/lib/listing/labels";
 import {
-	booleanFilterParser,
 	createRangeByParser,
 	createSortByParser,
 	rangeMaxParser,
@@ -15,10 +15,6 @@ import {
 	searchParser,
 	sortDirectionParser,
 } from "@/lib/listing/parsers";
-
-export const userStatuses = ["active", "warned", "banned"] as const;
-
-export type UserListingStatus = (typeof userStatuses)[number];
 
 export const userSortByLabels = {
 	createdAt: "Join date",
@@ -34,12 +30,6 @@ export const userRangeByLabels = {
 	createdAt: "Join date",
 } as const satisfies FieldLabels<(typeof userRangeableFields)[number]>;
 
-export const userStatusFilterLabels = {
-	active: "Active",
-	warned: "Warned",
-	banned: "Banned",
-} as const satisfies FieldLabels<UserListingStatus>;
-
 export const userListingSearchParams = {
 	search: searchParser.withOptions({ shallow: false, throttleMs: 400 }),
 	sortBy: createSortByParser(userSortableFields).withOptions({
@@ -51,10 +41,9 @@ export const userListingSearchParams = {
 	}),
 	rangeMin: rangeMinParser.withOptions({ shallow: false }),
 	rangeMax: rangeMaxParser.withOptions({ shallow: false }),
-	statuses: parseAsArrayOf(parseAsStringLiteral(userStatuses)).withOptions({
+	roles: parseAsArrayOf(parseAsStringLiteral(ROLES)).withOptions({
 		shallow: false,
 	}),
-	isAdmin: booleanFilterParser.withOptions({ shallow: false }),
 };
 
 export function useUserListingSearchParams() {
@@ -75,19 +64,14 @@ export function toUserListCallInput(
 		rangeBy: params.rangeBy,
 		rangeMin: params.rangeMin,
 		rangeMax: params.rangeMax,
-		statuses: params.statuses,
-		isAdmin: params.isAdmin,
+		roles: params.roles,
 	}) as Partial<GetUserListInput>;
 }
 
 export function countUserSheetFilters(params: UserListingSearchParams): number {
 	let count = 0;
 
-	if (params.statuses && params.statuses.length > 0) {
-		count += 1;
-	}
-
-	if (params.isAdmin != null) {
+	if (params.roles?.length) {
 		count += 1;
 	}
 
@@ -102,8 +86,7 @@ export function clearUserSheetFilters(
 	setParams: ReturnType<typeof useUserListingSearchParams>[1],
 ) {
 	void setParams({
-		statuses: null,
-		isAdmin: null,
+		roles: null,
 		rangeBy: null,
 		rangeMin: null,
 		rangeMax: null,

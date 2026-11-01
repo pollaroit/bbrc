@@ -1,8 +1,4 @@
-import {
-	notBannedProcedure,
-	protectedProcedure,
-	publicProcedure,
-} from "../../procedures";
+import { protectedProcedure, publicProcedure } from "../../procedures";
 import { revalidateFeedsIsr, revalidatePostIsr } from "../../revalidate-isr";
 import { checkAchievementsAfter } from "../achievement/achievement-middleware";
 import { loadViewer } from "../visibility/viewer";
@@ -78,7 +74,7 @@ export const postRouter = {
 				await loadViewer(context.db, context.session),
 			),
 		),
-	create: notBannedProcedure
+	create: protectedProcedure
 		.use(checkAchievementsAfter("posts"))
 		.input(CreatePostInputSchema)
 		.output(CreatePostOutputSchema)
@@ -93,7 +89,7 @@ export const postRouter = {
 			revalidateFeedsIsr(context);
 			return post;
 		}),
-	update: notBannedProcedure
+	update: protectedProcedure
 		.input(UpdatePostInputSchema)
 		.output(UpdatePostOutputSchema)
 		.handler(async ({ input, context }) => {
@@ -107,7 +103,7 @@ export const postRouter = {
 			revalidateFeedsIsr(context);
 			return post;
 		}),
-	delete: notBannedProcedure
+	delete: protectedProcedure
 		.input(DeletePostInputSchema)
 		.output(DeletePostOutputSchema)
 		.handler(async ({ input, context }) => {

@@ -11,7 +11,8 @@ export type Visibility = (typeof VISIBILITY_LEVELS)[number];
 
 /** How a viewer stands to the owner of what they are looking at. */
 export const VIEWER_RELATIONS = [
-	"admin",
+	/** A super admin: today's "admin", who sees everything. */
+	"super_admin",
 	"self",
 	"friend",
 	/** Signed in, no friendship. */
@@ -22,11 +23,11 @@ export const VIEWER_RELATIONS = [
 ] as const;
 export type ViewerRelation = (typeof VIEWER_RELATIONS)[number];
 
-/** Which relations may view something at each level. Admin and self are handled before this. */
+/** Which relations may view something at each level. Super admin and self are handled before this. */
 export const LEVEL_REACH: Record<Visibility, readonly ViewerRelation[]> = {
-	public: ["admin", "self", "friend", "member", "anonymous"],
-	friends: ["admin", "self", "friend"],
-	private: ["admin", "self"],
+	public: ["super_admin", "self", "friend", "member", "anonymous"],
+	friends: ["super_admin", "self", "friend"],
+	private: ["super_admin", "self"],
 };
 
 export const VISIBILITY_LABELS: Record<Visibility, string> = {

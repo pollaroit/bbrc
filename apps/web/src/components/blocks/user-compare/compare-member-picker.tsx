@@ -67,12 +67,7 @@ export function CompareMemberPicker({
 				username: member.username,
 				name: member.name,
 				image: member.image,
-				note: [
-					member.isBanned ? "banned" : null,
-					member.allowCompare ? null : "comparisons off",
-				]
-					.filter(Boolean)
-					.join(", "),
+				note: member.allowCompare ? "" : "comparisons off",
 				isMe: false,
 			}))
 		: (memberQuery.data?.items ?? []).map((member) => ({

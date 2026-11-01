@@ -1,4 +1,5 @@
 import { getJoinState } from "@bbrc/api/modules/sitting/sitting-join.service";
+import { isSuperAdmin } from "@bbrc/shared";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
@@ -61,7 +62,7 @@ export default async function SittingSettingsPage({
 		<ListingSearchParamsBoundary>
 			<SittingSettingsView
 				sitting={sitting}
-				isAdmin={session.user.isAdmin === true}
+				superAdmin={isSuperAdmin(session.user)}
 			/>
 		</ListingSearchParamsBoundary>
 	);

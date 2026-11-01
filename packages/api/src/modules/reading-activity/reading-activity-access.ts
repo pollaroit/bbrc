@@ -40,7 +40,7 @@ export function decideActivityAccess(
 
 	const relation = relationTo(viewer, owner.id);
 	// The member and admins see everything.
-	if (relation === "self" || relation === "admin") {
+	if (relation === "self" || relation === "super_admin") {
 		return { kind: "full", isOwner: relation === "self", scope: FULL_SCOPE };
 	}
 	return {

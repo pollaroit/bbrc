@@ -2,6 +2,7 @@ import type { Database, Prisma } from "@bbrc/db";
 import {
 	AUTHOR_FIELD_SOURCE_LABELS,
 	getBookCountryName,
+	isSuperAdmin,
 	readProgress,
 	type Viewer,
 } from "@bbrc/shared";
@@ -53,7 +54,7 @@ type DirectoryEntry = {
 
 function dbWhere(
 	filters: DirectoryFilters,
-	isAdmin: boolean,
+	superAdmin: boolean,
 ): Prisma.AuthorWhereInput {
 	const searching = authorDirectorySearching.from({ search: filters.search });
 	const clauses: Prisma.AuthorWhereInput[] = [searching.use()];
@@ -64,11 +65,11 @@ function dbWhere(
 			filters.hasPhoto ? { photoUrl: { not: null } } : { photoUrl: null },
 		);
 	}
-	if (isAdmin && filters.statuses?.length) {
+	if (superAdmin && filters.statuses?.length) {
 		clauses.push({ status: { in: filters.statuses } });
 	}
 	// Authors without books are for admins only.
-	if (!(isAdmin && filters.includeEmpty)) {
+	if (!(superAdmin && filters.includeEmpty)) {
 		clauses.push({ books: { some: {} } });
 	}
 	return mergeWhereFragments<Prisma.AuthorWhereInput>(...clauses);
@@ -82,12 +83,12 @@ function inRange(value: number, min?: number, max?: number) {
 async function loadDirectory(
 	db: Database,
 	filters: DirectoryFilters,
-	actor: { userId: string; isAdmin: boolean } | null,
+	actor: { userId: string; role?: string | null } | null,
 	options: { applyCountries: boolean },
 ): Promise<DirectoryEntry[]> {
-	const isAdmin = Boolean(actor?.isAdmin);
+	const superAdmin = isSuperAdmin(actor);
 	const rows = await db.author.findMany({
-		where: dbWhere(filters, isAdmin),
+		where: dbWhere(filters, superAdmin),
 		select: authorCardSelect,
 	});
 	const ids = rows.map((row) => row.id);
@@ -213,7 +214,7 @@ export async function listAuthors(
 					entry.aggregate,
 					entry.followerCount,
 					entry.followedByMe,
-					Boolean(actor?.isAdmin),
+					isSuperAdmin(actor),
 				),
 		),
 		metadata: page.metadata,
@@ -287,7 +288,7 @@ export async function getAuthor(
 
 	return {
 		redirectTo: resolved.redirectTo,
-		profile: buildAuthorProfile(row, Boolean(actor?.isAdmin)),
+		profile: buildAuthorProfile(row, isSuperAdmin(actor)),
 		numbers: {
 			bookCount: aggregate.bookCount,
 			readerCount: aggregate.readerCount,
@@ -299,7 +300,7 @@ export async function getAuthor(
 		seriesSummary: { count: series.length, line: seriesSummaryLine(series) },
 		viewer: {
 			isSignedIn: actor != null,
-			isAdmin: Boolean(actor?.isAdmin),
+			isSuperAdmin: isSuperAdmin(actor),
 			followed: follow.followed.has(resolved.id),
 			readCount: progress.read,
 			totalBooks: progress.total,
@@ -337,7 +338,7 @@ export async function getAuthorAbout(
 		where: { id: resolved.id },
 		select: authorProfileSelect,
 	});
-	const profile = buildAuthorProfile(row, Boolean(actor?.isAdmin));
+	const profile = buildAuthorProfile(row, isSuperAdmin(actor));
 	const meta = parseFieldMeta(row.fieldMeta);
 
 	const filled: Record<string, boolean> = {
@@ -363,7 +364,7 @@ export async function getAuthorAbout(
 			label: FIELD_LABELS[field] ?? field,
 			source: entry.source,
 			sourceLabel: AUTHOR_FIELD_SOURCE_LABELS[entry.source],
-			locked: actor?.isAdmin ? Boolean(entry.locked) : null,
+			locked: isSuperAdmin(actor) ? Boolean(entry.locked) : null,
 		}));
 
 	const missing: AuthorAboutOutput["missing"] = [];

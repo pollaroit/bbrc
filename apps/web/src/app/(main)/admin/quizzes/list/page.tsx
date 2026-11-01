@@ -1,3 +1,4 @@
+import { isSuperAdmin } from "@bbrc/shared";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
@@ -31,7 +32,7 @@ function Fallback() {
 export default async function AdminQuizzesListPage() {
 	const session = await auth.api.getSession({ headers: await headers() });
 
-	if (!session?.user.isAdmin) {
+	if (!isSuperAdmin(session?.user)) {
 		redirect("/" as Route);
 	}
 

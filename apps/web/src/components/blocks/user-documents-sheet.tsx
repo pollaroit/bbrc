@@ -1,6 +1,6 @@
 "use client";
 
-import { documentLanguageLabel } from "@bbrc/shared";
+import { documentLanguageLabel, isSuperAdmin } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Sheet, SheetContent } from "@bbrc/ui/components/sheet";
 import { useQuery } from "@tanstack/react-query";
@@ -34,7 +34,7 @@ export function UserDocumentsSheet({
 		staleTime: 30_000,
 	});
 
-	if (isSessionPending || !session?.user || session.user.isAdmin) {
+	if (isSessionPending || !session?.user || isSuperAdmin(session.user)) {
 		return null;
 	}
 

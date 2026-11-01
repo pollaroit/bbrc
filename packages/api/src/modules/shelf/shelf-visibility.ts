@@ -1,10 +1,15 @@
 import type { Prisma } from "@bbrc/db";
-import { ANONYMOUS_VIEWER, memberViewer, type Viewer } from "@bbrc/shared";
+import {
+	ANONYMOUS_VIEWER,
+	isSuperAdmin,
+	memberViewer,
+	type Viewer,
+} from "@bbrc/shared";
 import { visibleWhere } from "../visibility/visibility-where";
 
 /** Who is looking: a signed-in member (with admin flag) or nobody. Prefer `Viewer`. */
 export type ShelfViewer =
-	| { userId: string; isAdmin: boolean }
+	| { userId: string; role?: string | null }
 	| null
 	| undefined;
 
@@ -34,7 +39,7 @@ export function shelfVisibleWhere(
 			: scope === "only"
 				? { isWishlist: true }
 				: {};
-	if (viewer.kind === "member" && viewer.isAdmin && !options.listing) {
+	if (viewer.kind === "member" && isSuperAdmin(viewer) && !options.listing) {
 		return wishlistClause;
 	}
 
@@ -99,7 +104,7 @@ export const publicShelfWhere: Prisma.ShelfWhereInput =
 export function visibleShelfWhere(viewer: ShelfViewer): Prisma.ShelfWhereInput {
 	return shelfVisibleWhere(
 		viewer
-			? memberViewer({ userId: viewer.userId, isAdmin: viewer.isAdmin })
+			? memberViewer({ userId: viewer.userId, role: viewer.role })
 			: ANONYMOUS_VIEWER,
 		{ wishlist: "include" },
 	);

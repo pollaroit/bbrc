@@ -36,8 +36,8 @@ export function assertMemberCanSetProgress(
 	}
 }
 
-/** Maps participation progress to club user-status rules (completed vs dnf only). */
-export function progressAffectsUserStatus(
+/** A finished sitting only scores members who completed the book or did not finish it (RP points). */
+export function progressEarnsPoints(
 	progress: ParticipationProgress,
 ): progress is "completed" | "dnf" {
 	return progress === "completed" || progress === "dnf";

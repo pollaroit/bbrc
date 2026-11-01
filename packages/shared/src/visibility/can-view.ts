@@ -32,7 +32,7 @@ export function canView(
 	relation: ViewerRelation,
 	input: VisibilityInput,
 ): boolean {
-	if (relation === "admin" || relation === "self") return true;
+	if (relation === "super_admin" || relation === "self") return true;
 	if (relation === "blocked") return false;
 	return LEVEL_REACH[effectiveVisibility(input)].includes(relation);
 }
@@ -42,7 +42,7 @@ export function relationReaches(
 	relation: ViewerRelation,
 	level: Visibility,
 ): boolean {
-	if (relation === "admin" || relation === "self") return true;
+	if (relation === "super_admin" || relation === "self") return true;
 	if (relation === "blocked") return false;
 	return LEVEL_REACH[level].includes(relation);
 }

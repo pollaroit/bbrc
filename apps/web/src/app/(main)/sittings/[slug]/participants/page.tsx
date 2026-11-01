@@ -1,4 +1,5 @@
 import { getSittingBySlug } from "@bbrc/api/modules/sitting/sitting.service";
+import { isSuperAdmin } from "@bbrc/shared";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
@@ -54,7 +55,7 @@ export default async function SittingParticipantsPage({
 		<ListingSearchParamsBoundary>
 			<SittingParticipantsView
 				sitting={sitting}
-				isAdmin={session.user.isAdmin === true}
+				superAdmin={isSuperAdmin(session.user)}
 				viewerUserId={session.user.id}
 			/>
 		</ListingSearchParamsBoundary>

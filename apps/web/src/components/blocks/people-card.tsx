@@ -1,10 +1,10 @@
 "use client";
 
 import type { PeopleListItem } from "@bbrc/api/modules/people/people.schema";
+import { ROLE_META, roleOf } from "@bbrc/shared";
 import type { LucideIcon } from "lucide-react";
 import {
 	BookOpen,
-	Crown,
 	Flame,
 	Lock,
 	MapPin,
@@ -15,6 +15,7 @@ import {
 import type { Route } from "next";
 import Link from "next/link";
 import { FriendButton } from "@/components/blocks/friend-button";
+import { RoleBadge } from "@/components/blocks/role-badge";
 import { useImpressionRef } from "@/components/blocks/track-impression";
 import { UserAvatar } from "@/components/blocks/user-avatar";
 import type { PeopleSortField } from "@/lib/listing/people-listing";
@@ -33,6 +34,13 @@ const NEW_MEMBER_DAYS = 14;
 type SortMetric = { label: string; value: string; href?: string };
 
 /** Sorts whose figure is not already on the card. */
+/** A staff role's chip colours, spelled out so Tailwind can see every class. */
+const ROLE_CHIP_CLASSES = {
+	info: "bg-info/10 text-info-ink",
+	violet: "bg-violet/10 text-violet-ink",
+	warning: "bg-warning/10 text-warning-ink",
+} as const;
+
 function sortMetricFor(
 	person: PeopleListItem,
 	sortBy: PeopleSortField | undefined,
@@ -104,9 +112,6 @@ type Highlight = { label: string; className: string; href?: Route };
 
 /** The strip names the most notable thing about the member; the rest sit in the main part. */
 function highlightFor(person: PeopleListItem, isViewer: boolean): Highlight {
-	if (person.status === "banned") {
-		return { label: "Banned", className: "bg-destructive/10 text-destructive" };
-	}
 	if (person.readingNow) {
 		return {
 			label: "Reading in a sitting now",
@@ -114,19 +119,14 @@ function highlightFor(person: PeopleListItem, isViewer: boolean): Highlight {
 			href: `/sittings/${person.readingNow.sittingSlug}` as Route,
 		};
 	}
-	if (person.status === "warned") {
-		return {
-			label: "Warned",
-			className: "bg-warning/10 text-warning-ink",
-		};
-	}
 	if (isViewer) {
 		return { label: "You", className: "bg-primary/10 text-foreground" };
 	}
-	if (person.isAdmin) {
+	const roleTone = ROLE_META[roleOf(person)].tone;
+	if (roleTone) {
 		return {
-			label: "Administrator",
-			className: "bg-warning/10 text-warning-ink",
+			label: ROLE_META[roleOf(person)].label,
+			className: ROLE_CHIP_CLASSES[roleTone],
 		};
 	}
 	const ageDays =
@@ -266,12 +266,7 @@ export function PeopleCard({
 					<div className="flex min-w-0 flex-1 flex-col gap-1">
 						<h2 className="flex min-w-0 items-center gap-1.5 font-semibold text-base leading-snug tracking-tight">
 							<span className="truncate">{person.name}</span>
-							{person.isAdmin ? (
-								<Crown
-									className="size-4 shrink-0 text-warning"
-									aria-label="Administrator"
-								/>
-							) : null}
+							<RoleBadge role={person.role} size="sm" />
 						</h2>
 						<p className="truncate text-muted-foreground text-sm">
 							@{person.username}

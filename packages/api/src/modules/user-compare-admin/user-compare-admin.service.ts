@@ -55,7 +55,6 @@ export async function searchCompareMembers(
 			username: true,
 			name: true,
 			image: true,
-			status: true,
 			allowCompare: true,
 		},
 		orderBy: [{ name: "asc" }],
@@ -64,14 +63,13 @@ export async function searchCompareMembers(
 	return {
 		items: rows.map((row) => ({
 			...memberRef(row),
-			isBanned: row.status === "banned",
 			allowCompare: row.allowCompare,
 		})),
 	};
 }
 
 /** Admin viewer for `resolveAuthor` (admins may open authors without books). */
-const ADMIN_VIEWER = { userId: "", isAdmin: true } as const;
+const ADMIN_VIEWER = { userId: "", role: "super_admin" } as const;
 
 async function resolveAuthorIds(
 	db: Database,
@@ -151,7 +149,6 @@ async function loadUniverse(
 
 	const users = await db.user.findMany({
 		where: {
-			status: { not: "banned" },
 			...(filters.users?.length ? { username: { in: filters.users } } : {}),
 		},
 		select: { id: true, username: true, name: true, image: true },

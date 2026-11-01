@@ -1,8 +1,4 @@
-import {
-	notBannedProcedure,
-	protectedProcedure,
-	publicProcedure,
-} from "../../procedures";
+import { protectedProcedure, publicProcedure } from "../../procedures";
 import {
 	revalidateBookIsr,
 	revalidateUserShelvesIsr,
@@ -93,7 +89,7 @@ export const shelfRouter = {
 				context.db,
 			),
 		),
-	create: notBannedProcedure
+	create: protectedProcedure
 		.use(checkAchievementsAfter("shelves"))
 		.input(CreateShelfInputSchema)
 		.output(CreateShelfOutputSchema)

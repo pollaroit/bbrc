@@ -1,4 +1,6 @@
-import { adminProcedure } from "../../procedures";
+import { superAdminProcedure } from "../../procedures";
+import { audited } from "../audit/audit-middleware";
+import { excerpt, memberByUsername } from "../audit/audit-targets";
 import {
 	AdminBookOverviewOutputSchema,
 	GetAdminBookOverviewInputSchema,
@@ -149,10 +151,6 @@ import {
 	AdminSetUserPasswordOutputSchema,
 	AdminUpdateUserNameInputSchema,
 	AdminUpdateUserNameOutputSchema,
-	AdminUpdateUserRoleInputSchema,
-	AdminUpdateUserRoleOutputSchema,
-	AdminUpdateUserStatusInputSchema,
-	AdminUpdateUserStatusOutputSchema,
 	AdminUserOverviewOutputSchema,
 	AdminUserStatsOutputSchema,
 	GetAdminUserOverviewInputSchema,
@@ -164,247 +162,308 @@ import {
 	adminDeleteUser,
 	adminSetUserPassword,
 	adminUpdateUserName,
-	adminUpdateUserRole,
-	adminUpdateUserStatus,
 	getAdminUserOverview,
 	getAdminUserStats,
 	listAdminUsers,
 } from "./admin-user.service";
 
 export const adminRouter = {
-	getBookOverview: adminProcedure
+	getBookOverview: superAdminProcedure
 		.input(GetAdminBookOverviewInputSchema)
 		.output(AdminBookOverviewOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminBookOverview(input, context.db),
 		),
-	listBooks: adminProcedure
+	listBooks: superAdminProcedure
 		.input(ListAdminBooksInputSchema)
 		.output(ListAdminBooksOutputSchema)
 		.handler(async ({ input, context }) => listAdminBooks(input, context.db)),
-	getBookStats: adminProcedure
+	getBookStats: superAdminProcedure
 		.input(GetAdminBookStatsInputSchema)
 		.output(GetAdminBookStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminBookStats(input, context.db),
 		),
-	getUserOverview: adminProcedure
+	getUserOverview: superAdminProcedure
 		.input(GetAdminUserOverviewInputSchema)
 		.output(AdminUserOverviewOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminUserOverview(input, context.db),
 		),
-	getUserStats: adminProcedure
+	getUserStats: superAdminProcedure
 		.input(GetAdminUserStatsInputSchema)
 		.output(AdminUserStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminUserStats(input, context.db),
 		),
-	listUsers: adminProcedure
+	listUsers: superAdminProcedure
 		.input(ListAdminUsersInputSchema)
 		.output(ListAdminUsersOutputSchema)
 		.handler(async ({ input, context }) => listAdminUsers(input, context.db)),
-	updateUserName: adminProcedure
+	updateUserName: superAdminProcedure
 		.input(AdminUpdateUserNameInputSchema)
+		.use(
+			audited("member.renamed", {
+				before: ({ input, db }) => memberByUsername(db, input.username),
+				target: ({ before, input }) => ({
+					type: "member",
+					id: before?.id,
+					label: input.name,
+				}),
+				metadata: ({ before, input }) => ({
+					name: { from: before?.name ?? null, to: input.name },
+				}),
+			}),
+		)
 		.output(AdminUpdateUserNameOutputSchema)
 		.handler(async ({ input, context }) =>
 			adminUpdateUserName(input, context.db),
 		),
-	updateUserRole: adminProcedure
-		.input(AdminUpdateUserRoleInputSchema)
-		.output(AdminUpdateUserRoleOutputSchema)
-		.handler(async ({ input, context }) =>
-			adminUpdateUserRole(input, context.session.user.id, context.db),
-		),
-	updateUserStatus: adminProcedure
-		.input(AdminUpdateUserStatusInputSchema)
-		.output(AdminUpdateUserStatusOutputSchema)
-		.handler(async ({ input, context }) =>
-			adminUpdateUserStatus(input, context.db),
-		),
-	deleteUser: adminProcedure
+	deleteUser: superAdminProcedure
 		.input(AdminDeleteUserInputSchema)
+		.use(
+			audited("member.deleted", {
+				before: ({ input, db }) => memberByUsername(db, input.username),
+				target: ({ before, input }) => ({
+					type: "member",
+					id: before?.id,
+					label: before?.name ?? input.username,
+				}),
+			}),
+		)
 		.output(AdminDeleteUserOutputSchema)
 		.handler(async ({ input, context }) =>
 			adminDeleteUser(input, context.session.user.id, context.db),
 		),
-	setUserPassword: adminProcedure
+	setUserPassword: superAdminProcedure
 		.input(AdminSetUserPasswordInputSchema)
+		.use(
+			// Records that it happened, never the password.
+			audited("member.password_reset", {
+				before: ({ input, db }) => memberByUsername(db, input.username),
+				target: ({ before, input }) => ({
+					type: "member",
+					id: before?.id,
+					label: before?.name ?? input.username,
+				}),
+			}),
+		)
 		.output(AdminSetUserPasswordOutputSchema)
 		.handler(async ({ input, context }) =>
 			adminSetUserPassword(input, context.db),
 		),
-	generateFactDraft: adminProcedure
+	generateFactDraft: superAdminProcedure
 		.input(GenerateAdminFactDraftInputSchema)
 		.output(GenerateAdminFactDraftOutputSchema)
 		.handler(async ({ input }) => generateAdminFactDraft(input)),
-	createFact: adminProcedure
+	createFact: superAdminProcedure
 		.input(CreateAdminFactInputSchema)
+		.use(
+			audited("fact.created", {
+				target: ({ output }) => ({
+					type: "fact",
+					id: output.id,
+					label: excerpt(output.body),
+				}),
+			}),
+		)
 		.output(CreateAdminFactOutputSchema)
 		.handler(async ({ input, context }) =>
 			createAdminFact(input, context.session.user.id, context.db),
 		),
-	batchCreateFacts: adminProcedure
+	batchCreateFacts: superAdminProcedure
 		.input(BatchCreateAdminFactsInputSchema)
+		.use(
+			audited("fact.batch_created", {
+				target: ({ output }) => ({
+					type: "fact",
+					label: `${output.created.length} facts`,
+				}),
+				metadata: ({ output }) => ({ count: output.created.length }),
+			}),
+		)
 		.output(BatchCreateAdminFactsOutputSchema)
 		.handler(async ({ input, context }) =>
 			batchCreateAdminFacts(input, context.session.user.id, context.db),
 		),
-	listFacts: adminProcedure
+	listFacts: superAdminProcedure
 		.input(ListAdminFactsInputSchema)
 		.output(ListAdminFactsOutputSchema)
 		.handler(async ({ input, context }) => listAdminFacts(input, context.db)),
-	listFactVotes: adminProcedure
+	listFactVotes: superAdminProcedure
 		.input(ListAdminFactVotesInputSchema)
 		.output(ListAdminFactEngagementOutputSchema)
 		.handler(async ({ input, context }) =>
 			listAdminFactVotes(input, context.db),
 		),
-	listFactImpressions: adminProcedure
+	listFactImpressions: superAdminProcedure
 		.input(ListAdminFactEngagementInputSchema)
 		.output(ListAdminFactEngagementOutputSchema)
 		.handler(async ({ input, context }) =>
 			listAdminFactImpressions(input, context.db),
 		),
-	publishFact: adminProcedure
+	publishFact: superAdminProcedure
 		.input(AdminFactIdInputSchema)
+		.use(
+			audited("fact.published", {
+				target: ({ output }) => ({
+					type: "fact",
+					id: output.id,
+					label: excerpt(output.body),
+				}),
+			}),
+		)
 		.output(PublishAdminFactOutputSchema)
 		.handler(async ({ input, context }) => publishAdminFact(input, context.db)),
-	deleteFact: adminProcedure
+	deleteFact: superAdminProcedure
 		.input(AdminFactIdInputSchema)
+		.use(
+			audited("fact.deleted", {
+				before: ({ input, db }) =>
+					db.fact.findUnique({
+						where: { id: input.id },
+						select: { body: true },
+					}),
+				target: ({ before, input }) => ({
+					type: "fact",
+					id: input.id,
+					label: excerpt(before?.body),
+				}),
+			}),
+		)
 		.output(DeleteAdminFactOutputSchema)
 		.handler(async ({ input, context }) => deleteAdminFact(input, context.db)),
-	getSittingOverview: adminProcedure
+	getSittingOverview: superAdminProcedure
 		.input(GetAdminSittingOverviewInputSchema)
 		.output(AdminSittingOverviewOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminSittingOverview(input, context.db),
 		),
-	listSittings: adminProcedure
+	listSittings: superAdminProcedure
 		.input(ListAdminSittingsInputSchema)
 		.output(ListAdminSittingsOutputSchema)
 		.handler(async ({ input, context }) =>
 			listAdminSittings(input, context.db),
 		),
-	getSittingStats: adminProcedure
+	getSittingStats: superAdminProcedure
 		.input(GetAdminSittingStatsInputSchema)
 		.output(GetAdminSittingStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminSittingStats(input, context.db),
 		),
-	getFeedbackOverview: adminProcedure
+	getFeedbackOverview: superAdminProcedure
 		.input(GetAdminFeedbackOverviewInputSchema)
 		.output(AdminFeedbackOverviewOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminFeedbackOverview(input, context.db),
 		),
-	listFeedbacks: adminProcedure
+	listFeedbacks: superAdminProcedure
 		.input(ListAdminFeedbacksInputSchema)
 		.output(ListAdminFeedbacksOutputSchema)
 		.handler(async ({ input, context }) =>
 			listAdminFeedbacks(input, context.db),
 		),
-	getFeedbackStats: adminProcedure
+	getFeedbackStats: superAdminProcedure
 		.input(GetAdminFeedbackStatsInputSchema)
 		.output(GetAdminFeedbackStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminFeedbackStats(input, context.db),
 		),
-	getQuizOverview: adminProcedure
+	getQuizOverview: superAdminProcedure
 		.input(GetAdminQuizOverviewInputSchema)
 		.output(AdminQuizOverviewOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminQuizOverview(input, context.db),
 		),
-	listQuizzes: adminProcedure
+	listQuizzes: superAdminProcedure
 		.input(ListAdminQuizzesInputSchema)
 		.output(ListAdminQuizzesOutputSchema)
 		.handler(async ({ input, context }) => listAdminQuizzes(input, context.db)),
-	getQuizStats: adminProcedure
+	getQuizStats: superAdminProcedure
 		.input(GetAdminQuizStatsInputSchema)
 		.output(GetAdminQuizStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminQuizStats(input, context.db),
 		),
-	getShelfOverview: adminProcedure
+	getShelfOverview: superAdminProcedure
 		.input(GetAdminShelfOverviewInputSchema)
 		.output(AdminShelfOverviewOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminShelfOverview(input, context.db),
 		),
-	listShelves: adminProcedure
+	listShelves: superAdminProcedure
 		.input(ListAdminShelvesInputSchema)
 		.output(ListAdminShelvesOutputSchema)
 		.handler(async ({ input, context }) => listAdminShelves(input, context.db)),
-	getShelfStats: adminProcedure
+	getShelfStats: superAdminProcedure
 		.input(GetAdminShelfStatsInputSchema)
 		.output(GetAdminShelfStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminShelfStats(input, context.db),
 		),
-	getPostOverview: adminProcedure
+	getPostOverview: superAdminProcedure
 		.input(GetAdminPostOverviewInputSchema)
 		.output(AdminPostOverviewOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminPostOverview(input, context.db),
 		),
-	listPosts: adminProcedure
+	listPosts: superAdminProcedure
 		.input(ListAdminPostsInputSchema)
 		.output(ListAdminPostsOutputSchema)
 		.handler(async ({ input, context }) => listAdminPosts(input, context.db)),
-	getPostStats: adminProcedure
+	getPostStats: superAdminProcedure
 		.input(GetAdminPostStatsInputSchema)
 		.output(GetAdminPostStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminPostStats(input, context.db),
 		),
-	getCommentOverview: adminProcedure
+	getCommentOverview: superAdminProcedure
 		.input(GetAdminCommentOverviewInputSchema)
 		.output(AdminCommentOverviewOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminCommentOverview(input, context.db),
 		),
-	listComments: adminProcedure
+	listComments: superAdminProcedure
 		.input(ListAdminCommentsInputSchema)
 		.output(ListAdminCommentsOutputSchema)
 		.handler(async ({ input, context }) =>
 			listAdminComments(input, context.db),
 		),
-	getCommentStats: adminProcedure
+	getCommentStats: superAdminProcedure
 		.input(GetAdminCommentStatsInputSchema)
 		.output(GetAdminCommentStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminCommentStats(input, context.db),
 		),
-	getDocumentOverview: adminProcedure
+	getDocumentOverview: superAdminProcedure
 		.input(GetAdminDocumentOverviewInputSchema)
 		.output(AdminDocumentOverviewOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminDocumentOverview(input, context.db),
 		),
-	listDocuments: adminProcedure
+	listDocuments: superAdminProcedure
 		.input(ListAdminDocumentsInputSchema)
 		.output(ListAdminDocumentsOutputSchema)
 		.handler(async ({ input, context }) =>
 			listAdminDocuments(input, context.db),
 		),
-	getDocumentStats: adminProcedure
+	getDocumentStats: superAdminProcedure
 		.input(GetAdminDocumentStatsInputSchema)
 		.output(GetAdminDocumentStatsOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminDocumentStats(input, context.db),
 		),
-	getSeriesOverview: adminProcedure
+	getSeriesOverview: superAdminProcedure
 		.input(GetAdminSeriesOverviewInputSchema)
 		.output(AdminSeriesOverviewOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminSeriesOverview(input, context.db),
 		),
-	listSeries: adminProcedure
+	listSeries: superAdminProcedure
 		.input(ListAdminSeriesInputSchema)
 		.output(ListAdminSeriesOutputSchema)
 		.handler(async ({ input, context }) => listAdminSeries(input, context.db)),
-	getSeriesStats: adminProcedure
+	getSeriesStats: superAdminProcedure
 		.input(GetAdminSeriesStatsInputSchema)
 		.output(GetAdminSeriesStatsOutputSchema)
 		.handler(async ({ input, context }) =>

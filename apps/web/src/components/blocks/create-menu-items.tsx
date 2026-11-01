@@ -1,5 +1,6 @@
 "use client";
 
+import { isSuperAdmin } from "@bbrc/shared";
 import { DropdownMenuItem } from "@bbrc/ui/components/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -76,7 +77,7 @@ export function CreateMenuItems({
 	const { data: session } = authClient.useSession();
 	const { data: ongoing, isPending: isOngoingPending } = useQuery({
 		...orpc.sitting.getOngoingSitting.queryOptions(),
-		enabled: session?.user.isAdmin === true,
+		enabled: isSuperAdmin(session?.user),
 	});
 	const { openCompose } = useComposePost();
 	const { openCreateGoal } = useCreateGoal();
@@ -85,8 +86,8 @@ export function CreateMenuItems({
 		return null;
 	}
 
-	const isAdmin = session.user.isAdmin === true;
-	const showStartSitting = isAdmin && !isOngoingPending && !ongoing;
+	const superAdmin = isSuperAdmin(session.user);
+	const showStartSitting = superAdmin && !isOngoingPending && !ongoing;
 	const newShelfHref = `/users/${session.user.username}/shelves/new` as Route;
 
 	if (variant === "sheet") {
@@ -117,7 +118,7 @@ export function CreateMenuItems({
 						openCreateGoal();
 					}}
 				/>
-				{isAdmin ? (
+				{superAdmin ? (
 					<>
 						<SheetLinkRow
 							icon={BookPlus}
@@ -190,7 +191,7 @@ export function CreateMenuItems({
 				<Target className="size-4" aria-hidden="true" />
 				Add goal
 			</DropdownMenuItem>
-			{isAdmin ? (
+			{superAdmin ? (
 				<>
 					<DropdownMenuItem
 						render={<Link href={"/books/new" as Route} onClick={onNavigate} />}

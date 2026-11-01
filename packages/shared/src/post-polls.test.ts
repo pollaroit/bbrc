@@ -15,7 +15,7 @@ import {
 
 const viewer = (over: Partial<Parameters<typeof canSeeResults>[1]> = {}) => ({
 	isOwner: false,
-	isAdmin: false,
+	role: "user",
 	hasVoted: false,
 	ended: false,
 	...over,
@@ -26,7 +26,7 @@ describe("results visibility", () => {
 		expect(canSeeResults("everyone", viewer())).toBe(true);
 		expect(canSeeResults("owner", viewer())).toBe(false);
 		expect(canSeeResults("owner", viewer({ isOwner: true }))).toBe(true);
-		expect(canSeeResults("owner", viewer({ isAdmin: true }))).toBe(true);
+		expect(canSeeResults("owner", viewer({ role: "super_admin" }))).toBe(true);
 	});
 
 	test("voters need to have voted, after_deadline needs the end", () => {
@@ -59,7 +59,7 @@ describe("results visibility", () => {
 describe("ballot layers", () => {
 	const v = (over = {}) => ({
 		isOwner: false,
-		isAdmin: false,
+		role: "user",
 		hasVoted: false,
 		resultsVisible: true,
 		...over,
@@ -67,12 +67,12 @@ describe("ballot layers", () => {
 
 	test("secret hides everything, even from the owner", () => {
 		expect(ballotAccess("secret", v({ isOwner: true }))).toBe("none");
-		expect(ballotAccess("secret", v({ isAdmin: true }))).toBe("none");
+		expect(ballotAccess("secret", v({ role: "super_admin" }))).toBe("none");
 	});
 
 	test("turnout shows who voted, not what, and only to staff", () => {
 		expect(ballotAccess("turnout", v({ isOwner: true }))).toBe("turnout");
-		expect(ballotAccess("turnout", v({ isAdmin: true }))).toBe("turnout");
+		expect(ballotAccess("turnout", v({ role: "super_admin" }))).toBe("turnout");
 		expect(ballotAccess("turnout", v({ hasVoted: true }))).toBe("none");
 	});
 

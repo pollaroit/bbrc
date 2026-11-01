@@ -1,4 +1,7 @@
-import { adminProcedure, notBannedProcedure } from "../../procedures";
+import { isSuperAdmin } from "@bbrc/shared";
+import { protectedProcedure, superAdminProcedure } from "../../procedures";
+import { audited } from "../audit/audit-middleware";
+import { bookRequestBefore, namedTarget } from "../audit/audit-targets";
 import {
 	CreateBookRequestInputSchema,
 	CreateBookRequestOutputSchema,
@@ -20,38 +23,45 @@ import {
 } from "./book-request.service";
 
 export const bookRequestRouter = {
-	listPending: adminProcedure
+	listPending: superAdminProcedure
 		.output(ListPendingBookRequestsOutputSchema)
 		.handler(async ({ context }) => listPendingBookRequests(context.db)),
-	listOpen: notBannedProcedure
+	listOpen: protectedProcedure
 		.output(ListOpenBookRequestsOutputSchema)
 		.handler(async ({ context }) =>
 			listOpenBookRequests(context.session.user.id, context.db),
 		),
-	upvote: notBannedProcedure
+	upvote: protectedProcedure
 		.input(UpvoteBookRequestInputSchema)
 		.output(UpvoteBookRequestOutputSchema)
 		.handler(async ({ input, context }) =>
 			setBookRequestUpvote(input, context.session.user.id, context.db),
 		),
-	listMine: notBannedProcedure
+	listMine: protectedProcedure
 		.output(ListMyBookRequestsOutputSchema)
 		.handler(async ({ context }) =>
 			listMyBookRequests(context.session.user.id, context.db),
 		),
-	create: notBannedProcedure
+	create: protectedProcedure
 		.input(CreateBookRequestInputSchema)
 		.output(CreateBookRequestOutputSchema)
 		.handler(async ({ input, context }) =>
 			createBookRequest(
 				input,
 				context.session.user.id,
-				context.session.user.isAdmin,
+				isSuperAdmin(context.session.user),
 				context.db,
 			),
 		),
-	reject: adminProcedure
+	reject: superAdminProcedure
 		.input(RejectBookRequestInputSchema)
+		.use(
+			audited("request.rejected", {
+				before: ({ input, db }) => bookRequestBefore(db, input.id),
+				target: ({ before, input }) => namedTarget("request", before, input.id),
+				metadata: ({ input }) => ({ reason: input.rejectionReason }),
+			}),
+		)
 		.output(RejectBookRequestOutputSchema)
 		.handler(async ({ input, context }) =>
 			rejectBookRequest(input, context.db),

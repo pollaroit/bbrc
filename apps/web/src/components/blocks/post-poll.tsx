@@ -4,7 +4,11 @@ import type {
 	PollOption,
 	PostPollView,
 } from "@bbrc/api/modules/post-poll/post-poll.schema";
-import { authorNameToSlug, POST_POLL_TYPE_LABELS } from "@bbrc/shared";
+import {
+	authorNameToSlug,
+	isSuperAdmin,
+	POST_POLL_TYPE_LABELS,
+} from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
@@ -326,7 +330,7 @@ function PollBody({
 								? formatTimeLeft(poll.deadline, now)
 								: "No deadline"}
 					</span>
-					{viewer.isOwner || session?.user.isAdmin ? (
+					{viewer.isOwner || isSuperAdmin(session?.user) ? (
 						<DropdownMenu>
 							<DropdownMenuTrigger
 								render={

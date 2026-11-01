@@ -7,7 +7,6 @@ import type {
 	User,
 } from "../../prisma/generated/client.js";
 import type { Database } from "../index.js";
-import { eligibleParticipants } from "./users.js";
 
 const POST_COUNT = 18;
 const MAX_COMMENTS_PER_POST = 6;
@@ -74,7 +73,7 @@ export async function seedPostsAndComments(
 	books: Book[],
 	baseCreatedAt: Date,
 ): Promise<{ posts: Post[]; comments: Comment[] }> {
-	const authors = eligibleParticipants(users);
+	const authors = users;
 	const posts: Post[] = [];
 	const comments: Comment[] = [];
 
