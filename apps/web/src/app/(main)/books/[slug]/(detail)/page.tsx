@@ -11,14 +11,19 @@ import {
 	loadBookFeedbackListForIsr,
 	loadBookShelvesForIsr,
 } from "@/lib/isr-data";
-import { bookJsonLd, JsonLd } from "@/lib/seo";
+import { bookJsonLd, bookSlugStaticParams, JsonLd } from "@/lib/seo";
 import {
 	bookOverviewDescription,
 	buildBookTabMetadata,
 	buildNotFoundMetadata,
 } from "@/lib/seo/book-page-metadata";
+import { db } from "@/services";
 
 const OVERVIEW_EXCERPT_MAX = 480;
+
+export async function generateStaticParams() {
+	return bookSlugStaticParams(db);
+}
 
 export async function generateMetadata({
 	params,

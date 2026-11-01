@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { BookDiscoveryLists } from "@/components/blocks/book-discovery-section";
+
+/** On-demand ISR — only the book overview is warmed at build. */
+export const dynamic = "force-dynamic";
+
 import { formatBookAuthors } from "@/lib/book-cover";
 import {
 	loadBookBySlugForIsr,

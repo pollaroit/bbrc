@@ -1,6 +1,10 @@
 import { fetchWorkEditionTotalCount } from "@bbrc/api/lib/open-library/work-editions";
 import type { Metadata } from "next";
 import { BookEditionsPanel } from "@/components/blocks/book-editions-panel";
+
+/** On-demand ISR — only the book overview is warmed at build. */
+export const dynamic = "force-dynamic";
+
 import { BookEditionsToolbar } from "@/components/blocks/book-editions-toolbar";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { loadBookBySlugForIsr } from "@/lib/isr-data";

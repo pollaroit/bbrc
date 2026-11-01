@@ -3,20 +3,12 @@ import { notFound, redirect } from "next/navigation";
 import { SittingPollSection } from "@/components/blocks/sitting-poll-section";
 import { SittingVotePageIntro } from "@/components/blocks/sitting-vote-page-intro";
 import { loadSittingBySlugForIsr } from "@/lib/isr-data";
-import {
-	buildNotFoundMetadata,
-	buildPageMetadata,
-	sittingSlugStaticParams,
-} from "@/lib/seo";
-import { db } from "@/services";
+import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
 
-/** ISR: keep in sync with `DETAIL_PAGE_REVALIDATE_SECONDS` in `@/lib/seo`. */
+/** On-demand ISR — do not multiply sitting URLs at build (see `/sittings/[slug]`). */
 export const revalidate = 3600;
 export const dynamicParams = true;
-
-export async function generateStaticParams() {
-	return sittingSlugStaticParams(db);
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
 	params,

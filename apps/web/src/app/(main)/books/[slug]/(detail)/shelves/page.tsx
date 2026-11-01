@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { BookShelvesSection } from "@/components/blocks/book-shelves-section";
+
+/** On-demand ISR — only the book overview is warmed at build. */
+export const dynamic = "force-dynamic";
+
 import { loadBookBySlugForIsr } from "@/lib/isr-data";
 import {
 	buildBookTabMetadata,

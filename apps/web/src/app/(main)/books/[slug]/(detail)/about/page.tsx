@@ -5,6 +5,10 @@ import {
 	CardTitle,
 } from "@bbrc/ui/components/card";
 import type { Metadata } from "next";
+
+/** On-demand ISR — only the book overview is warmed at build. */
+export const dynamic = "force-dynamic";
+
 import { BookExcerptMarkdown } from "@/components/blocks/book-excerpt-markdown";
 import { BookLiteraryOrigin } from "@/components/blocks/book-literary-origin";
 import { BookSubjectGroup } from "@/components/blocks/book-subject-group";

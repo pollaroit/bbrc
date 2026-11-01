@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { BookFeedbackSection } from "@/components/blocks/book-feedback-section";
+
+/** On-demand ISR — only the book overview is warmed at build. */
+export const dynamic = "force-dynamic";
+
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import {
 	loadBookBySlugForIsr,

@@ -4,19 +4,10 @@ import { AuthorPageTabs } from "@/components/blocks/author/author-page-tabs";
 import { loadAuthorForIsr } from "@/lib/isr-data";
 import { authorJsonLd, breadcrumbJsonLd, JsonLd } from "@/lib/seo";
 import { authorSameAs, dateForJsonLd } from "@/lib/seo/author-structured-data";
-import { db } from "@/services";
 
 /** ISR: keep in sync with `DETAIL_PAGE_REVALIDATE_SECONDS` in `@/lib/seo`. */
 export const revalidate = 3600;
 export const dynamicParams = true;
-
-export async function generateStaticParams() {
-	const rows = await db.author.findMany({
-		where: { books: { some: {} } },
-		select: { slug: true },
-	});
-	return rows.map(({ slug }) => ({ slug }));
-}
 
 export default async function AuthorLayout({
 	children,

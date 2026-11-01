@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-
 import { BookSittingsPanel } from "@/components/blocks/book-sittings-panel";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
 import { loadBookBySlugForIsr, loadBookSittingsForIsr } from "@/lib/isr-data";
@@ -7,6 +6,9 @@ import {
 	buildBookTabMetadata,
 	buildNotFoundMetadata,
 } from "@/lib/seo/book-page-metadata";
+
+/** On-demand ISR — only the book overview is warmed at build. */
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
 	params,

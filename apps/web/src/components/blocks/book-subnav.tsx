@@ -86,14 +86,15 @@ export function BookSubnav({ slug, counts }: BookSubnavProps) {
 		}),
 	);
 
-	const effectiveCounts: BookTabCounts | undefined = counts
-		? {
-				...counts,
-				reads: readsCountQuery.data?.total ?? counts.reads,
-				reading: readingCountQuery.data?.readingNow ?? counts.reading,
-				favorites: favoritesCountQuery.data?.total ?? counts.favorites,
-			}
-		: undefined;
+	const effectiveCounts: BookTabCounts = {
+		documents: counts?.documents,
+		shelves: counts?.shelves,
+		reviews: counts?.reviews,
+		sittings: counts?.sittings,
+		reads: readsCountQuery.data?.total ?? counts?.reads,
+		reading: readingCountQuery.data?.readingNow ?? counts?.reading,
+		favorites: favoritesCountQuery.data?.total ?? counts?.favorites,
+	};
 
 	return (
 		<nav
