@@ -20,7 +20,8 @@ Set in **Vercel → Settings → Environment Variables** (never commit values):
 | `BETTER_AUTH_*` | Secret + public URL |
 | `CRON_SECRET` | Optional Bearer for cron route |
 | `CLUB_TIMEZONE` | e.g. `Asia/Baku` |
-| `QSTASH_*` | Upstash QStash (see schema) |
+| `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY` | Required for cron routes (QStash signature verify) |
+| `QSTASH_TOKEN`, `QSTASH_URL` | Optional; REST/scripts only. If set in Vercel, also list them in root `turbo.json` → `globalEnv` (Turbo omits undeclared vars during `web#build`). |
 
 If `DATABASE_URL_UNPOOLED` is missing or points at a different branch, deploy warns and migrates via direct `DATABASE_URL` instead.
 

@@ -1,7 +1,6 @@
 import { peekPost } from "@bbrc/api/modules/visibility/peek";
 import { ANONYMOUS_VIEWER, contentPlainText } from "@bbrc/shared";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { LockedPostGate } from "@/components/blocks/locked-post-gate";
 import { PostDetail } from "@/components/blocks/post-detail";
 import { ScheduledPostGate } from "@/components/blocks/scheduled-post-gate";
