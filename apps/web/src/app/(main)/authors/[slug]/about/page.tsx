@@ -6,6 +6,9 @@ import { loadAuthorAboutForIsr, loadAuthorForIsr } from "@/lib/isr-data";
 import { buildNotFoundMetadata } from "@/lib/seo";
 import { buildAuthorPageMetadata } from "@/lib/seo/author-page-metadata";
 
+/** On-demand ISR — only the author overview is warmed at build. */
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
 	params,
 }: PageProps<"/authors/[slug]/about">): Promise<Metadata> {

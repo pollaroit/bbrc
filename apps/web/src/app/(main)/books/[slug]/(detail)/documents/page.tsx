@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { BookDocumentsSection } from "@/components/blocks/book-documents-section";
+
+/** On-demand ISR — only the book overview is warmed at build. */
+export const dynamic = "force-dynamic";
+
 import {
 	loadApprovedDocumentsForIsr,
 	loadBookBySlugForIsr,

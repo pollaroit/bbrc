@@ -14,8 +14,13 @@ import {
 	loadAuthorMoreForIsr,
 	loadAuthorTopBooksForIsr,
 } from "@/lib/isr-data";
-import { buildNotFoundMetadata } from "@/lib/seo";
+import { authorSlugStaticParams, buildNotFoundMetadata } from "@/lib/seo";
 import { buildAuthorPageMetadata } from "@/lib/seo/author-page-metadata";
+import { db } from "@/services";
+
+export async function generateStaticParams() {
+	return authorSlugStaticParams(db);
+}
 
 export async function generateMetadata({
 	params,

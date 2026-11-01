@@ -20,7 +20,9 @@ export {
 } from "./site";
 export { buildAppSitemap } from "./sitemap";
 export {
+	authorSlugStaticParams,
 	bookSlugStaticParams,
+	isrBuildWarmLimit,
 	postSlugStaticParams,
 	sittingSlugStaticParams,
 	usernameStaticParams,

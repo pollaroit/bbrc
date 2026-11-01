@@ -24,6 +24,17 @@ Set in **Vercel → Settings → Environment Variables** (never commit values):
 
 If `DATABASE_URL_UNPOOLED` is missing or points at a different branch, deploy warns and migrates via direct `DATABASE_URL` instead.
 
+## Static generation at build (ISR warm limit)
+
+Detail pages (books, authors, posts, sittings, public profiles) use **ISR** (`revalidate = 3600`, `dynamicParams = true`). They do **not** need to be fully prerendered on every deploy.
+
+- **`ISR_BUILD_WARM_LIMIT`** (Vercel env, default **`0`**): max detail URLs to prerender during `next build`. `0` means **on-demand only** — first request (or `revalidatePath` after a mutation) generates HTML. Set e.g. `100`–`200` if you want a small warm set of recently updated pages on each deploy.
+- **Book and author tabs:** only the **overview** route participates in build warm-up; other tabs are `force-dynamic` and render on demand (same SEO when crawled, faster deploys).
+- **Posts at build** use the same visibility filter as the public sitemap (not every row in the database).
+- **Sitting vote** is never multiplied at build (only `/sittings/[slug]` may be warmed).
+
+Existing `revalidateIsr.*` calls after mutations are unchanged.
+
 ## Migrations
 
 - Deploy runs `db:migrate:deploy` during build.
