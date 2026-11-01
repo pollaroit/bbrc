@@ -1,0 +1,43 @@
+/// Optional map on a post (centre + zoom, optional single marker).
+model PostMap {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.uuid("Invalid post id")
+  postId String @unique @map("post_id")
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  centerLng Float @map("center_lng")
+  centerLat Float @map("center_lat")
+
+  /// @zod.int().min(1).max(18)
+  zoom Int
+
+  markerLng Float? @map("marker_lng")
+  markerLat Float? @map("marker_lat")
+
+  @@map("post_map")
+}
+
+/// Optional map on a comment (one of image, GIF, or map).
+model CommentMap {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// @zod.uuid("Invalid comment id")
+  commentId String @unique @map("comment_id")
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  centerLng Float @map("center_lng")
+  centerLat Float @map("center_lat")
+
+  /// @zod.int().min(1).max(18)
+  zoom Int
+
+  markerLng Float? @map("marker_lng")
+  markerLat Float? @map("marker_lat")
+
+  @@map("comment_map")
+}

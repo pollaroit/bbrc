@@ -49,6 +49,19 @@
 					}
 				}
 			}
+		},
+		{
+			"includes": ["packages/ui/src/components/map.tsx"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noShadowRestrictedNames": "off"
+					},
+					"a11y": {
+						"noSvgWithoutTitle": "off"
+					}
+				}
+			}
 		}
 	],
 	"formatter": {

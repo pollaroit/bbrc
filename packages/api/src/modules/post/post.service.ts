@@ -10,10 +10,13 @@ import {
 	postAttachmentConflict,
 	postFeedRangeMin,
 	type Viewer,
+	validatePostScheduleTime,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { assertNormalizedSocialContent } from "../../lib/rich-content";
 import { mergeWhereFragments } from "../../utils/searching";
+import { contentMapSelect } from "../content-map/content-map.schema";
+import { syncPostMap } from "../content-map/content-map.service";
 import { warmLinkPreviewsInContent } from "../link-unfurl/link-unfurl.service";
 import {
 	loadMentionedIds,
@@ -36,6 +39,7 @@ import { tryDeleteR2PublicUrl } from "../storage/storage-r2-cleanup";
 import { loadFriendIds } from "../visibility/viewer";
 import {
 	commentVisibleWhere,
+	postFeedWhere,
 	postVisibleWhere,
 } from "../visibility/visibility-resources";
 import { XP_AWARD } from "../xp/xp.schema";
@@ -53,9 +57,13 @@ import {
 	type GetPostBySlugOutput,
 	type GetPostListInput,
 	type GetPostListOutput,
+	type GetScheduledPostListInput,
+	type GetScheduledPostListOutput,
 	getPostBySlugFields,
 	getPostListFields,
 	type PostListItem,
+	type PublishPostNowInput,
+	type PublishPostNowOutput,
 	postAuthorFields,
 	type UpdatePostInput,
 	type UpdatePostOutput,
@@ -67,6 +75,7 @@ import {
 	syncPostAttachment,
 } from "./post-attachment.service";
 import { queryRankedPostSlugs } from "./post-feed-query";
+import { publishScheduledPostById } from "./post-publish.service";
 import { generatePostSlug } from "./post-slug";
 import { assertPostVisible, viewerUserId } from "./post-visibility";
 
@@ -102,6 +111,7 @@ const topCommentSelect = {
 	allowBookmarks: true,
 	createdAt: true,
 	postId: true,
+	map: { select: contentMapSelect },
 	author: {
 		select: postAuthorFields,
 	},
@@ -252,6 +262,7 @@ async function loadTopCommentsByPostId(
 					slug: row.slug,
 					content: row.content,
 					imageUrl: row.imageUrl,
+					map: row.map,
 					isSpoiler: row.isSpoiler,
 					allowBookmarks: row.allowBookmarks,
 					createdAt: row.createdAt,
@@ -264,6 +275,7 @@ async function loadTopCommentsByPostId(
 								slug: reply.slug,
 								content: reply.content,
 								imageUrl: reply.imageUrl,
+								map: reply.map,
 								isSpoiler: reply.isSpoiler,
 								allowBookmarks: reply.allowBookmarks,
 								createdAt: reply.createdAt,
@@ -294,12 +306,16 @@ function mapPostListRow(
 		imageUrl: row.imageUrl,
 		isSpoiler: row.isSpoiler,
 		visibility: row.visibility,
+		status: row.status,
+		scheduledAt: row.scheduledAt,
+		publishedAt: row.publishedAt,
 		allowLikes: row.allowLikes,
 		allowComments: row.allowComments,
 		allowShares: row.allowShares,
 		allowBookmarks: row.allowBookmarks,
 		poll: polls.get(row.id) ?? null,
 		tierlist: tierlists.get(row.id) ?? null,
+		map: row.map,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -340,12 +356,17 @@ async function mapPostDetailRow(
 		imageUrl: row.imageUrl,
 		isSpoiler: row.isSpoiler,
 		visibility: row.visibility,
+		status: row.status,
+		scheduledAt: row.scheduledAt,
+		firstScheduledAt: row.firstScheduledAt,
+		publishedAt: row.publishedAt,
 		allowLikes: row.allowLikes,
 		allowComments: row.allowComments,
 		allowShares: row.allowShares,
 		allowBookmarks: row.allowBookmarks,
 		poll: polls.get(row.id) ?? null,
 		tierlist: tierlists.get(row.id) ?? null,
+		map: row.map,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -512,7 +533,7 @@ export async function getPostList(
 		input.hasAttachedBook != null
 			? postAttachedBookWhere(input.hasAttachedBook)
 			: {},
-		postVisibleWhere(viewer) as Prisma.PostWhereInput,
+		postFeedWhere(viewer) as Prisma.PostWhereInput,
 	);
 
 	if (feedSort === "hot" || feedSort === "top") {
@@ -563,7 +584,7 @@ export async function getPostList(
 			rangeMin ? { createdAt: { gte: rangeMin } } : {},
 			recentCursor ? buildRecentCursorWhere(recentCursor) : {},
 		),
-		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
+		orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }, { slug: "desc" }],
 		select: postListSelect,
 	});
 
@@ -655,10 +676,26 @@ export async function createPost(
 		poll: input.poll != null,
 		tierlist: input.tierlist != null,
 		attachment: attachmentInput != null,
+		map: input.map != null,
 	});
 	if (conflict) {
 		throw new ORPCError("BAD_REQUEST", { message: conflict });
 	}
+
+	const now = new Date();
+	const isScheduled = input.scheduledAt != null;
+	const scheduledAt = input.scheduledAt;
+	if (isScheduled && scheduledAt) {
+		const scheduleProblem = validatePostScheduleTime({
+			scheduledAt,
+			now,
+			firstScheduledAt: null,
+		});
+		if (scheduleProblem) {
+			throw new ORPCError("BAD_REQUEST", { message: scheduleProblem });
+		}
+	}
+	const pollValidationNow = isScheduled && scheduledAt ? scheduledAt : now;
 
 	const result = await db.$transaction(async (tx) => {
 		const slug = await generatePostSlug(content, tx);
@@ -675,12 +712,16 @@ export async function createPost(
 				slug,
 				authorId: userId,
 				attachedBookId: null,
+				status: isScheduled ? "scheduled" : "published",
+				scheduledAt: isScheduled ? scheduledAt : null,
+				firstScheduledAt: isScheduled ? scheduledAt : null,
+				publishedAt: isScheduled ? null : now,
 			},
 			select: { id: true, slug: true },
 		});
 
 		if (input.poll) {
-			await createPostPoll(tx, post.id, userId, input.poll);
+			await createPostPoll(tx, post.id, userId, input.poll, pollValidationNow);
 		}
 		if (input.tierlist) {
 			await createPostTierlist(tx, post.id, input.tierlist);
@@ -697,9 +738,16 @@ export async function createPost(
 			data: { attachedBookId: attachedBookId ?? null },
 		});
 
-		const xpAwarded = (await awardPostXp({ userId, postId: post.id }, tx))
-			? XP_AWARD.post
-			: 0;
+		if (input.map) {
+			await syncPostMap(tx, post.id, input.map);
+		}
+
+		let xpAwarded = 0;
+		if (!isScheduled) {
+			xpAwarded = (await awardPostXp({ userId, postId: post.id }, tx))
+				? XP_AWARD.post
+				: 0;
+		}
 
 		const freshMentions = await syncContentMentions(tx, {
 			ref: { kind: "post", id: post.id },
@@ -707,25 +755,100 @@ export async function createPost(
 			mentioned: prepared.mentioned,
 		});
 
-		return { slug: post.slug, xpAwarded, freshMentions };
+		return { slug: post.slug, xpAwarded, freshMentions, isScheduled };
 	});
 
-	void notifyMentions(db, {
-		authorId: userId,
-		recipientIds: result.freshMentions,
-		content,
-		href: `/posts/${result.slug}`,
-	});
-	// A member who is mentioned gets the mention, not also the "new post" notice.
-	void notifyMemberPosted(
-		db,
-		userId,
-		result.slug,
-		result.freshMentions,
-		visibility,
-	);
+	if (!result.isScheduled) {
+		void notifyMentions(db, {
+			authorId: userId,
+			recipientIds: result.freshMentions,
+			content,
+			href: `/posts/${result.slug}`,
+		});
+		// A member who is mentioned gets the mention, not also the "new post" notice.
+		void notifyMemberPosted(
+			db,
+			userId,
+			result.slug,
+			result.freshMentions,
+			visibility,
+		);
+	}
 
-	return { slug: result.slug, xpAwarded: result.xpAwarded };
+	return {
+		slug: result.slug,
+		xpAwarded: result.xpAwarded,
+		scheduledAt: isScheduled ? (scheduledAt ?? null) : null,
+	};
+}
+
+export async function listScheduledPosts(
+	input: GetScheduledPostListInput,
+	userId: string,
+	db: Database,
+	viewer: Viewer,
+): Promise<GetScheduledPostListOutput> {
+	const page = input.page ?? 1;
+	const limit = input.limit ?? 20;
+	const where = { authorId: userId, status: "scheduled" as const };
+
+	const [total, rows] = await Promise.all([
+		db.post.count({ where }),
+		db.post.findMany({
+			where,
+			orderBy: [{ scheduledAt: "asc" }, { slug: "asc" }],
+			skip: (page - 1) * limit,
+			take: limit,
+			select: postListSelect,
+		}),
+	]);
+
+	const items = await hydratePostListPage(rows, viewer, db);
+
+	return {
+		items,
+		metadata: {
+			page,
+			limit,
+			total,
+			totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+		},
+	};
+}
+
+export async function publishPostNow(
+	input: PublishPostNowInput,
+	userId: string,
+	db: Database,
+): Promise<PublishPostNowOutput> {
+	const post = await db.post.findUnique({
+		where: { slug: input.slug },
+		select: { id: true, authorId: true, status: true },
+	});
+
+	if (!post) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Post not found",
+			data: { slug: input.slug },
+		});
+	}
+
+	assertPostAuthor(post, userId);
+
+	if (post.status !== "scheduled") {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Only a scheduled post can be published now.",
+		});
+	}
+
+	const outcome = await publishScheduledPostById(db, post.id);
+	if (outcome !== "published") {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "This post could not be published.",
+		});
+	}
+
+	return { slug: input.slug, xpAwarded: XP_AWARD.post };
 }
 
 export async function updatePost(
@@ -742,8 +865,14 @@ export async function updatePost(
 			content: true,
 			imageUrl: true,
 			visibility: true,
+			status: true,
+			firstScheduledAt: true,
+			scheduledAt: true,
 			poll: { select: { id: true } },
 			tierlist: { select: { id: true } },
+			map: { select: { id: true } },
+			attachment: { select: { id: true } },
+			attachedBookId: true,
 		},
 	});
 
@@ -756,11 +885,29 @@ export async function updatePost(
 
 	assertPostAuthor(post, userId);
 
+	const hasSharedAttachment =
+		post.attachment != null || post.attachedBookId != null;
+
 	if (input.attachment) {
 		const conflict = postAttachmentConflict({
 			poll: post.poll != null,
 			tierlist: post.tierlist != null,
 			attachment: true,
+			map: post.map != null,
+			image: post.imageUrl != null,
+		});
+		if (conflict) {
+			throw new ORPCError("BAD_REQUEST", { message: conflict });
+		}
+	}
+
+	if (input.map !== undefined && input.map !== null) {
+		const conflict = postAttachmentConflict({
+			poll: post.poll != null,
+			tierlist: post.tierlist != null,
+			attachment: hasSharedAttachment,
+			map: true,
+			image: post.imageUrl != null,
 		});
 		if (conflict) {
 			throw new ORPCError("BAD_REQUEST", { message: conflict });
@@ -803,6 +950,22 @@ export async function updatePost(
 		await assertAttachmentVisible(attachmentPatch, db, viewer);
 	}
 
+	if (input.scheduledAt != null) {
+		if (post.status !== "scheduled") {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "Only a scheduled post can be rescheduled.",
+			});
+		}
+		const scheduleProblem = validatePostScheduleTime({
+			scheduledAt: input.scheduledAt,
+			now: new Date(),
+			firstScheduledAt: post.firstScheduledAt,
+		});
+		if (scheduleProblem) {
+			throw new ORPCError("BAD_REQUEST", { message: scheduleProblem });
+		}
+	}
+
 	await db.$transaction(async (tx) => {
 		const attachedBookId = await syncPostAttachment(
 			post.id,
@@ -837,6 +1000,9 @@ export async function updatePost(
 				...(attachedBookId !== undefined
 					? { attachedBookId: attachedBookId ?? null }
 					: {}),
+				...(input.scheduledAt != null
+					? { scheduledAt: input.scheduledAt }
+					: {}),
 			},
 			select: { id: true },
 		});
@@ -848,9 +1014,11 @@ export async function updatePost(
 				mentioned: preparedContent.mentioned,
 			});
 		}
+
+		await syncPostMap(tx, post.id, input.map);
 	});
 
-	if (normalizedContent != null) {
+	if (normalizedContent != null && post.status === "published") {
 		void notifyMentions(db, {
 			authorId: userId,
 			recipientIds: freshMentions,
@@ -933,10 +1101,10 @@ export async function getPostListForWhere(
 		take: input.limit + 1,
 		where: mergeWhereFragments<Prisma.PostWhereInput>(
 			input.where,
-			postVisibleWhere(viewer) as Prisma.PostWhereInput,
+			postFeedWhere(viewer) as Prisma.PostWhereInput,
 			recentCursor ? buildRecentCursorWhere(recentCursor) : {},
 		),
-		orderBy: [{ createdAt: "desc" }, { slug: "desc" }],
+		orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }, { slug: "desc" }],
 		select: postListSelect,
 	});
 

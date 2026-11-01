@@ -173,6 +173,9 @@ function adminPostExtraWhere(
 	if (input.wasEdited === false) {
 		parts.push({ editedAt: null });
 	}
+	if (input.status) {
+		parts.push({ status: input.status });
+	}
 
 	return mergeWhereFragments(...parts);
 }

@@ -15,6 +15,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { CommentBookmarkEngagement } from "@/components/blocks/comment-bookmark-engagement";
 import { CommentLikeEngagement } from "@/components/blocks/comment-like-engagement";
+import { ContentMapView } from "@/components/blocks/content-map/content-map-view";
 import { FullWidthImagePreview } from "@/components/blocks/full-width-image-preview";
 import {
 	PendingImageAttachment,
@@ -346,6 +347,7 @@ function CommentListItemViewInner({
 		}) ?? null;
 
 	const commentImageUrl = "imageUrl" in comment ? comment.imageUrl : null;
+	const commentMap = "map" in comment ? comment.map : null;
 
 	const commentIsSpoiler =
 		"isSpoiler" in comment ? Boolean(comment.isSpoiler) : false;
@@ -371,6 +373,13 @@ function CommentListItemViewInner({
 					src={commentImageUrl}
 					alt="Comment image"
 					compact
+					className={cn(isCompact ? "max-w-full" : "max-w-md")}
+				/>
+			) : null}
+			{commentMap ? (
+				<ContentMapView
+					map={commentMap}
+					height={isCompact ? 160 : 220}
 					className={cn(isCompact ? "max-w-full" : "max-w-md")}
 				/>
 			) : null}

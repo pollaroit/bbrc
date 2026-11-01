@@ -6,8 +6,9 @@ import { Button } from "@bbrc/ui/components/button";
 import { CornerDownRight, MessageCircle } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { CommentListItemView } from "@/components/blocks/comment-list-item";
+import { ContentMapView } from "@/components/blocks/content-map/content-map-view";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
 import { PostBookmarkEngagement } from "@/components/blocks/post-bookmark-engagement";
@@ -36,6 +37,10 @@ type PostCardProps = {
 	impressionSource?: ViewSourceName;
 	/** Public opens of the post, when known. */
 	viewCount?: number;
+	/** Scheduled queue: content preview only, no engagement or comments. */
+	scheduledPreview?: boolean;
+	/** Replaces the like/comment bar when `scheduledPreview` is set. */
+	scheduledActions?: ReactNode;
 };
 
 /** Comments under a post in the feed: a peek, a quick reply, and the way to the full thread. */
@@ -154,6 +159,8 @@ function PostCardInner({
 	className,
 	impressionSource = "feed",
 	viewCount,
+	scheduledPreview = false,
+	scheduledActions = null,
 }: PostCardProps) {
 	const postHref = `/posts/${post.slug}` as Route;
 	const countImpression = useImpressionRef(
@@ -179,21 +186,30 @@ function PostCardInner({
 				</Link>
 				<div className="flex shrink-0 items-center gap-1.5 text-muted-foreground text-xs">
 					<VisibilityBadge level={post.visibility} />
-					<Link
-						href={postHref}
-						className="transition-colors hover:text-foreground"
-					>
-						<RelativeTime
-							date={post.createdAt}
-							className="text-muted-foreground text-xs"
+					{scheduledPreview && post.scheduledAt ? (
+						<span className="text-muted-foreground text-xs">
+							Scheduled{" "}
+							<RelativeTime date={post.scheduledAt} className="inline" />
+						</span>
+					) : (
+						<Link
+							href={postHref}
+							className="transition-colors hover:text-foreground"
+						>
+							<RelativeTime
+								date={post.createdAt}
+								className="text-muted-foreground text-xs"
+							/>
+							{post.editedAt ? <span className="ps-1">· edited</span> : null}
+						</Link>
+					)}
+					{scheduledPreview ? null : (
+						<PostOwnerMenu
+							slug={post.slug}
+							authorUsername={post.author.username}
+							hasPoll={post.poll != null}
 						/>
-						{post.editedAt ? <span className="ps-1">· edited</span> : null}
-					</Link>
-					<PostOwnerMenu
-						slug={post.slug}
-						authorUsername={post.author.username}
-						hasPoll={post.poll != null}
-					/>
+					)}
 				</div>
 			</header>
 
@@ -225,6 +241,12 @@ function PostCardInner({
 					</Link>
 				) : null}
 
+				{post.map ? (
+					<div className="pointer-events-auto relative z-[1]">
+						<ContentMapView map={post.map} />
+					</div>
+				) : null}
+
 				{post.attachment ? (
 					<div className="pointer-events-none relative z-[1] [&_*]:pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto">
 						<PostAttachmentCard
@@ -253,49 +275,59 @@ function PostCardInner({
 				) : null}
 			</div>
 
-			<div className="flex items-center gap-1 px-2 pb-2 text-muted-foreground text-sm">
-				{post.allowLikes ? (
-					<PostLikeEngagement
-						postSlug={post.slug}
-						initialLikeCount={post.likeCount}
-						initialLikedByMe={post.likedByMe}
-					/>
-				) : (
-					<span className="px-2 text-xs">Likes off</span>
-				)}
-				<Button
-					render={<Link href={`${postHref}#comments` as Route} />}
-					nativeButton={false}
-					variant="ghost"
-					size="sm"
-					className="gap-1.5 tabular-nums"
-					aria-label={`${post.commentCount} comments`}
-				>
-					<MessageCircle className="size-4" aria-hidden />
-					{post.commentCount}
-				</Button>
-				<PostViewsAction
-					slug={post.slug}
-					authorUsername={post.author.username}
-					count={viewCount}
-				/>
-				<PostBookmarkEngagement
-					postSlug={post.slug}
-					authorUsername={post.author.username}
-					allowBookmarks={post.allowBookmarks}
-				/>
-				<ResourceShareMenu
-					path={`/posts/${post.slug}`}
-					shareText={shareSnippet(contentPlainText(post.content))}
-					label="Share post"
-					shareInPost={
-						post.allowShares ? { kind: "post", slug: post.slug } : undefined
-					}
-					className="ms-auto"
-				/>
-			</div>
+			{scheduledPreview ? (
+				scheduledActions ? (
+					<div className="flex flex-wrap items-center gap-1 border-border border-t px-2 py-2 text-sm">
+						{scheduledActions}
+					</div>
+				) : null
+			) : (
+				<>
+					<div className="flex items-center gap-1 px-2 pb-2 text-muted-foreground text-sm">
+						{post.allowLikes ? (
+							<PostLikeEngagement
+								postSlug={post.slug}
+								initialLikeCount={post.likeCount}
+								initialLikedByMe={post.likedByMe}
+							/>
+						) : (
+							<span className="px-2 text-xs">Likes off</span>
+						)}
+						<Button
+							render={<Link href={`${postHref}#comments` as Route} />}
+							nativeButton={false}
+							variant="ghost"
+							size="sm"
+							className="gap-1.5 tabular-nums"
+							aria-label={`${post.commentCount} comments`}
+						>
+							<MessageCircle className="size-4" aria-hidden />
+							{post.commentCount}
+						</Button>
+						<PostViewsAction
+							slug={post.slug}
+							authorUsername={post.author.username}
+							count={viewCount}
+						/>
+						<PostBookmarkEngagement
+							postSlug={post.slug}
+							authorUsername={post.author.username}
+							allowBookmarks={post.allowBookmarks}
+						/>
+						<ResourceShareMenu
+							path={`/posts/${post.slug}`}
+							shareText={shareSnippet(contentPlainText(post.content))}
+							label="Share post"
+							shareInPost={
+								post.allowShares ? { kind: "post", slug: post.slug } : undefined
+							}
+							className="ms-auto"
+						/>
+					</div>
 
-			<PostCardComments post={post} />
+					<PostCardComments post={post} />
+				</>
+			)}
 		</article>
 	);
 }

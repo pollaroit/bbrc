@@ -1,4 +1,4 @@
-import type { Viewer } from "@bbrc/shared";
+import { isSuperAdmin, type Viewer } from "@bbrc/shared";
 import { type Clause, notBlockedWhere, visibleWhere } from "./visibility-where";
 
 /*
@@ -18,6 +18,37 @@ export function postVisibleWhere(viewer: Viewer): Clause {
 		ownerRelation: "author",
 		itemField: "visibility",
 	});
+}
+
+/** Posts that appear in feeds and public lists (published only). */
+export function postFeedWhere(viewer: Viewer): Clause {
+	return {
+		AND: [postVisibleWhere(viewer), { status: "published" }],
+	};
+}
+
+/** Posts a viewer may open by slug (includes their own scheduled drafts). */
+export function postReadableWhere(viewer: Viewer): Clause {
+	if (isSuperAdmin(viewer)) {
+		return postVisibleWhere(viewer);
+	}
+	if (viewer.kind !== "member") {
+		return {
+			AND: [postVisibleWhere(viewer), { status: "published" }],
+		};
+	}
+	return {
+		AND: [
+			postVisibleWhere(viewer),
+			{
+				OR: [
+					{ status: "published" },
+					{ status: "publish_skipped", authorId: viewer.userId },
+					{ status: "scheduled", authorId: viewer.userId },
+				],
+			},
+		],
+	};
 }
 
 /**

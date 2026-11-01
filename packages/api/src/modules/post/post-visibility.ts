@@ -1,7 +1,7 @@
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import type { Viewer } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
-import { postVisibleWhere } from "../visibility/visibility-resources";
+import { postReadableWhere } from "../visibility/visibility-resources";
 
 type Db = Database | DatabaseTransaction;
 
@@ -20,7 +20,7 @@ export async function assertPostVisible(
 ): Promise<void> {
 	const found = await db.post.findFirst({
 		where: {
-			AND: [where, postVisibleWhere(viewer) as Prisma.PostWhereInput],
+			AND: [where, postReadableWhere(viewer) as Prisma.PostWhereInput],
 		},
 		select: { id: true },
 	});

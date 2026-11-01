@@ -1,6 +1,10 @@
 import type { Session } from "@bbrc/auth";
 import type { Database } from "@bbrc/db";
-import { isSuperAdmin, postAttachmentConflict } from "@bbrc/shared";
+import {
+	commentMediaConflict,
+	isSuperAdmin,
+	postAttachmentConflict,
+} from "@bbrc/shared";
 import {
 	type AllowedImageMimeType,
 	buildObjectKey,
@@ -474,9 +478,14 @@ async function loadOwnedPostForUpload(
 		where: { postId: post.id },
 		select: { id: true },
 	});
+	const map = await db.postMap.findFirst({
+		where: { postId: post.id },
+		select: { id: true },
+	});
 	const conflict = postAttachmentConflict({
 		poll: poll != null,
 		tierlist: tierlist != null,
+		map: map != null,
 		image: true,
 	});
 	if (conflict) {
@@ -531,6 +540,7 @@ async function loadOwnedComment(slug: string, userId: string, db: Database) {
 			slug: true,
 			authorId: true,
 			imageUrl: true,
+			map: { select: { id: true } },
 			post: { select: { slug: true } },
 			feedback: { select: { slug: true, book: { select: { slug: true } } } },
 		},
@@ -542,6 +552,13 @@ async function loadOwnedComment(slug: string, userId: string, db: Database) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Only the author can change this comment image",
 		});
+	}
+	const mediaConflict = commentMediaConflict({
+		map: comment.map != null,
+		image: true,
+	});
+	if (mediaConflict) {
+		throw new ORPCError("BAD_REQUEST", { message: mediaConflict });
 	}
 	return comment;
 }

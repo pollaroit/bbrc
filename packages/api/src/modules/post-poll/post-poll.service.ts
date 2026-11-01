@@ -613,6 +613,8 @@ export async function createPostPoll(
 	postId: string,
 	ownerId: string,
 	input: CreatePollInput,
+	/** Validate deadlines against publish time for scheduled posts. */
+	validationNow: Date = new Date(),
 ): Promise<void> {
 	const resolved: ResolvedOption[] = [];
 	for (const option of input.options) {
@@ -630,18 +632,21 @@ export async function createPostPoll(
 		input.maxChoices,
 		resolved.length,
 	);
-	const problem = validatePollSetup({
-		type: input.type,
-		optionKind: input.optionKind,
-		optionCount: resolved.length,
-		minChoices: limits.minChoices,
-		maxChoices: limits.maxChoices,
-		allowUserOptions: input.allowUserOptions,
-		maxOptionsPerUser: input.maxOptionsPerUser ?? null,
-		maxOptionsTotal: input.maxOptionsTotal ?? null,
-		resultsVisibility: input.resultsVisibility,
-		deadline: input.deadline ?? null,
-	});
+	const problem = validatePollSetup(
+		{
+			type: input.type,
+			optionKind: input.optionKind,
+			optionCount: resolved.length,
+			minChoices: limits.minChoices,
+			maxChoices: limits.maxChoices,
+			allowUserOptions: input.allowUserOptions,
+			maxOptionsPerUser: input.maxOptionsPerUser ?? null,
+			maxOptionsTotal: input.maxOptionsTotal ?? null,
+			resultsVisibility: input.resultsVisibility,
+			deadline: input.deadline ?? null,
+		},
+		validationNow,
+	);
 	if (problem) {
 		throw new ORPCError("BAD_REQUEST", { message: problem });
 	}

@@ -28,7 +28,7 @@ const engagementSql = Prisma.sql`
   )::double precision
 `;
 
-const hotScoreSql = Prisma.sql`(LOG(GREATEST(${engagementSql}, 1)) + EXTRACT(EPOCH FROM p.created_at) / 45000.0)`;
+const hotScoreSql = Prisma.sql`(LOG(GREATEST(${engagementSql}, 1)) + EXTRACT(EPOCH FROM COALESCE(p.published_at, p.created_at)) / 45000.0)`;
 
 function rankedScoreSql(mode: "top" | "hot"): Prisma.Sql {
 	return mode === "top" ? engagementSql : hotScoreSql;
@@ -76,10 +76,15 @@ function buildRankedWhere(
 	cursor: Extract<PostFeedCursor, { kind: "top" | "hot" }> | null,
 	authorIds?: string[],
 ): Prisma.Sql {
-	const parts: Prisma.Sql[] = [postVisibilitySql(viewer)];
+	const parts: Prisma.Sql[] = [
+		postVisibilitySql(viewer),
+		Prisma.sql`p.status = 'published'`,
+	];
 
 	if (rangeMin) {
-		parts.push(Prisma.sql`p.created_at >= ${rangeMin}`);
+		parts.push(
+			Prisma.sql`COALESCE(p.published_at, p.created_at) >= ${rangeMin}`,
+		);
 	}
 
 	if (authorUsername) {

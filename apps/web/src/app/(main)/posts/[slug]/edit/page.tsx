@@ -1,18 +1,19 @@
+import { getPostBySlug } from "@bbrc/api/modules/post/post.service";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { EditPostForm } from "@/components/blocks/edit-post-form";
+import { getRequestViewer } from "@/lib/request-viewer";
 import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
 	NO_INDEX_ROBOTS,
 } from "@/lib/seo";
-import { auth } from "@/services";
-import { orpc } from "@/utils/orpc";
+import { auth, db } from "@/services";
 
-const loadPostBySlug = cache((slug: string) =>
-	orpc.post.getPostBySlug.call(slug),
+const loadPostForEdit = cache(async (slug: string) =>
+	getPostBySlug(slug, db, await getRequestViewer()),
 );
 
 export async function generateMetadata({
@@ -21,10 +22,10 @@ export async function generateMetadata({
 	const { slug } = await params;
 
 	try {
-		const post = await loadPostBySlug(slug);
+		const post = await loadPostForEdit(slug);
 
 		return buildPageMetadata({
-			title: "Edit post",
+			title: post.status === "scheduled" ? "Edit scheduled post" : "Edit post",
 			description: `Edit your BBRC post by ${post.author.name}.`,
 			path: `/posts/${post.slug}/edit`,
 			robots: NO_INDEX_ROBOTS,
@@ -43,10 +44,10 @@ export default async function EditPostPage({
 		headers: await headers(),
 	});
 
-	let post: Awaited<ReturnType<typeof loadPostBySlug>>;
+	let post: Awaited<ReturnType<typeof loadPostForEdit>>;
 
 	try {
-		post = await loadPostBySlug(slug);
+		post = await loadPostForEdit(slug);
 	} catch {
 		notFound();
 	}

@@ -10,6 +10,11 @@ import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import type { z } from "zod";
 import zod from "zod";
 import {
+	ContentMapInputSchema,
+	ContentMapViewSchema,
+	contentMapSelect,
+} from "../content-map/content-map.schema";
+import {
 	CreatePollInputSchema,
 	PostPollViewSchema,
 } from "../post-poll/post-poll.schema";
@@ -64,6 +69,7 @@ const PostCommentPreviewBaseSchema = zod.object({
 	slug: CommentSchema.shape.slug,
 	content: CommentSchema.shape.content,
 	imageUrl: CommentSchema.shape.imageUrl,
+	map: ContentMapViewSchema.nullable(),
 	isSpoiler: CommentSchema.shape.isSpoiler,
 	allowBookmarks: CommentSchema.shape.allowBookmarks,
 	createdAt: zod.coerce.date(),
@@ -85,6 +91,9 @@ export const PostListItemSchema = PostSchema.pick({
 	imageUrl: true,
 	isSpoiler: true,
 	visibility: true,
+	status: true,
+	scheduledAt: true,
+	publishedAt: true,
 	createdAt: true,
 	editedAt: true,
 	allowLikes: true,
@@ -96,6 +105,7 @@ export const PostListItemSchema = PostSchema.pick({
 	attachment: PostAttachmentOutputSchema.nullable(),
 	poll: PostPollViewSchema.nullable(),
 	tierlist: PostTierlistViewSchema.nullable(),
+	map: ContentMapViewSchema.nullable(),
 	likeCount: zod.number().int().min(0),
 	commentCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
@@ -125,6 +135,9 @@ export const getPostListFields = {
 	imageUrl: true,
 	isSpoiler: true,
 	visibility: true,
+	status: true,
+	scheduledAt: true,
+	publishedAt: true,
 	allowLikes: true,
 	allowComments: true,
 	allowShares: true,
@@ -139,6 +152,9 @@ export const getPostListFields = {
 	},
 	attachment: {
 		select: postAttachmentSelect,
+	},
+	map: {
+		select: contentMapSelect,
 	},
 	_count: {
 		select: {
@@ -175,16 +191,50 @@ export const CreatePostInputSchema = PostSchema.pick({
 		poll: CreatePollInputSchema.optional(),
 		/** A tierlist replaces every other attachment, the poll and the image. */
 		tierlist: CreateTierlistInputSchema.optional(),
+		/** Whole-hour club time; at least one hour ahead. Side effects run at publish. */
+		scheduledAt: zod.coerce.date().optional(),
+		/** Map with text only (not with image, poll, tierlist, or shared attachment). */
+		map: ContentMapInputSchema.optional(),
 	});
 
 export const CreatePostOutputSchema = PostSchema.pick({
 	slug: true,
 }).extend({
 	xpAwarded: zod.number().int().min(0),
+	scheduledAt: PostSchema.shape.scheduledAt,
+});
+
+export const GetScheduledPostListInputSchema = zod.object({
+	page: zod.number().int().min(1).default(1),
+	limit: zod.number().int().min(1).max(50).default(20),
+});
+
+export const GetScheduledPostListOutputSchema = zod.object({
+	items: zod.array(PostListItemSchema),
+	metadata: zod.object({
+		page: zod.number().int().min(1),
+		limit: zod.number().int().min(1),
+		total: zod.number().int().min(0),
+		totalPages: zod.number().int().min(0),
+	}),
+});
+
+export const PublishPostNowInputSchema = PostSchema.pick({ slug: true });
+export const PublishPostNowOutputSchema = zod.object({
+	slug: PostSchema.shape.slug,
+	xpAwarded: zod.number().int().min(0),
 });
 
 export type CreatePostInput = z.infer<typeof CreatePostInputSchema>;
 export type CreatePostOutput = z.infer<typeof CreatePostOutputSchema>;
+export type GetScheduledPostListInput = z.infer<
+	typeof GetScheduledPostListInputSchema
+>;
+export type GetScheduledPostListOutput = z.infer<
+	typeof GetScheduledPostListOutputSchema
+>;
+export type PublishPostNowInput = z.infer<typeof PublishPostNowInputSchema>;
+export type PublishPostNowOutput = z.infer<typeof PublishPostNowOutputSchema>;
 
 /** GET BY SLUG */
 export const GetPostBySlugInputSchema = PostSchema.shape.slug;
@@ -199,6 +249,7 @@ export const GetPostBySlugOutputSchema = PostSchema.omit({
 	attachment: PostAttachmentOutputSchema.nullable(),
 	poll: PostPollViewSchema.nullable(),
 	tierlist: PostTierlistViewSchema.nullable(),
+	map: ContentMapViewSchema.nullable(),
 	likeCount: zod.number().int().min(0),
 	commentCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
@@ -231,6 +282,10 @@ export const UpdatePostInputSchema = PostSchema.pick({
 		/** Omit to leave unchanged; pass `null` to detach the book. */
 		attachedBookSlug: BookSchema.shape.slug.nullish(),
 		attachment: PostAttachmentInputSchema.nullish(),
+		/** Reschedule a post that is still `scheduled`. */
+		scheduledAt: zod.coerce.date().optional(),
+		/** Omit to leave unchanged; pass `null` to remove the map. */
+		map: ContentMapInputSchema.nullish(),
 	})
 	.required({ slug: true });
 
@@ -273,6 +328,10 @@ export const getPostBySlugFields = {
 	imageUrl: true,
 	isSpoiler: true,
 	visibility: true,
+	status: true,
+	scheduledAt: true,
+	firstScheduledAt: true,
+	publishedAt: true,
 	allowLikes: true,
 	allowComments: true,
 	allowShares: true,
@@ -290,6 +349,9 @@ export const getPostBySlugFields = {
 	},
 	attachment: {
 		select: postAttachmentSelect,
+	},
+	map: {
+		select: contentMapSelect,
 	},
 } as const;
 

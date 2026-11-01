@@ -112,6 +112,7 @@ export const adminAuthorTabs = [
 export const adminPostTabs = [
 	{ href: "/admin/posts" as Route, label: "Overview" },
 	{ href: "/admin/posts/list" as Route, label: "List" },
+	{ href: "/admin/posts/scheduled" as Route, label: "Scheduled" },
 	{ href: "/admin/posts/stats" as Route, label: "Stats" },
 ] as const;
 

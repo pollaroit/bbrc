@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LockedPostGate } from "@/components/blocks/locked-post-gate";
 import { PostDetail } from "@/components/blocks/post-detail";
+import { ScheduledPostGate } from "@/components/blocks/scheduled-post-gate";
 import { TrackDetailView } from "@/components/blocks/track-detail-view";
 import { loadPostBySlugForIsr } from "@/lib/isr-data";
 import {
@@ -79,6 +80,6 @@ export default async function PostPage({ params }: PageProps<"/posts/[slug]">) {
 		if (peek?.state === "locked") {
 			return <LockedPostGate slug={slug} author={peek.author} />;
 		}
-		notFound();
+		return <ScheduledPostGate slug={slug} />;
 	}
 }
