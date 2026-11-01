@@ -132,8 +132,12 @@ function ScheduledPostRow({
 				</span>
 				{readOnly ? null : (
 					<div className="flex flex-wrap gap-2">
-						<Button variant="outline" size="sm" asChild>
-							<Link href={`/posts/${post.slug}` as Route}>Edit</Link>
+						<Button
+							variant="outline"
+							size="sm"
+							render={<Link href={`/posts/${post.slug}` as Route} />}
+						>
+							Edit
 						</Button>
 						<LoadingButton size="sm" loading={publishing} onClick={onPublish}>
 							Publish now

@@ -59,6 +59,7 @@ model Post {
   attachment          PostAttachment?
   poll                PostPoll?
   tierlist            PostTierlist?
+  map                 PostMap?
   quotedInAttachments PostAttachment[] @relation("QuotedPostAttachment")
   mentions            ContentMention[]
 
@@ -211,6 +212,7 @@ model Comment {
   likes           Like[]
   postAttachments PostAttachment[]
   mentions        ContentMention[]
+  map             CommentMap?
 
   @@index([authorId])
   @@index([postId])

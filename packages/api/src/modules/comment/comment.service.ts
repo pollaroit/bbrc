@@ -5,6 +5,7 @@ import { ORPCError } from "@orpc/server";
 import { assertNormalizedSocialContent } from "../../lib/rich-content";
 import { definePagination } from "../../utils/pagination";
 import { mergeWhereFragments } from "../../utils/searching";
+import { syncCommentMap } from "../content-map/content-map.service";
 import { warmLinkPreviewsInContent } from "../link-unfurl/link-unfurl.service";
 import {
 	loadMentionedIds,
@@ -117,6 +118,7 @@ function mapCommentListRow(
 		slug: row.slug,
 		content: row.content,
 		imageUrl: row.imageUrl,
+		map: row.map,
 		isSpoiler: row.isSpoiler,
 		allowBookmarks: row.allowBookmarks,
 		createdAt: row.createdAt,
@@ -147,6 +149,7 @@ function mapCommentDetailRow(
 		postSlug: row.post?.slug ?? null,
 		feedbackSlug: row.feedback?.slug ?? null,
 		bookSlug: row.feedback?.book.slug ?? null,
+		map: row.map,
 		author: row.author,
 		likeCount: row._count.likes,
 		likedByMe: likedCommentIds.has(row.id),
@@ -458,6 +461,10 @@ export async function createComment(
 				},
 				select: { id: true, slug: true },
 			});
+
+			if (input.map) {
+				await syncCommentMap(tx, comment.id, input.map);
+			}
 
 			const xpAwarded = (await awardCommentXp(
 				{ userId, commentId: comment.id },

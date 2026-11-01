@@ -1,7 +1,12 @@
 "use client";
 
 import type { PostAttachmentInput } from "@bbrc/api/modules/post/post-attachment.schema";
-import { contentPlainText, type Visibility } from "@bbrc/shared";
+import {
+	type ContentMapSnapshot,
+	contentPlainText,
+	postAttachmentConflict,
+	type Visibility,
+} from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Checkbox } from "@bbrc/ui/components/checkbox";
 import {
@@ -20,6 +25,7 @@ import {
 	CalendarClock,
 	ImagePlus,
 	Link2,
+	MapPin,
 	Plus,
 	Rows3,
 	Settings2,
@@ -29,6 +35,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useComposePost } from "@/components/blocks/compose-post-provider";
+import { ContentMapPicker } from "@/components/blocks/content-map/content-map-picker";
+import { ContentMapView } from "@/components/blocks/content-map/content-map-view";
 import {
 	PendingImageAttachment,
 	usePendingImageInput,
@@ -112,6 +120,8 @@ export function ComposePostDialog({
 	const [tierlistOn, setTierlistOn] = useState(false);
 	const [tierlistDraft, setTierlistDraft] =
 		useState<TierlistDraft>(emptyTierlistDraft);
+	const [mapDraft, setMapDraft] = useState<ContentMapSnapshot | null>(null);
+	const [mapPickerOpen, setMapPickerOpen] = useState(false);
 	const [scheduleLater, setScheduleLater] = useState(false);
 	const [scheduledAt, setScheduledAt] = useState(() =>
 		defaultPostScheduleSlot(),
@@ -153,19 +163,28 @@ export function ComposePostDialog({
 		setTierlistDraft(emptyTierlistDraft());
 		setScheduleLater(false);
 		setScheduledAt(defaultPostScheduleSlot());
+		setMapDraft(null);
+		setMapPickerOpen(false);
 		if (imageInput.inputRef.current) {
 			imageInput.inputRef.current.value = "";
 		}
 	}
 
 	const postListKey = orpc.post.getPostList.key();
-	const hasMedia = imageFile != null || attachment != null;
+	const hasMedia = imageFile != null || attachment != null || mapDraft != null;
 	const plain = contentPlainText(content).trim();
 	const pollProblem = pollOn ? pollDraftProblem(pollDraft) : null;
 	const tierlistProblem = tierlistOn
 		? tierlistDraftProblem(tierlistDraft)
 		: null;
-	const problem = pollProblem ?? tierlistProblem;
+	const attachmentConflict = postAttachmentConflict({
+		poll: pollOn,
+		tierlist: tierlistOn,
+		attachment: attachment != null,
+		image: imageFile != null,
+		map: mapDraft != null,
+	});
+	const problem = pollProblem ?? tierlistProblem ?? attachmentConflict;
 
 	const createMutation = useMutation(
 		orpc.post.create.mutationOptions({
@@ -179,6 +198,7 @@ export function ComposePostDialog({
 					settings,
 					attachment,
 					imageFile,
+					mapDraft,
 					pollOn,
 					pollDraft,
 					tierlistOn,
@@ -246,6 +266,7 @@ export function ComposePostDialog({
 					setPollDraft(context.draft.pollDraft);
 					setTierlistOn(context.draft.tierlistOn);
 					setTierlistDraft(context.draft.tierlistDraft);
+					setMapDraft(context.draft.mapDraft);
 					onOpenChange(true);
 				}
 				toast.error(error.message);
@@ -260,7 +281,7 @@ export function ComposePostDialog({
 				}
 				const file = context.draft.imageFile;
 
-				if (file) {
+				if (file && !context.draft.mapDraft) {
 					try {
 						await uploadImageForEntity(file, {
 							target: "post-image",
@@ -348,6 +369,7 @@ export function ComposePostDialog({
 					: attachment
 						? { attachment }
 						: {}),
+			...(mapDraft ? { map: mapDraft } : {}),
 		});
 	}
 
@@ -429,6 +451,21 @@ export function ComposePostDialog({
 							/>
 						) : null}
 
+						{mapDraft ? (
+							<div className="flex flex-col gap-2">
+								<ContentMapView map={mapDraft} height={180} />
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="self-start"
+									onClick={() => setMapDraft(null)}
+								>
+									Remove map
+								</Button>
+							</div>
+						) : null}
+
 						{attachmentOpen || attachment ? (
 							<PostAttachmentComposePicker
 								value={attachment}
@@ -505,9 +542,32 @@ export function ComposePostDialog({
 									icon={<ImagePlus className="size-[18px]" aria-hidden />}
 									label={imageFile ? "Change photo" : "Add a photo"}
 									active={imageFile != null}
-									disabled={pollOn || tierlistOn}
-									reason="A poll or tierlist replaces photos and attachments."
-									onClick={imageInput.openPicker}
+									disabled={pollOn || tierlistOn || mapDraft != null}
+									reason={
+										mapDraft
+											? "Remove the map to add a photo."
+											: "A poll or tierlist replaces photos and attachments."
+									}
+									onClick={() => {
+										setMapDraft(null);
+										imageInput.openPicker();
+									}}
+								/>
+								<ToolButton
+									icon={<MapPin className="size-[18px]" aria-hidden />}
+									label={mapDraft ? "Change map" : "Add a map"}
+									active={mapDraft != null}
+									disabled={
+										pollOn ||
+										tierlistOn ||
+										attachment != null ||
+										imageFile != null
+									}
+									reason="Maps go with text only, not with a photo or other attachment."
+									onClick={() => {
+										setImageFile(null);
+										setMapPickerOpen(true);
+									}}
 								/>
 								<ToolButton
 									icon={<Link2 className="size-[18px]" aria-hidden />}
@@ -583,6 +643,12 @@ export function ComposePostDialog({
 						</div>
 					</DialogFooter>
 				</form>
+				<ContentMapPicker
+					open={mapPickerOpen}
+					onOpenChange={setMapPickerOpen}
+					value={mapDraft}
+					onChange={setMapDraft}
+				/>
 			</DialogContent>
 		</Dialog>
 	);

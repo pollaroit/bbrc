@@ -14,6 +14,7 @@ export * from "./book-stats";
 export * from "./bookmarks";
 export * from "./club-timezone";
 export * from "./comment-thread";
+export * from "./content-map";
 export * from "./document-file-check";
 export * from "./documents";
 export * from "./edition-key";

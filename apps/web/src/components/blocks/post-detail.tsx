@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from "@bbrc/ui/components/card";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { ContentMapView } from "@/components/blocks/content-map/content-map-view";
 import { FriendButton } from "@/components/blocks/friend-button";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
@@ -89,6 +90,8 @@ export function PostDetail({
 							edgeToEdge
 						/>
 					) : null}
+
+					{post.map ? <ContentMapView map={post.map} height={280} /> : null}
 
 					{post.attachment ? (
 						<PostAttachmentCard

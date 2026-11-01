@@ -10,6 +10,11 @@ import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import type { z } from "zod";
 import zod from "zod";
 import {
+	ContentMapInputSchema,
+	ContentMapViewSchema,
+	contentMapSelect,
+} from "../content-map/content-map.schema";
+import {
 	CreatePollInputSchema,
 	PostPollViewSchema,
 } from "../post-poll/post-poll.schema";
@@ -64,6 +69,7 @@ const PostCommentPreviewBaseSchema = zod.object({
 	slug: CommentSchema.shape.slug,
 	content: CommentSchema.shape.content,
 	imageUrl: CommentSchema.shape.imageUrl,
+	map: ContentMapViewSchema.nullable(),
 	isSpoiler: CommentSchema.shape.isSpoiler,
 	allowBookmarks: CommentSchema.shape.allowBookmarks,
 	createdAt: zod.coerce.date(),
@@ -99,6 +105,7 @@ export const PostListItemSchema = PostSchema.pick({
 	attachment: PostAttachmentOutputSchema.nullable(),
 	poll: PostPollViewSchema.nullable(),
 	tierlist: PostTierlistViewSchema.nullable(),
+	map: ContentMapViewSchema.nullable(),
 	likeCount: zod.number().int().min(0),
 	commentCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
@@ -146,6 +153,9 @@ export const getPostListFields = {
 	attachment: {
 		select: postAttachmentSelect,
 	},
+	map: {
+		select: contentMapSelect,
+	},
 	_count: {
 		select: {
 			likes: true,
@@ -183,6 +193,8 @@ export const CreatePostInputSchema = PostSchema.pick({
 		tierlist: CreateTierlistInputSchema.optional(),
 		/** Whole-hour club time; at least one hour ahead. Side effects run at publish. */
 		scheduledAt: zod.coerce.date().optional(),
+		/** Map with text only (not with image, poll, tierlist, or shared attachment). */
+		map: ContentMapInputSchema.optional(),
 	});
 
 export const CreatePostOutputSchema = PostSchema.pick({
@@ -237,6 +249,7 @@ export const GetPostBySlugOutputSchema = PostSchema.omit({
 	attachment: PostAttachmentOutputSchema.nullable(),
 	poll: PostPollViewSchema.nullable(),
 	tierlist: PostTierlistViewSchema.nullable(),
+	map: ContentMapViewSchema.nullable(),
 	likeCount: zod.number().int().min(0),
 	commentCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
@@ -271,6 +284,8 @@ export const UpdatePostInputSchema = PostSchema.pick({
 		attachment: PostAttachmentInputSchema.nullish(),
 		/** Reschedule a post that is still `scheduled`. */
 		scheduledAt: zod.coerce.date().optional(),
+		/** Omit to leave unchanged; pass `null` to remove the map. */
+		map: ContentMapInputSchema.nullish(),
 	})
 	.required({ slug: true });
 
@@ -333,6 +348,9 @@ export const getPostBySlugFields = {
 	},
 	attachment: {
 		select: postAttachmentSelect,
+	},
+	map: {
+		select: contentMapSelect,
 	},
 } as const;
 

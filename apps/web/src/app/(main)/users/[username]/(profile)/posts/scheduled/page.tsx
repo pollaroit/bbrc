@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { ScheduledPostsView } from "@/components/blocks/scheduled-posts-view";
 import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import { requireOwnProfile } from "@/lib/reading/require-own-profile";
-import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
+import {
+	buildNotFoundMetadata,
+	buildPageMetadata,
+	NO_INDEX_ROBOTS,
+} from "@/lib/seo";
 
 export async function generateMetadata({
 	params,
@@ -16,7 +20,7 @@ export async function generateMetadata({
 			title: `${user.name} · Scheduled posts`,
 			description: `Scheduled posts by ${user.name}.`,
 			path: `/users/${user.username}/posts/scheduled`,
-			noIndex: true,
+			robots: NO_INDEX_ROBOTS,
 		});
 	} catch {
 		return buildNotFoundMetadata("Member");

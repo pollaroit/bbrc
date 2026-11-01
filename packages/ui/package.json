@@ -23,6 +23,7 @@
 		"cn": "^0.2.5",
 		"date-fns": "^4.4.0",
 		"lucide-react": "catalog:",
+		"maplibre-gl": "^6",
 		"next-themes": "catalog:",
 		"react": "catalog:",
 		"react-day-picker": "^10.0.1",
@@ -35,6 +36,7 @@
 	"devDependencies": {
 		"@bbrc/config": "workspace:*",
 		"@tailwindcss/postcss": "catalog:",
+		"@types/geojson": "^7946.0.16",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"tailwindcss": "catalog:",

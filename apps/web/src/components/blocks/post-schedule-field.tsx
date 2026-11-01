@@ -76,7 +76,10 @@ export function PostScheduleField({
 		<div className={cn("flex flex-col gap-1.5", className)}>
 			<Select
 				value={value.toISOString()}
-				onValueChange={(iso) => onChange(new Date(iso))}
+				onValueChange={(iso) => {
+					if (!iso) return;
+					onChange(new Date(iso));
+				}}
 			>
 				<SelectTrigger className="w-full">
 					<SelectValue placeholder="Pick a time" />

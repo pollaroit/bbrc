@@ -15,6 +15,8 @@ import {
 import { ORPCError } from "@orpc/server";
 import { assertNormalizedSocialContent } from "../../lib/rich-content";
 import { mergeWhereFragments } from "../../utils/searching";
+import { contentMapSelect } from "../content-map/content-map.schema";
+import { syncPostMap } from "../content-map/content-map.service";
 import { warmLinkPreviewsInContent } from "../link-unfurl/link-unfurl.service";
 import {
 	loadMentionedIds,
@@ -109,6 +111,7 @@ const topCommentSelect = {
 	allowBookmarks: true,
 	createdAt: true,
 	postId: true,
+	map: { select: contentMapSelect },
 	author: {
 		select: postAuthorFields,
 	},
@@ -259,6 +262,7 @@ async function loadTopCommentsByPostId(
 					slug: row.slug,
 					content: row.content,
 					imageUrl: row.imageUrl,
+					map: row.map,
 					isSpoiler: row.isSpoiler,
 					allowBookmarks: row.allowBookmarks,
 					createdAt: row.createdAt,
@@ -271,6 +275,7 @@ async function loadTopCommentsByPostId(
 								slug: reply.slug,
 								content: reply.content,
 								imageUrl: reply.imageUrl,
+								map: reply.map,
 								isSpoiler: reply.isSpoiler,
 								allowBookmarks: reply.allowBookmarks,
 								createdAt: reply.createdAt,
@@ -310,6 +315,7 @@ function mapPostListRow(
 		allowBookmarks: row.allowBookmarks,
 		poll: polls.get(row.id) ?? null,
 		tierlist: tierlists.get(row.id) ?? null,
+		map: row.map,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -359,6 +365,7 @@ async function mapPostDetailRow(
 		allowBookmarks: row.allowBookmarks,
 		poll: polls.get(row.id) ?? null,
 		tierlist: tierlists.get(row.id) ?? null,
+		map: row.map,
 		createdAt: row.createdAt,
 		editedAt: row.editedAt,
 		author: row.author,
@@ -668,6 +675,7 @@ export async function createPost(
 		poll: input.poll != null,
 		tierlist: input.tierlist != null,
 		attachment: attachmentInput != null,
+		map: input.map != null,
 	});
 	if (conflict) {
 		throw new ORPCError("BAD_REQUEST", { message: conflict });
@@ -728,6 +736,10 @@ export async function createPost(
 			where: { id: post.id },
 			data: { attachedBookId: attachedBookId ?? null },
 		});
+
+		if (input.map) {
+			await syncPostMap(tx, post.id, input.map);
+		}
 
 		let xpAwarded = 0;
 		if (!isScheduled) {
@@ -857,6 +869,9 @@ export async function updatePost(
 			scheduledAt: true,
 			poll: { select: { id: true } },
 			tierlist: { select: { id: true } },
+			map: { select: { id: true } },
+			attachment: { select: { id: true } },
+			attachedBookId: true,
 		},
 	});
 
@@ -869,11 +884,29 @@ export async function updatePost(
 
 	assertPostAuthor(post, userId);
 
+	const hasSharedAttachment =
+		post.attachment != null || post.attachedBookId != null;
+
 	if (input.attachment) {
 		const conflict = postAttachmentConflict({
 			poll: post.poll != null,
 			tierlist: post.tierlist != null,
 			attachment: true,
+			map: post.map != null,
+			image: post.imageUrl != null,
+		});
+		if (conflict) {
+			throw new ORPCError("BAD_REQUEST", { message: conflict });
+		}
+	}
+
+	if (input.map !== undefined && input.map !== null) {
+		const conflict = postAttachmentConflict({
+			poll: post.poll != null,
+			tierlist: post.tierlist != null,
+			attachment: hasSharedAttachment,
+			map: true,
+			image: post.imageUrl != null,
 		});
 		if (conflict) {
 			throw new ORPCError("BAD_REQUEST", { message: conflict });
@@ -980,6 +1013,8 @@ export async function updatePost(
 				mentioned: preparedContent.mentioned,
 			});
 		}
+
+		await syncPostMap(tx, post.id, input.map);
 	});
 
 	if (normalizedContent != null && post.status === "published") {

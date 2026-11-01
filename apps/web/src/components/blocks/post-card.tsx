@@ -8,6 +8,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
 import { CommentListItemView } from "@/components/blocks/comment-list-item";
+import { ContentMapView } from "@/components/blocks/content-map/content-map-view";
 import { PostAttachedImage } from "@/components/blocks/post-attached-image";
 import { PostAttachmentCard } from "@/components/blocks/post-attachment-card";
 import { PostBookmarkEngagement } from "@/components/blocks/post-bookmark-engagement";
@@ -223,6 +224,12 @@ function PostCardInner({
 							edgeToEdge
 						/>
 					</Link>
+				) : null}
+
+				{post.map ? (
+					<div className="pointer-events-auto relative z-[1]">
+						<ContentMapView map={post.map} />
+					</div>
 				) : null}
 
 				{post.attachment ? (

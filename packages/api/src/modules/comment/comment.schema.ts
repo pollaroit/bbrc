@@ -9,6 +9,11 @@ import {
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
 import type { z } from "zod";
 import zod from "zod";
+import {
+	ContentMapInputSchema,
+	ContentMapViewSchema,
+	contentMapSelect,
+} from "../content-map/content-map.schema";
 import { PostAuthorSchema, postAuthorFields } from "../post/post.schema";
 import {
 	commentListFiltersSchema,
@@ -42,6 +47,7 @@ export const CommentListItemSchema = CommentSchema.pick({
 	depth: true,
 }).extend({
 	parentSlug: CommentSchema.shape.slug.nullable(),
+	map: ContentMapViewSchema.nullable(),
 	author: PostAuthorSchema,
 	likeCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
@@ -76,6 +82,9 @@ export const getCommentListFields = {
 	},
 	author: {
 		select: postAuthorFields,
+	},
+	map: {
+		select: contentMapSelect,
 	},
 	_count: {
 		select: {
@@ -126,6 +135,7 @@ export const CreateCommentInputSchema = zod
 		content: CommentSchema.shape.content,
 		isSpoiler: CommentSchema.shape.isSpoiler.optional(),
 		parentSlug: CommentSchema.shape.slug.optional(),
+		map: ContentMapInputSchema.optional(),
 	})
 	.superRefine((value, ctx) => {
 		refineCommentCreateTarget(value, ctx);
@@ -154,6 +164,7 @@ export const GetCommentBySlugOutputSchema = CommentSchema.omit({
 	feedbackSlug: FeedbackSchema.shape.slug.nullable(),
 	bookSlug: BookSchema.shape.slug.nullable(),
 	parentSlug: CommentSchema.shape.slug.nullable(),
+	map: ContentMapViewSchema.nullable(),
 	author: PostAuthorSchema,
 	likeCount: zod.number().int().min(0),
 	likedByMe: zod.boolean(),
@@ -229,5 +240,8 @@ export const getCommentBySlugFields = {
 				},
 			},
 		},
+	},
+	map: {
+		select: contentMapSelect,
 	},
 } as const;
