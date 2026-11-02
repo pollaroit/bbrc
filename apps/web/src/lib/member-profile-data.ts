@@ -6,7 +6,7 @@ import { getXpChart, getXpEventList } from "@bbrc/api/modules/xp/xp.service";
 import { getRequestViewer } from "@/lib/request-viewer";
 import { db } from "@/services";
 
-/** Per-viewer profile load: the profile layout is never cached, so it knows who is looking. */
+/** Per-viewer profile load for routes that call `headers()` (not ISR). Cached profile shell uses `loadUserByUsernameForIsr`. */
 export async function loadUserByUsernameForPage(username: string) {
 	return getUserByUsername({ username }, db, await getRequestViewer());
 }

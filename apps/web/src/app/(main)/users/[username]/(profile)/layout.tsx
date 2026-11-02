@@ -1,10 +1,8 @@
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { MemberProfileShell } from "@/components/blocks/member-profile-shell";
 import { TrackDetailView } from "@/components/blocks/track-detail-view";
-import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
+import { loadUserByUsernameForIsr } from "@/lib/isr-data";
 import { JsonLd, personJsonLd } from "@/lib/seo";
-import { auth } from "@/services";
 
 export default async function UserProfileLayout({
 	children,
@@ -13,11 +11,7 @@ export default async function UserProfileLayout({
 	const { username } = await params;
 
 	try {
-		const user = await loadUserByUsernameForPage(username);
-		const session = await auth.api.getSession({
-			headers: await headers(),
-		});
-		const isOwnProfile = session?.user?.username === user.username;
+		const user = await loadUserByUsernameForIsr(username);
 
 		return (
 			<>
@@ -33,9 +27,7 @@ export default async function UserProfileLayout({
 						`/users/${user.username}/goals/`,
 					]}
 				/>
-				<MemberProfileShell isOwnProfile={isOwnProfile} user={user}>
-					{children}
-				</MemberProfileShell>
+				<MemberProfileShell user={user}>{children}</MemberProfileShell>
 			</>
 		);
 	} catch {

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { MemberProfileOverview } from "@/components/blocks/member-profile-overview";
-import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
+import { loadUserByUsernameForIsr } from "@/lib/isr-data";
 import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
@@ -23,7 +23,7 @@ export async function generateMetadata({
 	const { username } = await params;
 
 	try {
-		const user = await loadUserByUsernameForPage(username);
+		const user = await loadUserByUsernameForIsr(username);
 
 		return buildPageMetadata({
 			title: `${user.name} (@${user.username})`,
