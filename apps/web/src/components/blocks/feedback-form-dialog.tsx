@@ -25,7 +25,7 @@ import { LoadingButton } from "@bbrc/ui/components/loading-button";
 import { useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { FeedbackHalfStarRating } from "@/components/blocks/feedback-half-star-rating";
 import {
@@ -83,6 +83,7 @@ export function FeedbackFormDialog({
 }: FeedbackFormDialogProps) {
 	const router = useRouter();
 	const { data: session } = authClient.useSession();
+	const readReviewRef = useRef<(() => string) | null>(null);
 	const isEdit = mode === "edit";
 	const [rating, setRating] = useState<FeedbackRatingStep>(4);
 	const [review, setReview] = useState("");
@@ -218,11 +219,12 @@ export function FeedbackFormDialog({
 		}),
 	);
 
-	const pending = false;
+	const pending = createMutation.isPending || updateMutation.isPending;
 
 	function handleSubmit() {
-		if (createMutation.isPending || updateMutation.isPending) return;
-		const plain = contentPlainText(review).trim();
+		if (pending) return;
+		const reviewBody = readReviewRef.current?.() ?? review;
+		const plain = contentPlainText(reviewBody).trim();
 		if (plain.length > FEEDBACK_REVIEW_MAX_PLAIN) {
 			toast.error(
 				`Review must be at most ${FEEDBACK_REVIEW_MAX_PLAIN} characters`,
@@ -238,7 +240,7 @@ export function FeedbackFormDialog({
 		const payload = {
 			bookSlug,
 			rating,
-			review,
+			review: reviewBody,
 			isSpoiler,
 			// Edit: only send a level we have actually loaded, so it is never overwritten blindly.
 			...(visibilityReady ? { visibility } : {}),
@@ -287,6 +289,7 @@ export function FeedbackFormDialog({
 								value={review}
 								onChange={setReview}
 								onSubmitShortcut={handleSubmit}
+								storedContentReaderRef={readReviewRef}
 								maxPlainLength={FEEDBACK_REVIEW_MAX_PLAIN}
 								minHeightClassName="min-h-[6rem]"
 								placeholder="What did you think of the book? (optional)"

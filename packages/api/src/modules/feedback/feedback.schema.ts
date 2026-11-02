@@ -7,9 +7,10 @@ import {
 	UserSchema,
 } from "@bbrc/schemas";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
-import { isFeedbackRatingStep } from "@bbrc/shared";
+import { contentPlainText, isFeedbackRatingStep } from "@bbrc/shared";
 import type { z } from "zod";
 import zod from "zod";
+import { FEEDBACK_REVIEW_MAX_PLAIN } from "../../lib/feedback-review";
 import { PostAuthorSchema } from "../post/post.schema";
 import { ReadEditionRefSchema } from "../read/read-edition-ref";
 import {
@@ -85,14 +86,25 @@ export type GetBookFeedbackStateOutput = z.infer<
 	typeof GetBookFeedbackStateOutputSchema
 >;
 
-export const CreateFeedbackInputSchema = zod.object({
-	bookSlug: BookSchema.shape.slug,
-	rating: FeedbackRatingStepSchema,
-	review: zod.string(),
-	isSpoiler: FeedbackSchema.shape.isSpoiler.optional(),
-	/** Who may see this review (on top of the reviews setting and profile level). */
-	visibility: FeedbackSchema.shape.visibility.optional(),
-});
+export const CreateFeedbackInputSchema = zod
+	.object({
+		bookSlug: BookSchema.shape.slug,
+		rating: FeedbackRatingStepSchema,
+		review: zod.string(),
+		isSpoiler: FeedbackSchema.shape.isSpoiler.optional(),
+		/** Who may see this review (on top of the reviews setting and profile level). */
+		visibility: FeedbackSchema.shape.visibility.optional(),
+	})
+	.superRefine((value, ctx) => {
+		const plainLength = contentPlainText(value.review).trim().length;
+		if (plainLength > FEEDBACK_REVIEW_MAX_PLAIN) {
+			ctx.addIssue({
+				code: "custom",
+				message: `Review must be at most ${FEEDBACK_REVIEW_MAX_PLAIN} characters`,
+				path: ["review"],
+			});
+		}
+	});
 
 export const CreateFeedbackOutputSchema = zod.object({
 	slug: FeedbackSchema.shape.slug,

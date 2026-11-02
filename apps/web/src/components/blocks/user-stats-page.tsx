@@ -566,7 +566,7 @@ function CoverCell({
 }: {
 	book: GetUserStatsOutput["readGrid"]["books"][number];
 }) {
-	const src = bookCoverUrl(book.coverId, "S");
+	const src = bookCoverUrl(book.coverId, "M");
 	return (
 		<Tooltip>
 			<TooltipTrigger
@@ -581,7 +581,7 @@ function CoverCell({
 								alt=""
 								fill
 								className="object-cover"
-								sizes="80px"
+								sizes="(max-width: 640px) 33vw, (max-width: 1280px) 16vw, 140px"
 							/>
 						) : (
 							<span className="flex size-full items-center justify-center p-1 text-3xs text-muted-foreground">
