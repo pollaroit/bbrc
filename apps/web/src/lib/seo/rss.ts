@@ -1,6 +1,6 @@
 import { postVisibleWhere } from "@bbrc/api/modules/visibility/visibility-resources";
 import type { Database, Prisma } from "@bbrc/db";
-import { ANONYMOUS_VIEWER } from "@bbrc/shared";
+import { ANONYMOUS_VIEWER, contentPlainText } from "@bbrc/shared";
 import { absoluteUrl, SITE_NAME } from "./site";
 
 const FEED_ITEM_LIMIT = 50;
@@ -62,7 +62,9 @@ export async function buildPostsRssFeed(db: Database): Promise<string> {
 		.map((post) => {
 			const link = absoluteUrl(`/posts/${post.slug}`);
 			const title = `Post by ${post.author.name}`;
-			const description = escapeXml(post.content.trim());
+			const description = escapeXml(
+				contentPlainText(post.content).trim() || "BBRC club post.",
+			);
 			const pubDate = toRfc822(post.createdAt);
 
 			return `<item>

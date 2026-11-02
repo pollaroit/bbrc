@@ -1,3 +1,4 @@
+import { contentPlainText } from "@bbrc/shared";
 import type { Metadata } from "next";
 import { openGraphImageForPath } from "./og/url";
 import { DEFAULT_DESCRIPTION, SITE_NAME } from "./site";
@@ -10,8 +11,8 @@ export const NO_INDEX_ROBOTS: NonNullable<Metadata["robots"]> = {
 	follow: false,
 };
 
-export function truncateDescription(text: string): string {
-	const trimmed = text.trim().replace(/\s+/g, " ");
+export function truncateDescription(storedOrPlain: string): string {
+	const trimmed = contentPlainText(storedOrPlain).trim().replace(/\s+/g, " ");
 	if (trimmed.length <= MAX_DESCRIPTION_LENGTH) {
 		return trimmed;
 	}

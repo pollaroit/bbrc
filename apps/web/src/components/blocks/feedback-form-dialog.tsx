@@ -258,8 +258,8 @@ export function FeedbackFormDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-md">
-				<DialogHeader>
+			<DialogContent className="flex max-h-[min(92dvh,760px)] max-w-md flex-col gap-0 overflow-hidden p-0">
+				<DialogHeader className="shrink-0 border-border border-b px-4 pt-4 pb-3">
 					<DialogTitle>
 						{isEdit ? "Edit your review" : "Your club review"}
 					</DialogTitle>
@@ -269,85 +269,87 @@ export function FeedbackFormDialog({
 							: "Rate the book in half-star steps. Review text is optional."}
 					</DialogDescription>
 				</DialogHeader>
-				<FieldGroup>
-					<Field>
-						<FieldLabel>Rating</FieldLabel>
-						<FeedbackHalfStarRating
-							value={rating}
-							onChange={setRating}
-							disabled={pending}
-						/>
-					</Field>
-					<Field>
-						<FieldLabel htmlFor="feedback-dialog-review">Review</FieldLabel>
-						{open ? (
-							<RichTextEditor
-								instanceKey={
-									isEdit ? "feedback-edit-open" : "feedback-create-open"
-								}
-								id="feedback-dialog-review"
-								value={review}
-								onChange={setReview}
-								onSubmitShortcut={handleSubmit}
-								storedContentReaderRef={readReviewRef}
-								maxPlainLength={FEEDBACK_REVIEW_MAX_PLAIN}
-								minHeightClassName="min-h-[6rem]"
-								placeholder="What did you think of the book? (optional)"
-								disabled={pending}
-							/>
-						) : null}
-						<FieldDescription>
-							Optional — up to {FEEDBACK_REVIEW_MAX_PLAIN} characters.
-						</FieldDescription>
-					</Field>
-					<Field>
-						<FieldLabel>Photo</FieldLabel>
-						{isEdit ? (
-							<ReviewImageField
-								mode="edit"
-								feedbackSlug={feedbackSlug ?? myFeedbackSlug(bookSlug)}
-								currentUrl={initialValues?.imageUrl}
-								disabled={pending}
-							/>
-						) : (
-							<ReviewImageField
-								mode="create"
-								file={imageFile}
-								onFileChange={setImageFile}
-								disabled={pending}
-							/>
-						)}
-					</Field>
-					{visibilityReady ? (
+				<div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+					<FieldGroup>
 						<Field>
-							<FieldLabel>Who can see it</FieldLabel>
-							<VisibilitySelect
-								value={visibility}
-								onChange={setVisibility}
-								disabled={pending || !visibilityReady}
-								label="Who can see this review"
-								className="w-fit"
+							<FieldLabel>Rating</FieldLabel>
+							<FeedbackHalfStarRating
+								value={rating}
+								onChange={setRating}
+								disabled={pending}
 							/>
+						</Field>
+						<Field>
+							<FieldLabel htmlFor="feedback-dialog-review">Review</FieldLabel>
+							{open ? (
+								<RichTextEditor
+									instanceKey={
+										isEdit ? "feedback-edit-open" : "feedback-create-open"
+									}
+									id="feedback-dialog-review"
+									value={review}
+									onChange={setReview}
+									onSubmitShortcut={handleSubmit}
+									storedContentReaderRef={readReviewRef}
+									maxPlainLength={FEEDBACK_REVIEW_MAX_PLAIN}
+									minHeightClassName="min-h-[6rem]"
+									placeholder="What did you think of the book? (optional)"
+									disabled={pending}
+								/>
+							) : null}
 							<FieldDescription>
-								Counts towards the book's rating either way.
+								Optional — up to {FEEDBACK_REVIEW_MAX_PLAIN} characters.
 							</FieldDescription>
 						</Field>
-					) : null}
-					<Field>
-						<div className="flex items-center gap-2">
-							<Checkbox
-								id="feedback-dialog-spoiler"
-								checked={isSpoiler}
-								onCheckedChange={(checked) => setIsSpoiler(checked === true)}
-								disabled={pending}
-							/>
-							<FieldLabel htmlFor="feedback-dialog-spoiler" className="mb-0">
-								Mark entire review as spoiler
-							</FieldLabel>
-						</div>
-					</Field>
-				</FieldGroup>
-				<DialogFooter>
+						<Field>
+							<FieldLabel>Photo</FieldLabel>
+							{isEdit ? (
+								<ReviewImageField
+									mode="edit"
+									feedbackSlug={feedbackSlug ?? myFeedbackSlug(bookSlug)}
+									currentUrl={initialValues?.imageUrl}
+									disabled={pending}
+								/>
+							) : (
+								<ReviewImageField
+									mode="create"
+									file={imageFile}
+									onFileChange={setImageFile}
+									disabled={pending}
+								/>
+							)}
+						</Field>
+						{visibilityReady ? (
+							<Field>
+								<FieldLabel>Who can see it</FieldLabel>
+								<VisibilitySelect
+									value={visibility}
+									onChange={setVisibility}
+									disabled={pending || !visibilityReady}
+									label="Who can see this review"
+									className="w-fit"
+								/>
+								<FieldDescription>
+									Counts towards the book's rating either way.
+								</FieldDescription>
+							</Field>
+						) : null}
+						<Field>
+							<div className="flex items-center gap-2">
+								<Checkbox
+									id="feedback-dialog-spoiler"
+									checked={isSpoiler}
+									onCheckedChange={(checked) => setIsSpoiler(checked === true)}
+									disabled={pending}
+								/>
+								<FieldLabel htmlFor="feedback-dialog-spoiler" className="mb-0">
+									Mark entire review as spoiler
+								</FieldLabel>
+							</div>
+						</Field>
+					</FieldGroup>
+				</div>
+				<DialogFooter className="shrink-0 border-border border-t px-4 py-3">
 					<LoadingButton
 						type="button"
 						disabled={pending || plainLength > FEEDBACK_REVIEW_MAX_PLAIN}
