@@ -33,8 +33,10 @@ export async function generateMetadata({
 			return buildNotFoundMetadata("Comment");
 		}
 
+		const commentTitle = truncateOgTitle(comment.content);
+
 		return buildPageMetadata({
-			title: truncateOgTitle(comment.content),
+			title: commentTitle || `Comment on post by ${post.author.name}`,
 			description: truncateDescription(
 				`@${comment.author.username} · post by ${post.author.name}`,
 			),

@@ -36,8 +36,10 @@ export async function generateMetadata({
 			return buildNotFoundMetadata("Review");
 		}
 
+		const reviewTitle = truncateOgTitle(feedback.review);
+
 		return buildPageMetadata({
-			title: truncateOgTitle(feedback.review),
+			title: reviewTitle || `${feedback.bookTitle} · review`,
 			description: truncateDescription(
 				`${feedback.bookTitle} · ${feedback.rating.toFixed(1)} / 5 · ${feedback.author.name}`,
 			),

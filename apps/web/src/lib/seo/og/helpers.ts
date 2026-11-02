@@ -1,3 +1,4 @@
+import { contentPlainText } from "@bbrc/shared";
 import { clubTimeZone } from "@/lib/club-timezone";
 
 const ogDateFormatter = new Intl.DateTimeFormat("en", {
@@ -14,8 +15,13 @@ export function formatCount(label: string, count: number): string {
 	return `${count.toLocaleString("en-US")} ${label}${count === 1 ? "" : "s"}`;
 }
 
-export function truncateOgTitle(text: string, max = 72): string {
-	const line = text.trim().split(/\n/)[0]?.trim() ?? text.trim();
+/** Page and OG titles from stored rich content or legacy plain strings. */
+export function truncateOgTitle(storedOrPlain: string, max = 72): string {
+	const text = contentPlainText(storedOrPlain).trim();
+	const line = text.split(/\n/)[0]?.trim() ?? text;
+	if (!line) {
+		return "";
+	}
 	if (line.length <= max) {
 		return line;
 	}

@@ -37,8 +37,10 @@ export async function generateMetadata({
 			return buildNotFoundMetadata("Comment");
 		}
 
+		const commentTitle = truncateOgTitle(comment.content);
+
 		return buildPageMetadata({
-			title: truncateOgTitle(comment.content),
+			title: commentTitle || `Comment on review · ${feedback.bookTitle}`,
 			description: truncateDescription(
 				`${feedback.bookTitle} · review by ${feedback.author.name}`,
 			),
