@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getOgFonts } from "@/lib/seo/og/fonts";
+import { ogImageData } from "@/lib/seo/og/images";
 import { SITE_SHORT_NAME } from "@/lib/seo/site";
 import { SESSION_STORY_SHAPES, type SessionStoryShape } from "./constants";
 import type { SessionStoryContent } from "./session-story-content";
@@ -68,6 +69,9 @@ export async function renderSessionStoryImage(
 		10,
 		Math.round(((to - from) / 100) * trackWidth),
 	);
+	const coverSrc = content.coverUrl
+		? await ogImageData(content.coverUrl)
+		: null;
 
 	return new ImageResponse(
 		<div
@@ -122,10 +126,10 @@ export async function renderSessionStoryImage(
 						overflow: "hidden",
 					}}
 				>
-					{content.coverUrl ? (
+					{coverSrc ? (
 						// eslint-disable-next-line @next/next/no-img-element -- ImageResponse (Satori)
 						<img
-							src={content.coverUrl}
+							src={coverSrc}
 							alt=""
 							width={coverWidth}
 							height={coverHeight}
@@ -143,34 +147,51 @@ export async function renderSessionStoryImage(
 						flexDirection: "column",
 						alignItems: "center",
 						gap: 8,
-						textAlign: "center",
+						width: "100%",
 						maxWidth: width - padX * 2,
 					}}
 				>
 					<div
 						style={{
 							display: "flex",
+							width: "100%",
 							justifyContent: "center",
-							fontSize: titleSize(content.title, compact),
-							fontWeight: 600,
-							lineHeight: 1.15,
-							letterSpacing: "-0.02em",
-							maxHeight: titleSize(content.title, compact) * 1.15 * 2,
-							overflow: "hidden",
 						}}
 					>
-						{content.title}
+						<div
+							style={{
+								display: "flex",
+								textAlign: "center",
+								fontSize: titleSize(content.title, compact),
+								fontWeight: 600,
+								lineHeight: 1.15,
+								letterSpacing: "-0.02em",
+								maxHeight: titleSize(content.title, compact) * 1.15 * 2,
+								overflow: "hidden",
+							}}
+						>
+							{content.title}
+						</div>
 					</div>
 					<div
 						style={{
 							display: "flex",
-							fontSize: 26,
-							color: MUTED,
-							maxHeight: 72,
-							overflow: "hidden",
+							width: "100%",
+							justifyContent: "center",
 						}}
 					>
-						{content.authorsLine}
+						<div
+							style={{
+								display: "flex",
+								textAlign: "center",
+								fontSize: 26,
+								color: MUTED,
+								maxHeight: 72,
+								overflow: "hidden",
+							}}
+						>
+							{content.authorsLine}
+						</div>
 					</div>
 				</div>
 			</div>
@@ -199,7 +220,15 @@ export async function renderSessionStoryImage(
 				</div>
 			</div>
 
-			<div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+			<div
+				style={{
+					display: "flex",
+					flexDirection: "column",
+					alignItems: "center",
+					gap: 14,
+					width: "100%",
+				}}
+			>
 				<div
 					style={{
 						display: "flex",
@@ -225,6 +254,7 @@ export async function renderSessionStoryImage(
 					style={{
 						display: "flex",
 						justifyContent: "space-between",
+						width: trackWidth,
 						fontSize: 24,
 						color: MUTED,
 					}}

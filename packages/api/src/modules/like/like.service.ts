@@ -7,10 +7,7 @@ import { mergeWhereFragments } from "../../utils/searching";
 import { threadCommentVisibleWhere } from "../comment/comment-visibility";
 import { notifyReactionOnYourPost } from "../notification/notification-triggers";
 import { assertPostVisible } from "../post/post-visibility";
-import {
-	likeVisibleWhere,
-	reviewVisibleWhere,
-} from "../visibility/visibility-resources";
+import { reviewVisibleWhere } from "../visibility/visibility-resources";
 import { notBlockedWhere } from "../visibility/visibility-where";
 import {
 	likeListRanging,
@@ -77,29 +74,56 @@ function withStableIdOrderBy(
 	return [orderBy, { id: sortDirection }];
 }
 
-/**
- * Likes the viewer may see by name. A like is public space: it follows what it is on (a
- * post, a comment, a review) and never its author's profile; a blocked member's like is
- * left out. Counts never use this.
- */
-export function likeListVisibleWhere(viewer: Viewer): Prisma.LikeWhereInput {
-	return {
-		OR: [
-			likeVisibleWhere(viewer) as Prisma.LikeWhereInput,
-			{
+/** The viewer may open this item; likers are public space once the parent is visible. */
+async function assertLikeListTarget(
+	input: GetLikeListInput,
+	db: Database,
+	viewer: Viewer,
+): Promise<void> {
+	if (input.postSlug) {
+		await assertPostVisible(
+			db,
+			{ slug: input.postSlug },
+			viewer,
+			"Post not found",
+			{ slug: input.postSlug },
+		);
+		return;
+	}
+
+	if (input.commentSlug) {
+		const comment = await db.comment.findFirst({
+			where: {
+				AND: [{ slug: input.commentSlug }, threadCommentVisibleWhere(viewer)],
+			},
+			select: { id: true },
+		});
+		if (!comment) {
+			throw new ORPCError("NOT_FOUND", {
+				message: "Comment not found",
+				data: { slug: input.commentSlug },
+			});
+		}
+		return;
+	}
+
+	if (input.feedbackSlug) {
+		const feedback = await db.feedback.findFirst({
+			where: {
 				AND: [
-					{ comment: threadCommentVisibleWhere(viewer) },
-					notBlockedWhere(viewer, "userId") as Prisma.LikeWhereInput,
+					{ slug: input.feedbackSlug },
+					reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput,
 				],
 			},
-			{
-				AND: [
-					{ feedback: reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput },
-					notBlockedWhere(viewer, "userId") as Prisma.LikeWhereInput,
-				],
-			},
-		],
-	};
+			select: { id: true },
+		});
+		if (!feedback) {
+			throw new ORPCError("NOT_FOUND", {
+				message: "Review not found",
+				data: { slug: input.feedbackSlug },
+			});
+		}
+	}
 }
 
 async function resolvePostTarget(
@@ -279,6 +303,8 @@ export async function getLikeList(
 	db: Database,
 	viewer: Viewer,
 ): Promise<GetLikeListOutput> {
+	await assertLikeListTarget(input, db, viewer);
+
 	const pagination = definePagination.cursor(input, likeListCursorCodec);
 	const sorting = likeListSorting.from(input);
 	const ranging = likeListRanging.from(input);
@@ -288,7 +314,7 @@ export async function getLikeList(
 		likeListTargetWhere(input),
 		ranging.use(),
 		searching.use(),
-		likeListVisibleWhere(viewer),
+		notBlockedWhere(viewer, "userId") as Prisma.LikeWhereInput,
 	);
 
 	const rows = await db.like.findMany({

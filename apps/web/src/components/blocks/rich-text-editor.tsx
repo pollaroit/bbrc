@@ -25,7 +25,7 @@ import {
 	Underline as UnderlineIcon,
 	X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { MentionPicker } from "@/components/blocks/mention/mention-picker";
 import {
 	RichTextLinkDialog,
@@ -61,6 +61,8 @@ type RichTextEditorProps = {
 	autoFocus?: boolean;
 	/** Runs on ⌘/Ctrl + Enter, e.g. to post a comment. */
 	onSubmitShortcut?: () => void;
+	/** Reads the live document (for submit before React state catches up). */
+	storedContentReaderRef?: RefObject<(() => string) | null>;
 	/** Typing "@" offers members to mention (off for places that never notify, like a bio). */
 	enableMentions?: boolean;
 	/** What is being written on, so its author and commenters are suggested first. */
@@ -257,6 +259,7 @@ export function RichTextEditor({
 	minHeightClassName = "min-h-[8rem]",
 	autoFocus = false,
 	onSubmitShortcut,
+	storedContentReaderRef,
 	enableMentions = true,
 	mentionContext,
 }: RichTextEditorProps) {
@@ -359,6 +362,17 @@ export function RichTextEditor({
 		}
 		editor.setEditable(!disabled);
 	}, [editor, disabled]);
+
+	useEffect(() => {
+		if (!editor || !storedContentReaderRef) {
+			return;
+		}
+		storedContentReaderRef.current = () =>
+			tiptapJsonToStoredContent(editor.getJSON());
+		return () => {
+			storedContentReaderRef.current = null;
+		};
+	}, [editor, storedContentReaderRef]);
 
 	useEffect(() => {
 		if (!editor || !autoFocus || disabled) {
