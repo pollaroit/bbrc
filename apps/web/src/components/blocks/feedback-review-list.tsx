@@ -1,6 +1,6 @@
 "use client";
 
-import type { GetBookFeedbackListOutput } from "@bbrc/api/modules/feedback/feedback.schema";
+import type { BookFeedbackReview } from "@bbrc/api/modules/feedback/feedback.schema";
 import {
 	contentPlainText,
 	formatFeedbackRating,
@@ -36,7 +36,7 @@ import { isPendingSlug } from "@/lib/optimistic/infinite-lists";
 import { shareSnippet } from "@/lib/share-snippet";
 import { orpc } from "@/utils/orpc";
 
-export type FeedbackReviewListItem = GetBookFeedbackListOutput[number];
+export type FeedbackReviewListItem = BookFeedbackReview;
 
 type FeedbackReviewListProps = {
 	bookSlug: string;

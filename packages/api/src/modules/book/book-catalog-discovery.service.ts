@@ -21,6 +21,9 @@ import {
 } from "./book-catalog-discovery.schema";
 import { resolveClubSittingSlug } from "./resolve-club-sitting-slug";
 
+/** Scoring runs in memory; cap rows so overview ISR cannot scan the whole catalog. */
+const DISCOVERY_CANDIDATE_POOL = 300;
+
 const discoverySelect = {
 	...getBookListFields,
 	...bookAuthorRefsSelect,
@@ -111,6 +114,60 @@ function section(title: string, items: GetBookListOutput["items"]) {
 	return { title, items };
 }
 
+async function loadDiscoveryCandidates(
+	bookSlug: string,
+	sourceAuthors: readonly string[],
+	seriesSlug: string | undefined,
+	db: Database,
+): Promise<DiscoveryRow[]> {
+	const bySlug = new Map<string, DiscoveryRow>();
+
+	const remember = (rows: DiscoveryRow[]) => {
+		for (const row of rows) {
+			if (!bySlug.has(row.slug)) {
+				bySlug.set(row.slug, row);
+			}
+		}
+	};
+
+	const [popular, sameAuthor, seriesSiblings] = await Promise.all([
+		db.book.findMany({
+			where: { slug: { not: bookSlug } },
+			select: discoverySelect,
+			orderBy: [{ viewCount: "desc" }, { slug: "asc" }],
+			take: DISCOVERY_CANDIDATE_POOL,
+		}),
+		sourceAuthors.length > 0
+			? db.book.findMany({
+					where: {
+						slug: { not: bookSlug },
+						authors: { hasSome: [...sourceAuthors] },
+					},
+					select: discoverySelect,
+					orderBy: [{ viewCount: "desc" }, { slug: "asc" }],
+					take: DISCOVERY_CANDIDATE_POOL,
+				})
+			: Promise.resolve([]),
+		seriesSlug
+			? db.book.findMany({
+					where: {
+						slug: { not: bookSlug },
+						seriesMembership: { series: { slug: seriesSlug } },
+					},
+					select: discoverySelect,
+					orderBy: [{ viewCount: "desc" }, { slug: "asc" }],
+					take: DISCOVERY_CANDIDATE_POOL,
+				})
+			: Promise.resolve([]),
+	]);
+
+	remember(popular);
+	remember(sameAuthor);
+	remember(seriesSiblings);
+
+	return [...bySlug.values()];
+}
+
 export async function getBookCatalogDiscovery(
 	bookSlug: string,
 	db: Database,
@@ -127,10 +184,12 @@ export async function getBookCatalogDiscovery(
 		});
 	}
 
-	const candidates = await db.book.findMany({
-		where: { slug: { not: bookSlug } },
-		select: discoverySelect,
-	});
+	const candidates = await loadDiscoveryCandidates(
+		bookSlug,
+		source.authors,
+		source.seriesMembership?.series.slug,
+		db,
+	);
 
 	const sourceSimilarity = toSimilarityBook(source);
 

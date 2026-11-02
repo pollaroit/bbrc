@@ -8,7 +8,7 @@ import { truncateBookExcerptMarkdown } from "@/lib/books/excerpt-markdown";
 import {
 	loadBookBySlugForIsr,
 	loadBookCatalogDiscoveryForIsr,
-	loadBookFeedbackListForIsr,
+	loadBookFeedbackPreviewForIsr,
 	loadBookShelvesForIsr,
 } from "@/lib/isr-data";
 import { bookJsonLd, bookSlugStaticParams, JsonLd } from "@/lib/seo";
@@ -46,9 +46,9 @@ export default async function BookOverviewPage({
 	params,
 }: PageProps<"/books/[slug]">) {
 	const { slug } = await params;
-	const [book, initialReviews, shelves, discovery] = await Promise.all([
+	const [book, feedbackPreview, shelves, discovery] = await Promise.all([
 		loadBookBySlugForIsr(slug),
-		loadBookFeedbackListForIsr(slug),
+		loadBookFeedbackPreviewForIsr(slug),
 		loadBookShelvesForIsr(slug),
 		loadBookCatalogDiscoveryForIsr(slug),
 	]);
@@ -58,7 +58,8 @@ export default async function BookOverviewPage({
 		excerpt.length > 0
 			? truncateBookExcerptMarkdown(excerpt, OVERVIEW_EXCERPT_MAX)
 			: { content: "", isTruncated: false };
-	const topReviews = initialReviews.slice(0, 3);
+	const reviewTotal = feedbackPreview.total;
+	const topReviews = feedbackPreview.items;
 	const topShelves = shelves.items.slice(0, 5);
 
 	return (
@@ -85,12 +86,12 @@ export default async function BookOverviewPage({
 				<section className="flex flex-col gap-4">
 					<div className="flex flex-wrap items-baseline justify-between gap-2">
 						<h2 className="font-semibold text-lg">Recent reviews</h2>
-						{initialReviews.length > topReviews.length ? (
+						{reviewTotal > topReviews.length ? (
 							<Link
 								href={`/books/${slug}/reviews` as Route}
 								className="text-primary text-sm underline-offset-4 hover:underline"
 							>
-								All reviews ({initialReviews.length})
+								All reviews ({reviewTotal})
 							</Link>
 						) : null}
 					</div>

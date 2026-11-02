@@ -40,6 +40,7 @@ import type {
 	UpdateFeedbackOutput,
 } from "./feedback.schema";
 import {
+	BOOK_FEEDBACK_LIST_MAX,
 	getFeedbackBySlugFields,
 	getUserFeedbackListFields,
 } from "./feedback.schema";
@@ -115,6 +116,7 @@ export async function getBookFeedbackList(
 		minRating?: number;
 		sortBy?: "createdAt" | "rating";
 		sortDirection?: "asc" | "desc";
+		limit?: number;
 	},
 	db: Database,
 	viewer: Viewer,
@@ -122,40 +124,48 @@ export async function getBookFeedbackList(
 	const book = await loadBookBySlug(input.bookSlug, db);
 	const userId = viewerUserId(viewer);
 
-	const feedbacks = await db.feedback.findMany({
-		where: {
-			bookId: book.id,
-			AND: [reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput],
-			...(input.minRating !== undefined
-				? { rating: { gte: input.minRating } }
-				: {}),
-		},
-		orderBy: feedbackListOrderBy(input.sortBy, input.sortDirection),
-		select: {
-			id: true,
-			slug: true,
-			rating: true,
-			review: true,
-			isSpoiler: true,
-			visibility: true,
-			imageUrl: true,
-			createdAt: true,
-			authorId: true,
-			author: {
-				select: {
-					username: true,
-					name: true,
-					image: true,
+	const where: Prisma.FeedbackWhereInput = {
+		bookId: book.id,
+		AND: [reviewVisibleWhere(viewer) as Prisma.FeedbackWhereInput],
+		...(input.minRating !== undefined
+			? { rating: { gte: input.minRating } }
+			: {}),
+	};
+
+	const take = input.limit ?? BOOK_FEEDBACK_LIST_MAX;
+
+	const [total, feedbacks] = await Promise.all([
+		db.feedback.count({ where }),
+		db.feedback.findMany({
+			where,
+			orderBy: feedbackListOrderBy(input.sortBy, input.sortDirection),
+			take,
+			select: {
+				id: true,
+				slug: true,
+				rating: true,
+				review: true,
+				isSpoiler: true,
+				visibility: true,
+				imageUrl: true,
+				createdAt: true,
+				authorId: true,
+				author: {
+					select: {
+						username: true,
+						name: true,
+						image: true,
+					},
+				},
+				_count: {
+					select: {
+						likes: true,
+						comments: true,
+					},
 				},
 			},
-			_count: {
-				select: {
-					likes: true,
-					comments: true,
-				},
-			},
-		},
-	});
+		}),
+	]);
 
 	const likedFeedbackIds = await loadLikedFeedbackIdsForViewer(
 		feedbacks.map((row) => row.id),
@@ -167,23 +177,26 @@ export async function getBookFeedbackList(
 		feedbacks.map((row) => ({ userId: row.authorId, bookId: book.id })),
 	);
 
-	return feedbacks.map((feedback) => ({
-		readEdition: editionRefs.get(`${feedback.authorId}|${book.id}`) ?? null,
-		slug: feedback.slug,
-		authorId: feedback.authorId,
-		username: feedback.author.username,
-		name: feedback.author.name,
-		image: feedback.author.image,
-		rating: feedback.rating,
-		review: feedback.review,
-		isSpoiler: feedback.isSpoiler,
-		visibility: feedback.visibility,
-		imageUrl: feedback.imageUrl,
-		createdAt: feedback.createdAt,
-		likeCount: feedback._count.likes,
-		likedByMe: likedFeedbackIds.has(feedback.id),
-		commentCount: feedback._count.comments,
-	}));
+	return {
+		total,
+		items: feedbacks.map((feedback) => ({
+			readEdition: editionRefs.get(`${feedback.authorId}|${book.id}`) ?? null,
+			slug: feedback.slug,
+			authorId: feedback.authorId,
+			username: feedback.author.username,
+			name: feedback.author.name,
+			image: feedback.author.image,
+			rating: feedback.rating,
+			review: feedback.review,
+			isSpoiler: feedback.isSpoiler,
+			visibility: feedback.visibility,
+			imageUrl: feedback.imageUrl,
+			createdAt: feedback.createdAt,
+			likeCount: feedback._count.likes,
+			likedByMe: likedFeedbackIds.has(feedback.id),
+			commentCount: feedback._count.comments,
+		})),
+	};
 }
 
 export async function loadLikedFeedbackIdsForViewer(

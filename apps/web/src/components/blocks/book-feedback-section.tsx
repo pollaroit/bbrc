@@ -59,7 +59,9 @@ export function BookFeedbackSection({
 		enabled: Boolean(session?.user),
 	});
 
-	const reviews = listQuery.data ?? [];
+	const list = listQuery.data;
+	const reviews = list?.items ?? [];
+	const reviewTotal = list?.total ?? reviews.length;
 	const state = stateQuery.data;
 	const showWriteButton =
 		Boolean(session?.user) &&
@@ -91,7 +93,8 @@ export function BookFeedbackSection({
 						Club reviews
 					</h2>
 					<p className="text-muted-foreground text-sm tabular-nums">
-						{reviews.length} review{reviews.length === 1 ? "" : "s"}
+						{reviewTotal} review{reviewTotal === 1 ? "" : "s"}
+						{reviews.length < reviewTotal ? ` · showing ${reviews.length}` : ""}
 						{minRating !== undefined
 							? ` · ${formatFeedbackRating(minRating)}+`
 							: ""}

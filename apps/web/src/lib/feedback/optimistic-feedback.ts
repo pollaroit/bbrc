@@ -43,20 +43,36 @@ export function restoreFeedbackQueries(snapshot: FeedbackSnapshot | undefined) {
 	}
 }
 
+type ReviewRow = { slug: string; [key: string]: unknown };
 type MappedList<T> = (items: T[]) => T[];
 
-function mapBookLists(
-	bookSlug: string,
-	change: MappedList<{ slug: string; [key: string]: unknown }>,
-) {
+function mapBookListData(old: unknown, change: MappedList<ReviewRow>): unknown {
+	if (Array.isArray(old)) {
+		return change(old as ReviewRow[]);
+	}
+	if (
+		old &&
+		typeof old === "object" &&
+		"items" in old &&
+		Array.isArray((old as { items: unknown }).items)
+	) {
+		const typed = old as { total: number; items: ReviewRow[] };
+		const nextItems = change(typed.items);
+		const added = nextItems.length - typed.items.length;
+		return {
+			total: Math.max(0, typed.total + added),
+			items: nextItems,
+		};
+	}
+	return old;
+}
+
+function mapBookLists(bookSlug: string, change: MappedList<ReviewRow>) {
 	queryClient.setQueriesData(
 		{
 			queryKey: orpc.feedback.getBookFeedbackList.key({ input: { bookSlug } }),
 		},
-		(old: unknown) =>
-			Array.isArray(old)
-				? change(old as { slug: string; [key: string]: unknown }[])
-				: old,
+		(old: unknown) => mapBookListData(old, change),
 	);
 }
 
