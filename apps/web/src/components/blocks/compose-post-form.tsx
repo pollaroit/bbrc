@@ -526,15 +526,15 @@ export function ComposePostDialog({
 						</div>
 					</div>
 
-					<DialogFooter className="flex-col gap-2 border-border border-t px-5 py-3 sm:flex-col sm:items-stretch">
+					<DialogFooter className="flex-col gap-2 border-border border-t px-5 py-3 sm:items-stretch">
 						{problem ? (
 							<p className="text-destructive text-xs" aria-live="polite">
 								{problem}
 							</p>
 						) : null}
-						<div className="flex items-center justify-between gap-3">
+						<div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 							<div
-								className="flex items-center gap-1"
+								className="flex min-w-0 items-center gap-1 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-1 [&::-webkit-scrollbar]:hidden"
 								role="toolbar"
 								aria-label="Add to your post"
 							>
@@ -617,14 +617,17 @@ export function ComposePostDialog({
 									onClick={() => setSettingsOpen((current) => !current)}
 								/>
 							</div>
-							<div className="flex shrink-0 items-center gap-3">
-								<span className="hidden text-muted-foreground text-xs tabular-nums sm:inline">
-									{plain.length > 0 ? `${plain.length}/5000` : ""}
-								</span>
+							<div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-2 border-border border-t pt-3 sm:flex-nowrap sm:border-t-0 sm:pt-0">
+								{plain.length > 0 ? (
+									<span className="mr-auto text-muted-foreground text-xs tabular-nums sm:mr-0">
+										{plain.length}/5000
+									</span>
+								) : null}
 								<VisibilitySelect
 									value={visibility}
 									onChange={setChosenVisibility}
 									label="Who can see this post"
+									className="max-w-[11rem] shrink [&_span:nth-child(2)]:truncate"
 									hint={
 										privacyQuery.data?.profileVisibility === "private"
 											? "Your profile is private, so Everyone means friends."
@@ -634,6 +637,7 @@ export function ComposePostDialog({
 								<SubmitShortcutHint />
 								<LoadingButton
 									type="submit"
+									className="shrink-0"
 									loading={createMutation.isPending}
 									disabled={plain.length < 1 || problem != null}
 								>
