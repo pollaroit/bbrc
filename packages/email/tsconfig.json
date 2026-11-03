@@ -1,0 +1,9 @@
+{
+	"extends": "@bbrc/config/tsconfig.base.json",
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"noEmit": true,
+		"types": ["node"]
+	},
+	"include": ["src/**/*.ts", "src/**/*.tsx"]
+}

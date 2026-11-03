@@ -94,6 +94,16 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 		}),
 	);
 
+	const verifyUserEmail = useMutation(
+		orpc.admin.verifyUserEmail.mutationOptions({
+			onSuccess: async () => {
+				toast.success("Email marked as verified.");
+				await invalidateAdminUsers();
+			},
+			onError: (error) => toast.error(error.message),
+		}),
+	);
+
 	const setUserPassword = useMutation(
 		orpc.admin.setUserPassword.mutationOptions({
 			onSuccess: async () => {
@@ -152,6 +162,15 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 					<DropdownMenuItem onClick={() => openDialog("password")}>
 						Set password
 					</DropdownMenuItem>
+					{!user.emailVerified ? (
+						<DropdownMenuItem
+							onClick={() => {
+								verifyUserEmail.mutate({ username: user.username });
+							}}
+						>
+							Mark email verified
+						</DropdownMenuItem>
+					) : null}
 					{offeredRoles.length > 0 ? (
 						<DropdownMenuItem onClick={() => openDialog("role")}>
 							Change role

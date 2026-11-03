@@ -1,6 +1,12 @@
 import type { Route } from "next";
 
-const AUTH_PATHS = ["/sign-in", "/sign-up"] as const;
+const AUTH_PATHS = [
+	"/sign-in",
+	"/sign-up",
+	"/verify-email",
+	"/forgot-password",
+	"/reset-password",
+] as const;
 
 /** Safe internal path to return to after auth. */
 export function safeCallbackUrl(raw: string | null | undefined): Route {

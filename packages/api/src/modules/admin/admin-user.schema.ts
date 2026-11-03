@@ -229,6 +229,15 @@ export const AdminSetUserPasswordOutputSchema = zod.object({
 	username: UserSchema.shape.username,
 });
 
+export const AdminVerifyUserEmailInputSchema = zod.object({
+	username: UserSchema.shape.username,
+});
+
+export const AdminVerifyUserEmailOutputSchema = zod.object({
+	username: UserSchema.shape.username,
+	emailVerified: zod.literal(true),
+});
+
 export type AdminUpdateUserNameInput = z.infer<
 	typeof AdminUpdateUserNameInputSchema
 >;
@@ -242,6 +251,12 @@ export type AdminSetUserPasswordInput = z.infer<
 >;
 export type AdminSetUserPasswordOutput = z.infer<
 	typeof AdminSetUserPasswordOutputSchema
+>;
+export type AdminVerifyUserEmailInput = z.infer<
+	typeof AdminVerifyUserEmailInputSchema
+>;
+export type AdminVerifyUserEmailOutput = z.infer<
+	typeof AdminVerifyUserEmailOutputSchema
 >;
 
 export const adminUserListSelect = {

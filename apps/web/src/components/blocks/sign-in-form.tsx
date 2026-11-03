@@ -3,6 +3,8 @@
 import { SignInInputSchema } from "@bbrc/schemas";
 import { FieldGroup } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
+import type { Route } from "next";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -32,6 +34,13 @@ export default function SignInForm() {
 				});
 
 				if (error) {
+					if (error.code === "EMAIL_NOT_VERIFIED") {
+						toast.error("Verify your email before signing in.");
+						router.replace(
+							`/verify-email?email=${encodeURIComponent(values.email)}` as Route,
+						);
+						return;
+					}
 					throw new Error(
 						error.message ?? "Something went wrong. Please try again.",
 					);
@@ -76,13 +85,21 @@ export default function SignInForm() {
 					name="password"
 					label="Password"
 					render={(field, fieldState) => (
-						<Input
-							id={field.name}
-							type="password"
-							placeholder="Enter your password"
-							aria-invalid={fieldState.invalid}
-							{...field}
-						/>
+						<div className="flex flex-col gap-1.5">
+							<Input
+								id={field.name}
+								type="password"
+								placeholder="Enter your password"
+								aria-invalid={fieldState.invalid}
+								{...field}
+							/>
+							<Link
+								href={"/forgot-password" as Route}
+								className="self-end text-muted-foreground text-xs hover:text-foreground"
+							>
+								Forgot password?
+							</Link>
+						</div>
 					)}
 				/>
 

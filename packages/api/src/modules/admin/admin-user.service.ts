@@ -18,6 +18,8 @@ import type {
 	AdminUpdateUserNameOutput,
 	AdminUserOverviewOutput,
 	AdminUserStatsOutput,
+	AdminVerifyUserEmailInput,
+	AdminVerifyUserEmailOutput,
 	GetAdminUserOverviewInput,
 	GetAdminUserStatsInput,
 	ListAdminUsersInput,
@@ -752,4 +754,34 @@ export async function adminSetUserPassword(
 	}
 
 	return { username: input.username };
+}
+
+export async function adminVerifyUserEmail(
+	input: AdminVerifyUserEmailInput,
+	db: Database,
+): Promise<AdminVerifyUserEmailOutput> {
+	const user = await db.user.findUnique({
+		where: { username: input.username },
+		select: { id: true, emailVerified: true },
+	});
+
+	if (!user) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "User not found",
+			data: { username: input.username },
+		});
+	}
+
+	if (user.emailVerified) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "This member's email is already verified.",
+		});
+	}
+
+	await db.user.update({
+		where: { id: user.id },
+		data: { emailVerified: true },
+	});
+
+	return { username: input.username, emailVerified: true };
 }
