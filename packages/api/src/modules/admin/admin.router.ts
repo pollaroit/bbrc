@@ -153,6 +153,8 @@ import {
 	AdminUpdateUserNameOutputSchema,
 	AdminUserOverviewOutputSchema,
 	AdminUserStatsOutputSchema,
+	AdminVerifyUserEmailInputSchema,
+	AdminVerifyUserEmailOutputSchema,
 	GetAdminUserOverviewInputSchema,
 	GetAdminUserStatsInputSchema,
 	ListAdminUsersInputSchema,
@@ -162,6 +164,7 @@ import {
 	adminDeleteUser,
 	adminSetUserPassword,
 	adminUpdateUserName,
+	adminVerifyUserEmail,
 	getAdminUserOverview,
 	getAdminUserStats,
 	listAdminUsers,
@@ -251,6 +254,22 @@ export const adminRouter = {
 		.output(AdminSetUserPasswordOutputSchema)
 		.handler(async ({ input, context }) =>
 			adminSetUserPassword(input, context.db),
+		),
+	verifyUserEmail: superAdminProcedure
+		.input(AdminVerifyUserEmailInputSchema)
+		.use(
+			audited("member.email_verified", {
+				before: ({ input, db }) => memberByUsername(db, input.username),
+				target: ({ before, input }) => ({
+					type: "member",
+					id: before?.id,
+					label: before?.name ?? input.username,
+				}),
+			}),
+		)
+		.output(AdminVerifyUserEmailOutputSchema)
+		.handler(async ({ input, context }) =>
+			adminVerifyUserEmail(input, context.db),
 		),
 	generateFactDraft: superAdminProcedure
 		.input(GenerateAdminFactDraftInputSchema)

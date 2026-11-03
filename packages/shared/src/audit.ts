@@ -96,6 +96,11 @@ export const AUDIT_ACTIONS = {
 		"Password reset",
 		"Set a new password for a member.",
 	),
+	"member.email_verified": defineAudit(
+		"member",
+		"Email verified",
+		"Marked a member's email as verified.",
+	),
 
 	// Authors
 	"author.created": defineAudit("author", "Author created", "Added an author."),

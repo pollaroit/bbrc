@@ -22,8 +22,19 @@ Set in **Vercel → Settings → Environment Variables** (never commit values):
 | `CLUB_TIMEZONE` | e.g. `Asia/Baku` |
 | `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY` | Required for cron routes (QStash signature verify) |
 | `QSTASH_TOKEN`, `QSTASH_URL` | Optional; REST/scripts only. If set in Vercel, also list them in root `turbo.json` → `globalEnv` (Turbo omits undeclared vars during `web#build`). |
+| `RESEND_API_KEY` | **Required in production.** Auth emails (verify, reset, password changed). Omit locally to log emails in the dev server console. |
+| `EMAIL_FROM` | From address (default `noreply@bbrc.app`). Use `BBRC <noreply@bbrc.app>` formatting in code. |
 
 If `DATABASE_URL_UNPOOLED` is missing or points at a different branch, deploy warns and migrates via direct `DATABASE_URL` instead.
+
+## Transactional email (Resend)
+
+1. Create a **production** Resend project and API key. Do not reuse the dev key on prod.
+2. In Resend, add domain **`bbrc.app`** and copy the DNS records (SPF, DKIM; add **DMARC** if Resend shows it).
+3. In **Cloudflare → DNS** for `bbrc.app`, add each record Resend gives you. Wait until Resend shows the domain as verified.
+4. Set **`RESEND_API_KEY`** and **`EMAIL_FROM`** (`noreply@bbrc.app`) on Vercel **Production**.
+5. Before requiring verification for existing members, mark current accounts **verified** in **Admin → Users** (Mark email verified).
+6. Preview templates locally at **`/dev/emails`** (development only).
 
 ## Static generation at build (ISR warm limit)
 

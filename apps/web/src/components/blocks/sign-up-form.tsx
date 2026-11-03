@@ -3,18 +3,16 @@
 import { SignupInputSchema } from "@bbrc/schemas";
 import { FieldGroup } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAppForm } from "@/hooks/use-app-form";
-import { safeCallbackUrl } from "@/lib/auth-callback-url";
 import { authClient } from "@/lib/auth-client";
+import { verifyEmailCallbackUrl } from "@/lib/auth-routes";
 
 export default function SignupForm() {
 	const [isLoading, setIsLoading] = useState(false);
 	const router = useRouter();
-	const searchParams = useSearchParams();
-	const callbackUrl = safeCallbackUrl(searchParams.get("callback_url"));
 
 	const form = useAppForm(SignupInputSchema, {
 		name: "",
@@ -28,12 +26,13 @@ export default function SignupForm() {
 			setIsLoading(true);
 
 			try {
-				const { data, error } = await authClient.signUp.email({
+				const origin = window.location.origin;
+				const { error } = await authClient.signUp.email({
 					name: values.name,
 					email: values.email,
 					username: values.username,
 					password: values.password,
-					callbackURL: callbackUrl,
+					callbackURL: verifyEmailCallbackUrl(origin),
 				});
 
 				if (error) {
@@ -42,9 +41,10 @@ export default function SignupForm() {
 					);
 				}
 
-				toast.success(`Welcome to BBRC, ${data.user.name}!`);
-
-				router.replace(callbackUrl);
+				toast.success("Check your inbox to verify your email.");
+				router.replace(
+					`/verify-email?email=${encodeURIComponent(values.email)}` as import("next").Route,
+				);
 			} catch (error) {
 				toast.error(
 					(error as Error).message ?? "Something went wrong. Please try again.",

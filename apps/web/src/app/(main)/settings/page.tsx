@@ -38,6 +38,11 @@ const settingsLinks = [
 		description: "Authors you follow and new-book alerts.",
 	},
 	{
+		href: "/settings/security",
+		title: "Security",
+		description: "Change your password.",
+	},
+	{
 		href: "/settings/sessions",
 		title: "Sessions",
 		description: "See where you're signed in and log out of devices.",
