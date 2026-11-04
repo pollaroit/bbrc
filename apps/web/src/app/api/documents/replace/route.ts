@@ -10,6 +10,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 
 import { createContext } from "@/context";
+import { forbiddenUnlessSameOrigin } from "@/lib/same-origin";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,9 @@ const ReplaceBodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+	const originError = forbiddenUnlessSameOrigin(req);
+	if (originError) return originError;
+
 	const context = await createContext(req);
 	const session = context.session;
 

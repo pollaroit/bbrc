@@ -5,10 +5,14 @@ import {
 import type { NextRequest } from "next/server";
 
 import { createContext } from "@/context";
+import { forbiddenUnlessSameOrigin } from "@/lib/same-origin";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+	const originError = forbiddenUnlessSameOrigin(req);
+	if (originError) return originError;
+
 	const context = await createContext(req);
 
 	let formData: FormData;

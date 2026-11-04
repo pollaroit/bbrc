@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
 import { SittingOverview } from "@/components/blocks/sitting-overview";
-import { loadSittingBySlugForIsr } from "@/lib/isr-data";
 import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
 	sittingSlugStaticParams,
 } from "@/lib/seo";
+import { loadSittingBySlugForRequest } from "@/lib/sitting-page-data";
 import { db } from "@/services";
 
-/** ISR: keep in sync with `DETAIL_PAGE_REVALIDATE_SECONDS` in `@/lib/seo`. */
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
@@ -22,7 +21,7 @@ export async function generateMetadata({
 	const { slug } = await params;
 
 	try {
-		const sitting = await loadSittingBySlugForIsr(slug);
+		const sitting = await loadSittingBySlugForRequest(slug);
 
 		return buildPageMetadata({
 			title: sitting.displayName,
@@ -38,7 +37,7 @@ export default async function SittingPage({
 	params,
 }: PageProps<"/sittings/[slug]">) {
 	const { slug } = await params;
-	const sitting = await loadSittingBySlugForIsr(slug);
+	const sitting = await loadSittingBySlugForRequest(slug);
 
 	return <SittingOverview sitting={sitting} />;
 }

@@ -13,9 +13,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { UserMenuItems } from "@/components/blocks/user-menu-items";
-import { authClient } from "@/lib/auth-client";
 import { headerToolbarControlClass } from "@/lib/header-toolbar";
-import { releasePushOnSignOut } from "@/lib/push/sign-out";
+import { signOutAndClear } from "@/lib/sign-out";
 import { cn } from "@/lib/utils";
 import { UserPanel } from "./user-panel";
 
@@ -29,8 +28,7 @@ export function UserMenu({ ...props }: Props) {
 		setLoading(true);
 
 		try {
-			await releasePushOnSignOut();
-			await authClient.signOut();
+			await signOutAndClear();
 			router.refresh();
 		} catch {
 			toast.error("Failed to sign out");

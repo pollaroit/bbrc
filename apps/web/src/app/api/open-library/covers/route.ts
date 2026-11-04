@@ -1,6 +1,7 @@
 import { openLibraryErrorResponse } from "@bbrc/api/lib/open-library/http-response";
 import { listWorkEditions } from "@bbrc/api/lib/open-library/work-editions";
 import { isOpenLibraryOlid } from "@bbrc/shared";
+import { withOpenLibraryGuard } from "@/lib/open-library/guard";
 
 export type OpenLibraryEditionCover = {
 	coverId: number;
@@ -18,24 +19,30 @@ export async function GET(request: Request) {
 		return Response.json({ error: "Invalid work ID" }, { status: 400 });
 	}
 
-	try {
-		const { items } = await listWorkEditions(olid, { limit: 60 });
-		const seen = new Set<number>();
-		const covers: OpenLibraryEditionCover[] = [];
-		for (const item of items) {
-			if (item.coverId == null || item.coverId <= 0 || seen.has(item.coverId)) {
-				continue;
+	return withOpenLibraryGuard(request, `ol:covers:${olid}`, async () => {
+		try {
+			const { items } = await listWorkEditions(olid, { limit: 60 });
+			const seen = new Set<number>();
+			const covers: OpenLibraryEditionCover[] = [];
+			for (const item of items) {
+				if (
+					item.coverId == null ||
+					item.coverId <= 0 ||
+					seen.has(item.coverId)
+				) {
+					continue;
+				}
+				seen.add(item.coverId);
+				covers.push({
+					coverId: item.coverId,
+					editionTitle: item.title,
+					year: item.publishDate?.match(/\d{4}/)?.[0] ?? null,
+					languages: item.languages,
+				});
 			}
-			seen.add(item.coverId);
-			covers.push({
-				coverId: item.coverId,
-				editionTitle: item.title,
-				year: item.publishDate?.match(/\d{4}/)?.[0] ?? null,
-				languages: item.languages,
-			});
+			return Response.json({ covers: covers.slice(0, 24) });
+		} catch (error) {
+			return openLibraryErrorResponse(error, { covers: [] });
 		}
-		return Response.json({ covers: covers.slice(0, 24) });
-	} catch (error) {
-		return openLibraryErrorResponse(error, { covers: [] });
-	}
+	});
 }

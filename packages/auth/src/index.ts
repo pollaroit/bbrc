@@ -1,18 +1,68 @@
 import type { Database } from "@bbrc/db";
+import {
+	isValidNewPassword,
+	PASSWORD_MAX_LENGTH,
+	PASSWORD_MIN_LENGTH,
+	PASSWORD_REQUIREMENTS,
+} from "@bbrc/shared";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import type { AuthMailContext } from "./mail";
 
 export type AuthConfig = {
 	BETTER_AUTH_URL: string;
 	BETTER_AUTH_SECRET: string;
+	BETTER_AUTH_TRUSTED_ORIGINS?: string;
+	NODE_ENV?: string;
+};
+
+export type AuthSecondaryStorage = {
+	get: (key: string) => Promise<string | null>;
+	getAndDelete: (key: string) => Promise<string | null>;
+	increment: (key: string, ttl: number) => Promise<number>;
+	set: (key: string, value: string, ttl?: number) => Promise<void>;
+	delete: (key: string) => Promise<void>;
 };
 
 export type CreateAuthOptions = {
 	mail?: AuthMailContext;
+	secondaryStorage?: AuthSecondaryStorage;
+	extraTrustedOrigins?: string[];
 };
+
+const NEW_PASSWORD_PATHS = new Set([
+	"/sign-up/email",
+	"/change-password",
+	"/reset-password",
+]);
+
+function parseOriginList(value: string | undefined): string[] {
+	if (!value) return [];
+	return value
+		.split(",")
+		.map((part) => part.trim().replace(/\/$/, ""))
+		.filter(Boolean);
+}
+
+function trustedOrigins(env: AuthConfig, extra: string[] = []): string[] {
+	return [
+		...new Set([
+			...parseOriginList(env.BETTER_AUTH_URL),
+			...parseOriginList(env.BETTER_AUTH_TRUSTED_ORIGINS),
+			...extra.flatMap((origin) => parseOriginList(origin)),
+		]),
+	];
+}
+
+function passwordFromBody(body: unknown): string | undefined {
+	if (!body || typeof body !== "object") return undefined;
+	const record = body as Record<string, unknown>;
+	if (typeof record.newPassword === "string") return record.newPassword;
+	if (typeof record.password === "string") return record.password;
+	return undefined;
+}
 
 export function createAuth(
 	env: AuthConfig,
@@ -20,12 +70,35 @@ export function createAuth(
 	options: CreateAuthOptions = {},
 ) {
 	const mail = options.mail;
+	const production = env.NODE_ENV === "production";
 
 	return betterAuth({
 		database: prismaAdapter(database, {
 			provider: "postgresql",
 		}),
-		trustedOrigins: [env.BETTER_AUTH_URL],
+		trustedOrigins: trustedOrigins(env, options.extraTrustedOrigins),
+		secondaryStorage: options.secondaryStorage,
+		session: {
+			expiresIn: 60 * 60 * 24 * 7,
+			updateAge: 60 * 60 * 24,
+			storeSessionInDatabase: true,
+			cookieCache: {
+				enabled: true,
+				maxAge: 60 * 5,
+			},
+		},
+		rateLimit: {
+			enabled: true,
+			storage: options.secondaryStorage ? "secondary-storage" : "memory",
+			window: 60,
+			max: 30,
+			customRules: {
+				"/sign-in/email": { window: 60, max: 5 },
+				"/sign-up/email": { window: 60, max: 3 },
+				"/forget-password/email": { window: 60, max: 3 },
+				"/request-password-reset": { window: 60, max: 3 },
+			},
+		},
 		emailVerification: {
 			sendOnSignUp: true,
 			sendVerificationEmail: mail
@@ -46,8 +119,8 @@ export function createAuth(
 		emailAndPassword: {
 			enabled: true,
 			requireEmailVerification: true,
-			minPasswordLength: 7,
-			maxPasswordLength: 64,
+			minPasswordLength: PASSWORD_MIN_LENGTH,
+			maxPasswordLength: PASSWORD_MAX_LENGTH,
 			revokeSessionsOnPasswordReset: true,
 			sendResetPassword: mail
 				? async ({ user, url }) => {
@@ -64,6 +137,17 @@ export function createAuth(
 				: undefined,
 		},
 		hooks: {
+			before: createAuthMiddleware(async (ctx) => {
+				if (!NEW_PASSWORD_PATHS.has(ctx.path)) {
+					return;
+				}
+				const password = passwordFromBody(ctx.body);
+				if (password !== undefined && !isValidNewPassword(password)) {
+					throw new APIError("BAD_REQUEST", {
+						message: PASSWORD_REQUIREMENTS,
+					});
+				}
+			}),
 			after: mail
 				? createAuthMiddleware(async (ctx) => {
 						if (ctx.path !== "/change-password") {
@@ -96,6 +180,12 @@ export function createAuth(
 				: undefined,
 		},
 		advanced: {
+			useSecureCookies: production,
+			defaultCookieAttributes: {
+				httpOnly: true,
+				sameSite: "lax",
+				secure: production,
+			},
 			database: {
 				generateId: "uuid",
 				joins: true,

@@ -5,9 +5,9 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { SittingParticipantsView } from "@/components/blocks/sitting-participants-view";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
-import { loadSittingBySlugForIsr } from "@/lib/isr-data";
 import { getRequestViewer } from "@/lib/request-viewer";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
+import { loadSittingBySlugForRequest } from "@/lib/sitting-page-data";
 import { auth, db } from "@/services";
 
 /** Session-gated (`headers()`); do not ISR or prerender this segment. */
@@ -19,7 +19,7 @@ export async function generateMetadata({
 	const { slug } = await params;
 
 	try {
-		const sitting = await loadSittingBySlugForIsr(slug);
+		const sitting = await loadSittingBySlugForRequest(slug);
 
 		return buildPageMetadata({
 			title: `Participants · ${sitting.displayName}`,

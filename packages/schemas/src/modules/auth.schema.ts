@@ -1,14 +1,14 @@
+import { newPasswordIssues, PASSWORD_REQUIREMENTS } from "@bbrc/shared";
 import z from "zod";
 import { UserSchema } from "../generated/schemas/models";
 
-export const passwordSchema = z
-	.string()
-	.min(7, "Password must be at least 7 characters long")
-	.max(64, "Password must be at most 64 characters long")
-	.regex(
-		/^(?=.*[a-zA-Z])(?=.*\d).+$/,
-		"Password must contain at least one letter and one digit",
-	);
+export { PASSWORD_REQUIREMENTS };
+
+export const passwordSchema = z.string().superRefine((value, ctx) => {
+	for (const message of newPasswordIssues(value)) {
+		ctx.addIssue({ code: "custom", message });
+	}
+});
 
 export const SignupInputSchema = UserSchema.pick({
 	name: true,

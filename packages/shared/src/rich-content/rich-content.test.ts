@@ -80,6 +80,11 @@ describe("link cards", () => {
 			blocks: [embed("http://example.com/a")],
 		}).blocks[0];
 		expect(unsafe?.t).toBe("p");
+		const script = validateRichDocument({
+			v: 1,
+			blocks: [embed("javascript:alert(1)")],
+		}).blocks[0];
+		expect(script?.t).toBe("p");
 	});
 
 	it("limits how many cards one document can have", () => {

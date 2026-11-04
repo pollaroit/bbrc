@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { SittingReviewsSection } from "@/components/blocks/sitting-reviews-section";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
-import { loadSittingBySlugForIsr } from "@/lib/isr-data";
 import { buildNotFoundMetadata, buildPageMetadata } from "@/lib/seo";
+import { loadSittingBySlugForRequest } from "@/lib/sitting-page-data";
 
-/** ISR: keep in sync with `DETAIL_PAGE_REVALIDATE_SECONDS` in `@/lib/seo`. */
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 export const dynamicParams = true;
 
 export async function generateMetadata({
@@ -15,7 +14,7 @@ export async function generateMetadata({
 	const { slug } = await params;
 
 	try {
-		const sitting = await loadSittingBySlugForIsr(slug);
+		const sitting = await loadSittingBySlugForRequest(slug);
 
 		return buildPageMetadata({
 			title: `Reviews · ${sitting.displayName}`,
@@ -32,9 +31,9 @@ export default async function SittingReviewsPage({
 }: PageProps<"/sittings/[slug]/reviews">) {
 	const { slug } = await params;
 
-	let sitting: Awaited<ReturnType<typeof loadSittingBySlugForIsr>>;
+	let sitting: Awaited<ReturnType<typeof loadSittingBySlugForRequest>>;
 	try {
-		sitting = await loadSittingBySlugForIsr(slug);
+		sitting = await loadSittingBySlugForRequest(slug);
 	} catch {
 		notFound();
 	}

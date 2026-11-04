@@ -30,6 +30,7 @@ export * from "./isr-paths";
 export * from "./member-levels";
 export * from "./notifications";
 export * from "./open-library";
+export * from "./password";
 export * from "./poll-chip-grants";
 export * from "./post-attachments";
 export * from "./post-feed-ranking";

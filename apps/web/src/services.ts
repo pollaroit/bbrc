@@ -3,6 +3,7 @@ import { createPrismaClient } from "@bbrc/db";
 import { createMailer } from "@bbrc/email";
 
 import { ENV } from "./env.server";
+import { createAuthSecondaryStorage } from "./lib/redis";
 
 if (ENV.NODE_ENV === "production" && !ENV.RESEND_API_KEY) {
 	throw new Error("RESEND_API_KEY is required in production.");
@@ -19,4 +20,12 @@ const mailer = createMailer({
 	deliver: ENV.NODE_ENV === "production" && Boolean(resendApiKey),
 });
 
-export const auth = createAuth(ENV, db, { mail: { mailer } });
+const vercelOrigin = process.env.VERCEL_URL
+	? `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`
+	: undefined;
+
+export const auth = createAuth(ENV, db, {
+	mail: { mailer },
+	secondaryStorage: createAuthSecondaryStorage(),
+	extraTrustedOrigins: vercelOrigin ? [vercelOrigin] : [],
+});

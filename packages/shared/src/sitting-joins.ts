@@ -126,6 +126,35 @@ export function joinTypeAllows(
 	return false;
 }
 
+export type SittingAccessFacts = {
+	joinType: SittingJoinType;
+	isSuperAdmin: boolean;
+	isParticipant: boolean;
+	isPendingInvitee: boolean;
+};
+
+/**
+ * Who may open the sitting page or `getBySlug`. Unlisted is anyone who has the
+ * slug; private is only a participant, a pending invitee, or a super admin.
+ */
+export function canViewSittingDetail(facts: SittingAccessFacts): boolean {
+	if (facts.isSuperAdmin) return true;
+	if (facts.joinType === "public" || facts.joinType === "unlisted") {
+		return true;
+	}
+	return facts.isParticipant || facts.isPendingInvitee;
+}
+
+/**
+ * Who may see the sitting in lists and the sitemap. Unlisted sittings stay off
+ * public lists; people already in them (or invited) still see their own.
+ */
+export function canListSitting(facts: SittingAccessFacts): boolean {
+	if (facts.isSuperAdmin) return true;
+	if (facts.joinType === "public") return true;
+	return facts.isParticipant || facts.isPendingInvitee;
+}
+
 export type InviteLinkState = "active" | "revoked" | "expired" | "exhausted";
 
 export function inviteLinkState(

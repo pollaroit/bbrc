@@ -541,6 +541,7 @@ export const getSittingBySlugFields = {
 	createdAt: true,
 	readingStartedAt: true,
 	midtermAt: true,
+	joinType: true,
 	selectedBookId: true,
 	selectedBook: {
 		select: { ...getBookListFields, countries: true },

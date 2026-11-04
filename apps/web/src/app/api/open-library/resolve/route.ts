@@ -10,6 +10,7 @@ import {
 	openLibraryEditionKeyToOlid,
 	openLibraryWorkKeyToOlid,
 } from "@bbrc/shared";
+import { withOpenLibraryGuard } from "@/lib/open-library/guard";
 
 type EditionDocument = { works?: { key?: string }[] };
 
@@ -36,12 +37,19 @@ export async function GET(request: Request) {
 		);
 	}
 
-	try {
-		const document = await openLibraryFetchDocumentJson<EditionDocument>(url);
-		const key = document?.works?.[0]?.key;
-		const olid = key ? openLibraryWorkKeyToOlid(key) : null;
-		return Response.json({ olid });
-	} catch (error) {
-		return openLibraryErrorResponse(error, { olid: null });
-	}
+	return withOpenLibraryGuard(
+		request,
+		`ol:resolve:${kind}:${value}`,
+		async () => {
+			try {
+				const document =
+					await openLibraryFetchDocumentJson<EditionDocument>(url);
+				const key = document?.works?.[0]?.key;
+				const olid = key ? openLibraryWorkKeyToOlid(key) : null;
+				return Response.json({ olid });
+			} catch (error) {
+				return openLibraryErrorResponse(error, { olid: null });
+			}
+		},
+	);
 }

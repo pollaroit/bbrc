@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
+	canListSitting,
+	canViewSittingDetail,
 	DEFAULT_SITTING_JOIN_CONFIG,
 	inviteLinkState,
 	joinTypeAllows,
@@ -93,6 +95,62 @@ describe("join types", () => {
 		expect(joinTypeAllows("unlisted", "link")).toBe(true);
 		expect(joinTypeAllows("private", "button")).toBe(false);
 		expect(joinTypeAllows("private", "link")).toBe(false);
+	});
+
+	test("who may open the sitting page", () => {
+		const stranger = {
+			isSuperAdmin: false,
+			isParticipant: false,
+			isPendingInvitee: false,
+		};
+		expect(canViewSittingDetail({ joinType: "public", ...stranger })).toBe(
+			true,
+		);
+		expect(canViewSittingDetail({ joinType: "unlisted", ...stranger })).toBe(
+			true,
+		);
+		expect(canViewSittingDetail({ joinType: "private", ...stranger })).toBe(
+			false,
+		);
+		expect(
+			canViewSittingDetail({
+				joinType: "private",
+				...stranger,
+				isParticipant: true,
+			}),
+		).toBe(true);
+		expect(
+			canViewSittingDetail({
+				joinType: "private",
+				...stranger,
+				isPendingInvitee: true,
+			}),
+		).toBe(true);
+		expect(
+			canViewSittingDetail({
+				joinType: "private",
+				...stranger,
+				isSuperAdmin: true,
+			}),
+		).toBe(true);
+	});
+
+	test("who may see the sitting in lists", () => {
+		const stranger = {
+			isSuperAdmin: false,
+			isParticipant: false,
+			isPendingInvitee: false,
+		};
+		expect(canListSitting({ joinType: "public", ...stranger })).toBe(true);
+		expect(canListSitting({ joinType: "unlisted", ...stranger })).toBe(false);
+		expect(
+			canListSitting({
+				joinType: "unlisted",
+				...stranger,
+				isParticipant: true,
+			}),
+		).toBe(true);
+		expect(canListSitting({ joinType: "private", ...stranger })).toBe(false);
 	});
 });
 

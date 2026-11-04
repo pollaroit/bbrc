@@ -1,6 +1,7 @@
 "use client";
 
 import type { AdminUserListItemSchema } from "@bbrc/api/modules/admin/admin-user.schema";
+import { passwordSchema } from "@bbrc/schemas";
 import { assignableRoles, ROLE_META, type Role, roleOf } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
@@ -35,6 +36,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { z } from "zod";
+import { PasswordRequirements } from "@/components/blocks/password-requirements";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -250,11 +252,12 @@ export function AdminUserRowActions({ user }: { user: AdminUserRow }) {
 							onChange={(event) => setPassword(event.target.value)}
 							autoComplete="new-password"
 						/>
+						<PasswordRequirements />
 					</Field>
 					<DialogFooter>
 						<LoadingButton
 							loading={setUserPassword.isPending}
-							disabled={password.length < 7}
+							disabled={!passwordSchema.safeParse(password).success}
 							onClick={() => {
 								setUserPassword.mutate({
 									username: user.username,
