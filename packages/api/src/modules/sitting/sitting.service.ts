@@ -2,6 +2,7 @@ import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
 import { LONG_INTERACTIVE_TRANSACTION } from "@bbrc/db";
 import {
 	calculateSittingReadingDeadline,
+	canViewSittingDetail,
 	clampSittingDeadlineToClubEnd,
 	computeMidtermAt,
 	computePollChipGrants,
@@ -123,6 +124,10 @@ import {
 } from "./sitting-poll-pool";
 import { createPollInputToStoredFilters } from "./sitting-poll-stored-filters";
 import { syncSittingReadingSchedule } from "./sitting-reading-schedule.service";
+import {
+	sittingListVisibleWhere,
+	sittingOngoingVisibleWhere,
+} from "./sitting-visibility";
 
 type SittingListRow = Prisma.SittingGetPayload<{
 	select: typeof getSittingListFields;
@@ -625,6 +630,7 @@ export async function getSittingList(
 	const baseWhere = mergeWhereFragments<Prisma.SittingWhereInput>(
 		ranging.use(),
 		searching.use(),
+		sittingListVisibleWhere(viewer),
 		{
 			status: input.ongoingOnly
 				? { in: ["voting", "reading"] }
@@ -829,6 +835,47 @@ export async function getSittingBySlug(
 		});
 	}
 
+	const userId = viewer.kind === "member" ? viewer.userId : undefined;
+	const viewerIsSuperAdmin = viewer.kind === "member" && isSuperAdmin(viewer);
+	let isParticipant = false;
+	let isPendingInvitee = false;
+	if (userId && sitting.joinType === "private" && !viewerIsSuperAdmin) {
+		const [participation, invitation] = await Promise.all([
+			db.participation.findFirst({
+				where: {
+					sittingId: sitting.id,
+					userId,
+					...activeParticipationWhere,
+				},
+				select: { id: true },
+			}),
+			db.sittingInvitation.findFirst({
+				where: {
+					sittingId: sitting.id,
+					inviteeId: userId,
+					status: "pending",
+				},
+				select: { id: true },
+			}),
+		]);
+		isParticipant = participation != null;
+		isPendingInvitee = invitation != null;
+	}
+
+	if (
+		!canViewSittingDetail({
+			joinType: sitting.joinType,
+			isSuperAdmin: viewerIsSuperAdmin,
+			isParticipant,
+			isPendingInvitee,
+		})
+	) {
+		throw new ORPCError("NOT_FOUND", {
+			message: "Sitting not found",
+			data: { slug },
+		});
+	}
+
 	// A sitting's book follows its phase: reading while it runs, completed after.
 	// Self-heal if the two drifted apart (for example after a manual data edit).
 	if (sitting.selectedBook && sitting.selectedBookId) {
@@ -867,8 +914,6 @@ export async function getSittingBySlug(
 		);
 	}
 
-	const userId = viewer.kind === "member" ? viewer.userId : undefined;
-	const viewerIsSuperAdmin = viewer.kind === "member" && isSuperAdmin(viewer);
 	const myVotes =
 		userId && sitting.poll
 			? await loadMyPollVotes(sitting.poll.id, userId, db)
@@ -1020,7 +1065,9 @@ export async function getOngoingSitting(
 	viewerUserId?: string,
 ): Promise<GetOngoingSittingOutput> {
 	const sitting = await db.sitting.findFirst({
-		where: sittingOngoingWhere(),
+		where: {
+			AND: [sittingOngoingWhere(), sittingOngoingVisibleWhere(viewerUserId)],
+		},
 		orderBy: { createdAt: "desc" },
 		select: {
 			id: true,

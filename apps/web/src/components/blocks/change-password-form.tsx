@@ -8,6 +8,7 @@ import { Label } from "@bbrc/ui/components/label";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { PasswordRequirements } from "@/components/blocks/password-requirements";
 import { useAppForm } from "@/hooks/use-app-form";
 import { authClient } from "@/lib/auth-client";
 
@@ -93,12 +94,13 @@ export function ChangePasswordForm() {
 							id={field.name}
 							type="password"
 							autoComplete="new-password"
-							placeholder="At least 7 characters"
+							placeholder="Create a new password"
 							aria-invalid={fieldState.invalid}
 							{...field}
 						/>
 					)}
 				/>
+				<PasswordRequirements />
 				<form.Input
 					name="confirmPassword"
 					label="Confirm new password"

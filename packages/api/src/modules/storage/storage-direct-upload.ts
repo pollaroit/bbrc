@@ -1,6 +1,7 @@
 import {
 	ALLOWED_IMAGE_MIME_TYPES,
 	type AllowedImageMimeType,
+	detectImageMimeFromBytes,
 	MAX_IMAGE_SIZE,
 } from "@bbrc/storage";
 import { ORPCError } from "@orpc/server";
@@ -94,9 +95,13 @@ export async function handleDirectImageUpload(
 	}
 
 	const buffer = Buffer.from(await file.arrayBuffer());
+	const detectedType = detectImageMimeFromBytes(buffer);
+	if (!detectedType) {
+		return Response.json({ error: "Use JPEG, PNG, or WebP." }, { status: 400 });
+	}
 	const payload = {
 		buffer,
-		contentType,
+		contentType: detectedType,
 		contentLength: buffer.length,
 	};
 

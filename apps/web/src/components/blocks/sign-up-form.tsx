@@ -6,6 +6,7 @@ import { Input } from "@bbrc/ui/components/input";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { PasswordRequirements } from "@/components/blocks/password-requirements";
 import { useAppForm } from "@/hooks/use-app-form";
 import { authClient } from "@/lib/auth-client";
 import { verifyEmailCallbackUrl } from "@/lib/auth-routes";
@@ -116,12 +117,13 @@ export default function SignupForm() {
 						<Input
 							id={field.name}
 							type="password"
-							placeholder="At least 7 characters"
+							placeholder="Create a password"
 							aria-invalid={fieldState.invalid}
 							{...field}
 						/>
 					)}
 				/>
+				<PasswordRequirements />
 
 				<form.Submit
 					className="w-full"

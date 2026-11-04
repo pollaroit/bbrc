@@ -1,4 +1,4 @@
-import { UserSchema } from "@bbrc/schemas";
+import { UserSchema, usernameInputSchema } from "@bbrc/schemas";
 import zod from "zod";
 
 export const GetUsernameUpdateStatusOutputSchema = zod.object({
@@ -13,7 +13,7 @@ export type GetUsernameUpdateStatusOutput = zod.infer<
 >;
 
 export const UpdateUsernameInputSchema = zod.object({
-	username: UserSchema.shape.username,
+	username: usernameInputSchema,
 });
 
 export const UpdateUsernameOutputSchema = zod.object({

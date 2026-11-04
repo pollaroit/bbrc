@@ -71,6 +71,7 @@ export async function sittingSlugStaticParams(db: Database) {
 	}
 
 	const rows = await db.sitting.findMany({
+		where: { joinType: "public" },
 		select: { slug: true },
 		orderBy: { updatedAt: "desc" },
 		take: limit,

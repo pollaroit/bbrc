@@ -7,6 +7,7 @@ import {
 import { loadViewer } from "@bbrc/api/modules/visibility/viewer";
 import { isBotUserAgent } from "@bbrc/shared";
 import { NextResponse } from "next/server";
+import { isSameOriginRequest } from "@/lib/same-origin";
 import { auth, db } from "@/services";
 
 export const dynamic = "force-dynamic";
@@ -31,8 +32,7 @@ const quiet = () => new NextResponse(null, { status: 204 });
  * and not an RPC call.
  */
 export async function POST(request: Request) {
-	const origin = request.headers.get("origin");
-	if (origin && new URL(origin).host !== new URL(request.url).host) {
+	if (!isSameOriginRequest(request)) {
 		return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 	}
 

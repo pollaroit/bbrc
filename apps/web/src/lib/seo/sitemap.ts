@@ -60,6 +60,7 @@ export async function buildAppSitemap(
 			orderBy: { updatedAt: "desc" },
 		}),
 		db.sitting.findMany({
+			where: { joinType: "public" },
 			select: { slug: true, updatedAt: true },
 			orderBy: { updatedAt: "desc" },
 		}),

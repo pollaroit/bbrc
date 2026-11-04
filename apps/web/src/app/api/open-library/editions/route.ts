@@ -1,6 +1,7 @@
 import { fetchOpenLibraryEditionHints } from "@bbrc/api/lib/open-library/edition-hints";
 import { openLibraryErrorResponse } from "@bbrc/api/lib/open-library/http-response";
 import type { OpenLibraryEditionHints } from "@/lib/open-library/editions";
+import { withOpenLibraryGuard } from "@/lib/open-library/guard";
 
 export async function GET(request: Request) {
 	const workKey =
@@ -10,10 +11,12 @@ export async function GET(request: Request) {
 		return Response.json({ error: "Invalid work key" }, { status: 400 });
 	}
 
-	try {
-		const hints = await fetchOpenLibraryEditionHints(workKey);
-		return Response.json(hints satisfies OpenLibraryEditionHints);
-	} catch (error) {
-		return openLibraryErrorResponse(error, {});
-	}
+	return withOpenLibraryGuard(request, `ol:editions:${workKey}`, async () => {
+		try {
+			const hints = await fetchOpenLibraryEditionHints(workKey);
+			return Response.json(hints satisfies OpenLibraryEditionHints);
+		} catch (error) {
+			return openLibraryErrorResponse(error, {});
+		}
+	});
 }

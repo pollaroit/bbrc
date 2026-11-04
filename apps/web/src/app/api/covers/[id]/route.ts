@@ -1,3 +1,4 @@
+import { assertOwnCoverUrl } from "@bbrc/api/modules/book/book-cover";
 import { NextResponse } from "next/server";
 import { db } from "@/services";
 
@@ -23,6 +24,12 @@ export async function GET(
 		select: { customCoverUrl: true },
 	});
 	if (!book?.customCoverUrl) {
+		return new NextResponse(null, { status: 404 });
+	}
+
+	try {
+		assertOwnCoverUrl(book.customCoverUrl);
+	} catch {
 		return new NextResponse(null, { status: 404 });
 	}
 

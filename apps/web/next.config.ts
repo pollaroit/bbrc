@@ -29,9 +29,100 @@ function r2ImageRemotePattern():
 
 const r2Pattern = r2ImageRemotePattern();
 
+function r2CspHost(): string | undefined {
+	const raw = process.env.R2_PUBLIC_BASE_URL?.trim();
+	if (!raw) return undefined;
+	try {
+		const url = new URL(raw);
+		return url.protocol === "https:" ? url.host : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function contentSecurityPolicy(): string {
+	const r2Host = r2CspHost();
+	const development = process.env.NODE_ENV !== "production";
+	const imgSrc = [
+		"'self'",
+		"data:",
+		"blob:",
+		"https://covers.openlibrary.org",
+		"https://i.ytimg.com",
+		"https://img.youtube.com",
+		...(r2Host ? [`https://${r2Host}`] : []),
+	];
+	const scriptSrc = [
+		"'self'",
+		"'unsafe-inline'",
+		...(development ? ["'unsafe-eval'"] : []),
+		"https://va.vercel-scripts.com",
+		"https://www.youtube.com",
+		"https://www.youtube-nocookie.com",
+	];
+	const connectSrc = [
+		"'self'",
+		"https://*.ably.io",
+		"wss://*.ably.io",
+		"https://va.vercel-scripts.com",
+		"https://vitals.vercel-insights.com",
+		"https://openlibrary.org",
+		"https://www.youtube.com",
+		"https://www.youtube-nocookie.com",
+		...(development
+			? ["ws:", "wss:", "http://127.0.0.1:*", "http://localhost:*"]
+			: []),
+	];
+	const directives = [
+		"default-src 'self'",
+		"base-uri 'self'",
+		"object-src 'none'",
+		"frame-ancestors 'none'",
+		"form-action 'self'",
+		`script-src ${scriptSrc.join(" ")}`,
+		"style-src 'self' 'unsafe-inline'",
+		`img-src ${imgSrc.join(" ")}`,
+		"font-src 'self' data:",
+		"frame-src https://www.youtube-nocookie.com https://www.youtube.com",
+		`connect-src ${connectSrc.join(" ")}`,
+		"worker-src 'self'",
+		"manifest-src 'self'",
+	];
+	return directives.join("; ");
+}
+
+function securityHeaders(): { key: string; value: string }[] {
+	const headers = [
+		{ key: "X-Content-Type-Options", value: "nosniff" },
+		{ key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+		{ key: "X-Frame-Options", value: "DENY" },
+		{
+			key: "Permissions-Policy",
+			value: "camera=(), microphone=(), geolocation=(), payment=()",
+		},
+		{ key: "Content-Security-Policy", value: contentSecurityPolicy() },
+	];
+	if (process.env.NODE_ENV === "production") {
+		headers.push({
+			key: "Strict-Transport-Security",
+			value: "max-age=31536000; includeSubDomains",
+		});
+	}
+	return headers;
+}
+
 const nextConfig: NextConfig = {
 	typedRoutes: true,
 	reactCompiler: true,
+	poweredByHeader: false,
+	async headers() {
+		return [
+			{
+				source: "/:path*",
+				headers: securityHeaders(),
+			},
+		];
+	},
 	async redirects() {
 		return [
 			{

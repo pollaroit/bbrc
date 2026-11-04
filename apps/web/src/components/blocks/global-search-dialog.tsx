@@ -26,7 +26,6 @@ import { GlobalSearchThumb } from "@/components/blocks/global-search-thumb";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { authClient } from "@/lib/auth-client";
 import { useColorMode } from "@/lib/preferences/use-color-mode";
-import { releasePushOnSignOut } from "@/lib/push/sign-out";
 import {
 	bookFiltersToSearchParams,
 	buildSearchCommands,
@@ -49,6 +48,7 @@ import {
 	readRecentHits,
 	rememberHit,
 } from "@/lib/search/recents";
+import { signOutAndClear } from "@/lib/sign-out";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 
@@ -284,8 +284,7 @@ export function GlobalSearchDialog({
 			case "signout":
 				close();
 				try {
-					await releasePushOnSignOut();
-					await authClient.signOut();
+					await signOutAndClear();
 					router.refresh();
 				} catch {
 					toast.error("Failed to sign out");

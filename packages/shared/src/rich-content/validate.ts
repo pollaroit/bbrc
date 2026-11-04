@@ -6,6 +6,15 @@ export const RICH_EMBED_LIMIT = 3;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+function isSafeHttpsHref(href: string): boolean {
+	try {
+		const url = new URL(href);
+		return url.protocol === "https:" && Boolean(url.hostname);
+	} catch {
+		return false;
+	}
+}
+
 function sanitizeInline(inline: RichInline[]): RichInline[] {
 	return inline.map((node) => {
 		switch (node.t) {
@@ -20,7 +29,7 @@ function sanitizeInline(inline: RichInline[]): RichInline[] {
 				const label = node.label.trim() || href;
 				const internal =
 					node.internal ?? internalLinkRefFromHref(href) ?? undefined;
-				if (!internal && !/^https:\/\//i.test(href)) {
+				if (!internal && !isSafeHttpsHref(href)) {
 					return { t: "text", s: label };
 				}
 				return { t: "link", href, label, internal };
@@ -47,7 +56,7 @@ function sanitizeBlock(block: RichBlock): RichBlock {
 		const label = block.label.trim() || href;
 		const internal =
 			block.internal ?? internalLinkRefFromHref(href) ?? undefined;
-		if (!internal && !/^https:\/\//i.test(href)) {
+		if (!internal && !isSafeHttpsHref(href)) {
 			return { t: "p", inline: [{ t: "text", s: label }] };
 		}
 		return { t: "embed", href, label, internal };

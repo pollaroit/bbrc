@@ -1,5 +1,9 @@
 import type { Database, DatabaseTransaction, Prisma } from "@bbrc/db";
-import { isSlug } from "@bbrc/shared";
+import {
+	isReservedKeyword,
+	isUsableSlug,
+	RESERVED_SLUG_MESSAGE,
+} from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { definePagination } from "../../utils/pagination";
 import { seriesListSearching, seriesListSorting } from "./series.listing";
@@ -273,14 +277,18 @@ export async function createSeriesRecord(
 	const title = input.title.trim();
 	const description = input.description?.trim() || null;
 
-	const slug =
-		input.slug?.trim() && isSlug(input.slug.trim())
-			? input.slug.trim()
-			: await generateSeriesSlug(title, db);
-
-	if (input.slug?.trim() && !isSlug(input.slug.trim())) {
-		throw new ORPCError("BAD_REQUEST", { message: "Invalid slug" });
+	const requestedSlug = input.slug?.trim() ?? "";
+	if (requestedSlug && !isUsableSlug(requestedSlug)) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: isReservedKeyword(requestedSlug)
+				? RESERVED_SLUG_MESSAGE
+				: "Invalid slug",
+		});
 	}
+
+	const slug = requestedSlug
+		? requestedSlug
+		: await generateSeriesSlug(title, db);
 
 	const existingSlug = await db.series.findUnique({
 		where: { slug },
@@ -363,8 +371,12 @@ export async function updateSeries(input: UpdateSeriesInput, db: Database) {
 	let nextSlug = series.slug;
 
 	if (input.nextSlug != null && input.nextSlug !== series.slug) {
-		if (!isSlug(input.nextSlug)) {
-			throw new ORPCError("BAD_REQUEST", { message: "Invalid slug" });
+		if (!isUsableSlug(input.nextSlug)) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: isReservedKeyword(input.nextSlug)
+					? RESERVED_SLUG_MESSAGE
+					: "Invalid slug",
+			});
 		}
 
 		const taken = await db.series.findUnique({
