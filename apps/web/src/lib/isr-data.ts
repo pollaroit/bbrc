@@ -86,6 +86,11 @@ export const loadBookFeedbackListForIsr = cache((slug: string) =>
 	getBookFeedbackList({ bookSlug: slug }, db, anonymousSession),
 );
 
+/** Overview tab: a few recent reviews plus total count (not every review body). */
+export const loadBookFeedbackPreviewForIsr = cache((slug: string) =>
+	getBookFeedbackList({ bookSlug: slug, limit: 3 }, db, anonymousSession),
+);
+
 export const loadApprovedDocumentsForIsr = cache((slug: string) =>
 	listApprovedDocumentsByBook(slug, db),
 );

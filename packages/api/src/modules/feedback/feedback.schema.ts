@@ -49,16 +49,23 @@ export const FeedbackListSortBySchema = zod.enum(["createdAt", "rating"]);
 
 export const FeedbackListSortDirectionSchema = zod.enum(["asc", "desc"]);
 
+/** Server-side cap so popular books cannot load unbounded review bodies on one request. */
+export const BOOK_FEEDBACK_LIST_MAX = 200;
+
 export const GetBookFeedbackListInputSchema = zod.object({
 	bookSlug: BookSchema.shape.slug,
 	minRating: FeedbackRatingStepSchema.optional(),
 	sortBy: FeedbackListSortBySchema.optional(),
 	sortDirection: FeedbackListSortDirectionSchema.optional(),
+	limit: zod.number().int().min(1).max(BOOK_FEEDBACK_LIST_MAX).optional(),
 });
 
-export const GetBookFeedbackListOutputSchema = zod.array(
-	BookFeedbackReviewSchema,
-);
+export const GetBookFeedbackListOutputSchema = zod.object({
+	total: zod.number().int().min(0),
+	items: zod.array(BookFeedbackReviewSchema),
+});
+
+export type BookFeedbackReview = z.infer<typeof BookFeedbackReviewSchema>;
 
 export type GetBookFeedbackListOutput = z.infer<
 	typeof GetBookFeedbackListOutputSchema
