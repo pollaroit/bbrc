@@ -1,9 +1,11 @@
 import type { Database } from "@bbrc/db";
 import {
+	isReservedKeyword,
 	isValidNewPassword,
 	PASSWORD_MAX_LENGTH,
 	PASSWORD_MIN_LENGTH,
 	PASSWORD_REQUIREMENTS,
+	RESERVED_USERNAME_MESSAGE,
 } from "@bbrc/shared";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
@@ -62,6 +64,12 @@ function passwordFromBody(body: unknown): string | undefined {
 	if (typeof record.newPassword === "string") return record.newPassword;
 	if (typeof record.password === "string") return record.password;
 	return undefined;
+}
+
+function usernameFromBody(body: unknown): string | undefined {
+	if (!body || typeof body !== "object") return undefined;
+	const username = (body as Record<string, unknown>).username;
+	return typeof username === "string" ? username : undefined;
 }
 
 export function createAuth(
@@ -138,6 +146,17 @@ export function createAuth(
 		},
 		hooks: {
 			before: createAuthMiddleware(async (ctx) => {
+				if (ctx.path === "/sign-up/email") {
+					const username = usernameFromBody(ctx.body);
+					if (
+						username !== undefined &&
+						isReservedKeyword(username.toLowerCase())
+					) {
+						throw new APIError("BAD_REQUEST", {
+							message: RESERVED_USERNAME_MESSAGE,
+						});
+					}
+				}
 				if (!NEW_PASSWORD_PATHS.has(ctx.path)) {
 					return;
 				}

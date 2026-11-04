@@ -1,6 +1,6 @@
 "use client";
 
-import { UserSchema } from "@bbrc/schemas";
+import { usernameInputSchema } from "@bbrc/schemas";
 import { USERNAME_UPDATE_COOLDOWN_DAYS } from "@bbrc/shared";
 import { Field, FieldDescription, FieldLabel } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
@@ -13,8 +13,6 @@ import { toast } from "sonner";
 import { formatDateTime, formatDurationUntil } from "@/lib/format-datetime";
 import { refreshAuthSession } from "@/lib/refresh-auth-session";
 import { orpc, queryClient } from "@/utils/orpc";
-
-const UsernameInputSchema = UserSchema.pick({ username: true });
 
 function usernameStatusDescription(status: {
 	username: string;
@@ -127,7 +125,7 @@ export function SettingsUsernameForm() {
 				event.preventDefault();
 				setFieldError(null);
 
-				const parsed = UsernameInputSchema.safeParse({ username: trimmed });
+				const parsed = usernameInputSchema.safeParse(trimmed);
 				if (!parsed.success) {
 					const message =
 						parsed.error.issues[0]?.message ??
@@ -140,7 +138,7 @@ export function SettingsUsernameForm() {
 					return;
 				}
 
-				saveMutation.mutate({ username: parsed.data.username });
+				saveMutation.mutate({ username: parsed.data });
 			}}
 		>
 			<Field>

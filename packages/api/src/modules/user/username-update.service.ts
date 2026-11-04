@@ -1,5 +1,9 @@
 import type { Database } from "@bbrc/db";
-import { getUsernameUpdateEligibility } from "@bbrc/shared";
+import {
+	getUsernameUpdateEligibility,
+	isReservedKeyword,
+	RESERVED_USERNAME_MESSAGE,
+} from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import type {
 	GetUsernameUpdateStatusOutput,
@@ -87,6 +91,12 @@ export async function updateUsername(
 	db: Database,
 ): Promise<UpdateUsernameOutput> {
 	const nextUsername = normalizeUsername(input.username);
+
+	if (isReservedKeyword(nextUsername)) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: RESERVED_USERNAME_MESSAGE,
+		});
+	}
 
 	const user = await db.user.findUnique({
 		where: { id: userId },

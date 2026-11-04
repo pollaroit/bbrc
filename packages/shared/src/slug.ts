@@ -1,9 +1,16 @@
+import { isReservedKeyword } from "./reserved";
+
 export const SLUG_MIN_LENGTH = 2;
 export const SLUG_MAX_LENGTH = 60;
 
 export const slugRegex = /^(?!_)(?!.*__)[a-z0-9_]+(?<!_)$/;
 
 export const isSlug = (slug: string) => slugRegex.test(slug);
+
+/** Format-valid and not on the reserved list. Use this for typed slugs. */
+export function isUsableSlug(slug: string): boolean {
+	return isSlug(slug) && !isReservedKeyword(slug);
+}
 
 /** Maps Cyrillic letters (Russian / Ukrainian) to Latin ASCII for slug generation. */
 const CYRILLIC_TO_LATIN: Readonly<Record<string, string>> = {
@@ -47,10 +54,31 @@ const CYRILLIC_TO_LATIN: Readonly<Record<string, string>> = {
 };
 
 export function mapCyrillicToLatin(text: string): string {
+	return mapLetters(text, CYRILLIC_TO_LATIN);
+}
+
+/** Maps Azerbaijani letters to Latin ASCII for slug generation. */
+const AZERBAIJANI_TO_LATIN: Readonly<Record<string, string>> = {
+	ə: "e",
+	ı: "i",
+	ö: "o",
+	ü: "u",
+	ç: "ch",
+	ş: "sh",
+	ğ: "g",
+};
+
+export function mapAzerbaijaniToLatin(text: string): string {
+	return mapLetters(text, AZERBAIJANI_TO_LATIN);
+}
+
+function mapLetters(
+	text: string,
+	table: Readonly<Record<string, string>>,
+): string {
 	let result = "";
 	for (const char of text) {
-		const lower = char.toLowerCase();
-		const mapped = CYRILLIC_TO_LATIN[lower];
+		const mapped = table[char.toLowerCase()];
 		if (mapped !== undefined) {
 			result += mapped;
 			continue;
@@ -69,8 +97,8 @@ function randomDigits(length: number): string {
 }
 
 function sanitizeSlugBody(text: string): string {
-	const transliterated = mapCyrillicToLatin(
-		text.normalize("NFKC").toLowerCase(),
+	const transliterated = mapAzerbaijaniToLatin(
+		mapCyrillicToLatin(text.normalize("NFKC").toLowerCase()),
 	);
 	let slug = "";
 
@@ -128,7 +156,7 @@ function ensureMinLength(slug: string): string {
 	return truncateToMaxLength(`s${randomDigits(2)}`, SLUG_MAX_LENGTH);
 }
 
-/** Builds a slug from free text (transliterates Cyrillic, then applies slug rules). */
+/** Builds a slug from free text (transliterates Cyrillic and Azerbaijani, then applies slug rules). */
 export function generateSlug(text: string): string {
 	const sanitized = sanitizeSlugBody(text.trim());
 	let slug = truncateToMaxLength(sanitized, SLUG_MAX_LENGTH);
@@ -172,13 +200,16 @@ export async function generateUniqueSlug(
 ): Promise<string> {
 	const base = generateSlug(text);
 
-	if (await isAvailable(base)) {
+	const canUse = async (candidate: string) =>
+		!isReservedKeyword(candidate) && (await isAvailable(candidate));
+
+	if (await canUse(base)) {
 		return base;
 	}
 
 	for (let digit = 1; digit <= 9; digit++) {
 		const candidate = slugWithNumericSuffix(base, digit);
-		if (await isAvailable(candidate)) {
+		if (await canUse(candidate)) {
 			return candidate;
 		}
 	}

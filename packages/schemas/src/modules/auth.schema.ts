@@ -1,8 +1,18 @@
-import { newPasswordIssues, PASSWORD_REQUIREMENTS } from "@bbrc/shared";
+import {
+	isReservedKeyword,
+	newPasswordIssues,
+	PASSWORD_REQUIREMENTS,
+	RESERVED_USERNAME_MESSAGE,
+} from "@bbrc/shared";
 import z from "zod";
 import { UserSchema } from "../generated/schemas/models";
 
 export { PASSWORD_REQUIREMENTS };
+
+export const usernameInputSchema = UserSchema.shape.username.refine(
+	(value) => !isReservedKeyword(value),
+	RESERVED_USERNAME_MESSAGE,
+);
 
 export const passwordSchema = z.string().superRefine((value, ctx) => {
 	for (const message of newPasswordIssues(value)) {
@@ -12,9 +22,9 @@ export const passwordSchema = z.string().superRefine((value, ctx) => {
 
 export const SignupInputSchema = UserSchema.pick({
 	name: true,
-	username: true,
 	email: true,
 }).extend({
+	username: usernameInputSchema,
 	password: passwordSchema,
 });
 
