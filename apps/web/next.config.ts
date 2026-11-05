@@ -77,6 +77,8 @@ function contentSecurityPolicy(): string {
 		"https://internet-up.ably-realtime.com",
 		// Cloudflare Web Analytics when injected from the Cloudflare dashboard.
 		"https://static.cloudflareinsights.com",
+		// MapLibre's worker is a script loaded from unpkg (see `worker-src` and `connect-src`).
+		"https://unpkg.com",
 	];
 	const connectSrc = [
 		"'self'",

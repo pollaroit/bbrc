@@ -148,3 +148,30 @@ export function mayFetchSite(userAgent: string | null): boolean {
 	if (isBlockedScraperUserAgent(ua)) return false;
 	return isBrowserUserAgent(ua);
 }
+
+/**
+ * Countries whose visitors may use the site. The club is in Azerbaijan; anyone
+ * else is only let in when they are a named crawler or our own infrastructure
+ * (link previews, search engines, QStash), because those fetch from anywhere.
+ * Add a code here (ISO 3166-1 alpha-2) when a member lives or travels abroad.
+ */
+export const ALLOWED_VISITOR_COUNTRIES = ["AZ"] as const;
+
+/**
+ * `country` is Vercel's `x-vercel-ip-country` header. It is missing locally and
+ * on unknown addresses, and then the visitor is let through: this is a cost
+ * filter, not a security boundary (a scraper can fake a user agent, so the
+ * firewall in the Vercel dashboard is the real wall).
+ */
+export function mayVisitFromCountry(
+	userAgent: string | null,
+	country: string | null,
+): boolean {
+	const code = country?.trim().toUpperCase();
+	if (!code || code === "XX") return true;
+	if ((ALLOWED_VISITOR_COUNTRIES as readonly string[]).includes(code)) {
+		return true;
+	}
+	const ua = userAgent?.trim() ?? "";
+	return isAllowedCrawlerUserAgent(ua) || isInfraUserAgent(ua);
+}
