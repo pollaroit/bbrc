@@ -50,6 +50,11 @@ function contentSecurityPolicy(): string {
 		"https://covers.openlibrary.org",
 		"https://i.ytimg.com",
 		"https://img.youtube.com",
+		// Country flags (react-circle-flags default CDN).
+		"https://react-circle-flags.pages.dev",
+		// mapcn / MapLibre sprites (PNG) from CARTO.
+		"https://basemaps.cartocdn.com",
+		"https://*.basemaps.cartocdn.com",
 		...(r2Host ? [`https://${r2Host}`] : []),
 	];
 	const scriptSrc = [
@@ -69,6 +74,11 @@ function contentSecurityPolicy(): string {
 		"https://openlibrary.org",
 		"https://www.youtube.com",
 		"https://www.youtube-nocookie.com",
+		// mapcn: style JSON, vector tiles, glyphs.
+		"https://basemaps.cartocdn.com",
+		"https://*.basemaps.cartocdn.com",
+		// MapLibre worker is fetched from unpkg when the bundled worker URL is unset.
+		"https://unpkg.com",
 		...(development
 			? ["ws:", "wss:", "http://127.0.0.1:*", "http://localhost:*"]
 			: []),
@@ -85,7 +95,8 @@ function contentSecurityPolicy(): string {
 		"font-src 'self' data:",
 		"frame-src https://www.youtube-nocookie.com https://www.youtube.com",
 		`connect-src ${connectSrc.join(" ")}`,
-		"worker-src 'self'",
+		// blob: for MapLibre's in-page worker; unpkg hosts maplibre-gl-worker.mjs.
+		"worker-src 'self' blob: https://unpkg.com",
 		"manifest-src 'self'",
 	];
 	return directives.join("; ");
