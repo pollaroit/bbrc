@@ -50,8 +50,14 @@ export const MentionTargetOutputSchema = z.object({
 		.nullable(),
 });
 
+// Same shape the content validator keeps in a mention (`validate.ts`), not zod's
+// strict RFC check: one id the strict check refuses would reject the whole batch
+// and every mention in it.
+const MENTION_ID =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const MentionResolveInputSchema = z.object({
-	ids: z.array(z.string().uuid()).min(1).max(60),
+	ids: z.array(z.string().regex(MENTION_ID)).min(1).max(60),
 });
 export const MentionProfileSchema = z.object({
 	id: z.string(),
