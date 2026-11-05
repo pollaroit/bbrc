@@ -1,11 +1,8 @@
-import { mayFetchSite, mayVisitFromCountry } from "@bbrc/shared";
+import { mayFetchSite } from "@bbrc/shared";
 import { type NextRequest, NextResponse } from "next/server";
 
 export function proxy(request: NextRequest) {
-	const userAgent = request.headers.get("user-agent");
-	const country = request.headers.get("x-vercel-ip-country");
-
-	if (mayFetchSite(userAgent) && mayVisitFromCountry(userAgent, country)) {
+	if (mayFetchSite(request.headers.get("user-agent"))) {
 		return NextResponse.next();
 	}
 
