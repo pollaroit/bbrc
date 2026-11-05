@@ -1,18 +1,22 @@
+import { getPostBySlug } from "@bbrc/api/modules/post/post.service";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { PollStats } from "@/components/blocks/poll-stats";
+import { getRequestViewer } from "@/lib/request-viewer";
 import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
 	NO_INDEX_ROBOTS,
 } from "@/lib/seo";
-import { auth } from "@/services";
-import { orpc } from "@/utils/orpc";
+import { auth, db } from "@/services";
 
-const loadPostBySlug = cache((slug: string) =>
-	orpc.post.getPostBySlug.call(slug),
+// Straight to the service, as the viewer of this request: a server page that calls its
+// own HTTP API goes out through the proxy (a Node user agent is refused) and loses the
+// session cookie.
+const loadPostBySlug = cache(async (slug: string) =>
+	getPostBySlug(slug, db, await getRequestViewer()),
 );
 
 export async function generateMetadata({

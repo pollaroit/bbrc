@@ -2,20 +2,15 @@ import { isSuperAdmin } from "@bbrc/shared";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { cache } from "react";
 import { EditBookForm } from "@/components/blocks/edit-book-form";
 import { EditBookPageHeader } from "@/components/blocks/edit-book-page-header";
+import { loadBookBySlugForIsr as loadBookBySlug } from "@/lib/isr-data";
 import {
 	buildNotFoundMetadata,
 	buildPageMetadata,
 	NO_INDEX_ROBOTS,
 } from "@/lib/seo";
 import { auth } from "@/services";
-import { orpc } from "@/utils/orpc";
-
-const loadBookBySlug = cache((slug: string) =>
-	orpc.book.getBookBySlug.call(slug),
-);
 
 export async function generateMetadata({
 	params,
