@@ -104,7 +104,6 @@ export function PostDetail({
 						<PostAttachedImage
 							src={post.imageUrl}
 							alt="Post image"
-							priority
 							edgeToEdge
 						/>
 					) : null}

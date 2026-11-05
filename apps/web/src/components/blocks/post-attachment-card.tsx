@@ -60,7 +60,15 @@ function BookCoverMedia({
 	return (
 		<AttachmentMedia variant={src ? "image" : "icon"} className={className}>
 			{src ? (
-				<img src={src} alt="" width={40} height={60} className="object-cover" />
+				<img
+					src={src}
+					alt=""
+					width={40}
+					height={60}
+					loading="lazy"
+					decoding="async"
+					className="object-cover"
+				/>
 			) : (
 				<span className="text-3xs text-muted-foreground">—</span>
 			)}
@@ -78,7 +86,13 @@ function ShelfCoverMedia({
 	if (coverImageUrl) {
 		return (
 			<AttachmentMedia variant="image">
-				<img src={coverImageUrl} alt="" className="size-full object-cover" />
+				<img
+					src={coverImageUrl}
+					alt=""
+					loading="lazy"
+					decoding="async"
+					className="size-full object-cover"
+				/>
 			</AttachmentMedia>
 		);
 	}
@@ -101,6 +115,8 @@ function ShelfCoverMedia({
 						key={`${id}-${index}`}
 						src={src}
 						alt=""
+						loading="lazy"
+						decoding="async"
 						className="size-full object-cover"
 					/>
 				) : null;

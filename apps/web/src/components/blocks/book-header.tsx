@@ -96,7 +96,6 @@ export function BookHeader({ book }: BookHeaderProps) {
 								fill
 								className="object-cover"
 								sizes="(max-width: 1024px) 100vw, 224px"
-								priority
 							/>
 						) : (
 							<div className="flex size-full items-center justify-center text-muted-foreground text-sm">
