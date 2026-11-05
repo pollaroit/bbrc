@@ -46,7 +46,6 @@ export function EditionCoverGallery({
 						src={shown}
 						alt={`Cover of ${title}`}
 						fill
-						priority
 						className="object-cover"
 						sizes="(max-width: 768px) 60vw, 256px"
 					/>

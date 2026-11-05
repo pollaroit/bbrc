@@ -69,7 +69,6 @@ export function SittingShell({ sitting, children }: SittingShellProps) {
 								src={coverSrc}
 								alt=""
 								fill
-								priority
 								className="object-cover"
 								sizes="128px"
 							/>

@@ -29,14 +29,7 @@ function CoverCell({
 	return (
 		<div className="relative h-full min-h-0 w-full overflow-hidden bg-muted">
 			{src ? (
-				<Image
-					src={src}
-					alt=""
-					fill
-					className="object-cover"
-					sizes="64px"
-					priority={index === 0}
-				/>
+				<Image src={src} alt="" fill className="object-cover" sizes="64px" />
 			) : null}
 		</div>
 	);
