@@ -48,6 +48,9 @@ function contentSecurityPolicy(): string {
 		"data:",
 		"blob:",
 		"https://covers.openlibrary.org",
+		// Open Library redirects covers to Internet Archive hosts (ia8….us.archive.org); every hop is checked.
+		"https://archive.org",
+		"https://*.archive.org",
 		"https://i.ytimg.com",
 		"https://img.youtube.com",
 		// Country flags (react-circle-flags default CDN).
