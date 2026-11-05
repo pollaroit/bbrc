@@ -88,6 +88,8 @@ function contentSecurityPolicy(): string {
 		...ablyConnect,
 		"https://va.vercel-scripts.com",
 		"https://vitals.vercel-insights.com",
+		// Cloudflare Web Analytics beacon reports here.
+		"https://cloudflareinsights.com",
 		"https://openlibrary.org",
 		"https://www.youtube.com",
 		"https://www.youtube-nocookie.com",

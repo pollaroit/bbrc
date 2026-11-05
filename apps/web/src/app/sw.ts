@@ -66,17 +66,14 @@ self.addEventListener("notificationclick", (event) => {
 	);
 });
 
-// Images from other hosts (R2, Open Library) go straight to the network. Re-fetching
-// them from inside the worker runs under the worker script's own CSP and cache rules,
-// and installed apps showed broken covers, avatars and post pictures that a normal tab,
-// which does not go through the worker, loaded fine. This listener comes first, so
+// Requests to other hosts (R2 and Open Library images, Cloudflare's analytics beacon,
+// Ably, map tiles) go straight to the network. Serwist's default cross-origin cache
+// re-fetches them from inside the worker, which broke covers and avatars in the
+// installed app, served a stale analytics script that failed its integrity check, and
+// rejected with "no-response" when the host was slow. This listener comes first, so
 // Serwist's routes never see these requests and the browser handles them itself.
 self.addEventListener("fetch", (event) => {
-	const { request } = event;
-	if (
-		request.destination === "image" &&
-		new URL(request.url).origin !== self.location.origin
-	) {
+	if (new URL(event.request.url).origin !== self.location.origin) {
 		event.stopImmediatePropagation();
 	}
 });
