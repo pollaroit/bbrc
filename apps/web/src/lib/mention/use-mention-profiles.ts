@@ -44,8 +44,8 @@ async function flush() {
 				cache.set(id, profile ? { status: "ok", profile } : MISSING);
 			}
 		} catch {
-			// Not answered (offline, not built yet): show the saved name and let a later render ask again.
-			for (const id of slice) cache.delete(id);
+			// Offline or server error: keep the saved @name as plain text (no live profile loop).
+			for (const id of slice) cache.set(id, MISSING);
 		}
 	}
 	emit();
