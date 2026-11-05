@@ -57,6 +57,15 @@ function contentSecurityPolicy(): string {
 		"https://*.basemaps.cartocdn.com",
 		...(r2Host ? [`https://${r2Host}`] : []),
 	];
+	const ablyConnect = [
+		"https://*.ably.io",
+		"wss://*.ably.io",
+		"https://*.ably.net",
+		"wss://*.ably.net",
+		"https://*.ably-realtime.com",
+		"wss://*.ably-realtime.com",
+		"https://internet-up.ably-realtime.com",
+	];
 	const scriptSrc = [
 		"'self'",
 		"'unsafe-inline'",
@@ -64,11 +73,14 @@ function contentSecurityPolicy(): string {
 		"https://va.vercel-scripts.com",
 		"https://www.youtube.com",
 		"https://www.youtube-nocookie.com",
+		// Ably connectivity check (JSONP fallback in some browsers).
+		"https://internet-up.ably-realtime.com",
+		// Cloudflare Web Analytics when injected from the Cloudflare dashboard.
+		"https://static.cloudflareinsights.com",
 	];
 	const connectSrc = [
 		"'self'",
-		"https://*.ably.io",
-		"wss://*.ably.io",
+		...ablyConnect,
 		"https://va.vercel-scripts.com",
 		"https://vitals.vercel-insights.com",
 		"https://openlibrary.org",
