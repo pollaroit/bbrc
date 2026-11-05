@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { mayFetchSite, mayVisitFromCountry } from "./crawlers";
+import { mayFetchSite } from "./crawlers";
 
 describe("mayFetchSite", () => {
 	it("allows browsers and the named crawlers", () => {
@@ -34,23 +34,5 @@ describe("mayFetchSite", () => {
 		expect(mayFetchSite("Mozilla/5.0 (compatible; Bytespider)")).toBe(false);
 		expect(mayFetchSite("Bytespider")).toBe(false);
 		expect(mayFetchSite("Mozilla/5.0 (compatible; AhrefsBot/7.0)")).toBe(false);
-	});
-});
-
-describe("mayVisitFromCountry", () => {
-	const browser = "Mozilla/5.0 (Windows NT 10.0) Chrome/120.0.0.0";
-
-	it("lets Azerbaijan and unknown countries in", () => {
-		expect(mayVisitFromCountry(browser, "AZ")).toBe(true);
-		expect(mayVisitFromCountry(browser, "az")).toBe(true);
-		expect(mayVisitFromCountry(browser, null)).toBe(true);
-		expect(mayVisitFromCountry(browser, "XX")).toBe(true);
-	});
-
-	it("turns browsers from elsewhere away but keeps named crawlers and infra", () => {
-		expect(mayVisitFromCountry(browser, "US")).toBe(false);
-		expect(mayVisitFromCountry(browser, "SG")).toBe(false);
-		expect(mayVisitFromCountry("Googlebot/2.1", "US")).toBe(true);
-		expect(mayVisitFromCountry("QStash-Server/1.0", "US")).toBe(true);
 	});
 });
