@@ -73,3 +73,70 @@ describe("statsShareText", () => {
 		]);
 	});
 });
+
+import { parseStoredContent, statsSharePostContent } from "../index";
+
+describe("statsSharePostContent", () => {
+	const facts = memberStatsShareFacts(input);
+
+	it("is paragraphs with a real link at the end", () => {
+		const doc = parseStoredContent(
+			statsSharePostContent(
+				facts,
+				"https://bbrc.app/users/reader/stats?period_type=life",
+			),
+		);
+		expect(doc.blocks.map((block) => block.t)).toEqual(["p", "p", "p", "p"]);
+		const last = doc.blocks[3];
+		expect(last && "inline" in last ? last.inline[0] : null).toEqual({
+			t: "link",
+			href: "https://bbrc.app/users/reader/stats?period_type=life",
+			label: "See the full stats",
+			internal: undefined,
+		});
+		const first = doc.blocks[0];
+		expect(first && "inline" in first ? first.inline[0] : null).toMatchObject({
+			t: "text",
+			s: "Reader's 2026 in books",
+			m: ["bold"],
+		});
+	});
+
+	it("keeps the taste lines together in one paragraph, one per line", () => {
+		const doc = parseStoredContent(
+			statsSharePostContent(facts, "https://bbrc.app/x"),
+		);
+		const third = doc.blocks[2];
+		expect(
+			third && "inline" in third && third.inline[0] && "s" in third.inline[0]
+				? third.inline[0].s
+				: "",
+		).toBe(
+			"Favourite subject: Fantasy\nMost read author: Ana Quill\n#2 of 14 readers in the club",
+		);
+	});
+
+	it("leaves out the taste paragraph when there is nothing to say", () => {
+		const bare = memberStatsShareFacts({
+			...input,
+			scoreboard: [],
+			rank: null,
+			topAuthor: null,
+		});
+		const doc = parseStoredContent(
+			statsSharePostContent(bare, "https://bbrc.app/x"),
+		);
+		expect(doc.blocks).toHaveLength(2);
+	});
+
+	it("cannot keep a link that is not https, so the label stays as text", () => {
+		const doc = parseStoredContent(
+			statsSharePostContent(facts, "http://localhost:3001/x"),
+		);
+		const last = doc.blocks.at(-1);
+		expect(last && "inline" in last ? last.inline[0] : null).toEqual({
+			t: "text",
+			s: "See the full stats",
+		});
+	});
+});

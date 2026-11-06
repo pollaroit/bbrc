@@ -1,7 +1,11 @@
 "use client";
 
 import type { MemberStatsOverviewOutput } from "@bbrc/api/modules/member-stats/member-stats.schema";
-import { memberStatsShareFacts, statsShareText } from "@bbrc/shared";
+import {
+	memberStatsShareFacts,
+	statsSharePostContent,
+	statsShareText,
+} from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	DropdownMenu,
@@ -52,19 +56,17 @@ export function StatsShareMenu({
 	};
 	const link = () =>
 		`${window.location.origin}/users/${username}/stats?${query().toString()}`;
-	const summary = () =>
-		statsShareText(
-			memberStatsShareFacts({
-				title: data.title,
-				periodLabel: data.periodLabel,
-				member: { name: data.member.name, username },
-				scoreboard: data.scoreboard,
-				books: data.booksRead.books,
-				rank: data.rank,
-				topAuthor: null,
-			}),
-			link(),
-		);
+	const facts = () =>
+		memberStatsShareFacts({
+			title: data.title,
+			periodLabel: data.periodLabel,
+			member: { name: data.member.name, username },
+			scoreboard: data.scoreboard,
+			books: data.booksRead.books,
+			rank: data.rank,
+			topAuthor: null,
+		});
+	const summary = () => statsShareText(facts(), link());
 
 	async function run(action: () => Promise<void>) {
 		if (busy) return;
@@ -139,7 +141,11 @@ export function StatsShareMenu({
 							onClick={() =>
 								void run(async () => {
 									const file = await fetchStatsImage(username, "post", query());
-									openCompose(null, summary(), file);
+									openCompose(
+										null,
+										statsSharePostContent(facts(), link()),
+										file,
+									);
 								})
 							}
 						>

@@ -1,3 +1,6 @@
+import { serializeRichDocument } from "../rich-content/stored";
+import type { RichBlock, RichInline, TextMark } from "../rich-content/types";
+
 /*
  * What a member's stats say when they are shared: a few numbers, the books as covers and
  * a line or two about taste. The picture and the copied text are both made from the same
@@ -69,6 +72,42 @@ export function memberStatsShareFacts(
 			? `#${input.rank.rank} of ${input.rank.of} readers in the club`
 			: null,
 	};
+}
+
+/**
+ * The post the composer starts with: paragraphs (the title, the numbers, a line about
+ * taste and the rank) and the page as a real link, not text. Rich content only keeps a
+ * link that is https, so on a local http address the label stays as plain text.
+ */
+export function statsSharePostContent(
+	facts: StatsShareFacts,
+	url: string,
+): string {
+	const paragraph = (inline: RichInline[]): RichBlock => ({ t: "p", inline });
+	const text = (s: string, m?: TextMark[]): RichInline => ({ t: "text", s, m });
+
+	const blocks: RichBlock[] = [paragraph([text(facts.title, ["bold"])])];
+	if (facts.numbers.length > 0) {
+		blocks.push(
+			paragraph([
+				text(
+					facts.numbers
+						.map((number) => `${number.value} ${number.label.toLowerCase()}`)
+						.join(" · "),
+				),
+			]),
+		);
+	}
+	const taste = [
+		...facts.highlights,
+		...(facts.rankLine ? [facts.rankLine] : []),
+	];
+	if (taste.length > 0) blocks.push(paragraph([text(taste.join("\n"))]));
+	blocks.push(
+		paragraph([{ t: "link", href: url, label: "See the full stats" }]),
+	);
+
+	return serializeRichDocument({ v: 1, blocks });
 }
 
 /** The same facts as plain text to paste anywhere. */
