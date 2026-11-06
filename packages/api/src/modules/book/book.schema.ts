@@ -11,6 +11,7 @@ import {
 	isOpenLibraryOlid,
 } from "@bbrc/shared";
 import { z } from "zod";
+import { BookEditionFieldsSchema } from "../book-edition/book-edition.schema";
 import {
 	BookSeriesSummarySchema,
 	CreateSeriesInputSchema,
@@ -329,7 +330,52 @@ export const AddBookOutputSchema = BookSchema.pick({
 	seriesSlug: z.string().optional(),
 });
 
+/**
+ * ADD BY HAND — a book Open Library does not have. The work and its first edition are
+ * entered together: pages and the cover belong to the edition, and the book follows its
+ * primary edition (see `syncBookFromPrimaryEdition`).
+ */
+export const AddManualBookInputSchema = BookSchema.pick({
+	title: true,
+	excerpt: true,
+	publishedIn: true,
+})
+	.extend({
+		subjects: BookSchema.shape.subjects.optional(),
+		/** Author records, in order (from the chips). Wins over `authors`. */
+		authorIds: bookAuthorIdsSchema.optional(),
+		/** Author names, resolved to existing authors (by name, alias or likely spelling) or created. */
+		authors: BookSchema.shape.authors.optional(),
+		countries: bookCountriesSchema.optional(),
+		readAfterBookSlugs: z.array(BookSchema.shape.slug).max(20).optional(),
+		seriesSlug: BookSchema.shape.slug.optional(),
+		newSeries: CreateSeriesInputSchema.optional(),
+		seriesPosition: SeriesPositionSchema.optional(),
+		shiftLater: z.boolean().optional(),
+		/** The first edition, and the book's primary one. Pages are required here, not on the work. */
+		edition: BookEditionFieldsSchema,
+		notifyMembers: z.boolean().optional(),
+		hidden: z.boolean().optional(),
+	})
+	.superRefine((value, ctx) => {
+		if (!value.authorIds?.length && !value.authors?.length) {
+			ctx.addIssue({
+				code: "custom",
+				message: "Add at least one author.",
+				path: ["authorIds"],
+			});
+		}
+		if (value.seriesSlug && value.newSeries) {
+			ctx.addIssue({
+				code: "custom",
+				message: "Choose either an existing series or a new series, not both.",
+				path: ["seriesSlug"],
+			});
+		}
+	});
+
 export type TAddBookInputSchema = z.infer<typeof AddBookInputSchema>;
+export type AddManualBookInput = z.infer<typeof AddManualBookInputSchema>;
 export type TAddBookOutputSchema = z.infer<typeof AddBookOutputSchema>;
 
 /** GET BY SLUG */

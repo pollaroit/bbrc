@@ -18,6 +18,7 @@ import { loadViewer } from "../visibility/viewer";
 import {
 	AddBookInputSchema,
 	AddBookOutputSchema,
+	AddManualBookInputSchema,
 	GetBookBySlugOutputSchema,
 	GetBookListAuthorFacetsInputSchema,
 	GetBookListAuthorFacetsOutputSchema,
@@ -60,6 +61,7 @@ import {
 } from "./book-export.schema";
 import { exportBookList } from "./book-export.service";
 import { setBookHidden } from "./book-hidden.service";
+import { addManualBook } from "./book-manual.service";
 import {
 	SuggestBookOriginCountriesInputSchema,
 	SuggestBookOriginCountriesOutputSchema,
@@ -202,6 +204,36 @@ export const bookRouter = {
 		.output(AddBookOutputSchema)
 		.handler(async ({ input, context }) => {
 			const book = await addBook(input, context.db, context.session.user.id);
+			revalidateBookIsr(context, book.slug);
+			revalidateFeedsIsr(context);
+			revalidateAuthorSlugs(
+				context,
+				await authorSlugsOfBook(context.db, book.slug),
+			);
+			if (book.seriesSlug) {
+				revalidateSeriesIsr(context, book.seriesSlug);
+			}
+			return book;
+		}),
+	addManualBook: minRoleProcedure("admin")
+		.input(AddManualBookInputSchema)
+		.use(
+			audited("book.created_manual", {
+				target: async ({ output, db }) =>
+					namedTarget(
+						"book",
+						await bookBeforeBySlug(db, output.slug),
+						output.slug,
+					),
+			}),
+		)
+		.output(AddBookOutputSchema)
+		.handler(async ({ input, context }) => {
+			const book = await addManualBook(
+				input,
+				context.db,
+				context.session.user.id,
+			);
 			revalidateBookIsr(context, book.slug);
 			revalidateFeedsIsr(context);
 			revalidateAuthorSlugs(

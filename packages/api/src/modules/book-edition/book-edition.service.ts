@@ -160,7 +160,7 @@ type Fields = {
 	coverUrl?: string | null;
 };
 
-function isbnFields(isbn: string | null | undefined) {
+export function isbnFields(isbn: string | null | undefined) {
 	if (!isbn) return { isbn13: null, isbn10: null };
 	const pair = isbnPair(isbn);
 	return { isbn13: pair.isbn13, isbn10: pair.isbn10 ?? null };

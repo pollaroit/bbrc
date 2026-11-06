@@ -175,6 +175,11 @@ export const AUDIT_ACTIONS = {
 
 	// Books
 	"book.created": defineAudit("book", "Book added", "Added a book."),
+	"book.created_manual": defineAudit(
+		"book",
+		"Book added by hand",
+		"Added a book that is not on Open Library, with its first edition.",
+	),
 	"book.updated": defineAudit("book", "Book edited", "Edited a book."),
 	"book.removed": defineAudit("book", "Book removed", "Removed a book."),
 	"book.hidden": defineAudit(

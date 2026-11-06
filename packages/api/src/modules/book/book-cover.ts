@@ -10,7 +10,10 @@ import { ORPCError } from "@orpc/server";
 export const isClubCoverId = (coverId: number | null | undefined) =>
 	coverId != null && coverId < 0;
 
-/** The cover must be a file we stored ourselves under `books/covers/`. */
+/**
+ * The cover must be a file we stored ourselves under `books/covers/`, or an edition cover
+ * under `books/editions/` (a manual book takes its cover from its primary edition).
+ */
 export function assertOwnCoverUrl(url: string) {
 	const config = loadR2ConfigFromEnv();
 	const base = config?.publicBaseUrl.replace(/\/$/, "");
@@ -18,7 +21,7 @@ export function assertOwnCoverUrl(url: string) {
 	if (
 		!base ||
 		!clean.startsWith(`${base}/`) ||
-		!clean.includes("/books/covers/") ||
+		!(clean.includes("/books/covers/") || clean.includes("/books/editions/")) ||
 		!clean.endsWith(".webp")
 	) {
 		throw new ORPCError("BAD_REQUEST", {
