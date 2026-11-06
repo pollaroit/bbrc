@@ -147,18 +147,89 @@ function fakeDb(opts: Opts = {}) {
 		},
 		friendship: { count: async () => 7 },
 		sitting: {
-			groupBy: async () => [
-				{ status: "finished", _count: { _all: 3 } },
-				{ status: "voting", _count: { _all: 1 } },
-			],
+			findMany: async (args: { where: { createdAt?: { gte: Date } } }) => {
+				const rows = [
+					{
+						id: "s1",
+						slug: "first",
+						status: "finished",
+						createdAt: new Date(Date.UTC(2026, 0, 10)),
+						joinType: "public",
+						selectedBook: {
+							slug: "b1",
+							title: "Book b1",
+							pages: 300,
+							coverId: null,
+						},
+					},
+					{
+						id: "s2",
+						slug: "second",
+						status: "reading",
+						createdAt: new Date(Date.UTC(2026, 2, 2)),
+						joinType: "private",
+						selectedBook: {
+							slug: "b2",
+							title: "Book b2",
+							pages: 500,
+							coverId: null,
+						},
+					},
+					{
+						id: "s3",
+						slug: "third",
+						status: "voting",
+						createdAt: new Date(Date.UTC(2026, 3, 2)),
+						joinType: "public",
+						selectedBook: null,
+					},
+				];
+				// The year before has one finished sitting.
+				return args.where.createdAt &&
+					args.where.createdAt.gte.getUTCFullYear() === 2025
+					? [rows[0]]
+					: rows;
+			},
 		},
 		participation: {
-			groupBy: async () => [
-				{ progress: "completed", _count: { _all: 6 } },
-				{ progress: "dnf", _count: { _all: 2 } },
+			findMany: async () => [
+				{
+					sittingId: "s1",
+					userId: "u1",
+					progress: "completed",
+					joinSource: "self",
+					joinedAt: new Date(Date.UTC(2026, 0, 11)),
+				},
+				{
+					sittingId: "s1",
+					userId: "u2",
+					progress: "completed",
+					joinSource: "organiser",
+					joinedAt: new Date(Date.UTC(2026, 0, 12)),
+				},
+				{
+					sittingId: "s1",
+					userId: "u3",
+					progress: "dnf",
+					joinSource: "self",
+					joinedAt: new Date(Date.UTC(2026, 0, 12)),
+				},
+				{
+					sittingId: "s2",
+					userId: "u1",
+					progress: "in_progress",
+					joinSource: "self",
+					joinedAt: new Date(Date.UTC(2026, 2, 3)),
+				},
 			],
 		},
-		pollVote: { count: async () => 11 },
+		pollVote: {
+			findMany: async () => [
+				{ userId: "u1", option: { poll: { sittingId: "s1" } } },
+				{ userId: "u2", option: { poll: { sittingId: "s1" } } },
+				{ userId: "u1", option: { poll: { sittingId: "s2" } } },
+			],
+		},
 		goal: {
 			findMany: async () => [
 				{ userId: "u1" },
@@ -244,6 +315,20 @@ describe("club taste", () => {
 		expect(out.mostRead[0]).toMatchObject({ id: "b1", readers: 2 });
 	});
 
+	it("lists the highest rated authors and subjects by the club's ratings, two books at least", async () => {
+		const { db } = fakeDb();
+		const out = await getClubStatsTaste(db, { periodType: "life" });
+		expect(out.authorsRated[0]).toMatchObject({
+			label: "Ana Quill",
+			average: 4,
+		});
+		expect(out.subjectsRated[0]).toMatchObject({
+			subject: "Fantasy",
+			average: 4,
+		});
+		expect(out.authors[0]?.average).toBeNull();
+	});
+
 	it("counts a book as best rated only with at least two ratings", async () => {
 		const { db } = fakeDb();
 		const out = await getClubStatsTaste(db, { periodType: "life" });
@@ -281,19 +366,87 @@ describe("club community", () => {
 });
 
 describe("club life", () => {
-	it("counts sittings, votes, goals and achievements across the club", async () => {
+	it("details the sittings: counts, rates, voting and the books chosen", async () => {
 		const { db } = fakeDb();
 		const out = await getClubStatsClubLife(db, {
 			periodType: "year",
 			period: "2026",
 		});
-		expect(out.sittings).toMatchObject({
-			total: 4,
-			finished: 3,
+		const sittings = out.sittings;
+		expect(sittings.summary).toMatchObject({
+			total: 3,
+			finished: 1,
+			reading: 1,
 			voting: 1,
-			participations: 8,
-			completionRate: 75,
-			votes: 11,
+			participations: 4,
+			participants: 3,
+			completed: 2,
+			didNotFinish: 1,
+			completionRate: 67,
+			dnfRate: 33,
+			votes: 3,
+			voters: 2,
+			averageBookPages: 400,
+		});
+		expect(sittings.summary.longestBook).toEqual({
+			title: "Book b2",
+			pages: 500,
+		});
+		expect(sittings.progress.map((row) => row.label)).toEqual([
+			"Finished",
+			"Reading",
+			"Did not finish",
+		]);
+		expect(sittings.progress[0]).toMatchObject({ count: 2, percent: 50 });
+	});
+
+	it("compares a year with the year before", async () => {
+		const { db } = fakeDb();
+		const year = await getClubStatsClubLife(db, {
+			periodType: "year",
+			period: "2026",
+		});
+		// 3 sittings now against 1 before: up 200%.
+		expect(year.sittings.comparison?.label).toBe("2025");
+		expect(year.sittings.comparison?.sittings).toEqual({
+			percent: 200,
+			direction: "up",
+		});
+		const life = await getClubStatsClubLife(db, { periodType: "life" });
+		expect(life.sittings.comparison).toBeNull();
+	});
+
+	it("names only public sittings, and only public profiles among the top finishers", async () => {
+		const { db } = fakeDb();
+		const out = await getClubStatsClubLife(db, {
+			periodType: "year",
+			period: "2026",
+		});
+		expect(out.sittings.recent.map((row) => row.slug).sort()).toEqual([
+			"first",
+			"third",
+		]);
+		expect(
+			out.sittings.recent.find((row) => row.slug === "first"),
+		).toMatchObject({ participants: 3, completed: 2, rate: 67 });
+		expect(
+			out.sittings.joinTypes.find((row) => row.label === "Private")?.count,
+		).toBe(1);
+		// u1 and u2 finished one each; u1 is public, u2 has a private profile.
+		const finishers = out.sittings.topFinishers;
+		expect(finishers.map((row) => row.count)).toEqual([1, 1]);
+		expect(finishers.some((row) => row.name === null)).toBe(true);
+		expect(out.sittings.monthly.find((m) => m.label === "Jan")).toMatchObject({
+			sittings: 1,
+			joined: 3,
+		});
+	});
+
+	it("counts goals, achievements and levels across the club", async () => {
+		const { db } = fakeDb();
+		const out = await getClubStatsClubLife(db, {
+			periodType: "year",
+			period: "2026",
 		});
 		expect(out.goals).toEqual({ year: 2026, set: 3, members: 2 });
 		expect(out.achievements).toMatchObject({ awards: 2, members: 2 });

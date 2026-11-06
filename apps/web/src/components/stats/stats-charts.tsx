@@ -257,3 +257,56 @@ export function PaceChart({
 		</ChartContainer>
 	);
 }
+
+/** Two counts side by side for each label, such as sittings started and people who joined. */
+export function GroupedBarsChart({
+	points,
+	first,
+	second,
+	className = "h-52",
+}: {
+	points: readonly { label: string; first: number; second: number }[];
+	first: string;
+	second: string;
+	className?: string;
+}) {
+	if (points.every((point) => point.first === 0 && point.second === 0)) {
+		return <StatsEmpty>Nothing to show for this period.</StatsEmpty>;
+	}
+	return (
+		<ChartContainer
+			config={{
+				first: { label: first, color: "var(--chart-1)" },
+				second: { label: second, color: "var(--chart-3)" },
+			}}
+			className={`${className} w-full`}
+		>
+			<BarChart
+				data={points as { label: string; first: number; second: number }[]}
+				margin={{ left: 0, right: 8, top: 8, bottom: 0 }}
+			>
+				<CartesianGrid vertical={false} />
+				<XAxis
+					dataKey="label"
+					tickLine={false}
+					axisLine={false}
+					interval={0}
+					tickMargin={6}
+				/>
+				<YAxis
+					allowDecimals={false}
+					tickLine={false}
+					axisLine={false}
+					width={28}
+					tickMargin={4}
+				/>
+				<ChartTooltip
+					content={<ChartTooltipContent />}
+					cursor={{ opacity: 0.08 }}
+				/>
+				<Bar dataKey="first" fill="var(--color-first)" />
+				<Bar dataKey="second" fill="var(--color-second)" />
+			</BarChart>
+		</ChartContainer>
+	);
+}

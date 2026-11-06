@@ -90,13 +90,21 @@ const ClubAuthorRow = zod.object({
 	slug: zod.string().nullable(),
 	photoUrl: zod.string().nullable(),
 	count: Count,
+	/** The average of the club's ratings of this author's books (null when none are rated). */
+	average: zod.number().nullable(),
 });
 
 export const ClubStatsTasteSchema = zod.object({
 	subjects: zod.array(
 		zod.object({ subject: zod.string(), count: Count, percent: zod.number() }),
 	),
+	/** Subjects whose books the club rated highest, with at least two rated books. */
+	subjectsRated: zod.array(
+		zod.object({ subject: zod.string(), average: zod.number(), count: Count }),
+	),
 	authors: zod.array(ClubAuthorRow),
+	/** Authors whose books the club rated highest, with at least two rated books. */
+	authorsRated: zod.array(ClubAuthorRow),
 	countries: zod.object({
 		rows: zod.array(zod.object({ code: zod.string(), count: Count })),
 		map: zod.array(zod.object({ code: zod.string(), count: Count })),
@@ -152,17 +160,89 @@ export const ClubStatsCommunitySchema = zod.object({
 	friends: zod.object({ pairs: Count, averagePerMember: zod.number() }),
 });
 
-export const ClubStatsClubLifeSchema = zod.object({
-	sittings: zod.object({
+const Change = zod
+	.object({
+		percent: zod.number().nullable(),
+		direction: zod.enum(["up", "down", "same"]),
+	})
+	.nullable();
+
+const Share = zod.object({ label: zod.string(), count: Count, percent: Count });
+
+const Person = zod.object({
+	rank: Count,
+	count: Count,
+	name: zod.string().nullable(),
+	username: zod.string().nullable(),
+	image: zod.string().nullable(),
+});
+
+/** The club's sittings in detail: the numbers, how they compare, how they ended and how people took part. */
+const SittingsDetail = zod.object({
+	summary: zod.object({
 		total: Count,
-		voting: Count,
-		reading: Count,
 		finished: Count,
+		reading: Count,
+		voting: Count,
 		participations: Count,
-		completionRate: zod.number().nullable(),
+		participants: Count,
+		averageParticipants: zod.number(),
+		completed: Count,
+		didNotFinish: Count,
+		inProgress: Count,
+		notStarted: Count,
+		completionRate: Count.nullable(),
+		dnfRate: Count.nullable(),
 		votes: Count,
-		progress: zod.array(Point),
+		voters: Count,
+		turnout: Count.nullable(),
+		averageVotesPerSitting: zod.number(),
+		averageBookPages: Count.nullable(),
+		longestBook: zod.object({ title: zod.string(), pages: Count }).nullable(),
+		shortestBook: zod.object({ title: zod.string(), pages: Count }).nullable(),
 	}),
+	/** Against the period before (a year against the year before); null for All time and All books. */
+	comparison: zod
+		.object({
+			label: zod.string(),
+			sittings: Change,
+			participations: Change,
+			participants: Change,
+			/** Percentage points, positive when more people finished than before. */
+			completionRatePoints: zod.number().nullable(),
+		})
+		.nullable(),
+	monthly: zod.array(
+		zod.object({
+			monthKey: zod.string(),
+			label: zod.string(),
+			sittings: Count,
+			joined: Count,
+		}),
+	),
+	progress: zod.array(Share),
+	sizes: zod.array(Point),
+	joinTypes: zod.array(Share),
+	joinSources: zod.array(Share),
+	pages: zod.array(Point),
+	/** Public sittings only: a private or unlisted one is never named. */
+	recent: zod.array(
+		zod.object({
+			slug: zod.string(),
+			status: zod.enum(["voting", "reading", "finished"]),
+			bookTitle: zod.string().nullable(),
+			bookSlug: zod.string().nullable(),
+			coverId: zod.number().int().nullable(),
+			participants: Count,
+			completed: Count,
+			rate: Count.nullable(),
+		}),
+	),
+	topFinishers: zod.array(Person),
+});
+
+export const ClubStatsClubLifeSchema = zod.object({
+	sittings: SittingsDetail,
 	goals: zod.object({ year: zod.number().int(), set: Count, members: Count }),
 	achievements: zod.object({
 		awards: Count,

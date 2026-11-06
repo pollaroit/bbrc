@@ -6,6 +6,9 @@ import {
 	authorRows,
 	averageNumber,
 	bookAuthorEntries,
+	type ClubParticipationRow,
+	type ClubSittingRow,
+	type ClubVoteRow,
 	computeCumulativeReadSeries,
 	countryRows,
 	cumulativeByMonth,
@@ -13,14 +16,21 @@ import {
 	memberLevelsForPoints,
 	monthlyPaceSeries,
 	pagesBucketLabel,
+	participantsPerSitting,
+	previousStatsBounds,
 	publicationHistogram,
+	ratedSubjectRows,
 	ratingHistogramForClubAverage,
 	readFinishMonth,
 	readsByMonthHistogram,
 	readsByYearHistogram,
 	richContentPreview,
 	seriesRows,
+	shareBreakdown,
+	sittingOutcomes,
+	sittingsByMonth,
 	subjectBreakdown,
+	summarizeSittings,
 	type TasteBook,
 	topBucketLabel,
 	USER_STATS_PAGE_BUCKETS,
@@ -28,7 +38,11 @@ import {
 } from "@bbrc/shared";
 import { aggregateCountryBookCounts } from "../book/book-country-filter";
 import type { StatsBook } from "../member-stats/member-stats-context";
-import { statsPeriodLabel } from "../member-stats/member-stats-helpers";
+import {
+	changeBetween,
+	createdAtRangeOfBounds,
+	statsPeriodLabel,
+} from "../member-stats/member-stats-helpers";
 import { postFeedWhere } from "../visibility/visibility-resources";
 import type {
 	ClubStatsClubLife,
@@ -38,7 +52,11 @@ import type {
 	ClubStatsReading,
 	ClubStatsTaste,
 } from "./club-stats.schema";
-import { booksOfReads, loadClubStatsContext } from "./club-stats-core";
+import {
+	booksOfReads,
+	type ClubStatsContext,
+	loadClubStatsContext,
+} from "./club-stats-core";
 
 /** "The club's 2026 in books": the page title for the club's period. */
 export function clubTitle(period: UserStatsPeriod): string {
@@ -371,6 +389,26 @@ export async function getClubStatsTaste(
 		distinct.map((book) => book.averageRating),
 	).filter((point) => point.label !== "unrated");
 
+	// Highest rated looks at each book once, rated by the club (the average of everyone's ratings).
+	const distinctTaste = distinct.map(toTasteBook);
+	const clubRatings = new Map(
+		distinct.flatMap((book) =>
+			book.averageRating == null
+				? []
+				: [[book.id, book.averageRating] as const],
+		),
+	);
+	const authorRow = (
+		row: ReturnType<typeof authorRows>["byCount"][number],
+	) => ({
+		key: row.key,
+		label: row.label,
+		slug: row.slug,
+		photoUrl: row.photoUrl,
+		count: row.count,
+		average: row.average,
+	});
+
 	return {
 		subjects: subjectBreakdown(stats.map((book) => book.subjects)).map(
 			(row) => ({
@@ -379,13 +417,11 @@ export async function getClubStatsTaste(
 				percent: row.percentage,
 			}),
 		),
-		authors: authorRows(taste, null).byCount.map((row) => ({
-			key: row.key,
-			label: row.label,
-			slug: row.slug,
-			photoUrl: row.photoUrl,
-			count: row.count,
-		})),
+		subjectsRated: ratedSubjectRows(distinctTaste, clubRatings),
+		authors: authorRows(taste, null).byCount.map(authorRow),
+		authorsRated: (authorRows(distinctTaste, clubRatings).byRating ?? []).map(
+			authorRow,
+		),
 		countries: {
 			rows: countryRows(taste, null).map(({ code, count }) => ({
 				code,
@@ -549,34 +585,108 @@ export async function getClubStatsClubLife(
 	const year =
 		ctx.period.type === "year" ? ctx.period.year : new Date().getUTCFullYear();
 
-	const [sittingGroups, progressGroups, votes, goals, awards, people] =
-		await Promise.all([
-			db.sitting.groupBy({
-				by: ["status"],
-				where: ctx.range,
-				_count: { _all: true },
-			}),
-			db.participation.groupBy({
-				by: ["progress"],
-				where: { OR: [{ removedAt: null }, { progress: "dnf" }], ...ctx.range },
-				_count: { _all: true },
-			}),
-			db.pollVote.count({ where: ctx.range }),
-			db.goal.findMany({ where: { year }, select: { userId: true } }),
-			db.userAchievement.findMany({
-				where: { revokedAt: null },
-				distinct: ["userId", "achievementKey"],
-				select: { userId: true, achievementKey: true },
-			}),
-			db.user.findMany({ select: { xp: true, rp: true } }),
-		]);
+	const load = async (range: ClubStatsContext["range"]) => {
+		const rows = await db.sitting.findMany({
+			where: range,
+			orderBy: { createdAt: "desc" },
+			select: {
+				id: true,
+				slug: true,
+				status: true,
+				createdAt: true,
+				joinType: true,
+				selectedBook: {
+					select: { slug: true, title: true, pages: true, coverId: true },
+				},
+			},
+		});
+		const ids = rows.map((row) => row.id);
+		const [parts, voteRows] = ids.length
+			? await Promise.all([
+					db.participation.findMany({
+						where: {
+							sittingId: { in: ids },
+							OR: [{ removedAt: null }, { progress: "dnf" }],
+						},
+						select: {
+							sittingId: true,
+							userId: true,
+							progress: true,
+							joinSource: true,
+							joinedAt: true,
+						},
+					}),
+					db.pollVote.findMany({
+						where: { option: { poll: { sittingId: { in: ids } } } },
+						select: {
+							userId: true,
+							option: { select: { poll: { select: { sittingId: true } } } },
+						},
+					}),
+				])
+			: [[], []];
+		const sittings: ClubSittingRow[] = rows.map((row) => ({
+			id: row.id,
+			slug: row.slug,
+			status: row.status,
+			createdAt: row.createdAt,
+			joinType: row.joinType,
+			bookPages: row.selectedBook?.pages ?? null,
+			bookTitle: row.selectedBook?.title ?? null,
+			bookSlug: row.selectedBook?.slug ?? null,
+			bookCoverId: row.selectedBook?.coverId ?? null,
+		}));
+		const votes: ClubVoteRow[] = voteRows.map((row) => ({
+			sittingId: row.option.poll.sittingId,
+			userId: row.userId,
+		}));
+		return { sittings, parts: parts as ClubParticipationRow[], votes };
+	};
 
-	const status = (name: string) =>
-		sittingGroups.find((row) => row.status === name)?._count._all ?? 0;
-	const progress = (name: string) =>
-		progressGroups.find((row) => row.progress === name)?._count._all ?? 0;
-	const completed = progress("completed");
-	const finished = completed + progress("dnf");
+	const previousBounds = ctx.hasTimeAxis
+		? previousStatsBounds(ctx.period, ctx.bounds)
+		: null;
+
+	const [current, previous, goals, awards, people] = await Promise.all([
+		load(ctx.range),
+		previousBounds
+			? load({ createdAt: createdAtRangeOfBounds(previousBounds) })
+			: Promise.resolve(null),
+		db.goal.findMany({ where: { year }, select: { userId: true } }),
+		db.userAchievement.findMany({
+			where: { revokedAt: null },
+			distinct: ["userId", "achievementKey"],
+			select: { userId: true, achievementKey: true },
+		}),
+		db.user.findMany({
+			select: {
+				id: true,
+				name: true,
+				username: true,
+				image: true,
+				profileVisibility: true,
+				xp: true,
+				rp: true,
+			},
+		}),
+	]);
+
+	const summary = summarizeSittings(
+		current.sittings,
+		current.parts,
+		current.votes,
+	);
+	const before = previous
+		? summarizeSittings(previous.sittings, previous.parts, previous.votes)
+		: null;
+
+	const outcomes = sittingOutcomes(current.parts);
+	const top = new Map<string, number>();
+	for (const row of current.parts) {
+		if (row.progress === "completed")
+			top.set(row.userId, (top.get(row.userId) ?? 0) + 1);
+	}
+	const byId = new Map(people.map((person) => [person.id, person]));
 
 	const holders = new Map<string, number>();
 	for (const row of awards) {
@@ -601,22 +711,114 @@ export async function getClubStatsClubLife(
 		levels.set(level.label, row);
 	}
 
+	const JOIN_TYPE_LABELS = {
+		public: "Public",
+		unlisted: "Link only",
+		private: "Private",
+	};
+	const countBy = <T>(rows: readonly T[], key: (row: T) => string) => {
+		const map = new Map<string, number>();
+		for (const row of rows) map.set(key(row), (map.get(key(row)) ?? 0) + 1);
+		return [...map.entries()].map(([label, count]) => ({ label, count }));
+	};
+
 	return {
 		sittings: {
-			total: sum(sittingGroups.map((row) => row._count._all)),
-			voting: status("voting"),
-			reading: status("reading"),
-			finished: status("finished"),
-			participations: sum(progressGroups.map((row) => row._count._all)),
-			completionRate:
-				finished > 0 ? Math.round((completed / finished) * 100) : null,
-			votes,
-			progress: [
-				{ label: "Finished", count: completed },
-				{ label: "Reading", count: progress("in_progress") },
-				{ label: "Did not finish", count: progress("dnf") },
-				{ label: "Not started", count: progress("not_started") },
-			],
+			summary,
+			comparison: before
+				? {
+						label:
+							ctx.period.type === "year"
+								? `${ctx.period.year - 1}`
+								: "the period before",
+						sittings: changeBetween(summary.total, before.total),
+						participations: changeBetween(
+							summary.participations,
+							before.participations,
+						),
+						participants: changeBetween(
+							summary.participants,
+							before.participants,
+						),
+						completionRatePoints:
+							summary.completionRate != null && before.completionRate != null
+								? summary.completionRate - before.completionRate
+								: null,
+					}
+				: null,
+			monthly: ctx.hasTimeAxis
+				? sittingsByMonth(
+						current.sittings,
+						current.parts,
+						activityBounds(
+							[
+								...current.sittings.map((row) => row.createdAt),
+								...current.parts.map((row) => row.joinedAt),
+							],
+							ctx.bounds,
+							ctx.range.createdAt != null,
+						),
+						"en-US",
+					)
+				: [],
+			progress: shareBreakdown([
+				{ label: "Finished", count: summary.completed },
+				{ label: "Reading", count: summary.inProgress },
+				{ label: "Did not finish", count: summary.didNotFinish },
+				{ label: "Not started", count: summary.notStarted },
+			]),
+			sizes: participantsPerSitting(current.parts),
+			joinTypes: shareBreakdown(
+				countBy(current.sittings, (row) => JOIN_TYPE_LABELS[row.joinType]),
+			),
+			joinSources: shareBreakdown(
+				countBy(current.parts, (row) =>
+					row.joinSource === "invite_link"
+						? "Invitation link"
+						: row.joinSource === "self"
+							? "Joined by themselves"
+							: row.joinSource === "invitation"
+								? "Invited"
+								: "Added by an organiser",
+				),
+			),
+			pages: histogramFromValues(
+				current.sittings.flatMap((row) =>
+					row.bookPages != null ? [pagesBucketLabel(row.bookPages)] : [],
+				),
+				USER_STATS_PAGE_BUCKETS,
+			),
+			// Only public sittings are named.
+			recent: current.sittings
+				.filter((row) => row.joinType === "public")
+				.slice(0, 6)
+				.map((row) => {
+					const outcome = outcomes.get(row.id);
+					return {
+						slug: row.slug,
+						status: row.status,
+						bookTitle: row.bookTitle,
+						bookSlug: row.bookSlug,
+						coverId: row.bookCoverId,
+						participants: outcome?.participants ?? 0,
+						completed: outcome?.completed ?? 0,
+						rate: outcome?.rate ?? null,
+					};
+				}),
+			topFinishers: [...top.entries()]
+				.sort((a, b) => b[1] - a[1])
+				.slice(0, 5)
+				.map(([id, count], index) => {
+					const person = byId.get(id);
+					const open = person?.profileVisibility === "public";
+					return {
+						rank: index + 1,
+						count,
+						name: open ? (person?.name ?? null) : null,
+						username: open ? (person?.username ?? null) : null,
+						image: open ? (person?.image ?? null) : null,
+					};
+				}),
 		},
 		goals: {
 			year,

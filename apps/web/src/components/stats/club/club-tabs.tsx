@@ -18,21 +18,32 @@ import Link from "next/link";
 import { CountryLabel } from "@/components/blocks/country-dropdown";
 import { SegmentedControl } from "@/components/blocks/segmented-control";
 import {
+	authorViews,
 	paceMetrics,
 	publicationModes,
+	subjectViews,
+	useAuthorView,
 	useCumulativeMetrics,
 	usePaceMetric,
 	usePublicationMode,
+	useSubjectView,
 } from "@/lib/stats/stats-params";
 import { CoverLink } from "../cover-link";
 import { CumulativeArea } from "../cumulative-area";
 import {
 	CumulativeChart,
+	GroupedBarsChart,
 	HistogramChart,
 	METRIC_LABELS,
 	PaceChart,
 } from "../stats-charts";
-import { RankedBars, StatRow, StatsEmpty, StatsSection } from "../stats-kit";
+import {
+	ChangeChip,
+	RankedBars,
+	StatRow,
+	StatsEmpty,
+	StatsSection,
+} from "../stats-kit";
 import { StatsWorldMap } from "../stats-world-map";
 
 const n = (value: number) => value.toLocaleString("en-US");
@@ -269,15 +280,48 @@ function SegmentedMulti({
 /* ------------------------------------------------------------------ taste */
 
 export function ClubTasteTab({ data }: { data: ClubStatsTaste }) {
+	const [subjectView, setSubjectView] = useSubjectView();
+	const [authorView, setAuthorView] = useAuthorView();
+	const subjectsRated = subjectView === "rated";
+	const authorsRated = authorView === "rated";
+	const authorRows = authorsRated ? data.authorsRated : data.authors;
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="grid gap-4 lg:grid-cols-2">
 				<StatsSection
 					id="subjects"
 					title="Subjects"
-					description="What the club reads about, by how many reads carry each subject."
+					description={
+						subjectsRated
+							? "The subjects whose books the club rated highest (at least two rated books)."
+							: "What the club reads about, by how many reads carry each subject."
+					}
+					actions={
+						<SegmentedControl
+							label="Subjects"
+							value={subjectView}
+							options={subjectViews.map((id) => ({
+								id,
+								label: id === "read" ? "Most read" : "Highest rated",
+							}))}
+							onChange={(next) => void setSubjectView(next)}
+						/>
+					}
 				>
-					{data.subjects.length === 0 ? (
+					{subjectsRated ? (
+						data.subjectsRated.length === 0 ? (
+							<StatsEmpty>Not enough rated books yet.</StatsEmpty>
+						) : (
+							<RankedBars
+								format={(value) => `${value.toFixed(1)}★`}
+								rows={data.subjectsRated.map((row) => ({
+									label: row.subject,
+									value: row.average,
+									hint: books(row.count),
+								}))}
+							/>
+						)
+					) : data.subjects.length === 0 ? (
 						<StatsEmpty>No subjects for these books.</StatsEmpty>
 					) : (
 						<RankedBars
@@ -292,13 +336,32 @@ export function ClubTasteTab({ data }: { data: ClubStatsTaste }) {
 				<StatsSection
 					id="authors"
 					title="Authors"
-					description="The authors the club reads the most."
+					description={
+						authorsRated
+							? "The authors whose books the club rated highest (at least two rated books)."
+							: "The authors the club reads the most."
+					}
+					actions={
+						<SegmentedControl
+							label="Authors"
+							value={authorView}
+							options={authorViews.map((id) => ({
+								id,
+								label: id === "read" ? "Most read" : "Highest rated",
+							}))}
+							onChange={(next) => void setAuthorView(next)}
+						/>
+					}
 				>
-					{data.authors.length === 0 ? (
-						<StatsEmpty>No authors to show yet.</StatsEmpty>
+					{authorRows.length === 0 ? (
+						<StatsEmpty>
+							{authorsRated
+								? "Not enough rated books yet."
+								: "No authors to show yet."}
+						</StatsEmpty>
 					) : (
 						<ul className="flex flex-col gap-2">
-							{data.authors.map((row) => (
+							{authorRows.map((row) => (
 								<li
 									key={row.key}
 									className="flex items-center gap-3 border border-border bg-background p-2.5"
@@ -322,7 +385,9 @@ export function ClubTasteTab({ data }: { data: ClubStatsTaste }) {
 										</span>
 									)}
 									<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-										{n(row.count)} reads
+										{authorsRated && row.average != null
+											? `${row.average.toFixed(1)}★ · ${books(row.count)}`
+											: `${n(row.count)} reads`}
 									</span>
 								</li>
 							))}
@@ -590,36 +655,284 @@ export function ClubCommunityTab({ data }: { data: ClubStatsCommunity }) {
 
 /* -------------------------------------------------------------- club life */
 
+const pct = (value: number | null) => (value == null ? "—" : `${value}%`);
+
+/** Shares as bars with a percentage, for how sittings ended and how people joined. */
+function ShareBars({
+	rows,
+}: {
+	rows: readonly { label: string; count: number; percent: number }[];
+}) {
+	if (rows.every((row) => row.count === 0)) {
+		return <StatsEmpty>Nothing to show for this period.</StatsEmpty>;
+	}
+	return (
+		<RankedBars
+			rows={rows.map((row) => ({
+				label: row.label,
+				value: row.count,
+				hint: `${row.percent}% of ${n(rows.reduce((sum, r) => sum + r.count, 0))}`,
+			}))}
+		/>
+	);
+}
+
+const STATUS_LABELS = {
+	voting: "Voting",
+	reading: "Reading",
+	finished: "Finished",
+} as const;
+
 export function ClubLifeStatsTab({ data }: { data: ClubStatsClubLife }) {
 	const { sittings, goals, achievements, standing } = data;
+	const { summary, comparison } = sittings;
+	const before = comparison ? `vs ${comparison.label}` : null;
+	const points = comparison?.completionRatePoints ?? null;
 	return (
 		<div className="flex flex-col gap-4">
 			<StatsSection
 				id="sittings"
 				title="Sittings"
-				description="Reading rounds run by the club."
+				description={
+					comparison
+						? `Reading rounds run by the club, compared with ${comparison.label}.`
+						: "Reading rounds run by the club."
+				}
+				actions={
+					comparison ? (
+						<div className="flex flex-wrap items-center gap-3 text-muted-foreground text-xs">
+							<span className="inline-flex items-center gap-1">
+								Sittings <ChangeChip change={comparison.sittings} />
+							</span>
+							<span className="inline-flex items-center gap-1">
+								Participations <ChangeChip change={comparison.participations} />
+							</span>
+							<span className="inline-flex items-center gap-1">
+								People <ChangeChip change={comparison.participants} />
+							</span>
+						</div>
+					) : null
+				}
 			>
 				<StatRow
 					items={[
-						{ label: "Sittings", value: n(sittings.total) },
-						{ label: "Finished", value: n(sittings.finished) },
-						{ label: "Participations", value: n(sittings.participations) },
+						{ label: "Sittings", value: n(summary.total), hint: before },
+						{
+							label: "Finished",
+							value: n(summary.finished),
+							hint: `${n(summary.reading)} reading · ${n(summary.voting)} voting`,
+						},
+						{
+							label: "Participations",
+							value: n(summary.participations),
+							hint: `${n(summary.participants)} different members`,
+						},
+						{
+							label: "Per sitting",
+							value: summary.averageParticipants.toFixed(1),
+							hint: "average participants",
+						},
 						{
 							label: "Completion rate",
-							value:
-								sittings.completionRate != null
-									? `${sittings.completionRate}%`
-									: "—",
-							hint: "of those that ended",
+							value: pct(summary.completionRate),
+							hint:
+								points != null && points !== 0
+									? `${points > 0 ? "+" : "−"}${Math.abs(points)} pts ${before}`
+									: "of those that ended",
 						},
-						{ label: "Votes cast", value: n(sittings.votes) },
+						{
+							label: "Did not finish",
+							value: pct(summary.dnfRate),
+							hint: `${n(summary.didNotFinish)} participations`,
+						},
+						{
+							label: "Completed",
+							value: n(summary.completed),
+							hint: "participations",
+						},
+						{
+							label: "Still reading",
+							value: n(summary.inProgress + summary.notStarted),
+							hint: `${n(summary.notStarted)} not started`,
+						},
+						{
+							label: "Votes cast",
+							value: n(summary.votes),
+							hint: `${n(summary.voters)} voters`,
+						},
+						{
+							label: "Voting turnout",
+							value: pct(summary.turnout),
+							hint: "of those who joined",
+						},
+						{
+							label: "Votes per sitting",
+							value: summary.averageVotesPerSitting.toFixed(1),
+							hint: "average",
+						},
+						{
+							label: "Average book",
+							value:
+								summary.averageBookPages != null
+									? `${n(summary.averageBookPages)} pages`
+									: "—",
+							hint: summary.longestBook
+								? `longest ${n(summary.longestBook.pages)}`
+								: null,
+						},
 					]}
 				/>
+			</StatsSection>
+
+			<StatsSection
+				id="sittings-over-time"
+				title="Sittings over time"
+				description="Sittings started each month, and how many people joined them."
+			>
+				<GroupedBarsChart
+					points={sittings.monthly.map((month) => ({
+						label: month.label,
+						first: month.sittings,
+						second: month.joined,
+					}))}
+					first="Sittings"
+					second="People joined"
+				/>
+			</StatsSection>
+
+			<div className="grid gap-4 lg:grid-cols-2">
+				<StatsSection
+					id="sitting-outcomes"
+					title="How people finished"
+					description="Every participation, by where it ended up."
+				>
+					<ShareBars rows={sittings.progress} />
+				</StatsSection>
+				<StatsSection
+					id="sitting-sizes"
+					title="Sitting sizes"
+					description="How many sittings had this many people."
+				>
+					<HistogramChart
+						points={sittings.sizes}
+						label="Sittings"
+						className="h-44"
+					/>
+				</StatsSection>
+			</div>
+
+			<div className="grid gap-4 lg:grid-cols-2">
+				<StatsSection
+					id="sitting-joins"
+					title="Who can join"
+					description="Sittings by join type."
+				>
+					<ShareBars rows={sittings.joinTypes} />
+				</StatsSection>
+				<StatsSection
+					id="sitting-sources"
+					title="How people joined"
+					description="Participations by the way the member came in."
+				>
+					<ShareBars rows={sittings.joinSources} />
+				</StatsSection>
+			</div>
+
+			<StatsSection
+				id="sitting-books"
+				title="Books chosen"
+				description={
+					summary.shortestBook && summary.longestBook
+						? `Shortest: ${summary.shortestBook.title} (${n(summary.shortestBook.pages)} pages). Longest: ${summary.longestBook.title} (${n(summary.longestBook.pages)} pages).`
+						: "How long the books the club chose are."
+				}
+			>
 				<HistogramChart
-					points={sittings.progress}
-					label="Participations"
+					points={sittings.pages}
+					label="Sittings"
 					className="h-44"
 				/>
+			</StatsSection>
+
+			<StatsSection
+				id="recent-sittings"
+				title="Public sittings"
+				description="The latest public sittings in this period. Private and unlisted ones are never named."
+			>
+				{sittings.recent.length === 0 ? (
+					<StatsEmpty>No public sittings in this period.</StatsEmpty>
+				) : (
+					<ul className="grid gap-3 md:grid-cols-2">
+						{sittings.recent.map((row) => (
+							<li key={row.slug}>
+								<Link
+									href={`/sittings/${row.slug}` as Route}
+									className="flex items-center gap-3 border border-border bg-background p-3 transition-colors hover:bg-muted/40"
+								>
+									<div className="min-w-0 flex-1">
+										<p className="truncate font-medium text-sm">
+											{row.bookTitle ?? "Book not chosen yet"}
+										</p>
+										<p className="text-muted-foreground text-xs">
+											{STATUS_LABELS[row.status]} · {n(row.participants)}{" "}
+											{row.participants === 1 ? "member" : "members"}
+										</p>
+									</div>
+									<div className="shrink-0 text-end">
+										<p className="font-semibold text-sm tabular-nums">
+											{pct(row.rate)}
+										</p>
+										<p className="text-2xs text-muted-foreground">
+											{n(row.completed)} finished
+										</p>
+									</div>
+								</Link>
+							</li>
+						))}
+					</ul>
+				)}
+			</StatsSection>
+
+			<StatsSection
+				id="top-finishers"
+				title="Most sittings finished"
+				description="Members who finished the most sittings. Private profiles are shown without a name."
+			>
+				{sittings.topFinishers.length === 0 ? (
+					<StatsEmpty>Nobody has finished a sitting in this period.</StatsEmpty>
+				) : (
+					<ol className="grid gap-2 md:grid-cols-2">
+						{sittings.topFinishers.map((row) => (
+							<li
+								key={row.rank}
+								className="flex items-center gap-3 border border-border bg-background p-2.5"
+							>
+								<span className="w-6 shrink-0 text-center font-semibold text-muted-foreground text-xs tabular-nums">
+									{row.rank}
+								</span>
+								<Avatar className="size-8 shrink-0">
+									{row.image ? <AvatarImage src={row.image} alt="" /> : null}
+									<AvatarFallback>{row.name?.charAt(0) ?? "?"}</AvatarFallback>
+								</Avatar>
+								{row.username ? (
+									<Link
+										href={`/users/${row.username}` as Route}
+										className="min-w-0 flex-1 truncate font-medium text-sm underline-offset-4 hover:underline"
+									>
+										{row.name ?? row.username}
+									</Link>
+								) : (
+									<span className="min-w-0 flex-1 truncate text-muted-foreground text-sm">
+										A member
+									</span>
+								)}
+								<span className="shrink-0 text-xs tabular-nums">
+									{n(row.count)} finished
+								</span>
+							</li>
+						))}
+					</ol>
+				)}
 			</StatsSection>
 
 			<StatsSection

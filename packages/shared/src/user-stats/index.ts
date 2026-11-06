@@ -1,4 +1,5 @@
 export * from "./activity";
+export * from "./club-sittings";
 export * from "./compute";
 export * from "./pace";
 export * from "./period";
