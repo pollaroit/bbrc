@@ -9,6 +9,7 @@ import {
 	type Viewer,
 } from "@bbrc/shared";
 import { countFriends } from "../friend/friend.service";
+import { loadCoverPreviewMap } from "../shelf/shelf.service";
 import { shelfVisibleWhere } from "../shelf/shelf-visibility";
 import {
 	postFeedWhere,
@@ -108,11 +109,22 @@ export async function getMemberStatsCommunity(
 				...range,
 			},
 			select: {
+				id: true,
 				slug: true,
 				title: true,
+				description: true,
+				coverImageUrl: true,
+				type: true,
+				visibility: true,
 				viewCount: true,
-				user: { select: { username: true } },
-				_count: { select: { books: true } },
+				user: { select: { username: true, name: true, image: true } },
+				collaborators: {
+					take: 3,
+					select: {
+						user: { select: { username: true, name: true, image: true } },
+					},
+				},
+				_count: { select: { books: true, collaborators: true } },
 			},
 		}),
 		db.shelf.groupBy({
@@ -200,19 +212,41 @@ export async function getMemberStatsCommunity(
 		rank: withPercent(rankOf(postRows.length, countsOf(postCounts))),
 	};
 
+	const topShelves = [...shelfRows]
+		.sort(
+			(a, b) => b._count.books - a._count.books || b.viewCount - a.viewCount,
+		)
+		.slice(0, 6);
+	const covers = await loadCoverPreviewMap(
+		topShelves.map((row) => row.id),
+		db,
+	);
+
 	const shelves = {
 		count: shelfRows.length,
 		books: sum(shelfRows.map((row) => row._count.books)),
-		top: [...shelfRows]
-			.map((row) => ({
-				slug: row.slug,
-				title: row.title,
+		top: topShelves.map((row) => ({
+			slug: row.slug,
+			title: row.title,
+			description: row.description,
+			coverImageUrl: row.coverImageUrl,
+			coverPreviewCoverIds: covers.get(row.id) ?? [],
+			type: row.type,
+			visibility: row.visibility,
+			bookCount: row._count.books,
+			views: row.viewCount,
+			owner: {
 				username: row.user.username,
-				books: row._count.books,
-				views: row.viewCount,
-			}))
-			.sort((a, b) => b.books - a.books || b.views - a.views)
-			.slice(0, 5),
+				name: row.user.name,
+				image: row.user.image ?? null,
+			},
+			collaborators: row.collaborators.map((item) => ({
+				username: item.user.username,
+				name: item.user.name,
+				image: item.user.image ?? null,
+			})),
+			collaboratorCount: row._count.collaborators,
+		})),
 		rank: withPercent(rankOf(shelfRows.length, countsOf(shelfCounts))),
 	};
 

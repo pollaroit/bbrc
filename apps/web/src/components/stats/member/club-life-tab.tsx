@@ -34,7 +34,9 @@ export function ClubLifeTab({ data }: { data: MemberStatsClubLifeOutput }) {
 					items={[
 						{ label: "Joined", value: n(sittings.joined) },
 						{ label: "Finished", value: n(sittings.completed) },
+						{ label: "In progress", value: n(sittings.inProgress) },
 						{ label: "Did not finish", value: n(sittings.didNotFinish) },
+						{ label: "Not started", value: n(sittings.notStarted) },
 						{
 							label: "Completion rate",
 							value:
@@ -43,8 +45,21 @@ export function ClubLifeTab({ data }: { data: MemberStatsClubLifeOutput }) {
 									: "—",
 							hint: "of those that ended",
 						},
+						{
+							label: "Organised",
+							value: n(sittings.organised),
+							hint: "sittings started",
+						},
 						{ label: "Votes cast", value: n(sittings.votesCast) },
 						{ label: "Votes that won", value: n(sittings.votesThatWon) },
+						{
+							label: "Vote win rate",
+							value:
+								sittings.votesCast > 0
+									? `${Math.round((sittings.votesThatWon / sittings.votesCast) * 100)}%`
+									: "—",
+							hint: "of votes cast",
+						},
 						{ label: "Books added", value: n(sittings.booksAdded) },
 						{ label: "Books requested", value: n(sittings.booksRequested) },
 					]}

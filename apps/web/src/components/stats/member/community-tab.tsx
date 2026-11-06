@@ -10,6 +10,10 @@ import {
 import type { Route } from "next";
 import Link from "next/link";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import {
+	ShelfCatalogCard,
+	shelvesGridClassName,
+} from "@/components/blocks/shelf-catalog-card";
 import { CoverLink } from "../cover-link";
 import { CumulativeArea } from "../cumulative-area";
 import { HistogramChart } from "../stats-charts";
@@ -71,8 +75,9 @@ export function CommunityTab({ data }: { data: MemberStatsCommunityOutput }) {
 									<li key={row.slug}>
 										<CoverLink
 											book={row.book}
+											href={`/books/${row.book.slug}/feedbacks/${row.slug}`}
 											caption={`${row.likes} likes · ${row.comments} comments`}
-											detail={`${row.rating}★`}
+											detail={`${row.rating}★ · open the review`}
 										/>
 									</li>
 								))}
@@ -148,22 +153,10 @@ export function CommunityTab({ data }: { data: MemberStatsCommunityOutput }) {
 				{shelves.top.length === 0 ? (
 					<StatsEmpty>No public shelves in this period.</StatsEmpty>
 				) : (
-					<ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+					<ul className={shelvesGridClassName}>
 						{shelves.top.map((shelf) => (
-							<li key={shelf.slug}>
-								<Link
-									href={
-										`/users/${shelf.username}/shelves/${shelf.slug}` as Route
-									}
-									className="flex items-center justify-between gap-3 border border-border bg-background px-3 py-2.5 text-sm transition-colors hover:bg-muted/40"
-								>
-									<span className="min-w-0 truncate font-medium">
-										{shelf.title}
-									</span>
-									<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-										{shelf.books} books · {shelf.views} views
-									</span>
-								</Link>
+							<li key={`${shelf.owner.username}/${shelf.slug}`}>
+								<ShelfCatalogCard shelf={shelf} impressionSource="profile" />
 							</li>
 						))}
 					</ul>

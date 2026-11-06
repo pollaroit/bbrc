@@ -71,8 +71,17 @@ export type StatRowItem = {
 
 /** A handful of numbers on one line: big value, small label, optional hint. */
 export function StatRow({ items }: { items: StatRowItem[] }) {
+	// Twelve fit evenly at every width: 2 columns by 6 rows on a phone, 3 by 4, 4 by 3, then 6 by 2.
+	const twelve = items.length === 12;
 	return (
-		<dl className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border sm:grid-cols-3 lg:grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))]">
+		<dl
+			className={cn(
+				"grid grid-cols-2 gap-px overflow-hidden border border-border bg-border",
+				twelve
+					? "md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+					: "sm:grid-cols-3 lg:grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))]",
+			)}
+		>
 			{items.map((item) => (
 				<div
 					key={item.label}

@@ -170,8 +170,13 @@ export const MemberStatsReadingOutputSchema = zod.object({
 				activeDays: Count,
 				pagesGained: Count.nullable(),
 				usualSpeed: zod.number().nullable(),
+				fastestSpeed: zod.number().nullable(),
 				currentStreak: Count,
 				longestStreak: Count,
+				/** Days in the period (up to today), to say what share of them had a session. */
+				rangeDays: Count,
+				bestDaySeconds: Count.nullable(),
+				mostSessionsInDay: Count.nullable(),
 			}),
 		])
 		.nullable(),
@@ -335,13 +340,31 @@ export const MemberStatsCommunityOutputSchema = zod.object({
 	shelves: zod.object({
 		count: Count,
 		books: Count,
+		/** Shaped like the shelves list's cards, so the same card draws them. */
 		top: zod.array(
 			zod.object({
 				slug: zod.string(),
 				title: zod.string(),
-				username: zod.string(),
-				books: Count,
+				description: zod.string().nullable(),
+				coverImageUrl: zod.string().nullable(),
+				coverPreviewCoverIds: zod.array(zod.number().int().nullable()),
+				type: zod.enum(["ordered", "unordered"]),
+				visibility: zod.enum(["public", "friends", "private"]),
+				bookCount: Count,
 				views: Count,
+				owner: zod.object({
+					username: zod.string(),
+					name: zod.string(),
+					image: zod.string().nullable(),
+				}),
+				collaborators: zod.array(
+					zod.object({
+						username: zod.string(),
+						name: zod.string(),
+						image: zod.string().nullable(),
+					}),
+				),
+				collaboratorCount: Count,
 			}),
 		),
 		rank: StatsRankSchema,
@@ -362,6 +385,9 @@ export const MemberStatsClubLifeOutputSchema = zod.object({
 		completed: Count,
 		didNotFinish: Count,
 		inProgress: Count,
+		notStarted: Count,
+		/** Sittings they started (created). */
+		organised: Count,
 		/** Of the sittings that are over: how many they finished. Null before any is over. */
 		completionRate: zod.number().nullable(),
 		votesCast: Count,

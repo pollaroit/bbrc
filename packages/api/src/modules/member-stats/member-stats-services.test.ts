@@ -110,6 +110,12 @@ const activityStub = (seconds = 7200): OverviewDeps => ({
 			},
 			streak: { longest: 9, current: 3 },
 			usualSpeed: 42,
+			rangeDays: 30,
+			bests: {
+				fastestSpeed: { speed: 88, bookTitle: "B", day: "2026-01-05" },
+				bestDay: { day: "2026-01-05", seconds: 5400 },
+				mostSessionsDay: { day: "2026-01-06", sessions: 3 },
+			},
 		}) as never,
 });
 

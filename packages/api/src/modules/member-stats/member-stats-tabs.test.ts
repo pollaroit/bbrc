@@ -104,6 +104,7 @@ function fakeDb(
 		},
 		pollVote: { findMany: spy("pollVote.findMany", []) },
 		book: { count: spy("book.count", 0) },
+		sitting: { count: spy("sitting.count", 2) },
 		userAchievement: { findMany: spy("userAchievement.findMany", []) },
 		goal: { findMany: spy("goal.findMany", []) },
 		...overrides,
@@ -228,6 +229,53 @@ describe("community tab", () => {
 		]);
 	});
 
+	it("gives shelves in the shape of the shelf cards, biggest first", async () => {
+		const row = (
+			id: string,
+			books: number,
+			over: Record<string, unknown> = {},
+		) => ({
+			id,
+			slug: id,
+			title: `Shelf ${id}`,
+			description: null,
+			coverImageUrl: null,
+			type: "ordered",
+			visibility: "public",
+			viewCount: 3,
+			user: { username: "reader", name: "Reader", image: null },
+			collaborators: [{ user: { username: "pal", name: "Pal", image: null } }],
+			_count: { books, collaborators: 1 },
+			...over,
+		});
+		const { db } = fakeDb({
+			shelf: {
+				findMany: async () => [row("small", 1), row("big", 9)],
+				groupBy: async () => [{ userId: "owner", _count: { _all: 2 } }],
+			},
+			shelfBook: {
+				findMany: async () => [
+					{ shelfId: "big", book: { coverId: 11 } },
+					{ shelfId: "big", book: { coverId: 12 } },
+				],
+			},
+		});
+		const out = await getMemberStatsCommunity(db, viewer, {
+			username: "reader",
+		});
+		expect(out.shelves.top.map((shelf) => shelf.slug)).toEqual([
+			"big",
+			"small",
+		]);
+		expect(out.shelves.top[0]).toMatchObject({
+			bookCount: 9,
+			coverPreviewCoverIds: [11, 12],
+			collaboratorCount: 1,
+			owner: { username: "reader" },
+		});
+		expect(out.shelves.top[0]?.collaborators[0]?.username).toBe("pal");
+	});
+
 	it("rates only the reviews the viewer may see", async () => {
 		const { db } = fakeDb({
 			feedback: {
@@ -321,6 +369,8 @@ describe("club life tab", () => {
 			completed: 2,
 			didNotFinish: 1,
 			inProgress: 1,
+			notStarted: 0,
+			organised: 2,
 			completionRate: 67,
 			votesCast: 3,
 			votesThatWon: 1,

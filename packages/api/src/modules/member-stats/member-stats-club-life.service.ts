@@ -41,6 +41,7 @@ export async function getMemberStatsClubLife(
 		votes,
 		booksAdded,
 		booksRequested,
+		organised,
 		goals,
 		awards,
 		allAwards,
@@ -73,6 +74,7 @@ export async function getMemberStatsClubLife(
 		}),
 		db.book.count({ where: { approvedById: userId, ...range } }),
 		db.book.count({ where: { requestedById: userId, ...range } }),
+		db.sitting.count({ where: { createdById: userId, ...range } }),
 		access.goals
 			? listGoalsByUsername(ctx.member.username, viewer, db)
 			: Promise.resolve(null),
@@ -141,6 +143,8 @@ export async function getMemberStatsClubLife(
 			completed,
 			didNotFinish,
 			inProgress: count("in_progress"),
+			notStarted: count("not_started"),
+			organised,
 			completionRate:
 				finished > 0 ? Math.round((completed / finished) * 100) : null,
 			votesCast: votes.length,

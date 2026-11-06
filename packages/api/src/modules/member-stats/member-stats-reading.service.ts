@@ -86,8 +86,12 @@ export async function getMemberStatsReading(
 				activeDays: activity.summary.activeDays,
 				pagesGained: activity.summary.pagesGained,
 				usualSpeed: activity.usualSpeed,
+				fastestSpeed: activity.bests.fastestSpeed?.speed ?? null,
 				currentStreak: activity.streak.current,
 				longestStreak: activity.streak.longest,
+				rangeDays: activity.rangeDays,
+				bestDaySeconds: activity.bests.bestDay?.seconds ?? null,
+				mostSessionsInDay: activity.bests.mostSessionsDay?.sessions ?? null,
 			};
 		}
 	}

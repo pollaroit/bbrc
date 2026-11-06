@@ -26,8 +26,11 @@ export function CoverLink({
 	book,
 	detail,
 	caption,
+	href,
 }: {
 	book: CoverBook;
+	/** Where the cover goes; the book's page unless it is something about the book (a review). */
+	href?: string;
 	detail?: ReactNode;
 	/** A line under the cover, for grids that show a number per book. */
 	caption?: ReactNode;
@@ -39,7 +42,7 @@ export function CoverLink({
 				<TooltipTrigger
 					render={
 						<Link
-							href={`/books/${book.slug}` as Route}
+							href={(href ?? `/books/${book.slug}`) as Route}
 							className="relative block aspect-2/3 overflow-hidden border border-border bg-muted outline-offset-2 transition-transform hover:z-10 hover:scale-[1.04] focus-visible:outline-2 focus-visible:outline-ring"
 						/>
 					}

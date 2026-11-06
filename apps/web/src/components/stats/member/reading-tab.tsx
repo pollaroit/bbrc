@@ -75,6 +75,11 @@ function formatDuration(seconds: number): string {
 	return `${(seconds / 3600).toFixed(seconds >= 360_000 ? 0 : 1)} h`;
 }
 
+/**
+ * The time cards: twelve for the full view, so the grid is never left with gaps. A card
+ * the viewer cannot have (pages and speed when progress is private) gives way to the next
+ * one in line.
+ */
 function timeItems(
 	time: NonNullable<MemberStatsReadingOutput["time"]>,
 ): StatRowItem[] {
@@ -83,34 +88,76 @@ function timeItems(
 		{ label: "Sessions", value: String(time.sessions) },
 		{ label: "Books", value: String(time.books) },
 		{ label: "Average session", value: formatDuration(time.averageSeconds) },
-		{
-			label: "Reading streak",
-			value: `${time.currentStreak} ${time.currentStreak === 1 ? "day" : "days"}`,
-			hint: time.kind === "full" ? `best ${time.longestStreak}` : null,
-		},
 	];
-	if (time.kind === "numbers") return base;
-	return [
+	if (time.kind === "numbers") {
+		return [
+			...base,
+			{
+				label: "Reading streak",
+				value: `${time.currentStreak} ${time.currentStreak === 1 ? "day" : "days"}`,
+			},
+		];
+	}
+
+	const share =
+		time.rangeDays > 0
+			? Math.min(100, Math.round((time.activeDays / time.rangeDays) * 100))
+			: null;
+	const days = (count: number) => `${count} ${count === 1 ? "day" : "days"}`;
+
+	const candidates: (StatRowItem | null)[] = [
 		...base,
 		{ label: "Longest session", value: formatDuration(time.longestSeconds) },
+		time.bestDaySeconds != null
+			? { label: "Best day", value: formatDuration(time.bestDaySeconds) }
+			: null,
 		{ label: "Days read", value: String(time.activeDays) },
-		...(time.pagesGained != null
-			? [
-					{
-						label: "Pages in sessions",
-						value: time.pagesGained.toLocaleString("en-US"),
-					},
-				]
-			: []),
-		...(time.usualSpeed != null
-			? [
-					{
-						label: "Usual speed",
-						value: `${Math.round(time.usualSpeed)} pages/h`,
-					},
-				]
-			: []),
+		share != null
+			? {
+					label: "Share of days",
+					value: `${share}%`,
+					hint: `of ${time.rangeDays} days`,
+				}
+			: null,
+		time.activeDays > 0
+			? {
+					label: "Sessions per day",
+					value: (time.sessions / time.activeDays).toFixed(1),
+					hint: "on days read",
+				}
+			: null,
+		{
+			label: "Reading streak",
+			value: days(time.currentStreak),
+			hint: `best ${time.longestStreak}`,
+		},
+		time.pagesGained != null
+			? {
+					label: "Pages in sessions",
+					value: time.pagesGained.toLocaleString("en-US"),
+				}
+			: null,
+		time.usualSpeed != null
+			? {
+					label: "Usual speed",
+					value: `${Math.round(time.usualSpeed)} pages/h`,
+					hint:
+						time.fastestSpeed != null
+							? `fastest ${Math.round(time.fastestSpeed)}`
+							: null,
+				}
+			: null,
+		{ label: "Longest streak", value: days(time.longestStreak) },
+		time.mostSessionsInDay != null
+			? {
+					label: "Most sessions in a day",
+					value: String(time.mostSessionsInDay),
+				}
+			: null,
 	];
+	return candidates
+		.filter((item): item is StatRowItem => item != null)
+		.slice(0, 12);
 }
 
 export function ReadingTab({
