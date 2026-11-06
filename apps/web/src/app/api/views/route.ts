@@ -7,6 +7,7 @@ import {
 import { loadViewer } from "@bbrc/api/modules/visibility/viewer";
 import { isBotUserAgent } from "@bbrc/shared";
 import { NextResponse } from "next/server";
+import { clientIp } from "@/lib/rate-limit";
 import { isSameOriginRequest } from "@/lib/same-origin";
 import { auth, db } from "@/services";
 
@@ -14,14 +15,6 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 15;
 
 const MAX_BODY_BYTES = 8 * 1024;
-
-function clientIp(request: Request): string | null {
-	const forwarded = request.headers
-		.get("x-forwarded-for")
-		?.split(",")[0]
-		?.trim();
-	return forwarded || request.headers.get("x-real-ip") || null;
-}
 
 /** Tracking must never break a page, so every outcome is a quiet success. */
 const quiet = () => new NextResponse(null, { status: 204 });

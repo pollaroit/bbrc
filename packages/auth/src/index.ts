@@ -99,7 +99,12 @@ export function createAuth(
 			enabled: true,
 			storage: options.secondaryStorage ? "secondary-storage" : "memory",
 			window: 60,
-			max: 30,
+			// A generous default: the browser talks to these endpoints on its own (session
+			// checks on focus, profile saves), so a low ceiling answers ordinary use with
+			// "Too many requests". Anything that can be abused for guessing has its own,
+			// strict rule below (and the library's built-in ones for sign-in, sign-up,
+			// password and email changes).
+			max: 300,
 			customRules: {
 				// Reading who is signed in is cheap (cookie cached) and every tab, focus and page
 				// asks for it; limiting it made ordinary use answer "Too many requests".
@@ -202,6 +207,15 @@ export function createAuth(
 				: undefined,
 		},
 		advanced: {
+			// One bucket per person, not per site: without a resolvable address the limiter
+			// puts every visitor in one shared bucket. Vercel's header is set by the platform.
+			ipAddress: {
+				ipAddressHeaders: [
+					"x-vercel-forwarded-for",
+					"x-real-ip",
+					"x-forwarded-for",
+				],
+			},
 			useSecureCookies: production,
 			defaultCookieAttributes: {
 				httpOnly: true,

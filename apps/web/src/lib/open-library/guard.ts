@@ -8,7 +8,7 @@ export async function withOpenLibraryGuard(
 	cacheKey: string | null,
 	run: () => Promise<Response>,
 ): Promise<Response> {
-	const limited = await assertRateLimit(request, "open-library", 40, "1 m");
+	const limited = await assertRateLimit(request, "open-library", 120, "1 m");
 	if (limited) return limited;
 
 	if (cacheKey) {
