@@ -1,3 +1,7 @@
 export * from "./compute";
+export * from "./pace";
 export * from "./period";
+export * from "./ranking";
+export * from "./rating-compare";
+export * from "./sections";
 export * from "./subjects";
