@@ -202,6 +202,11 @@ export const AUDIT_ACTIONS = {
 		"Work unblocked",
 		"Allowed a blocked Open Library work again.",
 	),
+	"book.edition_primary_set": defineAudit(
+		"book",
+		"Primary edition changed",
+		"Made an edition the one a book takes its pages and cover from.",
+	),
 	"book.edition_verified": defineAudit(
 		"book",
 		"Edition verified",

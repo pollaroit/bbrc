@@ -1,4 +1,4 @@
-import { superAdminProcedure } from "../../procedures";
+import { minRoleProcedure, superAdminProcedure } from "../../procedures";
 import { audited } from "../audit/audit-middleware";
 import { excerpt, memberByUsername } from "../audit/audit-targets";
 import {
@@ -171,17 +171,17 @@ import {
 } from "./admin-user.service";
 
 export const adminRouter = {
-	getBookOverview: superAdminProcedure
+	getBookOverview: minRoleProcedure("admin")
 		.input(GetAdminBookOverviewInputSchema)
 		.output(AdminBookOverviewOutputSchema)
 		.handler(async ({ input, context }) =>
 			getAdminBookOverview(input, context.db),
 		),
-	listBooks: superAdminProcedure
+	listBooks: minRoleProcedure("admin")
 		.input(ListAdminBooksInputSchema)
 		.output(ListAdminBooksOutputSchema)
 		.handler(async ({ input, context }) => listAdminBooks(input, context.db)),
-	getBookStats: superAdminProcedure
+	getBookStats: minRoleProcedure("admin")
 		.input(GetAdminBookStatsInputSchema)
 		.output(GetAdminBookStatsOutputSchema)
 		.handler(async ({ input, context }) =>

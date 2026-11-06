@@ -1,6 +1,6 @@
 "use client";
 
-import { isSuperAdmin } from "@bbrc/shared";
+import { canManageBooks, isSuperAdmin } from "@bbrc/shared";
 import { DropdownMenuItem } from "@bbrc/ui/components/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -87,6 +87,8 @@ export function CreateMenuItems({
 	}
 
 	const superAdmin = isSuperAdmin(session.user);
+	// Admins run the catalogue of books; authors, series and sittings stay with super admins.
+	const bookManager = canManageBooks(session.user);
 	const showStartSitting = superAdmin && !isOngoingPending && !ongoing;
 	const newShelfHref = `/users/${session.user.username}/shelves/new` as Route;
 
@@ -118,7 +120,7 @@ export function CreateMenuItems({
 						openCreateGoal();
 					}}
 				/>
-				{superAdmin ? (
+				{bookManager ? (
 					<>
 						<SheetLinkRow
 							icon={BookPlus}
@@ -127,20 +129,24 @@ export function CreateMenuItems({
 							href={"/books/new" as Route}
 							onNavigate={onNavigate}
 						/>
-						<SheetLinkRow
-							icon={UserPlus}
-							label="Add author"
-							description="Admin catalog"
-							href={"/authors/new" as Route}
-							onNavigate={onNavigate}
-						/>
-						<SheetLinkRow
-							icon={Layers}
-							label="Add series"
-							description="Admin catalog"
-							href={"/admin/series/new" as Route}
-							onNavigate={onNavigate}
-						/>
+						{superAdmin ? (
+							<>
+								<SheetLinkRow
+									icon={UserPlus}
+									label="Add author"
+									description="Admin catalog"
+									href={"/authors/new" as Route}
+									onNavigate={onNavigate}
+								/>
+								<SheetLinkRow
+									icon={Layers}
+									label="Add series"
+									description="Admin catalog"
+									href={"/admin/series/new" as Route}
+									onNavigate={onNavigate}
+								/>
+							</>
+						) : null}
 					</>
 				) : (
 					<SheetLinkRow
@@ -191,7 +197,7 @@ export function CreateMenuItems({
 				<Target className="size-4" aria-hidden="true" />
 				Add goal
 			</DropdownMenuItem>
-			{superAdmin ? (
+			{bookManager ? (
 				<>
 					<DropdownMenuItem
 						render={<Link href={"/books/new" as Route} onClick={onNavigate} />}
@@ -200,24 +206,31 @@ export function CreateMenuItems({
 						<BookPlus className="size-4" aria-hidden="true" />
 						Add book
 					</DropdownMenuItem>
-					<DropdownMenuItem
-						render={
-							<Link href={"/authors/new" as Route} onClick={onNavigate} />
-						}
-						nativeButton={false}
-					>
-						<UserPlus className="size-4" aria-hidden="true" />
-						Add author
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						render={
-							<Link href={"/admin/series/new" as Route} onClick={onNavigate} />
-						}
-						nativeButton={false}
-					>
-						<Layers className="size-4" aria-hidden="true" />
-						Add series
-					</DropdownMenuItem>
+					{superAdmin ? (
+						<>
+							<DropdownMenuItem
+								render={
+									<Link href={"/authors/new" as Route} onClick={onNavigate} />
+								}
+								nativeButton={false}
+							>
+								<UserPlus className="size-4" aria-hidden="true" />
+								Add author
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								render={
+									<Link
+										href={"/admin/series/new" as Route}
+										onClick={onNavigate}
+									/>
+								}
+								nativeButton={false}
+							>
+								<Layers className="size-4" aria-hidden="true" />
+								Add series
+							</DropdownMenuItem>
+						</>
+					) : null}
 				</>
 			) : (
 				<DropdownMenuItem

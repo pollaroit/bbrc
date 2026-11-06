@@ -28,8 +28,8 @@ import {
 	MAX_EDITIONS_PER_MEMBER_PER_DAY,
 } from "@bbrc/api/modules/book-edition/book-edition.schema";
 import {
+	canManageBooks,
 	isbnPair,
-	isSuperAdmin,
 	isValidIsbn,
 	normalizeIsbn,
 } from "@bbrc/shared";
@@ -211,7 +211,7 @@ export function AddEditionDialog({
 	const isMac = useIsMac();
 	const hasKeyboard = useHasKeyboard();
 	const { data: session } = authClient.useSession();
-	const superAdmin = isSuperAdmin(session?.user);
+	const superAdmin = canManageBooks(session?.user);
 
 	const initial = useMemo(
 		() => (edition ? fromEdition(edition) : EMPTY),

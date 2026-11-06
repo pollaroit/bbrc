@@ -553,23 +553,35 @@ export async function addBook(
 }
 
 export async function updateBook(
-	input: TUpdateBookInputSchema,
+	rawInput: TUpdateBookInputSchema,
 	db: Database,
 	adminUserId: string | null = null,
 ): Promise<TUpdateBookOutputSchema> {
 	const book = await db.book.findUnique({
-		where: { slug: input.slug },
-		select: { id: true, coverId: true, customCoverUrl: true },
+		where: { slug: rawInput.slug },
+		select: { id: true, source: true, coverId: true, customCoverUrl: true },
 	});
 
 	if (!book) {
 		throw new ORPCError("NOT_FOUND", {
 			message: "Book not found",
 			data: {
-				slug: input.slug,
+				slug: rawInput.slug,
 			},
 		});
 	}
+
+	// A book added by hand takes its pages and cover from its primary edition (see
+	// `syncBookFromPrimaryEdition`): they are changed there, never on the work.
+	const input: TUpdateBookInputSchema =
+		book.source === "manual"
+			? {
+					...rawInput,
+					pages: undefined,
+					coverId: undefined,
+					customCoverUrl: undefined,
+				}
+			: rawInput;
 
 	let replacedCoverUrl: string | null = null;
 	let createdAuthorIds: string[] = [];

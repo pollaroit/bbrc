@@ -3,7 +3,6 @@ import {
 	minRoleProcedure,
 	protectedProcedure,
 	publicProcedure,
-	superAdminProcedure,
 } from "../../procedures";
 import {
 	revalidateBookIsr,
@@ -177,19 +176,19 @@ export const bookRouter = {
 		.handler(async ({ input, context }) =>
 			getBookCatalogDiscovery(input.bookSlug, context.db),
 		),
-	suggestOriginCountries: superAdminProcedure
+	suggestOriginCountries: minRoleProcedure("admin")
 		.input(SuggestBookOriginCountriesInputSchema)
 		.output(SuggestBookOriginCountriesOutputSchema)
 		.handler(async ({ input }) => suggestBookOriginCountries(input)),
-	findSimilar: superAdminProcedure
+	findSimilar: minRoleProcedure("admin")
 		.input(FindSimilarBooksInputSchema)
 		.output(FindSimilarBooksOutputSchema)
 		.handler(async ({ input, context }) => findSimilarBooks(context.db, input)),
-	suggestDetails: superAdminProcedure
+	suggestDetails: minRoleProcedure("admin")
 		.input(SuggestBookDetailsInputSchema)
 		.output(SuggestBookDetailsOutputSchema)
 		.handler(async ({ input }) => suggestBookDetails(input)),
-	addBook: superAdminProcedure
+	addBook: minRoleProcedure("admin")
 		.input(AddBookInputSchema)
 		.use(
 			audited("book.created", {
@@ -245,7 +244,7 @@ export const bookRouter = {
 			}
 			return book;
 		}),
-	updateBook: superAdminProcedure
+	updateBook: minRoleProcedure("admin")
 		.input(UpdateBookInputSchema)
 		.use(
 			audited("book.updated", {
@@ -274,7 +273,7 @@ export const bookRouter = {
 			}
 			return book;
 		}),
-	removeBook: superAdminProcedure
+	removeBook: minRoleProcedure("admin")
 		.input(BookSchema.shape.slug)
 		.use(
 			audited("book.removed", {
@@ -329,10 +328,10 @@ export const bookRouter = {
 		.handler(async ({ context }) => ({
 			olids: await listCatalogOlids(context.db),
 		})),
-	listBlockedOpenLibraryWorks: superAdminProcedure
+	listBlockedOpenLibraryWorks: minRoleProcedure("admin")
 		.output(ListBlockedOpenLibraryWorksOutputSchema)
 		.handler(async ({ context }) => listBlockedOpenLibraryWorks(context.db)),
-	blockOpenLibraryWork: superAdminProcedure
+	blockOpenLibraryWork: minRoleProcedure("admin")
 		.input(BlockOpenLibraryWorkInputSchema)
 		.use(
 			audited("book.work_blocked", {
@@ -353,7 +352,7 @@ export const bookRouter = {
 			await invalidateDiscoverLanes(context.db);
 			return result;
 		}),
-	unblockOpenLibraryWork: superAdminProcedure
+	unblockOpenLibraryWork: minRoleProcedure("admin")
 		.input(UnblockOpenLibraryWorkInputSchema)
 		.use(
 			audited("book.work_unblocked", {

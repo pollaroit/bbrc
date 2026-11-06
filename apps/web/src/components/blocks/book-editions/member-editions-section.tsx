@@ -1,6 +1,6 @@
 "use client";
 
-import { isSuperAdmin } from "@bbrc/shared";
+import { canManageBooks } from "@bbrc/shared";
 /**
  * Editions members added themselves (the second edition source, next to Open
  * Library). Anyone signed in can add one; the member who added it can edit or
@@ -31,6 +31,7 @@ import {
 	BadgeCheck,
 	GitMerge,
 	Pencil,
+	Pin,
 	Plus,
 	ShieldCheck,
 	ShieldOff,
@@ -41,6 +42,7 @@ import {
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AddEditionDialog } from "@/components/blocks/book-editions/add-edition-dialog";
@@ -115,7 +117,7 @@ export function MemberEditionsSection({
 	selection,
 }: Props) {
 	const { data: session } = authClient.useSession();
-	const superAdmin = isSuperAdmin(session?.user);
+	const superAdmin = canManageBooks(session?.user);
 	const signedIn = Boolean(session?.user);
 	const key = orpc.bookEdition.list.queryKey({ input: { bookSlug } });
 	const query = useQuery(
@@ -149,6 +151,15 @@ export function MemberEditionsSection({
 		if (context?.previous) queryClient.setQueryData(key, context.previous);
 	};
 	const settle = () => void queryClient.invalidateQueries({ queryKey: key });
+	// A book added by hand follows its primary edition's pages and cover, so the page behind this list moves too.
+	const router = useRouter();
+	const settleWithBook = () => {
+		settle();
+		void queryClient.invalidateQueries({
+			queryKey: orpc.book.getBookBySlug.key(),
+		});
+		router.refresh();
+	};
 
 	const remove = useMutation(
 		orpc.bookEdition.delete.mutationOptions({
@@ -159,7 +170,24 @@ export function MemberEditionsSection({
 				toast.error(error.message);
 			},
 			onSuccess: () => toast.success("Edition deleted"),
-			onSettled: settle,
+			onSettled: settleWithBook,
+		}),
+	);
+	const setPrimary = useMutation(
+		orpc.bookEdition.setPrimary.mutationOptions({
+			onMutate: ({ id }) =>
+				optimistic((items) =>
+					items.map((item) => ({ ...item, isPrimary: item.id === id })),
+				),
+			onError: (error, _input, context) => {
+				rollback(context);
+				toast.error(error.message);
+			},
+			onSuccess: () =>
+				toast.success(
+					"The book now takes its pages and cover from this edition.",
+				),
+			onSettled: settleWithBook,
 		}),
 	);
 	const verify = useMutation(
@@ -208,11 +236,13 @@ export function MemberEditionsSection({
 				toast.success("Editions merged");
 				setMerging(null);
 			},
-			onSettled: settle,
+			onSettled: settleWithBook,
 		}),
 	);
 
 	const items = query.data?.items ?? [];
+	// Only books added by hand have a primary edition, and they always have one.
+	const hasPrimary = items.some((item) => item.isPrimary);
 	const addsLeft = query.data?.addsLeftToday ?? null;
 	// The most read member edition, when it clearly leads (best effort: this list only
 	// knows member editions; the edition page compares them all).
@@ -343,6 +373,16 @@ export function MemberEditionsSection({
 											) : (
 												<Badge variant="outline">Member-added</Badge>
 											)}
+											{edition.isPrimary ? (
+												<Badge
+													variant="secondary"
+													className="gap-1"
+													title="The book takes its pages and cover from this edition"
+												>
+													<Pin className="size-3" aria-hidden />
+													Primary
+												</Badge>
+											) : null}
 											{favouriteId === edition.id ? (
 												<Badge
 													variant="secondary"
@@ -466,6 +506,20 @@ export function MemberEditionsSection({
 														Verify
 													</Button>
 												)}
+												{hasPrimary && !edition.isPrimary ? (
+													<Button
+														type="button"
+														size="sm"
+														variant="ghost"
+														disabled={setPrimary.isPending}
+														onClick={() =>
+															setPrimary.mutate({ id: edition.id })
+														}
+													>
+														<Pin data-icon="inline-start" aria-hidden />
+														Make primary
+													</Button>
+												) : null}
 												{items.length > 1 ? (
 													<Button
 														type="button"
@@ -482,7 +536,8 @@ export function MemberEditionsSection({
 												) : null}
 											</>
 										) : null}
-										{edition.canDelete ? (
+										{edition.canDelete &&
+										!(hasPrimary && items.length === 1) ? (
 											<Button
 												type="button"
 												size="sm"

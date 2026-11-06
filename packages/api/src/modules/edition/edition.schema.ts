@@ -234,7 +234,7 @@ export const EditionViewerOutputSchema = z.object({
 	hasReadBook: z.boolean(),
 	canEdit: z.boolean(),
 	canDelete: z.boolean(),
-	isSuperAdmin: z.boolean(),
+	canManageBooks: z.boolean(),
 });
 export type EditionViewer = z.infer<typeof EditionViewerOutputSchema>;
 

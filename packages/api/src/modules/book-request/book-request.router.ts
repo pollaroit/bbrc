@@ -1,5 +1,5 @@
-import { isSuperAdmin } from "@bbrc/shared";
-import { protectedProcedure, superAdminProcedure } from "../../procedures";
+import { canManageBooks } from "@bbrc/shared";
+import { minRoleProcedure, protectedProcedure } from "../../procedures";
 import { audited } from "../audit/audit-middleware";
 import { bookRequestBefore, namedTarget } from "../audit/audit-targets";
 import {
@@ -23,7 +23,7 @@ import {
 } from "./book-request.service";
 
 export const bookRequestRouter = {
-	listPending: superAdminProcedure
+	listPending: minRoleProcedure("admin")
 		.output(ListPendingBookRequestsOutputSchema)
 		.handler(async ({ context }) => listPendingBookRequests(context.db)),
 	listOpen: protectedProcedure
@@ -49,11 +49,11 @@ export const bookRequestRouter = {
 			createBookRequest(
 				input,
 				context.session.user.id,
-				isSuperAdmin(context.session.user),
+				canManageBooks(context.session.user),
 				context.db,
 			),
 		),
-	reject: superAdminProcedure
+	reject: minRoleProcedure("admin")
 		.input(RejectBookRequestInputSchema)
 		.use(
 			audited("request.rejected", {

@@ -86,6 +86,8 @@ export const BookEditionItemSchema = z.object({
 	coverUrl: z.string().nullable(),
 	notes: z.string().nullable(),
 	status: z.enum(["member", "verified"]),
+	/** The edition a book added by hand takes its pages and cover from. */
+	isPrimary: z.boolean(),
 	createdAt: z.coerce.date(),
 	verifiedAt: z.coerce.date().nullable(),
 	createdBy: z

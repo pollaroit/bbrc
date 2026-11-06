@@ -1,6 +1,6 @@
 "use client";
 
-import { isSuperAdmin } from "@bbrc/shared";
+import { canManageBooks } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { BookPlus, Plus } from "lucide-react";
 import type { Route } from "next";
@@ -27,7 +27,7 @@ export function LibraryBookActionLink({
 		return null;
 	}
 
-	if (isSuperAdmin(session.user)) {
+	if (canManageBooks(session.user)) {
 		return (
 			<div
 				className={cn(

@@ -33,6 +33,8 @@ import { adminNavSections } from "@/lib/admin-nav";
 export type SearchCommandContext = {
 	signedIn: boolean;
 	superAdmin: boolean;
+	/** Admins and super admins: they run the book catalogue. */
+	bookManager: boolean;
 	username: string | null;
 	/** Whether the ongoing-sitting lookup has finished. */
 	ongoingLoaded: boolean;
@@ -50,6 +52,8 @@ export type CommandAction =
 type CommandRequires = {
 	auth?: boolean;
 	admin?: boolean;
+	/** The catalogue of books: admins and super admins. */
+	bookManager?: boolean;
 	nonAdmin?: boolean;
 	guest?: boolean;
 	participant?: boolean;
@@ -166,7 +170,10 @@ function adminCommands(): SearchCommand[] {
 						? "Admin dashboard"
 						: `Open the ${section.label.toLowerCase()} ${child.label.toLowerCase()} page`,
 				icon: section.icon as LucideIcon,
-				requires: { auth: true, admin: true },
+				requires:
+					section.role === "admin"
+						? { auth: true, bookManager: true }
+						: { auth: true, admin: true },
 				action: navigate(String(child.href)),
 			});
 		}
@@ -413,7 +420,7 @@ export function buildSearchCommands(): SearchCommand[] {
 			label: "Add a book",
 			description: "Add a book to the library",
 			icon: BookPlus,
-			requires: { auth: true, admin: true },
+			requires: { auth: true, bookManager: true },
 			action: navigate("/books/new"),
 		},
 		{
@@ -478,7 +485,9 @@ export function isCommandAvailable(
 	if (requires.guest && ctx.signedIn) return false;
 	if (requires.auth && !ctx.signedIn) return false;
 	if (requires.admin && !ctx.superAdmin) return false;
-	if (requires.nonAdmin && ctx.superAdmin) return false;
+	if (requires.bookManager && !ctx.bookManager) return false;
+	// Whoever runs the catalogue adds books; everyone else asks for them.
+	if (requires.nonAdmin && ctx.bookManager) return false;
 	if (requires.participant && !ctx.ongoing?.viewerIsParticipant) return false;
 	if (requires.noOngoing && (!ctx.ongoingLoaded || ctx.ongoing != null)) {
 		return false;

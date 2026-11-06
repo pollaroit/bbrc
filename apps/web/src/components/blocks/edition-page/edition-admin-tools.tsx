@@ -5,7 +5,7 @@ import type {
 	EditionCore,
 	EditionPage,
 } from "@bbrc/api/modules/edition/edition.schema";
-import { isSuperAdmin } from "@bbrc/shared";
+import { canManageBooks } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
@@ -89,7 +89,7 @@ export function EditionAdminTools({
 
 	const items = list.data?.items ?? [];
 	const member = findMemberEdition(items, edition);
-	const superAdmin = isSuperAdmin(session?.user);
+	const superAdmin = canManageBooks(session?.user);
 
 	const remove = useMutation(
 		orpc.bookEdition.delete.mutationOptions({

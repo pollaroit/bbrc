@@ -1,4 +1,4 @@
-import { isSuperAdmin } from "@bbrc/shared";
+import { canManageBooks } from "@bbrc/shared";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
@@ -27,7 +27,7 @@ export default async function RequestBookPage() {
 		redirect("/sign-in" as Route);
 	}
 
-	const canRequest = !isSuperAdmin(session.user);
+	const canRequest = !canManageBooks(session.user);
 
 	return (
 		<div className="flex flex-col gap-8">
