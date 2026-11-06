@@ -1,6 +1,8 @@
 "use client";
 
 import { ArrowDownRight, ArrowRight, ArrowUpRight } from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -192,6 +194,79 @@ export function ChangeChip({
 		>
 			<Icon className="size-3" aria-hidden />
 			{text}
+		</span>
+	);
+}
+
+/** A ranked list drawn as horizontal bars; the longest bar is full width. */
+export function RankedBars({
+	rows,
+	format = (value) => String(value),
+	hrefFor,
+}: {
+	rows: readonly { label: string; value: number; hint?: string | null }[];
+	format?: (value: number) => string;
+	hrefFor?: (label: string) => string | null;
+}) {
+	const max = Math.max(...rows.map((row) => row.value), 1);
+	return (
+		<ol className="flex flex-col gap-1.5">
+			{rows.map((row) => {
+				const href = hrefFor?.(row.label) ?? null;
+				const body = (
+					<>
+						<span className="relative flex h-7 min-w-0 flex-1 items-center overflow-hidden bg-muted/40">
+							<span
+								className="absolute inset-y-0 start-0 bg-primary/20"
+								style={{ width: `${Math.max(3, (row.value / max) * 100)}%` }}
+								aria-hidden
+							/>
+							<span className="relative truncate px-2 text-sm">
+								{row.label}
+							</span>
+						</span>
+						<span className="w-14 shrink-0 text-end font-medium text-sm tabular-nums">
+							{format(row.value)}
+						</span>
+					</>
+				);
+				return (
+					<li key={row.label}>
+						{href ? (
+							<Link
+								href={href as Route}
+								className="flex items-center gap-2 transition-opacity hover:opacity-80"
+							>
+								{body}
+							</Link>
+						) : (
+							<div className="flex items-center gap-2">{body}</div>
+						)}
+						{row.hint ? (
+							<p className="ps-2 text-2xs text-muted-foreground">{row.hint}</p>
+						) : null}
+					</li>
+				);
+			})}
+		</ol>
+	);
+}
+
+/** "#3 of 14 · top 21%": where a member stands among everyone, nobody else named. */
+export function RankChip({
+	rank,
+	what,
+}: {
+	rank: { rank: number; of: number; topPercent: number } | null;
+	what: string;
+}) {
+	if (!rank) return null;
+	return (
+		<span
+			className="inline-flex items-center gap-1 border border-border bg-muted/30 px-2 py-0.5 font-medium text-xs tabular-nums"
+			title={`Among all members, by ${what}`}
+		>
+			#{rank.rank} of {rank.of} · top {rank.topPercent}%
 		</span>
 	);
 }

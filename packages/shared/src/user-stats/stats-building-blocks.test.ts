@@ -219,3 +219,42 @@ describe("the section registry", () => {
 		expect(club.map((section) => section.id)).not.toContain("rated-vs-club");
 	});
 });
+
+import { activityBounds, cumulativeByMonth } from "./index";
+
+describe("cumulativeByMonth", () => {
+	const bounds = {
+		start: { year: 2026, month: 1 },
+		end: { year: 2026, month: 4 },
+	};
+	const d = (iso: string) => new Date(`${iso}T12:00:00Z`);
+
+	it("counts per month and keeps a running total, empty months included", () => {
+		const series = cumulativeByMonth(
+			[d("2026-01-10"), d("2026-01-20"), d("2026-03-02")],
+			bounds,
+			"en-US",
+		);
+		expect(series.map((m) => m.added)).toEqual([2, 0, 1, 0]);
+		expect(series.map((m) => m.total)).toEqual([2, 2, 3, 3]);
+	});
+
+	it("starts the running total from what happened before the first month", () => {
+		const series = cumulativeByMonth(
+			[d("2025-11-05"), d("2026-02-01")],
+			bounds,
+			"en-US",
+		);
+		expect(series.map((m) => m.total)).toEqual([1, 2, 2, 2]);
+	});
+
+	it("draws All time from the first item, and a fixed period as it is", () => {
+		const dates = [d("2024-06-01")];
+		expect(activityBounds(dates, bounds, false).start).toEqual({
+			year: 2024,
+			month: 6,
+		});
+		expect(activityBounds(dates, bounds, true)).toEqual(bounds);
+		expect(activityBounds([], bounds, false)).toEqual(bounds);
+	});
+});

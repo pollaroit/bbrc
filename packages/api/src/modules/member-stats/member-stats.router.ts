@@ -1,12 +1,18 @@
 import { publicProcedure } from "../../procedures";
 import { loadViewer } from "../visibility/viewer";
 import {
+	MemberStatsClubLifeOutputSchema,
+	MemberStatsCommunityOutputSchema,
 	MemberStatsInputSchema,
 	MemberStatsOverviewOutputSchema,
 	MemberStatsReadingOutputSchema,
+	MemberStatsTasteOutputSchema,
 } from "./member-stats.schema";
+import { getMemberStatsClubLife } from "./member-stats-club-life.service";
+import { getMemberStatsCommunity } from "./member-stats-community.service";
 import { getMemberStatsOverview } from "./member-stats-overview.service";
 import { getMemberStatsReading } from "./member-stats-reading.service";
+import { getMemberStatsTaste } from "./member-stats-taste.service";
 
 /**
  * A member's stats, one call per tab so only the tab on screen is computed. Every call
@@ -29,6 +35,36 @@ export const memberStatsRouter = {
 		.output(MemberStatsReadingOutputSchema)
 		.handler(async ({ input, context }) =>
 			getMemberStatsReading(
+				context.db,
+				await loadViewer(context.db, context.session),
+				input,
+			),
+		),
+	taste: publicProcedure
+		.input(MemberStatsInputSchema)
+		.output(MemberStatsTasteOutputSchema)
+		.handler(async ({ input, context }) =>
+			getMemberStatsTaste(
+				context.db,
+				await loadViewer(context.db, context.session),
+				input,
+			),
+		),
+	community: publicProcedure
+		.input(MemberStatsInputSchema)
+		.output(MemberStatsCommunityOutputSchema)
+		.handler(async ({ input, context }) =>
+			getMemberStatsCommunity(
+				context.db,
+				await loadViewer(context.db, context.session),
+				input,
+			),
+		),
+	clubLife: publicProcedure
+		.input(MemberStatsInputSchema)
+		.output(MemberStatsClubLifeOutputSchema)
+		.handler(async ({ input, context }) =>
+			getMemberStatsClubLife(
 				context.db,
 				await loadViewer(context.db, context.session),
 				input,

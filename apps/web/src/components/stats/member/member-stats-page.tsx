@@ -8,7 +8,11 @@ import {
 	visibleStatsTabs,
 } from "@bbrc/shared";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import {
+	keepPreviousData,
+	type UseQueryResult,
+	useQuery,
+} from "@tanstack/react-query";
 import { ArrowLeft, Lock, Medal } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
@@ -24,11 +28,11 @@ import { orpc } from "@/utils/orpc";
 import { Scoreboard, scrollToStatsSection } from "../scoreboard";
 import { StatsEmpty } from "../stats-kit";
 import { StatsPeriodBar } from "../stats-period-bar";
+import { ClubLifeTab } from "./club-life-tab";
+import { CommunityTab } from "./community-tab";
 import { OverviewTab } from "./overview-tab";
 import { ReadingTab } from "./reading-tab";
-
-/** The tabs that exist so far; the page offers the ones a viewer may see among these. */
-const IMPLEMENTED_TABS: readonly StatsTab[] = ["overview", "reading"];
+import { TasteTab } from "./taste-tab";
 
 function errorCode(error: unknown): string | null {
 	return typeof error === "object" && error != null && "code" in error
@@ -117,11 +121,32 @@ function Header({
 	);
 }
 
+/** A tab that loads when it is opened: a skeleton, then the tab, or one line if it failed. */
+function TabLoader<T>({
+	query,
+	children,
+}: {
+	query: UseQueryResult<T>;
+	children: (data: T) => React.ReactNode;
+}) {
+	if (query.isPending) return <Skeleton className="h-96 w-full" aria-hidden />;
+	if (query.isError || query.data === undefined) {
+		return (
+			<StatsEmpty>
+				Could not load these stats. Try again in a moment.
+			</StatsEmpty>
+		);
+	}
+	return <>{children(query.data)}</>;
+}
+
+type TabInput = ReturnType<typeof userStatsQueryInput>;
+
 function ReadingTabLoader({
 	input,
 	ready,
 }: {
-	input: ReturnType<typeof userStatsQueryInput>;
+	input: TabInput;
 	ready: boolean;
 }) {
 	const query = useQuery({
@@ -129,15 +154,56 @@ function ReadingTabLoader({
 		enabled: ready,
 		placeholderData: keepPreviousData,
 	});
-	if (query.isPending) return <Skeleton className="h-96 w-full" aria-hidden />;
-	if (query.isError || !query.data) {
-		return (
-			<StatsEmpty>
-				Could not load these stats. Try again in a moment.
-			</StatsEmpty>
-		);
-	}
-	return <ReadingTab data={query.data} />;
+	return (
+		<TabLoader query={query}>{(data) => <ReadingTab data={data} />}</TabLoader>
+	);
+}
+
+function TasteTabLoader({ input, ready }: { input: TabInput; ready: boolean }) {
+	const query = useQuery({
+		...orpc.memberStats.taste.queryOptions({ input }),
+		enabled: ready,
+		placeholderData: keepPreviousData,
+	});
+	return (
+		<TabLoader query={query}>{(data) => <TasteTab data={data} />}</TabLoader>
+	);
+}
+
+function CommunityTabLoader({
+	input,
+	ready,
+}: {
+	input: TabInput;
+	ready: boolean;
+}) {
+	const query = useQuery({
+		...orpc.memberStats.community.queryOptions({ input }),
+		enabled: ready,
+		placeholderData: keepPreviousData,
+	});
+	return (
+		<TabLoader query={query}>
+			{(data) => <CommunityTab data={data} />}
+		</TabLoader>
+	);
+}
+
+function ClubLifeTabLoader({
+	input,
+	ready,
+}: {
+	input: TabInput;
+	ready: boolean;
+}) {
+	const query = useQuery({
+		...orpc.memberStats.clubLife.queryOptions({ input }),
+		enabled: ready,
+		placeholderData: keepPreviousData,
+	});
+	return (
+		<TabLoader query={query}>{(data) => <ClubLifeTab data={data} />}</TabLoader>
+	);
 }
 
 export function MemberStatsPage({
@@ -172,9 +238,7 @@ export function MemberStatsPage({
 	}
 
 	const sections = visibleStatsSections(data.access);
-	const tabs = visibleStatsTabs(sections).filter((id) =>
-		IMPLEMENTED_TABS.includes(id),
-	);
+	const tabs = visibleStatsTabs(sections);
 	const active: StatsTab = tabs.includes(tab) ? tab : (tabs[0] ?? "overview");
 
 	const open = (to: { tab: string; section: string }) => {
@@ -215,6 +279,15 @@ export function MemberStatsPage({
 				) : null}
 				{active === "reading" ? (
 					<ReadingTabLoader input={input} ready={ready} />
+				) : null}
+				{active === "taste" ? (
+					<TasteTabLoader input={input} ready={ready} />
+				) : null}
+				{active === "community" ? (
+					<CommunityTabLoader input={input} ready={ready} />
+				) : null}
+				{active === "club-life" ? (
+					<ClubLifeTabLoader input={input} ready={ready} />
 				) : null}
 			</div>
 

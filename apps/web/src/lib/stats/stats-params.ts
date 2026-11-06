@@ -49,3 +49,27 @@ export function usePublicationMode() {
 			.withOptions({ history: "replace", clearOnDefault: true }),
 	);
 }
+
+export const subjectViews = ["read", "rated"] as const;
+export type SubjectView = (typeof subjectViews)[number];
+
+export const authorViews = ["read", "rated"] as const;
+export type AuthorView = (typeof authorViews)[number];
+
+export function useSubjectView() {
+	return useQueryState(
+		"subjects",
+		parseAsStringLiteral(subjectViews)
+			.withDefault("read")
+			.withOptions({ history: "replace", clearOnDefault: true }),
+	);
+}
+
+export function useAuthorView() {
+	return useQueryState(
+		"authors",
+		parseAsStringLiteral(authorViews)
+			.withDefault("read")
+			.withOptions({ history: "replace", clearOnDefault: true }),
+	);
+}

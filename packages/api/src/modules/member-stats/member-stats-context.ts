@@ -87,7 +87,16 @@ export const statsBookSelect = {
 	coverId: true,
 	status: true,
 	seriesMembership: {
-		select: { series: { select: { id: true, slug: true, title: true } } },
+		select: {
+			series: {
+				select: {
+					id: true,
+					slug: true,
+					title: true,
+					_count: { select: { books: true } },
+				},
+			},
+		},
 	},
 } satisfies Prisma.BookSelect;
 
