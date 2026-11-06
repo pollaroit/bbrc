@@ -38,7 +38,7 @@ function formatCell(field: BookExportFieldKey, row: ExportRow): string {
 		case "slug":
 			return row.slug;
 		case "olid":
-			return row.olid;
+			return row.olid ?? "";
 		case "excerpt":
 			return row.excerpt ?? "";
 		case "subjects":

@@ -36,7 +36,9 @@ async function main() {
 
 		let bookRequests = 0;
 		console.log("Creating pending book requests…");
-		const catalogOlids = new Set(books.map((book) => book.olid));
+		const catalogOlids = new Set(
+			books.flatMap((book) => (book.olid ? [book.olid] : [])),
+		);
 		try {
 			bookRequests = await seedBookRequests(db, users, catalogOlids);
 		} catch (error) {

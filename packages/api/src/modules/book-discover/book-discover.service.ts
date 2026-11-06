@@ -142,18 +142,46 @@ async function writeCache(
 
 // ── Shared helpers ─────────────────────────────────────────────────────────
 
-type Exclusions = { catalog: Set<string>; blocked: Set<string> };
+type Exclusions = {
+	catalog: Set<string>;
+	/** Manual books have no Open Library id, so they are matched by title and first author. */
+	manual: Set<string>;
+	blocked: Set<string>;
+};
+
+/** One book by what a person would call it: the title and first author, without case, accents or punctuation. */
+function titleAuthorKey(title: string, firstAuthor: string | undefined) {
+	const words = (value: string) =>
+		value
+			.normalize("NFKD")
+			.replace(/\p{M}/gu, "")
+			.toLowerCase()
+			.replace(/[^\p{L}\p{N}]+/gu, " ")
+			.trim();
+	return `${words(title)}|${words(firstAuthor ?? "")}`;
+}
 
 async function loadExclusions(db: Database): Promise<Exclusions> {
 	const [books, blocked] = await Promise.all([
-		db.book.findMany({ select: { olid: true } }),
+		db.book.findMany({ select: { olid: true, title: true, authors: true } }),
 		loadBlockedOpenLibraryOlids(db),
 	]);
-	return { catalog: new Set(books.map((book) => book.olid)), blocked };
+	const catalog = new Set<string>();
+	const manual = new Set<string>();
+	for (const book of books) {
+		if (book.olid) catalog.add(book.olid);
+		else manual.add(titleAuthorKey(book.title, book.authors[0]));
+	}
+	return { catalog, manual, blocked };
 }
 
-const allowed = (exclusions: Exclusions, olid: string) =>
-	!exclusions.catalog.has(olid) && !exclusions.blocked.has(olid);
+const allowed = (
+	exclusions: Exclusions,
+	hit: { olid: string; title: string; authors: string[] },
+) =>
+	!exclusions.catalog.has(hit.olid) &&
+	!exclusions.blocked.has(hit.olid) &&
+	!exclusions.manual.has(titleAuthorKey(hit.title, hit.authors[0]));
 
 const norm = (value: string) =>
 	value
@@ -210,7 +238,7 @@ function collect(
 	let added = 0;
 	for (const hit of hits) {
 		if (into.length >= max || added >= perCall) return;
-		if (seen.has(hit.olid) || !allowed(exclusions, hit.olid)) continue;
+		if (seen.has(hit.olid) || !allowed(exclusions, hit)) continue;
 		if (!hit.title.trim() || hit.authors.length === 0) continue;
 		seen.add(hit.olid);
 		into.push(toItem(hit, reason));
@@ -828,11 +856,7 @@ async function laneAi(db: Database, viewer: Viewer, refresh: boolean) {
 	const items: DiscoverItem[] = [];
 	const seen = new Set<string>();
 	for (const entry of verified) {
-		if (
-			!entry ||
-			seen.has(entry.hit.olid) ||
-			!allowed(exclusions, entry.hit.olid)
-		) {
+		if (!entry || seen.has(entry.hit.olid) || !allowed(exclusions, entry.hit)) {
 			continue;
 		}
 		seen.add(entry.hit.olid);

@@ -462,7 +462,7 @@ const BOOK_TAB_OG: Record<
 /** The fourth card changes with the tab: each page gets the figure that fits it. */
 async function bookTabFact(
 	tab: string | undefined,
-	book: { slug: string; authors: string[]; olid: string | null },
+	book: { slug: string; authors: string[]; olid?: string | null },
 ): Promise<OgFact | null> {
 	const where = { book: { slug: book.slug } };
 

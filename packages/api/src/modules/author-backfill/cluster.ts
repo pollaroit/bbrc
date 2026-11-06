@@ -2,7 +2,8 @@ import { authorNameKey, authorNameSimilarity } from "@bbrc/shared";
 
 export type BackfillBook = {
 	id: string;
-	olid: string;
+	/** Null for manual books, which Open Library knows nothing about. */
+	olid: string | null;
 	slug: string;
 	title: string;
 	excerpt: string | null;

@@ -303,7 +303,9 @@ async function gatherForCluster(
 	const found = await Promise.all(
 		clusterBooks.map(async (book): Promise<string | null> => {
 			try {
-				const workOlids = await sources.openLibraryWorkAuthorIds(book.olid);
+				const workOlids = book.olid
+					? await sources.openLibraryWorkAuthorIds(book.olid)
+					: [];
 				const name =
 					book.authors.find(
 						(candidate) => authorNameKey(candidate) === cluster.key,

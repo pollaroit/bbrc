@@ -316,7 +316,10 @@ async function loadOthers(
 		summaries.set(source.key, summaryOf(source, context));
 	}
 	try {
-		const listed = await listWorkEditions(book.olid, { limit: 24 });
+		// A manual book has no Open Library work to list editions of.
+		const listed = book.olid
+			? await listWorkEditions(book.olid, { limit: 24 })
+			: { items: [] };
 		for (const item of listed.items) {
 			const key = openLibraryEditionKey(item.editionId);
 			if (key === currentKey || summaries.has(key)) continue;

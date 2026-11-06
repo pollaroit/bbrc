@@ -34,7 +34,7 @@ const editionsGridClassName =
 type BookEditionsPanelProps = {
 	bookSlug: string;
 	bookTitle: string;
-	workOlid: string | null;
+	workOlid: string | null | undefined;
 };
 
 function EditionMetaRow({

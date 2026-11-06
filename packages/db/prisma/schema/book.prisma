@@ -4,6 +4,13 @@ enum BookStatus {
   wishlist
 }
 
+/// Where a catalog book came from. Open Library books carry a work id (`olid`);
+/// manual books were typed in by an admin and have none.
+enum BookSource {
+  open_library
+  manual
+}
+
 model Book {
   /// @zod.uuid("Invalid UUID")
   id        String   @id @default(uuid())
@@ -35,9 +42,19 @@ model Book {
   /// @zod.max(4000, "Excerpt must be at most 4000 characters long").nullish()
   excerpt           String?    @db.Text
 
+  /// Null for manual books (see `source`). A unique index allows many nulls.
   /// @zod.import(["import { isOpenLibraryOlid } from '@bbrc/shared'"])
   /// @zod.refine((v) => isOpenLibraryOlid(v), { message: "Invalid Open Library work ID" })
-  olid String @unique
+  olid   String?    @unique
+  source BookSource @default(open_library) @map("source")
+
+  /// Never offered to a sitting (poll draws, shuffles, replacements, the organiser's picker).
+  /// Everything else about the book works as usual. Set by admins only.
+  hidden Boolean @default(false)
+
+  /// Manual books only: the edition that supplies `pages` and the cover. Set when the book is created.
+  primaryEditionId String?      @unique @map("primary_edition_id")
+  primaryEdition   BookEdition? @relation("BookPrimaryEdition", fields: [primaryEditionId], references: [id], onDelete: SetNull)
 
   /// Copy of the opens total (see `ViewTotal`), kept here so lists can sort by it.
   viewCount   Int @default(0) @map("view_count")
@@ -58,7 +75,7 @@ model Book {
   feedbacks           Feedback[]
   readings            Reading[]
   authorLinks         BookAuthor[]
-  editions            BookEdition[]
+  editions            BookEdition[]       @relation("BookEditions")
   editionTombstones   EditionTombstone[]
   editionSnapshots    EditionSnapshot[]
   polls               PollOption[]
@@ -90,6 +107,7 @@ model Book {
   @@index([title])
   @@index([pages])
   @@index([status])
+  @@index([hidden])
   @@index([authors])
   @@map("book")
 }

@@ -5,7 +5,11 @@ import {
 	UserSchema,
 } from "@bbrc/schemas";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
-import { bookCountriesSchema, isAuthorSlug } from "@bbrc/shared";
+import {
+	bookCountriesSchema,
+	isAuthorSlug,
+	isOpenLibraryOlid,
+} from "@bbrc/shared";
 import { z } from "zod";
 import {
 	BookSeriesSummarySchema,
@@ -268,12 +272,15 @@ export const AddBookInputSchema = BookSchema.pick({
 	excerpt: true,
 	pages: true,
 	publishedIn: true,
-	olid: true,
 	subjectPeople: true,
 	subjectTimes: true,
 	subjects: true,
 })
 	.extend({
+		/** The Open Library work. Always set here: books typed in by hand go through `addManualBook`. */
+		olid: z.string().refine((value) => isOpenLibraryOlid(value), {
+			message: "Invalid Open Library work ID",
+		}),
 		/** Author records, in order (from the chips). Wins over `authors`. */
 		authorIds: bookAuthorIdsSchema.optional(),
 		/** Author names, resolved to existing authors (by name, alias or likely spelling) or created. */

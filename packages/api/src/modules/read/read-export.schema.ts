@@ -48,7 +48,8 @@ export const UserReadExportRowSchema = z.object({
 	title: z.string(),
 	authors: z.array(z.string()),
 	slug: z.string(),
-	olid: z.string(),
+	/** Empty for manual books. */
+	olid: z.string().nullable(),
 	status: z.string(),
 	pages: z.number().int(),
 	publishedIn: z.number().int(),

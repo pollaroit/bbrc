@@ -118,7 +118,7 @@ export const adminBooksExportFields: AdminTableExportField<BookItem>[] = [
 		getValue: (r) => r.openLibraryRating,
 	},
 	{ key: "publishedIn", label: "Published in", getValue: (r) => r.publishedIn },
-	{ key: "olid", label: "Open Library ID", getValue: (r) => r.olid },
+	{ key: "olid", label: "Open Library ID", getValue: (r) => r.olid ?? "" },
 	{
 		key: "excerptPreview",
 		label: "Excerpt preview",
