@@ -18,3 +18,18 @@ export function sessionStoryPath(
 ): `/story/session/${string}` {
 	return `/story/session/${sessionId}?shape=${shape}` as `/story/session/${string}`;
 }
+
+/** A member's stats as a picture: the same two shapes as the session picture. */
+export type StatsStoryShape = SessionStoryShape;
+
+export function statsStoryPath(
+	username: string,
+	shape: StatsStoryShape,
+	period: URLSearchParams | string = "",
+): `/story/stats/${string}` {
+	const query = new URLSearchParams(
+		typeof period === "string" ? period : period.toString(),
+	);
+	query.set("shape", shape);
+	return `/story/stats/${username}?${query.toString()}` as `/story/stats/${string}`;
+}

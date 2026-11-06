@@ -41,6 +41,10 @@ import type {
 } from "./read.schema";
 import { userReadListSelect } from "./read.schema";
 import {
+	bookIdsWithCanonicalSubject,
+	finishedRangeWhere,
+} from "./read-drilldown";
+import {
 	loadEditionSnapshotLabels,
 	readEditionRef,
 	readEditionRefSelect,
@@ -540,9 +544,28 @@ export async function listUserReads(
 				}
 			: bookWhere;
 
-	const readWhere = {
+	// What a stats chart can add: books of one series or subject, and a finish-month range.
+	const extraBookFilters: Prisma.BookWhereInput[] = [];
+	if (input.series) {
+		extraBookFilters.push({
+			seriesMembership: { series: { slug: input.series } },
+		});
+	}
+	if (input.subjectKey) {
+		extraBookFilters.push({
+			id: {
+				in: await bookIdsWithCanonicalSubject(db, user.id, input.subjectKey),
+			},
+		});
+	}
+
+	const readWhere: Prisma.ReadWhereInput = {
 		userId: user.id,
-		book: bookFilter,
+		book:
+			extraBookFilters.length > 0
+				? { AND: [bookFilter, ...extraBookFilters] }
+				: bookFilter,
+		...finishedRangeWhere(input.finishedFrom, input.finishedTo),
 	};
 
 	const cursorCodec = {

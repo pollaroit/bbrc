@@ -18,6 +18,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { SegmentedControl } from "@/components/blocks/segmented-control";
 import { UserAvatar } from "@/components/blocks/user-avatar";
+import { authClient } from "@/lib/auth-client";
 import { useStatsTab } from "@/lib/stats/stats-params";
 import { isUserStatsQueryReady } from "@/lib/user-stats-period-ui";
 import {
@@ -32,6 +33,7 @@ import { ClubLifeTab } from "./club-life-tab";
 import { CommunityTab } from "./community-tab";
 import { OverviewTab } from "./overview-tab";
 import { ReadingTab } from "./reading-tab";
+import { StatsShareMenu } from "./stats-share-menu";
 import { TasteTab } from "./taste-tab";
 
 function errorCode(error: unknown): string | null {
@@ -73,9 +75,11 @@ function Locked({ username, name }: { username: string; name: string }) {
 function Header({
 	data,
 	username,
+	isOwner,
 }: {
 	data: MemberStatsOverviewOutput;
 	username: string;
+	isOwner: boolean;
 }) {
 	return (
 		<div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -116,7 +120,10 @@ function Header({
 					</p>
 				</div>
 			</div>
-			<StatsPeriodBar firstYear={data.firstDatedReadYear} />
+			<div className="flex flex-wrap items-center gap-2 lg:justify-end">
+				<StatsPeriodBar firstYear={data.firstDatedReadYear} />
+				<StatsShareMenu data={data} username={username} isOwner={isOwner} />
+			</div>
 		</div>
 	);
 }
@@ -145,9 +152,11 @@ type TabInput = ReturnType<typeof userStatsQueryInput>;
 function ReadingTabLoader({
 	input,
 	ready,
+	username,
 }: {
 	input: TabInput;
 	ready: boolean;
+	username: string;
 }) {
 	const query = useQuery({
 		...orpc.memberStats.reading.queryOptions({ input }),
@@ -155,18 +164,30 @@ function ReadingTabLoader({
 		placeholderData: keepPreviousData,
 	});
 	return (
-		<TabLoader query={query}>{(data) => <ReadingTab data={data} />}</TabLoader>
+		<TabLoader query={query}>
+			{(data) => <ReadingTab data={data} username={username} />}
+		</TabLoader>
 	);
 }
 
-function TasteTabLoader({ input, ready }: { input: TabInput; ready: boolean }) {
+function TasteTabLoader({
+	input,
+	ready,
+	username,
+}: {
+	input: TabInput;
+	ready: boolean;
+	username: string;
+}) {
 	const query = useQuery({
 		...orpc.memberStats.taste.queryOptions({ input }),
 		enabled: ready,
 		placeholderData: keepPreviousData,
 	});
 	return (
-		<TabLoader query={query}>{(data) => <TasteTab data={data} />}</TabLoader>
+		<TabLoader query={query}>
+			{(data) => <TasteTab data={data} username={username} />}
+		</TabLoader>
 	);
 }
 
@@ -215,6 +236,8 @@ export function MemberStatsPage({
 }) {
 	const [params] = useUserStatsSearchParams();
 	const [tab, setTab] = useStatsTab();
+	const { data: session } = authClient.useSession();
+	const isOwner = session?.user.username === username;
 	const ready = isUserStatsQueryReady(params);
 	const input = userStatsQueryInput(username, params);
 
@@ -249,7 +272,7 @@ export function MemberStatsPage({
 	return (
 		<div className="mx-auto flex w-full max-w-6xl flex-col gap-4 pb-24">
 			<header className="border border-border bg-card">
-				<Header data={data} username={username} />
+				<Header data={data} username={username} isOwner={Boolean(isOwner)} />
 				<Scoreboard
 					tiles={data.scoreboard}
 					onOpen={open}
@@ -278,10 +301,10 @@ export function MemberStatsPage({
 					<OverviewTab data={data} username={username} />
 				) : null}
 				{active === "reading" ? (
-					<ReadingTabLoader input={input} ready={ready} />
+					<ReadingTabLoader input={input} ready={ready} username={username} />
 				) : null}
 				{active === "taste" ? (
-					<TasteTabLoader input={input} ready={ready} />
+					<TasteTabLoader input={input} ready={ready} username={username} />
 				) : null}
 				{active === "community" ? (
 					<CommunityTabLoader input={input} ready={ready} />

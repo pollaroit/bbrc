@@ -11,6 +11,7 @@ import {
 	usePaceMetric,
 	usePublicationMode,
 } from "@/lib/stats/stats-params";
+import { useReadsHref } from "@/lib/stats/use-reads-href";
 import { cn } from "@/lib/utils";
 import {
 	CumulativeChart,
@@ -112,7 +113,14 @@ function timeItems(
 	];
 }
 
-export function ReadingTab({ data }: { data: MemberStatsReadingOutput }) {
+export function ReadingTab({
+	data,
+	username,
+}: {
+	data: MemberStatsReadingOutput;
+	username: string;
+}) {
+	const readsHref = useReadsHref(username);
 	const [metrics, setMetrics] = useCumulativeMetrics();
 	const [paceMetric, setPaceMetric] = usePaceMetric();
 	const [publicationMode, setPublicationMode] = usePublicationMode();
@@ -219,7 +227,11 @@ export function ReadingTab({ data }: { data: MemberStatsReadingOutput }) {
 						title="Books by page count"
 						description="How long the books are."
 					>
-						<HistogramChart points={data.pages} angled />
+						<HistogramChart
+							points={data.pages}
+							angled
+							hrefFor={(bucket) => readsHref({ kind: "pages", bucket })}
+						/>
 					</StatsSection>
 					<StatsSection
 						id="publication"
@@ -245,6 +257,7 @@ export function ReadingTab({ data }: { data: MemberStatsReadingOutput }) {
 						<HistogramChart
 							points={data.publication[publicationMode]}
 							angled={publicationMode === "year"}
+							hrefFor={(label) => readsHref({ kind: "published", label })}
 						/>
 					</StatsSection>
 				</div>

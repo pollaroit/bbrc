@@ -71,6 +71,15 @@ export const userReadListingSearchParams = {
 	maxReads: parseAsInteger.withOptions({ shallow: false }),
 	authors: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
 	countries: parseAsArrayOf(parseAsString).withOptions({ shallow: false }),
+	// Set by the stats charts (a click opens the reads behind a bar); shown as removable badges.
+	finishedFrom: parseAsString.withOptions({ shallow: false }),
+	finishedTo: parseAsString.withOptions({ shallow: false }),
+	minPublishedIn: parseAsInteger.withOptions({ shallow: false }),
+	maxPublishedIn: parseAsInteger.withOptions({ shallow: false }),
+	minAverageRating: parseAsFloat.withOptions({ shallow: false }),
+	maxAverageRating: parseAsFloat.withOptions({ shallow: false }),
+	subjectKey: parseAsString.withOptions({ shallow: false }),
+	series: parseAsString.withOptions({ shallow: false }),
 	mutualOnly: parseAsBoolean.withDefault(false).withOptions({ shallow: false }),
 };
 
@@ -101,6 +110,14 @@ export function toUserReadsListCallInput(
 		maxReads: params.maxReads,
 		authors: normalizeAuthorSlugs(params.authors),
 		countries: normalizeCountryCodes(params.countries),
+		finishedFrom: params.finishedFrom,
+		finishedTo: params.finishedTo,
+		minPublishedIn: params.minPublishedIn,
+		maxPublishedIn: params.maxPublishedIn,
+		minAverageRating: params.minAverageRating,
+		maxAverageRating: params.maxAverageRating,
+		subjectKey: params.subjectKey,
+		series: params.series,
 		mutualOnly: params.mutualOnly ? true : undefined,
 		limit: 12,
 	}) as Partial<ListUserReadsInput>;
@@ -189,6 +206,26 @@ export function countUserReadsSheetFilters(
 		count += 1;
 	}
 
+	if (params.finishedFrom != null || params.finishedTo != null) {
+		count += 1;
+	}
+
+	if (params.minPublishedIn != null || params.maxPublishedIn != null) {
+		count += 1;
+	}
+
+	if (params.minAverageRating != null || params.maxAverageRating != null) {
+		count += 1;
+	}
+
+	if (params.subjectKey != null) {
+		count += 1;
+	}
+
+	if (params.series != null) {
+		count += 1;
+	}
+
 	if (params.mutualOnly) {
 		count += 1;
 	}
@@ -212,6 +249,14 @@ export function clearUserReadsSheetFilters(
 		rangeBy: null,
 		rangeMin: null,
 		rangeMax: null,
+		finishedFrom: null,
+		finishedTo: null,
+		minPublishedIn: null,
+		maxPublishedIn: null,
+		minAverageRating: null,
+		maxAverageRating: null,
+		subjectKey: null,
+		series: null,
 		mutualOnly: false,
 	});
 }

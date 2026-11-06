@@ -10,6 +10,11 @@ import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { bookCoverUrl, formatBookAuthors } from "@/lib/book-cover";
+import {
+	singleYearOf,
+	useReadsHref,
+	useStatsLinkPeriod,
+} from "@/lib/stats/use-reads-href";
 import { CoverLink } from "../cover-link";
 import { HistogramChart } from "../stats-charts";
 import { StatsEmpty, StatsSection } from "../stats-kit";
@@ -25,6 +30,23 @@ export function OverviewTab({
 	username: string;
 }) {
 	const extra = data.booksRead.total - data.booksRead.books.length;
+	const readsHref = useReadsHref(username);
+	const year = singleYearOf(useStatsLinkPeriod());
+	const monthIndex = (label: string) =>
+		[
+			"Jan",
+			"Feb",
+			"Mar",
+			"Apr",
+			"May",
+			"Jun",
+			"Jul",
+			"Aug",
+			"Sep",
+			"Oct",
+			"Nov",
+			"Dec",
+		].indexOf(label) + 1;
 	return (
 		<div className="flex flex-col gap-4">
 			{data.access.reads ? (
@@ -73,7 +95,20 @@ export function OverviewTab({
 							: "Books finished each year."
 					}
 				>
-					<HistogramChart points={data.readsOverTime.points} />
+					<HistogramChart
+						points={data.readsOverTime.points}
+						hrefFor={(label) =>
+							data.readsOverTime.mode === "month"
+								? year && monthIndex(label) > 0
+									? readsHref({
+											kind: "finished",
+											year,
+											month: monthIndex(label),
+										})
+									: null
+								: readsHref({ kind: "finished", year: Number(label) })
+						}
+					/>
 				</StatsSection>
 			) : null}
 		</div>

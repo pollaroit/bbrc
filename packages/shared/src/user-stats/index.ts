@@ -4,6 +4,8 @@ export * from "./pace";
 export * from "./period";
 export * from "./ranking";
 export * from "./rating-compare";
+export * from "./reads-link";
 export * from "./sections";
+export * from "./share";
 export * from "./subjects";
 export * from "./taste";

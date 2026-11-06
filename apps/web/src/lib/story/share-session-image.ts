@@ -18,15 +18,13 @@ export async function fetchSessionImage(
 export type ShareOutcome = "shared" | "saved" | "cancelled";
 
 /**
- * Hands the picture to the phone's share sheet. Where a browser cannot share a
- * file (most desktops), it is saved instead so it can be posted anywhere.
+ * Hands a picture to the phone's share sheet. Where a browser cannot share a file
+ * (most desktops), it is saved instead so it can be posted anywhere.
  */
-export async function shareSessionImage(
-	sessionId: string,
+export async function shareImageFile(
+	file: File,
 	title: string,
 ): Promise<ShareOutcome> {
-	const file = await fetchSessionImage(sessionId, "story");
-
 	if (
 		typeof navigator !== "undefined" &&
 		typeof navigator.share === "function" &&
@@ -44,6 +42,12 @@ export async function shareSessionImage(
 		}
 	}
 
+	saveImageFile(file);
+	return "saved";
+}
+
+/** Saves a picture to the device. */
+export function saveImageFile(file: File) {
 	const url = URL.createObjectURL(file);
 	const link = document.createElement("a");
 	link.href = url;
@@ -52,5 +56,11 @@ export async function shareSessionImage(
 	link.click();
 	link.remove();
 	setTimeout(() => URL.revokeObjectURL(url), 10_000);
-	return "saved";
+}
+
+export async function shareSessionImage(
+	sessionId: string,
+	title: string,
+): Promise<ShareOutcome> {
+	return shareImageFile(await fetchSessionImage(sessionId, "story"), title);
 }

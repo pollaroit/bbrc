@@ -17,6 +17,7 @@ import {
 	useAuthorView,
 	useSubjectView,
 } from "@/lib/stats/stats-params";
+import { useReadsHref } from "@/lib/stats/use-reads-href";
 import { CoverLink } from "../cover-link";
 import { HistogramChart } from "../stats-charts";
 import { RankedBars, StatsEmpty, StatsSection } from "../stats-kit";
@@ -27,7 +28,15 @@ type AuthorRow = MemberStatsTasteOutput["authors"]["byCount"][number];
 const stars = (value: number) => `${value.toFixed(1)}★`;
 const books = (count: number) => `${count} ${count === 1 ? "book" : "books"}`;
 
-function AuthorLine({ row, byRating }: { row: AuthorRow; byRating: boolean }) {
+function AuthorLine({
+	row,
+	byRating,
+	readsHref,
+}: {
+	row: AuthorRow;
+	byRating: boolean;
+	readsHref: string | null;
+}) {
 	const name = (
 		<span className="truncate font-medium text-sm">{row.label}</span>
 	);
@@ -49,7 +58,17 @@ function AuthorLine({ row, byRating }: { row: AuthorRow; byRating: boolean }) {
 					name
 				)}
 				<span className="text-muted-foreground text-xs tabular-nums">
-					{books(row.count)}
+					{readsHref ? (
+						<Link
+							href={readsHref as Route}
+							className="underline-offset-4 hover:text-foreground hover:underline"
+							title="Open these reads"
+						>
+							{books(row.count)}
+						</Link>
+					) : (
+						books(row.count)
+					)}
 					{row.average != null ? ` · avg ${stars(row.average)}` : ""}
 				</span>
 			</div>
@@ -102,7 +121,14 @@ function CoverGrid({
 	);
 }
 
-export function TasteTab({ data }: { data: MemberStatsTasteOutput }) {
+export function TasteTab({
+	data,
+	username,
+}: {
+	data: MemberStatsTasteOutput;
+	username: string;
+}) {
+	const readsHref = useReadsHref(username);
 	const [subjectView, setSubjectView] = useSubjectView();
 	const [authorView, setAuthorView] = useAuthorView();
 
@@ -148,6 +174,7 @@ export function TasteTab({ data }: { data: MemberStatsTasteOutput }) {
 										hint: books(row.count),
 									}))}
 									format={stars}
+									hrefFor={(subject) => readsHref({ kind: "subject", subject })}
 								/>
 							)
 						) : data.subjects.top.length === 0 ? (
@@ -159,6 +186,7 @@ export function TasteTab({ data }: { data: MemberStatsTasteOutput }) {
 									value: row.count,
 									hint: `${row.percent}% of subject tags`,
 								}))}
+								hrefFor={(subject) => readsHref({ kind: "subject", subject })}
 							/>
 						)}
 					</StatsSection>
@@ -192,6 +220,11 @@ export function TasteTab({ data }: { data: MemberStatsTasteOutput }) {
 										key={row.key}
 										row={row}
 										byRating={Boolean(authorsRated)}
+										readsHref={
+											row.slug
+												? readsHref({ kind: "author", slug: row.slug })
+												: null
+										}
 									/>
 								))}
 							</ul>
@@ -213,23 +246,28 @@ export function TasteTab({ data }: { data: MemberStatsTasteOutput }) {
 					) : (
 						<ul className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border sm:grid-cols-3 lg:grid-cols-4">
 							{data.countries.rows.map((row) => (
-								<li
-									key={row.code}
-									className="flex items-center justify-between gap-2 bg-card px-3 py-2.5"
-								>
-									<CountryLabel
-										alpha2={row.code}
-										name={getBookCountryName(row.code) ?? row.code}
-										className="min-w-0 text-sm"
-									/>
-									<span className="flex shrink-0 flex-col items-end text-xs tabular-nums">
-										<span className="font-semibold">{row.count}</span>
-										{row.average != null ? (
-											<span className="text-muted-foreground">
-												{stars(row.average)}
-											</span>
-										) : null}
-									</span>
+								<li key={row.code} className="bg-card">
+									<Link
+										href={
+											(readsHref({ kind: "country", code: row.code }) ??
+												`/users/${username}/reads`) as Route
+										}
+										className="flex items-center justify-between gap-2 px-3 py-2.5 transition-colors hover:bg-muted/40"
+									>
+										<CountryLabel
+											alpha2={row.code}
+											name={getBookCountryName(row.code) ?? row.code}
+											className="min-w-0 text-sm"
+										/>
+										<span className="flex shrink-0 flex-col items-end text-xs tabular-nums">
+											<span className="font-semibold">{row.count}</span>
+											{row.average != null ? (
+												<span className="text-muted-foreground">
+													{stars(row.average)}
+												</span>
+											) : null}
+										</span>
+									</Link>
 								</li>
 							))}
 						</ul>
@@ -243,7 +281,10 @@ export function TasteTab({ data }: { data: MemberStatsTasteOutput }) {
 					title="Map"
 					description="Each country shaded by how many of the books come from it."
 				>
-					<StatsWorldMap counts={data.countries.map} />
+					<StatsWorldMap
+						counts={data.countries.map}
+						hrefFor={(code) => readsHref({ kind: "country", code })}
+					/>
 				</StatsSection>
 			) : null}
 
@@ -269,11 +310,18 @@ export function TasteTab({ data }: { data: MemberStatsTasteOutput }) {
 										>
 											{row.title}
 										</Link>
-										<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
+										<Link
+											href={
+												(readsHref({ kind: "series", slug: row.slug }) ??
+													`/users/${username}/reads`) as Route
+											}
+											className="shrink-0 text-muted-foreground text-xs tabular-nums underline-offset-4 hover:text-foreground hover:underline"
+											title="Open these reads"
+										>
 											{row.total
 												? `${row.read} of ${row.total}`
 												: books(row.read)}
-										</span>
+										</Link>
 									</div>
 									{row.total ? (
 										<span className="block h-1.5 bg-muted" aria-hidden>
@@ -310,7 +358,10 @@ export function TasteTab({ data }: { data: MemberStatsTasteOutput }) {
 								: "How the club rated these books."
 						}
 					>
-						<HistogramChart points={data.clubRating.points} />
+						<HistogramChart
+							points={data.clubRating.points}
+							hrefFor={(bucket) => readsHref({ kind: "clubRating", bucket })}
+						/>
 					</StatsSection>
 					<StatsSection
 						id="popular"
