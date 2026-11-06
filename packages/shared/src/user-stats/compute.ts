@@ -134,6 +134,8 @@ export type CumulativeReadPoint = {
 	books: number;
 	pages: number;
 	authors: number;
+	/** Distinct countries of origin so far. */
+	countries: number;
 };
 
 export function computeCumulativeReadSeries(
@@ -141,6 +143,8 @@ export function computeCumulativeReadSeries(
 		finish: UserStatsMonth;
 		pages: number;
 		authorKeys: string[];
+		/** ISO 3166-1 alpha-2 codes of the book's origin; left out counts as none. */
+		countries?: string[];
 	}[],
 	bounds: UserStatsPeriodBounds,
 	locale?: string,
@@ -157,6 +161,7 @@ export function computeCumulativeReadSeries(
 	let books = 0;
 	let pages = 0;
 	const authorSet = new Set<string>();
+	const countrySet = new Set<string>();
 
 	return months.map((month) => {
 		const key = monthSortKey(month);
@@ -166,6 +171,10 @@ export function computeCumulativeReadSeries(
 			pages += row.pages;
 			for (const author of row.authorKeys) {
 				authorSet.add(author);
+			}
+			for (const country of row.countries ?? []) {
+				const code = country.trim().toUpperCase();
+				if (code) countrySet.add(code);
 			}
 		}
 		const label = new Intl.DateTimeFormat(locale, {
@@ -180,7 +189,46 @@ export function computeCumulativeReadSeries(
 			books,
 			pages,
 			authors: authorSet.size,
+			countries: countrySet.size,
 		};
+	});
+}
+
+export const CUMULATIVE_METRICS = [
+	"books",
+	"pages",
+	"authors",
+	"countries",
+] as const;
+
+export type CumulativeMetric = (typeof CUMULATIVE_METRICS)[number];
+
+/**
+ * Several metrics in one chart have different units, so each is drawn as a percentage
+ * of its own final value; the tooltip keeps the real numbers (`values`). A metric that
+ * never moved stays at 0 rather than dividing by zero.
+ */
+export function normalizeCumulativeSeries(
+	points: readonly CumulativeReadPoint[],
+	metrics: readonly CumulativeMetric[],
+): Array<
+	{ monthKey: string; label: string } & Record<CumulativeMetric, number> & {
+			values: Record<CumulativeMetric, number>;
+		}
+> {
+	const last = points[points.length - 1];
+	return points.map((point) => {
+		const percent = {} as Record<CumulativeMetric, number>;
+		const values = {} as Record<CumulativeMetric, number>;
+		for (const metric of CUMULATIVE_METRICS) {
+			values[metric] = point[metric];
+			const final = last?.[metric] ?? 0;
+			percent[metric] =
+				metrics.includes(metric) && final > 0
+					? Math.round((point[metric] / final) * 1000) / 10
+					: 0;
+		}
+		return { monthKey: point.monthKey, label: point.label, ...percent, values };
 	});
 }
 

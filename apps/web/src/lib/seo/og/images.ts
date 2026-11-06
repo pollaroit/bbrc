@@ -35,6 +35,8 @@ function sniffImageType(bytes: Buffer): string | null {
 	return null;
 }
 
+const SELF_FETCH_USER_AGENT = "Mozilla/5.0 (compatible; BBRC-Renderer/1.0)";
+
 /**
  * Downloads an image and returns it as a data URI the OG renderer can embed.
  * Returns null on any problem (timeout, 404, WebP, too large) so a missing
@@ -47,10 +49,15 @@ export async function ogImageData(
 		return null;
 	}
 
-	const target = url.startsWith("/") ? absoluteUrl(url) : url;
+	const onSite = url.startsWith("/");
+	const target = onSite ? absoluteUrl(url) : url;
 
 	try {
 		const response = await fetch(target, {
+			// The site's own proxy refuses clients with no browser-like user agent (Node's
+			// default one included), so a picture served by this site, such as an uploaded
+			// cover at /api/covers/<id>, needs one to be fetched by the renderer.
+			headers: onSite ? { "user-agent": SELF_FETCH_USER_AGENT } : undefined,
 			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS_COLD),
 		});
 		if (!response.ok) {

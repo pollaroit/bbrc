@@ -101,6 +101,9 @@ export function createAuth(
 			window: 60,
 			max: 30,
 			customRules: {
+				// Reading who is signed in is cheap (cookie cached) and every tab, focus and page
+				// asks for it; limiting it made ordinary use answer "Too many requests".
+				"/get-session": false,
 				"/sign-in/email": { window: 60, max: 5 },
 				"/sign-up/email": { window: 60, max: 3 },
 				"/forget-password/email": { window: 60, max: 3 },

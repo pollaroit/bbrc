@@ -187,6 +187,8 @@ function MapInner({
 		if (!svg) return;
 
 		const handleWheel = (e: WheelEvent) => {
+			// Plain scrolling keeps scrolling the page; zoom needs Ctrl or ⌘ held.
+			if (!e.ctrlKey && !e.metaKey) return;
 			e.preventDefault();
 			const delta = e.deltaY > 0 ? -zoomConfig.zoomStep : zoomConfig.zoomStep;
 

@@ -217,7 +217,23 @@ const userReadListQueryInputShape = bookListFiltersSchema
 	})
 	.extend(userReadListSorting.inputSchema.shape)
 	.extend(userReadListRanging.inputSchema.shape)
-	.extend(userReadListSearching.inputSchema.shape);
+	.extend(userReadListSearching.inputSchema.shape)
+	.extend({
+		/** Finished from this month on (`YYYY-MM`); a stats chart sets it, an undated read never matches. */
+		finishedFrom: z
+			.string()
+			.regex(/^\d{4}-\d{2}$/)
+			.optional(),
+		/** Finished up to and including this month (`YYYY-MM`). */
+		finishedTo: z
+			.string()
+			.regex(/^\d{4}-\d{2}$/)
+			.optional(),
+		/** Books of one series, by its slug. */
+		series: z.string().min(1).max(80).optional(),
+		/** A subject as the stats group it (the lowercase key), not one Open Library tag. */
+		subjectKey: z.string().min(1).max(80).optional(),
+	});
 
 function refineUserReadListQueryInput(
 	value: z.infer<typeof userReadListQueryInputShape>,
@@ -250,6 +266,18 @@ function refineUserReadListQueryInput(
 			code: "custom",
 			message: "Maximum pages must be greater than or equal to minimum",
 			path: ["maxPages"],
+		});
+	}
+
+	if (
+		value.finishedFrom &&
+		value.finishedTo &&
+		value.finishedTo < value.finishedFrom
+	) {
+		ctx.addIssue({
+			code: "custom",
+			message: "The last finish month must not be before the first",
+			path: ["finishedTo"],
 		});
 	}
 

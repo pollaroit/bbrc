@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
 	Award,
+	BarChart3,
 	Clapperboard,
 	Layers,
 	LayoutList,
@@ -72,6 +73,13 @@ export const browseNavItems: BrowseNavItem[] = [
 		section: "club",
 	},
 	{
+		label: "Club stats",
+		href: "/stats" as Route,
+		icon: BarChart3,
+		description: "The whole club in numbers",
+		section: "club",
+	},
+	{
 		label: "Reading Mode",
 		href: "/reading" as Route,
 		icon: Timer,
@@ -93,9 +101,7 @@ export type BrowseNavPlaceholderItem = {
 	icon?: LucideIcon;
 };
 
-export const browseNavPlaceholderItems: BrowseNavPlaceholderItem[] = [
-	{ label: "Club stats", description: "Coming soon" },
-];
+export const browseNavPlaceholderItems: BrowseNavPlaceholderItem[] = [];
 
 export function isBrowseNavActive(pathname: string): boolean {
 	if (browseNavItems.some((item) => isMobileNavActive(pathname, item.href))) {

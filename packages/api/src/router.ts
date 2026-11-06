@@ -12,6 +12,7 @@ import { bookDiscoverRouter } from "./modules/book-discover/book-discover.router
 import { bookEditionRouter } from "./modules/book-edition/book-edition.router";
 import { bookRequestRouter } from "./modules/book-request/book-request.router";
 import { bookmarkRouter } from "./modules/bookmark/bookmark.router";
+import { clubStatsRouter } from "./modules/club-stats/club-stats.router";
 import { commentRouter } from "./modules/comment/comment.router";
 import { documentRouter } from "./modules/document/document.router";
 import { editionRouter } from "./modules/edition/edition.router";
@@ -25,6 +26,7 @@ import { healthRouter } from "./modules/health/health.router";
 import { leaderboardRouter } from "./modules/leaderboard/leaderboard.router";
 import { likeRouter } from "./modules/like/like.router";
 import { linkPreviewRouter } from "./modules/link-preview/link-preview.router";
+import { memberStatsRouter } from "./modules/member-stats/member-stats.router";
 import { mentionRouter } from "./modules/mention/mention.router";
 import { notificationRouter } from "./modules/notification/notification.router";
 import { peopleRouter } from "./modules/people/people.router";
@@ -100,6 +102,8 @@ export const appRouter = {
 	shelf: shelfRouter,
 	storage: storageRouter,
 	sitting: sittingRouter,
+	clubStats: clubStatsRouter,
+	memberStats: memberStatsRouter,
 	user: userRouter,
 	view: viewRouter,
 	rp: rpRouter,

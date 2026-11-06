@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { UserStatsPage } from "@/components/blocks/user-stats-page";
 import { ListingSearchParamsBoundary } from "@/components/listing/listing-search-params-boundary";
+import { MemberStatsPage } from "@/components/stats/member/member-stats-page";
 import { loadUserByUsernameForPage } from "@/lib/member-profile-data";
 import {
 	buildNotFoundMetadata,
@@ -50,7 +50,7 @@ export default async function UserStatsRoute({
 
 		return (
 			<ListingSearchParamsBoundary>
-				<UserStatsPage username={user.username} displayName={user.name} />
+				<MemberStatsPage username={user.username} displayName={user.name} />
 			</ListingSearchParamsBoundary>
 		);
 	} catch {

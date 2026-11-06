@@ -139,7 +139,10 @@ export const VISIBILITY_REGISTRY: Record<ResourceKind, ResourcePolicy> = {
 	},
 	achievement: { profile: true, note: "Follows the profile." },
 	xpEvent: { profile: true, note: "XP and RP events follow the profile." },
-	stats: { profile: true, note: "A member's own stats follow the profile." },
+	stats: {
+		profile: true,
+		note: "A stats page has no setting of its own: each section follows what it is built from (reads, reviews, reading activity, goals, or the profile). See `decideMemberStatsAccess`.",
+	},
 	quizResult: { profile: true, note: "Follows the profile." },
 	sittingHistory: {
 		profile: true,

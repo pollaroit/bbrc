@@ -33,11 +33,6 @@ import {
 } from "./user-profile.schema";
 import { getProfileByUserId, updateMyProfile } from "./user-profile.service";
 import {
-	GetUserStatsInputSchema,
-	GetUserStatsOutputSchema,
-} from "./user-stats.schema";
-import { getUserStats } from "./user-stats.service";
-import {
 	GetUsernameUpdateStatusOutputSchema,
 	UpdateNameInputSchema,
 	UpdateNameOutputSchema,
@@ -90,17 +85,6 @@ export const userRouter = {
 		.handler(
 			async ({ input, context }) =>
 				await getUserParticipationList(
-					input,
-					context.db,
-					await loadViewer(context.db, context.session),
-				),
-		),
-	getUserStats: publicProcedure
-		.input(GetUserStatsInputSchema)
-		.output(GetUserStatsOutputSchema)
-		.handler(
-			async ({ input, context }) =>
-				await getUserStats(
 					input,
 					context.db,
 					await loadViewer(context.db, context.session),
