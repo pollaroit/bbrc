@@ -6,6 +6,7 @@ import {
 } from "@bbrc/shared";
 import {
 	Award,
+	BarChart3,
 	BookOpen,
 	BookPlus,
 	Clapperboard,
@@ -359,6 +360,16 @@ export function buildSearchCommands(): SearchCommand[] {
 			requires: {},
 			action: navigate("/leaderboard/overview"),
 			suggested: true,
+		},
+		{
+			id: "club-stats",
+			keyword: "club:stats",
+			aliases: ["stats"],
+			label: "Club stats",
+			description: "The whole club in numbers",
+			icon: BarChart3,
+			requires: { auth: true },
+			action: navigate("/stats"),
 		},
 		...LEADERBOARD_BOARDS.map(
 			(board): SearchCommand => ({

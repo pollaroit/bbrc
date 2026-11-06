@@ -27,10 +27,13 @@ export function Scoreboard({
 	tiles,
 	onOpen,
 	className,
+	you,
 }: {
 	tiles: readonly ScoreboardTile[];
 	onOpen: (to: ScoreboardTile["to"]) => void;
 	className?: string;
+	/** The signed-in member's own number for a tile, shown beside the club's ("You: 31"). */
+	you?: Readonly<Record<string, string>>;
 }) {
 	if (tiles.length === 0) return null;
 	return (

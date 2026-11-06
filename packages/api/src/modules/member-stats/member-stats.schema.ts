@@ -44,7 +44,15 @@ const HistogramPointSchema = zod.object({ label: zod.string(), count: Count });
 
 /** One number on the scoreboard, with what makes it feel alive: a change and a tiny chart. */
 export const ScoreboardTileSchema = zod.object({
-	id: zod.enum(["books", "pages", "time", "streak", "rating", "subject"]),
+	id: zod.enum([
+		"books",
+		"pages",
+		"time",
+		"streak",
+		"rating",
+		"subject",
+		"readers",
+	]),
 	label: zod.string(),
 	/** The number as shown ("214", "12.4 h", "4.3"). */
 	value: zod.string(),
