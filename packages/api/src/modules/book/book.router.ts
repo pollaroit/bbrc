@@ -1,5 +1,6 @@
 import { BookSchema } from "@bbrc/schemas";
 import {
+	minRoleProcedure,
 	protectedProcedure,
 	publicProcedure,
 	superAdminProcedure,
@@ -26,6 +27,8 @@ import {
 	GetBookListOutputSchema,
 	GetRandomBookInputSchema,
 	GetRandomBookOutputSchema,
+	SetBookHiddenInputSchema,
+	SetBookHiddenOutputSchema,
 	UpdateBookInputSchema,
 	UpdateBookOutputSchema,
 } from "./book.schema";
@@ -56,6 +59,7 @@ import {
 	ExportBookListOutputSchema,
 } from "./book-export.schema";
 import { exportBookList } from "./book-export.service";
+import { setBookHidden } from "./book-hidden.service";
 import {
 	SuggestBookOriginCountriesInputSchema,
 	SuggestBookOriginCountriesOutputSchema,
@@ -252,6 +256,40 @@ export const bookRouter = {
 			revalidateBookIsr(context, slug);
 			revalidateFeedsIsr(context);
 			return slug;
+		}),
+	hideBook: minRoleProcedure("admin")
+		.input(SetBookHiddenInputSchema)
+		.use(
+			audited("book.hidden", {
+				before: ({ input, db }) => bookBeforeBySlug(db, input.slug),
+				target: ({ before, input }) => namedTarget("book", before, input.slug),
+			}),
+		)
+		.output(SetBookHiddenOutputSchema)
+		.handler(async ({ input, context }) => {
+			const result = await setBookHidden(
+				{ slug: input.slug, hidden: true },
+				context.db,
+			);
+			revalidateBookIsr(context, result.slug);
+			return result;
+		}),
+	unhideBook: minRoleProcedure("admin")
+		.input(SetBookHiddenInputSchema)
+		.use(
+			audited("book.unhidden", {
+				before: ({ input, db }) => bookBeforeBySlug(db, input.slug),
+				target: ({ before, input }) => namedTarget("book", before, input.slug),
+			}),
+		)
+		.output(SetBookHiddenOutputSchema)
+		.handler(async ({ input, context }) => {
+			const result = await setBookHidden(
+				{ slug: input.slug, hidden: false },
+				context.db,
+			);
+			revalidateBookIsr(context, result.slug);
+			return result;
 		}),
 	// Public information (the catalog), and members need it to see what is already in the library.
 	listCatalogOlids: protectedProcedure

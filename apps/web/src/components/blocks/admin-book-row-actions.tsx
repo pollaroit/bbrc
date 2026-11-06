@@ -25,6 +25,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useBookHidden } from "@/lib/books/use-book-hidden";
 import { orpc, queryClient } from "@/utils/orpc";
 
 type BookRow = ListAdminBooksOutput["items"][number];
@@ -36,6 +37,7 @@ type AdminBookRowActionsProps = {
 export function AdminBookRowActions({ book }: AdminBookRowActionsProps) {
 	const [removeOpen, setRemoveOpen] = useState(false);
 	const canRemove = book.status === "wishlist";
+	const { setHidden, isPending: hiddenPending } = useBookHidden();
 
 	const removeMutation = useMutation(
 		orpc.book.removeBook.mutationOptions({
@@ -92,6 +94,12 @@ export function AdminBookRowActions({ book }: AdminBookRowActionsProps) {
 						</DropdownMenuItem>
 					) : null}
 					<DropdownMenuSeparator />
+					<DropdownMenuItem
+						disabled={hiddenPending}
+						onClick={() => setHidden(book.slug, !book.hidden)}
+					>
+						{book.hidden ? "Offer to sittings again" : "Hide from sittings"}
+					</DropdownMenuItem>
 					<DropdownMenuItem
 						disabled={!canRemove}
 						onClick={() => {

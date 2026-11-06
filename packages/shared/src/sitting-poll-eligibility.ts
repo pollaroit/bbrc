@@ -8,6 +8,7 @@
 /** Most actionable first: this is the order the screen shows a single reason in. */
 export const POLL_NOMINEE_REASONS = [
 	"already_in_poll",
+	"hidden",
 	"not_on_wishlist",
 	"later_in_series",
 	"has_prerequisites",
@@ -30,6 +31,7 @@ export type PollNomineeFilter = (typeof POLL_NOMINEE_FILTERS)[number];
 
 const REASON_LABELS: Record<PollNomineeReason, string> = {
 	already_in_poll: "Already in the poll",
+	hidden: "Hidden from sittings (unhide it to nominate it)",
 	not_on_wishlist: "Not on the wishlist",
 	later_in_series: "Earlier books in the series come first",
 	has_prerequisites: "Needs another book read first",
@@ -92,6 +94,8 @@ export function pollNomineeReadWarning(
 
 export type PollNomineeFacts = {
 	inPoll: boolean;
+	/** An admin hid it from sittings; nothing else about it matters for the poll then. */
+	hidden: boolean;
 	onWishlist: boolean;
 	/** Earlier books in its series are all read (or it is not in a series). */
 	seriesOrderOk: boolean;
@@ -103,17 +107,18 @@ export type PollNomineeFacts = {
 
 /**
  * The reasons a book cannot go on the poll, from facts the server has worked out.
- * A book off the wishlist is out for that reason alone: its series, prerequisites
- * and filters say nothing useful then.
+ * A hidden book, or one off the wishlist, is out for that reason alone: its series,
+ * prerequisites and filters say nothing useful then.
  */
 export function pollNomineeReasons(
 	facts: PollNomineeFacts,
 ): PollNomineeReason[] {
 	const reasons: PollNomineeReason[] = [];
 	if (facts.inPoll) reasons.push("already_in_poll");
+	if (facts.hidden) reasons.push("hidden");
 	if (!facts.onWishlist) {
 		reasons.push("not_on_wishlist");
-	} else {
+	} else if (!facts.hidden) {
 		if (!facts.seriesOrderOk) reasons.push("later_in_series");
 		if (!facts.prerequisitesOk) reasons.push("has_prerequisites");
 		if (!facts.fitsFilters) reasons.push("outside_filters");

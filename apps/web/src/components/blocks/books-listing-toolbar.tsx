@@ -15,6 +15,7 @@ import {
 } from "@bbrc/ui/components/select";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef } from "react";
+import { BookHiddenFilterSelect } from "@/components/blocks/book-hidden-filter-select";
 import { BooksListExportMenu } from "@/components/blocks/books-list-export-menu";
 import {
 	BooksListingSubjectSearch,
@@ -244,17 +245,25 @@ export function BooksListingToolbar({
 				{filterSection(
 					"Catalog status",
 					"Club reading phase for each title.",
-					<ListingCheckboxList
-						legend={isLibraryChrome ? undefined : "Status"}
-						options={bookStatuses.map((status) => ({
-							id: status,
-							label: bookStatusFilterLabels[status],
-							checked: params.statuses?.includes(status) ?? false,
-							onCheckedChange: (checked) => {
-								toggleStatus(status, checked);
-							},
-						}))}
-					/>,
+					<>
+						<ListingCheckboxList
+							legend={isLibraryChrome ? undefined : "Status"}
+							options={bookStatuses.map((status) => ({
+								id: status,
+								label: bookStatusFilterLabels[status],
+								checked: params.statuses?.includes(status) ?? false,
+								onCheckedChange: (checked) => {
+									toggleStatus(status, checked);
+								},
+							}))}
+						/>
+						<BookHiddenFilterSelect
+							value={params.hidden}
+							onChange={(hidden) => {
+								void setParams({ hidden });
+							}}
+						/>
+					</>,
 				)}
 
 				{filterSection(

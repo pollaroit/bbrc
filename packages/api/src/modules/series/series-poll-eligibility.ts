@@ -3,7 +3,7 @@ import { prerequisitesSatisfiedForPoll } from "../book/book-reading-prerequisite
 
 export type SeriesBookStatusRow = {
 	position: number;
-	book: { status: string };
+	book: { status: string; hidden?: boolean };
 };
 
 export function seriesPriorBooksSatisfiedForPoll(
@@ -14,8 +14,9 @@ export function seriesPriorBooksSatisfiedForPoll(
 		return true;
 	}
 
+	// A hidden volume stays in the series but is never read in a sitting, so it cannot hold the later ones back.
 	return booksInSeries
-		.filter((row) => row.position < memberPosition)
+		.filter((row) => row.position < memberPosition && !row.book.hidden)
 		.every((row) => row.book.status === "completed");
 }
 
@@ -32,7 +33,7 @@ export async function loadSeriesBooksStatusBySeriesId(
 		select: {
 			seriesId: true,
 			position: true,
-			book: { select: { status: true } },
+			book: { select: { status: true, hidden: true } },
 		},
 		orderBy: [{ seriesId: "asc" }, { position: "asc" }],
 	});
@@ -50,7 +51,7 @@ export async function loadSeriesBooksStatusBySeriesId(
 
 type WishlistPollBookRow = {
 	readAfterPrerequisites: Array<{
-		prerequisiteBook: { status: string };
+		prerequisiteBook: { status: string; hidden?: boolean };
 	}>;
 	seriesMembership: {
 		position: number;

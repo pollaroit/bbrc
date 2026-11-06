@@ -65,6 +65,8 @@ export const adminBookListFiltersSchema = z
 		countries: z.array(bookCountryCodeSchema),
 		missingClubRating: z.boolean(),
 		missingOpenLibraryRating: z.boolean(),
+		/** Hidden from sittings; left out means both. */
+		hidden: z.enum(["hidden", "visible"]),
 		minFeedbacks: z.number().int().min(0),
 		minFavorites: z.number().int().min(0),
 		minPostAttachments: z.number().int().min(0),

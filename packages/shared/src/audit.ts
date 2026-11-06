@@ -177,6 +177,16 @@ export const AUDIT_ACTIONS = {
 	"book.created": defineAudit("book", "Book added", "Added a book."),
 	"book.updated": defineAudit("book", "Book edited", "Edited a book."),
 	"book.removed": defineAudit("book", "Book removed", "Removed a book."),
+	"book.hidden": defineAudit(
+		"book",
+		"Book hidden",
+		"Hid a book from sittings.",
+	),
+	"book.unhidden": defineAudit(
+		"book",
+		"Book unhidden",
+		"Offered a hidden book to sittings again.",
+	),
 	"book.work_blocked": defineAudit(
 		"book",
 		"Work blocked",

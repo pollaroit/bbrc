@@ -36,6 +36,16 @@ export const bookStatuses = ["completed", "reading", "wishlist"] as const;
 
 export const viewerReadFilterValues = ["read", "unread"] as const;
 
+/** Hidden from sittings (an admin's call); left out means both. */
+export const hiddenFilterValues = ["hidden", "visible"] as const;
+
+export type HiddenFilter = (typeof hiddenFilterValues)[number];
+
+export const hiddenFilterLabels: Record<HiddenFilter, string> = {
+	hidden: "Hidden",
+	visible: "Not hidden",
+};
+
 export const subjectMatchValues = ["any", "all"] as const;
 
 export type SubjectMatchMode = (typeof subjectMatchValues)[number];
@@ -87,6 +97,9 @@ export const bookListingSearchParams = {
 	rangeMin: rangeMinParser.withOptions({ shallow: false }),
 	rangeMax: rangeMaxParser.withOptions({ shallow: false }),
 	statuses: parseAsArrayOf(parseAsStringLiteral(bookStatuses)).withOptions({
+		shallow: false,
+	}),
+	hidden: parseAsStringLiteral(hiddenFilterValues).withOptions({
 		shallow: false,
 	}),
 	minOpenLibraryRating: parseAsFloat.withOptions({ shallow: false }),
@@ -180,6 +193,7 @@ export function toBookListCallInput(
 		rangeMin: params.rangeMin,
 		rangeMax: params.rangeMax,
 		statuses: params.statuses,
+		hidden: params.hidden ?? undefined,
 		minOpenLibraryRating: params.minOpenLibraryRating,
 		maxOpenLibraryRating: params.maxOpenLibraryRating,
 		minPages: params.minPages,
@@ -261,6 +275,10 @@ export function countBookSheetFilters(params: BookListingSearchParams): number {
 		count += 1;
 	}
 
+	if (params.hidden != null) {
+		count += 1;
+	}
+
 	if (
 		params.minOpenLibraryRating != null ||
 		params.maxOpenLibraryRating != null
@@ -336,6 +354,7 @@ export function clearBookSheetFilters(
 ) {
 	void setParams({
 		statuses: null,
+		hidden: null,
 		minOpenLibraryRating: null,
 		maxOpenLibraryRating: null,
 		minPages: null,

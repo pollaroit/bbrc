@@ -10,6 +10,7 @@ import { BookAuthorLinks } from "@/components/blocks/book-author-links";
 import { BookDeleteButton } from "@/components/blocks/book-delete-button";
 import { BookEditLink } from "@/components/blocks/book-edit-link";
 import { BookHeaderActions } from "@/components/blocks/book-header-actions";
+import { BookHiddenControl } from "@/components/blocks/book-hidden-control";
 import { BookMarkReadButton } from "@/components/blocks/book-mark-read-button";
 import { BookQuizButton } from "@/components/blocks/book-quiz-button";
 import { BookReadAfterLinks } from "@/components/blocks/book-read-after-links";
@@ -79,7 +80,8 @@ export function BookHeader({ book }: BookHeaderProps) {
 				All books
 			</Link>
 
-			<BookStatusBanner status={book.status} />
+			<BookStatusBanner status={book.status} hidden={book.hidden} />
+			<BookHiddenControl slug={book.slug} hidden={book.hidden} />
 
 			<div className="flex flex-col gap-8 lg:flex-row lg:items-start">
 				<div className="mx-auto flex w-full max-w-56 shrink-0 flex-col gap-3 lg:mx-0">

@@ -14,6 +14,9 @@ function buildWishlistPollBookWhereBase(
 ): Prisma.BookWhereInput {
 	return {
 		status: "wishlist",
+		// Hidden books are never offered to a sitting: this one rule covers the pool size,
+		// the first draw, replacements, shuffles, the organiser's own picks and the wishlist counts.
+		hidden: false,
 		pages:
 			poll.minPages == null && poll.maxPages == null
 				? undefined

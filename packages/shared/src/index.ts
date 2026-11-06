@@ -8,6 +8,7 @@ export * from "./book-authors";
 export * from "./book-catalog-similarity";
 export * from "./book-country";
 export * from "./book-filter-dsl";
+export * from "./book-hidden";
 export * from "./book-lookup";
 export * from "./book-pages";
 export * from "./book-stats";

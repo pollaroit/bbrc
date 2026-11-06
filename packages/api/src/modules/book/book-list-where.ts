@@ -95,6 +95,12 @@ export function buildBookListWhere(
 		buildAuthorFilterWhere(options?.authorFilter) ?? {},
 		{
 			status: input.statuses ? { in: input.statuses } : undefined,
+			hidden:
+				input.hidden === "hidden"
+					? true
+					: input.hidden === "visible"
+						? false
+						: undefined,
 			openLibraryRating:
 				input.minOpenLibraryRating == null && input.maxOpenLibraryRating == null
 					? undefined

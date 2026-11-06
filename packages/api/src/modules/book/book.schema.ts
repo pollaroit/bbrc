@@ -142,6 +142,7 @@ export const getBookListFields = {
 	pages: true,
 	publishedIn: true,
 	status: true,
+	hidden: true,
 } as const;
 
 export const bookRequestedByFields = {
@@ -302,6 +303,8 @@ export const AddBookInputSchema = BookSchema.pick({
 		customCoverUrl: z.string().url().max(2048).optional(),
 		/** Tell every member about the new book (default); false only tells the people who asked for it. */
 		notifyMembers: z.boolean().optional(),
+		/** Keep the book out of sittings from the start. */
+		hidden: z.boolean().optional(),
 	})
 	.superRefine((value, ctx) => {
 		if (!value.authorIds?.length && !value.authors?.length) {
@@ -360,6 +363,15 @@ export const GetBookBySlugOutputSchema = BookSchema.omit({
 export type TGetBookBySlugOutputSchema = z.infer<
 	typeof GetBookBySlugOutputSchema
 >;
+
+/** HIDE FROM SITTINGS */
+export const SetBookHiddenInputSchema = z.object({
+	slug: BookSchema.shape.slug,
+});
+export const SetBookHiddenOutputSchema = z.object({
+	slug: BookSchema.shape.slug,
+	hidden: z.boolean(),
+});
 
 /** UPDATE */
 export const UpdateBookInputSchema = BookSchema.pick({
