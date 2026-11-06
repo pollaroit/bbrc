@@ -104,7 +104,9 @@ model BookEdition {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   bookId String @map("book_id")
-  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  book   Book   @relation("BookEditions", fields: [bookId], references: [id], onDelete: Cascade)
+  /// Set when this is the book's primary edition (manual books).
+  primaryForBook Book? @relation("BookPrimaryEdition")
 
   createdById String? @map("created_by_id")
   createdBy   User?   @relation("BookEditionCreator", fields: [createdById], references: [id], onDelete: SetNull)

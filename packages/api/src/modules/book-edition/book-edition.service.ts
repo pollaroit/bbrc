@@ -1,11 +1,12 @@
 import type { Database } from "@bbrc/db";
 import {
+	canManageBooks,
 	isbnPair,
-	isSuperAdmin,
 	isValidIsbn,
 	newMemberEditionPublicId,
 	normalizeIsbn,
 	openLibraryEditionKey,
+	pickNextPrimaryEdition,
 	type RoleActor,
 } from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
@@ -13,6 +14,7 @@ import {
 	fetchOpenLibraryEditionFull,
 	resolveOpenLibraryEditionByIsbn,
 } from "../../lib/open-library/edition-full";
+import { syncBookFromPrimaryEdition } from "../book/book-primary-edition";
 import {
 	canonicalKeyOfMember,
 	editionLabelOf,
@@ -47,6 +49,7 @@ const editionSelect = {
 	verifiedAt: true,
 	createdById: true,
 	createdBy: { select: { username: true, name: true, image: true } },
+	primaryForBook: { select: { id: true } },
 	_count: {
 		select: {
 			reads: true,
@@ -76,6 +79,7 @@ type EditionRow = {
 	verifiedAt: Date | null;
 	createdById: string | null;
 	createdBy: { username: string; name: string; image: string | null } | null;
+	primaryForBook: { id: string } | null;
 	_count: { reads: number; readings: number };
 };
 
@@ -99,15 +103,16 @@ function mapEdition(row: EditionRow, actor: Actor | null): BookEditionItem {
 		coverUrl: row.coverUrl,
 		notes: row.notes,
 		status: row.status,
+		isPrimary: row.primaryForBook != null,
 		createdAt: row.createdAt,
 		verifiedAt: row.verifiedAt,
 		createdBy: row.createdBy
 			? { ...row.createdBy, image: row.createdBy.image ?? null }
 			: null,
 		readers,
-		canEdit: actor != null && (isSuperAdmin(actor) || isCreator),
+		canEdit: actor != null && (canManageBooks(actor) || isCreator),
 		canDelete:
-			actor != null && (isSuperAdmin(actor) || (isCreator && readers === 0)),
+			actor != null && (canManageBooks(actor) || (isCreator && readers === 0)),
 	};
 }
 
@@ -160,7 +165,7 @@ type Fields = {
 	coverUrl?: string | null;
 };
 
-function isbnFields(isbn: string | null | undefined) {
+export function isbnFields(isbn: string | null | undefined) {
 	if (!isbn) return { isbn13: null, isbn10: null };
 	const pair = isbnPair(isbn);
 	return { isbn13: pair.isbn13, isbn10: pair.isbn10 ?? null };
@@ -191,7 +196,7 @@ export async function createBookEdition(
 	input: Fields & { bookSlug: string; language: string; pages: number },
 ) {
 	const book = await loadBook(db, input.bookSlug);
-	if ((await addsLeftToday(db, actor.id)) <= 0 && !isSuperAdmin(actor)) {
+	if ((await addsLeftToday(db, actor.id)) <= 0 && !canManageBooks(actor)) {
 		throw new ORPCError("TOO_MANY_REQUESTS", {
 			message: `You can add ${MAX_EDITIONS_PER_MEMBER_PER_DAY} editions a day. Try again tomorrow.`,
 		});
@@ -254,7 +259,7 @@ export async function updateBookEdition(
 	input: Fields & { id: string },
 ) {
 	const existing = await loadEdition(db, input.id);
-	if (!isSuperAdmin(actor) && existing.createdById !== actor.id) {
+	if (!canManageBooks(actor) && existing.createdById !== actor.id) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Only the member who added it or an admin can edit it.",
 		});
@@ -286,7 +291,7 @@ export async function updateBookEdition(
 		data.coverUrl = input.coverUrl;
 	}
 	// A member's change to a checked edition needs checking again.
-	if (existing.status === "verified" && !isSuperAdmin(actor)) {
+	if (existing.status === "verified" && !canManageBooks(actor)) {
 		data.status = "member";
 		data.verifiedAt = null;
 		data.verifiedById = null;
@@ -297,6 +302,10 @@ export async function updateBookEdition(
 		data,
 		select: editionSelect,
 	});
+	// A book added by hand follows its primary edition's pages and cover.
+	if ((updated as EditionRow).primaryForBook) {
+		await syncBookFromPrimaryEdition(db, existing.bookId);
+	}
 	void tryDeleteR2PublicUrl(replacedCover);
 	return mapEdition(updated as EditionRow, actor);
 }
@@ -308,16 +317,31 @@ export async function deleteBookEdition(
 ) {
 	const existing = await loadEdition(db, id);
 	const isCreator = existing.createdById === actor.id;
-	if (!isSuperAdmin(actor) && !isCreator) {
+	if (!canManageBooks(actor) && !isCreator) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Only the member who added it or an admin can delete it.",
 		});
 	}
 	const readers = existing._count.reads + existing._count.readings;
-	if (!isSuperAdmin(actor) && readers > 0) {
+	if (!canManageBooks(actor) && readers > 0) {
 		throw new ORPCError("FORBIDDEN", {
 			message:
 				"Members are using this edition, so only an admin can delete it.",
+		});
+	}
+	const owner = await db.book.findUnique({
+		where: { id: existing.bookId },
+		select: {
+			source: true,
+			primaryEditionId: true,
+			editions: { select: { id: true, status: true, createdAt: true } },
+		},
+	});
+	// A book added by hand has no Open Library editions to fall back on.
+	if (owner?.source === "manual" && owner.editions.length <= 1) {
+		throw new ORPCError("CONFLICT", {
+			message:
+				"A book added by hand needs at least one edition. Add another one first.",
 		});
 	}
 	await db.$transaction(async (tx) => {
@@ -354,6 +378,16 @@ export async function deleteBookEdition(
 			});
 		}
 		await tx.bookEdition.delete({ where: { id } });
+		if (owner?.source === "manual" && owner.primaryEditionId === id) {
+			const next = pickNextPrimaryEdition(owner.editions, id);
+			if (next) {
+				await tx.book.update({
+					where: { id: existing.bookId },
+					data: { primaryEditionId: next },
+				});
+				await syncBookFromPrimaryEdition(tx, existing.bookId);
+			}
+		}
 	});
 	// Our cover file is kept when readings still show it.
 	const stillShown = await db.reading.count({
@@ -441,6 +475,20 @@ export async function mergeBookEditions(
 		await tx.bookEdition.delete({ where: { id: fromId } });
 		if (Object.keys(fill).length > 0) {
 			await tx.bookEdition.update({ where: { id: intoId }, data: fill });
+		}
+		const owner = await tx.book.findUnique({
+			where: { id: from.bookId },
+			select: { source: true, primaryEditionId: true },
+		});
+		if (owner?.source === "manual") {
+			// Deleting the primary edition cleared the link: the kept edition takes its place.
+			if (!owner.primaryEditionId) {
+				await tx.book.update({
+					where: { id: from.bookId },
+					data: { primaryEditionId: intoId },
+				});
+			}
+			await syncBookFromPrimaryEdition(tx, from.bookId);
 		}
 	});
 	if (!copiedCover) void tryDeleteR2PublicUrl(from.coverUrl);
@@ -544,4 +592,29 @@ export async function checkEditionIsbn(
 					}
 				: null,
 	};
+}
+
+/** Admin: make this edition the one a book added by hand takes its pages and cover from. */
+export async function setBookPrimaryEdition(db: Database, id: string) {
+	const edition = await db.bookEdition.findUnique({
+		where: { id },
+		select: { id: true, bookId: true, book: { select: { source: true } } },
+	});
+	if (!edition) {
+		throw new ORPCError("NOT_FOUND", { message: "Edition not found" });
+	}
+	if (edition.book.source !== "manual") {
+		throw new ORPCError("BAD_REQUEST", {
+			message:
+				"Only books added by hand have a primary edition. Open Library books use their own details.",
+		});
+	}
+	await db.$transaction(async (tx) => {
+		await tx.book.update({
+			where: { id: edition.bookId },
+			data: { primaryEditionId: edition.id },
+		});
+		await syncBookFromPrimaryEdition(tx, edition.bookId);
+	});
+	return { id: edition.id };
 }

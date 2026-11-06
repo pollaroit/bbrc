@@ -1,5 +1,6 @@
 import type { GetBookListOutput } from "@bbrc/api/modules/book/book.schema";
 import { Badge } from "@bbrc/ui/components/badge";
+import { EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type BookStatus = GetBookListOutput["items"][number]["status"];
@@ -38,16 +39,48 @@ export function formatBookStatusLabel(status: BookStatus) {
 	return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-export function BookStatusBadge({ status }: { status: BookStatus }) {
+/** An admin kept this book out of sittings; everything else about it works as usual. */
+export function BookHiddenBadge({ className }: { className?: string }) {
 	return (
-		<Badge variant="outline" className={statusBadgeClassName[status]}>
-			{formatBookStatusLabel(status)}
+		<Badge
+			variant="outline"
+			title="Never offered to a sitting"
+			className={cn(
+				"gap-1 border-warning/30 bg-warning/10 text-warning-ink",
+				className,
+			)}
+		>
+			<EyeOff className="size-3" aria-hidden />
+			Hidden
 		</Badge>
 	);
 }
 
+export function BookStatusBadge({
+	status,
+	hidden = false,
+}: {
+	status: BookStatus;
+	hidden?: boolean;
+}) {
+	return (
+		<span className="inline-flex flex-wrap items-center gap-1">
+			<Badge variant="outline" className={statusBadgeClassName[status]}>
+				{formatBookStatusLabel(status)}
+			</Badge>
+			{hidden ? <BookHiddenBadge /> : null}
+		</span>
+	);
+}
+
 /** Detail header: global club status for the catalog entry. */
-export function BookStatusBanner({ status }: { status: BookStatus }) {
+export function BookStatusBanner({
+	status,
+	hidden = false,
+}: {
+	status: BookStatus;
+	hidden?: boolean;
+}) {
 	return (
 		<div
 			className={cn(
@@ -61,6 +94,12 @@ export function BookStatusBanner({ status }: { status: BookStatus }) {
 			<p className="mt-1 max-w-2xl text-muted-foreground text-sm leading-relaxed">
 				{statusDescription[status]}
 			</p>
+			{hidden ? (
+				<p className="mt-2 flex items-center gap-1.5 text-sm text-warning-ink">
+					<EyeOff className="size-4 shrink-0" aria-hidden />
+					Hidden from sittings: it will never appear on a poll.
+				</p>
+			) : null}
 		</div>
 	);
 }

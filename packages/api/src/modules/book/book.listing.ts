@@ -83,6 +83,8 @@ export const bookListFiltersSchema = z
 		subjectsMatch: z.enum(["any", "all"]),
 		countries: z.array(bookCountryCodeSchema),
 		statuses: z.array(BookStatusSchema),
+		/** Hidden from sittings (an admin's call, the same for everyone); left out means both. */
+		hidden: z.enum(["hidden", "visible"]),
 		/** Personal read state for the authenticated viewer. */
 		viewerRead: z.enum(["read", "unread"]),
 		/** Favorited by the authenticated viewer. */

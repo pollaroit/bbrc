@@ -5,8 +5,13 @@ import {
 	UserSchema,
 } from "@bbrc/schemas";
 import { refineRangingBounds } from "@bbrc/schemas/listing/ranging";
-import { bookCountriesSchema, isAuthorSlug } from "@bbrc/shared";
+import {
+	bookCountriesSchema,
+	isAuthorSlug,
+	isOpenLibraryOlid,
+} from "@bbrc/shared";
 import { z } from "zod";
+import { BookEditionFieldsSchema } from "../book-edition/book-edition.schema";
 import {
 	BookSeriesSummarySchema,
 	CreateSeriesInputSchema,
@@ -138,6 +143,7 @@ export const getBookListFields = {
 	pages: true,
 	publishedIn: true,
 	status: true,
+	hidden: true,
 } as const;
 
 export const bookRequestedByFields = {
@@ -268,12 +274,15 @@ export const AddBookInputSchema = BookSchema.pick({
 	excerpt: true,
 	pages: true,
 	publishedIn: true,
-	olid: true,
 	subjectPeople: true,
 	subjectTimes: true,
 	subjects: true,
 })
 	.extend({
+		/** The Open Library work. Always set here: books typed in by hand go through `addManualBook`. */
+		olid: z.string().refine((value) => isOpenLibraryOlid(value), {
+			message: "Invalid Open Library work ID",
+		}),
 		/** Author records, in order (from the chips). Wins over `authors`. */
 		authorIds: bookAuthorIdsSchema.optional(),
 		/** Author names, resolved to existing authors (by name, alias or likely spelling) or created. */
@@ -295,6 +304,8 @@ export const AddBookInputSchema = BookSchema.pick({
 		customCoverUrl: z.string().url().max(2048).optional(),
 		/** Tell every member about the new book (default); false only tells the people who asked for it. */
 		notifyMembers: z.boolean().optional(),
+		/** Keep the book out of sittings from the start. */
+		hidden: z.boolean().optional(),
 	})
 	.superRefine((value, ctx) => {
 		if (!value.authorIds?.length && !value.authors?.length) {
@@ -319,7 +330,52 @@ export const AddBookOutputSchema = BookSchema.pick({
 	seriesSlug: z.string().optional(),
 });
 
+/**
+ * ADD BY HAND — a book Open Library does not have. The work and its first edition are
+ * entered together: pages and the cover belong to the edition, and the book follows its
+ * primary edition (see `syncBookFromPrimaryEdition`).
+ */
+export const AddManualBookInputSchema = BookSchema.pick({
+	title: true,
+	excerpt: true,
+	publishedIn: true,
+})
+	.extend({
+		subjects: BookSchema.shape.subjects.optional(),
+		/** Author records, in order (from the chips). Wins over `authors`. */
+		authorIds: bookAuthorIdsSchema.optional(),
+		/** Author names, resolved to existing authors (by name, alias or likely spelling) or created. */
+		authors: BookSchema.shape.authors.optional(),
+		countries: bookCountriesSchema.optional(),
+		readAfterBookSlugs: z.array(BookSchema.shape.slug).max(20).optional(),
+		seriesSlug: BookSchema.shape.slug.optional(),
+		newSeries: CreateSeriesInputSchema.optional(),
+		seriesPosition: SeriesPositionSchema.optional(),
+		shiftLater: z.boolean().optional(),
+		/** The first edition, and the book's primary one. Pages are required here, not on the work. */
+		edition: BookEditionFieldsSchema,
+		notifyMembers: z.boolean().optional(),
+		hidden: z.boolean().optional(),
+	})
+	.superRefine((value, ctx) => {
+		if (!value.authorIds?.length && !value.authors?.length) {
+			ctx.addIssue({
+				code: "custom",
+				message: "Add at least one author.",
+				path: ["authorIds"],
+			});
+		}
+		if (value.seriesSlug && value.newSeries) {
+			ctx.addIssue({
+				code: "custom",
+				message: "Choose either an existing series or a new series, not both.",
+				path: ["seriesSlug"],
+			});
+		}
+	});
+
 export type TAddBookInputSchema = z.infer<typeof AddBookInputSchema>;
+export type AddManualBookInput = z.infer<typeof AddManualBookInputSchema>;
 export type TAddBookOutputSchema = z.infer<typeof AddBookOutputSchema>;
 
 /** GET BY SLUG */
@@ -353,6 +409,15 @@ export const GetBookBySlugOutputSchema = BookSchema.omit({
 export type TGetBookBySlugOutputSchema = z.infer<
 	typeof GetBookBySlugOutputSchema
 >;
+
+/** HIDE FROM SITTINGS */
+export const SetBookHiddenInputSchema = z.object({
+	slug: BookSchema.shape.slug,
+});
+export const SetBookHiddenOutputSchema = z.object({
+	slug: BookSchema.shape.slug,
+	hidden: z.boolean(),
+});
 
 /** UPDATE */
 export const UpdateBookInputSchema = BookSchema.pick({

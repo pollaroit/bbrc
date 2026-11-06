@@ -13,7 +13,7 @@ import {
 	parseAsStringLiteral,
 	useQueryStates,
 } from "nuqs";
-import { bookStatuses } from "@/lib/listing/books-listing";
+import { bookStatuses, hiddenFilterValues } from "@/lib/listing/books-listing";
 import { buildListCallInput } from "@/lib/listing/build-list-call-input";
 import type { FieldLabels } from "@/lib/listing/labels";
 import {
@@ -75,6 +75,9 @@ export const adminBooksListingSearchParams = {
 	statuses: parseAsArrayOf(parseAsStringLiteral(bookStatuses)).withOptions({
 		shallow: false,
 	}),
+	hidden: parseAsStringLiteral(hiddenFilterValues).withOptions({
+		shallow: false,
+	}),
 	minOpenLibraryRating: parseAsFloat.withOptions({ shallow: false }),
 	maxOpenLibraryRating: parseAsFloat.withOptions({ shallow: false }),
 	minAverageRating: parseAsFloat.withOptions({ shallow: false }),
@@ -117,6 +120,7 @@ function buildAdminBookFilterCallInput(params: AdminBooksListingSearchParams) {
 		rangeMin: params.rangeMin,
 		rangeMax: params.rangeMax,
 		statuses: params.statuses,
+		hidden: params.hidden ?? undefined,
 		minOpenLibraryRating: params.minOpenLibraryRating,
 		maxOpenLibraryRating: params.maxOpenLibraryRating,
 		minAverageRating: params.minAverageRating,

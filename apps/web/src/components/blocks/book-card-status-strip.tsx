@@ -13,6 +13,7 @@ const statusStripClassName: Record<BookStatus, string> = {
 	wishlist: "bg-violet/10 text-violet-ink",
 };
 
+import { EyeOff } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import type { BookSortMetric } from "@/lib/books/sort-metric";
@@ -20,7 +21,7 @@ import { cn } from "@/lib/utils";
 
 type BookCardStatusBook = Pick<
 	GetBookListOutput["items"][number],
-	"slug" | "status" | "clubSittingSlug"
+	"slug" | "status" | "hidden" | "clubSittingSlug"
 >;
 
 function sittingHrefForBook(book: BookCardStatusBook): Route | null {
@@ -63,6 +64,15 @@ export function BookCardStatusStrip({
 			) : (
 				<span className="min-w-0 flex-1 truncate">{label}</span>
 			)}
+			{book.hidden ? (
+				<span
+					className="inline-flex shrink-0 items-center gap-1 text-warning-ink"
+					title="Never offered to a sitting"
+				>
+					<EyeOff className="size-3" aria-hidden />
+					Hidden
+				</span>
+			) : null}
 			{metric ? (
 				metric.href ? (
 					<Link

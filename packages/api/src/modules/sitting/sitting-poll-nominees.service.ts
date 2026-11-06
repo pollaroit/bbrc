@@ -81,16 +81,20 @@ export async function searchPollNominees(
 		select: {
 			...getBookPollSelect,
 			status: true,
+			hidden: true,
 			readAfterPrerequisites: {
-				select: { prerequisiteBook: { select: { status: true } } },
+				select: {
+					prerequisiteBook: { select: { status: true, hidden: true } },
+				},
 			},
 			seriesMembership: { select: { position: true, seriesId: true } },
 		},
 	});
 
 	const bookIds = books.map((book) => book.id);
+	// A hidden book is out for that reason alone, so the poll filters are not checked for it.
 	const wishlistIds = books
-		.filter((book) => book.status === "wishlist")
+		.filter((book) => book.status === "wishlist" && !book.hidden)
 		.map((book) => book.id);
 
 	const [readCounts, fitting, seriesBooks] = await Promise.all([
@@ -133,6 +137,7 @@ export async function searchPollNominees(
 			const membership = book.seriesMembership;
 			const reasons = pollNomineeReasons({
 				inPoll: inPoll.has(book.id),
+				hidden: book.hidden,
 				onWishlist: book.status === "wishlist",
 				seriesOrderOk:
 					!membership ||
@@ -147,6 +152,7 @@ export async function searchPollNominees(
 			});
 			const {
 				status: _status,
+				hidden: _hidden,
 				readAfterPrerequisites: _p,
 				seriesMembership: _s,
 				...rest

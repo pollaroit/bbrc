@@ -1,4 +1,4 @@
-import { isSuperAdmin } from "@bbrc/shared";
+import { canManageBooks } from "@bbrc/shared";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -22,7 +22,7 @@ export default async function AdminBooksStatsPage() {
 		headers: await headers(),
 	});
 
-	if (!isSuperAdmin(session?.user)) {
+	if (!canManageBooks(session?.user)) {
 		redirect("/" as Route);
 	}
 

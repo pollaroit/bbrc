@@ -24,7 +24,8 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { type AdminNavSection, adminNavSections } from "@/lib/admin-nav";
+import { type AdminNavSection, adminNavSectionsFor } from "@/lib/admin-nav";
+import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 const ADMIN_NAV_OPEN_STORAGE_KEY = "bbrc-admin-nav-open";
@@ -144,6 +145,8 @@ function AdminSidebarNavItem({
 
 export function AdminAppShell({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
+	const { data: session } = authClient.useSession();
+	const visibleSections = adminNavSectionsFor(session?.user);
 
 	return (
 		<SidebarProvider className="min-h-dvh w-full md:min-h-[calc(100dvh-4rem)]">
@@ -157,7 +160,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
 						<SidebarGroupLabel>Resources</SidebarGroupLabel>
 						<SidebarGroupContent>
 							<SidebarMenu>
-								{adminNavSections.map((section) => (
+								{visibleSections.map((section) => (
 									<AdminSidebarNavItem
 										key={section.id}
 										section={section}

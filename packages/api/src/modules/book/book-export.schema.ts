@@ -50,7 +50,8 @@ export const BookExportRowSchema = z.object({
 	pages: z.number(),
 	publishedIn: z.number(),
 	slug: z.string(),
-	olid: z.string(),
+	/** Empty for manual books. */
+	olid: z.string().nullable(),
 	excerpt: z.string().nullable(),
 	subjects: z.array(z.string()),
 	subjectPeople: z.array(z.string()),

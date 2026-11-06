@@ -1,6 +1,7 @@
 import type { Session } from "@bbrc/auth";
 import type { Database } from "@bbrc/db";
 import {
+	canManageBooks,
 	commentMediaConflict,
 	isSuperAdmin,
 	postAttachmentConflict,
@@ -310,7 +311,7 @@ export async function uploadBookCoverDirect(
 	},
 	session: Session,
 ) {
-	if (!isSuperAdmin(session.user)) {
+	if (!canManageBooks(session.user)) {
 		throw new ORPCError("FORBIDDEN", {
 			message: "Only admins can upload book covers.",
 		});

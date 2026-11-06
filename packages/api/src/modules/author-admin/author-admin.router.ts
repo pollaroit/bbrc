@@ -1,4 +1,4 @@
-import { superAdminProcedure } from "../../procedures";
+import { minRoleProcedure, superAdminProcedure } from "../../procedures";
 import {
 	revalidateBookIsr,
 	revalidateBooksCatalogIsr,
@@ -97,14 +97,14 @@ export const authorAdminRouter = {
 		.handler(({ input, context }) => getAdminAuthorStats(input, context.db)),
 
 	/** Chips in the add / edit book form: our authors first, then Open Library suggestions. */
-	search: superAdminProcedure
+	search: minRoleProcedure("admin")
 		.input(SearchAuthorsInputSchema)
 		.handler(({ input, context }) =>
 			searchAuthorsForChips(input.query, context.db),
 		),
 
 	/** By name (optionally an Open Library id). Returns the existing author when there is one. */
-	create: superAdminProcedure
+	create: minRoleProcedure("admin")
 		.input(CreateAuthorInputSchema)
 		.use(
 			audited("author.created", {

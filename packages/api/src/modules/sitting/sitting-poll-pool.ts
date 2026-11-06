@@ -65,7 +65,9 @@ export async function countEligiblePollBooks(
 		select: {
 			id: true,
 			readAfterPrerequisites: {
-				select: { prerequisiteBook: { select: { status: true } } },
+				select: {
+					prerequisiteBook: { select: { status: true, hidden: true } },
+				},
 			},
 			seriesMembership: { select: { position: true, seriesId: true } },
 		},
@@ -111,7 +113,7 @@ export async function loadPollDrawContext(
 			readAfterPrerequisites: {
 				select: {
 					prerequisiteBook: {
-						select: { status: true },
+						select: { status: true, hidden: true },
 					},
 				},
 			},

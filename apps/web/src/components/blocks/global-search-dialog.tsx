@@ -1,7 +1,7 @@
 "use client";
 
 import type { GlobalSearchHit } from "@bbrc/api/modules/search/global-search.schema";
-import { isSuperAdmin } from "@bbrc/shared";
+import { canManageBooks, isSuperAdmin } from "@bbrc/shared";
 import { Badge } from "@bbrc/ui/components/badge";
 import { Button } from "@bbrc/ui/components/button";
 import {
@@ -130,6 +130,7 @@ export function GlobalSearchDialog({
 		() => ({
 			signedIn: Boolean(session?.user),
 			superAdmin: isSuperAdmin(session?.user),
+			bookManager: canManageBooks(session?.user),
 			username: session?.user.username ?? null,
 			ongoingLoaded: ongoingQuery.isSuccess,
 			ongoing: ongoingQuery.data

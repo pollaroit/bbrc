@@ -364,7 +364,7 @@ function normalizeBookRecord<T extends TGetBookBySlugOutputSchema>(book: T): T {
  * The authors a book form sent, as author ids in order: the chosen records, or names
  * resolved to existing authors (by name, alias or likely spelling) or created.
  */
-async function resolveBookAuthors(
+export async function resolveBookAuthors(
 	tx: Parameters<Parameters<Database["$transaction"]>[0]>[0],
 	input: { authorIds?: string[]; authors?: string[] },
 	createdById: string | null,
@@ -383,6 +383,39 @@ async function resolveBookAuthors(
 		.map((name) => name.trim())
 		.filter(Boolean);
 	return resolveAuthorsByNames(tx, names, { createdById });
+}
+
+type SeriesPlacementInput = Pick<
+	TAddBookInputSchema,
+	"seriesSlug" | "newSeries" | "seriesPosition" | "shiftLater"
+>;
+
+/** Puts a just-created book into an existing series, or a new one made for it; returns the series slug. */
+export async function attachNewBookToSeries(
+	tx: Parameters<Parameters<Database["$transaction"]>[0]>[0],
+	bookId: string,
+	input: SeriesPlacementInput,
+): Promise<string | undefined> {
+	if (input.newSeries) {
+		const created = await createSeriesRecord(input.newSeries, tx);
+		await placeBookInSeries(tx, {
+			bookId,
+			seriesSlug: created.slug,
+			position: input.seriesPosition,
+			shiftLater: input.shiftLater,
+		});
+		return created.slug;
+	}
+	if (input.seriesSlug) {
+		const attached = await placeBookInSeries(tx, {
+			bookId,
+			seriesSlug: input.seriesSlug,
+			position: input.seriesPosition,
+			shiftLater: input.shiftLater,
+		});
+		return attached.slug;
+	}
+	return undefined;
 }
 
 export async function addBook(
@@ -488,26 +521,12 @@ export async function addBook(
 			},
 		});
 
-		let attachedSeriesSlug: string | undefined;
-
-		if (newSeries) {
-			const created = await createSeriesRecord(newSeries, tx);
-			await placeBookInSeries(tx, {
-				bookId: book.id,
-				seriesSlug: created.slug,
-				position: seriesPosition,
-				shiftLater,
-			});
-			attachedSeriesSlug = created.slug;
-		} else if (seriesSlug) {
-			const attached = await placeBookInSeries(tx, {
-				bookId: book.id,
-				seriesSlug,
-				position: seriesPosition,
-				shiftLater,
-			});
-			attachedSeriesSlug = attached.slug;
-		}
+		const attachedSeriesSlug = await attachNewBookToSeries(tx, book.id, {
+			seriesSlug,
+			newSeries,
+			seriesPosition,
+			shiftLater,
+		});
 
 		return { ...book, seriesSlug: attachedSeriesSlug };
 	});
@@ -534,23 +553,35 @@ export async function addBook(
 }
 
 export async function updateBook(
-	input: TUpdateBookInputSchema,
+	rawInput: TUpdateBookInputSchema,
 	db: Database,
 	adminUserId: string | null = null,
 ): Promise<TUpdateBookOutputSchema> {
 	const book = await db.book.findUnique({
-		where: { slug: input.slug },
-		select: { id: true, coverId: true, customCoverUrl: true },
+		where: { slug: rawInput.slug },
+		select: { id: true, source: true, coverId: true, customCoverUrl: true },
 	});
 
 	if (!book) {
 		throw new ORPCError("NOT_FOUND", {
 			message: "Book not found",
 			data: {
-				slug: input.slug,
+				slug: rawInput.slug,
 			},
 		});
 	}
+
+	// A book added by hand takes its pages and cover from its primary edition (see
+	// `syncBookFromPrimaryEdition`): they are changed there, never on the work.
+	const input: TUpdateBookInputSchema =
+		book.source === "manual"
+			? {
+					...rawInput,
+					pages: undefined,
+					coverId: undefined,
+					customCoverUrl: undefined,
+				}
+			: rawInput;
 
 	let replacedCoverUrl: string | null = null;
 	let createdAuthorIds: string[] = [];

@@ -1,8 +1,8 @@
 import type { Database, Prisma } from "@bbrc/db";
 import {
+	canManageBooks,
 	editionExternalLinks,
 	formatEditionLanguage,
-	isSuperAdmin,
 	normalizeLanguageCode,
 	openLibraryEditionKey,
 	parseEditionKey,
@@ -316,7 +316,10 @@ async function loadOthers(
 		summaries.set(source.key, summaryOf(source, context));
 	}
 	try {
-		const listed = await listWorkEditions(book.olid, { limit: 24 });
+		// A manual book has no Open Library work to list editions of.
+		const listed = book.olid
+			? await listWorkEditions(book.olid, { limit: 24 })
+			: { items: [] };
 		for (const item of listed.items) {
 			const key = openLibraryEditionKey(item.editionId);
 			if (key === currentKey || summaries.has(key)) continue;
@@ -766,11 +769,12 @@ export async function getEditionViewer(
 			read != null &&
 			matches({ olid: read.editionId, bookEditionId: read.bookEditionId }),
 		hasReadBook: read != null,
-		canEdit: member != null && (isSuperAdmin(actor) || isCreator),
+		canEdit: member != null && (canManageBooks(actor) || isCreator),
 		canDelete:
 			member != null &&
-			(isSuperAdmin(actor) || (isCreator && (usage?.readers.size ?? 0) === 0)),
-		isSuperAdmin: isSuperAdmin(actor),
+			(canManageBooks(actor) ||
+				(isCreator && (usage?.readers.size ?? 0) === 0)),
+		canManageBooks: canManageBooks(actor),
 	};
 }
 

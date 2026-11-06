@@ -3,9 +3,10 @@ import { Button } from "@bbrc/ui/components/button";
 import { ArrowLeft } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
+import { BookHiddenControl } from "@/components/blocks/book-hidden-control";
 
 type EditBookPageHeaderProps = {
-	book: Pick<TGetBookBySlugOutputSchema, "title" | "slug">;
+	book: Pick<TGetBookBySlugOutputSchema, "title" | "slug" | "hidden">;
 };
 
 export function EditBookPageHeader({ book }: EditBookPageHeaderProps) {
@@ -28,6 +29,7 @@ export function EditBookPageHeader({ book }: EditBookPageHeaderProps) {
 					<span className="font-medium text-foreground">{book.title}</span>.
 				</p>
 			</div>
+			<BookHiddenControl slug={book.slug} hidden={book.hidden} />
 		</header>
 	);
 }

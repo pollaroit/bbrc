@@ -1,4 +1,4 @@
-import { isSuperAdmin } from "@bbrc/shared";
+import { canManageBooks, isSuperAdmin } from "@bbrc/shared";
 import {
 	Card,
 	CardContent,
@@ -89,7 +89,8 @@ export default async function AdminHubPage() {
 	});
 
 	if (!isSuperAdmin(session?.user)) {
-		redirect("/" as Route);
+		// Admins run the book catalogue only; the rest of the dashboard is for super admins.
+		redirect((canManageBooks(session?.user) ? "/admin/books" : "/") as Route);
 	}
 
 	return (

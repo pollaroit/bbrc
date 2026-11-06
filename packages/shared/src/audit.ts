@@ -175,8 +175,23 @@ export const AUDIT_ACTIONS = {
 
 	// Books
 	"book.created": defineAudit("book", "Book added", "Added a book."),
+	"book.created_manual": defineAudit(
+		"book",
+		"Book added by hand",
+		"Added a book that is not on Open Library, with its first edition.",
+	),
 	"book.updated": defineAudit("book", "Book edited", "Edited a book."),
 	"book.removed": defineAudit("book", "Book removed", "Removed a book."),
+	"book.hidden": defineAudit(
+		"book",
+		"Book hidden",
+		"Hid a book from sittings.",
+	),
+	"book.unhidden": defineAudit(
+		"book",
+		"Book unhidden",
+		"Offered a hidden book to sittings again.",
+	),
 	"book.work_blocked": defineAudit(
 		"book",
 		"Work blocked",
@@ -186,6 +201,11 @@ export const AUDIT_ACTIONS = {
 		"book",
 		"Work unblocked",
 		"Allowed a blocked Open Library work again.",
+	),
+	"book.edition_primary_set": defineAudit(
+		"book",
+		"Primary edition changed",
+		"Made an edition the one a book takes its pages and cover from.",
 	),
 	"book.edition_verified": defineAudit(
 		"book",

@@ -1,8 +1,8 @@
 import { BookSchema } from "@bbrc/schemas";
 import {
+	minRoleProcedure,
 	protectedProcedure,
 	publicProcedure,
-	superAdminProcedure,
 } from "../../procedures";
 import {
 	revalidateBookIsr,
@@ -17,6 +17,7 @@ import { loadViewer } from "../visibility/viewer";
 import {
 	AddBookInputSchema,
 	AddBookOutputSchema,
+	AddManualBookInputSchema,
 	GetBookBySlugOutputSchema,
 	GetBookListAuthorFacetsInputSchema,
 	GetBookListAuthorFacetsOutputSchema,
@@ -26,6 +27,8 @@ import {
 	GetBookListOutputSchema,
 	GetRandomBookInputSchema,
 	GetRandomBookOutputSchema,
+	SetBookHiddenInputSchema,
+	SetBookHiddenOutputSchema,
 	UpdateBookInputSchema,
 	UpdateBookOutputSchema,
 } from "./book.schema";
@@ -56,6 +59,8 @@ import {
 	ExportBookListOutputSchema,
 } from "./book-export.schema";
 import { exportBookList } from "./book-export.service";
+import { setBookHidden } from "./book-hidden.service";
+import { addManualBook } from "./book-manual.service";
 import {
 	SuggestBookOriginCountriesInputSchema,
 	SuggestBookOriginCountriesOutputSchema,
@@ -171,19 +176,19 @@ export const bookRouter = {
 		.handler(async ({ input, context }) =>
 			getBookCatalogDiscovery(input.bookSlug, context.db),
 		),
-	suggestOriginCountries: superAdminProcedure
+	suggestOriginCountries: minRoleProcedure("admin")
 		.input(SuggestBookOriginCountriesInputSchema)
 		.output(SuggestBookOriginCountriesOutputSchema)
 		.handler(async ({ input }) => suggestBookOriginCountries(input)),
-	findSimilar: superAdminProcedure
+	findSimilar: minRoleProcedure("admin")
 		.input(FindSimilarBooksInputSchema)
 		.output(FindSimilarBooksOutputSchema)
 		.handler(async ({ input, context }) => findSimilarBooks(context.db, input)),
-	suggestDetails: superAdminProcedure
+	suggestDetails: minRoleProcedure("admin")
 		.input(SuggestBookDetailsInputSchema)
 		.output(SuggestBookDetailsOutputSchema)
 		.handler(async ({ input }) => suggestBookDetails(input)),
-	addBook: superAdminProcedure
+	addBook: minRoleProcedure("admin")
 		.input(AddBookInputSchema)
 		.use(
 			audited("book.created", {
@@ -209,7 +214,37 @@ export const bookRouter = {
 			}
 			return book;
 		}),
-	updateBook: superAdminProcedure
+	addManualBook: minRoleProcedure("admin")
+		.input(AddManualBookInputSchema)
+		.use(
+			audited("book.created_manual", {
+				target: async ({ output, db }) =>
+					namedTarget(
+						"book",
+						await bookBeforeBySlug(db, output.slug),
+						output.slug,
+					),
+			}),
+		)
+		.output(AddBookOutputSchema)
+		.handler(async ({ input, context }) => {
+			const book = await addManualBook(
+				input,
+				context.db,
+				context.session.user.id,
+			);
+			revalidateBookIsr(context, book.slug);
+			revalidateFeedsIsr(context);
+			revalidateAuthorSlugs(
+				context,
+				await authorSlugsOfBook(context.db, book.slug),
+			);
+			if (book.seriesSlug) {
+				revalidateSeriesIsr(context, book.seriesSlug);
+			}
+			return book;
+		}),
+	updateBook: minRoleProcedure("admin")
 		.input(UpdateBookInputSchema)
 		.use(
 			audited("book.updated", {
@@ -238,7 +273,7 @@ export const bookRouter = {
 			}
 			return book;
 		}),
-	removeBook: superAdminProcedure
+	removeBook: minRoleProcedure("admin")
 		.input(BookSchema.shape.slug)
 		.use(
 			audited("book.removed", {
@@ -253,16 +288,50 @@ export const bookRouter = {
 			revalidateFeedsIsr(context);
 			return slug;
 		}),
+	hideBook: minRoleProcedure("admin")
+		.input(SetBookHiddenInputSchema)
+		.use(
+			audited("book.hidden", {
+				before: ({ input, db }) => bookBeforeBySlug(db, input.slug),
+				target: ({ before, input }) => namedTarget("book", before, input.slug),
+			}),
+		)
+		.output(SetBookHiddenOutputSchema)
+		.handler(async ({ input, context }) => {
+			const result = await setBookHidden(
+				{ slug: input.slug, hidden: true },
+				context.db,
+			);
+			revalidateBookIsr(context, result.slug);
+			return result;
+		}),
+	unhideBook: minRoleProcedure("admin")
+		.input(SetBookHiddenInputSchema)
+		.use(
+			audited("book.unhidden", {
+				before: ({ input, db }) => bookBeforeBySlug(db, input.slug),
+				target: ({ before, input }) => namedTarget("book", before, input.slug),
+			}),
+		)
+		.output(SetBookHiddenOutputSchema)
+		.handler(async ({ input, context }) => {
+			const result = await setBookHidden(
+				{ slug: input.slug, hidden: false },
+				context.db,
+			);
+			revalidateBookIsr(context, result.slug);
+			return result;
+		}),
 	// Public information (the catalog), and members need it to see what is already in the library.
 	listCatalogOlids: protectedProcedure
 		.output(ListCatalogOlidsOutputSchema)
 		.handler(async ({ context }) => ({
 			olids: await listCatalogOlids(context.db),
 		})),
-	listBlockedOpenLibraryWorks: superAdminProcedure
+	listBlockedOpenLibraryWorks: minRoleProcedure("admin")
 		.output(ListBlockedOpenLibraryWorksOutputSchema)
 		.handler(async ({ context }) => listBlockedOpenLibraryWorks(context.db)),
-	blockOpenLibraryWork: superAdminProcedure
+	blockOpenLibraryWork: minRoleProcedure("admin")
 		.input(BlockOpenLibraryWorkInputSchema)
 		.use(
 			audited("book.work_blocked", {
@@ -283,7 +352,7 @@ export const bookRouter = {
 			await invalidateDiscoverLanes(context.db);
 			return result;
 		}),
-	unblockOpenLibraryWork: superAdminProcedure
+	unblockOpenLibraryWork: minRoleProcedure("admin")
 		.input(UnblockOpenLibraryWorkInputSchema)
 		.use(
 			audited("book.work_unblocked", {

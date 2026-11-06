@@ -138,7 +138,10 @@ export function AdminBooksListTable() {
 											</div>
 										</TableCell>
 										<TableCell>
-											<BookStatusBadge status={book.status} />
+											<BookStatusBadge
+												status={book.status}
+												hidden={book.hidden}
+											/>
 										</TableCell>
 										<TableCell className="hidden max-w-48 truncate md:table-cell">
 											{formatBookAuthors(book.authors)}

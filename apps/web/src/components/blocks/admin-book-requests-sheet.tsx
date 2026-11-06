@@ -1,6 +1,6 @@
 "use client";
 
-import { isSuperAdmin } from "@bbrc/shared";
+import { canManageBooks } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import {
 	Dialog,
@@ -204,7 +204,7 @@ export function AdminBookRequestsSheet({
 		authClient.useSession();
 	const [open, setOpen] = useState(false);
 
-	const superAdmin = isSuperAdmin(session?.user);
+	const superAdmin = canManageBooks(session?.user);
 
 	const { data, isPending: isListPending } = useQuery({
 		...orpc.bookRequest.listPending.queryOptions(),

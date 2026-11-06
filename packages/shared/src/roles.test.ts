@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	assignableRoles,
 	canAssignRole,
+	canManageBooks,
 	canManageRoles,
 	hasRoleAtLeast,
 	isSuperAdmin,
@@ -101,5 +102,20 @@ describe("who may set whose role", () => {
 		expect(canManageRoles(moderator)).toBe(false);
 		expect(canManageRoles(user)).toBe(false);
 		expect(canManageRoles(null)).toBe(false);
+	});
+});
+
+describe("canManageBooks", () => {
+	test("admins and super admins run the book catalogue; moderators and members do not", () => {
+		expect(canManageBooks({ role: "super_admin" })).toBe(true);
+		expect(canManageBooks({ role: "admin" })).toBe(true);
+		expect(canManageBooks({ role: "moderator" })).toBe(false);
+		expect(canManageBooks({ role: "user" })).toBe(false);
+		expect(canManageBooks(null)).toBe(false);
+		expect(canManageBooks({ role: "owner" })).toBe(false);
+	});
+
+	test("it grants nothing else: admins are still not super admins", () => {
+		expect(isSuperAdmin({ role: "admin" })).toBe(false);
 	});
 });

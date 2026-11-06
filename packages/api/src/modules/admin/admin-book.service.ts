@@ -165,6 +165,8 @@ function mapAdminBookListRow(
 		averageRating: row.averageRating,
 		coverId: row.coverId,
 		olid: row.olid,
+		source: row.source,
+		hidden: row.hidden,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 		excerptPreview:
@@ -202,6 +204,12 @@ function adminExtraWhere(
 		openLibraryRating: input.missingOpenLibraryRating
 			? { equals: null }
 			: undefined,
+		hidden:
+			input.hidden === "hidden"
+				? true
+				: input.hidden === "visible"
+					? false
+					: undefined,
 	});
 }
 

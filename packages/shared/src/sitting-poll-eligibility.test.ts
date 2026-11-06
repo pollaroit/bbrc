@@ -56,6 +56,7 @@ describe("poll nominee reasons", () => {
 describe("pollNomineeReasons", () => {
 	const fits = {
 		inPoll: false,
+		hidden: false,
 		onWishlist: true,
 		seriesOrderOk: true,
 		prerequisitesOk: true,
@@ -92,5 +93,26 @@ describe("pollNomineeReasons", () => {
 		expect(
 			pollNomineeReasons({ ...fits, onWishlist: false, inPoll: true }),
 		).toEqual(["already_in_poll", "not_on_wishlist"]);
+	});
+
+	test("a hidden book is out for that reason alone, shown after 'already in the poll'", () => {
+		expect(
+			pollNomineeReasons({
+				...fits,
+				hidden: true,
+				fitsFilters: false,
+				prerequisitesOk: false,
+				seriesOrderOk: false,
+			}),
+		).toEqual(["hidden"]);
+		expect(pollNomineeReasons({ ...fits, hidden: true, inPoll: true })).toEqual(
+			["already_in_poll", "hidden"],
+		);
+		expect(primaryPollNomineeReason(["not_on_wishlist", "hidden"])).toBe(
+			"hidden",
+		);
+		expect(
+			canNominatePollBook(pollNomineeReasons({ ...fits, hidden: true })),
+		).toBe(false);
 	});
 });

@@ -127,7 +127,7 @@ function formatCell(field: UserReadExportFieldKey, row: ExportRow): string {
 		case "slug":
 			return row.slug;
 		case "olid":
-			return row.olid;
+			return row.olid ?? "";
 		case "status":
 			return row.status.charAt(0).toUpperCase() + row.status.slice(1);
 		case "pages":

@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import type { Database } from "@bbrc/db";
-import { bookAuthorEntries, isSuperAdmin, type RoleActor } from "@bbrc/shared";
+import {
+	bookAuthorEntries,
+	canManageBooks,
+	type RoleActor,
+} from "@bbrc/shared";
 import { ORPCError } from "@orpc/server";
 import { getGeminiConfig } from "../../lib/gemini/config";
 import { geminiGenerateJson } from "../../lib/gemini/generate-json";
@@ -51,7 +55,7 @@ const LANE_COPY: Record<
 };
 
 export function listLanesFor(viewer: Viewer) {
-	const ids: DiscoverLaneId[] = isSuperAdmin(viewer)
+	const ids: DiscoverLaneId[] = canManageBooks(viewer)
 		? ["member_wants", "series_next", "rated_authors", "gaps", "ai"]
 		: ["for_you", "ai"];
 	return ids.map((id) => ({
@@ -142,18 +146,46 @@ async function writeCache(
 
 // ── Shared helpers ─────────────────────────────────────────────────────────
 
-type Exclusions = { catalog: Set<string>; blocked: Set<string> };
+type Exclusions = {
+	catalog: Set<string>;
+	/** Manual books have no Open Library id, so they are matched by title and first author. */
+	manual: Set<string>;
+	blocked: Set<string>;
+};
+
+/** One book by what a person would call it: the title and first author, without case, accents or punctuation. */
+function titleAuthorKey(title: string, firstAuthor: string | undefined) {
+	const words = (value: string) =>
+		value
+			.normalize("NFKD")
+			.replace(/\p{M}/gu, "")
+			.toLowerCase()
+			.replace(/[^\p{L}\p{N}]+/gu, " ")
+			.trim();
+	return `${words(title)}|${words(firstAuthor ?? "")}`;
+}
 
 async function loadExclusions(db: Database): Promise<Exclusions> {
 	const [books, blocked] = await Promise.all([
-		db.book.findMany({ select: { olid: true } }),
+		db.book.findMany({ select: { olid: true, title: true, authors: true } }),
 		loadBlockedOpenLibraryOlids(db),
 	]);
-	return { catalog: new Set(books.map((book) => book.olid)), blocked };
+	const catalog = new Set<string>();
+	const manual = new Set<string>();
+	for (const book of books) {
+		if (book.olid) catalog.add(book.olid);
+		else manual.add(titleAuthorKey(book.title, book.authors[0]));
+	}
+	return { catalog, manual, blocked };
 }
 
-const allowed = (exclusions: Exclusions, olid: string) =>
-	!exclusions.catalog.has(olid) && !exclusions.blocked.has(olid);
+const allowed = (
+	exclusions: Exclusions,
+	hit: { olid: string; title: string; authors: string[] },
+) =>
+	!exclusions.catalog.has(hit.olid) &&
+	!exclusions.blocked.has(hit.olid) &&
+	!exclusions.manual.has(titleAuthorKey(hit.title, hit.authors[0]));
 
 const norm = (value: string) =>
 	value
@@ -210,7 +242,7 @@ function collect(
 	let added = 0;
 	for (const hit of hits) {
 		if (into.length >= max || added >= perCall) return;
-		if (seen.has(hit.olid) || !allowed(exclusions, hit.olid)) continue;
+		if (seen.has(hit.olid) || !allowed(exclusions, hit)) continue;
 		if (!hit.title.trim() || hit.authors.length === 0) continue;
 		seen.add(hit.olid);
 		into.push(toItem(hit, reason));
@@ -734,7 +766,7 @@ async function aiAsksLeft(
 	db: Database,
 	viewer: Viewer,
 ): Promise<number | null> {
-	if (isSuperAdmin(viewer)) return null;
+	if (canManageBooks(viewer)) return null;
 	const used = await db.bookDiscoverAsk.count({
 		where: {
 			userId: viewer.id,
@@ -749,13 +781,13 @@ async function laneAi(db: Database, viewer: Viewer, refresh: boolean) {
 	if (!config) {
 		return lane("ai", [], "AI suggestions are not set up on this server.");
 	}
-	const memberScope = isSuperAdmin(viewer) ? undefined : viewer.id;
+	const memberScope = canManageBooks(viewer) ? undefined : viewer.id;
 	const taste = await loadTaste(db, memberScope);
 	if (taste.length === 0) {
 		return lane(
 			"ai",
 			[],
-			isSuperAdmin(viewer)
+			canManageBooks(viewer)
 				? "The club has no reads or reviews to learn from yet."
 				: "Mark a few books as read first, then ask again.",
 			await aiAsksLeft(db, viewer),
@@ -764,7 +796,7 @@ async function laneAi(db: Database, viewer: Viewer, refresh: boolean) {
 
 	const summary = tasteSummary(
 		taste,
-		isSuperAdmin(viewer) ? "the whole club" : "one member",
+		canManageBooks(viewer) ? "the whole club" : "one member",
 	);
 	const cacheKey = `ai:${memberScope ?? "club"}:${createHash("sha256").update(summary).digest("hex").slice(0, 24)}`;
 
@@ -798,7 +830,7 @@ async function laneAi(db: Database, viewer: Viewer, refresh: boolean) {
 			message: error instanceof Error ? error.message : "AI suggestion failed",
 		});
 	}
-	if (!isSuperAdmin(viewer)) {
+	if (!canManageBooks(viewer)) {
 		await db.bookDiscoverAsk.create({ data: { userId: viewer.id } });
 	}
 
@@ -828,11 +860,7 @@ async function laneAi(db: Database, viewer: Viewer, refresh: boolean) {
 	const items: DiscoverItem[] = [];
 	const seen = new Set<string>();
 	for (const entry of verified) {
-		if (
-			!entry ||
-			seen.has(entry.hit.olid) ||
-			!allowed(exclusions, entry.hit.olid)
-		) {
+		if (!entry || seen.has(entry.hit.olid) || !allowed(exclusions, entry.hit)) {
 			continue;
 		}
 		seen.add(entry.hit.olid);

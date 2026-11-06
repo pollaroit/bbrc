@@ -191,6 +191,8 @@ export const AdminBookListItemSchema = BookSchema.pick({
 	averageRating: true,
 	coverId: true,
 	olid: true,
+	source: true,
+	hidden: true,
 	createdAt: true,
 	updatedAt: true,
 }).extend({
@@ -287,6 +289,8 @@ export const adminBookListSelect = {
 	averageRating: true,
 	coverId: true,
 	olid: true,
+	source: true,
+	hidden: true,
 	excerpt: true,
 	createdAt: true,
 	updatedAt: true,

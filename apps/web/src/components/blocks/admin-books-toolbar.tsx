@@ -4,6 +4,7 @@ import { adminBookSortableFields } from "@bbrc/api/modules/admin/admin-book.list
 import { Field, FieldLabel } from "@bbrc/ui/components/field";
 import { Input } from "@bbrc/ui/components/input";
 import { useMemo } from "react";
+import { BookHiddenFilterSelect } from "@/components/blocks/book-hidden-filter-select";
 import { ListingCheckboxList } from "@/components/listing/listing-checkbox-list";
 import { ListingCountryMultiSelect } from "@/components/listing/listing-country-multi-select";
 import { ListingFiltersSheet } from "@/components/listing/listing-filters-sheet";
@@ -53,6 +54,7 @@ function countAdminBookSheetFilters(
 ) {
 	let count = 0;
 	if (params.statuses?.length) count += 1;
+	if (params.hidden != null) count += 1;
 	if (params.rangeMin != null || params.rangeMax != null) count += 1;
 	if (
 		params.minPages != null ||
@@ -194,6 +196,7 @@ function BookFiltersSheet({
 			onClear={() => {
 				void setParams({
 					statuses: null,
+					hidden: null,
 					rangeBy: null,
 					rangeMin: null,
 					rangeMax: null,
@@ -237,6 +240,12 @@ function BookFiltersSheet({
 						toggleStatus(status, checked);
 					},
 				}))}
+			/>
+			<BookHiddenFilterSelect
+				value={params.hidden}
+				onChange={(hidden) => {
+					void setParams({ hidden, ...resetPage });
+				}}
 			/>
 			<ListingRangeFields
 				rangeBy={params.rangeBy}

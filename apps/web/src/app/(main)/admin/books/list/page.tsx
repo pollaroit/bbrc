@@ -1,4 +1,4 @@
-import { isSuperAdmin } from "@bbrc/shared";
+import { canManageBooks } from "@bbrc/shared";
 import { Skeleton } from "@bbrc/ui/components/skeleton";
 import type { Metadata, Route } from "next";
 import { headers } from "next/headers";
@@ -34,7 +34,7 @@ export default async function AdminBooksListPage() {
 		headers: await headers(),
 	});
 
-	if (!isSuperAdmin(session?.user)) {
+	if (!canManageBooks(session?.user)) {
 		redirect("/" as Route);
 	}
 

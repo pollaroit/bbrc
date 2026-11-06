@@ -1,6 +1,6 @@
 "use client";
 
-import { isSuperAdmin } from "@bbrc/shared";
+import { canManageBooks } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { Sheet, SheetContent } from "@bbrc/ui/components/sheet";
 import {
@@ -120,7 +120,7 @@ export function UserBookRequestsSheet({
 		authClient.useSession();
 	const [open, setOpen] = useState(false);
 
-	const isMember = session != null && !isSuperAdmin(session.user);
+	const isMember = session != null && !canManageBooks(session.user);
 
 	const { data, isPending: isListPending } = useQuery({
 		...orpc.bookRequest.listMine.queryOptions(),

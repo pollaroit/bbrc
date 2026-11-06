@@ -25,6 +25,7 @@ import { Textarea } from "@bbrc/ui/components/textarea";
 import { useMutation } from "@tanstack/react-query";
 import type { Route } from "next";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useController } from "react-hook-form";
@@ -122,6 +123,8 @@ export function EditBookForm({ book }: EditBookFormProps) {
 		})),
 	);
 
+	// A book added by hand takes its pages and cover from its primary edition.
+	const manual = book.source === "manual";
 	const initialCoverId = book.coverId ?? null;
 	const [cover, setCover] = useState<BookCoverValue>({
 		coverId: initialCoverId,
@@ -369,14 +372,27 @@ export function EditBookForm({ book }: EditBookFormProps) {
 					{
 						id: "cover",
 						title: "Cover",
-						description:
-							"Pick another Open Library cover, or upload your own. Covers are always saved at the same 2:3 size.",
+						description: manual
+							? "This book takes its cover from its primary edition."
+							: "Pick another Open Library cover, or upload your own. Covers are always saved at the same 2:3 size.",
 						status:
 							cover.coverId != null || cover.customCoverUrl
 								? "complete"
 								: "attention",
 						summary: coverLabel,
-						content: (
+						content: manual ? (
+							<p className="text-muted-foreground text-sm leading-relaxed">
+								To change the cover, edit the primary edition or make another
+								edition primary on the{" "}
+								<Link
+									href={`/books/${book.slug}/editions` as Route}
+									className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
+								>
+									editions page
+								</Link>
+								.
+							</p>
+						) : (
 							<BookCoverField
 								title={title}
 								olid={book.olid}
@@ -494,23 +510,36 @@ export function EditBookForm({ book }: EditBookFormProps) {
 										name="pages"
 										label="Pages"
 										render={(field, fieldState) => (
-											<Input
-												id={field.name}
-												type="number"
-												min={1}
-												inputMode="numeric"
-												aria-invalid={fieldState.invalid}
-												value={field.value}
-												onChange={(event) => {
-													const next = event.target.value;
-													field.onChange(
-														next === "" ? 0 : Number.parseInt(next, 10),
-													);
-												}}
-												onBlur={field.onBlur}
-												name={field.name}
-												ref={field.ref}
-											/>
+											<div className="space-y-1">
+												<Input
+													id={field.name}
+													type="number"
+													min={1}
+													inputMode="numeric"
+													aria-invalid={fieldState.invalid}
+													readOnly={manual}
+													className={
+														manual
+															? "bg-muted/40 text-muted-foreground"
+															: undefined
+													}
+													value={field.value}
+													onChange={(event) => {
+														const next = event.target.value;
+														field.onChange(
+															next === "" ? 0 : Number.parseInt(next, 10),
+														);
+													}}
+													onBlur={field.onBlur}
+													name={field.name}
+													ref={field.ref}
+												/>
+												{manual ? (
+													<p className="text-muted-foreground text-xs">
+														From the primary edition.
+													</p>
+												) : null}
+											</div>
 										)}
 									/>
 

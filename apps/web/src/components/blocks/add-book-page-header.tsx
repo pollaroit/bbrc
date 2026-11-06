@@ -26,6 +26,16 @@ export function AddBookPageHeader() {
 					</kbd>{" "}
 					for keyboard shortcuts.
 				</p>
+				<p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
+					Not on Open Library?{" "}
+					<Link
+						href={"/books/new/manual" as Route}
+						className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
+					>
+						Add it by hand
+					</Link>
+					, together with its first edition.
+				</p>
 			</div>
 		</header>
 	);

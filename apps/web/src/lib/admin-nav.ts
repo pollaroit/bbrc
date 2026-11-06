@@ -1,3 +1,4 @@
+import { canManageBooks, isSuperAdmin } from "@bbrc/shared";
 import {
 	BookOpen,
 	Eye,
@@ -27,6 +28,8 @@ export type AdminNavChild = {
 
 export type AdminNavSection = {
 	id: string;
+	/** Admins see only the sections marked "admin" (the book catalogue); the rest is for super admins. */
+	role?: "admin";
 	label: string;
 	icon: typeof LayoutDashboard;
 	sectionActive: (pathname: string) => boolean;
@@ -88,6 +91,7 @@ export const adminNavSections: AdminNavSection[] = [
 	},
 	{
 		id: "books",
+		role: "admin",
 		label: "Books",
 		icon: BookOpen,
 		defaultHref: "/admin/books" as Route,
@@ -417,3 +421,14 @@ export const adminNavSections: AdminNavSection[] = [
 		],
 	},
 ];
+
+/** The sections a viewer may open: everything for a super admin, the book catalogue for an admin. */
+export function adminNavSectionsFor(
+	subject: Parameters<typeof isSuperAdmin>[0],
+): AdminNavSection[] {
+	if (isSuperAdmin(subject)) return adminNavSections;
+	if (canManageBooks(subject)) {
+		return adminNavSections.filter((section) => section.role === "admin");
+	}
+	return [];
+}

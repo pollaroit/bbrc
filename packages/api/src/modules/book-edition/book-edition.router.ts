@@ -1,7 +1,7 @@
 import {
+	minRoleProcedure,
 	protectedProcedure,
 	publicProcedure,
-	superAdminProcedure,
 } from "../../procedures";
 import { audited } from "../audit/audit-middleware";
 import { editionBefore, namedTarget } from "../audit/audit-targets";
@@ -26,6 +26,7 @@ import {
 	listBookEditions,
 	mergeBookEditions,
 	setBookEditionVerified,
+	setBookPrimaryEdition,
 	updateBookEdition,
 } from "./book-edition.service";
 
@@ -64,7 +65,7 @@ export const bookEditionRouter = {
 			await deleteBookEdition(context.db, actorOf(context.session), input.id);
 			return { ok: true as const };
 		}),
-	verify: superAdminProcedure
+	verify: minRoleProcedure("admin")
 		.input(BookEditionIdInputSchema)
 		.use(
 			audited("book.edition_verified", {
@@ -82,7 +83,7 @@ export const bookEditionRouter = {
 			);
 			return { ok: true as const };
 		}),
-	unverify: superAdminProcedure
+	unverify: minRoleProcedure("admin")
 		.input(BookEditionIdInputSchema)
 		.use(
 			audited("book.edition_unverified", {
@@ -100,7 +101,7 @@ export const bookEditionRouter = {
 			);
 			return { ok: true as const };
 		}),
-	merge: superAdminProcedure
+	merge: minRoleProcedure("admin")
 		.input(MergeBookEditionsInputSchema)
 		.use(
 			audited("book.edition_merged", {
@@ -114,7 +115,20 @@ export const bookEditionRouter = {
 			await mergeBookEditions(context.db, input.fromId, input.intoId);
 			return { ok: true as const };
 		}),
-	link: superAdminProcedure
+	setPrimary: minRoleProcedure("admin")
+		.input(BookEditionIdInputSchema)
+		.use(
+			audited("book.edition_primary_set", {
+				before: ({ input, db }) => editionBefore(db, input.id),
+				target: ({ before, input }) => namedTarget("edition", before, input.id),
+			}),
+		)
+		.output(OkSchema)
+		.handler(async ({ input, context }) => {
+			await setBookPrimaryEdition(context.db, input.id);
+			return { ok: true as const };
+		}),
+	link: minRoleProcedure("admin")
 		.input(LinkBookEditionInputSchema)
 		.use(
 			audited("book.edition_linked", {

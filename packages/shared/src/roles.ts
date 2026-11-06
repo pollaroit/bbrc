@@ -51,6 +51,17 @@ export function hasRoleAtLeast(
 	return ROLE_RANK[roleOf(subject)] >= ROLE_RANK[role];
 }
 
+/**
+ * The library's catalogue: adding, editing, hiding and removing books, their editions
+ * and the requests for them. Admins and super admins; everything else about running the
+ * club (members, reports, sittings, the audit log, authors, series) stays with super admins.
+ */
+export function canManageBooks(
+	subject: Role | HasRole | string | null | undefined,
+): boolean {
+	return hasRoleAtLeast(subject, "admin");
+}
+
 /** Today's "admin": the one role with every permission the app has. */
 export function isSuperAdmin(
 	subject: Role | HasRole | string | null | undefined,

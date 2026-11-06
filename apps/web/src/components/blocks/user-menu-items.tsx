@@ -1,6 +1,6 @@
 "use client";
 
-import { isSuperAdmin } from "@bbrc/shared";
+import { canManageBooks, isSuperAdmin } from "@bbrc/shared";
 import {
 	DropdownMenuGroup,
 	DropdownMenuItem,
@@ -73,15 +73,18 @@ function userMenuAccountEntries(user: UserMenuUser): MenuEntry[] {
 	const entries: MenuEntry[] = [
 		{ label: "Settings", href: "/settings" as Route, icon: Settings },
 	];
-	if (isSuperAdmin(user)) {
-		entries.push(
-			{
-				label: "Blocked works",
-				href: "/books/blocked" as Route,
-				icon: BookOpen,
-			},
-			{ label: "Dashboard", href: "/admin" as Route, icon: Shield },
-		);
+	if (canManageBooks(user)) {
+		entries.push({
+			label: "Blocked works",
+			href: "/books/blocked" as Route,
+			icon: BookOpen,
+		});
+		// Admins land on the book screens; the full dashboard is for super admins.
+		entries.push({
+			label: isSuperAdmin(user) ? "Dashboard" : "Manage books",
+			href: (isSuperAdmin(user) ? "/admin" : "/admin/books") as Route,
+			icon: Shield,
+		});
 	}
 	return entries;
 }

@@ -30,10 +30,13 @@ export function mapReadAfterBooks(
 	return rows.map((row) => row.prerequisiteBook);
 }
 
+/** A hidden prerequisite never holds a book back: it will not get a sitting of its own. */
 export function prerequisitesSatisfiedForPoll(
-	prerequisites: Array<{ status: string }>,
+	prerequisites: Array<{ status: string; hidden?: boolean }>,
 ): boolean {
-	return prerequisites.every((book) => book.status === "completed");
+	return prerequisites.every(
+		(book) => book.hidden === true || book.status === "completed",
+	);
 }
 
 async function dependentBookIdsRequiringPrerequisite(
