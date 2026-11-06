@@ -25,6 +25,7 @@ import { healthRouter } from "./modules/health/health.router";
 import { leaderboardRouter } from "./modules/leaderboard/leaderboard.router";
 import { likeRouter } from "./modules/like/like.router";
 import { linkPreviewRouter } from "./modules/link-preview/link-preview.router";
+import { memberStatsRouter } from "./modules/member-stats/member-stats.router";
 import { mentionRouter } from "./modules/mention/mention.router";
 import { notificationRouter } from "./modules/notification/notification.router";
 import { peopleRouter } from "./modules/people/people.router";
@@ -100,6 +101,7 @@ export const appRouter = {
 	shelf: shelfRouter,
 	storage: storageRouter,
 	sitting: sittingRouter,
+	memberStats: memberStatsRouter,
 	user: userRouter,
 	view: viewRouter,
 	rp: rpRouter,

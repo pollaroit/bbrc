@@ -113,6 +113,8 @@ export type MemberStatsContext = {
 	bounds: UserStatsPeriodBounds;
 	/** The first finish month among all the member's dated reads, whatever the period. */
 	firstDatedRead: UserStatsMonth | null;
+	/** Every read of the member, whatever the period (for "compared with before"). */
+	allReads: StatsRead[];
 	/** Reads counted for the period (undated ones only for "All time" and "All books"). */
 	reads: StatsRead[];
 	/** The same, without the undated ones: what time-based charts can use. */
@@ -192,6 +194,7 @@ export async function loadMemberStatsContext(
 		period,
 		bounds,
 		firstDatedRead,
+		allReads,
 		reads,
 		datedReads: reads.filter((read) => readHasFinishMonth(read)),
 		hasTimeAxis: period.type !== "none",

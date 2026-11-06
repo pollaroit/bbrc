@@ -255,3 +255,35 @@ export function enumerateMonthsInBounds(
 	}
 	return out;
 }
+
+function addMonths(month: UserStatsMonth, delta: number): UserStatsMonth {
+	const index = month.year * 12 + (month.month - 1) + delta;
+	return { year: Math.floor(index / 12), month: (index % 12) + 1 };
+}
+
+/**
+ * The stretch of the same length just before this period, for "compared with before".
+ * A year compares with the year before, a month with the month before, a custom range
+ * with the range of equal length ahead of it. All time and All books have no "before".
+ */
+export function previousStatsBounds(
+	period: UserStatsPeriod,
+	bounds: UserStatsPeriodBounds,
+): UserStatsPeriodBounds | null {
+	if (period.type === "life" || period.type === "none") return null;
+	const span =
+		(bounds.end.year - bounds.start.year) * 12 +
+		(bounds.end.month - bounds.start.month) +
+		1;
+	const end = addMonths(bounds.start, -1);
+	return { start: addMonths(end, -(span - 1)), end };
+}
+
+/** Whether a read finished inside the bounds (undated reads are never inside). */
+export function readIsInBounds(
+	read: { readEndYear: number | null; readEndMonth: number | null },
+	bounds: UserStatsPeriodBounds,
+): boolean {
+	const finish = readFinishMonth(read);
+	return finish != null && isMonthInRange(finish, bounds.start, bounds.end);
+}
