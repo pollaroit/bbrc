@@ -99,20 +99,20 @@ export function createAuth(
 			enabled: true,
 			storage: options.secondaryStorage ? "secondary-storage" : "memory",
 			window: 60,
-			// A generous default: the browser talks to these endpoints on its own (session
-			// checks on focus, profile saves), so a low ceiling answers ordinary use with
-			// "Too many requests". Anything that can be abused for guessing has its own,
-			// strict rule below (and the library's built-in ones for sign-in, sign-up,
-			// password and email changes).
-			max: 300,
+			max: 5,
+			// Only the doors a stranger can knock on are limited: sign in, register and the
+			// password reset. Everything a signed-in member does (session checks, profile
+			// and password changes, sessions) is never limited: a limit there only ever
+			// answered ordinary use with "Too many requests". The first matching rule wins,
+			// so the catch-all stays last.
 			customRules: {
-				// Reading who is signed in is cheap (cookie cached) and every tab, focus and page
-				// asks for it; limiting it made ordinary use answer "Too many requests".
-				"/get-session": false,
 				"/sign-in/email": { window: 60, max: 5 },
 				"/sign-up/email": { window: 60, max: 3 },
 				"/forget-password/email": { window: 60, max: 3 },
+				"/send-verification-email": { window: 60, max: 3 },
 				"/request-password-reset": { window: 60, max: 3 },
+				"/reset-password": { window: 60, max: 5 },
+				"/**": false,
 			},
 		},
 		emailVerification: {
