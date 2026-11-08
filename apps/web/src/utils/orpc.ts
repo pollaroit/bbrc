@@ -5,6 +5,7 @@ import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { RPC_PATH, resolveAppOrigin } from "@/lib/app-origin";
+import { fetchWithRetryOn429 } from "./retry-429";
 
 export function createQueryClient() {
 	return new QueryClient({
@@ -42,10 +43,12 @@ export const link = new RPCLink({
 			);
 		}
 
-		return fetch(finalRequest, {
-			...(init ?? {}),
-			credentials: "include",
-		});
+		return fetchWithRetryOn429(() =>
+			fetch(finalRequest.clone(), {
+				...(init ?? {}),
+				credentials: "include",
+			}),
+		);
 	},
 	headers: async () => {
 		// Browser sends cookies via `credentials: "include"`. Avoid `headers()` on
