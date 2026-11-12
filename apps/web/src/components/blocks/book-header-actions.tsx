@@ -3,7 +3,6 @@
 import { BookAddToShelfDialog } from "@/components/blocks/book-add-to-shelf-dialog";
 import { BookFavoriteButton } from "@/components/blocks/book-favorite-button";
 import { BookHeaderWriteFeedback } from "@/components/blocks/book-header-write-feedback";
-import { BookMarkReadButton } from "@/components/blocks/book-mark-read-button";
 import { authClient } from "@/lib/auth-client";
 
 type BookHeaderActionsProps = {
@@ -11,6 +10,10 @@ type BookHeaderActionsProps = {
 	bookTitle: string;
 };
 
+/**
+ * The tinted, labelled buttons of the book page dock: shelf (blue), feedback
+ * (violet) and favorite (pink). A fragment, so the dock lays them out.
+ */
 export function BookHeaderActions({
 	bookSlug,
 	bookTitle,
@@ -19,25 +22,20 @@ export function BookHeaderActions({
 	const username = session?.user.username;
 
 	return (
-		<div className="flex shrink-0 flex-wrap items-center gap-1">
-			<BookMarkReadButton
-				bookSlug={bookSlug}
-				bookTitle={bookTitle}
-				variant="icon"
-			/>
+		<>
 			{username ? (
 				<BookAddToShelfDialog
 					bookSlug={bookSlug}
 					username={username}
-					trigger="icon"
+					trigger="deck"
 				/>
 			) : null}
-			<BookHeaderWriteFeedback bookSlug={bookSlug} />
+			<BookHeaderWriteFeedback bookSlug={bookSlug} deck />
 			<BookFavoriteButton
 				bookSlug={bookSlug}
 				bookTitle={bookTitle}
-				variant="inline"
+				variant="deck"
 			/>
-		</div>
+		</>
 	);
 }

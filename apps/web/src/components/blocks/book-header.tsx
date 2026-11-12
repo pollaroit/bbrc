@@ -1,218 +1,301 @@
 import type { TGetBookBySlugOutputSchema } from "@bbrc/api/modules/book/book.schema";
-import { openLibraryWorkPageUrl } from "@bbrc/shared";
-import { Badge } from "@bbrc/ui/components/badge";
-import { Separator } from "@bbrc/ui/components/separator";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import type { BookPulse } from "@bbrc/api/modules/book/book-pulse.service";
+import { getBookCountryName, openLibraryWorkPageUrl } from "@bbrc/shared";
+import { Button } from "@bbrc/ui/components/button";
+import {
+	ArrowLeft,
+	Bookmark,
+	BookOpen,
+	CalendarDays,
+	CircleCheck,
+	ExternalLink,
+	EyeOff,
+	FileText,
+	Layers,
+	type LucideIcon,
+	Star,
+	UserRound,
+} from "lucide-react";
 import type { Route } from "next";
-import Image from "next/image";
 import Link from "next/link";
+import { BookActionDock } from "@/components/blocks/book-action-dock";
 import { BookAuthorLinks } from "@/components/blocks/book-author-links";
-import { BookDeleteButton } from "@/components/blocks/book-delete-button";
-import { BookEditLink } from "@/components/blocks/book-edit-link";
-import { BookHeaderActions } from "@/components/blocks/book-header-actions";
-import { BookHiddenControl } from "@/components/blocks/book-hidden-control";
-import { BookMarkReadButton } from "@/components/blocks/book-mark-read-button";
-import { BookQuizButton } from "@/components/blocks/book-quiz-button";
+import { BookCover } from "@/components/blocks/book-cover";
+import { BookPrimaryAction } from "@/components/blocks/book-primary-action";
 import { BookReadAfterLinks } from "@/components/blocks/book-read-after-links";
-import { BookReadingStatCells } from "@/components/blocks/book-reading-stat-cells";
-import { BookRequestedByLine } from "@/components/blocks/book-requested-by";
-import { BookStatusBanner } from "@/components/blocks/book-status-badge";
-import { LiveViewCount } from "@/components/blocks/live-view-count";
+import { BookStatStrip } from "@/components/blocks/book-stat-strip";
+import { BookViewsChip } from "@/components/blocks/book-views-chip";
+import { CountryFlagIcon } from "@/components/blocks/country-dropdown";
 import { BookReadingStrip } from "@/components/blocks/reading/book-reading-strip";
-import { ResourceShareMenu } from "@/components/blocks/resource-share-menu";
-import { bookCoverFrameClassName, bookCoverUrl } from "@/lib/book-cover";
+import { bookCoverUrl } from "@/lib/book-cover";
+import { BOOK_TONES, type BookTone } from "@/lib/book-tones";
 import { cn } from "@/lib/utils";
 
 type BookHeaderProps = {
 	book: TGetBookBySlugOutputSchema;
+	pulse: BookPulse;
 };
 
-function StatCell({
-	label,
-	value,
-	hint,
+const STATUS: Record<
+	TGetBookBySlugOutputSchema["status"],
+	{ label: string; hint: string; icon: LucideIcon; tone: BookTone }
+> = {
+	completed: {
+		label: "Completed",
+		hint: "The club has finished reading this title.",
+		icon: CircleCheck,
+		tone: "success",
+	},
+	reading: {
+		label: "Reading",
+		hint: "This book is in an active club read.",
+		icon: BookOpen,
+		tone: "info",
+	},
+	wishlist: {
+		label: "Wishlist",
+		hint: "Queued for a future sitting or vote.",
+		icon: Bookmark,
+		tone: "violet",
+	},
+};
+
+const focusRing =
+	"focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2";
+
+/** One fact about the book. Every chip is the same height, so a row always lines up. */
+function Chip({
+	icon: Icon,
+	tone,
 	href,
+	external = false,
+	title,
+	children,
 }: {
-	label: string;
-	value: React.ReactNode;
-	hint?: string;
-	href?: Route;
+	icon?: LucideIcon;
+	tone?: BookTone;
+	href?: string;
+	external?: boolean;
+	title?: string;
+	children: React.ReactNode;
 }) {
-	const body = (
+	const className =
+		"inline-flex h-7 max-w-full items-center gap-1.5 border border-border px-2 text-sm";
+	const content = (
 		<>
-			<span className="text-muted-foreground text-xs">{label}</span>
-			<span className="font-medium tabular-nums leading-tight">{value}</span>
-			{hint ? (
-				<span className="text-muted-foreground text-xs">{hint}</span>
+			{Icon ? (
+				<Icon
+					className={cn(
+						"size-3.5 shrink-0",
+						tone ? BOOK_TONES[tone].ink : "text-muted-foreground",
+					)}
+					aria-hidden
+				/>
+			) : null}
+			<span className="truncate">{children}</span>
+			{external ? (
+				<ExternalLink
+					className="size-3 shrink-0 text-muted-foreground"
+					aria-hidden
+				/>
 			) : null}
 		</>
 	);
 
-	if (href) {
+	if (!href) {
 		return (
-			<Link
-				href={href}
-				className="flex min-w-0 flex-col gap-0.5 border border-border bg-card px-3 py-2 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-			>
-				{body}
-			</Link>
+			<span className={className} title={title}>
+				{content}
+			</span>
 		);
 	}
 
-	return (
-		<div className="flex min-w-0 flex-col gap-0.5 border border-border bg-card px-3 py-2">
-			{body}
-		</div>
+	const linkClass = cn(
+		className,
+		"transition-colors hover:bg-muted motion-reduce:transition-none",
+		focusRing,
+	);
+
+	return external ? (
+		<a
+			href={href}
+			target="_blank"
+			rel="noreferrer"
+			className={linkClass}
+			title={title}
+		>
+			{content}
+		</a>
+	) : (
+		<Link href={href as Route} className={linkClass} title={title}>
+			{content}
+		</Link>
 	);
 }
 
-export function BookHeader({ book }: BookHeaderProps) {
+export function BookHeader({ book, pulse }: BookHeaderProps) {
 	const coverSrc = bookCoverUrl(book.coverId, "L");
 	const olWorkUrl = book.olid ? openLibraryWorkPageUrl(book.olid) : null;
+	const status = STATUS[book.status];
+	const countries = book.countries.flatMap((code) => {
+		const name = getBookCountryName(code);
+		return name ? [{ code, name }] : [];
+	});
+	const requester = book.requestedBy;
 
 	return (
-		<header className="flex flex-col gap-6">
-			<Link
-				href={"/books" as Route}
-				className="inline-flex w-fit items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
+		<header className="flex min-w-0 flex-col gap-5">
+			<Button
+				variant="outline"
+				nativeButton={false}
+				render={<Link href={"/books" as Route} />}
+				className="group/back h-8 w-fit gap-1.5 pr-3 pl-2 text-sm"
 			>
-				<ArrowLeft className="size-4" />
+				<ArrowLeft
+					className="size-4 text-muted-foreground transition-transform group-hover/back:-translate-x-0.5 motion-reduce:transition-none"
+					aria-hidden
+				/>
 				All books
-			</Link>
+			</Button>
 
-			<BookStatusBanner status={book.status} hidden={book.hidden} />
-			<BookHiddenControl slug={book.slug} hidden={book.hidden} />
-
-			<div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-				<div className="mx-auto flex w-full max-w-56 shrink-0 flex-col gap-3 lg:mx-0">
-					<div
-						className={cn(
-							"relative aspect-2/3 w-full",
-							bookCoverFrameClassName,
-						)}
-					>
-						{coverSrc ? (
-							<Image
-								src={coverSrc}
-								alt=""
-								fill
-								className="object-cover"
-								sizes="(max-width: 1024px) 100vw, 224px"
-							/>
-						) : (
-							<div className="flex size-full items-center justify-center text-muted-foreground text-sm">
-								No cover
-							</div>
-						)}
-					</div>
-					<BookMarkReadButton
-						bookSlug={book.slug}
-						bookTitle={book.title}
-						bookPages={book.pages}
+			<div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 sm:grid-cols-[12rem_minmax(0,1fr)] sm:items-start sm:gap-x-8 sm:gap-y-3 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-x-10">
+				<div className="order-1 mx-auto w-full max-w-56 sm:col-start-1 sm:row-start-1 sm:mx-0 sm:max-w-none">
+					<BookCover
+						key={book.slug}
+						src={coverSrc}
+						title={book.title}
+						authors={book.authors}
+						seed={book.slug}
+						priority
 					/>
-					<BookQuizButton bookSlug={book.slug} />
 				</div>
 
-				<div className="flex min-w-0 flex-1 flex-col gap-5">
-					<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+				<div className="order-3 sm:col-start-1 sm:row-start-2">
+					<BookPrimaryAction
+						slug={book.slug}
+						title={book.title}
+						pages={book.pages}
+					/>
+				</div>
+
+				{/* Phones lay these two out in the grid's own order; from sm up they are one column beside the cover. */}
+				<div className="contents sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:flex sm:min-w-0 sm:flex-col sm:gap-5">
+					<div className="order-2 flex min-w-0 flex-col gap-5">
 						<div className="flex min-w-0 flex-col gap-2">
-							<h1 className="font-bold text-2xl tracking-tight sm:text-3xl">
+							<h1 className="wrap-break-word min-w-0 text-balance font-semibold text-4xl leading-[1.08] tracking-tight sm:text-5xl">
 								{book.title}
 							</h1>
-							{book.series ? (
-								<p className="text-muted-foreground text-sm">
-									<span className="tabular-nums">#{book.series.position}</span>{" "}
-									in{" "}
-									<Link
-										href={`/series/${book.series.slug}` as Route}
-										className="text-foreground underline-offset-4 hover:underline"
-									>
-										{book.series.title}
-									</Link>
-								</p>
-							) : null}
 							<BookAuthorLinks
 								authors={book.authors}
 								refs={book.authorRefs}
-								className="text-sm leading-relaxed"
+								withPhotos
+								className="text-lg leading-relaxed"
 							/>
 							<BookReadAfterLinks readAfterBooks={book.readAfterBooks} />
-							<LiveViewCount resource="book" itemRef={book.slug} />
-							{book.requestedBy ? (
-								<BookRequestedByLine requestedBy={book.requestedBy} />
-							) : null}
 						</div>
-						<div className="flex shrink-0 flex-wrap items-center gap-1">
-							<BookHeaderActions bookSlug={book.slug} bookTitle={book.title} />
-							<ResourceShareMenu
-								path={`/books/${book.slug}`}
-								shareText={book.title}
-								label="Share book"
-								storyBookSlug={book.slug}
-								shareInPost={{ kind: "book", slug: book.slug }}
-								size="md"
-							/>
-							<BookEditLink slug={book.slug} />
-							<BookDeleteButton slug={book.slug} title={book.title} />
+
+						<div className="flex flex-wrap items-center gap-2">
+							<Chip icon={status.icon} tone={status.tone} title={status.hint}>
+								{status.label}
+							</Chip>
+							{book.hidden ? (
+								<Chip
+									icon={EyeOff}
+									tone="warning"
+									title="Never offered to a sitting"
+								>
+									Hidden from sittings
+								</Chip>
+							) : null}
+							{book.series ? (
+								<Chip
+									icon={Layers}
+									tone="violet"
+									href={`/series/${book.series.slug}`}
+								>
+									<span className="tabular-nums">#{book.series.position}</span>{" "}
+									in {book.series.title}
+								</Chip>
+							) : null}
+							{book.pages > 0 ? (
+								<Chip icon={FileText} tone="info">
+									<span className="tabular-nums">{book.pages}</span> pages
+								</Chip>
+							) : null}
+							{book.publishedIn != null ? (
+								<Chip
+									icon={CalendarDays}
+									tone="success"
+									href={`/books?minPublishedIn=${book.publishedIn}&maxPublishedIn=${book.publishedIn}`}
+								>
+									<span className="tabular-nums">{book.publishedIn}</span>
+								</Chip>
+							) : null}
+							{countries.slice(0, 2).map((country) => (
+								<span
+									key={country.code}
+									className="inline-flex h-7 items-center gap-1.5 border border-border px-2 text-sm"
+								>
+									<CountryFlagIcon alpha2={country.code} size="sm" />
+									{country.name}
+								</span>
+							))}
+							{countries.length > 2 ? (
+								<Chip>
+									<span className="tabular-nums">+{countries.length - 2}</span>
+								</Chip>
+							) : null}
+							<BookViewsChip slug={book.slug} />
+							{olWorkUrl ? (
+								<Chip icon={Star} tone="warning" href={olWorkUrl} external>
+									{book.openLibraryRating != null ? (
+										<>
+											<span className="tabular-nums">
+												{book.openLibraryRating.toFixed(1)}
+											</span>{" "}
+											on Open Library
+										</>
+									) : (
+										"Open Library"
+									)}
+								</Chip>
+							) : null}
+							{requester ? (
+								<Chip
+									icon={UserRound}
+									href={`/users/${requester.username}`}
+									title="Asked for this book"
+								>
+									Requested by {requester.name?.trim() || requester.username}
+								</Chip>
+							) : null}
 						</div>
 					</div>
 
+					<div className="order-4 flex min-w-0 flex-col gap-5">
+						<BookStatStrip
+							slug={book.slug}
+							average={book.averageRating ?? null}
+							pulse={pulse}
+						/>
+
+						<BookActionDock
+							slug={book.slug}
+							title={book.title}
+							hidden={book.hidden}
+						/>
+					</div>
+				</div>
+
+				{/* Its own row under both columns, so it never pushes the primary button away from the cover. */}
+				<div className="order-5 min-w-0 empty:hidden sm:col-span-2 sm:row-start-3">
 					<BookReadingStrip
 						bookSlug={book.slug}
 						bookTitle={book.title}
 						bookPages={book.pages}
 					/>
-
-					<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-						<StatCell
-							label="Published"
-							value={book.publishedIn ?? "—"}
-							href={
-								book.publishedIn != null
-									? (`/books?minPublishedIn=${book.publishedIn}&maxPublishedIn=${book.publishedIn}` as Route)
-									: undefined
-							}
-						/>
-						<StatCell label="Pages" value={book.pages ?? "—"} />
-						<StatCell
-							label="Open Library"
-							value={
-								book.openLibraryRating != null
-									? `${book.openLibraryRating.toFixed(1)} / 5`
-									: "—"
-							}
-						/>
-						<StatCell
-							label="Club average"
-							value={
-								book.averageRating != null
-									? `${book.averageRating.toFixed(1)} / 5`
-									: "—"
-							}
-						/>
-						<BookReadingStatCells bookSlug={book.slug} />
-					</div>
-
-					{olWorkUrl ? (
-						<div className="flex flex-wrap items-center gap-2">
-							<Badge variant="outline" className="font-normal">
-								{book.olid}
-							</Badge>
-							<a
-								href={olWorkUrl}
-								target="_blank"
-								rel="noreferrer"
-								className="inline-flex items-center gap-1 text-primary text-sm underline-offset-4 hover:underline"
-							>
-								Open Library work
-								<ExternalLink className="size-3.5" />
-							</a>
-						</div>
-					) : null}
 				</div>
 			</div>
-
-			<Separator />
 		</header>
 	);
 }

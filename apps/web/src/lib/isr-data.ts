@@ -10,6 +10,7 @@ import {
 } from "@bbrc/api/modules/author/author-tabs.service";
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
 import { getBookCatalogDiscovery } from "@bbrc/api/modules/book/book-catalog-discovery.service";
+import { getBookPulse } from "@bbrc/api/modules/book/book-pulse.service";
 import {
 	countBookSittings,
 	getBookSittings,
@@ -76,6 +77,11 @@ export const loadAuthorTopBooksForIsr = cache((slug: string) =>
 
 export const loadBookBySlugForIsr = cache((slug: string) =>
 	getBookBySlug(slug, db),
+);
+
+/** Header numbers and tab counts: reviews, rating bars, documents, shelves, sittings. */
+export const loadBookPulseForIsr = cache((slug: string) =>
+	getBookPulse(slug, db),
 );
 
 export const loadBookCatalogDiscoveryForIsr = cache((slug: string) =>

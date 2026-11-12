@@ -12,7 +12,10 @@ import { type MouseEvent, useState } from "react";
 import { BookMarkReadDialog } from "@/components/blocks/book-mark-read-dialog";
 import { BookReadingMenu } from "@/components/blocks/reading/book-reading-menu";
 import { authClient } from "@/lib/auth-client";
-import { invalidateReadingQueries } from "@/lib/reading/use-reading";
+import {
+	invalidateReadingQueries,
+	useReadingState,
+} from "@/lib/reading/use-reading";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -23,6 +26,8 @@ type BookMarkReadButtonProps = {
 	tooltipSide?: "top" | "right" | "bottom" | "left";
 	/** Full width on book detail; compact icon on library cards. */
 	variant?: "full" | "icon";
+	/** `hero`: the tall primary action of the book page header. */
+	size?: "default" | "hero";
 	/**
 	 * Library grid: pass read state from `getViewerLibraryEngagement`.
 	 * `null` while loading (render nothing). Omit on book detail (per-book fetch).
@@ -38,6 +43,7 @@ export function BookMarkReadButton({
 	className,
 	tooltipSide = "top",
 	variant = "full",
+	size = "default",
 	listHasRead,
 	bookPages = 0,
 }: BookMarkReadButtonProps) {
@@ -45,6 +51,11 @@ export function BookMarkReadButton({
 	const [open, setOpen] = useState(false);
 
 	const useListMode = listHasRead !== undefined;
+	// Same query as the chevron menu, so both agree on whether the menu shows.
+	const readingState = useReadingState(
+		bookSlug,
+		Boolean(session?.user) && !useListMode,
+	);
 
 	const stateQuery = useQuery({
 		...orpc.read.getBookReadState.queryOptions({
@@ -72,6 +83,13 @@ export function BookMarkReadButton({
 		: (stateQuery.data?.hasRead ?? false);
 
 	const label = hasRead ? "Edit read" : "Mark as read";
+	// The chevron appears only for an unread book once its state is known; the
+	// main button squares its right edge only when there is a chevron to join.
+	const hasMenu =
+		!useListMode &&
+		!hasRead &&
+		readingState.data != null &&
+		!readingState.data.hasRead;
 
 	// Marking a book read ends the reading and clears the wishlist: refresh both.
 	const changeOpen = (next: boolean) => {
@@ -116,11 +134,19 @@ export function BookMarkReadButton({
 					<Button
 						type="button"
 						variant={hasRead ? "secondary" : "default"}
-						className="min-w-0 flex-1 rounded-e-none"
+						className={cn(
+							"min-w-0 flex-1",
+							hasMenu && "rounded-e-none",
+							size === "hero" && "h-9 gap-2 px-4 font-semibold",
+						)}
 						onClick={() => setOpen(true)}
 					>
 						<BookCheck data-icon="inline-start" />
-						{hasRead ? "Edit read" : "Mark read"}
+						{hasRead
+							? "Edit read"
+							: size === "hero"
+								? "Mark as read"
+								: "Mark read"}
 					</Button>
 					{useListMode ? null : (
 						<BookReadingMenu
@@ -128,7 +154,7 @@ export function BookMarkReadButton({
 							bookTitle={bookTitle}
 							bookPages={bookPages}
 							hasRead={hasRead}
-							className="rounded-s-none"
+							className={cn("rounded-s-none", size === "hero" && "size-9")}
 						/>
 					)}
 				</div>
