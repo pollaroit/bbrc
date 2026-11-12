@@ -5,11 +5,13 @@ import { Button } from "@bbrc/ui/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
+	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@bbrc/ui/components/dropdown-menu";
-import { Link2, PenLine, Share2 } from "lucide-react";
+import { Check, Link2, PenLine, Share2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useComposePost } from "@/components/blocks/compose-post-provider";
@@ -48,6 +50,10 @@ type ResourceShareMenuProps = {
 	size?: "sm" | "md";
 	/** Hide the text label (the trigger keeps its aria-label). */
 	iconOnly?: boolean;
+	/** Classes for the caption, e.g. to hide it on narrow screens. */
+	labelClassName?: string;
+	/** `outline` is the bordered button of the book page dock. */
+	triggerVariant?: "ghost" | "outline";
 };
 
 export function ResourceShareMenu({
@@ -60,6 +66,8 @@ export function ResourceShareMenu({
 	triggerClassName,
 	size = "sm",
 	iconOnly = false,
+	labelClassName,
+	triggerVariant = "ghost",
 }: ResourceShareMenuProps) {
 	const [copied, setCopied] = useState(false);
 	const { data: session } = authClient.useSession();
@@ -92,10 +100,12 @@ export function ResourceShareMenu({
 				render={
 					<Button
 						type="button"
-						variant="ghost"
+						variant={triggerVariant}
 						size={triggerSize}
 						className={cn(
-							"gap-1.5 text-muted-foreground hover:text-foreground",
+							"gap-1.5",
+							triggerVariant === "ghost" &&
+								"text-muted-foreground hover:text-foreground",
 							size === "sm" && "h-7 px-2 text-xs",
 							size === "md" && "h-8 px-2 text-sm",
 							triggerClassName,
@@ -105,49 +115,56 @@ export function ResourceShareMenu({
 				}
 			>
 				<Share2 className={cn(iconSize, "shrink-0")} aria-hidden />
-				{iconOnly ? null : "Share"}
+				{iconOnly ? null : <span className={labelClassName}>Share</span>}
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end" className="min-w-44">
-				{shareInPost && session?.user ? (
-					<DropdownMenuItem
-						onClick={() => {
-							compose.openCompose(shareInPost);
-						}}
-					>
-						<PenLine aria-hidden />
-						Share in post
+			<DropdownMenuContent align="end" className="min-w-56">
+				<DropdownMenuGroup>
+					{shareInPost && session?.user ? (
+						<DropdownMenuItem
+							onClick={() => {
+								compose.openCompose(shareInPost);
+							}}
+						>
+							<PenLine aria-hidden />
+							Share in a post
+						</DropdownMenuItem>
+					) : null}
+					<DropdownMenuItem onClick={() => void handleCopyLink()}>
+						{copied ? <Check aria-hidden /> : <Link2 aria-hidden />}
+						{copied ? "Link copied" : "Copy link"}
 					</DropdownMenuItem>
-				) : null}
-				<DropdownMenuItem onClick={() => void handleCopyLink()}>
-					<Link2 aria-hidden />
-					{copied ? "Copied" : "Copy link"}
-				</DropdownMenuItem>
+				</DropdownMenuGroup>
 				<DropdownMenuSeparator />
-				<DropdownMenuItem onClick={() => shareVia(buildWhatsAppShareUrl)}>
-					<WhatsAppIcon />
-					WhatsApp
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={() => shareVia(buildTwitterShareUrl)}>
-					<XTwitterIcon />
-					Twitter
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={() => shareVia(buildFacebookShareUrl)}>
-					<FacebookIcon />
-					Facebook
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={() => shareVia(buildTelegramShareUrl)}>
-					<TelegramIcon />
-					Telegram
-				</DropdownMenuItem>
+				<DropdownMenuGroup>
+					<DropdownMenuLabel>Send with</DropdownMenuLabel>
+					<DropdownMenuItem onClick={() => shareVia(buildWhatsAppShareUrl)}>
+						<WhatsAppIcon />
+						WhatsApp
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={() => shareVia(buildTelegramShareUrl)}>
+						<TelegramIcon />
+						Telegram
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={() => shareVia(buildTwitterShareUrl)}>
+						<XTwitterIcon />X (Twitter)
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={() => shareVia(buildFacebookShareUrl)}>
+						<FacebookIcon />
+						Facebook
+					</DropdownMenuItem>
+				</DropdownMenuGroup>
 				{storyBookSlug ? (
 					<>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							onClick={() => void shareBookToInstagramStory(storyBookSlug)}
-						>
-							<InstagramIcon />
-							Instagram Story
-						</DropdownMenuItem>
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>Make a picture</DropdownMenuLabel>
+							<DropdownMenuItem
+								onClick={() => void shareBookToInstagramStory(storyBookSlug)}
+							>
+								<InstagramIcon />
+								Instagram story
+							</DropdownMenuItem>
+						</DropdownMenuGroup>
 					</>
 				) : null}
 			</DropdownMenuContent>

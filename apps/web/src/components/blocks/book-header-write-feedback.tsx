@@ -3,17 +3,24 @@
 import { isFeedbackRatingStep } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
+import { PenLine } from "lucide-react";
 import { useState } from "react";
 import { FeedbackFormDialog } from "@/components/blocks/feedback-form-dialog";
 import { authClient } from "@/lib/auth-client";
+import { deckButtonClass, deckLabelClass } from "@/lib/book-deck";
+import { BOOK_TONES } from "@/lib/book-tones";
+import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
 type BookHeaderWriteFeedbackProps = {
 	bookSlug: string;
+	/** The labelled, tinted button of the book page's action dock. */
+	deck?: boolean;
 };
 
 export function BookHeaderWriteFeedback({
 	bookSlug,
+	deck = false,
 }: BookHeaderWriteFeedbackProps) {
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const { data: session, isPending: sessionPending } = authClient.useSession();
@@ -50,8 +57,29 @@ export function BookHeaderWriteFeedback({
 
 	return (
 		<>
-			<Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
-				{isEdit ? "Edit feedback" : "Write feedback"}
+			<Button
+				type="button"
+				size={deck ? "default" : "sm"}
+				variant={deck ? "ghost" : "outline"}
+				onClick={() => setDialogOpen(true)}
+				aria-label={isEdit ? "Edit your feedback" : "Write feedback"}
+				className={cn(deck && deckButtonClass)}
+			>
+				{deck ? (
+					<PenLine
+						className={cn("size-4", BOOK_TONES.violet.ink)}
+						aria-hidden
+					/>
+				) : null}
+				{deck ? (
+					<span className={deckLabelClass}>
+						{isEdit ? "Your feedback" : "Feedback"}
+					</span>
+				) : isEdit ? (
+					"Edit feedback"
+				) : (
+					"Write feedback"
+				)}
 			</Button>
 			<FeedbackFormDialog
 				bookSlug={bookSlug}

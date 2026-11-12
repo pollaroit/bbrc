@@ -88,7 +88,7 @@ export function BookReadingMenu({
 							size="icon"
 							aria-label="Wishlist and reading options"
 							className={cn(
-								"shrink-0 border-primary-foreground/25 border-s",
+								"shrink-0 border-s-primary-foreground/25",
 								className,
 							)}
 						/>

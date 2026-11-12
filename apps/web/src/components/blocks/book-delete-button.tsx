@@ -2,16 +2,12 @@
 
 import { canManageBooks } from "@bbrc/shared";
 import { Button } from "@bbrc/ui/components/button";
-import { useMutation } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
-import type { Route } from "next";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
 import { DestructiveConfirmDialog } from "@/components/destructive-confirm-dialog";
 import { authClient } from "@/lib/auth-client";
+import { useDeleteBook } from "@/lib/books/use-delete-book";
 import { cn } from "@/lib/utils";
-import { orpc, queryClient } from "@/utils/orpc";
 
 type BookDeleteButtonProps = {
 	slug: string;
@@ -24,26 +20,9 @@ export function BookDeleteButton({
 	title,
 	className,
 }: BookDeleteButtonProps) {
-	const router = useRouter();
 	const { data: session, isPending } = authClient.useSession();
 	const [open, setOpen] = useState(false);
-
-	const deleteMutation = useMutation(
-		orpc.book.removeBook.mutationOptions({
-			onSuccess: async () => {
-				toast.success("Book removed from the library.");
-				setOpen(false);
-				await queryClient.invalidateQueries({
-					queryKey: orpc.book.getBookList.key(),
-				});
-				router.push("/books" as Route);
-				router.refresh();
-			},
-			onError: (error) => {
-				toast.error(error.message ?? "Could not delete this book.");
-			},
-		}),
-	);
+	const deleteMutation = useDeleteBook(() => setOpen(false));
 
 	if (isPending || !canManageBooks(session?.user)) {
 		return null;

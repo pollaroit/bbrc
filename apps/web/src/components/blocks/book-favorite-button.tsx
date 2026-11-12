@@ -13,6 +13,8 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { FavoriteReplaceSheet } from "@/components/blocks/favorite-replace-sheet";
 import { authClient } from "@/lib/auth-client";
+import { deckButtonClass, deckLabelClass } from "@/lib/book-deck";
+import { BOOK_TONES } from "@/lib/book-tones";
 import { useSyncedBoolean } from "@/lib/optimistic/use-synced-boolean";
 import { cn } from "@/lib/utils";
 import { client, orpc, queryClient } from "@/utils/orpc";
@@ -27,8 +29,8 @@ export type BookListFavoriteEngagement = {
 type BookFavoriteButtonProps = {
 	bookSlug: string;
 	bookTitle: string;
-	/** Overlay on book cards; inline on detail header. */
-	variant?: "overlay" | "inline";
+	/** Overlay on book cards; inline icon; `deck` is the labelled button of the book page dock. */
+	variant?: "overlay" | "inline" | "deck";
 	className?: string;
 	tooltipSide?: "top" | "right" | "bottom" | "left";
 	/**
@@ -132,7 +134,7 @@ function FavoriteHeart({
 }: {
 	bookSlug: string;
 	bookTitle: string;
-	variant: "overlay" | "inline";
+	variant: "overlay" | "inline" | "deck";
 	className?: string;
 	tooltipSide: "top" | "right" | "bottom" | "left";
 	state: FavoriteState;
@@ -273,10 +275,11 @@ function FavoriteHeart({
 		<Button
 			type="button"
 			variant={variant === "overlay" ? "secondary" : "ghost"}
-			size="icon"
+			size={variant === "deck" ? "default" : "icon"}
 			className={cn(
 				variant === "overlay" &&
 					"size-8 bg-background/95 shadow-sm backdrop-blur-sm",
+				variant === "deck" && deckButtonClass,
 				className,
 			)}
 			disabled={!isFavorite && !state.canFavorite}
@@ -290,10 +293,19 @@ function FavoriteHeart({
 		>
 			<Heart
 				className={cn(
-					"size-[1.125rem] transition-transform active:scale-95",
-					isFavorite && "fill-current text-destructive",
+					"transition-transform active:scale-95",
+					variant === "deck" ? "size-4" : "size-[1.125rem]",
+					isFavorite && "fill-current",
+					variant === "deck"
+						? BOOK_TONES.pink.ink
+						: isFavorite && "text-destructive",
 				)}
 			/>
+			{variant === "deck" ? (
+				<span className={deckLabelClass}>
+					{isFavorite ? "Favorited" : "Favorite"}
+				</span>
+			) : null}
 		</Button>
 	);
 
