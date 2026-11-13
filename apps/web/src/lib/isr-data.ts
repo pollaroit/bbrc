@@ -9,6 +9,7 @@ import {
 	getAuthorStats,
 } from "@bbrc/api/modules/author/author-tabs.service";
 import { getBookBySlug } from "@bbrc/api/modules/book/book.service";
+import { getBookAbout } from "@bbrc/api/modules/book/book-about.service";
 import { getBookCatalogDiscovery } from "@bbrc/api/modules/book/book-catalog-discovery.service";
 import { getBookPulse } from "@bbrc/api/modules/book/book-pulse.service";
 import {
@@ -82,6 +83,11 @@ export const loadBookBySlugForIsr = cache((slug: string) =>
 /** Header numbers and tab counts: reviews, rating bars, documents, shelves, sittings. */
 export const loadBookPulseForIsr = cache((slug: string) =>
 	getBookPulse(slug, db),
+);
+
+/** About tab: author cards, series place, member editions, length against the library. */
+export const loadBookAboutForIsr = cache((slug: string) =>
+	getBookAbout(slug, db),
 );
 
 export const loadBookCatalogDiscoveryForIsr = cache((slug: string) =>

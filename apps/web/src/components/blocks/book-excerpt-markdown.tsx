@@ -1,10 +1,16 @@
 import type { Components } from "react-markdown";
 import Markdown from "react-markdown";
 
-const excerptMarkdownComponents: Components = {
-	p: ({ children }) => (
-		<p className="text-muted-foreground text-sm leading-relaxed">{children}</p>
-	),
+/** `reading` is the About page's roomier setting; `compact` suits cards and the overview. */
+type ExcerptVariant = "compact" | "reading";
+
+const TEXT: Record<ExcerptVariant, string> = {
+	compact: "text-muted-foreground text-sm leading-relaxed",
+	reading: "text-base text-foreground/85 leading-7",
+};
+
+const excerptMarkdownComponents = (variant: ExcerptVariant): Components => ({
+	p: ({ children }) => <p className={TEXT[variant]}>{children}</p>,
 	h1: ({ children }) => (
 		<h3 className="font-semibold text-base text-foreground">{children}</h3>
 	),
@@ -24,12 +30,12 @@ const excerptMarkdownComponents: Components = {
 		<h4 className="font-medium text-foreground text-sm">{children}</h4>
 	),
 	ul: ({ children }) => (
-		<ul className="flex list-disc flex-col gap-1.5 pl-5 text-muted-foreground text-sm leading-relaxed">
+		<ul className={`flex list-disc flex-col gap-1.5 pl-5 ${TEXT[variant]}`}>
 			{children}
 		</ul>
 	),
 	ol: ({ children }) => (
-		<ol className="flex list-decimal flex-col gap-1.5 pl-5 text-muted-foreground text-sm leading-relaxed">
+		<ol className={`flex list-decimal flex-col gap-1.5 pl-5 ${TEXT[variant]}`}>
 			{children}
 		</ol>
 	),
@@ -39,7 +45,9 @@ const excerptMarkdownComponents: Components = {
 	),
 	em: ({ children }) => <em className="italic">{children}</em>,
 	blockquote: ({ children }) => (
-		<blockquote className="border-border border-l-2 pl-4 text-muted-foreground text-sm italic leading-relaxed">
+		<blockquote
+			className={`border-border border-l-2 pl-4 italic ${TEXT[variant]}`}
+		>
 			{children}
 		</blockquote>
 	),
@@ -53,21 +61,25 @@ const excerptMarkdownComponents: Components = {
 			{children}
 		</a>
 	),
-};
+});
 
 type BookExcerptMarkdownProps = {
 	excerpt: string;
 	className?: string;
+	variant?: ExcerptVariant;
 };
 
 /** Renders Open Library–style markdown stored on book excerpts. */
 export function BookExcerptMarkdown({
 	excerpt,
 	className,
+	variant = "compact",
 }: BookExcerptMarkdownProps) {
 	return (
-		<div className={className ?? "flex max-w-3xl flex-col gap-3"}>
-			<Markdown components={excerptMarkdownComponents}>{excerpt}</Markdown>
+		<div className={className ?? "flex max-w-[68ch] flex-col gap-3"}>
+			<Markdown components={excerptMarkdownComponents(variant)}>
+				{excerpt}
+			</Markdown>
 		</div>
 	);
 }

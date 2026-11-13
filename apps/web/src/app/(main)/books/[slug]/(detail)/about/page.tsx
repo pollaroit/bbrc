@@ -1,23 +1,16 @@
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@bbrc/ui/components/card";
 import type { Metadata } from "next";
-
-/** On-demand ISR — only the book overview is warmed at build. */
-export const dynamic = "force-dynamic";
-
-import { BookExcerptMarkdown } from "@/components/blocks/book-excerpt-markdown";
-import { BookLiteraryOrigin } from "@/components/blocks/book-literary-origin";
-import { BookSubjectGroup } from "@/components/blocks/book-subject-group";
-import { BookReadingCounts } from "@/components/blocks/reading/book-reading-counts";
-import { loadBookBySlugForIsr } from "@/lib/isr-data";
+import { BookAboutAuthors } from "@/components/blocks/book-about-authors";
+import { BookAboutFacts } from "@/components/blocks/book-about-facts";
+import { BookExcerpt } from "@/components/blocks/book-excerpt";
+import { BookTopics } from "@/components/blocks/book-topics";
+import { loadBookAboutForIsr, loadBookBySlugForIsr } from "@/lib/isr-data";
 import {
 	buildBookTabMetadata,
 	buildNotFoundMetadata,
 } from "@/lib/seo/book-page-metadata";
+
+/** On-demand ISR: only the book overview is warmed at build. */
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
 	params,
@@ -28,7 +21,7 @@ export async function generateMetadata({
 		const book = await loadBookBySlugForIsr(slug);
 		return buildBookTabMetadata(book, {
 			title: "About",
-			description: `Excerpt, subjects, and catalog notes for ${book.title}.`,
+			description: `Excerpt, author, subjects and catalogue facts for ${book.title}.`,
 			segment: "about",
 		});
 	} catch {
@@ -40,65 +33,43 @@ export default async function BookAboutPage({
 	params,
 }: PageProps<"/books/[slug]">) {
 	const { slug } = await params;
-	const book = await loadBookBySlugForIsr(slug);
+	const [book, about] = await Promise.all([
+		loadBookBySlugForIsr(slug),
+		loadBookAboutForIsr(slug),
+	]);
 
-	const literaryCountries = book.countries ?? [];
-	const subjectPeople = book.subjectPeople ?? [];
-	const subjectTimes = book.subjectTimes ?? [];
 	const subjects = book.subjects ?? [];
-	const hasOpenLibrarySubjects =
-		subjectPeople.length > 0 || subjectTimes.length > 0 || subjects.length > 0;
+	const people = book.subjectPeople ?? [];
+	const times = book.subjectTimes ?? [];
+	const hasTopics = subjects.length + people.length + times.length > 0;
 
 	return (
-		<div className="flex max-w-3xl flex-col gap-8">
-			{book.excerpt ? (
-				<section className="flex flex-col gap-3">
-					<h2 className="font-semibold text-lg">Excerpt</h2>
-					<BookExcerptMarkdown excerpt={book.excerpt} />
-				</section>
-			) : (
-				<p className="text-muted-foreground text-sm">
-					No excerpt is stored for this title yet.
-				</p>
-			)}
+		<div className="flex flex-col gap-8">
+			<BookAboutFacts book={book} about={about} />
 
-			<BookLiteraryOrigin countries={literaryCountries} linkable />
+			<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-10">
+				<div className="flex min-w-0 flex-col gap-8">
+					<section className="flex flex-col gap-3">
+						<h2 className="font-semibold text-lg">Excerpt</h2>
+						{book.excerpt ? (
+							<BookExcerpt excerpt={book.excerpt} />
+						) : (
+							<p className="text-muted-foreground text-sm">
+								No excerpt has been added for this book yet.
+							</p>
+						)}
+					</section>
 
-			{hasOpenLibrarySubjects ? (
-				<section className="flex flex-col gap-4">
-					<h2 className="font-semibold text-lg">Topics from Open Library</h2>
-					<div className="grid gap-4 sm:grid-cols-2">
-						<BookSubjectGroup label="Subjects" items={subjects} linkable />
-						<BookSubjectGroup label="People" items={subjectPeople} />
-						<BookSubjectGroup label="Times & places" items={subjectTimes} />
-					</div>
-				</section>
-			) : null}
+					{hasTopics ? (
+						<section className="flex flex-col gap-3">
+							<h2 className="font-semibold text-lg">Topics</h2>
+							<BookTopics subjects={subjects} people={people} times={times} />
+						</section>
+					) : null}
+				</div>
 
-			<section className="grid gap-3 sm:grid-cols-2">
-				<BookReadingCounts bookSlug={book.slug} />
-				<Card size="sm">
-					<CardHeader>
-						<CardTitle>Added to BBRC</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p className="font-medium tabular-nums">
-							{new Intl.DateTimeFormat(undefined, {
-								dateStyle: "medium",
-								timeStyle: "short",
-							}).format(book.createdAt)}
-						</p>
-					</CardContent>
-				</Card>
-				<Card size="sm">
-					<CardHeader>
-						<CardTitle>Catalog slug</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p className="font-mono text-sm">{book.slug}</p>
-					</CardContent>
-				</Card>
-			</section>
+				<BookAboutAuthors authors={about.authors} />
+			</div>
 		</div>
 	);
 }
