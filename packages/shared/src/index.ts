@@ -4,6 +4,7 @@ export * from "./author-insights";
 export * from "./author-name";
 export * from "./author-slug";
 export * from "./author-stats";
+export * from "./book-about";
 export * from "./book-authors";
 export * from "./book-catalog-similarity";
 export * from "./book-country";
